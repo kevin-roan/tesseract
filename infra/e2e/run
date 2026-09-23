@@ -1,0 +1,214 @@
+#!/usr/bin/env bash
+# End-to-end harness: builds the sandbox image, starts an isolated local-mode stack
+# through infra/scripts/sandbox, runs `bun test ./infra/e2e` against it and always
+# removes the stack and its volumes afterwards (unless --keep).
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)"
+readonly SCRIPT_DIR REPO_ROOT
+readonly SANDBOX="${REPO_ROOT}/infra/scripts/sandbox"
+readonly TEST_DIR=./infra/e2e
+
+readonly PROJECT="${THEONE_E2E_PROJECT:-theone-e2e}"
+readonly IMAGE="${THEONE_E2E_IMAGE:-theone/sandbox:e2e}"
+readonly CONTROLLER_PORT="${THEONE_E2E_CONTROLLER_PORT:-17700}"
+readonly VNC_PORT="${THEONE_E2E_VNC_PORT:-15901}"
+readonly HEALTH_TIMEOUT="${THEONE_E2E_HEALTH_TIMEOUT:-180}"
+readonly TOKEN=theone-e2e-token-not-a-secret
+readonly VNC_PASSWORD=e2evnc01
+readonly BASE_URL="http://127.0.0.1:${CONTROLLER_PORT}"
+
+usage() {
+  cat << 'EOF'
+Usage: infra/e2e/run [--no-build] [--keep] [--web] [--] [bun test args]
+
+Builds theone/sandbox:e2e (target sandbox), starts compose project theone-e2e in local
+mode (127.0.0.1:17700 controller, 127.0.0.1:15901 VNC, volumes theone-e2e-*), waits for
+/v1/health, runs `bun test ./infra/e2e` and then removes the stack with its volumes.
+
+  --no-build   use the existing image instead of building it
+  --keep       leave the stack running (prints the command that removes it)
+  --web        afterwards drive the mobile web build with infra/e2e/web/run
+               (THEONE_E2E_WEB_EXPORT_DIR: use that export instead of exporting apps/mobile)
+  -h, --help   show this help
+
+Any other argument, and everything after `--`, is appended to `bun test`, e.g.
+`bun run e2e --bail -t health`.
+
+The tests get THEONE_E2E_URL, THEONE_E2E_TOKEN, THEONE_E2E_PROJECT (compose project and
+sandbox id), THEONE_E2E_ENV_FILE (for `infra/scripts/sandbox --env-file`),
+THEONE_E2E_VNC_PORT and THEONE_E2E_VNC_PASSWORD.
+
+Overrides: THEONE_E2E_IMAGE, THEONE_E2E_PROJECT (must start with theone-e2e),
+THEONE_E2E_CONTROLLER_PORT, THEONE_E2E_VNC_PORT, THEONE_E2E_HEALTH_TIMEOUT (seconds).
+The stack never reads infra/compose/.env; other THEONE_* variables are ignored, while
+build arguments (WITH_ANDROID, …) and Claude credentials exported in the shell apply.
+EOF
+}
+
+log() {
+  printf 'e2e: %s\n' "$*" >&2
+}
+
+die() {
+  log "$*"
+  exit 1
+}
+
+build=1
+keep=""
+web=""
+test_args=()
+env_file=""
+stack_started=""
+
+parse_args() {
+  while (($# > 0)); do
+    case "$1" in
+      --no-build) build="" ;;
+      --keep) keep=1 ;;
+      --web) web=1 ;;
+      -h | --help)
+        usage
+        exit 0
+        ;;
+      --)
+        shift
+        test_args+=("$@")
+        return
+        ;;
+      *) test_args+=("$1") ;;
+    esac
+    shift
+  done
+}
+
+sandbox() {
+  "${SANDBOX}" --env-file "${env_file}" --mode local "$@"
+}
+
+cleanup() {
+  local status=$?
+  trap - EXIT
+  if [[ -n "${stack_started}" && -n "${keep}" ]]; then
+    log "stack kept; remove it with: infra/scripts/sandbox --env-file ${env_file} down -v"
+    exit "${status}"
+  fi
+  if [[ -n "${stack_started}" ]]; then
+    log "removing the stack and its volumes"
+    sandbox down --volumes --remove-orphans || log "teardown failed: run infra/scripts/sandbox --env-file ${env_file} down -v"
+  fi
+  if [[ -n "${env_file}" ]]; then
+    rm -f -- "${env_file}"
+  fi
+  exit "${status}"
+}
+
+# Only the generated env file may configure the stack: exported THEONE_* variables would
+# win over it in compose interpolation.
+isolate_environment() {
+  local name
+  for name in $(compgen -e); do
+    case "${name}" in
+      THEONE_E2E_*) ;;
+      THEONE_* | COMPOSE_PROJECT_NAME | COMPOSE_FILE | COMPOSE_PROFILES) unset "${name}" ;;
+    esac
+  done
+}
+
+write_env_file() {
+  env_file="$(mktemp "${TMPDIR:-/tmp}/theone-e2e.XXXXXX")"
+  cat > "${env_file}" << EOF
+THEONE_MODE=local
+THEONE_DIND=
+THEONE_COMPOSE_PROJECT=${PROJECT}
+THEONE_VOLUME_PREFIX=${PROJECT}
+THEONE_IMAGE=${IMAGE}
+THEONE_BIND_ADDR=127.0.0.1
+THEONE_CONTROLLER_HOST_PORT=${CONTROLLER_PORT}
+THEONE_VNC_HOST_PORT=${VNC_PORT}
+THEONE_HOSTNAME=${PROJECT}
+THEONE_TOKEN=${TOKEN}
+THEONE_VNC_PASSWORD=${VNC_PASSWORD}
+THEONE_LOG_LEVEL=debug
+EOF
+}
+
+prepare_image() {
+  if [[ -n "${build}" ]]; then
+    log "building ${IMAGE}"
+    sandbox build
+  elif ! docker image inspect "${IMAGE}" > /dev/null 2>&1; then
+    die "image ${IMAGE} not found: run without --no-build or set THEONE_E2E_IMAGE"
+  fi
+}
+
+wait_for_health() {
+  local deadline=$((SECONDS + HEALTH_TIMEOUT))
+  log "waiting for ${BASE_URL}/v1/health (up to ${HEALTH_TIMEOUT}s)"
+  until curl -fsS --max-time 3 "${BASE_URL}/v1/health" > /dev/null 2>&1; do
+    if ((SECONDS >= deadline)); then
+      sandbox ps >&2 || true
+      sandbox logs sandbox >&2 || true
+      die "the controller did not become healthy within ${HEALTH_TIMEOUT}s"
+    fi
+    sleep 2
+  done
+  log "controller healthy"
+}
+
+run_tests() {
+  local status=0
+  log "running bun test ${TEST_DIR} ${test_args[*]}"
+  (
+    cd "${REPO_ROOT}"
+    THEONE_E2E_URL="${BASE_URL}" \
+      THEONE_E2E_TOKEN="${TOKEN}" \
+      THEONE_E2E_PROJECT="${PROJECT}" \
+      THEONE_E2E_ENV_FILE="${env_file}" \
+      THEONE_E2E_VNC_PORT="${VNC_PORT}" \
+      THEONE_E2E_VNC_PASSWORD="${VNC_PASSWORD}" \
+      bun test "${TEST_DIR}" ${test_args[@]+"${test_args[@]}"}
+  ) || status=$?
+  return "${status}"
+}
+
+run_web() {
+  local args=()
+  [[ -z "${THEONE_E2E_WEB_EXPORT_DIR:-}" ]] || args+=(--export-dir "${THEONE_E2E_WEB_EXPORT_DIR}")
+  log "driving the mobile web build"
+  THEONE_E2E_PROJECT="${PROJECT}" THEONE_E2E_TOKEN="${TOKEN}" \
+    "${SCRIPT_DIR}/web/run" ${args[@]+"${args[@]}"}
+}
+
+main() {
+  parse_args "$@"
+  [[ "${PROJECT}" =~ ^theone-e2e[a-z0-9_-]*$ ]] \
+    || die "THEONE_E2E_PROJECT=${PROJECT} must start with theone-e2e: the harness deletes its volumes"
+  [[ "${HEALTH_TIMEOUT}" =~ ^[1-9][0-9]*$ ]] || die "THEONE_E2E_HEALTH_TIMEOUT=${HEALTH_TIMEOUT} is not a number of seconds"
+  local tool
+  for tool in docker bun curl; do
+    command -v "${tool}" > /dev/null 2>&1 || die "${tool} is not installed"
+  done
+
+  isolate_environment
+  trap cleanup EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  write_env_file
+  prepare_image
+
+  stack_started=1
+  sandbox down --volumes --remove-orphans > /dev/null 2>&1 || true
+  sandbox up
+  wait_for_health
+  local status=0
+  run_tests || status=$?
+  if [[ -n "${web}" ]]; then
+    run_web || status=$?
+  fi
+  return "${status}"
+}
+
+main "$@"

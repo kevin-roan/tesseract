@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Usage: theone-wait-x <command> [args...]
+# Waits until the X display accepts connections, then execs the command with DISPLAY set.
+set -euo pipefail
+
+if (($# == 0)); then
+  echo "usage: theone-wait-x <command> [args...]" >&2
+  exit 2
+fi
+
+display="${DISPLAY:-${THEONE_DISPLAY:-:1}}"
+deadline=$((SECONDS + ${THEONE_WAIT_X_TIMEOUT:-60}))
+until xdpyinfo -display "${display}" > /dev/null 2>&1; do
+  if ((SECONDS >= deadline)); then
+    echo "theone-wait-x: display ${display} is not ready" >&2
+    exit 1
+  fi
+  sleep 0.5
+done
+
+export DISPLAY="${display}"
+exec "$@"

@@ -1,0 +1,70 @@
+# Base stack. Combine with exactly one reachability overlay (use infra/scripts/sandbox):
+#   tailscale:       compose.yml + compose.tailscale.yml
+#   host-tailscale:  compose.yml + compose.local.yml (THEONE_BIND_ADDR = host tailscale IP)
+#   local:           compose.yml + compose.local.yml (THEONE_BIND_ADDR = 127.0.0.1)
+# Optional: + compose.dind.yml. Variables are interpolated from ./.env (see .env.example);
+# only the ones listed below reach the sandbox. THEONE_COMPOSE_PROJECT and
+# THEONE_VOLUME_PREFIX isolate additional stacks (tests, more sandboxes) from the default one.
+name: ${THEONE_COMPOSE_PROJECT:-theone}
+
+services:
+  sandbox:
+    build:
+      context: ../..
+      dockerfile: infra/docker/sandbox/Dockerfile
+      target: sandbox
+      args:
+        DEV_UID: ${DEV_UID:-1000}
+        DEV_GID: ${DEV_GID:-1000}
+        WITH_ANDROID: ${WITH_ANDROID:-true}
+        WITH_MONO: ${WITH_MONO:-true}
+        CLAUDE_CODE_VERSION: ${CLAUDE_CODE_VERSION:-latest}
+    image: ${THEONE_IMAGE:-theone/sandbox:latest}
+    hostname: sandbox
+    restart: unless-stopped
+    environment:
+      THEONE_SANDBOX_ID: ${THEONE_HOSTNAME:-theone-sandbox}
+      THEONE_TOKEN: ${THEONE_TOKEN:-}
+      THEONE_VNC_PASSWORD: ${THEONE_VNC_PASSWORD:-}
+      THEONE_DISPLAY_GEOMETRY: ${THEONE_DISPLAY_GEOMETRY:-1600x900}
+      THEONE_LOG_LEVEL: ${THEONE_LOG_LEVEL:-info}
+      THEONE_CLAUDE_PERMISSION_MODE: ${THEONE_CLAUDE_PERMISSION_MODE:-bypassPermissions}
+      THEONE_CORS_ORIGINS: ${THEONE_CORS_ORIGINS:-*}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      TZ: ${TZ:-UTC}
+    volumes:
+      - theone-workspace:/workspace
+      - theone-home:/home/dev
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETUID
+      - SETGID
+      - KILL
+      - AUDIT_WRITE
+    shm_size: 2g
+    cpus: ${SANDBOX_CPUS:-4}
+    mem_limit: ${SANDBOX_MEMORY:-8g}
+    pids_limit: ${SANDBOX_PIDS:-4096}
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:7700/v1/health > /dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      start_period: 60s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+volumes:
+  theone-workspace:
+    name: ${THEONE_VOLUME_PREFIX:-${THEONE_COMPOSE_PROJECT:-theone}}-workspace
+  theone-home:
+    name: ${THEONE_VOLUME_PREFIX:-${THEONE_COMPOSE_PROJECT:-theone}}-home

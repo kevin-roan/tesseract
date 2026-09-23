@@ -1,0 +1,208 @@
+#!/usr/bin/env bash
+# Unit tests for infra/: bats suites run inside throwaway theone-test-* containers, so the
+# host needs nothing but docker. See infra/tests/README.md.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)"
+readonly SCRIPT_DIR REPO_ROOT
+readonly BATS_IMAGE=theone/infra-test:bats
+readonly SANDBOX_BATS_IMAGE=theone/infra-test:sandbox-bats
+readonly SANDBOX_IMAGE_CANDIDATES=(theone/sandbox:latest theone/sandbox:dev theone/sandbox:e2e)
+readonly SUITES=(sandbox lint compose rootfs-x11 rootfs-misc doctor entrypoint)
+readonly COVERAGE_DIR="${SCRIPT_DIR}/coverage"
+readonly COVERAGE_INCLUDE=/repo/infra/scripts,/repo/infra/docker/sandbox/rootfs
+
+usage() {
+  cat << 'EOF'
+Usage: infra/tests/run [--coverage] [--quick] [--] [bats args]
+
+Builds theone/infra-test:bats (Debian + bats-core, kcov, shellcheck), renders the compose
+configuration of every mode with the real `docker compose config` on the host, and runs
+the bats suites in infra/tests as root in a container named theone-test-bats-<pid>
+(no network, repository mounted read-only). Then, unless --quick, runs entrypoint.bats
+again in theone-test-entrypoint-<pid> built from the real sandbox image
+(THEONE_TEST_SANDBOX_IMAGE, else the first of theone/sandbox:latest, :dev, :e2e that
+exists; skipped when there is none).
+
+  --coverage   run the first stage under kcov; HTML and JSON land in infra/tests/coverage/
+  --quick      skip the sandbox-image stage
+  -h, --help   show this help
+
+Other arguments go to bats, e.g. `bun run test:infra -- -f 'bind address'`.
+EOF
+}
+
+log() {
+  printf 'infra-tests: %s\n' "$*" >&2
+}
+
+die() {
+  log "$*"
+  exit 1
+}
+
+coverage=""
+quick=""
+bats_args=()
+extra_mounts=()
+while (($# > 0)); do
+  case "$1" in
+    --coverage) coverage=1 ;;
+    --quick) quick=1 ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    --)
+      shift
+      bats_args+=("$@")
+      break
+      ;;
+    *) bats_args+=("$1") ;;
+  esac
+  shift
+done
+
+command -v docker > /dev/null 2>&1 || die "docker is not installed"
+
+work="$(mktemp -d "${TMPDIR:-/tmp}/theone-infra-tests.XXXXXX")"
+containers=()
+cleanup() {
+  local name
+  for name in ${containers[@]+"${containers[@]}"}; do
+    docker rm -f "${name}" > /dev/null 2>&1 || true
+  done
+  rm -rf -- "${work}"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
+build_images() {
+  log "building ${BATS_IMAGE}"
+  docker build -q --target bats -t "${BATS_IMAGE}" - < "${SCRIPT_DIR}/Dockerfile" > /dev/null
+}
+
+# Renders `sandbox config` for every mode with a fixed env file; nothing is created.
+render_compose() {
+  local rendered="${work}/compose" env_file="${work}/compose.env" variant mode dind
+  mkdir -p "${rendered}"
+  if ! docker compose version > /dev/null 2>&1; then
+    log "docker compose not available: compose.bats is skipped"
+    return 0
+  fi
+  cat > "${env_file}" << 'EOF'
+THEONE_COMPOSE_PROJECT=theone-test-config
+THEONE_VOLUME_PREFIX=vt
+THEONE_HOSTNAME=theone-test
+TS_TAILNET_DOMAIN=tail.ts.net
+TS_AUTHKEY=tskey-auth-test
+THEONE_BIND_ADDR=100.64.0.1
+THEONE_CONTROLLER_HOST_PORT=17710
+THEONE_VNC_HOST_PORT=15910
+THEONE_TOKEN=token-test
+THEONE_VNC_PASSWORD=vnctest1
+ANTHROPIC_API_KEY=sk-test
+THEONE_IMAGE=theone/sandbox:test-config
+EOF
+  for variant in local host-tailscale tailscale local-dind tailscale-dind; do
+    mode="${variant%-dind}"
+    dind=()
+    [[ "${variant}" != *-dind ]] || dind=(--dind)
+    env -i PATH="${PATH}" HOME="${HOME}" ${DOCKER_HOST:+DOCKER_HOST="${DOCKER_HOST}"} \
+      ${DOCKER_CONFIG:+DOCKER_CONFIG="${DOCKER_CONFIG}"} ${DOCKER_CONTEXT:+DOCKER_CONTEXT="${DOCKER_CONTEXT}"} \
+      "${REPO_ROOT}/infra/scripts/sandbox" --env-file "${env_file}" --mode "${mode}" ${dind[@]+"${dind[@]}"} \
+      config --format json > "${rendered}/${variant}.json" \
+      || die "sandbox --mode ${mode} ${dind[*]} config failed"
+  done
+}
+
+mounts() {
+  printf '%s\n' \
+    -v "${REPO_ROOT}/infra:/repo/infra:ro" \
+    -v "${REPO_ROOT}/infra/docker/sandbox/rootfs/etc/theone/agent-templates:/etc/theone/agent-templates:ro" \
+    -v "${REPO_ROOT}/SPEC.md:/etc/theone/SPEC.md:ro" \
+    -v "${work}/compose:/rendered:ro"
+}
+
+suite_paths() {
+  local suite
+  for suite in "$@"; do
+    printf '/repo/infra/tests/%s.bats\n' "${suite}"
+  done
+}
+
+run_container() {
+  local name=$1 image=$2
+  shift 2
+  local args=()
+  mapfile -t args < <(mounts)
+  containers+=("${name}")
+  docker run --rm --name "${name}" --network none --hostname theone-test \
+    "${args[@]}" ${extra_mounts[@]+"${extra_mounts[@]}"} -e THEONE_TEST_CONTAINER=1 -e THEONE_TEST_REPO=/repo -e THEONE_TEST_COMPOSE_DIR=/rendered \
+    "${image}" "$@"
+}
+
+run_unit_stage() {
+  local name="theone-test-bats-$$" paths=()
+  mapfile -t paths < <(suite_paths "${SUITES[@]}")
+  log "running ${SUITES[*]} in ${name}"
+  if [[ -z "${coverage}" ]]; then
+    run_container "${name}" "${BATS_IMAGE}" bats ${bats_args[@]+"${bats_args[@]}"} "${paths[@]}"
+    return
+  fi
+  rm -rf "${COVERAGE_DIR}"
+  mkdir -p "${COVERAGE_DIR}"
+  extra_mounts=(-v "${COVERAGE_DIR}:/cov")
+  local status=0
+  run_container "${name}" "${BATS_IMAGE}" bash -c '
+    status=0
+    kcov --include-path="$1" /cov/kcov bats "${@:3}" 2> /cov/stderr.log || status=$?
+    jq -r ".files[] | \"\(.percent_covered)% \(.covered_lines)/\(.total_lines) \(.file)\"" \
+      /cov/kcov/bats/coverage.json | sed "s|/repo/||" | sort -k3
+    jq -r "\"total \(.percent_covered)% \(.covered_lines)/\(.total_lines)\"" /cov/kcov/bats/coverage.json
+    chown -R "$2" /cov
+    exit "${status}"' _ "${COVERAGE_INCLUDE}" "$(id -u):$(id -g)" \
+    ${bats_args[@]+"${bats_args[@]}"} "${paths[@]}" || status=$?
+  extra_mounts=()
+  log "coverage report: ${COVERAGE_DIR}/kcov/index.html"
+  return "${status}"
+}
+
+sandbox_image() {
+  local image
+  if [[ -n "${THEONE_TEST_SANDBOX_IMAGE:-}" ]]; then
+    printf '%s' "${THEONE_TEST_SANDBOX_IMAGE}"
+    return
+  fi
+  for image in "${SANDBOX_IMAGE_CANDIDATES[@]}"; do
+    if docker image inspect "${image}" > /dev/null 2>&1; then
+      printf '%s' "${image}"
+      return
+    fi
+  done
+}
+
+run_sandbox_stage() {
+  local image name="theone-test-entrypoint-$$" paths=()
+  image="$(sandbox_image)"
+  if [[ -z "${image}" ]]; then
+    log "no sandbox image (build one with: bun run sandbox build): entrypoint stage skipped"
+    return 0
+  fi
+  log "building ${SANDBOX_BATS_IMAGE} from ${image}"
+  docker build -q --target sandbox-bats --build-arg "SANDBOX_IMAGE=${image}" -t "${SANDBOX_BATS_IMAGE}" - \
+    < "${SCRIPT_DIR}/Dockerfile" > /dev/null
+  mapfile -t paths < <(suite_paths entrypoint)
+  log "running entrypoint against ${image} in ${name}"
+  run_container "${name}" "${SANDBOX_BATS_IMAGE}" bats ${bats_args[@]+"${bats_args[@]}"} "${paths[@]}"
+}
+
+build_images
+render_compose
+status=0
+run_unit_stage || status=$?
+if [[ -z "${quick}" ]]; then
+  run_sandbox_stage || status=$?
+fi
+exit "${status}"

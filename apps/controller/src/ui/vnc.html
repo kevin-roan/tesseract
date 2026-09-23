@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="referrer" content="no-referrer" />
+    <title>TheOne · Display</title>
+    <link rel="stylesheet" href="./ui.css" />
+  </head>
+  <body class="page">
+    <header class="bar">
+      <span class="status" data-status data-state="connecting">Connecting…</span>
+      <span class="title" data-title>Display</span>
+      <button class="bar__action" type="button" data-keyboard>Keyboard</button>
+    </header>
+    <main class="stage stage--vnc" data-stage></main>
+    <textarea
+      class="text-input"
+      data-text-input
+      autocapitalize="off"
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+      aria-label="Type into the remote display"
+    ></textarea>
+    <div class="overlay" data-overlay hidden>
+      <p class="overlay__text" data-overlay-text></p>
+      <button class="overlay__action" type="button" data-overlay-action hidden></button>
+    </div>
+    <nav class="keys" data-keys aria-label="Special keys"></nav>
+    <script type="module" src="./vnc.ts"></script>
+  </body>
+</html>

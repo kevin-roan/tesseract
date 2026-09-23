@@ -1,0 +1,368 @@
+#!/usr/bin/env bash
+# Operator CLI for the TheOne sandbox stack (compose project "theone" unless
+# THEONE_COMPOSE_PROJECT says otherwise).
+# Run `infra/scripts/sandbox help` or `bun run sandbox help`.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)"
+COMPOSE_DIR="${REPO_ROOT}/infra/compose"
+DOCKERFILE="${REPO_ROOT}/infra/docker/sandbox/Dockerfile"
+readonly SCRIPT_DIR REPO_ROOT COMPOSE_DIR DOCKERFILE
+readonly SERVICE=sandbox
+
+usage() {
+  cat << 'EOF'
+Usage: sandbox [--mode tailscale|host-tailscale|local] [--dind] [--env-file <path>]
+               <command> [args]
+       (the options may also follow the command)
+
+Modes (default: $THEONE_MODE, then THEONE_MODE in the env file, then tailscale):
+  tailscale        tailscale sidecar joins the tailnet; https://<THEONE_HOSTNAME>.<TS_TAILNET_DOMAIN>
+  host-tailscale   ports 7700/5901 bound on the host's tailscale IPv4 (`tailscale ip -4`
+                   unless THEONE_BIND_ADDR is set)
+  local            ports 7700/5901 bound on 127.0.0.1 only
+                   (host ports: THEONE_CONTROLLER_HOST_PORT, THEONE_VNC_HOST_PORT)
+  --dind           add the privileged docker:dind sidecar (also: THEONE_DIND=1)
+  --env-file PATH  read the configuration from PATH instead of infra/compose/.env
+
+Commands:
+  up [--build] [compose up args]   start the stack in the background
+  down [-v]                        stop and remove containers (-v also deletes the volumes)
+  restart [service]                restart all services or one
+  logs [service] [-f]              show logs (last 200 lines per service)
+  shell                            login shell as dev inside the sandbox
+  pair [--json]                    print the pairing link and QR code for the mobile app
+  status                           container state and controller status
+  doctor                           run theone-doctor inside the sandbox
+  build [--target <stage>]         build the image (stages: base, desktop, electron,
+                                   android, sandbox; non-default stages are tagged
+                                   theone/sandbox:<stage>)
+  ps                               list the stack's containers
+  config                           print the resolved compose configuration (includes
+                                   the secrets from .env: do not paste it anywhere)
+  help                             show this help
+
+Configuration lives in infra/compose/.env (copy infra/compose/.env.example); exported
+variables win over the file. Stacks run side by side when each has its own
+THEONE_COMPOSE_PROJECT (volumes: THEONE_VOLUME_PREFIX, default the project name) and
+its own THEONE_CONTROLLER_HOST_PORT/THEONE_VNC_HOST_PORT or THEONE_HOSTNAME.
+EOF
+}
+
+die() {
+  printf 'sandbox: %s\n' "$*" >&2
+  exit 1
+}
+
+info() {
+  printf 'sandbox: %s\n' "$*" >&2
+}
+
+# Reads KEY from the env file without sourcing it (values may contain shell syntax),
+# following compose's rules for quotes and ` # comment` suffixes on unquoted values.
+env_file_value() {
+  local key=$1 line value=""
+  [[ -f "${env_file}" ]] || return 0
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line#export }"
+    if [[ "${line}" == "${key}="* ]]; then
+      value="${line#*=}"
+    fi
+  done < "${env_file}"
+  case "${value}" in
+    \"*\"*)
+      value="${value#\"}"
+      value="${value%%\"*}"
+      ;;
+    \'*\'*)
+      value="${value#\'}"
+      value="${value%%\'*}"
+      ;;
+    *)
+      value="${value%%[[:space:]]#*}"
+      value="${value%"${value##*[![:space:]]}"}"
+      ;;
+  esac
+  printf '%s' "${value}"
+}
+
+config_value() {
+  local key=$1
+  if [[ -n "${!key:-}" ]]; then
+    printf '%s' "${!key}"
+  else
+    env_file_value "${key}"
+  fi
+}
+
+mode=""
+dind=""
+env_file="${COMPOSE_DIR}/.env"
+env_file_option=()
+project=""
+volume_prefix=""
+controller_port=""
+vnc_port=""
+compose_files=()
+
+set_env_file() {
+  local path=$1
+  [[ -n "${path}" ]] || die "--env-file needs a path"
+  [[ "${path}" == /* ]] || path="${PWD}/${path}"
+  [[ -f "${path}" && -r "${path}" ]] || die "env file not found: ${path}"
+  env_file="${path}"
+  env_file_option=(--env-file "${path}")
+}
+
+# The global options are accepted anywhere before a literal `--`, so both
+# `sandbox --mode local up` and `sandbox up --mode local` work.
+parse_global_options() {
+  remaining=()
+  while (($# > 0)); do
+    case "$1" in
+      --env-file)
+        (($# >= 2)) || die "--env-file needs a path"
+        set_env_file "$2"
+        shift 2
+        ;;
+      --env-file=*)
+        set_env_file "${1#--env-file=}"
+        shift
+        ;;
+      --mode)
+        (($# >= 2)) || die "--mode needs a value"
+        mode=$2
+        shift 2
+        ;;
+      --mode=*)
+        mode="${1#--mode=}"
+        shift
+        ;;
+      --dind)
+        dind=1
+        shift
+        ;;
+      --)
+        remaining+=("$@")
+        return
+        ;;
+      *)
+        remaining+=("$1")
+        shift
+        ;;
+    esac
+  done
+}
+
+require_port() {
+  local key=$1 value=$2
+  if [[ ! "${value}" =~ ^[1-9][0-9]{0,4}$ ]] || ((value > 65535)); then
+    die "${key}=${value} is not a TCP port"
+  fi
+}
+
+is_ipv4() {
+  local IFS=. octet
+  [[ "$1" =~ ^[0-9]{1,3}(\.[0-9]{1,3}){3}$ ]] || return 1
+  for octet in $1; do
+    [[ "${octet}" == 0 || "${octet}" != 0* ]] && ((octet <= 255)) || return 1
+  done
+}
+
+# An allowlist: IPv6 spellings of the wildcard ([::0], ::0, …) would otherwise slip through.
+check_bind_addr() {
+  local addr=$1
+  case "${addr}" in
+    0.0.0.0 | :: | "[::]" | "*")
+      die "THEONE_BIND_ADDR=${addr} would publish the sandbox on every host interface; use the host's tailscale IPv4"
+      ;;
+  esac
+  if ! is_ipv4 "${addr}" || [[ "${addr}" == 0.* ]]; then
+    die "THEONE_BIND_ADDR=${addr} is not an IPv4 address of this host; use the host's tailscale IPv4"
+  fi
+}
+
+# Resolved once and exported so compose interpolates exactly what this script reports.
+resolve_stack() {
+  project="$(config_value THEONE_COMPOSE_PROJECT)"
+  project="${project:-theone}"
+  [[ "${project}" =~ ^[a-z0-9][a-z0-9_-]*$ ]] \
+    || die "THEONE_COMPOSE_PROJECT=${project} is not a valid compose project name (lowercase letters, digits, '-' and '_')"
+  volume_prefix="$(config_value THEONE_VOLUME_PREFIX)"
+  volume_prefix="${volume_prefix:-${project}}"
+  [[ "${volume_prefix}" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] \
+    || die "THEONE_VOLUME_PREFIX=${volume_prefix} is not a valid volume name prefix"
+  controller_port="$(config_value THEONE_CONTROLLER_HOST_PORT)"
+  controller_port="${controller_port:-7700}"
+  require_port THEONE_CONTROLLER_HOST_PORT "${controller_port}"
+  vnc_port="$(config_value THEONE_VNC_HOST_PORT)"
+  vnc_port="${vnc_port:-5901}"
+  require_port THEONE_VNC_HOST_PORT "${vnc_port}"
+  export THEONE_COMPOSE_PROJECT="${project}" THEONE_VOLUME_PREFIX="${volume_prefix}" \
+    THEONE_CONTROLLER_HOST_PORT="${controller_port}" THEONE_VNC_HOST_PORT="${vnc_port}"
+}
+
+resolve_mode() {
+  local command=$1
+  mode="${mode:-$(config_value THEONE_MODE)}"
+  mode="${mode:-tailscale}"
+  dind="${dind:-$(config_value THEONE_DIND)}"
+  case "${dind}" in
+    1 | true | yes) dind=1 ;;
+    *) dind="" ;;
+  esac
+
+  compose_files=(-f "${COMPOSE_DIR}/compose.yml")
+  case "${mode}" in
+    tailscale)
+      compose_files+=(-f "${COMPOSE_DIR}/compose.tailscale.yml")
+      ;;
+    host-tailscale)
+      local bind_addr
+      bind_addr="$(config_value THEONE_BIND_ADDR)"
+      if [[ -z "${bind_addr}" ]] && command -v tailscale > /dev/null 2>&1; then
+        bind_addr="$(tailscale ip -4 2> /dev/null | head -n 1 || true)"
+      fi
+      if [[ -z "${bind_addr}" ]]; then
+        case "${command}" in
+          up | config)
+            die "could not determine the host tailscale IPv4: start tailscale on the host or set THEONE_BIND_ADDR"
+            ;;
+        esac
+        # Only up/config use the address; down, logs, shell … must work while tailscale is down.
+        bind_addr=127.0.0.1
+      fi
+      check_bind_addr "${bind_addr}"
+      export THEONE_BIND_ADDR="${bind_addr}"
+      compose_files+=(-f "${COMPOSE_DIR}/compose.local.yml")
+      ;;
+    local)
+      export THEONE_BIND_ADDR=127.0.0.1
+      compose_files+=(-f "${COMPOSE_DIR}/compose.local.yml")
+      ;;
+    *)
+      die "unknown mode '${mode}' (tailscale, host-tailscale or local)"
+      ;;
+  esac
+  if [[ -n "${dind}" ]]; then
+    compose_files+=(-f "${COMPOSE_DIR}/compose.dind.yml")
+  fi
+}
+
+compose() {
+  docker compose --project-name "${project}" --project-directory "${COMPOSE_DIR}" \
+    ${env_file_option[@]+"${env_file_option[@]}"} "${compose_files[@]}" "$@"
+}
+
+require_running() {
+  if [[ -z "$(compose ps --status running --quiet "${SERVICE}" 2> /dev/null)" ]]; then
+    die "the sandbox is not running (start it with: sandbox up)"
+  fi
+}
+
+check_tailscale_config() {
+  [[ "${mode}" == tailscale ]] || return 0
+  [[ -n "$(config_value TS_TAILNET_DOMAIN)" ]] \
+    || die "TS_TAILNET_DOMAIN is required in tailscale mode (e.g. tail1234.ts.net, see infra/compose/.env.example)"
+  if [[ -z "$(config_value TS_AUTHKEY)" ]] \
+    && ! docker volume inspect "${volume_prefix}-tailscale" > /dev/null 2>&1; then
+    die "TS_AUTHKEY is required for the first start in tailscale mode (see infra/compose/.env.example)"
+  fi
+}
+
+cmd_up() {
+  local hostname
+  check_tailscale_config
+  compose up --detach "$@"
+  case "${mode}" in
+    tailscale)
+      hostname="$(config_value THEONE_HOSTNAME)"
+      info "controller: https://${hostname:-theone-sandbox}.$(config_value TS_TAILNET_DOMAIN)  VNC: ${hostname:-theone-sandbox}:5901"
+      ;;
+    *) info "controller: http://${THEONE_BIND_ADDR}:${controller_port}  VNC: ${THEONE_BIND_ADDR}:${vnc_port}" ;;
+  esac
+  info "pair the mobile app with: sandbox pair"
+}
+
+cmd_build() {
+  local target=sandbox args=()
+  while (($# > 0)); do
+    case "$1" in
+      --target)
+        (($# >= 2)) || die "--target needs a stage name"
+        target=$2
+        shift 2
+        ;;
+      --target=*)
+        target="${1#--target=}"
+        shift
+        ;;
+      *)
+        args+=("$1")
+        shift
+        ;;
+    esac
+  done
+  if [[ "${target}" == sandbox ]]; then
+    compose build ${args[@]+"${args[@]}"} "${SERVICE}"
+  else
+    docker build -f "${DOCKERFILE}" --target "${target}" -t "theone/sandbox:${target}" ${args[@]+"${args[@]}"} "${REPO_ROOT}"
+  fi
+}
+
+cmd_status() {
+  compose ps
+  if [[ -n "$(compose ps --status running --quiet "${SERVICE}" 2> /dev/null)" ]]; then
+    compose exec -T -u dev "${SERVICE}" theone-controller status
+  fi
+}
+
+main() {
+  local remaining=()
+  parse_global_options "$@"
+  set -- ${remaining[@]+"${remaining[@]}"}
+  local command="${1:-help}"
+  (($# == 0)) || shift
+
+  case "${command}" in
+    help | -h | --help)
+      usage
+      return
+      ;;
+  esac
+
+  command -v docker > /dev/null 2>&1 || die "docker is not installed"
+  resolve_stack
+  resolve_mode "${command}"
+
+  case "${command}" in
+    up) cmd_up "$@" ;;
+    down) compose down --remove-orphans "$@" ;;
+    restart) compose restart "$@" ;;
+    logs) compose logs --tail=200 "$@" ;;
+    shell)
+      require_running
+      compose exec -u dev -w /workspace "${SERVICE}" bash -l
+      ;;
+    pair)
+      require_running
+      compose exec -u dev "${SERVICE}" theone-controller pair "$@"
+      ;;
+    status) cmd_status ;;
+    doctor)
+      require_running
+      compose exec -u dev "${SERVICE}" theone-doctor "$@"
+      ;;
+    build) cmd_build "$@" ;;
+    ps) compose ps "$@" ;;
+    config) compose config "$@" ;;
+    *)
+      usage >&2
+      die "unknown command '${command}'"
+      ;;
+  esac
+}
+
+main "$@"

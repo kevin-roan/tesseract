@@ -1,0 +1,10 @@
+# Modes "local" (THEONE_BIND_ADDR=127.0.0.1) and "host-tailscale" (THEONE_BIND_ADDR = the
+# host's existing tailscale IPv4). Ports are only ever bound to that single address;
+# THEONE_CONTROLLER_HOST_PORT / THEONE_VNC_HOST_PORT move them for side-by-side stacks.
+services:
+  sandbox:
+    ports:
+      - "${THEONE_BIND_ADDR:-127.0.0.1}:${THEONE_CONTROLLER_HOST_PORT:-7700}:7700"
+      - "${THEONE_BIND_ADDR:-127.0.0.1}:${THEONE_VNC_HOST_PORT:-5901}:5901"
+    environment:
+      THEONE_PUBLIC_URL: http://${THEONE_BIND_ADDR:-127.0.0.1}:${THEONE_CONTROLLER_HOST_PORT:-7700}

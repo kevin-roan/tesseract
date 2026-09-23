@@ -36,8 +36,18 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-app-example
+apps/mobile/app-example
 
 # generated native folders
-/ios
-/android
+apps/mobile/ios
+apps/mobile/android
+
+# monorepo
+.turbo/
+coverage/
+apps/controller/dist/
+*.tgz
+
+# sandbox infrastructure secrets
+infra/compose/.env
+infra/compose/secrets/

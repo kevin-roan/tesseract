@@ -1,0 +1,33 @@
+import { StyleSheet } from "react-native";
+
+import { Shadows, type Theme } from "@/theme";
+
+export default function createStyles(theme: Theme, featured: boolean) {
+  return StyleSheet.create({
+    /** Fills its cell so tiles sharing a row end up the same size. */
+    card: {
+      flex: 1,
+      aspectRatio: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      gap: theme.spacing.sm,
+      padding: theme.spacing.sm,
+      borderRadius: theme.radius.lg,
+      borderCurve: "continuous",
+      overflow: "hidden",
+      ...(featured && {
+        backgroundColor: theme.colors.accent,
+        ...Shadows.level1,
+      }),
+    },
+    label: {
+      textAlign: "center",
+    },
+    pressable: {
+      flex: 1,
+    },
+    pressed: {
+      opacity: 0.85,
+    },
+  });
+}

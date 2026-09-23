@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'" />
+    <title>TheOne Electron Hello</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-content: center;
+        gap: 24px;
+        background: #1b1f27;
+        color: #e6e6e6;
+        font-family: "DejaVu Sans", system-ui, sans-serif;
+        text-align: center;
+      }
+      h1 {
+        margin: 0;
+        font-size: 40px;
+      }
+      dl {
+        display: grid;
+        grid-template-columns: auto auto;
+        gap: 8px 16px;
+        margin: 0 auto;
+        font-size: 18px;
+      }
+      dt {
+        color: #8b93a7;
+        text-align: right;
+      }
+      dd {
+        margin: 0;
+        text-align: left;
+        font-family: "DejaVu Sans Mono", monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>TheOne Electron Hello</h1>
+    <dl>
+      <dt>Platform</dt>
+      <dd id="platform">-</dd>
+      <dt>Electron</dt>
+      <dd id="electron">-</dd>
+      <dt>Chromium</dt>
+      <dd id="chrome">-</dd>
+      <dt>Node</dt>
+      <dd id="node">-</dd>
+    </dl>
+    <script src="renderer.js"></script>
+  </body>
+</html>

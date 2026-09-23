@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# Drives the mobile app's web build against a running e2e stack: exports apps/mobile for web,
+# serves it inside the sandbox on 127.0.0.1:8081 and runs drive.mjs (playwright-core with the
+# image's chromium) against the controller on 127.0.0.1:7700 inside the container.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../../.." && pwd -P)"
+readonly SCRIPT_DIR REPO_ROOT
+readonly REMOTE_DIR=/tmp/theone-e2e-web
+readonly APP_PORT=8081
+readonly PLAYWRIGHT_VERSION="${THEONE_E2E_PLAYWRIGHT_VERSION:-1}"
+
+usage() {
+  cat << 'EOF'
+Usage: infra/e2e/web/run [--export-dir DIR] [--out DIR]
+
+Needs a running e2e stack: run it through `infra/e2e/run --web`, or start one with
+`infra/e2e/run --keep` and export THEONE_E2E_PROJECT and THEONE_E2E_TOKEN.
+
+  --export-dir DIR  use an existing `expo export --platform web` output instead of exporting
+  --out DIR         where the screenshots go (default /tmp/theone-e2e-web-shots)
+EOF
+}
+
+log() {
+  printf 'e2e-web: %s\n' "$*" >&2
+}
+
+die() {
+  log "$*"
+  exit 1
+}
+
+export_dir=""
+out_dir=/tmp/theone-e2e-web-shots
+while (($# > 0)); do
+  case "$1" in
+    --export-dir)
+      export_dir="${2:?--export-dir needs a value}"
+      shift
+      ;;
+    --out)
+      out_dir="${2:?--out needs a value}"
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    *) die "unknown argument: $1" ;;
+  esac
+  shift
+done
+
+readonly PROJECT="${THEONE_E2E_PROJECT:?THEONE_E2E_PROJECT is not set}"
+readonly TOKEN="${THEONE_E2E_TOKEN:?THEONE_E2E_TOKEN is not set}"
+[[ "${PROJECT}" == theone-e2e* ]] || die "THEONE_E2E_PROJECT=${PROJECT} must start with theone-e2e"
+
+container="$(docker ps -q --filter "label=com.docker.compose.project=${PROJECT}" --filter label=com.docker.compose.service=sandbox | head -n1)"
+[[ -n "${container}" ]] || die "no running sandbox container for ${PROJECT}"
+readonly container
+
+local_tmp=""
+# shellcheck disable=SC2329 # invoked by the EXIT trap
+cleanup() {
+  local status=$?
+  docker exec -u dev "${container}" bash -c "pkill -f '${REMOTE_DIR}/[s]erve.py' || true; rm -rf '${REMOTE_DIR}'" > /dev/null 2>&1 || true
+  [[ -z "${local_tmp}" ]] || rm -rf -- "${local_tmp}"
+  exit "${status}"
+}
+trap cleanup EXIT
+
+if [[ -z "${export_dir}" ]]; then
+  local_tmp="$(mktemp -d "${TMPDIR:-/tmp}/theone-e2e-web-export.XXXXXX")"
+  export_dir="${local_tmp}/app"
+  log "exporting apps/mobile for web"
+  (cd "${REPO_ROOT}/apps/mobile" && CI=1 bunx expo export --platform web --output-dir "${export_dir}" > "${local_tmp}/export.log" 2>&1) \
+    || {
+      tail -n 40 "${local_tmp}/export.log" >&2
+      die "expo export failed"
+    }
+fi
+[[ -f "${export_dir}/index.html" ]] || die "${export_dir} is not a web export (no index.html)"
+
+log "copying the export and the driver into ${container:0:12}:${REMOTE_DIR}"
+docker exec -u dev "${container}" bash -c "rm -rf '${REMOTE_DIR}' && mkdir -p '${REMOTE_DIR}/app'"
+tar -C "${export_dir}" -cf - . | docker exec -i -u dev "${container}" tar -C "${REMOTE_DIR}/app" -xf -
+tar -C "${SCRIPT_DIR}" -cf - serve.py drive.mjs | docker exec -i -u dev "${container}" tar -C "${REMOTE_DIR}" -xf -
+
+log "installing playwright-core@${PLAYWRIGHT_VERSION} inside the sandbox"
+docker exec -u dev -w "${REMOTE_DIR}" "${container}" bash -lc \
+  "npm init -y > /dev/null && npm install --no-audit --no-fund --loglevel=error playwright-core@${PLAYWRIGHT_VERSION} > /dev/null"
+
+docker exec -d -u dev "${container}" bash -c "python3 '${REMOTE_DIR}/serve.py' '${REMOTE_DIR}/app' ${APP_PORT} > '${REMOTE_DIR}/serve.log' 2>&1"
+docker exec -u dev "${container}" bash -c \
+  "for _ in \$(seq 50); do curl -fsS -o /dev/null http://127.0.0.1:${APP_PORT}/ && exit 0; sleep 0.2; done; exit 1" \
+  || die "the static server did not start"
+
+log "driving the web app"
+status=0
+docker exec -u dev -w "${REMOTE_DIR}" \
+  -e THEONE_WEB_APP="http://127.0.0.1:${APP_PORT}" \
+  -e THEONE_WEB_CONTROLLER=http://127.0.0.1:7700 \
+  -e THEONE_WEB_TOKEN="${TOKEN}" \
+  -e THEONE_WEB_OUT="${REMOTE_DIR}/shots" \
+  "${container}" node drive.mjs || status=$?
+
+mkdir -p -- "${out_dir}"
+docker cp "${container}:${REMOTE_DIR}/shots/." "${out_dir}/" > /dev/null 2>&1 || log "no screenshots were taken"
+log "screenshots in ${out_dir}"
+exit "${status}"

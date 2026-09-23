@@ -1,0 +1,40 @@
+# Mode "tailscale" (default): a userspace tailscale sidecar joins the tailnet and serves
+# https://<THEONE_HOSTNAME>.<TS_TAILNET_DOMAIN> (443 -> controller :7700) and TCP 5901
+# (VNC). The sandbox shares the sidecar's network namespace; nothing is published on
+# host interfaces.
+services:
+  tailscale:
+    image: tailscale/tailscale:stable
+    hostname: ${THEONE_HOSTNAME:-theone-sandbox}
+    restart: unless-stopped
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_HOSTNAME: ${THEONE_HOSTNAME:-theone-sandbox}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "true"
+      TS_SERVE_CONFIG: /config/serve.json
+      TS_EXTRA_ARGS: ${TS_EXTRA_ARGS:-}
+      TS_AUTH_ONCE: "true"
+    volumes:
+      - theone-tailscale:/var/lib/tailscale
+      - ./tailscale:/config:ro
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  sandbox:
+    network_mode: service:tailscale
+    # Docker rejects a hostname on containers that join another container's network.
+    hostname: !reset null
+    depends_on:
+      - tailscale
+    environment:
+      THEONE_PUBLIC_URL: https://${THEONE_HOSTNAME:-theone-sandbox}.${TS_TAILNET_DOMAIN:-}
+
+volumes:
+  theone-tailscale:
+    name: ${THEONE_VOLUME_PREFIX:-${THEONE_COMPOSE_PROJECT:-theone}}-tailscale

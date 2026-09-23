@@ -1,0 +1,40 @@
+import { useMemo } from "react";
+import { View } from "react-native";
+import type { LogLine } from "@theone/protocol";
+import { WarningCircleIcon } from "phosphor-react-native";
+
+import LogView from "@/components/log-view";
+import Notice from "@/components/notice";
+import { useAppTheme } from "@/hooks/use-app-theme";
+
+import createStyles from "./styles";
+
+export type CloneProgressProps = {
+  lines: readonly LogLine[];
+  emptyLabel: string;
+  failure: string | null;
+  onOpenProject: () => void;
+};
+
+const CloneProgress = ({ lines, emptyLabel, failure, onOpenProject }: CloneProgressProps) => {
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
+  return (
+    <View style={styles.body}>
+      {failure ? (
+        <Notice
+          tone="danger"
+          icon={WarningCircleIcon}
+          title="Clone failed"
+          message={failure}
+          actionLabel="Open project"
+          onAction={onOpenProject}
+        />
+      ) : null}
+      <LogView lines={lines} emptyLabel={emptyLabel} />
+    </View>
+  );
+};
+
+export default CloneProgress;

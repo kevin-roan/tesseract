@@ -1,0 +1,117 @@
+import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import type { TheOneClient } from "@theone/client";
+import type { CreateProject, CreateTerminal, StartAgentRun, StartBuild, StartProcess } from "@theone/protocol";
+
+import { forgetSandboxClient } from "../api/client";
+import { storeAgentRun, storeBuild, storeProcess, storeProject, storeTerminal } from "../api/cache";
+import { sandboxKeys } from "../api/query-keys";
+import { pairSandbox } from "../api/pairing";
+import { useConnectionStore } from "../store/connection-store";
+import { useSandboxStore } from "../store/sandbox-store";
+import type { ValidPairing } from "../utils/pairing";
+import { useSandboxClient } from "./use-sandbox-client";
+
+type Effects<TData, TVars> = (queryClient: QueryClient, sandboxId: string, data: TData, variables: TVars) => unknown;
+
+function useSandboxMutation<TVars, TData>(
+  run: (client: TheOneClient, variables: TVars) => Promise<TData>,
+  effects: Effects<TData, TVars>,
+) {
+  const { sandbox, client } = useSandboxClient();
+  const queryClient = useQueryClient();
+  return useMutation<TData, Error, TVars>({
+    mutationFn: async (variables) => {
+      if (!client || !sandbox) throw new Error("No sandbox is paired.");
+      const data = await run(client, variables);
+      await effects(queryClient, sandbox.id, data, variables);
+      return data;
+    },
+  });
+}
+
+export const useCreateProject = () =>
+  useSandboxMutation(
+    (client, body: CreateProject) => client.createProject(body),
+    (queryClient, sandboxId, { project }) => {
+      storeProject(queryClient, sandboxId, project);
+      return queryClient.invalidateQueries({ queryKey: sandboxKeys.projects(sandboxId), exact: true });
+    },
+  );
+
+export const useStartProcess = () =>
+  useSandboxMutation(
+    (client, body: StartProcess) => client.startProcess(body),
+    (queryClient, sandboxId, process) => {
+      storeProcess(queryClient, sandboxId, process);
+      return queryClient.invalidateQueries({ queryKey: sandboxKeys.processLists(sandboxId) });
+    },
+  );
+
+export const useStopProcess = () =>
+  useSandboxMutation(
+    (client, processId: string) => client.stopProcess(processId),
+    (queryClient, sandboxId, process) => storeProcess(queryClient, sandboxId, process),
+  );
+
+export const useCreateTerminal = () =>
+  useSandboxMutation(
+    (client, body: CreateTerminal) => client.createTerminal(body),
+    (queryClient, sandboxId, terminal) => storeTerminal(queryClient, sandboxId, terminal),
+  );
+
+export const useCloseTerminal = () =>
+  useSandboxMutation(
+    (client, terminalId: string) => client.closeTerminal(terminalId),
+    (queryClient, sandboxId, terminal) => storeTerminal(queryClient, sandboxId, terminal),
+  );
+
+export const useStartBuild = () =>
+  useSandboxMutation(
+    (client, body: StartBuild) => client.startBuild(body),
+    (queryClient, sandboxId, build) => {
+      storeBuild(queryClient, sandboxId, build);
+      return queryClient.invalidateQueries({ queryKey: sandboxKeys.buildLists(sandboxId) });
+    },
+  );
+
+export const useCancelBuild = () =>
+  useSandboxMutation(
+    (client, buildId: string) => client.cancelBuild(buildId),
+    (queryClient, sandboxId, build) => storeBuild(queryClient, sandboxId, build),
+  );
+
+export const useStartAgentRun = () =>
+  useSandboxMutation(
+    (client, body: StartAgentRun) => client.startAgentRun(body),
+    (queryClient, sandboxId, run) => {
+      storeAgentRun(queryClient, sandboxId, run, true);
+      return queryClient.invalidateQueries({ queryKey: sandboxKeys.agentRunLists(sandboxId) });
+    },
+  );
+
+export const useCancelAgentRun = () =>
+  useSandboxMutation(
+    (client, runId: string) => client.cancelAgentRun(runId),
+    (queryClient, sandboxId, run) => storeAgentRun(queryClient, sandboxId, run),
+  );
+
+export function usePairSandbox() {
+  const addSandbox = useSandboxStore((state) => state.addSandbox);
+  return useMutation({
+    mutationFn: (pairing: ValidPairing) => pairSandbox(pairing, addSandbox),
+  });
+}
+
+export function useRemoveSandbox() {
+  const queryClient = useQueryClient();
+  const removeSandbox = useSandboxStore((state) => state.removeSandbox);
+  const clearLink = useConnectionStore((state) => state.clearLink);
+  return useMutation({
+    mutationFn: (sandboxId: string) => removeSandbox(sandboxId),
+    onSuccess: (_data, sandboxId) => {
+      forgetSandboxClient(sandboxId);
+      clearLink(sandboxId);
+      queryClient.removeQueries({ queryKey: sandboxKeys.all(sandboxId) });
+    },
+  });
+}

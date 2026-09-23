@@ -1,0 +1,41 @@
+# Opt-in Docker-in-Docker (docs/adr/0006-optional-docker-in-docker.md). The docker:dind
+# sidecar is privileged on the host; the sandbox itself stays unprivileged and talks to
+# it over mutual TLS. The workspace volume is mounted at the same path in both
+# containers so bind mounts of /workspace/projects/... resolve inside the daemon.
+services:
+  docker:
+    image: docker:dind
+    hostname: docker
+    privileged: true
+    restart: unless-stopped
+    # Every container the sandbox starts lives in this cgroup, so these cap all of them.
+    cpus: ${DIND_CPUS:-4}
+    mem_limit: ${DIND_MEMORY:-8g}
+    pids_limit: ${DIND_PIDS:-4096}
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+    volumes:
+      - theone-dind-certs:/certs/client
+      - theone-dind-data:/var/lib/docker
+      - theone-workspace:/workspace
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  sandbox:
+    depends_on:
+      - docker
+    environment:
+      DOCKER_HOST: tcp://docker:2376
+      DOCKER_TLS_VERIFY: "1"
+      DOCKER_CERT_PATH: /certs/client
+    volumes:
+      - theone-dind-certs:/certs/client:ro
+
+volumes:
+  theone-dind-certs:
+    name: ${THEONE_VOLUME_PREFIX:-${THEONE_COMPOSE_PROJECT:-theone}}-dind-certs
+  theone-dind-data:
+    name: ${THEONE_VOLUME_PREFIX:-${THEONE_COMPOSE_PROJECT:-theone}}-dind-data

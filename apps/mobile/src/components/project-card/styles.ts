@@ -1,0 +1,89 @@
+import { StyleSheet } from "react-native";
+
+import type { Theme } from "@/theme";
+
+export default function createStyles(theme: Theme) {
+  const action = theme.isTablet ? 52 : 44;
+
+  return StyleSheet.create({
+    card: {
+      gap: theme.spacing.base,
+      padding: theme.spacing.base,
+      borderRadius: theme.radius["2xl"],
+      borderCurve: "continuous",
+      overflow: "hidden",
+    },
+
+    header: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: theme.spacing.sm,
+    },
+    /** Takes the slack so the menu button stays pinned to the right. */
+    title: {
+      flex: 1,
+    },
+    menuButton: {
+      alignItems: "center",
+      justifyContent: "center",
+      width: theme.spacing.xl,
+      height: theme.spacing.xl,
+      borderRadius: theme.radius.full,
+    },
+
+    metaRow: {
+      flexDirection: "row",
+      gap: theme.spacing.md,
+    },
+    /** Equal columns, so the three meta values line up card to card. */
+    metaColumn: {
+      flex: 1,
+      gap: theme.spacing.xs,
+    },
+    metaValueRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.xs,
+    },
+
+    priorityPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      gap: theme.spacing.xxs,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xxs,
+      borderRadius: theme.radius.full,
+    },
+
+    footer: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+    },
+    peoplePill: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+      paddingLeft: theme.spacing.xs,
+      paddingRight: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+      borderRadius: theme.radius.full,
+      borderCurve: "continuous",
+      overflow: "hidden",
+    },
+    actionButton: {
+      width: action,
+      height: action,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.accent,
+    },
+
+    pressed: {
+      opacity: 0.85,
+    },
+  });
+}

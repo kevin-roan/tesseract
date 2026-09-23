@@ -1,0 +1,213 @@
+#!/usr/bin/env bash
+# Sandbox self-check. Prints a CHECK/STATUS/DETAIL table and exits 1 when any check FAILs.
+# WARN and SKIP never fail the run.
+set -euo pipefail
+
+readonly display="${THEONE_DISPLAY:-:1}"
+readonly controller_port="${THEONE_PORT:-7700}"
+readonly vnc_port="${THEONE_VNC_PORT:-5901}"
+readonly workspace="${THEONE_WORKSPACE:-/workspace}"
+
+names=()
+statuses=()
+details=()
+failures=0
+warnings=0
+
+record() {
+  names+=("$1")
+  statuses+=("$2")
+  details+=("$3")
+  case "$2" in
+    FAIL) failures=$((failures + 1)) ;;
+    WARN) warnings=$((warnings + 1)) ;;
+  esac
+}
+
+# Runs a command with a timeout; REPLY receives the first output line.
+capture() {
+  local out status=0
+  out="$(timeout 20 "$@" 2>&1)" || status=$?
+  REPLY="${out%%$'\n'*}"
+  return "${status}"
+}
+
+check_tool() {
+  local name=$1
+  shift
+  if ! command -v "$1" > /dev/null 2>&1; then
+    record "${name}" FAIL "$1 not found on PATH"
+  elif capture "$@"; then
+    record "${name}" PASS "${REPLY}"
+  else
+    record "${name}" FAIL "${REPLY:-$* failed}"
+  fi
+}
+
+check_display() {
+  local dimensions
+  if dimensions="$(timeout 10 xdpyinfo -display "${display}" 2> /dev/null | awk '/dimensions:/ {print $2}')" \
+    && [[ -n "${dimensions}" ]]; then
+    record display PASS "${display} ${dimensions}"
+  else
+    record display FAIL "cannot open X display ${display} (supervisorctl status xvnc)"
+  fi
+}
+
+check_window_manager() {
+  local property
+  property="$(timeout 10 xprop -display "${display}" -root _NET_SUPPORTING_WM_CHECK 2> /dev/null || true)"
+  if [[ "${property}" == *"window id"* ]]; then
+    record window-manager PASS "openbox on ${display}"
+  else
+    record window-manager WARN "no EWMH window manager on ${display} (supervisorctl status openbox)"
+  fi
+}
+
+check_vnc() {
+  local banner
+  # shellcheck disable=SC2016
+  if banner="$(timeout 5 bash -c 'exec 3<> "/dev/tcp/127.0.0.1/$1" && head -c 12 <&3' _ "${vnc_port}" 2> /dev/null)" \
+    && [[ "${banner}" == RFB* ]]; then
+    record vnc PASS "127.0.0.1:${vnc_port} ${banner}"
+  else
+    record vnc FAIL "no RFB server on 127.0.0.1:${vnc_port}"
+  fi
+}
+
+check_controller() {
+  local body version
+  if body="$(curl -fsS --max-time 5 "http://127.0.0.1:${controller_port}/v1/health" 2>&1)"; then
+    version="$(jq -r '.version // empty' <<< "${body}" 2> /dev/null || true)"
+    record controller PASS "http://127.0.0.1:${controller_port}${version:+ v${version}}"
+  else
+    record controller FAIL "${body%%$'\n'*}"
+  fi
+}
+
+check_supervisor() {
+  local out bad starting
+  if ! out="$(timeout 10 supervisorctl status 2>&1)" && ! grep -qE '^[A-Za-z0-9_-]+ +[A-Z]+' <<< "${out}"; then
+    record supervisor WARN "supervisord not reachable: ${out%%$'\n'*}"
+    return
+  fi
+  bad="$(awk '$2 != "RUNNING" && $2 != "STARTING" && !($1 == "wine-init" && $2 == "EXITED") {printf "%s%s=%s", sep, $1, $2; sep = ", "}' <<< "${out}")"
+  starting="$(awk '$2 == "STARTING" {printf "%s%s", sep, $1; sep = ", "}' <<< "${out}")"
+  if [[ -n "${bad}" ]]; then
+    record supervisor FAIL "${bad}"
+  elif [[ -n "${starting}" ]]; then
+    record supervisor WARN "still starting: ${starting} (run theone-doctor again in a few seconds)"
+  else
+    record supervisor PASS "$(awk '{printf "%s%s", sep, $1; sep = ","}' <<< "${out}") ok"
+  fi
+}
+
+check_wine() {
+  local prefix="${WINEPREFIX:-${HOME}/.wine}"
+  if ! command -v wine > /dev/null 2>&1; then
+    record wine FAIL "wine not found on PATH"
+  elif ! capture wine --version; then
+    record wine FAIL "${REPLY:-wine --version failed}"
+  elif [[ -f "${prefix}/system.reg" ]]; then
+    record wine PASS "${REPLY}, prefix ${prefix}"
+  else
+    record wine WARN "${REPLY}, prefix ${prefix} not initialised (supervisorctl status wine-init)"
+  fi
+}
+
+check_android() {
+  if [[ -x "${JAVA_HOME:-/nonexistent}/bin/java" ]]; then
+    check_tool java java -version
+  else
+    record java SKIP "no JDK (image built with WITH_ANDROID=false)"
+  fi
+  if [[ -x "${ANDROID_HOME:-/nonexistent}/platform-tools/adb" ]]; then
+    check_tool adb adb version
+  else
+    record adb SKIP "no Android SDK (image built with WITH_ANDROID=false)"
+  fi
+}
+
+check_claude_auth() {
+  if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+    record claude-auth PASS "ANTHROPIC_API_KEY is set"
+  elif [[ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
+    record claude-auth PASS "CLAUDE_CODE_OAUTH_TOKEN is set"
+  elif [[ -s "${HOME}/.claude/.credentials.json" ]]; then
+    record claude-auth PASS "logged in (${HOME}/.claude/.credentials.json)"
+  else
+    record claude-auth WARN "not authenticated: run 'claude' in a sandbox terminal and log in"
+  fi
+}
+
+check_docker() {
+  if [[ -z "${DOCKER_HOST:-}" ]]; then
+    record docker SKIP "no DOCKER_HOST (start the stack with --dind)"
+  elif capture docker version --format '{{.Server.Version}}'; then
+    record docker PASS "engine ${REPLY} at ${DOCKER_HOST}"
+  else
+    record docker FAIL "${REPLY:-cannot reach ${DOCKER_HOST}}"
+  fi
+}
+
+check_disk() {
+  local available_kb available_gib
+  available_kb="$(df -Pk "${workspace}" | awk 'NR == 2 {print $4}')"
+  available_gib=$((available_kb / 1024 / 1024))
+  if ((available_gib < 2)); then
+    record disk FAIL "${available_gib} GiB free on ${workspace}"
+  elif ((available_gib < 10)); then
+    record disk WARN "${available_gib} GiB free on ${workspace}"
+  else
+    record disk PASS "${available_gib} GiB free on ${workspace}"
+  fi
+}
+
+check_writable() {
+  local name=$1 dir=$2 probe
+  if probe="$(mktemp "${dir}/.theone-doctor.XXXXXX" 2> /dev/null)"; then
+    rm -f "${probe}"
+    record "${name}" PASS "${dir} writable by $(id -un)"
+  else
+    record "${name}" FAIL "${dir} not writable by $(id -un)"
+  fi
+}
+
+print_report() {
+  local i color reset="" status
+  printf '%-15s %-6s %s\n' CHECK STATUS DETAIL
+  for i in "${!names[@]}"; do
+    status="${statuses[i]}"
+    color=""
+    if [[ -t 1 ]]; then
+      reset=$'\e[0m'
+      case "${status}" in
+        PASS) color=$'\e[32m' ;;
+        WARN) color=$'\e[33m' ;;
+        FAIL) color=$'\e[31m' ;;
+        SKIP) color=$'\e[2m' ;;
+      esac
+    fi
+    printf '%-15s %s%-6s%s %s\n' "${names[i]}" "${color}" "${status}" "${reset}" "${details[i]}"
+  done
+  printf '\n%d checks, %d failed, %d warnings\n' "${#names[@]}" "${failures}" "${warnings}"
+}
+
+check_display
+check_window_manager
+check_vnc
+check_controller
+check_supervisor
+check_wine
+check_tool node node --version
+check_tool bun bun --version
+check_tool claude claude --version
+check_claude_auth
+check_android
+check_docker
+check_disk
+check_writable workspace "${workspace}"
+check_writable home "${HOME}"
+
+print_report
+((failures == 0))

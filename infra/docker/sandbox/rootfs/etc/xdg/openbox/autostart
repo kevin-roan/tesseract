@@ -1,0 +1,2 @@
+# shellcheck shell=sh
+xsetroot -solid '#1b1f27' -cursor_name left_ptr

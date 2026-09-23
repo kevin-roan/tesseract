@@ -1,0 +1,4 @@
+# shellcheck shell=sh
+# Unprivileged user namespaces are unavailable in the container, so Chromium's own
+# sandbox cannot start; the container is the isolation boundary.
+export CHROMIUM_FLAGS="${CHROMIUM_FLAGS:-} --no-sandbox --password-store=basic"

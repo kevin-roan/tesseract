@@ -1,0 +1,21 @@
+import { LIMITS } from "@theone/protocol";
+
+export const STATUS_REFRESH_INTERVAL_MS = 10_000;
+export const LIST_PREVIEW_LIMIT = 5;
+export const ACTIVITY_LIMIT = 20;
+export const LOG_BUFFER_LIMIT = LIMITS.logRingBufferLines;
+export const STREAM_FLUSH_INTERVAL_MS = 80;
+export const PAIRING_TIMEOUT_MS = 10_000;
+export const TERMINAL_DEFAULT_SIZE = { cols: 80, rows: 24 } as const;
+export const DEFAULT_PACKAGE_MANAGER = "npm";
+export const SANDBOX_STORE_NAME = "theone.sandboxes";
+export const SANDBOX_STORE_VERSION = 1;
+export const TOKEN_KEY_PREFIX = "theone.sandbox.";
+export const TOKEN_KEY_SUFFIX = ".token";
+export const SANDBOX_ID_PREFIX = "sbx_";
+export const GIT_PREVIEW = { files: 8, commits: 3 } as const;
+export const PROJECTS_ROOT = "/workspace/projects";
+export const MAX_GIT_URL_LENGTH = 2048;
+export const STREAM_RECONNECT_LIMIT = 5;
+export const PAGE_RECONNECT_LIMIT = 4;
+export const PAGE_RECONNECT_DELAY_MS = { minDelayMs: 1_000, maxDelayMs: 8_000 } as const;

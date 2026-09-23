@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# supervisord oneshot "wine-init": creates the wine prefix once; no-op when it exists.
+set -euo pipefail
+
+prefix="${WINEPREFIX:-${HOME}/.wine}"
+
+if ! command -v wine > /dev/null 2>&1; then
+  echo "wine is not installed; nothing to do"
+  exit 0
+fi
+
+if [[ -f "${prefix}/system.reg" ]]; then
+  echo "wine prefix ready: ${prefix}"
+  exit 0
+fi
+
+echo "creating wine prefix ${prefix} (WINEARCH=${WINEARCH:-win64})"
+# Debian ships neither wine-mono nor wine-gecko; disabling them avoids blocking install dialogs.
+WINEDLLOVERRIDES="mscoree,mshtml=" wineboot -u
+wineserver -w
+echo "wine prefix created: ${prefix}"

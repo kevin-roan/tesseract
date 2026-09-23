@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TheOne — Setup Guide</title>
+<style>
+  :root {
+    --bg: #0d0f14; --panel: #151922; --panel-2: #1b2130; --line: #262d3d;
+    --text: #e6e9ef; --muted: #9aa3b5; --accent: #7cc4ff; --ok: #6fd49a; --warn: #ffc566; --bad: #ff7b7b;
+    --mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f7f8fa; --panel: #fff; --panel-2: #f0f2f6; --line: #dde1e8; --text: #1b1f27; --muted: #5d6577; --accent: #0b6bcb; --ok: #1a8f52; --warn: #a86400; --bad: #c62828; }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .layout { display: grid; grid-template-columns: 250px 1fr; max-width: 1200px; margin: 0 auto; }
+  nav { position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 28px 18px; border-right: 1px solid var(--line); }
+  nav h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+  nav a { display: block; color: var(--text); text-decoration: none; padding: 5px 8px; border-radius: 6px; font-size: 14px; }
+  nav a:hover { background: var(--panel-2); }
+  main { padding: 36px 44px 80px; min-width: 0; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  h2 { font-size: 22px; margin: 44px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 24px 0 8px; }
+  p, li { color: var(--text); }
+  .lead { color: var(--muted); font-size: 16px; margin-top: 0; }
+  a { color: var(--accent); }
+  code { font-family: var(--mono); font-size: 13px; background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+  pre { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 10px 0 16px; }
+  pre code { background: none; padding: 0; font-size: 13px; line-height: 1.55; }
+  pre .c { color: var(--muted); }
+  .copy { position: absolute; top: 8px; right: 8px; font: 12px system-ui; color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 3px 8px; cursor: pointer; }
+  .copy:hover { color: var(--text); }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; background: var(--panel); }
+  .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 14px 0; }
+  .callout.warn { border-color: var(--warn); }
+  .callout.bad { border-color: var(--bad); }
+  .diagram { font-family: var(--mono); font-size: 12.5px; white-space: pre; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; line-height: 1.4; }
+  .steps { counter-reset: step; list-style: none; padding: 0; }
+  .steps > li { counter-increment: step; position: relative; padding-left: 38px; margin-bottom: 14px; }
+  .steps > li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--panel-2); border: 1px solid var(--line); text-align: center; font-size: 13px; line-height: 25px; color: var(--accent); }
+  .check { list-style: none; padding: 0; }
+  .check li { padding-left: 26px; position: relative; }
+  .check li::before { content: "☐"; position: absolute; left: 2px; color: var(--muted); }
+  .tag { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); margin-left: 6px; vertical-align: 2px; }
+  .ok { color: var(--ok); } .warn-t { color: var(--warn); }
+  footer { margin-top: 60px; color: var(--muted); font-size: 13px; }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+    main { padding: 24px 18px 60px; }
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <h2>TheOne setup</h2>
+  <a href="#overview">Overview</a>
+  <a href="#install">1. What to install</a>
+  <a href="#tailscale">2. Tailscale</a>
+  <a href="#clone">3. Get the code</a>
+  <a href="#configure">4. Configure .env</a>
+  <a href="#build">5. Build &amp; start sandbox</a>
+  <a href="#pair">6. Pair the phone</a>
+  <a href="#mobile">7. Run the mobile app</a>
+  <a href="#first">8. First build (Electron + wine)</a>
+  <a href="#claude">9. Claude in the sandbox</a>
+  <a href="#modes">Network modes</a>
+  <a href="#dev">Developing the monorepo</a>
+  <a href="#tests">Tests</a>
+  <a href="#ops">Daily operations</a>
+  <a href="#trouble">Troubleshooting</a>
+  <a href="#security">Security notes</a>
+  <a href="#layout">Repository layout</a>
+  <a href="#docs">Further docs</a>
+</nav>
+
+<main>
+<h1>TheOne — Setup Guide</h1>
+<p class="lead">A phone-controlled, sandboxed development machine. The Expo app talks over Tailscale to a controller inside a Docker sandbox that has a virtual display (VNC), wine, Electron/Android/Node tooling and Claude Code. You can build, run and visually test apps (including Windows Electron builds through wine) from your phone.</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<div class="diagram"> Phone (TheOne app, Tailscale app on)
+      │   HTTPS + WebSocket over the tailnet only
+      ▼
+ HOST — only runs Docker (nothing installed or reconfigured on it)
+ ┌─────────────────────────────────────────────────────────────┐
+ │ tailscale sidecar (userspace)  ── serve :443 → :7700, :5901 │
+ │   └─ shares its network namespace with ─┐                   │
+ │ sandbox container (Debian trixie)       ▼                   │
+ │   supervisord (as user dev)                                 │
+ │    ├─ Xvnc :1  (TigerVNC, port 5901) + openbox              │
+ │    ├─ theone-controller :7700  (REST, WS, /ui terminal+VNC) │
+ │    └─ wine prefix init                                      │
+ │   Claude Code · git · Node 24 · bun · Python · JDK 17       │
+ │   Android SDK · wine · Electron libs · Chromium             │
+ │   volumes: /workspace  /home/dev                            │
+ │ optional: docker:dind sidecar (--dind)                      │
+ └─────────────────────────────────────────────────────────────┘</div>
+<p>Time needed: about an hour the first time, mostly the first image build (~5 GB).</p>
+</section>
+
+<section id="install">
+<h2>1. What to install</h2>
+<h3>On the host (the machine that runs the sandbox)</h3>
+<table>
+  <tr><th>Tool</th><th>Version</th><th>Why</th><th>Check</th></tr>
+  <tr><td>Linux x86_64</td><td>—</td><td>The image is built for amd64 (wine needs i386 multiarch)</td><td><code>uname -m</code></td></tr>
+  <tr><td>Docker Engine + BuildKit</td><td>24+</td><td>Builds and runs the sandbox</td><td><code>docker --version</code></td></tr>
+  <tr><td>Docker Compose plugin</td><td>2.24+</td><td>Runs the stack</td><td><code>docker compose version</code></td></tr>
+  <tr><td>bun</td><td>1.3+ (1.4 used)</td><td>Workspace installs, root scripts, controller dev</td><td><code>bun --version</code></td></tr>
+  <tr><td>git</td><td>any recent</td><td>Clone the repo</td><td><code>git --version</code></td></tr>
+  <tr><td>Disk</td><td>~40 GB free</td><td>Image (~5 GB with Android + wine), build cache, volumes</td><td><code>df -h</code></td></tr>
+  <tr><td>RAM</td><td>8 GB+ for the sandbox</td><td>Electron, Gradle, wine builds</td><td><code>free -g</code></td></tr>
+</table>
+<pre><code><span class="c"># Install bun (if missing)</span>
+curl -fsSL https://bun.sh/install | bash
+
+<span class="c"># Docker: follow https://docs.docker.com/engine/install/ for your distro,
+# then allow your user to use it (log out/in afterwards)</span>
+sudo usermod -aG docker "$USER"</code></pre>
+<div class="callout">Nothing else goes on the host. Node, wine, Java, Android SDK, Electron and Claude Code all live inside the sandbox image.</div>
+
+<h3>For building the mobile app (developer machine)</h3>
+<table>
+  <tr><th>Tool</th><th>Needed for</th></tr>
+  <tr><td>bun (as above)</td><td>Metro dev server, dependencies</td></tr>
+  <tr><td>Android Studio / Android SDK + a device or emulator</td><td><code>bun run android</code> (dev client build)</td></tr>
+  <tr><td>macOS + Xcode</td><td><code>bun run ios</code> (optional)</td></tr>
+  <tr><td>or an Expo account + <code>eas-cli</code></td><td>Cloud dev builds instead of local native builds</td></tr>
+</table>
+
+<h3>On the phone</h3>
+<ul>
+  <li>The <strong>Tailscale</strong> app, logged into the same tailnet.</li>
+  <li>The <strong>TheOne</strong> development build (step 7). Expo Go is not enough: <code>react-native-webview</code> and <code>expo-camera</code> need native code.</li>
+</ul>
+</section>
+
+<section id="tailscale">
+<h2>2. Prepare Tailscale</h2>
+<ol class="steps">
+  <li>In the admin console → <strong>DNS</strong>: turn <strong>MagicDNS on</strong> and <strong>enable HTTPS certificates</strong>. Note your tailnet name (e.g. <code>tail1234.ts.net</code>).</li>
+  <li>In the <strong>Access controls</strong> editor, add a tag and a grant (adjust <code>src</code>):
+<pre><code>"tagOwners": { "tag:theone": ["autogroup:admin"] },
+"grants": [
+  { "src": ["autogroup:member"], "dst": ["tag:theone"], "ip": ["tcp:443", "tcp:5901"] }
+]</code></pre></li>
+  <li><strong>Settings → Keys → Generate auth key</strong>: reusable <em>off</em>, ephemeral <em>off</em>, pre-approved <em>on</em>, tags <code>tag:theone</code>. Copy the <code>tskey-auth-…</code> value.</li>
+</ol>
+<div class="callout">The auth key is only used on first start. The node state is then kept in the <code>theone-tailscale</code> volume and you can remove the key from <code>.env</code>. Host Tailscale is never touched.</div>
+</section>
+
+<section id="clone">
+<h2>3. Get the code and install dependencies</h2>
+<pre><code>git clone &lt;this repository&gt; theone
+cd theone
+bun install</code></pre>
+</section>
+
+<section id="configure">
+<h2>4. Configure <code>infra/compose/.env</code></h2>
+<pre><code>cp infra/compose/.env.example infra/compose/.env
+chmod 600 infra/compose/.env
+$EDITOR infra/compose/.env</code></pre>
+<p>Minimum settings for the default <code>tailscale</code> mode:</p>
+<table>
+  <tr><th>Variable</th><th>Example</th><th>Notes</th></tr>
+  <tr><td><code>THEONE_MODE</code></td><td><code>tailscale</code></td><td>or <code>host-tailscale</code> / <code>local</code> (see <a href="#modes">modes</a>)</td></tr>
+  <tr><td><code>TS_AUTHKEY</code></td><td><code>tskey-auth-…</code></td><td>First start only</td></tr>
+  <tr><td><code>TS_TAILNET_DOMAIN</code></td><td><code>tail1234.ts.net</code></td><td>App URL becomes <code>https://$THEONE_HOSTNAME.$TS_TAILNET_DOMAIN</code></td></tr>
+  <tr><td><code>THEONE_HOSTNAME</code></td><td><code>theone-sandbox</code></td><td>Tailnet node name and sandbox id</td></tr>
+  <tr><td><code>SANDBOX_CPUS</code> / <code>SANDBOX_MEMORY</code> / <code>SANDBOX_PIDS</code></td><td><code>4</code> / <code>8g</code> / <code>4096</code></td><td>Resource limits</td></tr>
+  <tr><td><code>THEONE_VNC_PASSWORD</code></td><td><em>empty</em></td><td>Empty = generated once and persisted (VNC uses 8 chars)</td></tr>
+  <tr><td><code>THEONE_TOKEN</code></td><td><em>empty</em></td><td>Empty = generated on first start; shown by <code>sandbox pair</code></td></tr>
+  <tr><td><code>WITH_ANDROID</code> / <code>WITH_MONO</code></td><td><code>true</code> / <code>true</code></td><td><code>false</code> gives a smaller, faster image</td></tr>
+  <tr><td><code>ANTHROPIC_API_KEY</code> / <code>CLAUDE_CODE_OAUTH_TOKEN</code></td><td><em>empty</em></td><td>Optional; logging in inside the sandbox is preferred</td></tr>
+  <tr><td><code>THEONE_CLAUDE_PERMISSION_MODE</code></td><td><code>bypassPermissions</code></td><td>Mode for headless Claude runs from the phone; e.g. <code>acceptEdits</code> to restrict</td></tr>
+  <tr><td><code>CLAUDE_CODE_VERSION</code></td><td><code>latest</code></td><td>Pin for reproducible images</td></tr>
+</table>
+<p>Every variable is documented inline in <code>infra/compose/.env.example</code>.</p>
+<div class="callout warn"><code>.env</code> holds secrets (auth key, tokens). It is git-ignored; keep it <code>0600</code>. <code>bun run sandbox config</code> prints them too — never paste its output.</div>
+</section>
+
+<section id="build">
+<h2>5. Build and start the sandbox</h2>
+<pre><code>bun run sandbox config &gt; /dev/null &amp;&amp; echo config ok   <span class="c"># validate .env + mode</span>
+bun run sandbox up --build     <span class="c"># builds theone/sandbox:latest, starts the stack</span>
+bun run sandbox status         <span class="c"># containers + controller status</span>
+bun run sandbox doctor         <span class="c"># display, VNC, controller, wine, Android, disk checks</span></code></pre>
+<p>Right after <code>up</code>, <code>doctor</code> may say the controller is still starting — run it again a few seconds later. A <span class="warn-t">WARN</span> for Claude auth is normal until you log in (step 9).</p>
+<p>Check from any device on the tailnet:</p>
+<pre><code>bun run sandbox logs tailscale -f
+curl -fsS https://theone-sandbox.tail1234.ts.net/v1/health
+<span class="c"># {"ok":true,"version":"0.1.0","protocolVersion":1,"sandboxId":"theone-sandbox"}</span></code></pre>
+<div class="callout">Want to try everything first without Tailscale? Run <code>bun run e2e</code>: it builds the image, starts an isolated loopback-only stack, runs the full end-to-end suite and tears it down (3–5 min on a warm cache).</div>
+</section>
+
+<section id="pair">
+<h2>6. Pair the phone</h2>
+<pre><code>bun run sandbox pair</code></pre>
+<p>Prints a <code>theone://pair?url=…&amp;token=…&amp;name=…</code> link and a QR code. <strong>The token is a secret</strong> — anyone with it controls the sandbox (within the tailnet).</p>
+<p>On the phone: Tailscale connected → TheOne → <strong>Agents</strong> tab → <strong>Pair a sandbox</strong> → scan the QR code (or enter URL + token manually). Opening a <code>theone://pair</code> link pre-fills the form; you still tap <strong>Pair sandbox</strong>.</p>
+</section>
+
+<section id="mobile">
+<h2>7. Run the mobile app (development build)</h2>
+<pre><code>cd apps/mobile
+bun run android            <span class="c"># expo run:android — builds &amp; installs the dev client</span>
+<span class="c"># or: bun run ios          (macOS + Xcode)</span>
+<span class="c"># or: eas build --profile development</span>
+cd ../..
+bun run mobile             <span class="c"># Metro for the dev client</span></code></pre>
+<p>The <strong>Agents</strong> tab becomes the sandbox hub: connection state, CPU / memory / disk, display, quick actions (Display, Terminal, Claude, Build), projects, processes, terminal sessions, builds and Claude runs.</p>
+<div class="callout warn">Release builds block plain <code>http://</code> (Android cleartext, iOS ATS). The default <code>tailscale</code> mode uses HTTPS and works; <code>local</code> / <code>host-tailscale</code> modes over HTTP only work in dev builds unless you add a cleartext exception.</div>
+</section>
+
+<section id="first">
+<h2>8. First build: Electron for Linux and Windows (wine)</h2>
+<ol class="steps">
+  <li>Copy the example project into the sandbox (as <code>dev</code>):
+<pre><code>tar -C examples -c electron-hello | docker exec -i -u dev theone-sandbox-1 tar -C /workspace/projects -x</code></pre>
+    For your own repos use <strong>Add</strong> in the app's Projects section (name, git URL, optional branch).</li>
+  <li>App → Agents → Projects → <code>electron-hello</code> → <strong>Build</strong> → <strong>Windows installer</strong> (<code>electron-windows</code>, Debug). The artifact <code>electron-hello-windows-debug-1.0.0.exe</code> appears under Artifacts.</li>
+  <li>Build <strong>Linux AppImage</strong> (<code>electron-linux</code>) the same way.</li>
+  <li>Scripts → <code>start</code> with <strong>Show on display</strong> → Run, then open <strong>Display</strong>: you see and control the Electron window from the phone.</li>
+</ol>
+<div class="callout warn">npm 11 skips untrusted install scripts. If a process log says "Electron failed to install correctly", run <code>npm install-scripts approve electron &amp;&amp; npm rebuild electron</code> in a terminal inside the project. Windows installers are verified as files; running Windows Electron builds under wine is best-effort (Electron 44 does not render under wine 10) — smoke-test the Linux build on the display instead. macOS builds are not possible in the sandbox.</div>
+</section>
+
+<section id="claude">
+<h2>9. Claude Code inside the sandbox</h2>
+<ul>
+  <li>Open a <strong>Claude</strong> terminal from the app (or <code>bun run sandbox shell</code> then <code>claude</code>) and log in once. Credentials live in the <code>theone-home</code> volume.</li>
+  <li><code>SPEC.md</code> is installed as <code>/home/dev/.claude/CLAUDE.md</code> on first start, so Claude follows the sandbox operating rules.</li>
+  <li>Headless runs from the phone (<strong>Claude</strong> quick action) stream their output to the app; they use <code>THEONE_CLAUDE_PERMISSION_MODE</code>.</li>
+  <li>Inside the sandbox, the agent calls the controller with <code>theone-controller api &lt;METHOD&gt; &lt;PATH&gt; [JSON|-]</code> and reports status with <code>theone-controller emit --status building --message "…"</code>.</li>
+</ul>
+</section>
+
+<section id="modes">
+<h2>Network modes</h2>
+<table>
+  <tr><th>Mode</th><th>Reachable at</th><th>When to use</th></tr>
+  <tr><td><code>tailscale</code> <span class="tag">default</span></td><td><code>https://&lt;THEONE_HOSTNAME&gt;.&lt;tailnet&gt;</code> (443 → controller, 5901 → VNC); nothing on host interfaces</td><td>Normal use</td></tr>
+  <tr><td><code>host-tailscale</code></td><td><code>http://&lt;host tailscale IP&gt;:7700</code> / <code>:5901</code></td><td>Reuse the host's existing Tailscale (no auth key needed)</td></tr>
+  <tr><td><code>local</code></td><td><code>http://127.0.0.1:7700</code> / <code>:5901</code></td><td>Development, e2e tests</td></tr>
+  <tr><td><code>--dind</code> (add-on)</td><td>—</td><td>Docker inside the sandbox via a <strong>privileged</strong> <code>docker:dind</code> sidecar — read the security notes first</td></tr>
+</table>
+<pre><code>bun run sandbox up --mode local
+bun run sandbox up --mode host-tailscale
+bun run sandbox up --dind</code></pre>
+<p>Native VNC clients (e.g. on a laptop in the tailnet) can connect to port <code>5901</code> with the VNC password.</p>
+</section>
+
+<section id="dev">
+<h2>Developing the monorepo</h2>
+<pre><code>bun install
+bun run typecheck          <span class="c"># protocol, client, controller (+ ui), mobile</span>
+bun run test               <span class="c"># all workspace unit tests</span>
+bun run lint
+
+<span class="c"># Controller on your machine (loopback, temp workspace)</span>
+THEONE_HOST=127.0.0.1 THEONE_WORKSPACE=/tmp/theone-ws bun run controller:dev
+bun run controller:build   <span class="c"># single binary: apps/controller/dist/theone-controller</span>
+
+<span class="c"># Mobile</span>
+bun run mobile</code></pre>
+<p>Rules for contributors: <code>CODING.md</code> (no unnecessary comments, no constants in UI files, reusable components, logic in hooks). The wire contract lives in <code>docs/architecture/00-blueprint.md</code> and <code>packages/protocol</code> — change them together with the code.</p>
+<p>Adding dependencies: run <code>bun add &lt;pkg&gt;</code> inside the package directory; for Expo native modules use <code>bunx expo install &lt;pkg&gt;</code> in <code>apps/mobile</code> (then rebuild the dev client).</p>
+</section>
+
+<section id="tests">
+<h2>Tests</h2>
+<table>
+  <tr><th>Command</th><th>What it covers</th></tr>
+  <tr><td><code>bun run test</code></td><td>Unit tests: protocol, client, controller (bun test), mobile (jest)</td></tr>
+  <tr><td><code>bun run test:infra</code></td><td>Operator CLI, rootfs scripts and compose files (bats, runs in Docker)</td></tr>
+  <tr><td><code>bun run e2e</code></td><td>Builds <code>theone/sandbox:e2e</code>, starts isolated stack <code>theone-e2e</code> on 127.0.0.1:17700/15901, runs the full flow (pairing, auth, projects, Linux + Windows builds, display, terminals, VNC, events, restart), then tears down</td></tr>
+  <tr><td><code>infra/e2e/run --no-build</code></td><td>Reuse the existing e2e image</td></tr>
+  <tr><td><code>infra/e2e/run --keep</code></td><td>Leave the e2e stack running for inspection</td></tr>
+  <tr><td><code>THEONE_E2E_ANDROID=1 bun run e2e</code></td><td>Also an Android APK build (~15 min, several GB)</td></tr>
+  <tr><td><code>infra/e2e/run --web</code></td><td>Drives the mobile web export with Chromium inside the sandbox</td></tr>
+</table>
+</section>
+
+<section id="ops">
+<h2>Daily operations</h2>
+<pre><code>bun run sandbox status | logs [service] [-f] | shell | doctor | ps
+bun run sandbox restart [service]
+bun run sandbox down            <span class="c"># stop (keeps volumes)</span>
+bun run sandbox down -v         <span class="c"># stop AND delete volumes (projects, home, tailscale state!)</span>
+bun run sandbox build           <span class="c"># rebuild the image</span>
+bun run sandbox up --build      <span class="c"># upgrade: rebuild + restart</span>
+docker exec -u dev theone-sandbox-1 theone-controller token --rotate   <span class="c"># new token (restart + re-pair)</span></code></pre>
+<table>
+  <tr><th>Where things live (inside the sandbox)</th><th></th></tr>
+  <tr><td><code>/workspace/projects/&lt;id&gt;</code></td><td>Projects</td></tr>
+  <tr><td><code>/workspace/artifacts/</code></td><td>Build outputs: <code>&lt;project&gt;-&lt;platform&gt;-&lt;profile&gt;-&lt;version&gt;.&lt;ext&gt;</code></td></tr>
+  <tr><td><code>/workspace/.agent/</code></td><td>Agent memory (context, tasks, decisions, <code>RUNTIME.md</code>)</td></tr>
+  <tr><td><code>/workspace/.agent/controller/</code></td><td>Controller DB, token, logs — never edit or print</td></tr>
+  <tr><td><code>/home/dev</code></td><td>Claude credentials, wine prefix, caches</td></tr>
+</table>
+</section>
+
+<section id="trouble">
+<h2>Troubleshooting</h2>
+<table>
+  <tr><th>Symptom</th><th>Likely cause</th><th>Fix</th></tr>
+  <tr><td>Phone can't reach the sandbox</td><td>Tailscale app off, or MagicDNS/HTTPS not enabled</td><td>Turn Tailscale on; check DNS settings; <code>bun run sandbox logs tailscale</code></td></tr>
+  <tr><td>Pair link has a wrong URL</td><td><code>TS_TAILNET_DOMAIN</code> empty or wrong</td><td>Fix it in <code>.env</code>, <code>bun run sandbox up</code>, pair again</td></tr>
+  <tr><td>401 / app sends you back to pairing</td><td>Token rotated or wrong</td><td>Re-pair with <code>bun run sandbox pair</code></td></tr>
+  <tr><td>Display screen says display/VNC down</td><td>Xvnc crashed or still starting</td><td><code>bun run sandbox doctor</code>; <code>bun run sandbox restart</code></td></tr>
+  <tr><td>Windows build fails with 503</td><td>wine not detected in the image</td><td>Rebuild the image; check <code>doctor</code></td></tr>
+  <tr><td>Android build fails with 503</td><td>Built with <code>WITH_ANDROID=false</code></td><td>Set <code>true</code>, <code>bun run sandbox up --build</code></td></tr>
+  <tr><td>"Electron failed to install correctly"</td><td>npm 11 install-script approval</td><td><code>npm install-scripts approve electron &amp;&amp; npm rebuild electron</code></td></tr>
+  <tr><td>Image build runs out of space</td><td>~5 GB image + cache</td><td>Free disk; <code>WITH_ANDROID=false</code> for a smaller image</td></tr>
+</table>
+<p>More in <code>docs/runbooks/troubleshooting.md</code>.</p>
+</section>
+
+<section id="security">
+<h2>Security notes</h2>
+<ul>
+  <li>The sandbox is the development machine; the host only runs Docker. No privileged containers, no host bind mounts (except the read-only Tailscale serve config), minimal capabilities, resource limits.</li>
+  <li>Default mode publishes nothing on host interfaces; access is tailnet-only, plus a bearer token and one-time 60-second tickets for sockets and downloads.</li>
+  <li>The pairing token = full control of the sandbox. Treat the QR code like a password; rotate it if leaked.</li>
+  <li>Anything running as <code>dev</code> inside the sandbox (builds, Claude, terminals) can read the token — the container is the security boundary, not the user account.</li>
+  <li><code>--dind</code> runs a privileged sidecar: a compromised sandbox can then reach host root. Only enable it when you need Docker inside.</li>
+  <li>Headless Claude runs default to <code>bypassPermissions</code> inside the container; set <code>THEONE_CLAUDE_PERMISSION_MODE</code> to restrict.</li>
+</ul>
+<p>Full threat model: <code>docs/architecture/security-model.md</code>.</p>
+</section>
+
+<section id="layout">
+<h2>Repository layout</h2>
+<pre><code>apps/mobile/          Expo SDK 56 app (React Native 0.85, expo-router)
+apps/controller/      Bun + Hono daemon inside the sandbox (REST, WS, /ui pages, CLI)
+packages/protocol/    zod wire contract shared by all components
+packages/client/      typed REST/WS client used by the app
+infra/docker/sandbox/ Dockerfile + rootfs (supervisord, entrypoint, templates)
+infra/compose/        compose files, tailscale serve config, .env.example
+infra/scripts/sandbox operator CLI (bun run sandbox …)
+infra/tests/          infra test suites
+infra/e2e/            end-to-end suite + harness
+examples/             electron-hello sample project
+docs/                 architecture, ADRs, runbooks, roadmap
+SPEC.md               operating spec for the Claude agent in the sandbox</code></pre>
+</section>
+
+<section id="docs">
+<h2>Further docs</h2>
+<ul>
+  <li><a href="docs/runbooks/getting-started.md">docs/runbooks/getting-started.md</a> — the long version of this page</li>
+  <li><a href="docs/architecture/00-blueprint.md">docs/architecture/00-blueprint.md</a> — contract: names, ports, env vars, API</li>
+  <li><a href="docs/architecture/overview.md">docs/architecture/overview.md</a> — components and data flows</li>
+  <li><a href="docs/runbooks/pairing-mobile.md">pairing-mobile</a> · <a href="docs/runbooks/electron-builds.md">electron-builds</a> · <a href="docs/runbooks/android-builds.md">android-builds</a> · <a href="docs/runbooks/claude-in-sandbox.md">claude-in-sandbox</a> · <a href="docs/runbooks/operations.md">operations</a> · <a href="docs/runbooks/troubleshooting.md">troubleshooting</a> · <a href="docs/runbooks/e2e-testing.md">e2e-testing</a></li>
+  <li><a href="docs/architecture/security-model.md">docs/architecture/security-model.md</a></li>
+  <li><a href="docs/roadmap.md">docs/roadmap.md</a> — next steps and open decisions</li>
+  <li><a href="docs/README.md">docs/README.md</a> — index of all notes</li>
+</ul>
+</section>
+
+<footer>TheOne setup guide · open this file directly in a browser (no server needed).</footer>
+</main>
+</div>
+<script>
+  document.querySelectorAll("pre").forEach(function (pre) {
+    var button = document.createElement("button");
+    button.className = "copy";
+    button.type = "button";
+    button.textContent = "Copy";
+    button.addEventListener("click", function () {
+      var text = pre.querySelector("code").innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        button.textContent = "Copied";
+        setTimeout(function () { button.textContent = "Copy"; }, 1200);
+      });
+    });
+    pre.appendChild(button);
+  });
+</script>
+</body>
+</html>

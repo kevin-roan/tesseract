@@ -1,0 +1,5 @@
+# Expo HAS CHANGED
+
+Read the exact versioned docs at https://docs.expo.dev/versions/v55.0.0/ before writing any code.
+
+This app talks to the sandbox controller only through `@theone/client`; wire types come from `@theone/protocol`.

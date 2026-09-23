@@ -1,0 +1,50 @@
+{
+  "name": "electron-hello",
+  "productName": "TheOne Electron Hello",
+  "version": "1.0.0",
+  "description": "Minimal Electron app used to verify Linux and Windows (wine) builds inside the TheOne sandbox",
+  "private": true,
+  "license": "MIT",
+  "author": "TheOne",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron . --no-sandbox",
+    "build:linux": "electron-builder --linux AppImage --x64 --publish never",
+    "build:win": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "^44.4.4",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "dev.theone.electron-hello",
+    "productName": "TheOne Electron Hello",
+    "artifactName": "${name}-${os}-${arch}-${version}.${ext}",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html"
+    ],
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        }
+      ],
+      "category": "Development"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    }
+  }
+}
