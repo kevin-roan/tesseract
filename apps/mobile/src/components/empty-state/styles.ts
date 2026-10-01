@@ -18,9 +18,7 @@ export default function createStyles(theme: Theme) {
       height: badge,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: theme.radius.xl,
-      borderCurve: "continuous",
-      backgroundColor: theme.colors.accentMuted,
+      borderRadius: theme.radius.full,
     },
     copy: {
       gap: theme.spacing.sm,

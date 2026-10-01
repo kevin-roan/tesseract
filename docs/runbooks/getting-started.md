@@ -50,7 +50,7 @@ Minimum settings for the default (`tailscale`) mode:
 | `SANDBOX_CPUS` / `SANDBOX_MEMORY` / `SANDBOX_PIDS` | `4` / `8g` / `4096` | resource limits |
 | `THEONE_VNC_PASSWORD` | *(empty)* | empty = generate one on first start. VncAuth uses 8 characters |
 | `WITH_ANDROID` / `WITH_MONO` | `true` / `true` | `false` for a smaller, faster image |
-| `ANTHROPIC_API_KEY` | *(empty)* | optional. Logging Claude in inside the sandbox is preferred |
+| `THEONE_HOST_CLAUDE_DIR` | *(empty)* = `$HOME/.claude` | the host's Claude Code dir, mounted at `/home/dev/.claude`; log in there with `claude` (Claude Max). This is the only Claude authentication |
 
 `infra/compose/.env` is gitignored. It holds the auth key, so keep it `0600`.
 Every variable is documented in `.env.example` and in
@@ -109,7 +109,10 @@ The app uses `react-native-webview` (terminal and VNC pages) and `expo-camera`
 cd apps/mobile
 bun run android          # expo run:android: builds and installs the dev client on a connected device or emulator
 # or: bun run ios        (macOS + Xcode)
-# or: an EAS development build (eas build --profile development)
+# or: an EAS development build (eas build --profile development --platform ios)
+#     it installs as "Monolith Dev" (com.kevinbpract.theone.dev) next to the production app;
+#     APP_VARIANT picks the variant (eas.json env, EAS environments, .env.development for expo start)
+#     JS-only changes ship with: eas update --channel development --environment development
 cd ../.. && bun run mobile   # Metro for the dev client
 ```
 

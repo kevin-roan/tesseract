@@ -1,9 +1,8 @@
-import { FolderPlusIcon, LightningIcon, QrCodeIcon, WarningIcon } from "phosphor-react-native";
+import { FolderPlusIcon, LightningIcon, SparkleIcon } from "phosphor-react-native";
 
 import ActionTileRow from "@/components/action-tile-row";
 import ChoiceGroup from "@/components/choice-group";
 import ConnectionDot from "@/components/connection-dot";
-import EmptyState from "@/components/empty-state";
 import ListCard from "@/components/list-card";
 import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
@@ -13,6 +12,8 @@ import StatGrid from "@/components/stat-grid";
 import AgentRunCard from "@/features/sandbox/components/agent-run-card";
 import BuildCard from "@/features/sandbox/components/build-card";
 import ProcessCard from "@/features/sandbox/components/process-card";
+import SandboxGate from "@/features/sandbox/components/sandbox-gate";
+import SandboxNotices from "@/features/sandbox/components/sandbox-notices";
 import TerminalCard from "@/features/sandbox/components/terminal-card";
 import { useSandboxHub } from "@/features/sandbox/hooks/use-sandbox-hub";
 import { activityTitle } from "@/features/sandbox/utils/describe";
@@ -23,26 +24,8 @@ import { linkLabel, linkTone } from "@/features/sandbox/utils/states";
 export default function AgentsScreen() {
   const hub = useSandboxHub();
 
-  if (!hub.hydrated) {
-    return (
-      <ScreenScaffold>
-        <EmptyState loading title="Loading sandboxes…" />
-      </ScreenScaffold>
-    );
-  }
-
   if (!hub.sandbox) {
-    return (
-      <ScreenScaffold header={<ScreenHeader title="Sandbox" large />}>
-        <EmptyState
-          icon={QrCodeIcon}
-          title="Pair a sandbox"
-          message="Run `theone-controller pair` inside your sandbox, then scan the code. Everything travels over your tailnet."
-          actionLabel="Pair a sandbox"
-          onAction={hub.nav.pair}
-        />
-      </ScreenScaffold>
-    );
+    return <SandboxGate />;
   }
 
   return (
@@ -69,30 +52,16 @@ export default function AgentsScreen() {
         />
       ) : null}
 
-      {hub.missingToken ? (
-        <Notice
-          tone="warning"
-          icon={WarningIcon}
-          title="Token missing"
-          message="This device no longer has the token for this sandbox. Pair it again."
-          actionLabel="Pair"
-          onAction={hub.nav.pair}
-        />
-      ) : null}
-      {hub.issue ? (
-        <Notice
-          tone="danger"
-          icon={WarningIcon}
-          title={hub.issue.title}
-          message={hub.issue.message}
-          actionLabel={hub.issue.actionLabel}
-          onAction={hub.repair}
-        />
-      ) : null}
-      {hub.statusError ? (
-        <Notice tone="danger" message={hub.statusError} actionLabel="Retry" onAction={hub.retryStatus} />
-      ) : null}
+      <SandboxNotices
+        missingToken={hub.missingToken}
+        onPair={hub.nav.pair}
+        issue={hub.issue}
+        onRepair={hub.repair}
+        error={hub.statusError}
+        onRetry={hub.retryStatus}
+      />
       {hub.removeError ? <Notice tone="danger" message={hub.removeError} /> : null}
+      {hub.actionError ? <Notice tone="danger" message={hub.actionError} /> : null}
       {hub.latestActivity ? (
         <Notice
           tone="info"
@@ -157,7 +126,11 @@ export default function AgentsScreen() {
         </Section>
       ) : null}
 
-      <Section title="Recent builds" isEmpty={hub.recentBuilds.length === 0} emptyLabel="No builds yet.">
+      <Section
+        title="Recent builds"
+        isEmpty={!hub.buildsLoading && hub.recentBuilds.length === 0}
+        emptyLabel="No builds yet. Open a project to build it."
+      >
         {hub.recentBuilds.map((build) => (
           <BuildCard key={build.id} build={build} onPress={() => hub.nav.build(build.id)} />
         ))}
@@ -167,8 +140,11 @@ export default function AgentsScreen() {
         title="Claude runs"
         actionLabel="New run"
         onPressAction={() => hub.nav.newAgentRun()}
-        isEmpty={hub.recentRuns.length === 0}
+        isEmpty={!hub.runsLoading && hub.recentRuns.length === 0}
         emptyLabel="No Claude runs yet."
+        emptyActionLabel="Ask Claude"
+        emptyActionIcon={SparkleIcon}
+        onEmptyAction={() => hub.nav.newAgentRun()}
       >
         {hub.recentRuns.map((run) => (
           <AgentRunCard key={run.id} run={run} onPress={() => hub.nav.agentRun(run.id)} />

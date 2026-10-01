@@ -146,7 +146,7 @@ describe("usePairingForm", () => {
     });
     expect(draft).toBeNull();
     expect(result.current.status).toBe("error");
-    expect(result.current.message).toMatch(/not a TheOne pairing link/);
+    expect(result.current.message).toMatch(/not a Monolith pairing link/);
   });
 
   it("submits an explicit draft from a scan without waiting for a re-render", async () => {

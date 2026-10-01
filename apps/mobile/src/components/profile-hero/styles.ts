@@ -2,12 +2,28 @@ import { StyleSheet } from "react-native";
 
 import { ControlHeight, type Theme } from "@/theme";
 
-export default function createStyles(theme: Theme, avatar: number) {
-  const nav = ControlHeight.lg;
+export default function createStyles(theme: Theme, topInset: number) {
+  const nav = ControlHeight.md;
+  const brand = theme.surfaces.brand.fill.outer;
 
   return StyleSheet.create({
+    /** Bleeds past the scaffold gutter and under the status bar; the bottom padding leaves room for the sheet corner. */
     hero: {
       gap: theme.spacing.base,
+      marginHorizontal: -theme.gutter,
+      paddingHorizontal: theme.gutter,
+      paddingTop: topInset + theme.spacing.sm,
+      paddingBottom: theme.radius["2xl"] + theme.spacing.base,
+      backgroundColor: brand,
+    },
+    /** Keeps the brand color behind the pull-to-refresh bounce. */
+    overscroll: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: "100%",
+      height: theme.height,
+      backgroundColor: brand,
     },
 
     navRow: {
@@ -15,78 +31,68 @@ export default function createStyles(theme: Theme, avatar: number) {
       alignItems: "center",
       justifyContent: "space-between",
     },
-    /**
-     * A circle, not the button's default pill: GlassButton's own
-     * paddingHorizontal/paddingVertical win over a plain `padding`, so both
-     * axes are zeroed here and the size comes from width/height instead.
-     */
     navButton: {
       width: nav,
       height: nav,
-      paddingHorizontal: 0,
-      paddingVertical: 0,
-      borderRadius: nav / 2,
     },
-    /** Keeps a lone menu button on the right when there is no back button. */
     navSpacer: {
       width: nav,
-    },
-
-    card: {
-      gap: theme.spacing.base,
-      padding: theme.spacing.lg,
-      borderRadius: theme.radius["2xl"],
-      borderCurve: "continuous",
-      overflow: "hidden",
+      height: nav,
     },
 
     identity: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.spacing.base,
+      gap: theme.spacing.md,
     },
     avatar: {
-      width: avatar,
-      height: avatar,
-      borderRadius: theme.radius.full,
-      alignItems: "center",
-      justifyContent: "center",
-      overflow: "hidden",
-      backgroundColor: theme.colors.accentMuted,
-    },
-    avatarImage: {
-      width: "100%",
-      height: "100%",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
     },
     /** Takes the slack so long names wrap instead of pushing the avatar. */
     names: {
       flex: 1,
-      gap: theme.spacing.xxs,
+      minWidth: 0,
     },
 
     teamPill: {
       flexDirection: "row",
       alignItems: "center",
       alignSelf: "flex-start",
+      maxWidth: "100%",
       gap: theme.spacing.xs,
+      marginTop: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.sm,
+      paddingVertical: theme.spacing.xxs,
       borderRadius: theme.radius.full,
-      borderCurve: "continuous",
-      overflow: "hidden",
+      backgroundColor: theme.colors.backgroundElement,
+    },
+    teamLabel: {
+      flexShrink: 1,
     },
 
-    statsRow: {
+    stats: {
       flexDirection: "row",
-      alignItems: "center",
+      paddingVertical: theme.spacing.md,
+      borderRadius: theme.radius.lg,
+      borderCurve: "continuous",
+      backgroundColor: theme.colors.backgroundElement,
     },
+    /** Equal columns, each centred on its own share of the row. */
     stat: {
       flex: 1,
-      gap: theme.spacing.xxs,
+      flexBasis: 0,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: theme.spacing.xs,
+    },
+    statText: {
+      textAlign: "center",
     },
     statDivider: {
       width: StyleSheet.hairlineWidth,
       alignSelf: "stretch",
-      marginHorizontal: theme.spacing.md,
-      backgroundColor: theme.colors.border,
+      backgroundColor: theme.colors.divider,
     },
   });
 }

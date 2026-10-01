@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { computeBackoffDelay, type TheOneClient } from "@theone/client";
+import type { VncAction } from "@theone/protocol";
 
 import type { WebSurfaceHandle } from "@/components/web-surface/types";
 
 import type { PageConnection, PageKind } from "../types";
-import { PAGE_RECONNECT_DELAY_MS, PAGE_RECONNECT_LIMIT } from "../utils/constants";
+import { PAGE_RECONNECT_DELAY_MS, PAGE_RECONNECT_LIMIT, PAGE_TERMINATE_LIMIT } from "../utils/constants";
 import {
   isDroppedPageState,
   pageConnectionFor,
@@ -20,18 +21,20 @@ type SessionState = { url: string | null; connection: PageConnection; exitCode: 
 
 type SessionPatch = Partial<Omit<SessionState, "url">>;
 
-type RetryState = { attempts: number; timer: ReturnType<typeof setTimeout> | null; dropped: boolean };
+type RetryState = { attempts: number; timer: ReturnType<typeof setTimeout> | null; dropped: boolean; terminations: number };
 
 export function useWebPageSession(
   page: PageKind,
   id: string | null,
   build: (client: TheOneClient) => Promise<string>,
   enabled = true,
+  onAction?: (action: VncAction) => void,
 ) {
   const { client } = useSandboxClient();
   const pageUrl = usePageUrl(page, id, build, enabled);
   const surfaceRef = useRef<WebSurfaceHandle>(null);
-  const retry = useRef<RetryState>({ attempts: 0, timer: null, dropped: false });
+  const retry = useRef<RetryState>({ attempts: 0, timer: null, dropped: false, terminations: 0 });
+  const actionHandler = useRef(onAction);
   const [session, setSession] = useState<SessionState>({ url: null, connection: "loading", exitCode: undefined });
   const current =
     session.url === pageUrl.url ? session : { url: pageUrl.url, connection: "loading" as const, exitCode: undefined };
@@ -99,6 +102,10 @@ export function useWebPageSession(
   }, [url]);
 
   useEffect(() => {
+    actionHandler.current = onAction;
+  }, [onAction]);
+
+  useEffect(() => {
     const subscription = AppState.addEventListener("change", (appState) => {
       if (appState === "active" && retry.current.dropped) resume();
     });
@@ -109,11 +116,15 @@ export function useWebPageSession(
     (raw: string) => {
       const message = parsePageMessage(raw, page);
       if (!message) return;
+      if (message.kind === "action") return actionHandler.current?.(message.action);
       const state = retry.current;
       if (message.kind === "state") {
         const connection = pageConnectionFor(message.state);
         state.dropped = isDroppedPageState(message.state);
-        if (connection === "connected") state.attempts = 0;
+        if (connection === "connected") {
+          state.attempts = 0;
+          state.terminations = 0;
+        }
         if (state.dropped) scheduleReconnect();
         return update({ connection });
       }
@@ -136,6 +147,20 @@ export function useWebPageSession(
 
   const handleError = useCallback(() => update({ connection: "disconnected" }), [update]);
 
+  /** WebKit killed the page's content process; rebuild it a limited number of times before waiting for the user. */
+  const handleTerminate = useCallback(() => {
+    const state = retry.current;
+    cancelRetry();
+    state.terminations += 1;
+    if (state.terminations > PAGE_TERMINATE_LIMIT) return update({ connection: "disconnected" });
+    refresh();
+  }, [cancelRetry, refresh, update]);
+
+  const reconnect = useCallback(() => {
+    retry.current.terminations = 0;
+    refresh();
+  }, [refresh]);
+
   return {
     url,
     origin: pageUrl.origin,
@@ -147,6 +172,7 @@ export function useWebPageSession(
     handleMessage,
     handleLoad,
     handleError,
-    reconnect: refresh,
+    handleTerminate,
+    reconnect,
   };
 }

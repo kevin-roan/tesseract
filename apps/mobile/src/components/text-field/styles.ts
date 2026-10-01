@@ -30,7 +30,9 @@ export default function createStyles(theme: Theme, multiline: boolean) {
       flex: 1,
       ...theme.text.body,
       lineHeight: multiline ? theme.text.body.lineHeight : undefined,
+      textAlignVertical: multiline ? "top" : "center",
       color: theme.colors.text,
+      paddingHorizontal: 0,
       paddingVertical: theme.spacing.sm,
     },
     mono: {

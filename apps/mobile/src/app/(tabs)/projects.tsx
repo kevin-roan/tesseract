@@ -1,114 +1,104 @@
-import { ScrollView, StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
+import { FolderPlusIcon } from "phosphor-react-native";
 
-import ProjectCard, { type ProjectCardProps } from "@/components/project-card";
-import SectionHeader from "@/components/section-header";
-import { ThemedText } from "@/components/themed-text";
-import { ThemedView } from "@/components/themed-view";
-import { useAppTheme } from "@/hooks/use-app-theme";
-
-type Project = ProjectCardProps & { id: string };
-
-const projects: Project[] = [
-  {
-    id: "onboarding-revamp",
-    title: "Details about project.",
-    status: "ongoing",
-    priority: "high",
-    timeline: "06.09 - 12.10",
-    people: [
-      { id: "ada", name: "Ada Lovelace" },
-      { id: "grace", name: "Grace Hopper" },
-      { id: "alan", name: "Alan Turing" },
-    ],
-  },
-  {
-    id: "customer-insights",
-    title: "Customer Insights survey",
-    status: "ongoing",
-    priority: "medium",
-    timeline: "01.09 - 30.09",
-    people: [
-      { id: "katherine", name: "Katherine Johnson" },
-      { id: "margaret", name: "Margaret Hamilton" },
-      { id: "radia", name: "Radia Perlman" },
-      { id: "barbara", name: "Barbara Liskov" },
-    ],
-  },
-  {
-    id: "quarterly-nps",
-    title: "Quarterly NPS rollout",
-    status: "paused",
-    priority: "low",
-    timeline: "15.08 - 20.11",
-    people: [
-      { id: "hedy", name: "Hedy Lamarr" },
-      { id: "jean", name: "Jean Bartik" },
-    ],
-  },
-  {
-    id: "brand-refresh",
-    title: "Brand refresh handoff",
-    status: "completed",
-    priority: "medium",
-    timeline: "02.07 - 28.08",
-    people: [
-      { id: "shafi", name: "Shafi Goldwasser" },
-      { id: "frances", name: "Frances Allen" },
-      { id: "carol", name: "Carol Shaw" },
-      { id: "sophie", name: "Sophie Wilson" },
-      { id: "anita", name: "Anita Borg" },
-    ],
-  },
-];
+import ConnectionDot from "@/components/connection-dot";
+import Notice from "@/components/notice";
+import ProjectCard from "@/components/project-card";
+import ScreenHeader from "@/components/screen-header";
+import ScreenScaffold from "@/components/screen-scaffold";
+import Section from "@/components/section";
+import AgentRunCard from "@/features/sandbox/components/agent-run-card";
+import BuildCard from "@/features/sandbox/components/build-card";
+import ProcessCard from "@/features/sandbox/components/process-card";
+import SandboxGate from "@/features/sandbox/components/sandbox-gate";
+import SandboxNotices from "@/features/sandbox/components/sandbox-notices";
+import WebLinkCard from "@/features/sandbox/components/web-link-card";
+import { useProjectsScreen } from "@/features/sandbox/hooks/use-projects-screen";
+import { linkLabel, linkTone } from "@/features/sandbox/utils/states";
 
 export default function ProjectsScreen() {
-  const theme = useAppTheme();
+  const screen = useProjectsScreen();
+
+  if (!screen.sandbox) {
+    return <SandboxGate />;
+  }
 
   return (
-    <ThemedView style={styles.container}>
-      <LinearGradient {...theme.gradients.dusk} style={StyleSheet.absoluteFill} />
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            { gap: theme.sectionGap, padding: theme.gutter },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          <ThemedText variant="h1">Projects</ThemedText>
+    <ScreenScaffold
+      refreshing={screen.refreshing}
+      onRefresh={screen.refresh}
+      header={
+        <ScreenHeader
+          title="Projects"
+          subtitle={screen.sandbox.name}
+          large
+          accessory={<ConnectionDot tone={linkTone(screen.link)} label={linkLabel(screen.link)} />}
+          actions={screen.headerActions}
+        />
+      }
+    >
+      <SandboxNotices
+        missingToken={screen.missingToken}
+        onPair={screen.nav.pair}
+        issue={screen.issue}
+        onRepair={screen.repair}
+        error={screen.projectsError}
+        onRetry={screen.retryProjects}
+      />
 
-          <View style={{ gap: theme.spacing.md }}>
-            <SectionHeader
-              title="All Projects"
-              actionLabel="View All"
-              onPressAction={() => {}}
+      {screen.runningCount > 0 ? (
+        <Section title="Running" testID="running-section">
+          {screen.stopError ? <Notice tone="danger" message={screen.stopError} /> : null}
+          {screen.running.processes.map((process) => (
+            <ProcessCard
+              key={process.id}
+              process={process}
+              onPress={screen.processPress(process)}
+              onStop={() => screen.stopProcess(process.id)}
+              stopping={screen.stoppingId === process.id}
             />
-            {projects.map(({ id, ...project }) => (
-              <ProjectCard
-                key={id}
-                {...project}
-                onPress={() => {}}
-                onPressMenu={() => {}}
-                onPressChat={() => {}}
-              />
-            ))}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </ThemedView>
+          ))}
+          {screen.running.builds.map((build) => (
+            <BuildCard key={build.id} build={build} onPress={() => screen.nav.build(build.id)} />
+          ))}
+          {screen.running.runs.map((run) => (
+            <AgentRunCard key={run.id} run={run} onPress={() => screen.nav.agentRun(run.id)} />
+          ))}
+        </Section>
+      ) : null}
+
+      {screen.sites.length > 0 ? (
+        <Section title="Websites" testID="sites-section">
+          {screen.siteError ? <Notice tone="danger" message={screen.siteError} /> : null}
+          {screen.sites.map((site) => (
+            <WebLinkCard key={site.port} site={site} onPress={screen.sitePress(site)} onOpen={screen.openSite} />
+          ))}
+        </Section>
+      ) : null}
+
+      <Section
+        title="All projects"
+        testID="projects-list"
+        actionLabel="Add"
+        onPressAction={screen.addProject}
+        loading={screen.projectsLoading && screen.projects.length === 0}
+        loadingLabel="Loading projects…"
+        isEmpty={!screen.projectsLoading && screen.projects.length === 0}
+        emptyLabel="No projects in /workspace/projects yet. Clone a repository or start an empty one, or ask Claude to."
+        emptyActionLabel="Add a project"
+        emptyActionIcon={FolderPlusIcon}
+        onEmptyAction={screen.addProject}
+      >
+        {screen.projects.map(({ id, ...card }) => (
+          <ProjectCard
+            key={id}
+            {...card}
+            testID={`project-card-${id}`}
+            chatLabel={`Ask Claude about ${card.title}`}
+            onPress={() => screen.openProject(id)}
+            onPressChat={() => screen.askClaude(id)}
+          />
+        ))}
+      </Section>
+    </ScreenScaffold>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    flexGrow: 1,
-  },
-});

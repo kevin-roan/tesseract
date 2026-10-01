@@ -1,8 +1,8 @@
-import { mkdirSync, readdirSync } from "node:fs";
+import { mkdirSync, readdirSync, rmSync } from "node:fs";
 import { projectIdFromName, type CreateProject, type CreateProjectResponse, type GitDetails, type Project } from "@theone/protocol";
 import { mapLimit } from "../core/concurrency";
 import { badRequest, conflict, notFound } from "../core/errors";
-import { run } from "../core/exec";
+import { childEnv, run } from "../core/exec";
 import { locateProject, type ProjectLocation } from "../core/paths";
 import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";
@@ -10,9 +10,14 @@ import type { Config } from "../config";
 import { detectProject } from "./project-detect";
 import type { GitService } from "./git";
 import type { ProcessService } from "./processes";
+import type { SyncBackService } from "./sync-back";
 
 const GIT_INIT_TIMEOUT_MS = 10_000;
 const DESCRIBE_CONCURRENCY = 8;
+const SYNC_FORMATS = { "application/x-tar": [], "application/gzip": ["-z"] } as const;
+
+export type SyncFormat = keyof typeof SYNC_FORMATS;
+export const isSyncFormat = (value: string): value is SyncFormat => Object.hasOwn(SYNC_FORMATS, value);
 
 export class ProjectService {
   constructor(
@@ -20,6 +25,7 @@ export class ProjectService {
     private readonly git: GitService,
     private readonly hub: EventHub,
     private readonly processes: ProcessService,
+    private readonly syncBack: SyncBackService,
     private readonly logger: Logger,
   ) {}
 
@@ -99,6 +105,46 @@ export class ProjectService {
     const project = await this.get(id);
     this.hub.publish({ type: "project.updated", project });
     return { project };
+  }
+
+  /** Extracts a tar archive over `<projectsDir>/<id>`, creating the directory when missing. Files the archive lacks are kept. */
+  async sync(id: string, format: SyncFormat, archive: ReadableStream<Uint8Array>): Promise<{ project: Project; created: boolean }> {
+    const location = locateProject(this.config.projectsDir, id);
+    const created = !location.exists;
+    if (created) mkdirSync(location.path, { recursive: true });
+    const tar = Bun.spawn(["tar", "-x", ...SYNC_FORMATS[format], "-f", "-", "-C", location.path, "--no-same-owner"], {
+      env: childEnv(),
+      stdin: "pipe",
+      stdout: "ignore",
+      stderr: "pipe",
+    });
+    try {
+      for await (const chunk of archive) {
+        tar.stdin.write(chunk);
+        await tar.stdin.flush();
+      }
+    } catch (error) {
+      tar.kill("SIGKILL");
+      if (created) rmSync(location.path, { recursive: true, force: true });
+      throw error;
+    } finally {
+      try {
+        await tar.stdin.end();
+      } catch {}
+    }
+    const [stderr, code] = await Promise.all([new Response(tar.stderr).text(), tar.exited]);
+    if (code !== 0) {
+      if (created) rmSync(location.path, { recursive: true, force: true });
+      throw badRequest(`Could not extract the archive: ${stderr.trim().split("\n").at(-1) || `tar exited with ${code}`}`);
+    }
+    try {
+      await this.syncBack.recordBaseline(location.id);
+    } catch (error) {
+      this.logger.warn("could not record the sync-back baseline", { project: location.id, error });
+    }
+    const project = await this.get(location.id);
+    this.hub.publish({ type: "project.updated", project });
+    return { project, created };
   }
 
   async publish(id: string): Promise<void> {

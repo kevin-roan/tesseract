@@ -30,6 +30,8 @@ describe("route builders", () => {
     expect(restPaths.authTicket()).toBe("/v1/auth/ticket");
     expect(restPaths.status()).toBe("/v1/status");
     expect(restPaths.context()).toBe("/v1/context");
+    expect(restPaths.identity()).toBe("/v1/identity");
+    expect(restPaths.ports()).toBe("/v1/ports");
     expect(restPaths.projects()).toBe("/v1/projects");
     expect(restPaths.terminals()).toBe("/v1/terminals");
     expect(restPaths.display()).toBe("/v1/display");
@@ -45,6 +47,8 @@ describe("route builders", () => {
     expect(restPaths.terminal("trm_1")).toBe("/v1/terminals/trm_1");
     expect(restPaths.build("bld_1")).toBe("/v1/builds/bld_1");
     expect(restPaths.agentRun("run_1")).toBe("/v1/agent/runs/run_1");
+    expect(restPaths.liveActivities()).toBe("/v1/push/live-activities");
+    expect(restPaths.liveActivity("AB12")).toBe("/v1/push/live-activities/AB12");
   });
 
   test("query parameters", () => {
@@ -54,6 +58,9 @@ describe("route builders", () => {
     expect(restPaths.builds({ projectId: "a b" })).toBe("/v1/builds?projectId=a%20b");
     expect(restPaths.artifacts({ projectId: "app" })).toBe("/v1/artifacts?projectId=app");
     expect(restPaths.agentRuns({ projectId: "app" })).toBe("/v1/agent/runs?projectId=app");
+    expect(restPaths.agentRuns({ projectId: "app", archived: true })).toBe("/v1/agent/runs?projectId=app&archived=true");
+    expect(restPaths.agentRunsArchive()).toBe("/v1/agent/runs/archive");
+    expect(restPaths.agentRunsDelete()).toBe("/v1/agent/runs/delete");
     expect(restPaths.processLogs("prc_1", { tail: 50 })).toBe("/v1/processes/prc_1/logs?tail=50");
     expect(restPaths.buildLogs("bld_1")).toBe("/v1/builds/bld_1/logs");
     expect(restPaths.artifactDownload("art_1", { ticket: "t/+=" })).toBe("/v1/artifacts/art_1/download?ticket=t%2F%2B%3D");
@@ -77,7 +84,9 @@ describe("route builders", () => {
 
   test("route patterns match the builders", () => {
     expect(routePatterns.rest.project).toBe("/v1/projects/:id");
+    expect(routePatterns.rest.ports).toBe("/v1/ports");
     expect(routePatterns.rest.agentRun).toBe("/v1/agent/runs/:id");
+    expect(routePatterns.rest.liveActivity).toBe("/v1/push/live-activities/:token");
     expect(routePatterns.ws.terminalStream).toBe("/v1/terminals/:id/stream");
     expect(routePatterns.ui.vnc).toBe("/ui/vnc");
     const check = (builders: Record<string, (id: string) => string>, patterns: Record<string, string>) => {
@@ -85,7 +94,7 @@ describe("route builders", () => {
       for (const [key, pattern] of Object.entries(patterns)) {
         const build = builders[key];
         if (!build) throw new Error(`missing builder ${key}`);
-        expect(pattern.includes(":id") ? build("ID") : build(undefined as never)).toBe(pattern.replace(":id", "ID"));
+        expect(/:\w+/.test(pattern) ? build("ID") : build(undefined as never)).toBe(pattern.replace(/:\w+/, "ID"));
       }
     };
     check(restPaths as unknown as Record<string, (id: string) => string>, routePatterns.rest);
@@ -140,11 +149,11 @@ describe("ids", () => {
     for (const kind of Object.keys(ID_PREFIXES) as Array<keyof typeof ID_PREFIXES>) {
       const id = createId(kind);
       expect(id.startsWith(ID_PREFIXES[kind])).toBe(true);
-      expect(id).toMatch(/^[a-z]{3}_[0-9a-z]{10}$/);
+      expect(id).toMatch(/^[a-z]{3,4}_[0-9a-z]{10}$/);
       expect(isIdOfKind(kind, id)).toBe(true);
       seen.add(id);
     }
-    expect(seen.size).toBe(5);
+    expect(seen.size).toBe(Object.keys(ID_PREFIXES).length);
     expect(isIdOfKind("build", "prc_abc")).toBe(false);
   });
 });

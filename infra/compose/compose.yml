@@ -19,6 +19,8 @@ services:
         WITH_ANDROID: ${WITH_ANDROID:-true}
         WITH_MONO: ${WITH_MONO:-true}
         CLAUDE_CODE_VERSION: ${CLAUDE_CODE_VERSION:-latest}
+        WITH_WHISPER: ${WITH_WHISPER:-true}
+        WHISPER_MODELS: ${WHISPER_MODELS:-base small}
     image: ${THEONE_IMAGE:-theone/sandbox:latest}
     hostname: sandbox
     restart: unless-stopped
@@ -30,12 +32,24 @@ services:
       THEONE_LOG_LEVEL: ${THEONE_LOG_LEVEL:-info}
       THEONE_CLAUDE_PERMISSION_MODE: ${THEONE_CLAUDE_PERMISSION_MODE:-bypassPermissions}
       THEONE_CORS_ORIGINS: ${THEONE_CORS_ORIGINS:-*}
-      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      THEONE_STT_ENGINE: ${THEONE_STT_ENGINE:-whisper.cpp}
+      THEONE_STT_PROFILE: ${THEONE_STT_PROFILE:-eco}
+      THEONE_STT_URL: ${THEONE_STT_URL:-}
+      THEONE_STT_API_KEY: ${THEONE_STT_API_KEY:-}
+      THEONE_STT_MODEL: ${THEONE_STT_MODEL:-whisper-1}
+      THEONE_WHISPER_MODELS_DIR: ${THEONE_WHISPER_MODELS_DIR:-/opt/whisper/models}
+      THEONE_WHISPER_MODEL: ${THEONE_WHISPER_MODEL:-/opt/whisper/models/ggml-model.bin}
       TZ: ${TZ:-UTC}
     volumes:
       - theone-workspace:/workspace
       - theone-home:/home/dev
+      # The host's Claude Code dir (login, settings, sessions), shared with the host user:
+      # listed after theone-home so it overlays /home/dev/.claude. It must exist on the host.
+      - type: bind
+        source: ${THEONE_HOST_CLAUDE_DIR:-${HOME}/.claude}
+        target: /home/dev/.claude
+        bind:
+          create_host_path: false
     cap_drop:
       - ALL
     cap_add:

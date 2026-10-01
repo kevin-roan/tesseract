@@ -60,7 +60,7 @@ export function parsePairingText(text: string): LinkParseResult {
   const parsed = parsePairingLink(text);
   if (parsed.ok) return { ok: true, draft: draftFromPayload(parsed.value) };
   if (parsed.error.code === "invalid_scheme") {
-    return { ok: false, message: `That code is not a TheOne pairing link (${PAIRING_SCHEME}://pair).` };
+    return { ok: false, message: `That code is not a Monolith pairing link (${PAIRING_SCHEME}://pair).` };
   }
   return { ok: false, message: parsed.error.message };
 }

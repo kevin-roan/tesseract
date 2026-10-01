@@ -3,10 +3,11 @@ import {
   clampFraction,
   elapsedSeconds,
   formatBytes,
-  formatCost,
   formatDuration,
   formatRelativeTime,
   formatUptime,
+  formatUsageBreakdown,
+  formatUsageTokens,
   pluralize,
   splitBytes,
 } from "@/features/sandbox/utils/format";
@@ -97,11 +98,15 @@ describe("formatRelativeTime", () => {
 });
 
 describe("small formatters", () => {
-  it("formats costs", () => {
-    expect(formatCost(null)).toBeNull();
-    expect(formatCost(0)).toBe("$0.00");
-    expect(formatCost(0.004)).toBe("<$0.01");
-    expect(formatCost(1.234)).toBe("$1.23");
+  it("formats run token usage", () => {
+    const usage = { inputTokens: 842, outputTokens: 12_300, cacheReadTokens: 1_200_000, cacheWriteTokens: 0, totalTokens: 1_213_142 };
+    expect(formatUsageTokens(null)).toBeNull();
+    expect(formatUsageTokens({ ...usage, totalTokens: 842 })).toBe("842 tokens");
+    expect(formatUsageTokens({ ...usage, totalTokens: 12_300 })).toBe("12.3k tokens");
+    expect(formatUsageTokens(usage)).toBe("1.2M tokens");
+    expect(formatUsageBreakdown(null)).toBeNull();
+    expect(formatUsageBreakdown(usage)).toBe("842 in · 12.3k out · 1.2M cache read");
+    expect(formatUsageBreakdown({ ...usage, inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 })).toBeNull();
   });
 
   it("clamps fractions", () => {

@@ -37,15 +37,16 @@ q() {
 @test "tailscale: secrets only reach the container that needs them" {
   assert_equal "$(q tailscale '.services.tailscale.environment.TS_AUTHKEY')" "tskey-auth-test"
   assert_equal "$(q tailscale '.services.sandbox.environment | has("TS_AUTHKEY")')" "false"
-  assert_equal "$(q tailscale '.services.tailscale.environment | has("ANTHROPIC_API_KEY") or has("THEONE_TOKEN") or has("THEONE_VNC_PASSWORD")')" "false"
-  assert_equal "$(q tailscale '.services.sandbox.environment.ANTHROPIC_API_KEY')" "sk-test"
+  assert_equal "$(q tailscale '.services.tailscale.environment | has("THEONE_TOKEN") or has("THEONE_VNC_PASSWORD")')" "false"
+  assert_equal "$(q tailscale '.services.sandbox.environment | has("ANTHROPIC_API_KEY") or has("CLAUDE_CODE_OAUTH_TOKEN")')" "false"
 }
 
 @test "volumes follow THEONE_VOLUME_PREFIX in every mode" {
   local variant
-  for variant in local host-tailscale tailscale local-dind tailscale-dind; do
+  for variant in local host-tailscale tailscale local-dind tailscale-dind host-tailscale-tsapi tailscale-tsapi; do
     run q "${variant}" '[.volumes[].name] | sort | join(",")'
     case "${variant}" in
+      tailscale-tsapi) assert_output "vt-home,vt-tailscale,vt-tailscale-run,vt-workspace" ;;
       tailscale-dind) assert_output "vt-dind-certs,vt-dind-data,vt-home,vt-tailscale,vt-workspace" ;;
       tailscale) assert_output "vt-home,vt-tailscale,vt-workspace" ;;
       local-dind) assert_output "vt-dind-certs,vt-dind-data,vt-home,vt-workspace" ;;
@@ -57,7 +58,7 @@ q() {
 
 @test "the sandbox is never privileged and drops every capability it does not need" {
   local variant
-  for variant in local host-tailscale tailscale local-dind tailscale-dind; do
+  for variant in local host-tailscale tailscale local-dind tailscale-dind host-tailscale-tsapi tailscale-tsapi; do
     assert_equal "$(q "${variant}" '.services.sandbox.privileged // false')" "false"
     assert_equal "$(q "${variant}" '.services.sandbox.cap_drop | join(",")')" "ALL"
     assert_equal "$(q "${variant}" '.services.sandbox.cap_add | map(select(. == "SYS_ADMIN" or . == "NET_ADMIN" or . == "SYS_PTRACE")) | length')" "0"
@@ -66,7 +67,7 @@ q() {
 
 @test "no service publishes a port on every interface" {
   local variant
-  for variant in local host-tailscale tailscale local-dind tailscale-dind; do
+  for variant in local host-tailscale tailscale local-dind tailscale-dind host-tailscale-tsapi tailscale-tsapi; do
     assert_equal "$(q "${variant}" '[.services[].ports // [] | .[] | select((.host_ip // "") == "" or .host_ip == "0.0.0.0" or .host_ip == "::")] | length')" "0"
   done
 }
@@ -81,4 +82,31 @@ q() {
     assert_equal "$(q "${variant}" '.services.docker.ports // [] | length')" "0"
   done
   assert_equal "$(q local '.services | has("docker")')" "false"
+}
+
+@test "tailscale-api (host): the host socket directory is mounted read-only, nothing else" {
+  assert_equal "$(q host-tailscale-tsapi '[.services.sandbox.volumes[] | select(.type == "bind" and .target != "/home/dev/.claude")] | length')" "1"
+  assert_equal "$(q host-tailscale-tsapi '.services.sandbox.volumes[] | select(.type == "bind" and .target != "/home/dev/.claude") | "\(.source)->\(.target) ro=\(.read_only)"')" "/srv/tailscale->/run/tailscale ro=true"
+  assert_equal "$(q host-tailscale-tsapi '.services.sandbox.environment.THEONE_TAILSCALE_SOCKET')" "/run/tailscale/tailscaled.sock"
+  assert_equal "$(q host-tailscale '[.services.sandbox.volumes[] | select(.target == "/run/tailscale")] | length')" "0"
+  assert_equal "$(q host-tailscale '.services.sandbox.environment | has("THEONE_TAILSCALE_SOCKET")')" "false"
+}
+
+@test "tailscale-api (sidecar): the socket volume is shared, read-only for the sandbox" {
+  assert_equal "$(q tailscale-tsapi '.services.tailscale.environment.TS_SOCKET')" "/var/run/tailscale/tailscaled.sock"
+  assert_equal "$(q tailscale-tsapi '.services.tailscale.volumes[] | select(.target == "/var/run/tailscale") | .source')" "theone-tailscale-run"
+  assert_equal "$(q tailscale-tsapi '.services.sandbox.volumes[] | select(.target == "/run/tailscale") | "\(.source) ro=\(.read_only)"')" "theone-tailscale-run ro=true"
+  assert_equal "$(q tailscale-tsapi '.services.sandbox.environment.THEONE_TAILSCALE_SOCKET')" "/run/tailscale/tailscaled.sock"
+  assert_equal "$(q tailscale-tsapi '[.services.sandbox.volumes[] | select(.type == "bind" and .target != "/home/dev/.claude")] | length')" "0"
+  assert_equal "$(q tailscale '.services.tailscale.environment | has("TS_SOCKET")')" "false"
+}
+
+@test "claude: the host's Claude dir overlays /home/dev/.claude in every mode; no token passthrough" {
+  local variant
+  for variant in local host-tailscale tailscale local-dind tailscale-dind host-tailscale-tsapi tailscale-tsapi; do
+    assert_equal "$(q "${variant}" '[.services.sandbox.volumes[] | .target] | (index("/home/dev") < index("/home/dev/.claude"))')" "true"
+    assert_equal "$(q "${variant}" '.services.sandbox.volumes[] | select(.target == "/home/dev/.claude") | "\(.type) \(.source) ro=\(.read_only // false) create=\(.bind.create_host_path)"')" "bind /srv/claude ro=false create=false"
+    assert_equal "$(q "${variant}" '.services.sandbox.environment | has("CLAUDE_CODE_OAUTH_TOKEN")')" "false"
+    assert_equal "$(q "${variant}" '[.services[] | select(.volumes) | .volumes[] | select(.source == "/srv/claude")] | length')" "1"
+  done
 }

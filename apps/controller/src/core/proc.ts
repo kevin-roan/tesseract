@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, readlinkSync } from "node:fs";
 
 export type ProcStat = { pid: number; command: string; state: string; pgrp: number; session: number };
 
@@ -23,6 +23,15 @@ export function listPids(): number[] | null {
     return readdirSync(PROC_ROOT)
       .filter((name) => PID_NAME.test(name))
       .map(Number);
+  } catch {
+    return null;
+  }
+}
+
+/** The working directory of a process we may inspect. */
+export function readProcCwd(pid: number): string | null {
+  try {
+    return readlinkSync(`${PROC_ROOT}/${pid}/cwd`);
   } catch {
     return null;
   }

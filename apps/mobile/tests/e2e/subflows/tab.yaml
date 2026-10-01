@@ -1,0 +1,19 @@
+appId: com.kevinbpract.theone
+---
+- runFlow:
+    when:
+      visible:
+        text: ${TAB}
+        selected: false
+        containsDescendants:
+          - id: ".*navigation_bar_item_icon_view"
+    commands:
+      - tapOn:
+          text: ${TAB}
+          selected: false
+          containsDescendants:
+            - id: ".*navigation_bar_item_icon_view"
+- assertVisible:
+    id: ".*navigation_bar_item_large_label_view"
+    text: ${TAB}
+    selected: true

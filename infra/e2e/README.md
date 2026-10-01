@@ -18,7 +18,9 @@ network access for `npm install` and electron-builder's downloads.
 `run` writes a temporary env file and drives `infra/scripts/sandbox --env-file <file> --mode local`:
 compose project `theone-e2e`, volumes `theone-e2e-*`, controller on `127.0.0.1:17700`, VNC on
 `127.0.0.1:15901`, image `theone/sandbox:e2e`, a fixed token and VNC password,
-`THEONE_LOG_LEVEL=debug`. It never reads `infra/compose/.env`, ignores exported `THEONE_*`
+`THEONE_LOG_LEVEL=debug`, and `THEONE_HOST_CLAUDE_DIR` set to an empty temporary directory
+(or `THEONE_E2E_CLAUDE_DIR`), so the host's `~/.claude` is never mounted by default and Claude
+is not logged in. It never reads `infra/compose/.env`, ignores exported `THEONE_*`
 variables, and removes the stack with its volumes afterwards (also on failure, Ctrl-C and
 SIGTERM) unless `--keep` is given.
 
@@ -37,7 +39,8 @@ makes `electron.test.ts` save the display before, with the Electron window, and 
 restart.
 
 Overrides: `THEONE_E2E_IMAGE`, `THEONE_E2E_PROJECT` (must start with `theone-e2e`),
-`THEONE_E2E_CONTROLLER_PORT`, `THEONE_E2E_VNC_PORT`, `THEONE_E2E_HEALTH_TIMEOUT` (seconds).
+`THEONE_E2E_CONTROLLER_PORT`, `THEONE_E2E_VNC_PORT`, `THEONE_E2E_HEALTH_TIMEOUT` (seconds),
+`THEONE_E2E_CLAUDE_DIR` (host directory mounted at `/home/dev/.claude`).
 
 ## What is covered
 

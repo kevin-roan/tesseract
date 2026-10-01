@@ -48,9 +48,9 @@ terminal sessions.
 
 After an upgrade:
 
-- If `SPEC.md` changed, adopt it deliberately (existing `~/.claude/CLAUDE.md`
-  is never overwritten). See
-  [claude-in-sandbox](claude-in-sandbox.md#2-specmd-as-the-user-level-claudemd).
+- If `SPEC.md` changed, rebuild the image (it is baked into
+  `/etc/claude-code/CLAUDE.md`). See
+  [claude-in-sandbox](claude-in-sandbox.md#2-specmd-as-the-managed-claudemd).
 - `ENVIRONMENT.md` is regenerated automatically.
 - For reproducible images, pin `NODE_VERSION`, `CLAUDE_CODE_VERSION` and the
   base image digest (build args in [sandbox-image.md](../architecture/sandbox-image.md#build-arguments)).

@@ -1,5 +1,7 @@
 import { useMemo } from "react";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
+
+import { FILE_DOWNLOAD_PARAM, FILES_ROUTE } from "@/features/files/utils/constants";
 
 import type { PairingPrefill, TerminalLaunch } from "../types";
 
@@ -9,6 +11,11 @@ export function useSandboxNavigation() {
       pair: () => router.push("/pair"),
       repair: (prefill: PairingPrefill) => router.push({ pathname: "/pair", params: prefill }),
       display: () => router.push("/sandbox/display"),
+      claudeAccount: () => router.push("/sandbox/claude"),
+      files: (downloadId?: string) =>
+        router.push(
+          (downloadId ? { pathname: FILES_ROUTE, params: { [FILE_DOWNLOAD_PARAM]: downloadId } } : FILES_ROUTE) as Href,
+        ),
       project: (id: string, processId?: string) =>
         router.push({ pathname: "/sandbox/projects/[id]", params: processId ? { id, process: processId } : { id } }),
       newProject: () => router.push("/sandbox/projects/new"),
@@ -26,6 +33,7 @@ export function useSandboxNavigation() {
       replaceWithTerminal: (id: string) => router.replace({ pathname: "/sandbox/terminal/[id]", params: { id } }),
       replaceWithAgentRun: (id: string) => router.replace({ pathname: "/sandbox/agent/[id]", params: { id } }),
       back: () => (router.canGoBack() ? router.back() : router.replace("/agents")),
+      sandboxHub: () => router.navigate("/agents"),
       hub: () => (router.canGoBack() ? router.dismissTo("/agents") : router.replace("/agents")),
     }),
     [],

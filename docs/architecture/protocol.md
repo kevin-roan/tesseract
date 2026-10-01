@@ -92,6 +92,7 @@ All bodies and responses are JSON unless stated. Type names refer to
 | GET | `/v1/health` | public | `Health` |
 | POST | `/v1/auth/ticket` | none | `Ticket` |
 | GET | `/v1/status` | none | `SandboxStatus` |
+| GET | `/v1/identity` | none | `Identity`: Tailscale viewer, owner, node, tailnet ([networking](networking-tailscale.md#tailscale-identity-localapi)); `available: false` with nulls when Tailscale cannot be asked |
 | GET | `/v1/context` | none | `AgentContext` (regular files `/workspace/.agent/*.md` and `.agent/projects/<id>/*.md`, each capped at 64 KiB; symlinks, FIFOs and devices skipped) |
 
 ```jsonc
@@ -115,6 +116,18 @@ All bodies and responses are JSON unless stated. Type names refer to
   "counts": { "projects": 2, "runningProcesses": 1, "activeBuilds": 0, "terminals": 1, "agentRuns": 0 }
 }
 
+// GET /v1/identity (host-tailscale with --tailscale-api, called from a tailnet device)
+{ "sandboxId": "theone-sandbox",
+  "tailscale": { "available": true, "source": "localapi", "tailnet": "tail1234.ts.net",
+    "viewer": { "id": "3460960228565063", "loginName": "you@github", "displayName": "You",
+                "profilePicUrl": "https://avatars.githubusercontent.com/u/1?v=4" },
+    "viewerNode": { "hostName": "pixel-9", "dnsName": "pixel-9.tail1234.ts.net", "os": "android",
+                    "tailscaleIps": ["100.64.0.2", "fd7a:115c:a1e0::2"], "online": true },
+    "owner": { "id": "3460960228565063", "loginName": "you@github", "displayName": "You",
+               "profilePicUrl": "https://avatars.githubusercontent.com/u/1?v=4" },
+    "node": { "hostName": "workstation", "dnsName": "workstation.tail1234.ts.net", "os": "linux",
+              "tailscaleIps": ["100.64.0.1", "fd7a:115c:a1e0::1"], "online": true } } }
+
 // GET /v1/context
 { "files": [ { "name": "CURRENT_TASK.md",            // relative to .agent, e.g. "projects/app/TEST_STATE.md"
                "path": "/workspace/.agent/CURRENT_TASK.md",
@@ -136,6 +149,19 @@ banner.
 | POST | `/v1/projects` | `CreateProject { name, gitUrl?, branch? }` | `201 { project, processId? }` |
 | GET | `/v1/projects/:id` | none | `Project` |
 | GET | `/v1/projects/:id/git` | none | `GitDetails` |
+| GET | `/v1/projects/:id/sync/changes` | none | `SyncChanges` |
+| POST | `/v1/projects/:id/sync/export` | `SyncExport { paths }` | `application/gzip` tar |
+| POST | `/v1/projects/:id/sync/ack` | `SyncAck` | `SyncChanges` |
+| GET | `/v1/projects/:id/sync/requests` | none | `SyncRequest[]` |
+| POST | `/v1/projects/:id/sync/requests` | `CreateSyncRequest` | `201 SyncRequest` |
+| GET | `/v1/sync/requests?status=` | none | `SyncRequest[]` |
+| POST | `/v1/sync/requests/:id/claim` | `ClaimSyncRequest` | `SyncRequest` |
+| POST | `/v1/sync/requests/:id/complete` | `CompleteSyncRequest` | `SyncRequest` |
+| POST | `/v1/sync/requests/:id/cancel` | none | `SyncRequest` |
+| POST | `/v1/sync/heartbeat` | `SyncHeartbeat` | `204` |
+
+The `sync` routes copy sandbox changes back to the host checkout; the contract is
+[sync-back.md](sync-back.md).
 
 `name` (1–128 chars) is slugged into the project id with `projectIdFromName`
 (`"My App"` → `my-app`); an existing directory gives `409`. `gitUrl` must be an
@@ -241,22 +267,31 @@ fraction in `[0, 1]` or `null`. Recipes are described in
 |---|---|---|
 | GET | `/v1/display` | `DisplayStatus` (includes the VNC password, for noVNC) |
 | GET | `/v1/display/screenshot` | `image/png` of display `:1`; `503 unavailable` without a display |
+| GET | `/v1/display/browser` | `BrowserStatus { available, tabs: BrowserTab[] }`: Chromium tabs, current first, `phoneUrl` reachable over Tailscale or null; `available: false` when DevTools is unreachable |
 
 ### Agent runs (headless Claude)
 
 | Method | Path | Request | Response |
 |---|---|---|---|
-| GET | `/v1/agent/runs` | `?projectId=` | `AgentRun[]` |
-| POST | `/v1/agent/runs` | `StartAgentRun { projectId?, prompt, resumeSessionId? }` | `201 AgentRun` |
+| GET | `/v1/agent/runs` | `?projectId=&archived=` | `AgentRun[]`: non-archived runs, or only archived ones with `archived=1` |
+| POST | `/v1/agent/runs` | `StartAgentRun { projectId?, prompt, mode?, attachmentIds?, resumeSessionId? }` | `201 AgentRun` (with `mode` and `attachments: Upload[]`) |
+| POST | `/v1/agent/runs/archive` | `{ ids, archived } \| { all: true, archived, projectId? }` | `{ count }`; running runs are skipped |
+| POST | `/v1/agent/runs/delete` | `{ ids } \| { all: true, projectId?, archived? }` | `{ count }`; deletes runs and their events; running runs are skipped |
 | GET | `/v1/agent/runs/:id` | none | `AgentRun & { events: AgentRunEvent[] }` |
+| POST | `/v1/uploads` | `CreateUpload { name, mimeType, data /* base64 */ }` | `201 Upload` (28 MiB body, 20 MiB file) |
+| GET | `/v1/uploads/:id/content` | bearer or `?ticket=` | file stream (single `Range` supported) |
+| POST | `/v1/transcriptions` | `CreateTranscription { uploadId, language? }` | `Transcription { uploadId, text, language, durationMs, engine }`; 503 when the profile is `off` or without a speech-to-text engine; one runs at a time (FIFO) |
+| GET | `/v1/stt` | none | `SttStatus { profile, profiles, engine, ready, reason, model, cpus, busy, queued }` |
+| PUT | `/v1/stt` | `UpdateStt { profile: "off" \| "eco" \| "balanced" \| "performance" }` | `SttStatus`; stored across restarts, publishes `stt.updated` on change |
 | DELETE | `/v1/agent/runs/:id` | none | `AgentRun` (cancel) |
 
 The controller runs `claude -p` with streaming JSON output and
 `--permission-mode $THEONE_CLAUDE_PERMISSION_MODE` in the project directory,
 and condenses the stream into `AgentRunEvent`s (`text`, `tool_use`,
 `tool_result`, `system`). `sessionId` is Claude's session id: pass it as
-`resumeSessionId` to continue the conversation. `costUsd` and `result` are
-filled in from Claude's final result message.
+`resumeSessionId` to continue the conversation. `usage` (input, output,
+cache read, cache write and total tokens) and `result` are filled in from
+Claude's final result message; there is no dollar cost.
 
 ### Status events from the sandbox agent
 
@@ -307,8 +342,12 @@ Client frames are limited to 1 MiB.
 { "type": "terminal.updated", "terminal": { /* TerminalInfo */ } }
 { "type": "build.updated", "build": { /* BuildJob */ } }
 { "type": "artifact.created", "artifact": { /* Artifact */ } }
-{ "type": "agent.updated", "run": { /* AgentRun */ } }
+{ "type": "agent.updated", "run": { /* AgentRun */ } }                        // also on archive/unarchive
+{ "type": "agent.deleted", "ids": ["run_…"] }
 { "type": "project.updated", "project": { /* Project */ } }
+{ "type": "stt.updated", "stt": { /* SttStatus */ } }                          // the STT profile changed
+{ "type": "sync.updated", "request": { /* SyncRequest */ } }                  // sync request created or changed state
+{ "type": "sync.changed", "projectId": "electron-hello" }                     // sync-back baseline moved (push or ack)
 ```
 
 Events carry full objects so that clients can patch caches without refetching.

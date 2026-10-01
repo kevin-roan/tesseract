@@ -34,7 +34,7 @@ case "$prompt" in
   leak*)
     sleep 300 &
     emit '{"type":"assistant","message":{"content":[{"type":"text","text":"leftover='"$!"'"}]},"session_id":"'"$session"'"}'
-    emit '{"type":"result","subtype":"success","is_error":false,"duration_ms":10,"num_turns":1,"result":"Started a server","total_cost_usd":0.001,"session_id":"'"$session"'"}'
+    emit '{"type":"result","subtype":"success","is_error":false,"duration_ms":10,"num_turns":1,"result":"Started a server","usage":{"input_tokens":3,"output_tokens":20},"session_id":"'"$session"'"}'
     exit 0
     ;;
 esac
@@ -46,4 +46,4 @@ emit 'not json output from a hook'
 printf '%s' '{"type":"assistant","message":{"content":[{"type":"text","text":"split '
 sleep 0.2
 printf '%s\n' 'line"}]},"session_id":"'"$session"'"}'
-emit '{"type":"result","subtype":"success","is_error":false,"duration_ms":1234,"num_turns":2,"result":"All done","total_cost_usd":0.0123,"session_id":"'"$session"'"}'
+emit '{"type":"result","subtype":"success","is_error":false,"duration_ms":1234,"num_turns":2,"result":"All done","usage":{"input_tokens":12,"output_tokens":340,"cache_read_input_tokens":5600,"cache_creation_input_tokens":78},"session_id":"'"$session"'"}'

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { mkdirSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import { CreateProjectResponseSchema, GitDetailsSchema, ProjectListSchema, ProjectSchema, type Project } from "@theone/protocol";
 import { parseStatus } from "../src/services/git";
@@ -173,5 +173,37 @@ describe("REST", () => {
     expect(project.framework).toBe("node");
     expect(project.scripts).toEqual(["build"]);
     expect(project.git?.lastCommit?.subject).toBe("Seed");
+  });
+
+  test("syncs a tar archive into a new or existing project", async () => {
+    const source = makeTempDir("sync");
+    writeFiles(source, { "package.json": JSON.stringify({ name: "synced", scripts: { dev: "vite" } }), "src/main.ts": "export {};\n" });
+    const archive = (gzip: boolean) =>
+      Bun.spawnSync(["tar", "-c", ...(gzip ? ["-z"] : []), "-f", "-", "-C", source, "."], { stdout: "pipe" }).stdout;
+
+    const sync = (id: string, body: Uint8Array | string, contentType: string) =>
+      fetch(`${t.baseUrl}/v1/projects/${id}/sync`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${t.controller.services.token}`, "Content-Type": contentType },
+        body,
+      });
+
+    const created = await sync("synced", archive(true), "application/gzip");
+    expect(created.status).toBe(201);
+    expect(ProjectSchema.parse(await created.json())).toMatchObject({ id: "synced", scripts: ["dev"] });
+    expect(readFileSync(join(projects, "synced/src/main.ts"), "utf8")).toBe("export {};\n");
+
+    writeFiles(projects, { "synced/keep.txt": "sandbox only\n" });
+    writeFiles(source, { "src/main.ts": "export const x = 1;\n" });
+    const updated = await sync("synced", archive(false), "application/x-tar");
+    expect(updated.status).toBe(200);
+    expect(readFileSync(join(projects, "synced/src/main.ts"), "utf8")).toBe("export const x = 1;\n");
+    expect(existsSync(join(projects, "synced/keep.txt"))).toBe(true);
+
+    const garbage = await sync("broken", "not a tar", "application/gzip");
+    expect(garbage.status).toBe(400);
+    expect(existsSync(join(projects, "broken"))).toBe(false);
+    const json = await sync("synced", "{}", "application/json");
+    expect(json.status).toBe(400);
   });
 });

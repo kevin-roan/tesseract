@@ -56,7 +56,7 @@ describe("pairing links", () => {
     });
   });
 
-  it("explains codes that are not TheOne links", () => {
+  it("explains codes that are not Monolith links", () => {
     const result = parsePairingText("https://example.com");
     expect(result).toEqual({ ok: false, message: expect.stringContaining("theone://pair") });
   });

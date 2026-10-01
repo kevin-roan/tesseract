@@ -1,19 +1,34 @@
 import {
   AgentContextSchema,
+  AgentRunBatchResultSchema,
   AgentRunDetailSchema,
   AgentRunListSchema,
   AgentRunSchema,
   AgentStreamMessageSchema,
   appendQuery,
   ArtifactListSchema,
+  ArtifactSchema,
+  BrowserStatusSchema,
   BuildJobSchema,
   BuildListSchema,
+  ClaudeAuthStatusSchema,
+  ClaudeImportResultSchema,
+  ClaudeSessionListSchema,
   CreateProjectResponseSchema,
   DisplayStatusSchema,
   errorCodeForStatus,
   GitDetailsSchema,
   HealthSchema,
+  IdentitySchema,
+  InboxCountsSchema,
+  SyncChangesSchema,
+  SyncRequestListSchema,
+  SyncRequestSchema,
+  InboxSchema,
+  PushDeviceSchema,
+  LiveActivityTokenSchema,
   isErrorCode,
+  ListeningPortsSchema,
   isFinalAgentRunState,
   isFinalBuildState,
   LIMITS,
@@ -31,20 +46,39 @@ import {
   restPaths,
   SandboxStatusSchema,
   ServerEventSchema,
+  SttStatusSchema,
   TerminalInfoSchema,
   TerminalListSchema,
   TerminalServerMessageSchema,
   TICKET_PARAM,
+  TaildropTargetsSchema,
   TicketSchema,
+  TranscriptionSchema,
+  UploadSchema,
+  UsageReportSchema,
   toWebSocketUrl,
   uiPaths,
   wsPaths,
   type AgentContext,
+  type CreateTranscription,
+  type CreateUpload,
+  type Transcription,
+  type SttStatus,
+  type UpdateStt,
+  type Upload,
   type AgentRun,
+  type AgentRunBatchResult,
   type AgentRunDetail,
   type AgentRunEvent,
+  type AgentRunFilter,
+  type ArchiveAgentRuns,
   type AgentStreamMessage,
   type Artifact,
+  type SendArtifact,
+  type ShareArtifact,
+  type TaildropTargets,
+  type ClaudeSession,
+  type BrowserStatus,
   type BuildJob,
   type CreateProject,
   type CreateProjectResponse,
@@ -53,14 +87,36 @@ import {
   type EventsClientMessage,
   type GitDetails,
   type Health,
+  type ClaudeAuthStatus,
+  type ClaudeImport,
+  type ClaudeImportResult,
+  type Identity,
+  type Inbox,
+  type InboxCounts,
+  type InboxFilter,
+  type ClaimSyncRequest,
+  type CompleteSyncRequest,
+  type CreateSyncRequest,
+  type SyncAck,
+  type SyncChanges,
+  type SyncHeartbeat,
+  type SyncRequest,
+  type ListeningPorts,
   type LogLine,
   type LogStreamMessage,
   type LogTail,
+  type DeleteAgentRuns,
+  type MarkInboxRead,
+  type LiveActivityToken,
+  type PushDevice,
+  type RegisterLiveActivity,
+  type RegisterPushDevice,
   type ProcessInfo,
   type ProcessLogStreamMessage,
   type Project,
   type ProjectFilter,
   type SandboxStatus,
+  type SessionsFilter,
   type Schema,
   type ServerEvent,
   type StartAgentRun,
@@ -71,6 +127,8 @@ import {
   type TerminalInfo,
   type TerminalServerMessage,
   type Ticket,
+  type UsageFilter,
+  type UsageReport,
 } from "@theone/protocol";
 import { AbortError, ApiError, NetworkError, ProtocolError, ProtocolVersionError, TheOneError, TimeoutError } from "./errors";
 import {
@@ -235,6 +293,54 @@ export class TheOneClient {
     return this.request("GET", restPaths.context(), { read: json(AgentContextSchema), options });
   }
 
+  identity(options?: RequestOptions): Promise<Identity> {
+    return this.request("GET", restPaths.identity(), { read: json(IdentitySchema), options });
+  }
+
+  claudeAuth(options?: RequestOptions): Promise<ClaudeAuthStatus> {
+    return this.request("GET", restPaths.claudeAuth(), { read: json(ClaudeAuthStatusSchema), options });
+  }
+
+  importClaude(body: ClaudeImport, options?: RequestOptions): Promise<ClaudeImportResult> {
+    return this.request("POST", restPaths.claudeImport(), { read: json(ClaudeImportResultSchema), body, options });
+  }
+
+  ports(options?: RequestOptions): Promise<ListeningPorts> {
+    return this.request("GET", restPaths.ports(), { read: json(ListeningPortsSchema), options });
+  }
+
+  usage(query?: UsageFilter, options?: RequestOptions): Promise<UsageReport> {
+    return this.request("GET", restPaths.usage(query), { read: json(UsageReportSchema), options });
+  }
+
+  sessions(query?: SessionsFilter, options?: RequestOptions): Promise<ClaudeSession[]> {
+    return this.request("GET", restPaths.sessions(query), { read: json(ClaudeSessionListSchema), options });
+  }
+
+  inbox(query?: InboxFilter, options?: RequestOptions): Promise<Inbox> {
+    return this.request("GET", restPaths.inbox(query), { read: json(InboxSchema), options });
+  }
+
+  markInboxRead(body: MarkInboxRead, options?: RequestOptions): Promise<InboxCounts> {
+    return this.request("POST", restPaths.inboxRead(), { read: json(InboxCountsSchema), body, options });
+  }
+
+  registerPushDevice(body: RegisterPushDevice, options?: RequestOptions): Promise<PushDevice> {
+    return this.request("POST", restPaths.pushDevices(), { read: json(PushDeviceSchema), body, options });
+  }
+
+  unregisterPushDevice(token: string, options?: RequestOptions): Promise<PushDevice> {
+    return this.request("DELETE", restPaths.pushDevice(token), { read: json(PushDeviceSchema), options });
+  }
+
+  registerLiveActivity(body: RegisterLiveActivity, options?: RequestOptions): Promise<LiveActivityToken> {
+    return this.request("POST", restPaths.liveActivities(), { read: json(LiveActivityTokenSchema), body, options });
+  }
+
+  unregisterLiveActivity(token: string, options?: RequestOptions): Promise<LiveActivityToken> {
+    return this.request("DELETE", restPaths.liveActivity(token), { read: json(LiveActivityTokenSchema), options });
+  }
+
   listProjects(options?: RequestOptions): Promise<Project[]> {
     return this.request("GET", restPaths.projects(), { read: json(ProjectListSchema), options });
   }
@@ -249,6 +355,47 @@ export class TheOneClient {
 
   getProjectGit(id: string, options?: RequestOptions): Promise<GitDetails> {
     return this.request("GET", restPaths.projectGit(id), { read: json(GitDetailsSchema), options });
+  }
+
+  syncChanges(id: string, options?: RequestOptions): Promise<SyncChanges> {
+    return this.request("GET", restPaths.projectSyncChanges(id), { read: json(SyncChangesSchema), options });
+  }
+
+  /** gzip tar of the current content of `paths` (each a current `added`/`modified` change). */
+  syncExport(id: string, paths: string[], options?: RequestOptions): Promise<ArrayBuffer> {
+    return this.request("POST", restPaths.projectSyncExport(id), { read: binary, body: { paths }, options });
+  }
+
+  syncAck(id: string, body: SyncAck, options?: RequestOptions): Promise<SyncChanges> {
+    return this.request("POST", restPaths.projectSyncAck(id), { read: json(SyncChangesSchema), body, options });
+  }
+
+  syncRequests(id: string, options?: RequestOptions): Promise<SyncRequest[]> {
+    return this.request("GET", restPaths.projectSyncRequests(id), { read: json(SyncRequestListSchema), options });
+  }
+
+  createSyncRequest(id: string, body: CreateSyncRequest, options?: RequestOptions): Promise<SyncRequest> {
+    return this.request("POST", restPaths.projectSyncRequests(id), { read: json(SyncRequestSchema), body, options });
+  }
+
+  pendingSyncRequests(options?: RequestOptions): Promise<SyncRequest[]> {
+    return this.request("GET", restPaths.syncRequests({ status: "pending" }), { read: json(SyncRequestListSchema), options });
+  }
+
+  claimSyncRequest(id: string, body: ClaimSyncRequest, options?: RequestOptions): Promise<SyncRequest> {
+    return this.request("POST", restPaths.syncRequestClaim(id), { read: json(SyncRequestSchema), body, options });
+  }
+
+  completeSyncRequest(id: string, body: CompleteSyncRequest, options?: RequestOptions): Promise<SyncRequest> {
+    return this.request("POST", restPaths.syncRequestComplete(id), { read: json(SyncRequestSchema), body, options });
+  }
+
+  cancelSyncRequest(id: string, options?: RequestOptions): Promise<SyncRequest> {
+    return this.request("POST", restPaths.syncRequestCancel(id), { read: json(SyncRequestSchema), options });
+  }
+
+  syncHeartbeat(body: SyncHeartbeat, options?: RequestOptions): Promise<void> {
+    return this.request("POST", restPaths.syncHeartbeat(), { read: ignoreBody, body, options });
   }
 
   listProcesses(filter?: ProjectFilter, options?: RequestOptions): Promise<ProcessInfo[]> {
@@ -307,8 +454,30 @@ export class TheOneClient {
     return this.request("GET", restPaths.artifacts(filter), { read: json(ArtifactListSchema), options });
   }
 
+  shareArtifact(body: ShareArtifact, options?: RequestOptions): Promise<Artifact> {
+    return this.request("POST", restPaths.artifacts(), { read: json(ArtifactSchema), body, options });
+  }
+
+  deleteArtifact(id: string, options?: RequestOptions): Promise<Artifact> {
+    return this.request("DELETE", restPaths.artifact(id), { read: json(ArtifactSchema), options });
+  }
+
+  /** Tailnet devices that accept Taildrop files; `available: false` without the LocalAPI opt-in. */
+  taildropTargets(options?: RequestOptions): Promise<TaildropTargets> {
+    return this.request("GET", restPaths.taildropTargets(), { read: json(TaildropTargetsSchema), options });
+  }
+
+  sendArtifactToTaildrop(id: string, body: SendArtifact, options?: RequestOptions): Promise<Artifact> {
+    return this.request("POST", restPaths.artifactTaildrop(id), { read: json(ArtifactSchema), body, options });
+  }
+
   displayStatus(options?: RequestOptions): Promise<DisplayStatus> {
     return this.request("GET", restPaths.display(), { read: json(DisplayStatusSchema), options });
+  }
+
+  /** Chromium tabs in the sandbox, current tab first, with URLs the phone can open over Tailscale. */
+  displayBrowser(options?: RequestOptions): Promise<BrowserStatus> {
+    return this.request("GET", restPaths.displayBrowser(), { read: json(BrowserStatusSchema), options });
   }
 
   /** PNG bytes of the virtual display. */
@@ -316,12 +485,42 @@ export class TheOneClient {
     return this.request("GET", restPaths.displayScreenshot(), { read: binary, options });
   }
 
-  listAgentRuns(filter?: ProjectFilter, options?: RequestOptions): Promise<AgentRun[]> {
+  listAgentRuns(filter?: AgentRunFilter, options?: RequestOptions): Promise<AgentRun[]> {
     return this.request("GET", restPaths.agentRuns(filter), { read: json(AgentRunListSchema), options });
+  }
+
+  archiveAgentRuns(body: ArchiveAgentRuns, options?: RequestOptions): Promise<AgentRunBatchResult> {
+    return this.request("POST", restPaths.agentRunsArchive(), { read: json(AgentRunBatchResultSchema), body, options });
+  }
+
+  deleteAgentRuns(body: DeleteAgentRuns, options?: RequestOptions): Promise<AgentRunBatchResult> {
+    return this.request("POST", restPaths.agentRunsDelete(), { read: json(AgentRunBatchResultSchema), body, options });
   }
 
   startAgentRun(body: StartAgentRun, options?: RequestOptions): Promise<AgentRun> {
     return this.request("POST", restPaths.agentRuns(), { read: json(AgentRunSchema), body, options });
+  }
+
+  /** Sends the file as base64 JSON; allow a longer timeout for large files on slow links. */
+  createUpload(body: CreateUpload, options?: RequestOptions): Promise<Upload> {
+    return this.request("POST", restPaths.uploads(), { read: json(UploadSchema), body, options });
+  }
+
+  async uploadContentUrl(id: string, options?: RequestOptions): Promise<string> {
+    const { ticket } = await this.createTicket(options);
+    return this.httpUrl(restPaths.uploadContent(id, { ticket }));
+  }
+
+  transcribe(body: CreateTranscription, options?: RequestOptions): Promise<Transcription> {
+    return this.request("POST", restPaths.transcriptions(), { read: json(TranscriptionSchema), body, options });
+  }
+
+  stt(options?: RequestOptions): Promise<SttStatus> {
+    return this.request("GET", restPaths.stt(), { read: json(SttStatusSchema), options });
+  }
+
+  updateStt(body: UpdateStt, options?: RequestOptions): Promise<SttStatus> {
+    return this.request("PUT", restPaths.stt(), { read: json(SttStatusSchema), body, options });
   }
 
   getAgentRun(id: string, options?: RequestOptions): Promise<AgentRunDetail> {

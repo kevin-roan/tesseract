@@ -13,8 +13,8 @@ readonly SERVICE=sandbox
 
 usage() {
   cat << 'EOF'
-Usage: sandbox [--mode tailscale|host-tailscale|local] [--dind] [--env-file <path>]
-               <command> [args]
+Usage: sandbox [--mode tailscale|host-tailscale|local] [--dind] [--tailscale-api]
+               [--env-file <path>] <command> [args]
        (the options may also follow the command)
 
 Modes (default: $THEONE_MODE, then THEONE_MODE in the env file, then tailscale):
@@ -24,6 +24,11 @@ Modes (default: $THEONE_MODE, then THEONE_MODE in the env file, then tailscale):
   local            ports 7700/5901 bound on 127.0.0.1 only
                    (host ports: THEONE_CONTROLLER_HOST_PORT, THEONE_VNC_HOST_PORT)
   --dind           add the privileged docker:dind sidecar (also: THEONE_DIND=1)
+  --tailscale-api  share the tailscaled LocalAPI socket with the sandbox so GET /v1/identity
+                   can name the tailnet user (also: THEONE_TAILSCALE_LOCALAPI=1): the
+                   sidecar's socket in tailscale mode, the host's
+                   (THEONE_TAILSCALE_HOST_SOCKET_DIR, default /var/run/tailscale) otherwise.
+                   Sandbox root can then control that tailscaled (docs/architecture/security-model.md)
   --env-file PATH  read the configuration from PATH instead of infra/compose/.env
 
 Commands:
@@ -99,12 +104,14 @@ config_value() {
 
 mode=""
 dind=""
+tailscale_api=""
 env_file="${COMPOSE_DIR}/.env"
 env_file_option=()
 project=""
 volume_prefix=""
 controller_port=""
 vnc_port=""
+host_socket_dir=""
 compose_files=()
 
 set_env_file() {
@@ -142,6 +149,10 @@ parse_global_options() {
         ;;
       --dind)
         dind=1
+        shift
+        ;;
+      --tailscale-api)
+        tailscale_api=1
         shift
         ;;
       --)
@@ -213,6 +224,11 @@ resolve_mode() {
     1 | true | yes) dind=1 ;;
     *) dind="" ;;
   esac
+  tailscale_api="${tailscale_api:-$(config_value THEONE_TAILSCALE_LOCALAPI)}"
+  case "${tailscale_api}" in
+    1 | true | yes) tailscale_api=1 ;;
+    *) tailscale_api="" ;;
+  esac
 
   compose_files=(-f "${COMPOSE_DIR}/compose.yml")
   case "${mode}" in
@@ -249,6 +265,18 @@ resolve_mode() {
   if [[ -n "${dind}" ]]; then
     compose_files+=(-f "${COMPOSE_DIR}/compose.dind.yml")
   fi
+  if [[ -n "${tailscale_api}" ]]; then
+    if [[ "${mode}" == tailscale ]]; then
+      compose_files+=(-f "${COMPOSE_DIR}/compose.tailscale-api-sidecar.yml")
+    else
+      host_socket_dir="$(config_value THEONE_TAILSCALE_HOST_SOCKET_DIR)"
+      host_socket_dir="${host_socket_dir:-/var/run/tailscale}"
+      [[ "${host_socket_dir}" == /* ]] \
+        || die "THEONE_TAILSCALE_HOST_SOCKET_DIR=${host_socket_dir} must be an absolute path"
+      export THEONE_TAILSCALE_HOST_SOCKET_DIR="${host_socket_dir}"
+      compose_files+=(-f "${COMPOSE_DIR}/compose.tailscale-api.yml")
+    fi
+  fi
 }
 
 compose() {
@@ -272,10 +300,20 @@ check_tailscale_config() {
   fi
 }
 
+check_tailscale_api() {
+  [[ -n "${tailscale_api}" && "${mode}" != tailscale ]] || return 0
+  [[ -S "${host_socket_dir}/tailscaled.sock" ]] \
+    || die "--tailscale-api: no tailscaled socket at ${host_socket_dir}/tailscaled.sock (set THEONE_TAILSCALE_HOST_SOCKET_DIR)"
+}
+
 cmd_up() {
   local hostname
   check_tailscale_config
+  check_tailscale_api
   compose up --detach "$@"
+  if [[ -n "${tailscale_api}" ]]; then
+    info "tailscale LocalAPI shared with the sandbox (root in the sandbox can reconfigure that tailscaled)"
+  fi
   case "${mode}" in
     tailscale)
       hostname="$(config_value THEONE_HOSTNAME)"

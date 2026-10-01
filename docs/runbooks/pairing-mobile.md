@@ -23,8 +23,10 @@ theone://pair?url=<encoded base URL>&token=<token>&name=<label>
    inside the sandbox, which prints the ANSI QR code, the link, and the
    sandbox URL. `bun run sandbox pair --json` prints `{ link, url, name }`
    for scripting (the token is inside `link`).
-3. In the app: **Agents** tab → **Pair a sandbox** (or, once one is paired,
-   the header action **Pair another sandbox**), then one of:
+3. In the app: without a paired sandbox the app opens onboarding; go through
+   the welcome pages to **Pair your sandbox** → **Scan pairing code**. Once one
+   is paired, use the Agents tab's header action **Pair another sandbox**.
+   Then one of:
    - **Scan**: point the camera at the QR code (grant camera permission).
      A scanned code pairs immediately.
    - **Deep link**: open the `theone://pair?…` link on the phone, for example
@@ -81,7 +83,7 @@ Pairing again with the same URL updates the existing entry (new token and name).
 | "Cannot reach sandbox" | Tailscale disconnected on the phone, or wrong tailnet. Open `https://<host>.<tailnet>.ts.net/v1/health` in the phone browser |
 | "Pairing no longer valid" / "Unauthorized" | token rotated or mistyped. Run `bun run sandbox pair` again and use **Pair again** |
 | "Version mismatch" | the app and the controller speak different protocol versions. Update the app or rebuild the image |
-| `http://` URL fails in a release build | cleartext refused by the OS. Use tailscale mode (HTTPS) or a development build |
+| `http://` URL fails ("Can't reach the sandbox" while Safari loads it) | cleartext refused by the OS (iOS ATS). Switch to tailscale mode: [tailscale-https-setup](tailscale-https-setup.md) |
 | Link URL is `https://theone-sandbox` without `.<tailnet>.ts.net` | `TS_TAILNET_DOMAIN` was empty when the container was created. Set it in `.env` and run `bun run sandbox up` |
 | Camera does not open | development build missing `expo-camera`, or permission denied in the OS settings |
 | Deep link opens nothing | the app was not built with the `theone` scheme (`app.json` → `scheme`), or you are in Expo Go |

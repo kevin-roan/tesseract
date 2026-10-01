@@ -54,8 +54,10 @@ bunx tsc -p infra/e2e/tsconfig.json   # typecheck the suite (it is not a workspa
    local mode, controller on `127.0.0.1:17700`, VNC on `127.0.0.1:15901`, a
    fixed token and VNC password, `THEONE_LOG_LEVEL=debug`. It never reads
    `infra/compose/.env` and clears exported `THEONE_*`/`COMPOSE_*` variables, so
-   it cannot touch the default `theone` stack. Claude credentials exported in
-   your shell (`ANTHROPIC_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`) do reach the sandbox.
+   it cannot touch the default `theone` stack. `THEONE_HOST_CLAUDE_DIR` points
+   at an empty temporary directory (or `THEONE_E2E_CLAUDE_DIR`), so the host's
+   `~/.claude` is never mounted and Claude is not logged in (point
+   `THEONE_E2E_CLAUDE_DIR` at a logged-in dir to run Claude).
 3. Removes any leftover `theone-e2e` stack, starts the new one, waits for
    `/v1/health`, and runs `bun test ./infra/e2e` (the `./` matters: without it
    bun treats the argument as a name filter over the whole repository).

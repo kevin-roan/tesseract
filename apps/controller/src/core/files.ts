@@ -1,4 +1,5 @@
-import { closeSync, constants, fstatSync, openSync, readSync } from "node:fs";
+import { randomBytes } from "node:crypto";
+import { chmodSync, closeSync, constants, fstatSync, openSync, readSync, renameSync, rmSync, writeFileSync } from "node:fs";
 
 export type RegularFile = { content: string; sizeBytes: number; truncated: boolean };
 
@@ -39,5 +40,18 @@ export function readRegularFile(path: string, options: ReadRegularFileOptions): 
     return null;
   } finally {
     closeSync(fd);
+  }
+}
+
+/** Writes through a temp file in the same directory and renames it over `path` (a symlink at `path` is replaced, not followed). */
+export function writeFileAtomic(path: string, content: string, mode: number): void {
+  const temp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
+  try {
+    writeFileSync(temp, content, { mode, flag: "wx" });
+    chmodSync(temp, mode);
+    renameSync(temp, path);
+  } catch (error) {
+    rmSync(temp, { force: true });
+    throw error;
   }
 }

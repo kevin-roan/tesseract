@@ -1,0 +1,121 @@
+import { fireEvent, render, screen } from "@testing-library/react-native";
+import type { Artifact } from "@theone/protocol";
+import { sampleArtifact } from "@theone/protocol/fixtures";
+
+import FilesScreen from "@/app/files";
+import { SOURCE_FILTERS } from "@/features/files/utils/filters";
+
+const mockFiles = jest.fn();
+
+jest.mock("expo-router", () => ({ useIsFocused: () => true, useLocalSearchParams: () => ({}) }));
+jest.mock("react-native-safe-area-context", () => require("react-native-safe-area-context/jest/mock").default);
+jest.mock("@/features/files/hooks/use-files-screen", () => ({ useFilesScreen: () => mockFiles() }));
+
+const shared: Artifact = { ...sampleArtifact, id: "art_apk", fileName: "notes.apk", source: "agent", buildId: null, note: "Try the new sync screen" };
+
+function files(overrides: object = {}) {
+  return {
+    hydrated: true,
+    paired: true,
+    back: jest.fn(),
+    pair: jest.fn(),
+    files: [shared, sampleArtifact],
+    total: 2,
+    subtitle: "2 files",
+    projectName: () => "Electron hello",
+    loading: false,
+    error: null,
+    retry: jest.fn(),
+    filtered: false,
+    clearFilters: jest.fn(),
+    sourceOptions: SOURCE_FILTERS.map(({ id, label }) => ({ id, label })),
+    sourceId: "all",
+    selectSource: jest.fn(),
+    projectOptions: [],
+    projectId: "all",
+    selectProject: jest.fn(),
+    download: jest.fn(),
+    downloadingId: null,
+    downloadError: null,
+    remove: jest.fn(),
+    deletingId: null,
+    taildropAvailable: true,
+    openTaildrop: jest.fn(),
+    sendTo: jest.fn(),
+    sharing: null,
+    closeTaildrop: jest.fn(),
+    targets: [],
+    targetsLoading: false,
+    sendingTargetId: null,
+    sendError: null,
+    sentMessage: null,
+    actionError: null,
+    refreshing: false,
+    refresh: jest.fn(),
+    ...overrides,
+  };
+}
+
+describe("FilesScreen", () => {
+  it("lists shared files and builds with their actions", async () => {
+    const state = files();
+    mockFiles.mockReturnValue(state);
+    await render(<FilesScreen />);
+
+    expect(screen.getByText("notes.apk")).toBeOnTheScreen();
+    expect(screen.getByText("Try the new sync screen")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Shared")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Build")).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByLabelText("Download notes.apk"));
+    expect(state.download).toHaveBeenCalledWith(shared.id);
+    await fireEvent.press(screen.getByLabelText("Send notes.apk with Taildrop"));
+    expect(state.openTaildrop).toHaveBeenCalledWith(shared);
+    await fireEvent.press(screen.getByLabelText("Delete notes.apk"));
+    expect(state.remove).toHaveBeenCalledWith(shared);
+    await fireEvent.press(screen.getByLabelText("Shared by Claude"));
+    expect(state.selectSource).toHaveBeenCalledWith("agent");
+  });
+
+  it("hides Taildrop when the sandbox has no tailnet access", async () => {
+    mockFiles.mockReturnValue(files({ taildropAvailable: false }));
+    await render(<FilesScreen />);
+    expect(screen.queryByLabelText("Send notes.apk with Taildrop")).toBeNull();
+  });
+
+  it("shows the empty, error and filtered-out states", async () => {
+    mockFiles.mockReturnValue(files({ files: [], total: 0 }));
+    const { rerender } = await render(<FilesScreen />);
+    expect(screen.getByText("No files yet")).toBeOnTheScreen();
+
+    const failing = files({ error: "Boom" });
+    mockFiles.mockReturnValue(failing);
+    await rerender(<FilesScreen />);
+    expect(screen.getByText("Files are unavailable")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByText("Retry"));
+    expect(failing.retry).toHaveBeenCalled();
+
+    const filtered = files({ files: [], filtered: true });
+    mockFiles.mockReturnValue(filtered);
+    await rerender(<FilesScreen />);
+    expect(screen.getByText("No files match these filters.")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByText("Show all files"));
+    expect(filtered.clearFilters).toHaveBeenCalled();
+  });
+
+  it("picks a Taildrop target from the sheet", async () => {
+    const state = files({
+      sharing: shared,
+      targets: [
+        { id: "n_mac", hostName: "mac", dnsName: null, os: "macOS", online: true },
+        { id: "n_off", hostName: "old-laptop", dnsName: null, os: "windows", online: false },
+      ],
+    });
+    mockFiles.mockReturnValue(state);
+    await render(<FilesScreen />);
+    expect(screen.getByText("Send with Taildrop")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByText("mac"));
+    expect(state.sendTo).toHaveBeenCalledWith("n_mac");
+    expect(screen.getByText("Windows · Offline")).toBeOnTheScreen();
+  });
+});

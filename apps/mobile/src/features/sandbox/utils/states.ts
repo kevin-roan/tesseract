@@ -2,7 +2,7 @@ import type { AgentRunState, BuildState, ProcessState, TerminalState } from "@th
 
 import type { Tone } from "@/lib/tone";
 
-import type { IssueNotice, PageConnection, SandboxIssue, SandboxLink } from "../types";
+import type { IssueNotice, PageConnection, ProjectActivity, SandboxIssue, SandboxLink } from "../types";
 import { capitalize } from "./format";
 
 const PROCESS_TONES: Record<ProcessState, Tone> = {
@@ -56,6 +56,14 @@ const PAGE_TONES: Record<PageConnection, Tone> = {
   exited: "neutral",
 };
 
+const PROJECT_ACTIVITY: Record<ProjectActivity, { label: string; tone: Tone }> = {
+  building: { label: "Building", tone: "info" },
+  agent: { label: "Claude working", tone: "info" },
+  running: { label: "Running", tone: "success" },
+  failed: { label: "Failed", tone: "danger" },
+  idle: { label: "Idle", tone: "neutral" },
+};
+
 const ISSUE_NOTICES: Record<SandboxIssue, IssueNotice> = {
   unauthorized: {
     title: "Pairing no longer valid",
@@ -76,6 +84,8 @@ export const terminalTone = (state: TerminalState): Tone => TERMINAL_TONES[state
 export const linkTone = (link: SandboxLink): Tone => LINK_TONES[link];
 export const linkLabel = (link: SandboxLink): string => LINK_LABELS[link];
 export const issueNotice = (issue: SandboxIssue): IssueNotice => ISSUE_NOTICES[issue];
+export const projectActivityLabel = (activity: ProjectActivity): string => PROJECT_ACTIVITY[activity].label;
+export const projectActivityTone = (activity: ProjectActivity): Tone => PROJECT_ACTIVITY[activity].tone;
 export const pageTone = (state: PageConnection): Tone => PAGE_TONES[state];
 
 export const stateLabel = (state: string): string => capitalize(state);

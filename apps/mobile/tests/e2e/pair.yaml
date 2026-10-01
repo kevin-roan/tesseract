@@ -1,0 +1,43 @@
+appId: com.kevinbpract.theone
+name: pair
+tags:
+  - sandbox
+---
+- clearState
+- runFlow: subflows/open-app.yaml
+- extendedWaitUntil:
+    visible:
+      id: "onboarding-welcome"
+    timeout: 15000
+- assertNotVisible:
+    text: "Profile"
+    containsDescendants:
+      - id: ".*navigation_bar_item_icon_view"
+- takeScreenshot: ${OUTPUT_DIR}/unpaired
+- tapOn:
+    id: "onboarding-next"
+- tapOn:
+    id: "onboarding-next"
+- extendedWaitUntil:
+    visible: "Get started"
+    timeout: 5000
+- tapOn:
+    id: "onboarding-next"
+- extendedWaitUntil:
+    visible:
+      id: "onboarding-setup"
+    timeout: 10000
+- back
+- extendedWaitUntil:
+    visible:
+      id: "onboarding-welcome"
+    timeout: 10000
+- runFlow: subflows/pair-if-needed.yaml
+- runFlow:
+    file: subflows/tab.yaml
+    env:
+      TAB: Profile
+- extendedWaitUntil:
+    visible:
+      id: "profile-name"
+    timeout: 20000

@@ -1,0 +1,50 @@
+appId: com.kevinbpract.theone
+name: profile
+tags:
+  - sandbox
+---
+- runFlow: subflows/open-app.yaml
+- runFlow: subflows/pair-if-needed.yaml
+- runFlow:
+    file: subflows/tab.yaml
+    env:
+      TAB: Profile
+- extendedWaitUntil:
+    visible:
+      id: "profile-name"
+      text: "Kevin Roan"
+    timeout: 20000
+- assertVisible:
+    id: "profile-tailnet"
+    text: ".*tail511d9d\\.ts\\.net.*"
+- assertVisible: "kevin-roan@github · archlinux.tail511d9d.ts.net"
+- assertVisible:
+    text: "PROJECTS"
+    below:
+      id: "profile-tailnet"
+    above:
+      id: "profile-activity"
+- assertVisible:
+    text: "RUNNING"
+    below:
+      id: "profile-tailnet"
+    above:
+      id: "profile-activity"
+- assertVisible:
+    text: "BUILDS"
+    below:
+      id: "profile-tailnet"
+    above:
+      id: "profile-activity"
+- assertVisible: "Open the sandbox hub"
+- assertNotVisible: "Tailscale identity not exposed"
+- scrollUntilVisible:
+    element:
+      id: "profile-activity"
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      id: "activity-process-.*"
+      text: ".*ticker.*"
+    direction: DOWN
+- takeScreenshot: ${OUTPUT_DIR}/profile

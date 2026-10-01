@@ -17,6 +17,8 @@ import {
   EventsClientMessageSchema,
   GitDetailsSchema,
   HealthSchema,
+  IdentitySchema,
+  ListeningPortsSchema,
   LogLineSchema,
   LogStreamMessageSchema,
   LogTailQuerySchema,
@@ -26,7 +28,12 @@ import {
   ProjectSchema,
   SandboxStatusSchema,
   ServerEventSchema,
+  SttStatusSchema,
+  UpdateSttSchema,
   StartAgentRunSchema,
+  ArchiveAgentRunsSchema,
+  AgentRunQuerySchema,
+  DeleteAgentRunsSchema,
   StartBuildSchema,
   StartProcessSchema,
   StatusEventInputSchema,
@@ -35,6 +42,11 @@ import {
   TerminalInfoSchema,
   TerminalServerMessageSchema,
   TicketSchema,
+  IslandStateSchema,
+  type IslandState,
+  LIVE_ACTIVITY_TOKEN_KINDS,
+  LiveActivityTokenSchema,
+  RegisterLiveActivitySchema,
 } from "../src/index";
 import {
   sampleAgentRun,
@@ -46,11 +58,14 @@ import {
   sampleDisplay,
   sampleGitDetails,
   sampleHealth,
+  sampleIdentity,
   sampleLogLine,
+  samplePorts,
   sampleProcess,
   sampleProject,
   sampleStatus,
   sampleStatusEvent,
+  sampleSttStatus,
   sampleTerminal,
   sampleTicket,
 } from "../src/fixtures";
@@ -72,6 +87,21 @@ describe("response schemas round-trip", () => {
     ["DisplayStatus", DisplayStatusSchema, sampleDisplay],
     ["SandboxStatus", SandboxStatusSchema, sampleStatus],
     ["AgentContext", AgentContextSchema, sampleContext],
+    ["Identity", IdentitySchema, sampleIdentity],
+    [
+      "Identity without tailscale",
+      IdentitySchema,
+      {
+        sandboxId: "sandbox",
+        tailscale: { available: false, source: "none", tailnet: null, viewer: null, viewerNode: null, owner: null, node: null },
+      },
+    ],
+    ["ListeningPorts", ListeningPortsSchema, samplePorts],
+    [
+      "ListeningPorts without tailscale",
+      ListeningPortsSchema,
+      { tailscaleIp: null, ports: [{ port: 5173, pid: 10, command: "vite", processId: null, projectId: null, url: null, dnsUrl: null }] },
+    ],
     ["Project", ProjectSchema, sampleProject],
     ["GitDetails", GitDetailsSchema, sampleGitDetails],
     ["LogLine", LogLineSchema, sampleLogLine],
@@ -81,11 +111,24 @@ describe("response schemas round-trip", () => {
     ["Artifact", ArtifactSchema, sampleArtifact],
     ["BuildJob", BuildJobSchema, sampleBuild],
     ["AgentRun", AgentRunSchema, sampleAgentRun],
+    [
+      "AgentRun with usage",
+      AgentRunSchema,
+      {
+        ...sampleAgentRun,
+        state: "succeeded",
+        endedAt: sampleAgentRun.startedAt,
+        usage: { inputTokens: 12, outputTokens: 340, cacheReadTokens: 5600, cacheWriteTokens: 78, totalTokens: 6030 },
+      },
+    ],
     ["AgentRunDetail", AgentRunDetailSchema, sampleAgentRunDetail],
     ["StatusEvent", StatusEventSchema, sampleStatusEvent],
     ["CreateProjectResponse", CreateProjectResponseSchema, { project: sampleProject, processId: "prc_abc123" }],
     ["CreateProjectResponse without process", CreateProjectResponseSchema, { project: sampleProject }],
     ["ErrorBody", ErrorBodySchema, { error: { code: "not_found", message: "No such project" } }],
+    ["SttStatus", SttStatusSchema, sampleSttStatus],
+    ["SttStatus off", SttStatusSchema, { ...sampleSttStatus, profile: "off", engine: null, ready: false, reason: "Speech-to-text is off", model: null }],
+    ["stt.updated event", ServerEventSchema, { type: "stt.updated", stt: sampleSttStatus }],
   ];
   for (const [name, schema, value] of cases) {
     test(name, () => {
@@ -113,6 +156,17 @@ describe("response schemas round-trip", () => {
 });
 
 describe("response schemas reject bad payloads", () => {
+  test("Identity", () => {
+    rejects(IdentitySchema, { ...sampleIdentity, tailscale: { ...sampleIdentity.tailscale, source: "whois" } });
+    rejects(IdentitySchema, { ...sampleIdentity, tailscale: { ...sampleIdentity.tailscale, owner: undefined } });
+  });
+  test("ListeningPorts", () => {
+    const [port] = samplePorts.ports;
+    rejects(ListeningPortsSchema, { ...samplePorts, ports: [{ ...port, port: 70000 }] });
+    rejects(ListeningPortsSchema, { ...samplePorts, ports: [{ ...port, processId: "bld_123" }] });
+    rejects(ListeningPortsSchema, { ...samplePorts, ports: [{ ...port, url: undefined }] });
+    rejects(ListeningPortsSchema, { ports: samplePorts.ports });
+  });
   test("Health", () => {
     rejects(HealthSchema, { ...sampleHealth, protocolVersion: 2 });
     rejects(HealthSchema, { ...sampleHealth, ok: false });
@@ -139,6 +193,15 @@ describe("response schemas reject bad payloads", () => {
     rejects(ArtifactSchema, { ...sampleArtifact, sha256: "xyz" });
     rejects(DisplayStatusSchema, { ...sampleDisplay, vnc: { ...sampleDisplay.vnc, port: 70000 } });
     rejects(LogLineSchema, { ...sampleLogLine, seq: 1.5 });
+  });
+  test("SttStatus", () => {
+    rejects(SttStatusSchema, { ...sampleSttStatus, profile: "turbo" });
+    rejects(SttStatusSchema, { ...sampleSttStatus, engine: "vosk" });
+    rejects(SttStatusSchema, { ...sampleSttStatus, cpus: 0 });
+    rejects(SttStatusSchema, { ...sampleSttStatus, queued: -1 });
+    rejects(UpdateSttSchema, { profile: "max" });
+    rejects(UpdateSttSchema, {});
+    expect(UpdateSttSchema.parse({ profile: "balanced" })).toEqual({ profile: "balanced" });
   });
   test("missing required fields", () => {
     const { artifacts: _artifacts, ...withoutArtifacts } = sampleBuild;
@@ -192,6 +255,28 @@ describe("request schemas", () => {
     for (const resumeSessionId of ["", "--dangerously-skip-permissions", "-x", ".hidden", "a b", "id;rm", "ü", `a${"b".repeat(256)}`]) {
       rejects(StartAgentRunSchema, { prompt: "go on", resumeSessionId });
     }
+  });
+
+  test("archive and delete agent runs", () => {
+    const ids = [sampleAgentRun.id];
+    roundTrip(ArchiveAgentRunsSchema, { ids, archived: true });
+    roundTrip(ArchiveAgentRunsSchema, { all: true, archived: false, projectId: "app" });
+    roundTrip(DeleteAgentRunsSchema, { ids });
+    roundTrip(DeleteAgentRunsSchema, { all: true, archived: true });
+    roundTrip(AgentRunQuerySchema, { projectId: "app", archived: "1" });
+    rejects(ArchiveAgentRunsSchema, { ids });
+    rejects(ArchiveAgentRunsSchema, { ids: [], archived: true });
+    rejects(ArchiveAgentRunsSchema, { ids: ["bld_1234567890"], archived: true });
+    rejects(ArchiveAgentRunsSchema, { all: false, archived: true });
+    rejects(ArchiveAgentRunsSchema, { ids: Array.from({ length: 501 }, () => sampleAgentRun.id), archived: true });
+    rejects(DeleteAgentRunsSchema, { ids: [] });
+    rejects(DeleteAgentRunsSchema, { all: true, archived: "yes" });
+    rejects(DeleteAgentRunsSchema, {});
+    rejects(AgentRunQuerySchema, { archived: "maybe" });
+    rejects(AgentRunSchema, { ...sampleAgentRun, archivedAt: undefined });
+    rejects(AgentRunSchema, { ...sampleAgentRun, usage: undefined });
+    rejects(AgentRunSchema, { ...sampleAgentRun, usage: { inputTokens: -1, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 0 } });
+    rejects(AgentRunSchema, { ...sampleAgentRun, usage: { inputTokens: 1.5, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 0 } });
   });
 
   test("AGENT_SESSION_ID_PATTERN is the resumeSessionId rule", () => {
@@ -252,6 +337,7 @@ describe("websocket messages", () => {
       { type: "build.updated", build: sampleBuild },
       { type: "artifact.created", artifact: sampleArtifact },
       { type: "agent.updated", run: sampleAgentRun },
+      { type: "agent.deleted", ids: [sampleAgentRun.id] },
       { type: "project.updated", project: sampleProject },
     ];
     for (const event of events) roundTrip(ServerEventSchema, event);
@@ -259,5 +345,39 @@ describe("websocket messages", () => {
     rejects(ServerEventSchema, { type: "unknown" });
     rejects(ServerEventSchema, { type: "build.updated", build: { id: "bld_x" } });
     roundTrip(EventsClientMessageSchema, { type: "pong" });
+  });
+});
+
+describe("live activity schemas", () => {
+  const token = "a".repeat(64);
+  const state: IslandState = {
+    sandboxId: "sandbox",
+    sandboxName: "dev-box",
+    runs: [{ id: "run_1", title: "Fix the tests", project: "app", state: "running", startedAt: "2026-09-30T10:00:00.000Z", tokens: null }],
+    commands: [{ id: "prc_1", label: "npm run dev", project: "app", state: "running" }],
+    usage: { todayTokens: 10, weekTokens: 20, runsToday: 1, messagesToday: 2 },
+    updatedAt: "2026-09-30T10:00:01.000Z",
+  };
+
+  test("IslandState round-trips and rejects unknown run states", () => {
+    expect(IslandStateSchema.parse(state)).toEqual(state);
+    expect(IslandStateSchema.safeParse({ ...state, runs: [{ ...state.runs[0], state: "succeeded" }] }).success).toBe(false);
+    expect(IslandStateSchema.safeParse({ ...state, usage: { ...state.usage, todayTokens: -1 } }).success).toBe(false);
+  });
+
+  test("RegisterLiveActivity defaults activityId and checks the hex token", () => {
+    expect(RegisterLiveActivitySchema.parse({ kind: "push-to-start", token })).toEqual({ kind: "push-to-start", token, activityId: null });
+    expect(RegisterLiveActivitySchema.parse({ kind: "activity", token: token.toUpperCase(), activityId: "act-1" }).activityId).toBe("act-1");
+    expect(RegisterLiveActivitySchema.safeParse({ kind: "activity", token: "xyz" }).success).toBe(false);
+    expect(RegisterLiveActivitySchema.safeParse({ kind: "activity", token: "0".repeat(31) }).success).toBe(false);
+    expect(RegisterLiveActivitySchema.safeParse({ kind: "activity", token: "0".repeat(513) }).success).toBe(false);
+    expect(RegisterLiveActivitySchema.safeParse({ kind: "other", token }).success).toBe(false);
+    expect(LIVE_ACTIVITY_TOKEN_KINDS).toEqual(["activity", "push-to-start"]);
+  });
+
+  test("LiveActivityToken needs timestamps", () => {
+    const record = { kind: "activity" as const, token, activityId: null, createdAt: state.updatedAt, updatedAt: state.updatedAt };
+    expect(LiveActivityTokenSchema.parse(record)).toEqual(record);
+    expect(LiveActivityTokenSchema.safeParse({ kind: "activity", token, activityId: null }).success).toBe(false);
   });
 });

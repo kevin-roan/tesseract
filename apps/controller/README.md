@@ -31,7 +31,7 @@ THEONE_WORKSPACE=/tmp/theone-ws bun src/index.ts status
 
 CLI: `serve` (default) · `pair [--json]` · `status [--json]` ·
 `emit --status <s> --message <m> [--project p] [--stage s] [--platform p]` · `token [--rotate]` ·
-`api <METHOD> <PATH> [JSON | -]`.
+`api <METHOD> <PATH> [JSON | -]` · `share <file> [--project p] [--name n] [--note t] [--json]` · `hook`.
 Configuration is environment only (blueprint §4); invalid values stop startup with a clear message.
 
 ### `api`: the REST API for the in-sandbox agent
@@ -57,6 +57,38 @@ theone-controller api GET /v1/display/screenshot > /tmp/screen.png
 - `display.vnc.password` (in `/v1/display` and `/v1/status`) is printed as `***`, as in
   `status --json`: the phone gets it over REST, the agent never needs it.
 
+### `share`: send a file to the user's devices
+
+```bash
+cd /workspace/projects/hello/android && ./gradlew assembleRelease
+theone-controller share app/build/outputs/apk/release/app-release.apk --note "Release build with the new login screen"
+# shared app-release.apk (6.2 MiB, hello) as art_7f3k2q9xa1
+```
+
+Resolves the path against the current directory and calls `POST /v1/artifacts`: the file is
+copied (never moved) into `$THEONE_WORKSPACE/artifacts` under its own name (`--name` renames;
+`-2`, `-3`… on collisions), indexed with `source: "agent"` and announced by a `file` inbox item,
+so paired devices can download it (`GET /v1/artifacts/:id/download`) or push it to a tailnet
+device with Taildrop. The project comes from the path (`projects/<id>/…`) unless `--project` is
+given. `THEONE_AGENT_RUN_ID` and `CLAUDE_CODE_SESSION_ID` (set by Claude Code for its Bash tool)
+tag the artifact and the inbox item. Only regular files inside the workspace are accepted
+(symlinks are resolved first); the artifacts and controller data directories are refused.
+`--json` prints the artifact. Errors exit 1 (2 for bad arguments). Claude Code in the sandbox is
+told to use it by `/etc/claude-code/CLAUDE.md`.
+
+### `hook`: Claude Code hooks → inbox
+
+```bash
+echo '{"hook_event_name":"Notification","session_id":"abc","cwd":"/workspace/projects/hello","notification_type":"permission_prompt","message":"Claude needs your permission to use Bash"}' \
+  | theone-controller hook
+```
+
+Registered for every Claude session in the sandbox by `/etc/claude-code/managed-settings.json`
+(`Notification`, `Stop`, `StopFailure`, `UserPromptSubmit`). Forwards the stdin JSON to
+`POST /v1/hooks/claude`, adding `theone_terminal_id`/`theone_agent_run_id` from
+`THEONE_TERMINAL_ID`/`THEONE_AGENT_RUN_ID`. It never prints anything and always exits 0 within
+1.5 s, also when the controller is down, the token is missing or stdin is not JSON.
+
 ## Layout
 
 ```text
@@ -68,13 +100,21 @@ src/
   http/                 Hono app, auth/log middleware, routes per resource
   ws/                   upgrade router (ticket + target checks) and per-stream handlers
   services/             projects, git, processes, terminals, builds + recipes, artifacts,
-                        display, vnc-bridge, agent runs + stream-json parser, status,
-                        context, runtime-mirror (.agent/RUNTIME.md)
+                        display, browser (Chromium tabs via DevTools), vnc-bridge, agent runs + stream-json parser, status,
+                        identity (Tailscale LocalAPI / serve headers), taildrop (LocalAPI
+                        file-targets / file-put), claude-auth (login
+                        status, stored OAuth token, host config import), ports, usage +
+                        transcripts (Claude Code usage/sessions), context,
+                        inbox + claude-hooks (notifications from Claude Code hooks and agent runs),
+                        push (Expo push tokens, inbox pushes),
+                        uploads (phone attachments) + transcriptions (speech-to-text engines),
+                        runtime-mirror (.agent/RUNTIME.md)
   core/                 log store (ring buffer + rotated files), process groups (+ /proc scan),
                         exec, net probes (TCP, RFB banner), events
   db/                   bun:sqlite schema (WAL) and repositories
   ui/                   terminal.html / vnc.html pages, shared lib/, own tsconfig (DOM)
-tests/                  bun test suites; fixtures/fake-claude.sh stands in for Claude Code
+tests/                  bun test suites; fixtures/fake-claude.sh stands in for Claude Code,
+                        fake-ffmpeg.sh / fake-whisper.sh / fake-priority.sh (nice, ionice) for the whisper.cpp pipeline
   unit/                 focused module tests (fakes, local TCP servers, temp dirs)
   ui/                   src/ui/lib tests on a per-test happy-dom Window (own tsconfig, DOM lib)
 ```
@@ -99,16 +139,96 @@ tests/                  bun test suites; fixtures/fake-claude.sh stands in for C
   → `POST /v1/builds` answers 503 before queueing. Collection only takes files modified
   after the build started (minus 2 s).
 - Children (processes, build steps, terminals, agent runs, git/zip helpers) never get
-  `THEONE_TOKEN` or `THEONE_VNC_PASSWORD` (`childEnv()` in `core/exec.ts`); they get
+  `THEONE_TOKEN`, `THEONE_VNC_PASSWORD` or `THEONE_STT_API_KEY` (`childEnv()` in `core/exec.ts`); they get
   `THEONE_PROCESS_ID`/`THEONE_BUILD_ID`/`THEONE_TERMINAL_ID`/`THEONE_AGENT_RUN_ID`. A
   `THEONE_TOKEN` from the environment is mirrored into the 0600 token file so the
   in-sandbox CLI keeps working without it.
+- `/v1/claude/auth` and `/v1/claude/import` (`services/claude-auth.ts`) report and
+  update the Claude Code login. Credentials come from the host's `~/.claude`, bind-mounted
+  at `/home/dev/.claude`; the controller stores no token and injects none into children
+  (the host's Claude Max login is the only supported auth; `ANTHROPIC_API_KEY`/`CLAUDE_CODE_OAUTH_TOKEN`
+  are not configured by the stack, only reported and inherited if set manually). The import writes into `$CLAUDE_CONFIG_DIR` only
+  whitelisted paths, merges only account keys into the global config, drops
+  `settings.json` keys that run host commands, and backs up replaced files as
+  `<file>.theone-bak`. Its body limit is 8 MiB (other routes 1 MiB).
 - Project content is untrusted: `package.json` is read only if it is a regular file of at
   most 1 MiB (`core/files.ts`: `O_NONBLOCK` + `fstat` on the open descriptor), `.agent`
   files likewise with `O_NOFOLLOW`, and `git status`/`log` run with `core.fsmonitor`,
   `log.showSignature` and every filter driver neutralised (`services/git.ts`).
   `tests/hardening.test.ts` covers these.
-- Headless Claude gets the prompt on stdin (never argv) and no `CLAUDECODE`.
+- `GET /v1/identity` (`services/identity.ts`) reads Tailscale identity for the Profile tab.
+  The viewer comes from the Tailscale Serve headers (`Tailscale-User-Login`, `-Name`,
+  `-Profile-Pic`, RFC 2047 decoded) when the request arrives from loopback, otherwise from
+  LocalAPI `whois?addr=<ip:port>` of the peer. Owner, node and tailnet come from LocalAPI
+  `status` (cached 30 s, failures are not cached). The LocalAPI is reached over
+  `THEONE_TAILSCALE_SOCKET` (default `/run/tailscale/tailscaled.sock`) with a 1.5 s
+  timeout; no socket or any error yields nulls and `available: false`, never an error
+  response. Tests serve a fake LocalAPI on a unix socket (`tests/identity.test.ts`).
+- `GET /v1/ports` (`services/ports.ts`) lists TCP ports that visible processes listen on
+  (`/proc/net/tcp{,6}` LISTEN sockets matched to `/proc/*/fd` inodes, one entry per port),
+  without the controller's own port and `THEONE_VNC_PORT`. A port whose owner's process
+  group or session is a live tracked process gets its `processId`/`projectId`; otherwise
+  `projectId` comes from the owner's cwd under `projects/` (dev servers started from
+  terminals or agent runs). `url`/`dnsUrl` use the sandbox's own Tailscale IPv4 and
+  MagicDNS name from LocalAPI `status`: the sidecar shares the network namespace, so they
+  reach servers bound to 127.0.0.1 too. Without Tailscale they are null, never an error.
+- `GET /v1/usage` and `GET /v1/sessions` (`services/usage.ts`, parser in
+  `services/transcripts.ts`) read Claude Code transcripts under
+  `$CLAUDE_CONFIG_DIR/projects/<encoded-cwd>/<sessionId>.jsonl` (default `$HOME/.claude`),
+  plus subagent transcripts in `<sessionId>/subagents/*.jsonl`. Files are cached by path and
+  re-read only from the last consumed byte when they grow (a size drop or rewrite re-parses).
+  Usage is deduped by `message.id` + `requestId` (Claude Code writes one line per content
+  block), across files too (the oldest file keeps messages a resumed session copied), and
+  `<synthetic>` messages are skipped. `/usage` only reads files modified in the range.
+  Sessions link to the newest agent run with the same session id; a running Claude
+  terminal maps to a session through `$CLAUDE_CONFIG_DIR/sessions/<pid>.json`, else to
+  the newest unclaimed transcript with the terminal's cwd written since it started.
+  A missing directory yields zeros and an empty list.
+- `GET /v1/inbox`, `POST /v1/inbox/read` and `POST /v1/hooks/claude` (`services/inbox.ts`,
+  `services/claude-hooks.ts`, table `inbox`): hook calls and agent-run outcomes become
+  `permission`/`needs_input`/`completed`/`failed`/`status` items. An unread repeat of the same
+  kind for the same session or agent run is bumped instead of added (`completed`/`failed` are
+  one kind, so a run and its Stop hook make one item); `Stop`, `StopFailure`,
+  `UserPromptSubmit` and a run's end mark the session's unread attention items read. Every
+  change publishes `inbox.updated`; the newest 1 000 items are kept. Mapping table in
+  `docs/architecture/controller.md`.
+- `GET`/`POST /v1/push/devices` and `DELETE /v1/push/devices/:token` (`services/push.ts`,
+  table `push_devices`) manage the phones' Expo push tokens. Unread `completed`, `failed`,
+  `needs_input`, `permission` and `file` inbox items are posted to `THEONE_PUSH_URL` (default
+  Expo's `https://exp.host/--/api/v2/push/send`, `off` disables) with
+  `THEONE_EXPO_ACCESS_TOKEN` as optional bearer; one push per item per 15 s, and tokens Expo
+  reports as `DeviceNotRegistered` are removed.
+- Headless Claude gets the prompt on stdin (never argv) and no `CLAUDECODE`. `mode` picks
+  `--permission-mode` (default `THEONE_CLAUDE_PERMISSION_MODE`). Non-audio attachments add
+  `--add-dir $THEONE_WORKSPACE/.theone/uploads` and an "Attached files" list of absolute paths
+  to the stdin prompt; audio attachments are only kept on the run (the transcript is the prompt).
+- Uploads (`POST /v1/uploads`, base64 JSON, 20 MiB decoded, 28 MiB body) are stored as
+  `$THEONE_WORKSPACE/.theone/uploads/<id>/<sanitized name>` (0700 dirs, 0600 files) with a
+  row in `uploads`; uploads older than 30 days are pruned at startup.
+  `GET /v1/uploads/:id/content` takes bearer auth or a ticket and answers single byte ranges.
+- Speech-to-text (`POST /v1/transcriptions`, `services/transcriptions.ts`) picks the engine per
+  request from `THEONE_STT_ENGINE` (`whisper.cpp` default, `auto`, `openai-compatible`, `none`):
+  - whisper.cpp (local only): `THEONE_WHISPER_BIN` (default `whisper-cli`),
+    `THEONE_WHISPER_MODELS_DIR` (default `/opt/whisper/models`, holds `ggml-<model>.bin`),
+    `THEONE_WHISPER_MODEL` (fallback model path) and `THEONE_FFMPEG_BIN` (default `ffmpeg`).
+    ffmpeg converts the voice note (AAC `.m4a`, wav, webm, mp3, ogg …) to 16 kHz mono WAV in a
+    temp dir, then `whisper-cli -t <threads> -oj` runs; 5 min timeout per step. The image builds
+    whisper.cpp with the `base` and `small` models by default (see sandbox-image.md).
+  - Resource profiles (`GET`/`PUT /v1/stt`, stored in the `settings` table, initial
+    `THEONE_STT_PROFILE=eco`): `off` (503), `eco` (base, 2 threads, `nice -n 19` + `ionice -c3`),
+    `balanced` (base, max(2, cpus/4) threads, `nice -n 10`), `performance` (small,
+    min(cpus, max(4, cpus/2)) threads). `cpus` respects the cgroup `cpu.max` quota. A missing
+    profile model falls back to `THEONE_WHISPER_MODEL`. One transcription runs at a time (FIFO
+    queue, `busy`/`queued` in the status); a profile change publishes `stt.updated`.
+  - openai-compatible: `THEONE_STT_URL` (e.g. `https://api.openai.com/v1`,
+    `https://api.groq.com/openai/v1`), `THEONE_STT_API_KEY`, `THEONE_STT_MODEL` (default
+    `whisper-1`); multipart `POST <url>/audio/transcriptions` with `response_format=verbose_json`.
+    The key is never logged and is redacted from provider errors.
+  - `auto` uses whisper.cpp when binary, ffmpeg and model exist, else openai-compatible when URL
+    and key are set, else 503 naming the variables. An empty transcript is 400 `No speech detected`.
+- `POST /v1/agent/runs/archive` and `POST /v1/agent/runs/delete` act on finished runs only
+  (running ones are skipped). Archived runs (`archivedAt`) are hidden from `GET /v1/agent/runs`
+  unless `?archived=1`; deleting removes the run and its events and unlinks inbox items.
 - Logs: `$THEONE_DATA_DIR/logs/<id>.log` as `<ts> <stream> <seq> <text>` lines, rotated
   at 5 MiB (one `.1` kept), plus a 2 000-line in-memory ring per live process/build.
 - Restarting the controller never re-runs anything: live rows become `orphaned`
@@ -118,7 +238,17 @@ tests/                  bun test suites; fixtures/fake-claude.sh stands in for C
   409 naming the tracked process that owns the port (declared, or found through /proc).
 - Builds run one at a time (FIFO). Artifacts land in `$THEONE_WORKSPACE/artifacts` as
   `<project>-<platform>-<profile>-<version>.<ext>`; `-2`, `-3`… are appended instead of
-  overwriting an earlier build.
+  overwriting an earlier build. Shared files (`POST /v1/artifacts`, `theone-controller share`)
+  keep their own name with the same suffixes; the platform comes from the extension
+  (`.apk`/`.aab` android, `.exe`/`.msi` windows, `.deb`/`.rpm`/`.AppImage` linux, else `file`).
+  Every share adds its own `file` inbox item (never bumped). `DELETE /v1/artifacts/:id` removes
+  the file and row, publishes `artifact.deleted` and clears `artifactId` on the inbox items that
+  announced it (their text stays).
+- Taildrop (`services/taildrop.ts`): `GET /v1/taildrop/targets` maps LocalAPI `file-targets`
+  (id = node `StableID`); no socket or any error gives `available: false`, never an error.
+  `POST /v1/artifacts/:id/taildrop` streams the file with `PUT /localapi/v0/file-put/<id>/<name>`:
+  no LocalAPI → 503, unknown target → 404, LocalAPI 403 → 403, other failures → 503. Tests serve
+  a fake LocalAPI on a unix socket (`tests/share.test.ts`).
 - The `/ui` pages are bundled without zod; their chunks are served at root paths
   (`/chunk-<hash>.js`, `.css`). They read `ticket`, `session`, `password` (and `viewOnly=1`
   for VNC) from the URL fragment, clear it, and talk to the embedding app through

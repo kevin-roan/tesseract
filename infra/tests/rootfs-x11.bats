@@ -68,7 +68,7 @@ echo "${count}" > "${BATS_TEST_TMPDIR}/tries"
 
 xvnc_args() {
   local display=$1 id=$2
-  printf '%s -geometry 1600x900 -depth 24 -rfbport 5901 -rfbauth %s/.vnc/passwd -SecurityTypes VncAuth -AlwaysShared -desktop %s -nolisten tcp' \
+  printf '%s -geometry 1600x900 -depth 24 -rfbport 5901 -rfbauth %s/.vnc/passwd -SecurityTypes VncAuth -AlwaysShared -UseBlacklist=0 -desktop %s -nolisten tcp' \
     "${display}" "${HOME}" "$(printf '%q' "TheOne ${id}")"
 }
 
@@ -85,7 +85,7 @@ xvnc_args() {
     THEONE_SANDBOX_ID=theone-sandbox run "${ROOTFS_BIN}/theone-xvnc"
   assert_success
   assert_equal "$(calls_of Xvnc)" \
-    ":${DISPLAY_NUMBER} -geometry 800x600 -depth 24 -rfbport 5999 -rfbauth ${HOME}/.vnc/passwd -SecurityTypes VncAuth -AlwaysShared -desktop TheOne\\ theone-sandbox -nolisten tcp"
+    ":${DISPLAY_NUMBER} -geometry 800x600 -depth 24 -rfbport 5999 -rfbauth ${HOME}/.vnc/passwd -SecurityTypes VncAuth -AlwaysShared -UseBlacklist=0 -desktop TheOne\\ theone-sandbox -nolisten tcp"
 }
 
 stale_lock_is_removed() {

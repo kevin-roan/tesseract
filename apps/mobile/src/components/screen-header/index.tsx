@@ -13,6 +13,7 @@ export type HeaderAction = {
   id: string;
   icon: Icon;
   label: string;
+  hint?: string;
   onPress: () => void;
   disabled?: boolean;
   tone?: Tone;
@@ -47,18 +48,21 @@ const ScreenHeader = ({
           icon={dismissible ? XIcon : ArrowLeftIcon}
           label={dismissible ? "Close" : "Go back"}
           onPress={onBack}
+          size="md"
         />
       ) : null}
       <View style={styles.titles}>
-        <ThemedText variant={large ? "h1" : "h3"} numberOfLines={1} accessibilityRole="header">
-          {title}
-        </ThemedText>
+        <View style={styles.titleRow}>
+          <ThemedText variant={large ? "h1" : "h3"} numberOfLines={1} accessibilityRole="header" style={styles.title}>
+            {title}
+          </ThemedText>
+          {accessory}
+        </View>
         {subtitle ? (
           <ThemedText variant="caption" color="textSecondary" numberOfLines={1}>
             {subtitle}
           </ThemedText>
         ) : null}
-        {accessory}
       </View>
       {actions?.map(({ id, ...action }) => <IconButton key={id} {...action} />)}
     </View>

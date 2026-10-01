@@ -1,4 +1,12 @@
-import { Colors, gradientsFor, type ColorScheme, type ColorSchemeName } from './colors';
+import {
+  Colors,
+  chartFor,
+  gradientsFor,
+  surfacesFor,
+  type ColorScheme,
+  type ColorSchemeName,
+  type SurfaceTone,
+} from './colors';
 import { isTablet as isTabletSize, resolveBreakpoint, resolveDeviceClass } from './tokens/breakpoints';
 import { GridColumns, MaxBubbleWidthRatio, MaxContentWidth, SidebarWidth } from './tokens/layout';
 import { createRadius } from './tokens/radius';
@@ -9,6 +17,8 @@ export type ThemeInput = {
   scheme: ColorSchemeName;
   width: number;
   height: number;
+  /** Surface the theme is resolved inside; its ink overrides the scheme colors. */
+  tone?: SurfaceTone;
 };
 
 export type Theme = ReturnType<typeof buildTheme>;
@@ -18,7 +28,8 @@ export type Theme = ReturnType<typeof buildTheme>;
  * depends on the viewport is computed here once, so components read finished
  * numbers instead of calling scaling helpers inline.
  */
-function buildTheme({ scheme, width, height }: ThemeInput) {
+function buildTheme({ scheme, width, height, tone }: ThemeInput) {
+  const surfaces = surfacesFor(scheme);
   const breakpoint = resolveBreakpoint(width);
   const device = resolveDeviceClass(width, height);
   const tablet = isTabletSize(width, height);
@@ -26,8 +37,12 @@ function buildTheme({ scheme, width, height }: ThemeInput) {
 
   return {
     scheme,
-    colors: Colors[scheme] as ColorScheme,
+    colors: (tone ? { ...Colors[scheme], ...surfaces[tone].ink } : Colors[scheme]) as ColorScheme,
     gradients: gradientsFor(scheme),
+    /** Card fills, rendered by `<Surface tone="…" />`. */
+    surfaces,
+    /** Data-viz colors: `chart.categorical[i]`, `chart.named.teal`, `chart.status.danger`, `chart.bar`. */
+    chart: chartFor(scheme),
 
     spacing: createSpacing(width, height),
     radius: createRadius(width, height),
@@ -57,19 +72,19 @@ function buildTheme({ scheme, width, height }: ThemeInput) {
 const cache = new Map<string, Theme>();
 
 /**
- * Resolved theme for a scheme + window size, cached by `scheme:width:height` so
+ * Resolved theme for a scheme, window size and surface tone, cached by all four so
  * the object identity stays stable across re-renders (which keeps `useMemo`d
  * stylesheets built from it valid).
  */
 export function createTheme(input: ThemeInput): Theme {
-  const key = `${input.scheme}:${Math.round(input.width)}:${Math.round(input.height)}`;
+  const key = `${input.scheme}:${Math.round(input.width)}:${Math.round(input.height)}:${input.tone ?? ''}`;
   const cached = cache.get(key);
   if (cached) return cached;
 
   const theme = buildTheme(input);
 
   // Bounded so rotation and split-view resizing cannot grow it without limit.
-  if (cache.size > 24) cache.clear();
+  if (cache.size > 48) cache.clear();
   cache.set(key, theme);
 
   return theme;

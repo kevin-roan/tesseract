@@ -3,66 +3,63 @@ import { Pressable, View } from "react-native";
 import {
   CaretDoubleRightIcon,
   ChatCircleIcon,
-  CheckCircleIcon,
-  CircleDashedIcon,
   DotsThreeIcon,
-  PauseCircleIcon,
-  TrendUpIcon,
   type Icon,
 } from "phosphor-react-native";
 
 import AvatarStack, { type AvatarPerson } from "@/components/avatar-stack";
-import { GlassPill, GlassSurface } from "@/components/glass";
+import { SurfacePill, Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { HitSlop, IconSize, type ThemeColor } from "@/theme";
+import { ToneColors, type Tone } from "@/lib/tone";
+import { HitSlop, IconSize } from "@/theme";
 
 import createStyles from "./styles";
 
-export type ProjectStatus = "ongoing" | "completed" | "paused";
-export type ProjectPriority = "high" | "medium" | "low";
+export type ProjectCardField = {
+  /** Small heading above the value, e.g. "Status". */
+  caption: string;
+  value: string;
+  tone?: Tone;
+  icon?: Icon;
+};
 
 export type ProjectCardProps = {
   title: string;
-  status: ProjectStatus;
-  priority: ProjectPriority;
-  /** Pre-formatted date range, e.g. "06.09 - 12.10". */
-  timeline: string;
-  people: AvatarPerson[];
+  subtitle?: string;
+  /** First column: an icon tinted by tone next to the value. */
+  status: ProjectCardField;
+  /** Second column: the value inside a tinted pill. */
+  tag: ProjectCardField;
+  /** Third column: plain text. */
+  detail: ProjectCardField;
+  members: AvatarPerson[];
+  /** First line next to the avatar row, e.g. "3 active tasks". */
+  membersTitle: string;
+  membersCaption?: string;
+  chatLabel?: string;
+  testID?: string;
   onPress?: () => void;
   onPressMenu?: () => void;
   onPressChat?: () => void;
 };
 
-const StatusMeta: Record<
-  ProjectStatus,
-  { label: string; icon: Icon; color: ThemeColor }
-> = {
-  ongoing: { label: "Ongoing", icon: CircleDashedIcon, color: "text" },
-  completed: { label: "Completed", icon: CheckCircleIcon, color: "success" },
-  paused: { label: "Paused", icon: PauseCircleIcon, color: "textTertiary" },
-};
-
-const PriorityMeta: Record<
-  ProjectPriority,
-  { label: string; color: ThemeColor; background: ThemeColor }
-> = {
-  high: { label: "High", color: "warning", background: "warningMuted" },
-  medium: { label: "Medium", color: "accentPressed", background: "accentMuted" },
-  low: { label: "Low", color: "success", background: "successMuted" },
-};
-
 /**
- * Project summary on a glass card: title with an overflow menu, a three-column
- * status / priority / timeline strip, and a footer pairing the member stack
- * with the shortcut into the project's conversation.
+ * Project summary on a card: title with an overflow menu, a three-column
+ * status / tag / detail strip, and a footer pairing an avatar row with the
+ * shortcut into the project's conversation.
  */
 const ProjectCard = ({
   title,
+  subtitle,
   status,
-  priority,
-  timeline,
-  people,
+  tag,
+  detail,
+  members,
+  membersTitle,
+  membersCaption,
+  chatLabel = `Open ${title} conversation`,
+  testID,
   onPress,
   onPressMenu,
   onPressChat,
@@ -70,18 +67,24 @@ const ProjectCard = ({
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const statusMeta = StatusMeta[status];
-  const priorityMeta = PriorityMeta[priority];
-  const StatusIcon = statusMeta.icon;
-
-  const peopleLabel = people.length === 1 ? "1 person" : `${people.length} people`;
+  const statusColors = ToneColors[status.tone ?? "neutral"];
+  const tagColors = ToneColors[tag.tone ?? "info"];
+  const StatusIcon = status.icon;
+  const TagIcon = tag.icon;
 
   const card = (
-    <GlassSurface style={styles.card}>
+    <Surface style={styles.card}>
       <View style={styles.header}>
-        <ThemedText variant="h3" style={styles.title} numberOfLines={2}>
-          {title}
-        </ThemedText>
+        <View style={styles.titles}>
+          <ThemedText variant="h3" numberOfLines={2}>
+            {title}
+          </ThemedText>
+          {subtitle ? (
+            <ThemedText variant="caption" color="textSecondary" numberOfLines={1}>
+              {subtitle}
+            </ThemedText>
+          ) : null}
+        </View>
 
         {onPressMenu ? (
           <Pressable
@@ -103,70 +106,65 @@ const ProjectCard = ({
       <View style={styles.metaRow}>
         <View style={styles.metaColumn}>
           <ThemedText variant="caption" color="textTertiary">
-            Status
+            {status.caption}
           </ThemedText>
           <View style={styles.metaValueRow}>
-            <StatusIcon
-              size={IconSize.sm}
-              color={theme.colors[statusMeta.color]}
-              weight="duotone"
-            />
-            <ThemedText variant="bodySmall" numberOfLines={1}>
-              {statusMeta.label}
-            </ThemedText>
-          </View>
-        </View>
-
-        <View style={styles.metaColumn}>
-          <ThemedText variant="caption" color="textTertiary">
-            Priority
-          </ThemedText>
-          <View
-            style={[
-              styles.priorityPill,
-              { backgroundColor: theme.colors[priorityMeta.background] },
-            ]}
-          >
-            <ThemedText variant="caption" color={priorityMeta.color}>
-              {priorityMeta.label}
-            </ThemedText>
-            {priority === "high" ? (
-              <TrendUpIcon
-                size={IconSize.xs}
-                color={theme.colors[priorityMeta.color]}
-                weight="bold"
+            {StatusIcon ? (
+              <StatusIcon
+                size={IconSize.sm}
+                color={theme.colors[statusColors.foreground]}
+                weight="duotone"
               />
             ) : null}
+            <ThemedText variant="bodySmall" numberOfLines={1} style={styles.shrink}>
+              {status.value}
+            </ThemedText>
           </View>
         </View>
 
         <View style={styles.metaColumn}>
           <ThemedText variant="caption" color="textTertiary">
-            Timeline
+            {tag.caption}
+          </ThemedText>
+          <View style={[styles.tagPill, { backgroundColor: theme.colors[tagColors.background] }]}>
+            {TagIcon ? (
+              <TagIcon size={IconSize.xs} color={theme.colors[tagColors.foreground]} weight="bold" />
+            ) : null}
+            <ThemedText variant="caption" color={tagColors.foreground} numberOfLines={1} style={styles.shrink}>
+              {tag.value}
+            </ThemedText>
+          </View>
+        </View>
+
+        <View style={styles.metaColumn}>
+          <ThemedText variant="caption" color="textTertiary">
+            {detail.caption}
           </ThemedText>
           <ThemedText variant="bodySmall" numberOfLines={1}>
-            {timeline}
+            {detail.value}
           </ThemedText>
         </View>
       </View>
 
       <View style={styles.footer}>
-        <GlassPill style={styles.peoplePill}>
-          <AvatarStack people={people} />
-          <View>
-            <ThemedText variant="caption" color="textSecondary">
-              {peopleLabel}
+        <SurfacePill style={styles.membersPill}>
+          {members.length > 0 ? <AvatarStack people={members} /> : null}
+          <View style={styles.shrink}>
+            <ThemedText variant="caption" color="textSecondary" numberOfLines={1}>
+              {membersTitle}
             </ThemedText>
-            <ThemedText variant="caption" color="textTertiary">
-              in this project
-            </ThemedText>
+            {membersCaption ? (
+              <ThemedText variant="caption" color="textTertiary" numberOfLines={1}>
+                {membersCaption}
+              </ThemedText>
+            ) : null}
           </View>
-        </GlassPill>
+        </SurfacePill>
 
         {onPressChat ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Open ${title} conversation`}
+            accessibilityLabel={chatLabel}
             onPress={onPressChat}
             style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
           >
@@ -184,15 +182,28 @@ const ProjectCard = ({
           weight="bold"
         />
       </View>
-    </GlassSurface>
+    </Surface>
   );
 
-  if (!onPress) return card;
+  if (!onPress) return <View testID={testID}>{card}</View>;
+
+  // The chat and menu buttons sit inside the card's own button, which screen
+  // readers flatten into one element — so they are offered as custom actions.
+  const actions = [
+    ...(onPressChat ? [{ name: "chat", label: chatLabel }] : []),
+    ...(onPressMenu ? [{ name: "menu", label: `More options for ${title}` }] : []),
+  ];
 
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
-      accessibilityLabel={`${title}, ${statusMeta.label}, ${priorityMeta.label} priority, ${timeline}`}
+      accessibilityLabel={`${title}, ${status.value}, ${tag.value}, ${detail.value}`}
+      accessibilityActions={actions.length ? actions : undefined}
+      onAccessibilityAction={({ nativeEvent }) => {
+        if (nativeEvent.actionName === "chat") onPressChat?.();
+        if (nativeEvent.actionName === "menu") onPressMenu?.();
+      }}
       onPress={onPress}
       style={({ pressed }) => pressed && styles.pressed}
     >

@@ -230,6 +230,14 @@ export class ProcessService {
     return this.live.size;
   }
 
+  /** The live process whose group or session (children are spawned detached, so both equal its pid) contains `member`. */
+  ownerOf(member: { pgid: number; session: number }): ProcessInfo | null {
+    for (const entry of this.live.values()) {
+      if (entry.proc.pid === member.pgid || entry.proc.pid === member.session) return { ...entry.info };
+    }
+    return null;
+  }
+
   async shutdown(graceMs = this.stopGraceMs): Promise<void> {
     await Promise.all(
       [...this.live.values()].map(async (entry) => {
@@ -248,8 +256,8 @@ export class ProcessService {
     ]);
     if (!v4 && !v6) return;
     const holder = findPortOwner(port);
-    const tracked = holder ? [...this.live.values()].find((entry) => entry.proc.pid === holder.pgid) : undefined;
-    if (tracked) throw conflict(`Port ${port} is already in use by process ${tracked.info.id} (${tracked.info.name})`);
+    const tracked = holder ? this.ownerOf(holder) : null;
+    if (tracked) throw conflict(`Port ${port} is already in use by process ${tracked.id} (${tracked.name})`);
     if (holder) throw conflict(`Port ${port} is already in use by pid ${holder.pid} (${holder.command})`);
     throw conflict(`Port ${port} is already in use`);
   }

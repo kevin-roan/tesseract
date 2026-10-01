@@ -6,6 +6,7 @@ import type { AgentRun, AgentRunEvent } from "@theone/protocol";
 import { storeAgentRun } from "../api/cache";
 import { RESUMABLE_STREAM_OPTIONS, createReconnectGuard } from "../api/streams";
 import { mergeBySeq } from "../utils/collections";
+import { AGENT_EVENT_LIMIT } from "../utils/constants";
 import { describeError } from "../utils/errors";
 import { useSandboxClient } from "./use-sandbox-client";
 import { useAgentRun } from "./use-sandbox-queries";
@@ -23,7 +24,7 @@ export type AgentRunStream = {
   reconnect: () => void;
 };
 
-const mergeEvents = (current: AgentRunEvent[], incoming: AgentRunEvent[]) => mergeBySeq(current, incoming);
+const mergeEvents = (current: AgentRunEvent[], incoming: AgentRunEvent[]) => mergeBySeq(current, incoming, AGENT_EVENT_LIMIT);
 
 export function useAgentRunStream(runId: string): AgentRunStream {
   const { sandbox, client } = useSandboxClient();

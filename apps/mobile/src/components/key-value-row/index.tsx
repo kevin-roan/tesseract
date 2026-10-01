@@ -19,7 +19,7 @@ const KeyValueRow = ({ label, value, monospace = false, tone }: KeyValueRowProps
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <View style={styles.row} accessibilityLabel={`${label}: ${value}`}>
+    <View style={styles.row} accessible accessibilityLabel={`${label}: ${value}`}>
       <ThemedText variant="bodySmall" color="textSecondary" style={styles.label} numberOfLines={1}>
         {label}
       </ThemedText>

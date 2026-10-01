@@ -1,15 +1,17 @@
 import { afterEach, describe, expect, test } from "bun:test";
+import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { AgentRun, BuildJob, DisplayStatus, ProcessInfo, TerminalInfo } from "@theone/protocol";
 import { loadConfig, ensureDirectories, type Config } from "../../src/config";
 import { EventHub } from "../../src/core/events";
 import { createLogger, silentLogger, type LogLevel } from "../../src/core/logger";
-import { openDatabase } from "../../src/db/database";
+import { openDatabase, SCHEMA_VERSION } from "../../src/db/database";
 import { Repositories } from "../../src/db/repositories";
 import { ArtifactService } from "../../src/services/artifacts";
 import { readAgentContext } from "../../src/services/context";
 import { DisplayService } from "../../src/services/display";
+import { InboxService } from "../../src/services/inbox";
 import { renderRuntime, RuntimeMirror, type RuntimeSnapshot } from "../../src/services/runtime-mirror";
 import { readResources, StatusService } from "../../src/services/status";
 import { ToolService } from "../../src/services/tools";
@@ -78,13 +80,16 @@ function agentRun(overrides: Partial<AgentRun> = {}): AgentRun {
     id: "r1",
     projectId: null,
     prompt: "p",
+    mode: null,
+    attachments: [],
     sessionId: null,
     state: "running",
     startedAt: TS,
     endedAt: null,
-    costUsd: null,
+    usage: null,
     result: null,
     error: null,
+    archivedAt: null,
     ...overrides,
   };
 }
@@ -93,12 +98,42 @@ describe("database and repositories", () => {
   test("migrations are applied once and survive reopening", () => {
     const path = join(makeTempDir("db"), "state.db");
     const first = openDatabase(path);
-    expect(first.query<{ user_version: number }, []>("PRAGMA user_version").get()?.user_version).toBe(1);
+    expect(first.query<{ user_version: number }, []>("PRAGMA user_version").get()?.user_version).toBe(SCHEMA_VERSION);
     new Repositories(first).processes.save(processInfo());
     first.close();
     const second = openDatabase(path);
     expect(new Repositories(second).processes.get("p1")?.command).toEqual(["npm", "run", "dev"]);
     second.close();
+  });
+
+  test("agent runs keep mode and attachments; rows from before migration 4 read as null and []", () => {
+    const db = openDatabase(":memory:");
+    const repos = new Repositories(db);
+    db.query("INSERT INTO agent_runs (id, project_id, prompt, session_id, state, started_at) VALUES ('run_old', NULL, 'p', NULL, 'succeeded', ?)").run(TS);
+    expect(repos.agentRuns.get("run_old")).toMatchObject({ mode: null, attachments: [], usage: null });
+    const upload = { id: "upl_a", name: "a.png", mimeType: "image/png", kind: "image" as const, sizeBytes: 3, path: "/w/.theone/uploads/upl_a/a.png", createdAt: TS };
+    repos.uploads.save(upload);
+    expect(repos.uploads.get("upl_a")).toEqual(upload);
+    repos.agentRuns.save(agentRun({ id: "run_new", mode: "plan", attachments: [upload] }));
+    expect(repos.agentRuns.get("run_new")).toMatchObject({ mode: "plan", attachments: [upload] });
+    expect(repos.deleteUploadsBefore("2025-01-01T00:00:00.000Z")).toEqual([upload]);
+    expect(repos.uploads.get("upl_a")).toBeNull();
+  });
+
+  test("the token-usage migration drops cost_usd and keeps existing agent runs", () => {
+    const path = join(makeTempDir("db"), "state.db");
+    const legacy = new Database(path);
+    legacy.run(`CREATE TABLE agent_runs (id TEXT PRIMARY KEY, project_id TEXT, prompt TEXT NOT NULL, session_id TEXT, state TEXT NOT NULL,
+      started_at TEXT NOT NULL, ended_at TEXT, cost_usd REAL, result TEXT, error TEXT, archived_at TEXT, mode TEXT, attachments TEXT)`);
+    legacy.query("INSERT INTO agent_runs (id, prompt, state, started_at, cost_usd) VALUES ('run_old', 'p', 'succeeded', ?, 0.5)").run(TS);
+    legacy.run("PRAGMA user_version = 6");
+    legacy.close();
+    const db = openDatabase(path);
+    const columns = db.query<{ name: string }, []>("PRAGMA table_info(agent_runs)").all().map((column) => column.name);
+    expect(columns).not.toContain("cost_usd");
+    expect(columns).toEqual(expect.arrayContaining(["input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens"]));
+    expect(new Repositories(db).agentRuns.get("run_old")).toMatchObject({ state: "succeeded", usage: null });
+    db.close();
   });
 
   test("round-trips every entity, upserts, filters, limits and orders newest first", () => {
@@ -121,14 +156,14 @@ describe("database and repositories", () => {
     repos.builds.save(record);
     expect(repos.builds.get("b1")).toEqual(record);
 
-    const artifact = { id: "a1", projectId: "app", buildId: "b1", fileName: "f.zip", path: "/a/f.zip", sizeBytes: 3, sha256: "x", platform: "web", createdAt: TS };
+    const artifact = { id: "a1", projectId: "app", buildId: "b1", fileName: "f.zip", path: "/a/f.zip", sizeBytes: 3, sha256: "x", platform: "web", source: "build" as const, agentRunId: null, note: null, createdAt: TS };
     repos.artifacts.save(artifact);
     repos.artifacts.save({ ...artifact, id: "a2", createdAt: "2024-01-01T00:00:05.000Z" });
     expect(repos.artifactsForBuild("b1").map((a) => a.id)).toEqual(["a1", "a2"]);
     expect(repos.artifactsForBuild("other")).toEqual([]);
 
-    repos.agentRuns.save(agentRun({ costUsd: 0.5, result: "ok" }));
-    expect(repos.agentRuns.get("r1")).toMatchObject({ costUsd: 0.5, result: "ok" });
+    repos.agentRuns.save(agentRun({ usage: { inputTokens: 12, outputTokens: 340, cacheReadTokens: 5600, cacheWriteTokens: 78, totalTokens: 6030 }, result: "ok" }));
+    expect(repos.agentRuns.get("r1")).toMatchObject({ usage: { inputTokens: 12, outputTokens: 340, cacheReadTokens: 5600, cacheWriteTokens: 78, totalTokens: 6030 }, result: "ok" });
     repos.appendAgentEvent("r1", { kind: "text", text: "b", seq: 2, ts: TS });
     repos.appendAgentEvent("r1", { kind: "text", text: "a", seq: 1, ts: TS });
     repos.appendAgentEvent("r1", { kind: "text", text: "a2", seq: 1, ts: TS });
@@ -166,7 +201,8 @@ describe("ArtifactService", () => {
     const hub = new EventHub(silentLogger);
     const events: string[] = [];
     hub.subscribe((event) => events.push(event.type));
-    return { config, repos, events, service: new ArtifactService(config, repos, hub, silentLogger), db };
+    const inbox = new InboxService(repos, hub, silentLogger);
+    return { config, repos, events, inbox, service: new ArtifactService(config, repos, hub, inbox, silentLogger), db };
   }
   const meta = { projectId: "app", buildId: "b1", platform: "web", profile: "debug" as const, version: "1.0" };
 
@@ -284,7 +320,7 @@ describe("renderRuntime", () => {
         ],
         activeBuilds: [build({ state: "running", stage: "compile" })],
         recentBuilds: [
-          build({ id: "ok", artifacts: [{ id: "a", projectId: "app", buildId: "ok", fileName: "x.zip", path: "/x", sizeBytes: 1, sha256: "s", platform: "web", createdAt: TS }] }),
+          build({ id: "ok", artifacts: [{ id: "a", projectId: "app", buildId: "ok", fileName: "x.zip", path: "/x", sizeBytes: 1, sha256: "s", platform: "web", source: "build", agentRunId: null, note: null, createdAt: TS }] }),
           build({ id: "logs" }),
           build({ id: "bad", state: "failed", error: "boom" }),
         ],

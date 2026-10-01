@@ -74,6 +74,7 @@ function TerminalSession({ id }: { id: string }) {
         onMessage={session.handleMessage}
         onLoad={session.handleLoad}
         onError={session.handleError}
+        onTerminate={session.handleTerminate}
         onReconnect={session.reconnect}
       />
     </ScreenScaffold>

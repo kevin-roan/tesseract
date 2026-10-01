@@ -41,9 +41,11 @@ sandbox id), THEONE_E2E_ENV_FILE (for `infra/scripts/sandbox --env-file`),
 THEONE_E2E_VNC_PORT and THEONE_E2E_VNC_PASSWORD.
 
 Overrides: THEONE_E2E_IMAGE, THEONE_E2E_PROJECT (must start with theone-e2e),
-THEONE_E2E_CONTROLLER_PORT, THEONE_E2E_VNC_PORT, THEONE_E2E_HEALTH_TIMEOUT (seconds).
+THEONE_E2E_CONTROLLER_PORT, THEONE_E2E_VNC_PORT, THEONE_E2E_HEALTH_TIMEOUT (seconds),
+THEONE_E2E_CLAUDE_DIR (host dir mounted at /home/dev/.claude; default: an empty temporary
+dir, so the host's ~/.claude is never touched and Claude is not logged in).
 The stack never reads infra/compose/.env; other THEONE_* variables are ignored, while
-build arguments (WITH_ANDROID, …) and Claude credentials exported in the shell apply.
+build arguments (WITH_ANDROID, …) exported in the shell apply.
 EOF
 }
 
@@ -61,6 +63,8 @@ keep=""
 web=""
 test_args=()
 env_file=""
+claude_dir=""
+host_claude_dir=""
 stack_started=""
 
 parse_args() {
@@ -102,6 +106,9 @@ cleanup() {
   if [[ -n "${env_file}" ]]; then
     rm -f -- "${env_file}"
   fi
+  if [[ -n "${claude_dir}" && -z "${keep}" ]]; then
+    rm -rf -- "${claude_dir}" 2> /dev/null || log "could not remove ${claude_dir}"
+  fi
   exit "${status}"
 }
 
@@ -115,6 +122,19 @@ isolate_environment() {
       THEONE_* | COMPOSE_PROJECT_NAME | COMPOSE_FILE | COMPOSE_PROFILES) unset "${name}" ;;
     esac
   done
+}
+
+# The sandbox mounts THEONE_HOST_CLAUDE_DIR read-write: never the host's real ~/.claude
+# unless THEONE_E2E_CLAUDE_DIR asks for it. World-writable so any DEV_UID can use it.
+prepare_claude_dir() {
+  if [[ -n "${THEONE_E2E_CLAUDE_DIR:-}" ]]; then
+    [[ -d "${THEONE_E2E_CLAUDE_DIR}" ]] || die "THEONE_E2E_CLAUDE_DIR=${THEONE_E2E_CLAUDE_DIR} is not a directory"
+    host_claude_dir="${THEONE_E2E_CLAUDE_DIR}"
+    return
+  fi
+  claude_dir="$(mktemp -d "${TMPDIR:-/tmp}/theone-e2e-claude.XXXXXX")"
+  chmod 0777 "${claude_dir}"
+  host_claude_dir="${claude_dir}"
 }
 
 write_env_file() {
@@ -132,6 +152,7 @@ THEONE_HOSTNAME=${PROJECT}
 THEONE_TOKEN=${TOKEN}
 THEONE_VNC_PASSWORD=${VNC_PASSWORD}
 THEONE_LOG_LEVEL=debug
+THEONE_HOST_CLAUDE_DIR=${host_claude_dir}
 EOF
 }
 
@@ -196,6 +217,7 @@ main() {
   trap cleanup EXIT
   trap 'exit 130' INT
   trap 'exit 143' TERM
+  prepare_claude_dir
   write_env_file
   prepare_image
 

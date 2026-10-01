@@ -2,7 +2,7 @@
 
 # TheOne sandbox image. Build context = repository root:
 #   docker build -f infra/docker/sandbox/Dockerfile --target sandbox -t theone/sandbox:dev .
-# Stages: controller-build, base, desktop, electron, android, sandbox (default).
+# Stages: controller-build, base, desktop, electron, android-sdk, android, whisper, sandbox (default).
 
 ARG DEBIAN_IMAGE=debian:trixie-slim
 ARG BUN_VERSION=1.4.2
@@ -51,12 +51,12 @@ RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked 
     --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
  && apt-get install -y --no-install-recommends \
-      bash-completion build-essential bzip2 ca-certificates curl docker-buildx docker-cli \
+      bash-completion build-essential bzip2 ca-certificates coreutils curl docker-buildx docker-cli \
       docker-compose fd-find file fontconfig fonts-dejavu-core fonts-liberation2 \
       fonts-noto-color-emoji git git-lfs gnupg htop iproute2 jq less locales lsof nano \
       netcat-openbsd openssh-client pipx pkg-config procps psmisc python3 python3-pip \
       python3-venv ripgrep rsync sqlite3 sudo supervisor tini tmux tree tzdata unzip \
-      vim-tiny wget xz-utils zip zstd \
+      util-linux vim-tiny wget xz-utils zip zstd \
  && sed -i 's/^# *\(en_US.UTF-8 UTF-8\)/\1/' /etc/locale.gen \
  && locale-gen \
  && git lfs install --system
@@ -110,7 +110,7 @@ RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked 
     --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
  && apt-get install -y --no-install-recommends \
-      chromium dbus-x11 imagemagick libasound2t64 libatk-bridge2.0-0t64 libcups2t64 libdrm2 \
+      chromium dbus-x11 ffmpeg imagemagick libasound2t64 libatk-bridge2.0-0t64 libcups2t64 libdrm2 \
       libgbm1 libgtk-3-0t64 libnotify4 libnss3 libsecret-1-0 libxkbcommon0 libxrandr2 libxss1 \
       libxtst6 openbox python3-xdg tigervnc-standalone-server tigervnc-tools x11-apps \
       x11-utils x11-xserver-utils xauth xdg-utils xdotool xterm \
@@ -176,6 +176,40 @@ RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked 
     "$sdkmanager" --sdk_root="${ANDROID_HOME}" --list_installed; \
     rm -rf /tmp/cmdline-tools /tmp/cmdline-tools.zip
 
+# whisper.cpp for local speech-to-text of voice notes (POST /v1/transcriptions). On by
+# default; WITH_WHISPER=false still yields an empty /opt/whisper so the COPY below stays valid.
+# WHISPER_MODELS lists the ggml models to download (space-separated): the STT profiles use
+# base (eco, balanced) and small (performance); ggml-model.bin links to the first one.
+# GGML_NATIVE=ON tunes for the build machine's CPU; pass WHISPER_CMAKE_ARGS=-DGGML_NATIVE=OFF
+# for an image that runs on other CPUs.
+FROM ${DEBIAN_IMAGE} AS whisper
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ARG DEBIAN_FRONTEND=noninteractive
+ARG WITH_WHISPER=true
+ARG WHISPER_CPP_VERSION=1.7.6
+ARG WHISPER_MODELS="base small"
+ARG WHISPER_CMAKE_ARGS=-DGGML_NATIVE=ON
+RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+    mkdir -p /opt/whisper/bin /opt/whisper/models; \
+    if [ "${WITH_WHISPER}" != "true" ]; then exit 0; fi; \
+    set -eux; \
+    rm -f /etc/apt/apt.conf.d/docker-clean; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends build-essential ca-certificates cmake curl git; \
+    curl -fsSL "https://github.com/ggml-org/whisper.cpp/archive/refs/tags/v${WHISPER_CPP_VERSION}.tar.gz" | tar -xz -C /tmp; \
+    cmake -S "/tmp/whisper.cpp-${WHISPER_CPP_VERSION}" -B /tmp/whisper-build -DCMAKE_BUILD_TYPE=Release \
+      -DBUILD_SHARED_LIBS=OFF -DGGML_OPENMP=OFF -DWHISPER_BUILD_TESTS=OFF -DWHISPER_BUILD_SERVER=OFF ${WHISPER_CMAKE_ARGS}; \
+    cmake --build /tmp/whisper-build --config Release -j"$(nproc)" --target whisper-cli; \
+    install -m 0755 /tmp/whisper-build/bin/whisper-cli /opt/whisper/bin/whisper-cli; \
+    read -ra models <<< "${WHISPER_MODELS}"; \
+    for model in "${models[@]}"; do \
+      curl -fsSLo "/opt/whisper/models/ggml-${model}.bin" \
+        "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-${model}.bin"; \
+    done; \
+    ln -s "ggml-${models[0]}.bin" /opt/whisper/models/ggml-model.bin; \
+    rm -rf /tmp/whisper.cpp-* /tmp/whisper-build
+
 FROM electron AS android
 ARG DEV_UID
 ARG DEV_GID
@@ -196,16 +230,25 @@ ARG CLAUDE_CODE_VERSION=latest
 RUN --mount=type=cache,id=theone-npm-cache,target=/root/.npm \
     npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
  && claude --version
+COPY --from=whisper /opt/whisper /opt/whisper
+ENV THEONE_WHISPER_BIN=/opt/whisper/bin/whisper-cli \
+    THEONE_WHISPER_MODELS_DIR=/opt/whisper/models \
+    THEONE_WHISPER_MODEL=/opt/whisper/models/ggml-model.bin
 ARG THEONE_IMAGE_VERSION=0.1.0
 LABEL org.opencontainers.image.title="theone-sandbox" \
-      org.opencontainers.image.description="TheOne sandboxed development machine: Xvnc + openbox, wine, Electron/Android/Node tooling, Claude Code and theone-controller" \
+      org.opencontainers.image.description="TheOne sandboxed development machine: Xvnc + openbox, wine, Electron/Android/Node tooling, ffmpeg, Claude Code and theone-controller" \
       org.opencontainers.image.version="${THEONE_IMAGE_VERSION}" \
       org.opencontainers.image.vendor="TheOne" \
       org.opencontainers.image.base.name="debian:trixie-slim"
 COPY infra/docker/sandbox/rootfs/ /
 COPY SPEC.md /etc/theone/SPEC.md
+# The agent spec becomes Claude Code's managed memory (/etc/claude-code/CLAUDE.md, ahead of
+# the rootfs notes there): /home/dev/.claude is the host's Claude dir, so nothing goes there.
 RUN chmod 0755 /usr/local/bin/theone-* \
- && install -d -m 1777 /tmp/.X11-unix
+ && install -d -m 1777 /tmp/.X11-unix \
+ && { cat /etc/theone/SPEC.md; printf '\n'; cat /etc/claude-code/CLAUDE.md; } > /tmp/theone-claude.md \
+ && install -m 0644 /tmp/theone-claude.md /etc/claude-code/CLAUDE.md \
+ && rm -f /tmp/theone-claude.md
 COPY --from=controller-build --chmod=0755 /src/apps/controller/dist/theone-controller /usr/local/bin/theone-controller
 ENV THEONE_IMAGE_VERSION=${THEONE_IMAGE_VERSION} \
     THEONE_HOST=0.0.0.0 \

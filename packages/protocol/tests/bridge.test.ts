@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import * as bridge from "../src/bridge";
-import { PAGE_MESSAGES, PAGE_STATES } from "../src/index";
+import { INPUT_MODES, PAGE_MESSAGES, PAGE_STATES, VNC_ACTIONS } from "../src/index";
 
 describe("page bridge contract", () => {
   test("is re-exported from the package root", () => {
@@ -11,10 +11,13 @@ describe("page bridge contract", () => {
   test("message names are unique and page-prefixed", () => {
     const names = Object.values(PAGE_MESSAGES);
     expect(new Set(names).size).toBe(names.length);
-    for (const [key, name] of Object.entries(PAGE_MESSAGES)) {
-      if (key === "reconnect") expect(name).toBe("theone-reconnect");
-      else expect(name).toMatch(/^(terminal|vnc)-(state|need-ticket)$/);
-    }
+    for (const name of names) expect(name).toMatch(/^(terminal-(state|need-ticket)|vnc-(state|need-ticket|action)|theone-[a-z-]+)$/);
+    expect(PAGE_MESSAGES.reconnect).toBe("theone-reconnect");
+    expect(PAGE_MESSAGES.inputMode).toBe("theone-input-mode");
+    expect(PAGE_MESSAGES.insets).toBe("theone-insets");
+    expect(PAGE_MESSAGES.vncAction).toBe("vnc-action");
+    expect(INPUT_MODES).toEqual(["trackpad", "touch"]);
+    expect(VNC_ACTIONS).toEqual(["browser"]);
   });
 
   test("the bridge module has no runtime dependency on zod", async () => {

@@ -1,4 +1,13 @@
-import { BUILD_PROFILES, type BuildProfile, type BuildTarget, type Framework, type TerminalKind } from "@theone/protocol";
+import {
+  BUILD_PROFILES,
+  type AgentRunState,
+  type BuildProfile,
+  type BuildState,
+  type BuildTarget,
+  type Framework,
+  type ProcessState,
+  type TerminalKind,
+} from "@theone/protocol";
 
 import type { ChoiceOption } from "@/components/choice-group";
 
@@ -33,6 +42,35 @@ const PROFILES: Record<BuildProfile, string> = {
   debug: "Debug",
   release: "Release",
 };
+
+const BUILD_VERBS: Record<BuildState, string> = {
+  queued: "queued",
+  running: "is building",
+  succeeded: "built",
+  failed: "failed to build",
+  cancelled: "cancelled",
+};
+
+const RUN_VERBS: Record<AgentRunState, string> = {
+  running: "is running Claude in",
+  succeeded: "ran Claude in",
+  failed: "had a failed Claude run in",
+  cancelled: "cancelled a Claude run in",
+};
+
+const PROCESS_VERBS: Record<ProcessState, string> = {
+  starting: "is starting",
+  running: "is running",
+  exited: "ran",
+  failed: "ran",
+  stopped: "stopped",
+  orphaned: "left behind",
+};
+
+export const buildActivityAction = (build: { state: BuildState; target: BuildTarget }): string =>
+  `${BUILD_VERBS[build.state]} ${BUILD_TARGETS[build.target].label} for`;
+export const agentRunActivityAction = (state: AgentRunState): string => RUN_VERBS[state];
+export const processActivityAction = (state: ProcessState): string => PROCESS_VERBS[state];
 
 export const buildTargetLabel = (target: BuildTarget): string => BUILD_TARGETS[target].label;
 export const buildTargetOptions = (targets: readonly BuildTarget[]): BuildTargetOption[] =>

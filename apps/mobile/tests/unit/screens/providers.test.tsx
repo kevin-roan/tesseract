@@ -28,7 +28,22 @@ jest.mock("expo-router", () => {
   Stack.Screen = function Screen({ name }: { name: string }) {
     return <MockText>{name}</MockText>;
   };
-  return { Stack };
+  Stack.Protected = function Protected({ guard, children }: { guard: boolean; children: React.ReactNode }) {
+    return guard ? <>{children}</> : null;
+  };
+  return { Stack, useNavigationContainerRef: () => null };
+});
+jest.mock("@/features/island/components/island-host", () => {
+  const { Text: MockText } = jest.requireActual<typeof import("react-native")>("react-native");
+  return function MockIslandHost() {
+    return <MockText>island-host</MockText>;
+  };
+});
+jest.mock("@/features/inbox/components/inbox-notifier", () => {
+  const { Text: MockText } = jest.requireActual<typeof import("react-native")>("react-native");
+  return function MockInboxNotifier() {
+    return <MockText>inbox-notifier</MockText>;
+  };
 });
 jest.mock("@/components/app-tabs", () => {
   const { Text: MockText } = jest.requireActual<typeof import("react-native")>("react-native");
@@ -90,8 +105,23 @@ describe("SandboxEventsBridge", () => {
 
 describe("RootLayout", () => {
   const original = useSandboxStore.getState().hydrate;
-  beforeEach(() => useSandboxStore.setState({ hydrate: jest.fn(async () => undefined) }));
-  afterAll(() => useSandboxStore.setState({ hydrate: original }));
+  const sandbox = { id: "sb", name: "Studio", baseUrl: "https://studio.ts.net", addedAt: "2026-01-01T00:00:00.000Z" };
+  const sandboxRoutes = [
+    "(tabs)",
+    "sandbox/display",
+    "sandbox/terminal/[id]",
+    "sandbox/projects/new",
+    "sandbox/agent/[id]",
+    "inbox",
+    "chats/index",
+    "chats/[id]",
+    "inbox-notifier",
+  ];
+
+  beforeEach(() =>
+    useSandboxStore.setState({ hydrate: jest.fn(async () => undefined), hydrated: true, sandboxes: [], activeId: null }),
+  );
+  afterAll(() => useSandboxStore.setState({ hydrate: original, hydrated: false, sandboxes: [], activeId: null }));
 
   it("renders nothing until fonts settle", async () => {
     mockUseFonts.mockReturnValue([false, null]);
@@ -100,16 +130,32 @@ describe("RootLayout", () => {
     expect(SplashScreen.hideAsync).not.toHaveBeenCalled();
   });
 
+  it("renders nothing until the paired sandboxes are hydrated", async () => {
+    mockUseFonts.mockReturnValue([true, null]);
+    useSandboxStore.setState({ hydrated: false });
+    await render(<RootLayout />);
+    expect(screen.queryByTestId("stack")).toBeNull();
+    expect(SplashScreen.hideAsync).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["loaded", [true, null]],
     ["failed", [false, new Error("font")]],
-  ])("registers every sandbox route once fonts are %s", async (_state, fonts) => {
+  ])("shows onboarding and pairing when unpaired once fonts are %s", async (_state, fonts) => {
     mockUseFonts.mockReturnValue(fonts);
     await render(<RootLayout />);
     expect(SplashScreen.hideAsync).toHaveBeenCalled();
-    for (const route of ["(tabs)", "pair", "sandbox/display", "sandbox/terminal/[id]", "sandbox/projects/new", "sandbox/agent/[id]"]) {
-      expect(screen.getByText(route)).toBeOnTheScreen();
-    }
+    expect(screen.getByText("(onboarding)")).toBeOnTheScreen();
+    expect(screen.getByText("pair")).toBeOnTheScreen();
+    for (const route of sandboxRoutes) expect(screen.queryByText(route)).toBeNull();
+  });
+
+  it("registers the tabs and every sandbox route once paired", async () => {
+    mockUseFonts.mockReturnValue([true, null]);
+    useSandboxStore.setState({ sandboxes: [sandbox], activeId: sandbox.id });
+    await render(<RootLayout />);
+    for (const route of [...sandboxRoutes, "pair"]) expect(screen.getByText(route)).toBeOnTheScreen();
+    expect(screen.queryByText("(onboarding)")).toBeNull();
   });
 });
 

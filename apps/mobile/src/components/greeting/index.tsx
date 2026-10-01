@@ -1,27 +1,36 @@
 import { useMemo } from "react";
-import { View } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { MaxFontSizeMultiplier } from "@/theme";
+
 import useGetGreeting from "./hooks/useGetGreeting";
 import createStyles from "./styles";
+import { DEFAULT_GREETING_NAME } from "./utils/constants";
 
-const GreetinText = () => {
+export type GreetingProps = {
+  name?: string | null;
+  date?: Date;
+};
+
+const Greeting = ({ name, date }: GreetingProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-
-  const date = new Date();
-  const username = "Kevin Roan";
-  const { salutation, timeOfDay } = useGetGreeting(username, date);
+  const { salutation } = useGetGreeting(name || DEFAULT_GREETING_NAME, date);
 
   return (
-    <View style={styles.container}>
-      <ThemedText variant="caption" color="textSecondary">
-        {salutation}
-      </ThemedText>
-      <ThemedText variant="h3">{timeOfDay}</ThemedText>
-    </View>
+    <ThemedText
+      variant="greeting"
+      numberOfLines={2}
+      maxFontSizeMultiplier={MaxFontSizeMultiplier.heading}
+      accessibilityRole="header"
+      style={styles.title}
+    >
+      {salutation}
+    </ThemedText>
   );
 };
 
-export default GreetinText;
+export { Greeting };
+
+export default Greeting;

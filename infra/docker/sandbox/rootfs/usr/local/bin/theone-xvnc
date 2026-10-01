@@ -15,6 +15,9 @@ if [[ -f "${lock}" ]]; then
   fi
 fi
 
+# Every client reaches Xvnc from 127.0.0.1 (controller bridge, its RFB probe, tailscale serve), so
+# TigerVNC's per-host blacklist would lock out everyone after a few pre-auth hang-ups. Tickets and
+# tailnet ACLs guard access instead.
 exec Xvnc "${display}" \
   -geometry "${THEONE_DISPLAY_GEOMETRY:-1600x900}" \
   -depth 24 \
@@ -22,5 +25,6 @@ exec Xvnc "${display}" \
   -rfbauth "${HOME}/.vnc/passwd" \
   -SecurityTypes VncAuth \
   -AlwaysShared \
+  -UseBlacklist=0 \
   -desktop "TheOne ${THEONE_SANDBOX_ID:-${HOSTNAME}}" \
   -nolisten tcp

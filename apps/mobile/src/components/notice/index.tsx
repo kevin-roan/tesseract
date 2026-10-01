@@ -25,14 +25,18 @@ const Notice = ({ message, title, tone = "neutral", icon: IconComponent, actionL
 
   return (
     <View style={styles.notice} accessibilityRole="alert">
-      {IconComponent ? <IconComponent size={IconSize.md} color={theme.colors[foreground]} weight="duotone" /> : null}
+      {IconComponent ? (
+        <View style={styles.iconBadge}>
+          <IconComponent size={IconSize.md} color={theme.colors[foreground]} weight="duotone" />
+        </View>
+      ) : null}
       <View style={styles.body}>
         {title ? (
-          <ThemedText variant="bodyStrong" color={foreground}>
+          <ThemedText variant="h4" color={foreground}>
             {title}
           </ThemedText>
         ) : null}
-        <ThemedText variant="bodySmall" color="text">
+        <ThemedText variant="bodySmall" color="textSecondary">
           {message}
         </ThemedText>
       </View>
@@ -42,9 +46,9 @@ const Notice = ({ message, title, tone = "neutral", icon: IconComponent, actionL
           accessibilityLabel={actionLabel}
           hitSlop={HitSlop.md}
           onPress={onAction}
-          style={({ pressed }) => pressed && styles.pressed}
+          style={({ pressed }) => [styles.action, pressed && styles.pressed]}
         >
-          <ThemedText variant="label" color={foreground}>
+          <ThemedText variant="label" color="text" numberOfLines={1}>
             {actionLabel}
           </ThemedText>
         </Pressable>

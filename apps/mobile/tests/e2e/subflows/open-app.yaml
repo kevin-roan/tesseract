@@ -1,0 +1,28 @@
+appId: com.kevinbpract.theone
+---
+- stopApp
+- openLink: exp+theone://expo-development-client/?url=${DEV_SERVER_URL}
+- extendedWaitUntil:
+    visible: "This is the developer menu.*|Profile|Get started|Next"
+    timeout: 90000
+- runFlow:
+    when:
+      visible: "This is the developer menu.*"
+    commands:
+      - tapOn: "Continue"
+      - runFlow:
+          when:
+            visible: "Open React Native dev menu"
+          commands:
+            - back
+- runFlow:
+    when:
+      notVisible:
+        id: "onboarding-welcome"
+    commands:
+      - extendedWaitUntil:
+          visible:
+            text: "Profile"
+            containsDescendants:
+              - id: ".*navigation_bar_item_icon_view"
+          timeout: 30000

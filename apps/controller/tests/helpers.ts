@@ -31,11 +31,15 @@ export function writeFiles(root: string, files: Record<string, string>): void {
   }
 }
 
-export function installFakeClaude(dir: string): string {
-  const target = join(dir, "fake-claude");
-  copyFileSync(FAKE_CLAUDE, target);
+export function installFixture(dir: string, fixture: string, name: string): string {
+  const target = join(dir, name);
+  copyFileSync(join(import.meta.dir, "fixtures", fixture), target);
   chmodSync(target, 0o755);
   return target;
+}
+
+export function installFakeClaude(dir: string): string {
+  return installFixture(dir, "fake-claude.sh", "fake-claude");
 }
 
 export async function waitFor<T>(check: () => T | Promise<T>, timeoutMs = 5_000, intervalMs = 25): Promise<NonNullable<T>> {
@@ -91,8 +95,13 @@ export async function startTestController(
     THEONE_DISPLAY: ":987",
     THEONE_VNC_HOST: "127.0.0.1",
     THEONE_VNC_PORT: "1",
+    THEONE_CHROMIUM_DEBUG_PORT: "1",
     THEONE_CLAUDE_BIN: "/nonexistent/claude",
+    THEONE_TAILSCALE_SOCKET: "/nonexistent/tailscaled.sock",
+    CLAUDE_CONFIG_DIR: join(workspace, ".claude"),
     THEONE_SANDBOX_ID: "test-sandbox",
+    THEONE_PUSH_URL: "off",
+    THEONE_WHISPER_MODELS_DIR: join(workspace, ".whisper-models"),
     THEONE_LOG_LEVEL: "error",
     ...options.env,
   });

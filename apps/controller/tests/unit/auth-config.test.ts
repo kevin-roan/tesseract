@@ -151,8 +151,10 @@ describe("loadConfig", () => {
       vncHost: "127.0.0.1",
       vncPort: 5901,
       vncPassword: null,
+      chromiumDebugPort: 9222,
       claudeBin: "claude",
       claudePermissionMode: "bypassPermissions",
+      tailscaleSocket: "/run/tailscale/tailscaled.sock",
       logLevel: "info",
       corsOrigins: ["*"],
       shell: ["bash", "-l"],
@@ -174,8 +176,10 @@ describe("loadConfig", () => {
       THEONE_VNC_HOST: "vnc",
       THEONE_VNC_PORT: "5902",
       THEONE_VNC_PASSWORD: "pw",
+      THEONE_CHROMIUM_DEBUG_PORT: "9333",
       THEONE_CLAUDE_BIN: "/opt/claude",
       THEONE_CLAUDE_PERMISSION_MODE: "acceptEdits",
+      THEONE_TAILSCALE_SOCKET: " /var/run/tailscale/tailscaled.sock ",
       THEONE_SANDBOX_ID: "box",
       THEONE_LOG_LEVEL: "debug",
       THEONE_CORS_ORIGINS: " https://a.example , ,https://b.example ",
@@ -193,8 +197,10 @@ describe("loadConfig", () => {
       vncHost: "vnc",
       vncPort: 5902,
       vncPassword: "pw",
+      chromiumDebugPort: 9333,
       claudeBin: "/opt/claude",
       claudePermissionMode: "acceptEdits",
+      tailscaleSocket: "/var/run/tailscale/tailscaled.sock",
       sandboxId: "box",
       logLevel: "debug",
       corsOrigins: ["https://a.example", "https://b.example"],
@@ -214,9 +220,11 @@ describe("loadConfig", () => {
       [{ THEONE_PORT: "80.5" }, "THEONE_PORT"],
       [{ THEONE_PORT: "0x50" }, "THEONE_PORT"],
       [{ THEONE_VNC_PORT: "0" }, "THEONE_VNC_PORT"],
+      [{ THEONE_CHROMIUM_DEBUG_PORT: "0" }, "THEONE_CHROMIUM_DEBUG_PORT"],
       [{ THEONE_WORKSPACE: "relative/path" }, "THEONE_WORKSPACE"],
       [{ THEONE_DATA_DIR: "data" }, "THEONE_DATA_DIR"],
       [{ THEONE_TOKEN_FILE: "token" }, "THEONE_TOKEN_FILE"],
+      [{ THEONE_TAILSCALE_SOCKET: "tailscaled.sock" }, "THEONE_TAILSCALE_SOCKET"],
       [{ THEONE_TOKEN: "has space" }, "THEONE_TOKEN"],
       [{ THEONE_PUBLIC_URL: "not a url" }, "THEONE_PUBLIC_URL"],
       [{ THEONE_DISPLAY: "1" }, "THEONE_DISPLAY"],
@@ -242,6 +250,12 @@ describe("loadConfig", () => {
       logLevel: "info",
       tokenFromEnv: null,
     });
+  });
+
+  test("the Claude config dir follows CLAUDE_CONFIG_DIR, else HOME", () => {
+    expect(loadConfig({ HOME: "/home/dev" }).claudeConfigDir).toBe("/home/dev/.claude");
+    expect(loadConfig({ HOME: "/home/dev", CLAUDE_CONFIG_DIR: " /srv/claude/ " }).claudeConfigDir).toBe("/srv/claude");
+    expect(() => loadConfig({ CLAUDE_CONFIG_DIR: "claude" })).toThrow(ConfigError);
   });
 });
 

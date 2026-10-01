@@ -3,9 +3,13 @@ import {
   createId,
   LIMITS,
   type AgentRun,
+  type AgentRunBatchResult,
   type AgentRunDetail,
   type AgentRunEvent,
+  type ArchiveAgentRuns,
+  type DeleteAgentRuns,
   type StartAgentRun,
+  type Upload,
 } from "@theone/protocol";
 import { badRequest, notFound, unavailable } from "../core/errors";
 import { childEnv, resolveExecutable } from "../core/exec";
@@ -19,6 +23,7 @@ import type { Logger } from "../core/logger";
 import type { Repositories } from "../db/repositories";
 import type { Config } from "../config";
 import { AgentStreamParser, toEvent, type AgentEventBody, type AgentStreamResult } from "./agent-stream";
+import type { UploadService } from "./uploads";
 
 export type AgentEventListener = (event: AgentRunEvent) => void;
 
@@ -37,11 +42,29 @@ const MAX_NDJSON_LINE_CHARS = 32 * 1024 * 1024;
 const STDERR_LINES = 20;
 const READER_GRACE_MS = 1_000;
 
+export type ClaudeArgsOptions = {
+  resumeSessionId?: string;
+  attachments?: readonly Upload[];
+  uploadsDir?: string;
+};
+
+/** Audio is left out: its transcript already is the prompt, the recording is only kept for replay. */
+export function readableAttachments(attachments: readonly Upload[]): Upload[] {
+  return attachments.filter((upload) => upload.kind !== "audio");
+}
+
+export function attachmentBlock(attachments: readonly Upload[]): string {
+  if (attachments.length === 0) return "";
+  const lines = attachments.map((upload) => `- ${upload.path} (${upload.mimeType})`);
+  return `\n\nAttached files (read them with the Read tool):\n${lines.join("\n")}`;
+}
+
 /**
  * The prompt always goes to stdin: as an argument, a prompt such as "--mcp-config=…"
  * or "install" would be parsed by the claude CLI as an option or a subcommand.
  */
-export function claudeArgs(prompt: string, permissionMode: string, resumeSessionId?: string): { argv: string[]; stdin: string } {
+export function claudeArgs(prompt: string, permissionMode: string, options: ClaudeArgsOptions = {}): { argv: string[]; stdin: string } {
+  const readable = readableAttachments(options.attachments ?? []);
   const argv = [
     "-p",
     "--output-format",
@@ -49,9 +72,10 @@ export function claudeArgs(prompt: string, permissionMode: string, resumeSession
     "--verbose",
     "--permission-mode",
     permissionMode,
-    ...(resumeSessionId ? ["--resume", resumeSessionId] : []),
+    ...(readable.length > 0 && options.uploadsDir ? ["--add-dir", options.uploadsDir] : []),
+    ...(options.resumeSessionId ? ["--resume", options.resumeSessionId] : []),
   ];
-  return { argv, stdin: prompt };
+  return { argv, stdin: `${prompt}${attachmentBlock(readable)}` };
 }
 
 export class AgentRunService {
@@ -61,6 +85,7 @@ export class AgentRunService {
     private readonly config: Config,
     private readonly repos: Repositories,
     private readonly hub: EventHub,
+    private readonly uploads: UploadService,
     private readonly logger: Logger,
     private readonly stopGraceMs: number = LIMITS.processStopGraceMs,
   ) {}
@@ -77,6 +102,7 @@ export class AgentRunService {
       cwd = location.path;
       projectId = location.id;
     }
+    const attachments = this.uploads.resolve(input.attachmentIds ?? []);
     const claude = resolveExecutable(this.config.claudeBin);
     if (!claude) throw unavailable(`Claude Code (${this.config.claudeBin}) is not installed in this sandbox`);
 
@@ -84,15 +110,22 @@ export class AgentRunService {
       id: createId("agentRun"),
       projectId,
       prompt: input.prompt,
+      mode: input.mode ?? null,
+      attachments,
       sessionId: input.resumeSessionId ?? null,
       state: "running",
       startedAt: nowIso(),
       endedAt: null,
-      costUsd: null,
+      usage: null,
       result: null,
       error: null,
+      archivedAt: null,
     };
-    const { argv, stdin } = claudeArgs(input.prompt, this.config.claudePermissionMode, input.resumeSessionId);
+    const { argv, stdin } = claudeArgs(input.prompt, input.mode ?? this.config.claudePermissionMode, {
+      resumeSessionId: input.resumeSessionId,
+      attachments,
+      uploadsDir: this.uploads.root,
+    });
     const { CLAUDECODE: _nested, ...env } = childEnv();
     let proc: LiveRun["proc"];
     try {
@@ -159,7 +192,7 @@ export class AgentRunService {
     } else if (result) {
       run.state = result.isError ? "failed" : "succeeded";
       run.result = result.result;
-      run.costUsd = result.costUsd;
+      run.usage = result.usage;
       run.error = result.isError ? (result.result ?? result.subtype ?? "Claude reported an error") : null;
     } else {
       run.state = "failed";
@@ -209,8 +242,8 @@ export class AgentRunService {
     return { ...run, events: this.repos.agentEvents(id) };
   }
 
-  list(projectId?: string): AgentRun[] {
-    return this.repos.agentRuns.list({ projectId }).map((run) => {
+  list(filter: { projectId?: string; archived?: boolean } = {}): AgentRun[] {
+    return this.repos.agentRunList({ projectId: filter.projectId, archived: filter.archived ?? false }).map((run) => {
       const entry = this.live.get(run.id);
       return entry ? { ...entry.run } : run;
     });
@@ -238,6 +271,24 @@ export class AgentRunService {
       await terminateGroup(entry.proc.pid, entry.proc.exited, this.stopGraceMs);
     }
     return entry.finished;
+  }
+
+  /** Running runs are skipped; publishes `agent.updated` for every run whose archived state changed. */
+  archive(input: ArchiveAgentRuns): AgentRunBatchResult {
+    const target = "ids" in input ? { ids: input.ids } : { all: true as const, projectId: input.projectId };
+    const changed = this.repos.setAgentRunsArchived(target, input.archived ? nowIso() : null, [...this.live.keys()]);
+    for (const run of changed) this.hub.publish({ type: "agent.updated", run });
+    return { count: changed.length };
+  }
+
+  /** Permanently removes finished runs and their events; running runs are skipped. */
+  delete(input: DeleteAgentRuns): AgentRunBatchResult {
+    const ids = this.repos.deleteAgentRuns(input, [...this.live.keys()]);
+    if (ids.length > 0) {
+      this.hub.publish({ type: "agent.deleted", ids });
+      this.logger.info("agent runs deleted", { count: ids.length });
+    }
+    return { count: ids.length };
   }
 
   running(): AgentRun[] {

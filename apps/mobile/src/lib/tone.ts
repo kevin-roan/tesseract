@@ -6,7 +6,7 @@ export type ToneColor = { foreground: ThemeColor; background: ThemeColor };
 
 export const ToneColors: Record<Tone, ToneColor> = {
   neutral: { foreground: "textSecondary", background: "backgroundElement" },
-  info: { foreground: "accentPressed", background: "accentMuted" },
+  info: { foreground: "info", background: "infoMuted" },
   success: { foreground: "success", background: "successMuted" },
   warning: { foreground: "warning", background: "warningMuted" },
   danger: { foreground: "danger", background: "dangerMuted" },

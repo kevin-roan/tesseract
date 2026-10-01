@@ -1,0 +1,37 @@
+appId: com.kevinbpract.theone
+---
+- runFlow:
+    when:
+      visible:
+        id: "onboarding-welcome"
+    commands:
+      - tapOn:
+          id: "onboarding-skip"
+      - extendedWaitUntil:
+          visible:
+            id: "onboarding-setup"
+          timeout: 10000
+      - tapOn:
+          id: "onboarding-pair"
+      - extendedWaitUntil:
+          visible: "Or enter it by hand"
+          timeout: 10000
+      - tapOn: "https://theone-sandbox.your-tailnet.ts.net"
+      - inputText: ${THEONE_URL}
+      - hideKeyboard
+      - scrollUntilVisible:
+          element: "Pairing token"
+          direction: DOWN
+      - tapOn: "Pairing token"
+      - inputText: ${THEONE_TOKEN}
+      - hideKeyboard
+      - scrollUntilVisible:
+          element: "Pair sandbox"
+          direction: DOWN
+      - tapOn: "Pair sandbox"
+      - extendedWaitUntil:
+          visible:
+            text: "Agents"
+            containsDescendants:
+              - id: ".*navigation_bar_item_icon_view"
+          timeout: 20000

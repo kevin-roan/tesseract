@@ -1,8 +1,26 @@
-import type { Hono } from "hono";
-import { PROTOCOL_VERSION, routePatterns, StatusEventInputSchema, type Health } from "@theone/protocol";
+import type { Context, Hono } from "hono";
+import { getConnInfo } from "hono/bun";
+import {
+  ClaudeImportSchema,
+  PROTOCOL_VERSION,
+  routePatterns,
+  SessionsQuerySchema,
+  StatusEventInputSchema,
+  UsageQuerySchema,
+  type Health,
+} from "@theone/protocol";
 import { nowIso } from "../../core/time";
 import type { Services } from "../../services";
-import { jsonBody } from "../validation";
+import { jsonBody, parseWith } from "../validation";
+
+function remoteAddress(c: Context): { address: string; port: number } | null {
+  try {
+    const { address, port } = getConnInfo(c).remote;
+    return address && port !== undefined ? { address, port } : null;
+  } catch {
+    return null;
+  }
+}
 
 export function registerSystemRoutes(app: Hono, services: Services): void {
   const { rest } = routePatterns;
@@ -23,7 +41,23 @@ export function registerSystemRoutes(app: Hono, services: Services): void {
 
   app.get(rest.context, (c) => c.json(services.context()));
 
+  app.get(rest.identity, async (c) =>
+    c.json(await services.identity.identity({ headers: c.req.raw.headers, remote: remoteAddress(c) })),
+  );
+
+  app.get(rest.claudeAuth, (c) => c.json(services.claudeAuth.status()));
+
+  app.post(rest.claudeImport, async (c) => c.json(services.claudeAuth.import(await jsonBody(c, ClaudeImportSchema))));
+
+  app.get(rest.ports, async (c) => c.json(await services.ports.list()));
+
+  app.get(rest.usage, async (c) => c.json(await services.usage.usage(parseWith(UsageQuerySchema, c.req.query(), "query"))));
+
+  app.get(rest.sessions, async (c) => c.json(await services.usage.sessions(parseWith(SessionsQuerySchema, c.req.query(), "query"))));
+
   app.get(rest.display, async (c) => c.json(await services.display.status()));
+
+  app.get(rest.displayBrowser, async (c) => c.json(await services.browser.status()));
 
   app.get(rest.displayScreenshot, async (c) => {
     const png = await services.display.screenshot();

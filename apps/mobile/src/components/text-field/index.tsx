@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode, type Ref } from "react";
 import { TextInput, View, type TextInputProps } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
@@ -12,6 +12,8 @@ export type TextFieldProps = Omit<TextInputProps, "style" | "placeholderTextColo
   hint?: string;
   monospace?: boolean;
   trailing?: ReactNode;
+  /** Forwarded to the input, e.g. to move focus on `returnKeyType="next"`. */
+  ref?: Ref<TextInput>;
 };
 
 const TextField = ({
@@ -23,6 +25,7 @@ const TextField = ({
   trailing,
   onFocus,
   onBlur,
+  ref,
   ...inputProps
 }: TextFieldProps) => {
   const theme = useAppTheme();
@@ -36,14 +39,15 @@ const TextField = ({
       </ThemedText>
       <View style={[styles.box, focused && styles.boxFocused, error ? styles.boxError : null]}>
         <TextInput
+          ref={ref}
           accessibilityLabel={label}
+          accessibilityHint={error ?? hint}
           autoCapitalize="none"
           autoCorrect={false}
           spellCheck={false}
           placeholderTextColor={theme.colors.textTertiary}
           selectionColor={theme.colors.focusRing}
           multiline={multiline}
-          textAlignVertical={multiline ? "top" : "center"}
           {...inputProps}
           onFocus={(event) => {
             setFocused(true);

@@ -1,7 +1,9 @@
 import RFB from "@novnc/novnc";
 import { KeyBar, Overlay, StatusBadge, type ConnectionState } from "./lib/components";
+import type { InputMode } from "@theone/protocol/bridge";
 import {
   API_PATHS,
+  DEFAULT_INPUT_MODE,
   FRAGMENT_KEYS,
   HARDWARE_KEYS,
   HOST_MESSAGES,
@@ -10,35 +12,43 @@ import {
   MESSAGES,
   TEXT_INPUT_RESET_LENGTH,
   TEXT_INPUT_SENTINEL,
+  TRACKPAD_OPTIONS,
+  VNC_HOST_KEYS,
   VNC_KEYS,
   VNC_OPTIONS,
   VNC_SUBPROTOCOLS,
   type KeyId,
+  type VncHostKeyId,
 } from "./lib/config";
-import { keepFocus, requireElement } from "./lib/dom";
+import { applyInsets, keepFocus, requireElement } from "./lib/dom";
 import { takeFragment } from "./lib/fragment";
-import { exposeHostApi, hasHost, postToHost } from "./lib/host";
+import { exposeHostApi, hasHost, parseInputMode, postToHost } from "./lib/host";
 import { keysymForChar } from "./lib/keys";
 import { webSocketUrl } from "./lib/socket";
+import { Trackpad } from "./lib/trackpad";
 
 const fragment = takeFragment();
 const firstTicket = fragment.get(FRAGMENT_KEYS.ticket);
 const password = fragment.get(FRAGMENT_KEYS.password);
 const viewOnly = fragment.get(FRAGMENT_KEYS.viewOnly) === "1";
+const embedded = hasHost();
+let inputMode: InputMode = parseInputMode(fragment.get(FRAGMENT_KEYS.input)) ?? DEFAULT_INPUT_MODE;
 
 const stage = requireElement("[data-stage]");
+const bar = requireElement("[data-bar]");
 const status = new StatusBadge(requireElement("[data-status]"));
 const title = requireElement("[data-title]");
 const overlay = new Overlay(requireElement("[data-overlay]"));
 const keyboardButton = requireElement<HTMLButtonElement>("[data-keyboard]");
 const textInput = requireElement<HTMLTextAreaElement>("[data-text-input]");
+const trackpad = new Trackpad(stage, TRACKPAD_OPTIONS);
 
 let rfb: RFB | null = null;
 let previousText = TEXT_INPUT_SENTINEL;
 
 function setState(state: ConnectionState, text: string, extra: Record<string, unknown> = {}): void {
   status.set(state, text);
-  postToHost({ type: HOST_MESSAGES.vncState, state, ...extra });
+  postToHost({ type: HOST_MESSAGES.vncState, state, inputMode, ...extra });
 }
 
 function requestReconnect(): void {
@@ -73,6 +83,7 @@ function connect(ticket: string): void {
   client.compressionLevel = VNC_OPTIONS.compressionLevel;
   client.background = VNC_OPTIONS.background;
   rfb = client;
+  trackpad.attach(stage.querySelector("canvas"));
 
   client.addEventListener("connect", () => {
     if (rfb !== client) return;
@@ -81,6 +92,7 @@ function connect(ticket: string): void {
   client.addEventListener("disconnect", (event) => {
     if (rfb !== client) return;
     rfb = null;
+    trackpad.attach(null);
     const clean = (event as CustomEvent<{ clean?: boolean }>).detail?.clean ?? false;
     showDisconnected(clean ? undefined : "connection lost");
   });
@@ -112,8 +124,29 @@ function sendKeysym(keysym: number, code: string | null): void {
   rfb.sendKey(keysym, code);
 }
 
-function pressKey(key: KeyId): void {
+function toggleKeyboard(): void {
+  if (document.activeElement === textInput) textInput.blur();
+  else {
+    resetTextInput();
+    textInput.focus();
+  }
+}
+
+function setInputMode(mode: InputMode): void {
+  inputMode = mode;
+  trackpad.setEnabled(!viewOnly && mode === "trackpad");
+}
+
+function pressKey(key: KeyId | VncHostKeyId): void {
   if (key === "ctrl") return;
+  if (key === "keyboard") {
+    toggleKeyboard();
+    return;
+  }
+  if (key === "browser") {
+    postToHost({ type: HOST_MESSAGES.vncAction, action: "browser" });
+    return;
+  }
   if (key === "ctrl-c") {
     keyBar.consume("ctrl");
     rfb?.sendKey(KEYSYMS.controlLeft, "ControlLeft", true);
@@ -125,7 +158,8 @@ function pressKey(key: KeyId): void {
   sendKeysym(keysym, code);
 }
 
-const keyBar = new KeyBar(requireElement("[data-keys]"), KEY_BAR, pressKey);
+const hostKeys = embedded ? VNC_HOST_KEYS.filter((key) => !viewOnly || key.id !== "keyboard") : [];
+const keyBar = new KeyBar<KeyId | VncHostKeyId>(requireElement("[data-keys]"), [...hostKeys, ...KEY_BAR], pressKey);
 
 function resetTextInput(): void {
   textInput.value = TEXT_INPUT_SENTINEL;
@@ -149,18 +183,17 @@ textInput.addEventListener("keydown", (event) => {
   sendKeysym(keysym, event.code || null);
 });
 
+textInput.addEventListener("focus", () => keyBar.setActive("keyboard", true));
+textInput.addEventListener("blur", () => keyBar.setActive("keyboard", false));
+
+bar.hidden = embedded;
 keepFocus(keyboardButton);
 keyboardButton.textContent = MESSAGES.keyboard;
 keyboardButton.hidden = viewOnly;
-keyboardButton.addEventListener("click", () => {
-  if (document.activeElement === textInput) textInput.blur();
-  else {
-    resetTextInput();
-    textInput.focus();
-  }
-});
+keyboardButton.addEventListener("click", toggleKeyboard);
 
-exposeHostApi({ reconnect: connect });
+exposeHostApi({ reconnect: connect, setInputMode, setInsets: applyInsets });
+setInputMode(inputMode);
 resetTextInput();
 
 if (!firstTicket) {

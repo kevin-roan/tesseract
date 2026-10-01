@@ -1,12 +1,21 @@
+import { Linking } from "react-native";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { ApiError, TheOneClient } from "@theone/client";
 import type { BuildJob, ProcessInfo } from "@theone/protocol";
-import { sampleArtifact, sampleBuild, sampleGitDetails, sampleProcess, sampleProject } from "@theone/protocol/fixtures";
+import {
+  sampleArtifact,
+  sampleBuild,
+  sampleGitDetails,
+  sampleProcess,
+  sampleProject,
+  sampleSyncChanges,
+} from "@theone/protocol/fixtures";
 
 import { useProjectDetail } from "@/features/sandbox/hooks/use-project-detail";
+import { confirm } from "@/lib/confirm";
 import { LIST_PREVIEW_LIMIT } from "@/features/sandbox/utils/constants";
 
-import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../helpers";
+import { TEST_SITE, createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../helpers";
 
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) };
 const mockLogSources: unknown[] = [];
@@ -25,7 +34,10 @@ jest.mock("@/features/sandbox/hooks/use-log-stream", () => ({
   },
 }));
 
+jest.mock("@/lib/confirm", () => ({ confirm: jest.fn() }));
+
 const MockClient = TheOneClient as unknown as jest.Mock;
+const mockConfirm = confirm as jest.Mock;
 const fake = {
   getProject: jest.fn(),
   getProjectGit: jest.fn(),
@@ -36,6 +48,9 @@ const fake = {
   stopProcess: jest.fn(),
   startBuild: jest.fn(),
   artifactDownloadUrl: jest.fn(),
+  ports: jest.fn(),
+  syncChanges: jest.fn(),
+  syncRequests: jest.fn(),
 };
 const started: ProcessInfo = { ...sampleProcess, id: "prc_new", name: "start" };
 const queuedBuild: BuildJob = { ...sampleBuild, id: "bld_new", state: "queued" };
@@ -46,6 +61,7 @@ const renderDetail = (processId: string | null = null) =>
 beforeEach(() => {
   resetSandboxState();
   seedActiveSandbox();
+  mockConfirm.mockReset().mockResolvedValue(true);
   mockLogSources.length = 0;
   Object.values(mockRouter).forEach((fn) => fn.mockClear());
   fake.getProject.mockReset().mockResolvedValue(sampleProject);
@@ -65,6 +81,12 @@ beforeEach(() => {
   fake.startProcess.mockReset().mockResolvedValue(started);
   fake.stopProcess.mockReset().mockResolvedValue({ ...sampleProcess, state: "stopped" });
   fake.startBuild.mockReset().mockResolvedValue(queuedBuild);
+  fake.ports.mockReset().mockResolvedValue({
+    tailscaleIp: "100.116.96.29",
+    ports: [{ ...TEST_SITE, port: 9000, projectId: "other", processId: null }, TEST_SITE],
+  });
+  fake.syncChanges.mockReset().mockResolvedValue(sampleSyncChanges);
+  fake.syncRequests.mockReset().mockResolvedValue([]);
   MockClient.mockReset().mockImplementation(() => fake);
 });
 
@@ -90,6 +112,8 @@ describe("useProjectDetail", () => {
     expect(result.current.logsId).toBeNull();
     expect(mockLogSources.at(-1)).toBeNull();
     expect(result.current.actionError).toBeNull();
+    await waitFor(() => expect(result.current.sync.files).toHaveLength(sampleSyncChanges.changes.length));
+    expect(fake.syncChanges).toHaveBeenCalledWith(sampleProject.id, expect.anything());
   });
 
   it("skips the git query for a project without a repository", async () => {
@@ -192,6 +216,25 @@ describe("useProjectDetail", () => {
     await waitFor(() => expect(result.current.stoppingId).toBeNull());
   });
 
+  it("asks before stopping a process and keeps it when declined", async () => {
+    mockConfirm.mockResolvedValueOnce(false);
+    const { result } = await renderDetail();
+
+    await act(async () => result.current.stopProcess(sampleProcess.id));
+    expect(mockConfirm).toHaveBeenCalledWith(expect.objectContaining({ destructive: true, confirmLabel: "Stop" }));
+    expect(fake.stopProcess).not.toHaveBeenCalled();
+    expect(result.current.stoppingId).toBeNull();
+  });
+
+  it("refreshes the project on pull", async () => {
+    const { result } = await renderDetail();
+    await waitFor(() => expect(result.current.project).toBeDefined());
+    const calls = fake.getProject.mock.calls.length;
+    await act(async () => result.current.refresh());
+    await waitFor(() => expect(fake.getProject.mock.calls.length).toBeGreaterThan(calls));
+    await waitFor(() => expect(result.current.refreshing).toBe(false));
+  });
+
   it("reports a failed stop", async () => {
     fake.stopProcess.mockRejectedValue(new Error("not running"));
     const { result } = await renderDetail();
@@ -211,5 +254,22 @@ describe("useProjectDetail", () => {
       [{ pathname: "/sandbox/terminal/[id]", params: { id: "new", kind: "claude", projectId: sampleProject.id } }],
       [{ pathname: "/sandbox/agent/[id]", params: { id: "new", projectId: sampleProject.id } }],
     ]);
+  });
+
+  it("lists the project's websites and opens them in the system browser", async () => {
+    const openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    const { result } = await renderDetail();
+    await waitFor(() => expect(result.current.sites).toEqual([TEST_SITE]));
+    expect(result.current.siteFor(sampleProcess.id)).toEqual(TEST_SITE);
+    expect(result.current.siteFor("prc_other")).toBeUndefined();
+
+    await act(async () => result.current.openSite(TEST_SITE.url!));
+    expect(openURL).toHaveBeenCalledWith(TEST_SITE.url);
+    expect(result.current.siteError).toBeNull();
+
+    openURL.mockRejectedValueOnce(new Error("No browser"));
+    await act(async () => result.current.openSite(TEST_SITE.url!));
+    await waitFor(() => expect(result.current.siteError).toBe("No browser"));
+    openURL.mockRestore();
   });
 });

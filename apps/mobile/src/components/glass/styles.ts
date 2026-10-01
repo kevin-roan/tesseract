@@ -1,34 +1,32 @@
 import { StyleSheet } from "react-native";
 
-import type { Theme } from "@/theme";
+import { Shadows, type SurfaceGlass, type Theme } from "@/theme";
 
-export default function createStyles(theme: Theme) {
+export default function createStyles(theme: Theme, glass: SurfaceGlass) {
   return StyleSheet.create({
-    surface: {
+    glass: {
       borderRadius: theme.radius.lg,
       borderCurve: "continuous",
       overflow: "hidden",
     },
-    pill: {
-      borderRadius: theme.radius.full,
-      borderCurve: "continuous",
-      overflow: "hidden",
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.xs,
+    frosted: {
+      backgroundColor: glass.fill,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: glass.border,
+    },
+    float: {
+      borderRadius: theme.radius.pill,
+      ...Shadows.float,
     },
     button: {
-      borderRadius: theme.radius.full,
-      borderCurve: "continuous",
-      overflow: "hidden",
+      borderRadius: theme.radius.pill,
       alignItems: "center",
       justifyContent: "center",
-      paddingHorizontal: theme.spacing.xl,
-      paddingVertical: theme.spacing.md,
     },
-    buttonPressed: {
-      transform: [{ scale: 0.97 }],
+    pressed: {
+      transform: [{ scale: 0.95 }],
     },
-    buttonDisabled: {
+    disabled: {
       opacity: 0.5,
     },
   });

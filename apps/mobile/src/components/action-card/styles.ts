@@ -1,8 +1,8 @@
 import { StyleSheet } from "react-native";
 
-import { Shadows, type Theme } from "@/theme";
+import type { Theme } from "@/theme";
 
-export default function createStyles(theme: Theme, featured: boolean) {
+export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     /** Fills its cell so tiles sharing a row end up the same size. */
     card: {
@@ -14,11 +14,6 @@ export default function createStyles(theme: Theme, featured: boolean) {
       padding: theme.spacing.sm,
       borderRadius: theme.radius.lg,
       borderCurve: "continuous",
-      overflow: "hidden",
-      ...(featured && {
-        backgroundColor: theme.colors.accent,
-        ...Shadows.level1,
-      }),
     },
     label: {
       textAlign: "center",

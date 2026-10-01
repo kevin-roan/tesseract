@@ -1,51 +1,68 @@
-import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router/react-navigation';
 import * as SplashScreen from 'expo-splash-screen';
-import { useFonts } from 'expo-font';
-// Per-weight entry points on purpose: the package barrel pulls in all eighteen
-// Saira faces, and we ship four.
-import { Saira_400Regular } from '@expo-google-fonts/saira/400Regular';
-import { Saira_500Medium } from '@expo-google-fonts/saira/500Medium';
-import { Saira_600SemiBold } from '@expo-google-fonts/saira/600SemiBold';
-import { Saira_700Bold } from '@expo-google-fonts/saira/700Bold';
 
+import { useAppReady } from '@/hooks/use-app-ready';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePortraitLock } from '@/hooks/use-orientation-lock';
+import InboxNotifier from '@/features/inbox/components/inbox-notifier';
+import IslandHost from '@/features/island/components/island-host';
 import AppProviders from '@/providers/app-providers';
+import { initMonitoring, useMonitoredNavigation, withMonitoring } from '@/lib/monitoring';
 
-// Held until Saira is registered, so no frame renders in the fallback face.
+initMonitoring();
+
+// Held until the fonts are registered and the paired sandboxes are known, so no
+// frame renders in the fallback face or on the wrong side of the pairing gate.
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootNavigator() {
   const colorScheme = useColorScheme();
-  const [fontsLoaded, fontError] = useFonts({
-    Saira_400Regular,
-    Saira_500Medium,
-    Saira_600SemiBold,
-    Saira_700Bold,
-  });
+  const { ready, paired } = useAppReady();
 
-  useEffect(() => {
-    // A font failure is not worth a permanent splash — show the UI regardless.
-    if (fontsLoaded || fontError) SplashScreen.hideAsync();
-  }, [fontsLoaded, fontError]);
+  if (!ready) return null;
 
-  if (!fontsLoaded && !fontError) return null;
+  return (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack screenOptions={{ headerShown: false, orientation: 'portrait_up' }}>
+        <Stack.Protected guard={paired}>
+          <Stack.Screen name="(tabs)" options={{ animation: 'fade', title: 'Monolith' }} />
+          <Stack.Screen name="sandbox/display" options={{ gestureEnabled: false, title: 'Display' }} />
+          <Stack.Screen name="sandbox/terminal/[id]" options={{ gestureEnabled: false, title: 'Terminal' }} />
+          <Stack.Screen name="sandbox/projects/new" options={{ title: 'New project' }} />
+          <Stack.Screen name="sandbox/projects/[id]" options={{ title: 'Project' }} />
+          <Stack.Screen name="sandbox/builds/[id]" options={{ title: 'Build' }} />
+          <Stack.Screen name="sandbox/agent/[id]" options={{ title: 'Claude run' }} />
+          <Stack.Screen name="sandbox/claude" options={{ title: 'Claude account' }} />
+          <Stack.Screen name="inbox" options={{ title: 'Inbox' }} />
+          <Stack.Screen name="files" options={{ title: 'Files' }} />
+          <Stack.Screen name="chats/index" options={{ title: 'Chats' }} />
+          <Stack.Screen name="chats/[id]" options={{ title: 'Continue chat' }} />
+          <Stack.Screen name="analytics/index" options={{ title: 'Analytics' }} />
+          <Stack.Screen name="analytics/projects/[id]" options={{ title: 'Project usage' }} />
+          <Stack.Screen name="island/[action]" options={{ animation: 'none', title: 'Island' }} />
+          <Stack.Screen name="island/run/[id]" options={{ animation: 'none', title: 'Island' }} />
+        </Stack.Protected>
+        <Stack.Protected guard={!paired}>
+          <Stack.Screen name="(onboarding)" options={{ animation: 'fade' }} />
+        </Stack.Protected>
+        <Stack.Screen name="pair" options={{ presentation: 'modal', title: 'Pair a sandbox' }} />
+      </Stack>
+      {paired ? <InboxNotifier /> : null}
+      {paired ? <IslandHost /> : null}
+    </ThemeProvider>
+  );
+}
+
+function RootLayout() {
+  usePortraitLock();
+  useMonitoredNavigation();
 
   return (
     <AppProviders>
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="pair" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="sandbox/display" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="sandbox/terminal/[id]" options={{ gestureEnabled: false }} />
-        <Stack.Screen name="sandbox/projects/new" />
-        <Stack.Screen name="sandbox/projects/[id]" />
-        <Stack.Screen name="sandbox/builds/[id]" />
-        <Stack.Screen name="sandbox/agent/[id]" />
-      </Stack>
-    </ThemeProvider>
+      <RootNavigator />
     </AppProviders>
   );
 }
+
+export default withMonitoring(RootLayout);

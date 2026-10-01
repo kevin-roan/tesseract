@@ -3,18 +3,30 @@ import type {
   AgentRun,
   AgentRunDetail,
   AgentRunEvent,
+  Transcription,
+  SttStatus,
+  Upload,
   Artifact,
   BuildJob,
+  ClaudeSession,
   DisplayStatus,
   GitDetails,
   Health,
+  Identity,
+  ClaudeAuthStatus,
+  Inbox,
+  InboxItem,
+  ListeningPorts,
   LogLine,
   ProcessInfo,
   Project,
   SandboxStatus,
   StatusEvent,
+  SyncChanges,
+  SyncRequest,
   TerminalInfo,
   Ticket,
+  UsageReport,
 } from "./index";
 
 const TS = "2026-09-23T10:00:00.000Z";
@@ -62,6 +74,79 @@ export const sampleContext: AgentContext = {
       modifiedAt: TS,
       truncated: false,
       content: "# Current task\n\nBuild the Windows installer.\n",
+    },
+  ],
+};
+
+export const sampleClaudeAuthStatus: ClaudeAuthStatus = {
+  available: true,
+  method: "oauth_token",
+  loggedIn: true,
+  sources: { oauthToken: true, credentials: false, apiKey: false },
+  oauthTokenFromEnv: false,
+  account: { email: "dev@example.com", displayName: "Dev", organization: "Example" },
+  subscriptionType: "max",
+  credentialsExpiresAt: null,
+  settingsPresent: true,
+  configDir: "/home/dev/.claude",
+  importedAt: "2026-01-01T00:00:00.000Z",
+};
+
+export const sampleIdentity: Identity = {
+  sandboxId: "theone-sandbox",
+  tailscale: {
+    available: true,
+    source: "localapi",
+    tailnet: "tail1234.ts.net",
+    viewer: {
+      id: "1234567890",
+      loginName: "you@example.com",
+      displayName: "You",
+      profilePicUrl: "https://lh3.googleusercontent.com/a/example",
+    },
+    viewerNode: {
+      hostName: "pixel-9",
+      dnsName: "pixel-9.tail1234.ts.net",
+      os: "android",
+      tailscaleIps: ["100.64.0.2", "fd7a:115c:a1e0::2"],
+      online: true,
+    },
+    owner: {
+      id: "1234567890",
+      loginName: "you@example.com",
+      displayName: "You",
+      profilePicUrl: null,
+    },
+    node: {
+      hostName: "workstation",
+      dnsName: "workstation.tail1234.ts.net",
+      os: "linux",
+      tailscaleIps: ["100.64.0.1", "fd7a:115c:a1e0::1"],
+      online: true,
+    },
+  },
+};
+
+export const samplePorts: ListeningPorts = {
+  tailscaleIp: "100.64.0.1",
+  ports: [
+    {
+      port: 3000,
+      pid: 4242,
+      command: "node",
+      processId: "prc_7f3k2q9xa1",
+      projectId: "electron-hello",
+      url: "http://100.64.0.1:3000",
+      dnsUrl: "http://workstation.tail1234.ts.net:3000",
+    },
+    {
+      port: 8080,
+      pid: 4300,
+      command: "python3",
+      processId: null,
+      projectId: null,
+      url: "http://100.64.0.1:8080",
+      dnsUrl: "http://workstation.tail1234.ts.net:8080",
     },
   ],
 };
@@ -131,6 +216,9 @@ export const sampleArtifact: Artifact = {
   sizeBytes: 73_400_320,
   sha256: "a".repeat(64),
   platform: "windows",
+  source: "build",
+  agentRunId: null,
+  note: null,
   createdAt: LATER,
 };
 
@@ -149,17 +237,55 @@ export const sampleBuild: BuildJob = {
   error: null,
 };
 
+export const sampleUpload: Upload = {
+  id: "upl_a1s2d3f4g5",
+  name: "screenshot.png",
+  mimeType: "image/png",
+  kind: "image",
+  sizeBytes: 48_213,
+  path: "/workspace/.theone/uploads/upl_a1s2d3f4g5/screenshot.png",
+  createdAt: TS,
+};
+
+export const sampleTranscription: Transcription = {
+  uploadId: "upl_a1s2d3f4g5",
+  text: "Build the Windows installer",
+  language: "en",
+  durationMs: 2_400,
+  engine: "whisper.cpp",
+};
+
+export const sampleSttStatus: SttStatus = {
+  profile: "eco",
+  profiles: [
+    { id: "off", model: null, threads: 0, nice: 0, available: true },
+    { id: "eco", model: "base", threads: 2, nice: 19, available: true },
+    { id: "balanced", model: "base", threads: 2, nice: 10, available: true },
+    { id: "performance", model: "small", threads: 4, nice: 0, available: true },
+  ],
+  engine: "whisper.cpp",
+  ready: true,
+  reason: null,
+  model: "base",
+  cpus: 8,
+  busy: false,
+  queued: 0,
+};
+
 export const sampleAgentRun: AgentRun = {
   id: "run_q1w2e3r4t5",
   projectId: "electron-hello",
   prompt: "Build the Windows installer",
+  mode: "bypassPermissions",
+  attachments: [sampleUpload],
   sessionId: "5f0c2d7e-9d1b-4f6a-8a3e-2b7c1d0e9f11",
   state: "running",
   startedAt: TS,
   endedAt: null,
-  costUsd: null,
+  usage: null,
   result: null,
   error: null,
+  archivedAt: null,
 };
 
 export const sampleAgentRunEvents: AgentRunEvent[] = [
@@ -178,4 +304,130 @@ export const sampleStatusEvent: StatusEvent = {
   stage: "package",
   message: "Packaging NSIS installer",
   ts: TS,
+};
+
+const USAGE_DAY = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 0, messages: 0, sessions: 0 };
+
+export const sampleUsageReport: UsageReport = {
+  generatedAt: LATER,
+  from: "2026-09-22T00:00:00.000Z",
+  to: LATER,
+  days: 2,
+  totals: {
+    inputTokens: 1200,
+    outputTokens: 3400,
+    cacheReadTokens: 56000,
+    cacheWriteTokens: 7800,
+    totalTokens: 68400,
+    messages: 12,
+    sessions: 2,
+  },
+  daily: [
+    { date: "2026-09-22", ...USAGE_DAY },
+    {
+      date: "2026-09-23",
+      inputTokens: 1200,
+      outputTokens: 3400,
+      cacheReadTokens: 56000,
+      cacheWriteTokens: 7800,
+      totalTokens: 68400,
+      messages: 12,
+      sessions: 2,
+    },
+  ],
+  models: [
+    { model: "claude-opus-4-5", inputTokens: 1000, outputTokens: 3000, cacheReadTokens: 50000, cacheWriteTokens: 7000, totalTokens: 61000, messages: 10 },
+    { model: "claude-haiku-4-5", inputTokens: 200, outputTokens: 400, cacheReadTokens: 6000, cacheWriteTokens: 800, totalTokens: 7400, messages: 2 },
+  ],
+  projects: [
+    {
+      projectId: "electron-hello",
+      inputTokens: 1000,
+      outputTokens: 3000,
+      cacheReadTokens: 50000,
+      cacheWriteTokens: 7000,
+      totalTokens: 61000,
+      messages: 10,
+      sessions: 1,
+    },
+    { projectId: null, inputTokens: 200, outputTokens: 400, cacheReadTokens: 6000, cacheWriteTokens: 800, totalTokens: 7400, messages: 2, sessions: 1 },
+  ],
+};
+
+export const sampleClaudeSession: ClaudeSession = {
+  sessionId: "ba4ddfd2-862d-49b0-8d2f-3d809897c89c",
+  projectId: "electron-hello",
+  cwd: "/workspace/projects/electron-hello",
+  title: "Add a dark mode toggle to the settings screen",
+  preview: "Done. The toggle lives in Settings → Appearance and persists across restarts.",
+  model: "claude-opus-4-5",
+  startedAt: TS,
+  lastActiveAt: LATER,
+  messages: 10,
+  usage: { inputTokens: 1000, outputTokens: 3000, cacheReadTokens: 50000, cacheWriteTokens: 7000, totalTokens: 61000 },
+  source: "agent-run",
+  agentRunId: "run_q1w2e3r4t5",
+  terminalId: null,
+  active: false,
+};
+
+export const sampleInboxItem: InboxItem = {
+  id: "inb_4k2m9q7x1a",
+  kind: "permission",
+  title: "Claude needs permission",
+  body: "Claude needs your permission to use Bash",
+  projectId: "electron-hello",
+  sessionId: "5b0f6a3e-2c1d-4e8f-9a7b-1c2d3e4f5a6b",
+  agentRunId: null,
+  terminalId: "trm_9x8y7z6w5v",
+  artifactId: null,
+  createdAt: TS,
+  updatedAt: "2026-09-23T10:02:00.000Z",
+  readAt: null,
+};
+
+export const sampleInbox: Inbox = {
+  items: [
+    sampleInboxItem,
+    {
+      ...sampleInboxItem,
+      id: "inb_7h3n5p2r8s",
+      kind: "completed",
+      title: "Claude finished",
+      body: "All tests pass.",
+      agentRunId: "run_2b8d4f6h0j",
+      terminalId: null,
+      updatedAt: TS,
+      readAt: "2026-09-23T10:03:00.000Z",
+    },
+  ],
+  unreadCount: 1,
+  attentionCount: 1,
+};
+
+export const sampleSyncChanges: SyncChanges = {
+  projectId: "electron-hello",
+  baselineAt: TS,
+  changes: [
+    { path: "src/main.ts", kind: "modified", sha256: "a".repeat(64), size: 1204 },
+    { path: "src/new-file.ts", kind: "added", sha256: "b".repeat(64), size: 320 },
+    { path: "README.old.md", kind: "deleted", sha256: null, size: null },
+  ],
+  totalBytes: 1524,
+  host: { name: "workstation", lastSeenAt: LATER, online: true, linked: true },
+};
+
+export const sampleSyncRequest: SyncRequest = {
+  id: "sync_7m3k9p2q4r",
+  projectId: "electron-hello",
+  kind: "pull",
+  status: "applied",
+  paths: null,
+  force: false,
+  source: "mobile",
+  claimedBy: "workstation",
+  result: { added: 1, modified: 1, deleted: 1, conflicts: [], snapshotId: "20260923T100500Z", hostPath: "/home/me/code/electron-hello" },
+  error: null,
+  createdAt: TS,
+  updatedAt: LATER,
 };

@@ -1,4 +1,5 @@
 import {
+  getSalutationParts,
   getGreeting,
   getTimeOfDayGreeting,
 } from "@/components/greeting/utils/getGreeting";
@@ -77,34 +78,35 @@ describe("getTimeOfDayGreeting", () => {
 });
 
 describe("getGreeting", () => {
-  it("returns both salutation and timeOfDay", () => {
-    expect(getGreeting("Kevin Roan", at(9))).toEqual({
-      salutation: "Hi, Kevin Roan",
-      timeOfDay: "Good morning",
+  it("returns the time-of-day salutation and the bucket", () => {
+    expect(getGreeting("Kevin Roan", at(19))).toEqual({
+      salutation: "Good evening, Kevin Roan",
+      timeOfDay: "Good evening",
     });
   });
 
-  it("formats the salutation with the username", () => {
-    expect(getGreeting("Ada", at(9)).salutation).toBe("Hi, Ada");
-    expect(getGreeting("Ada Lovelace", at(9)).salutation).toBe(
-      "Hi, Ada Lovelace"
-    );
+  it("follows the time of day", () => {
+    expect(getGreeting("Ada", at(9)).salutation).toBe("Good morning, Ada");
+    expect(getGreeting("Ada", at(14)).salutation).toBe("Good afternoon, Ada");
+    expect(getGreeting("Ada", at(2)).salutation).toBe("Working late, Ada");
   });
 
-  it("keeps the salutation stable across time buckets", () => {
-    const hours = [2, 9, 14, 19];
-    const salutations = hours.map((h) => getGreeting("Ada", at(h)).salutation);
-    expect(new Set(salutations).size).toBe(1);
-  });
-
-  it("handles an empty username without throwing", () => {
-    expect(getGreeting("", at(9)).salutation).toBe("Hi, ");
+  it("drops the name when there is none", () => {
+    expect(getGreeting("", at(9)).salutation).toBe("Good morning");
+    expect(getGreeting("  ", at(9)).salutation).toBe("Good morning");
   });
 
   it("accepts a string date input", () => {
     expect(getGreeting("Ada", "2026-01-15T13:00:00")).toEqual({
-      salutation: "Hi, Ada",
+      salutation: "Good afternoon, Ada",
       timeOfDay: "Good afternoon",
     });
+  });
+});
+
+describe("getSalutationParts", () => {
+  it("splits the salutation into its lead and the trimmed name", () => {
+    expect(getSalutationParts(" Ada ", at(19))).toEqual({ lead: "Good evening", name: "Ada" });
+    expect(getSalutationParts("Ada", at(23))).toEqual({ lead: "Working late", name: "Ada" });
   });
 });

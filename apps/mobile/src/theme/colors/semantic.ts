@@ -4,95 +4,155 @@ import { Palette } from './palette';
  * Semantic colors. Both schemes declare the same keys — that invariant is what
  * `ColorScheme` below enforces, so a color added to light cannot be forgotten
  * in dark.
+ *
+ * Status families (success / warning / danger / info) come in three roles:
+ *   `<status>`       text and icon ink — clears WCAG AA (4.5:1) on both the
+ *                    screen background and its own `<status>Muted` fill
+ *   `<status>Muted`  tinted fill behind that ink (badges, notices)
+ *   `<status>Solid`  vivid mark for dots, bars and chart status — ≥ 3:1 on the
+ *                    background, never used for body text
  */
 const light = {
   // Surfaces
   background: Palette.canvas,
-  backgroundElement: Palette.gray[100],
-  backgroundSelected: Palette.gray[200],
-  surface: Palette.canvas,
+  /** Canvas texture. Claude's paper is flat, so this is fully transparent. */
+  backgroundPattern: 'rgba(31, 30, 29, 0)',
+  backgroundElement: Palette.stone[100],
+  backgroundSelected: Palette.stone[200],
+  surface: Palette.white,
   surfaceElevated: Palette.white,
-  surfaceSunken: Palette.gray[50],
-  overlay: 'rgba(0, 0, 0, 0.4)',
-  /** Tint laid over the blur when native liquid glass is unavailable. */
-  glassFallback: 'rgba(252, 252, 251, 0.42)',
+  surfaceSunken: Palette.stone[100],
+  overlay: 'rgba(20, 20, 19, 0.32)',
+  /** Band of light that sweeps across loading placeholders. Hex only: react-native-fast-shimmer cannot parse rgba(). */
+  shimmer: '#FFFFFFD9',
 
   // Text
-  text: Palette.black,
-  textSecondary: Palette.gray[600],
-  textTertiary: Palette.gray[500],
-  textInverse: Palette.canvas,
-  // The brand periwinkle is far too pale to carry white text — ink it dark instead.
-  textOnAccent: Palette.periwinkle[900],
+  text: Palette.ink,
+  textSecondary: Palette.stone[600],
+  textTertiary: Palette.stone[650],
+  textInverse: Palette.paper,
+  textOnAccent: Palette.white,
 
   // Lines
-  border: Palette.gray[200],
-  borderStrong: Palette.gray[300],
-  divider: Palette.gray[100],
+  border: 'rgba(31, 30, 29, 0.08)',
+  borderStrong: 'rgba(31, 30, 29, 0.16)',
+  /** Inset hairline between rows of a grouped list. */
+  divider: 'rgba(31, 30, 29, 0.07)',
 
   // Accent
-  accent: Palette.periwinkle[500],
-  accentPressed: Palette.periwinkle[600],
-  accentMuted: Palette.periwinkle[100],
-  focusRing: Palette.periwinkle[600],
+  /** Solid near-black pill: primary buttons, active segments. */
+  accent: Palette.ink,
+  /** Ink on `accent`. */
+  accentInk: Palette.white,
+  accentPressed: Palette.stone[700],
+  accentMuted: Palette.stone[100],
+  /** Accent that reads as ink: links and selected outlines (≥ 4.5:1). */
+  accentStrong: Palette.clay[700],
+  focusRing: Palette.clay[500],
+  /** Progress marks and rings. */
+  highlight: Palette.clay[500],
+
+  // Brand
+  /** Claude terracotta — the starburst mark; use sparingly, never for body text. */
+  brand: Palette.clay[500],
+  brandMuted: Palette.clay[50],
+  /** Check marks and the selected row in pickers. */
+  selection: Palette.blue[550],
+  /** Small pills such as "Pro". */
+  badge: Palette.blue[150],
+  badgeText: Palette.blue[650],
 
   // Status
-  success: Palette.green[500],
+  success: Palette.green[700],
   successMuted: Palette.green[100],
-  warning: Palette.amber[500],
+  successSolid: '#23874F',
+  warning: Palette.amber[800],
   warningMuted: Palette.amber[100],
-  danger: Palette.red[500],
+  warningSolid: Palette.amber[700],
+  danger: Palette.red[600],
   dangerMuted: Palette.red[100],
+  dangerSolid: Palette.red[500],
+  info: Palette.blue[700],
+  infoMuted: Palette.blue[100],
+  infoSolid: Palette.blue[600],
+
+  /** Unread / count badges. */
+  notification: Palette.red[600],
+  textOnNotification: Palette.white,
 
   // Assistant surfaces
-  bubbleUser: Palette.periwinkle[500],
-  bubbleUserText: Palette.periwinkle[900],
-  bubbleAssistant: Palette.gray[100],
-  bubbleAssistantText: Palette.black,
-  codeBackground: Palette.gray[50],
-  streamingCursor: Palette.periwinkle[600],
-  voiceActive: Palette.violet[500],
+  bubbleUser: Palette.stone[100],
+  bubbleUserText: Palette.ink,
+  /** Assistant replies sit straight on the paper, like Claude's. */
+  bubbleAssistant: Palette.canvas,
+  bubbleAssistantText: Palette.ink,
+  codeBackground: Palette.stone[100],
+  streamingCursor: Palette.clay[500],
+  voiceActive: Palette.clay[500],
+  auraWarm: Palette.clay[300],
+  auraCool: Palette.clay[100],
 } as const;
 
 const dark: Record<keyof typeof light, string> = {
-  background: Palette.black,
-  backgroundElement: Palette.gray[900],
-  backgroundSelected: Palette.gray[800],
-  surface: Palette.gray[950],
-  surfaceElevated: Palette.gray[900],
-  surfaceSunken: Palette.black,
-  overlay: 'rgba(0, 0, 0, 0.6)',
-  glassFallback: 'rgba(24, 24, 26, 0.38)',
+  background: Palette.night,
+  backgroundPattern: 'rgba(250, 249, 245, 0)',
+  backgroundElement: Palette.stone[800],
+  backgroundSelected: Palette.stone[700],
+  surface: Palette.stone[850],
+  surfaceElevated: Palette.stone[800],
+  surfaceSunken: Palette.stone[900],
+  overlay: 'rgba(0, 0, 0, 0.55)',
+  shimmer: '#FFFFFF1A',
 
-  text: Palette.white,
-  textSecondary: Palette.gray[400],
-  textTertiary: Palette.gray[500],
-  textInverse: Palette.black,
-  textOnAccent: Palette.periwinkle[900],
+  text: Palette.paper,
+  textSecondary: Palette.stone[400],
+  textTertiary: Palette.stone[500],
+  textInverse: Palette.ink,
+  textOnAccent: Palette.ink,
 
-  border: Palette.gray[800],
-  borderStrong: Palette.gray[700],
-  divider: Palette.gray[900],
+  border: 'rgba(255, 255, 255, 0.08)',
+  borderStrong: 'rgba(255, 255, 255, 0.16)',
+  divider: 'rgba(255, 255, 255, 0.08)',
 
-  accent: Palette.periwinkle[500],
-  accentPressed: Palette.periwinkle[300],
-  accentMuted: '#221C3D',
-  focusRing: Palette.periwinkle[400],
+  accent: Palette.paper,
+  accentInk: Palette.ink,
+  accentPressed: Palette.stone[300],
+  accentMuted: Palette.stone[800],
+  accentStrong: Palette.clay[400],
+  focusRing: Palette.clay[400],
+  highlight: Palette.clay[500],
 
-  success: Palette.green[500],
-  successMuted: '#0F2A1B',
-  warning: Palette.amber[500],
-  warningMuted: '#2C2109',
-  danger: Palette.red[500],
-  dangerMuted: '#2E1213',
+  brand: Palette.clay[500],
+  brandMuted: Palette.clay[800],
+  selection: Palette.blue[450],
+  badge: Palette.blue[850],
+  badgeText: Palette.blue[250],
 
-  bubbleUser: Palette.periwinkle[500],
-  bubbleUserText: Palette.periwinkle[900],
-  bubbleAssistant: Palette.gray[900],
-  bubbleAssistantText: Palette.white,
-  codeBackground: Palette.gray[950],
-  streamingCursor: Palette.periwinkle[500],
-  voiceActive: Palette.violet[500],
+  success: Palette.green[400],
+  successMuted: Palette.green[900],
+  successSolid: Palette.green[500],
+  warning: Palette.amber[300],
+  warningMuted: Palette.amber[900],
+  warningSolid: Palette.amber[500],
+  danger: Palette.red[400],
+  dangerMuted: Palette.red[900],
+  dangerSolid: Palette.red[500],
+  info: Palette.blue[300],
+  infoMuted: Palette.blue[900],
+  infoSolid: Palette.blue[400],
+
+  notification: Palette.red[400],
+  textOnNotification: Palette.black,
+
+  bubbleUser: Palette.stone[900],
+  bubbleUserText: Palette.paper,
+  bubbleAssistant: Palette.night,
+  bubbleAssistantText: Palette.paper,
+  codeBackground: Palette.stone[900],
+  streamingCursor: Palette.clay[400],
+  voiceActive: Palette.clay[500],
+  auraWarm: Palette.clay[500],
+  auraCool: Palette.clay[800],
 };
 
 export const Colors = { light, dark } as const;

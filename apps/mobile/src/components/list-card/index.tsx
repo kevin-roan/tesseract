@@ -1,8 +1,9 @@
 import { useMemo } from "react";
 import { Pressable, View } from "react-native";
-import type { Icon } from "phosphor-react-native";
+import { CaretRightIcon, type Icon } from "phosphor-react-native";
 
-import { GlassSurface } from "@/components/glass";
+import { Glass } from "@/components/glass";
+import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { IconSize } from "@/theme";
@@ -18,12 +19,15 @@ export type ListCardProps = {
   value?: string;
   /** Small caption under the trailing figure, e.g. "Responses". */
   valueLabel?: string;
+  /** Frosted glass card instead of the solid surface. */
+  glass?: boolean;
   onPress?: () => void;
 };
 
 /**
- * Full-width list row on a glass card: icon badge, title block, and an
- * optional trailing figure with its own caption.
+ * Full-width list row on a card: icon badge, title block, and an optional
+ * trailing figure with its own caption. Pressable rows without a figure end in
+ * a chevron.
  */
 const ListCard = ({
   icon: IconComponent,
@@ -31,19 +35,18 @@ const ListCard = ({
   subtitle,
   value,
   valueLabel,
+  glass = false,
   onPress,
 }: ListCardProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
+  const Card = glass ? Glass : Surface;
+
   const card = (
-    <GlassSurface style={styles.card}>
+    <Card style={styles.card}>
       <View style={styles.iconBadge}>
-        <IconComponent
-          size={IconSize.md}
-          color={theme.colors.text}
-          weight="duotone"
-        />
+        <IconComponent size={IconSize.md} color={theme.colors.text} weight="duotone" />
       </View>
 
       <View style={styles.body}>
@@ -68,8 +71,10 @@ const ListCard = ({
             </ThemedText>
           ) : null}
         </View>
+      ) : onPress ? (
+        <CaretRightIcon size={IconSize.sm} color={theme.colors.textTertiary} weight="bold" />
       ) : null}
-    </GlassSurface>
+    </Card>
   );
 
   if (!onPress) return card;
@@ -77,9 +82,7 @@ const ListCard = ({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={[title, subtitle, value, valueLabel]
-        .filter(Boolean)
-        .join(", ")}
+      accessibilityLabel={[title, subtitle, value, valueLabel].filter(Boolean).join(", ")}
       onPress={onPress}
       style={({ pressed }) => pressed && styles.pressed}
     >

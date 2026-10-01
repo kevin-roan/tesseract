@@ -1,14 +1,17 @@
-import { PAGE_MESSAGES } from "@theone/protocol/bridge";
+import { PAGE_MESSAGES, type InputMode } from "@theone/protocol/bridge";
 import type { ITheme } from "@xterm/xterm";
+import type { MouseButton, TrackpadOptions } from "./gestures";
 
-export type KeyDefinition = {
-  id: KeyId;
+export type KeyDefinition<K extends string = KeyId> = {
+  id: K;
   label: string;
   title: string;
   sticky?: boolean;
 };
 
 export type KeyId = "esc" | "tab" | "ctrl" | "ctrl-c" | "left" | "up" | "down" | "right" | "pipe" | "tilde" | "slash";
+
+export type VncHostKeyId = "keyboard" | "browser";
 
 export const API_PATHS = {
   terminalStream: (id: string) => `/v1/terminals/${encodeURIComponent(id)}/stream`,
@@ -20,7 +23,10 @@ export const FRAGMENT_KEYS = {
   session: "session",
   password: "password",
   viewOnly: "viewOnly",
+  input: "input",
 } as const;
+
+export const DEFAULT_INPUT_MODE: InputMode = "trackpad";
 
 export const TICKET_QUERY_PARAM = "ticket";
 export const VNC_SUBPROTOCOLS = ["binary"];
@@ -80,6 +86,27 @@ export const KEY_BAR: readonly KeyDefinition[] = [
   { id: "tilde", label: "~", title: "Tilde" },
   { id: "slash", label: "/", title: "Slash" },
 ];
+
+export const VNC_HOST_KEYS: readonly KeyDefinition<VncHostKeyId>[] = [
+  { id: "keyboard", label: "⌨", title: "Keyboard" },
+  { id: "browser", label: "URL", title: "Browser URL" },
+];
+
+export const TRACKPAD_OPTIONS: TrackpadOptions = {
+  tapMs: 250,
+  doubleTapMs: 300,
+  tapSlop: 8,
+  screenFraction: 0.6,
+  accelerationStart: 0.3,
+  accelerationGain: 1.2,
+  maxBoost: 2.5,
+  scrollScale: 2,
+};
+
+export const MOUSE_BUTTONS: Record<MouseButton, { button: number; mask: number }> = {
+  left: { button: 0, mask: 1 },
+  right: { button: 2, mask: 2 },
+};
 
 export const TERMINAL_SEQUENCES: Record<Exclude<KeyId, "ctrl">, string> = {
   esc: "\x1b",

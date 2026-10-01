@@ -1,11 +1,8 @@
 import { useMemo, type ReactNode } from "react";
-import { KeyboardAvoidingView, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
+import { KeyboardAvoidingView, RefreshControl, ScrollView, View } from "react-native";
+import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
-import { ThemedView } from "@/components/themed-view";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import type { GradientName } from "@/theme";
 
 import createStyles from "./styles";
 
@@ -16,8 +13,10 @@ export type ScreenScaffoldProps = {
   scroll?: boolean;
   refreshing?: boolean;
   onRefresh?: () => void;
-  gradient?: GradientName;
   avoidKeyboard?: boolean;
+  /** Safe-area edges to pad. Defaults to all four. */
+  edges?: readonly Edge[];
+  testID?: string;
 };
 
 const ScreenScaffold = ({
@@ -27,8 +26,9 @@ const ScreenScaffold = ({
   scroll = true,
   refreshing = false,
   onRefresh,
-  gradient = "dusk",
   avoidKeyboard = false,
+  edges,
+  testID,
 }: ScreenScaffoldProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -51,16 +51,15 @@ const ScreenScaffold = ({
   );
 
   return (
-    <ThemedView style={styles.fill}>
-      <LinearGradient {...theme.gradients[gradient]} style={StyleSheet.absoluteFill} />
-      <SafeAreaView style={styles.fill}>
+    <View style={styles.root} testID={testID}>
+      <SafeAreaView style={styles.fill} edges={edges}>
         <KeyboardAvoidingView style={styles.fill} behavior="padding" enabled={avoidKeyboard}>
           {header ? <View style={styles.header}>{header}</View> : null}
           {body}
           {footer ? <View style={styles.footer}>{footer}</View> : null}
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 };
 

@@ -21,7 +21,6 @@ Decisions that need the owner's call come first.
 | Orphans after a controller crash | Kill the process groups of rows found `running` at startup (pids/pgids are recorded) instead of only marking them `orphaned` | marked only; they keep running untracked |
 | Scoped tickets | `POST /v1/auth/ticket { scope }` binding a ticket to one socket or download (protocol change) | tickets open any socket or download for 60 s |
 | Web build tab bar | Fix `apps/mobile/src/components/app-tabs.web.tsx` (user-owned) as described in [mobile-app](architecture/mobile-app.md#web-build) | every tab route blank on web; native unaffected |
-| Claude credentials in the environment (`ANTHROPIC_API_KEY`, `CLAUDE_CODE_OAUTH_TOKEN`) | Keep the credentials visible to every sandbox process, or have the controller strip them from builds and processes (Claude still needs them) | visible everywhere; login in the home volume recommended |
 
 
 ## Near term

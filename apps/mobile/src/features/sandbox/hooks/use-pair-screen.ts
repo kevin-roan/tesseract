@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 
 import type { PairedSandbox, PairingDraft } from "../types";
@@ -14,9 +14,15 @@ export function usePairScreen() {
   const form = usePairingForm(initial);
   const { applyLink, submit } = form;
 
+  const [paired, setPaired] = useState<PairedSandbox | null>(null);
+
+  useEffect(() => {
+    if (paired) nav.hub();
+  }, [paired, nav]);
+
   const finish = useCallback((sandbox: PairedSandbox | null) => {
-    if (sandbox) nav.hub();
-  }, [nav]);
+    if (sandbox) setPaired(sandbox);
+  }, []);
 
   const pair = useCallback(() => void submit().then(finish), [submit, finish]);
 

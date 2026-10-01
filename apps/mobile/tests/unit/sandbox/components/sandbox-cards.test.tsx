@@ -13,7 +13,6 @@ import {
 } from "@theone/protocol/fixtures";
 
 import type { WebSurfaceHandle } from "@/components/web-surface";
-import AgentComposer from "@/features/sandbox/components/agent-composer";
 import AgentEvent from "@/features/sandbox/components/agent-event";
 import AgentRunCard from "@/features/sandbox/components/agent-run-card";
 import ArtifactCard from "@/features/sandbox/components/artifact-card";
@@ -28,18 +27,15 @@ import QrScanner from "@/features/sandbox/components/qr-scanner";
 import RemoteSurface from "@/features/sandbox/components/remote-surface";
 import ScriptCard from "@/features/sandbox/components/script-card";
 import TerminalCard from "@/features/sandbox/components/terminal-card";
+import WebLinkCard from "@/features/sandbox/components/web-link-card";
 import { buildTargetOptions, terminalKindLabel } from "@/features/sandbox/utils/labels";
 import { EMPTY_PAIRING_DRAFT } from "@/features/sandbox/utils/pairing";
 import { EMPTY_PROJECT_DRAFT } from "@/features/sandbox/utils/new-project";
 
-jest.mock("@/components/glass", () => {
-  const { Pressable, View } = jest.requireActual<typeof import("react-native")>("react-native");
-  return { GlassSurface: View, GlassPill: View, GlassButton: Pressable };
-});
+import { TEST_SITE } from "../helpers";
 
 const TS = "2026-09-23T10:00:00.000Z";
 const isBusy = (label: string) => screen.getByLabelText(label).props.accessibilityState?.busy;
-const isDisabled = (label: string) => screen.getByLabelText(label).props.accessibilityState?.disabled;
 
 describe("<AgentEvent />", () => {
   const cases: [AgentRunEvent, string[]][] = [
@@ -53,46 +49,6 @@ describe("<AgentEvent />", () => {
   it.each(cases)("renders %p", async (event, texts) => {
     await render(<AgentEvent event={event} />);
     for (const text of texts) expect(screen.getByText(text)).toBeOnTheScreen();
-  });
-});
-
-describe("<AgentComposer />", () => {
-  const base = {
-    prompt: "",
-    onChangePrompt: jest.fn(),
-    onSubmit: jest.fn(),
-    canSubmit: false,
-    submitting: false,
-    submitLabel: "Start run",
-    placeholder: "Describe the task",
-  };
-
-  it("disables submit until allowed and forwards typing", async () => {
-    await render(<AgentComposer {...base} />);
-    expect(isDisabled("Start run")).toBe(true);
-    await fireEvent.changeText(screen.getByLabelText("Prompt"), "build it");
-    expect(base.onChangePrompt).toHaveBeenCalledWith("build it");
-    expect(screen.queryByLabelText("Project for this run")).toBeNull();
-  });
-
-  it("offers project choices and shows errors", async () => {
-    const onToggleProject = jest.fn();
-    await render(
-      <AgentComposer
-        {...base}
-        canSubmit
-        error="Claude is busy"
-        projects={[{ id: "a", label: "Alpha" }]}
-        projectId="a"
-        onToggleProject={onToggleProject}
-      />,
-    );
-    await fireEvent.press(screen.getByLabelText("Alpha"));
-    expect(onToggleProject).toHaveBeenCalledWith("a");
-    expect(screen.getByLabelText("Alpha").props.accessibilityState.selected).toBe(true);
-    expect(screen.getByText("Claude is busy")).toBeOnTheScreen();
-    await fireEvent.press(screen.getByLabelText("Start run"));
-    expect(base.onSubmit).toHaveBeenCalled();
   });
 });
 
@@ -155,6 +111,16 @@ describe("resource cards", () => {
 
     await render(<ProcessCard process={{ ...sampleProcess, state: "exited", exitCode: 0 }} onStop={jest.fn()} />);
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("opens the process's website when it listens on a port", async () => {
+    const onOpenSite = jest.fn();
+    await render(<ProcessCard process={sampleProcess} site={TEST_SITE} onOpenSite={onOpenSite} />);
+    await fireEvent.press(screen.getByLabelText("Open :5173 in browser"));
+    expect(onOpenSite).toHaveBeenCalledWith(TEST_SITE.url);
+
+    await render(<ProcessCard process={{ ...sampleProcess, state: "exited", exitCode: 0 }} site={TEST_SITE} onOpenSite={onOpenSite} />);
+    expect(screen.queryByLabelText("Open :5173 in browser")).toBeNull();
   });
 
   it("runs a script on the display when chosen", async () => {
@@ -330,6 +296,7 @@ describe("<RemoteSurface />", () => {
     onMessage: jest.fn(),
     onLoad: jest.fn(),
     onError: jest.fn(),
+    onTerminate: jest.fn(),
     onReconnect: jest.fn(),
   };
 
@@ -351,5 +318,24 @@ describe("<RemoteSurface />", () => {
     const web = screen.getByTestId("webview");
     expect(web.props.accessibilityHint).toBe("http://127.0.0.1:7700/ui/terminal#t");
     expect(web.props.originWhitelist).toEqual(["http://127.0.0.1:7700"]);
+  });
+});
+
+describe("<WebLinkCard />", () => {
+  it("shows the port, command and selectable link and opens it", async () => {
+    const onOpen = jest.fn();
+    await render(<WebLinkCard site={TEST_SITE} onOpen={onOpen} />);
+
+    expect(screen.getByText(":5173")).toBeOnTheScreen();
+    expect(screen.getByText("node vite")).toBeOnTheScreen();
+    expect(screen.getByText(TEST_SITE.url!).props.selectable).toBe(true);
+    await fireEvent.press(screen.getByLabelText("Open :5173 in browser"));
+    expect(onOpen).toHaveBeenCalledWith(TEST_SITE.url);
+  });
+
+  it("explains a missing Tailscale IP instead of linking", async () => {
+    await render(<WebLinkCard site={{ ...TEST_SITE, url: null, dnsUrl: null }} onOpen={jest.fn()} />);
+    expect(screen.getByText(/No Tailscale IP yet/)).toBeOnTheScreen();
+    expect(screen.queryByLabelText("Open :5173 in browser")).toBeNull();
   });
 });

@@ -3,10 +3,10 @@ import { TheOneClient } from "@theone/client";
 import { sampleProcess, sampleStatus } from "@theone/protocol/fixtures";
 
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
-import { useProcesses, useSandboxStatus } from "@/features/sandbox/hooks/use-sandbox-queries";
+import { useListeningPorts, useProcesses, useSandboxStatus } from "@/features/sandbox/hooks/use-sandbox-queries";
 import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
 
-import { TEST_SANDBOX, TEST_TOKEN, createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../helpers";
+import { TEST_SANDBOX, TEST_SITE, TEST_TOKEN, createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../helpers";
 
 let mockFocused = true;
 
@@ -17,6 +17,7 @@ const MockClient = TheOneClient as unknown as jest.Mock;
 const fake = {
   status: jest.fn(),
   listProcesses: jest.fn(),
+  ports: jest.fn(),
 };
 
 beforeEach(() => {
@@ -26,6 +27,7 @@ beforeEach(() => {
   seedActiveSandbox();
   fake.status.mockReset().mockResolvedValue(sampleStatus);
   fake.listProcesses.mockReset().mockResolvedValue([sampleProcess]);
+  fake.ports.mockReset().mockResolvedValue({ tailscaleIp: "100.116.96.29", ports: [TEST_SITE] });
   MockClient.mockReset().mockImplementation(() => fake);
 });
 
@@ -100,5 +102,31 @@ describe("useProcesses", () => {
     expect(queryClient.getQueryData(sandboxKeys.processes(TEST_SANDBOX.id, { projectId: "electron-hello" }))).toEqual([
       sampleProcess,
     ]);
+  });
+});
+
+describe("useListeningPorts", () => {
+  it("caches the ports and polls every 5 seconds while focused", async () => {
+    jest.useFakeTimers();
+    const queryClient = createTestQueryClient();
+    const { result } = await renderHook(() => useListeningPorts(), { wrapper: createWrapper(queryClient) });
+    await waitFor(() => expect(result.current.data?.ports).toEqual([TEST_SITE]));
+    expect(fake.ports).toHaveBeenCalledWith({ signal: expect.any(Object) });
+    expect(queryClient.getQueryData(sandboxKeys.ports(TEST_SANDBOX.id))).toEqual(result.current.data);
+
+    await act(async () => {
+      jest.advanceTimersByTime(5_000);
+    });
+    await waitFor(() => expect(fake.ports).toHaveBeenCalledTimes(2));
+  });
+
+  it("stops polling while the screen is unfocused", async () => {
+    jest.useFakeTimers();
+    mockFocused = false;
+    await renderHook(() => useListeningPorts(), { wrapper: createWrapper(createTestQueryClient()) });
+    await act(async () => {
+      jest.advanceTimersByTime(20_000);
+    });
+    expect(fake.ports).not.toHaveBeenCalled();
   });
 });

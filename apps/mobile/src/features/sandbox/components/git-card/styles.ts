@@ -6,7 +6,6 @@ export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     list: {
       gap: theme.spacing.xs,
-      paddingTop: theme.spacing.xs,
     },
     fileRow: {
       flexDirection: "row",

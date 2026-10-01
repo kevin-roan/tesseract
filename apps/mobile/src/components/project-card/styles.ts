@@ -20,8 +20,9 @@ export default function createStyles(theme: Theme) {
       gap: theme.spacing.sm,
     },
     /** Takes the slack so the menu button stays pinned to the right. */
-    title: {
+    titles: {
       flex: 1,
+      gap: theme.spacing.xxs,
     },
     menuButton: {
       alignItems: "center",
@@ -46,7 +47,7 @@ export default function createStyles(theme: Theme) {
       gap: theme.spacing.xs,
     },
 
-    priorityPill: {
+    tagPill: {
       flexDirection: "row",
       alignItems: "center",
       alignSelf: "flex-start",
@@ -54,6 +55,7 @@ export default function createStyles(theme: Theme) {
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xxs,
       borderRadius: theme.radius.full,
+      maxWidth: "100%",
     },
 
     footer: {
@@ -61,7 +63,7 @@ export default function createStyles(theme: Theme) {
       alignItems: "center",
       gap: theme.spacing.sm,
     },
-    peoplePill: {
+    membersPill: {
       flex: 1,
       flexDirection: "row",
       alignItems: "center",
@@ -80,6 +82,10 @@ export default function createStyles(theme: Theme) {
       justifyContent: "center",
       borderRadius: theme.radius.full,
       backgroundColor: theme.colors.accent,
+    },
+
+    shrink: {
+      flexShrink: 1,
     },
 
     pressed: {

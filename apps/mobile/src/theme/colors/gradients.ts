@@ -2,11 +2,13 @@ import { Palette } from './palette';
 import type { ColorSchemeName } from './semantic';
 
 /**
- * Named screen gradients. A gradient is a whole look — colors, stops and
+ * Named linear gradients. A gradient is a whole look — colors, stops and
  * direction travel together — so components pick a name instead of assembling
  * ramps inline:
  *
- *   <LinearGradient {...theme.gradients.aurora} style={StyleSheet.absoluteFill} />
+ *   <LinearGradient {...theme.gradients.brand} style={StyleSheet.absoluteFill} />
+ *
+ * They are for components only; screens sit on the flat `colors.background`.
  */
 export type Gradient = {
   colors: readonly [string, string, ...string[]];
@@ -15,81 +17,46 @@ export type Gradient = {
   end: { x: number; y: number };
 };
 
-/** Top-left to bottom-right, the diagonal every full-screen wash uses. */
-const Diagonal = { start: { x: 0.1, y: 0 }, end: { x: 0.9, y: 1 } } as const;
 /** Straight down, for gradients that should read as light falling on a panel. */
 const Vertical = { start: { x: 0.5, y: 0 }, end: { x: 0.5, y: 1 } } as const;
 /** Left to right, for pills and buttons. */
 const Horizontal = { start: { x: 0, y: 0.5 }, end: { x: 1, y: 0.5 } } as const;
 
 const light = {
-  /** Default screen wash — brand periwinkle breathing out of the top corner. */
-  aurora: {
-    colors: [Palette.periwinkle[200], Palette.periwinkle[50], Palette.canvas],
-    locations: [0, 0.38, 0.82],
-    ...Diagonal,
-  },
-  /** Warm morning light: amber shoulder rolling into periwinkle. */
-  dawn: {
-    colors: [Palette.amber[100], Palette.periwinkle[100], Palette.canvas],
-    locations: [0, 0.42, 0.85],
-    ...Diagonal,
-  },
-  /** Cool counterpart — violet into blue, for focus and voice surfaces. */
-  dusk: {
-    colors: [Palette.violet[100], Palette.blue[100], Palette.canvas],
-    locations: [0, 0.45, 0.9],
-    ...Diagonal,
-  },
-  /** Quiet neutral wash, when content needs the color budget instead. */
-  mist: {
-    colors: [Palette.gray[100], Palette.gray[25], Palette.canvas],
-    locations: [0, 0.5, 1],
-    ...Vertical,
-  },
-  /** Accent-forward fill for primary buttons and user bubbles. */
+  /** The primary pill: flat near-black, as in Claude — a gradient in name only so callers stay uniform. */
   brand: {
-    colors: [Palette.periwinkle[300], Palette.periwinkle[500], Palette.periwinkle[600]],
-    locations: [0, 0.55, 1],
+    colors: [Palette.ink, Palette.ink],
+    locations: [0, 1],
     ...Horizontal,
   },
   /** Fades content into the canvas above a sticky footer or input bar. */
   scrim: {
-    colors: ['rgba(252, 252, 251, 0)', 'rgba(252, 252, 251, 0.85)', Palette.canvas],
+    colors: ['rgba(245, 244, 239, 0)', 'rgba(245, 244, 239, 0.85)', Palette.canvas],
     locations: [0, 0.6, 1],
+    ...Vertical,
+  },
+  /** A barely-there terracotta glow at the top of a hero, fading into the paper. */
+  wash: {
+    colors: [Palette.clay[50], Palette.canvas, Palette.canvas],
+    locations: [0, 0.45, 1],
     ...Vertical,
   },
 } as const;
 
 const dark: Record<keyof typeof light, Gradient> = {
-  aurora: {
-    colors: ['#2A2350', '#141126', Palette.black],
-    locations: [0, 0.42, 0.85],
-    ...Diagonal,
-  },
-  dawn: {
-    colors: ['#2C2109', '#1A1530', Palette.black],
-    locations: [0, 0.45, 0.88],
-    ...Diagonal,
-  },
-  dusk: {
-    colors: ['#241C4A', '#101528', Palette.black],
-    locations: [0, 0.48, 0.9],
-    ...Diagonal,
-  },
-  mist: {
-    colors: [Palette.gray[900], Palette.gray[950], Palette.black],
-    locations: [0, 0.5, 1],
-    ...Vertical,
-  },
   brand: {
-    colors: [Palette.periwinkle[400], Palette.periwinkle[500], Palette.periwinkle[600]],
-    locations: [0, 0.55, 1],
+    colors: [Palette.paper, Palette.paper],
+    locations: [0, 1],
     ...Horizontal,
   },
   scrim: {
-    colors: ['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.85)', Palette.black],
+    colors: ['rgba(38, 38, 36, 0)', 'rgba(38, 38, 36, 0.85)', Palette.night],
     locations: [0, 0.6, 1],
+    ...Vertical,
+  },
+  wash: {
+    colors: [Palette.clay[900], Palette.night, Palette.night],
+    locations: [0, 0.45, 1],
     ...Vertical,
   },
 };

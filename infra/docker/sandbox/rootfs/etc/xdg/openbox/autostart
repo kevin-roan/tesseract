@@ -1,2 +1,4 @@
 # shellcheck shell=sh
 xsetroot -solid '#1b1f27' -cursor_name left_ptr
+# A browser on the display for checking web projects; reopen it from the desktop's right-click menu.
+command -v chromium > /dev/null 2>&1 && chromium --start-maximized --no-first-run --no-default-browser-check about:blank > /dev/null 2>&1 &

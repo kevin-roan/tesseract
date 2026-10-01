@@ -12,7 +12,7 @@ reference: [protocol.md](protocol.md).
 apps/controller/src/
 ├── index.ts            entry: CLI dispatch, `serve` is the default
 ├── server.ts           Bun.serve: /ui HTML routes, WS upgrades, Hono app, events fan-out and 25 s ping
-├── cli/                pair · status · emit · token (commands.ts), api (api.ts), local-api, output
+├── cli/                pair · status · emit · token · share (commands.ts), api (api.ts), hook (hook.ts), local-api, output
 ├── config.ts           THEONE_* env → validated Config; data dirs; local API URL for the CLI
 ├── version.ts
 ├── auth/
@@ -26,8 +26,8 @@ apps/controller/src/
 │   └── repositories.ts typed row access, restart recovery
 ├── http/
 │   ├── app.ts          Hono: request log, CORS, 1 MiB body limit, auth, routes, error mapping
-│   ├── middleware/     auth (bearer, or ticket for artifact downloads), request-log (redacts tickets)
-│   ├── routes/         system · projects · processes · terminals · builds · artifacts · agent
+│   ├── middleware/     auth (bearer, or ticket for artifact downloads and upload content), request-log (redacts tickets)
+│   ├── routes/         system · projects · processes · terminals · builds · artifacts · agent · inbox · push (devices, live activities) · uploads
 │   └── validation.ts   zod schemas from @theone/protocol → 400 bad_request
 ├── ws/                 WebSocket route matching, ticket check, upgrade, per-socket handlers
 ├── services/           one class per domain (below)
@@ -39,10 +39,16 @@ apps/controller/src/
 | `projects`, `project-detect`, `git` | list `/workspace/projects/*`, detect framework, package manager (lockfile), scripts and build targets; clone as a tracked process; git summary and details with the repository's own hooks neutralised ([below](#untrusted-project-content)) |
 | `processes` | spawn `bash -lc <command>` (or argv) in its own session, capture stdout/stderr into logs, stop with SIGTERM then SIGKILL after 5 s, reap leftovers of the group/session |
 | `terminals` | PTYs via `Bun.spawn({ terminal })`: login shell or `claude`, 256 KiB scrollback, several clients per session, resize |
-| `builds`, `build-recipes`, `artifacts` | FIFO build queue, recipes per target, artifact collection, naming and sha256 |
+| `builds`, `build-recipes`, `artifacts` | FIFO build queue, recipes per target, artifact collection, naming and sha256; shared files and deletion ([below](#shared-files)) |
+| `taildrop` | `GET /v1/taildrop/targets` and `POST /v1/artifacts/:id/taildrop` over LocalAPI `file-targets`/`file-put` ([below](#shared-files)) |
 | `display`, `vnc-bridge` | `xdpyinfo` probe, RFB banner probe of 5901, screenshots, WS↔TCP bridge |
 | `agent-runs`, `agent-stream` | headless `claude -p` runs, stream-json parsing into `AgentRunEvent`s |
+| `uploads`, `transcriptions` | phone attachments in `/workspace/.theone/uploads`, speech-to-text of voice notes ([below](#uploads-and-speech-to-text)) |
+| `inbox`, `claude-hooks` | the notification inbox (dedupe, read state, pruning, `inbox.updated`) and the mapping of Claude Code hook calls onto it ([below](#inbox-and-claude-hooks)) |
+| `push` | registered Expo push tokens and pushes of inbox items through `THEONE_PUSH_URL` ([below](#inbox-and-claude-hooks)) |
+| `live-activity`, `apns` | `IslandState` of the sandbox and its mirror into the iOS Live Activity through ActivityKit pushes over HTTP/2 to APNs ([below](#live-activities)) |
 | `status`, `tools` | `SandboxStatus`: cgroup/OS resources, tool versions (`node`, `bun`, `git`, `python3`, `java`, `wine`, `claude`, `adb`) |
+| `identity` | `GET /v1/identity`: Tailscale serve headers (loopback peers only) or LocalAPI `whois`, plus LocalAPI `status` (30 s cache) over `THEONE_TAILSCALE_SOCKET`; 1.5 s timeout, unavailable → nulls |
 | `context` | `.agent/*.md` and `.agent/projects/<id>/*.md` for `GET /v1/context` (no symlinks, 64 KiB cap) |
 | `runtime-mirror` | debounced, atomic rewrite of `/workspace/.agent/RUNTIME.md` |
 
@@ -87,12 +93,13 @@ running, which is how it runs on a laptop for development and tests.
 
 | Data | Where | Notes |
 |---|---|---|
-| Processes, terminals (metadata), builds, artifacts, agent runs and their events | `$THEONE_DATA_DIR/state.db` | SQLite, WAL. Back up with the controller stopped ([operations](../runbooks/operations.md#back-up-volumes)) |
+| Processes, terminals (metadata), builds, artifacts, agent runs and their events, the inbox (newest 1 000 items), uploads, push devices, live activity tokens, settings (the STT profile) | `$THEONE_DATA_DIR/state.db` | SQLite, WAL. Back up with the controller stopped ([operations](../runbooks/operations.md#back-up-volumes)) |
 | Token | `$THEONE_DATA_DIR/token` | 0600, unless `THEONE_TOKEN` is set |
 | Process and build logs | `$THEONE_DATA_DIR/logs/<id>.log` | rotated to `<id>.log.1` at 5 MiB (one rotation kept) |
 | Live log tail | memory | ring buffer of 2 000 lines per live process or build; WS streams replay 200 lines |
 | Tickets | memory | lost on restart, which is harmless: they live 60 s |
 | Terminal scrollback | memory | 256 KiB per session, lost on restart along with the PTY |
+| Uploaded files | `$THEONE_WORKSPACE/.theone/uploads/<id>/<name>` | 0700 dirs, 0600 files; rows and files older than 30 days are pruned at startup |
 
 `$THEONE_DATA_DIR` defaults to `/workspace/.agent/controller`. Claude's SPEC
 forbids reading, listing or editing it: the agent uses the API only through
@@ -101,8 +108,8 @@ forbids reading, listing or editing it: the agent uses the API only through
 ## HTTP pipeline
 
 `request-log` → CORS (`THEONE_CORS_ORIGINS`, default `*`; methods GET, POST,
-DELETE; exposes `Content-Disposition`, `X-Content-SHA256`) → body limit (1 MiB,
-413 with code `bad_request` beyond) →
+DELETE; exposes `Content-Disposition`, `X-Content-SHA256`) → body limit (1 MiB, 8 MiB for
+`POST /v1/claude/import`, 28 MiB for `POST /v1/uploads`; 413 with code `bad_request` beyond) →
 `requireAuth` → route → zod validation → service → JSON. Errors map to
 `{ error: { code, message } }` with the status from the protocol's
 `ERROR_STATUS`. Unknown errors are logged and returned as `500 internal`
@@ -110,7 +117,7 @@ without details. Request logs redact `ticket` query parameters.
 
 `requireAuth` lets `GET /v1/health` through, accepts a bearer token compared
 in constant time (SHA-256 of both sides, then `timingSafeEqual`), and for
-`GET /v1/artifacts/:id/download` also accepts a one-time `?ticket=`.
+`GET /v1/artifacts/:id/download` and `GET /v1/uploads/:id/content` also accept a one-time `?ticket=`.
 WebSocket upgrades are handled before Hono: the WS router matches the path,
 consumes the ticket (401 if missing, expired or reused), checks that the
 target exists (404), and upgrades. A non-upgrade request on a WS-only path gets
@@ -204,11 +211,57 @@ before the extension. The sha256 and size are recorded, and an
 and refuse anything outside `/workspace/artifacts`. If the file has been
 deleted, they return `404`.
 
+## Shared files
+
+Claude (or anything in the sandbox) hands a finished file to the user with
+`theone-controller share <file> [--project <id>] [--name <name>] [--note <text>]`, which
+resolves the path against its cwd and calls `POST /v1/artifacts`. The image's managed
+memory `/etc/claude-code/CLAUDE.md` asks Claude to do this for deliverables (APK/AAB,
+installers, zips, reports, exported media) after a successful build, and not for
+intermediate files.
+
+- **Checks.** The realpath must be a regular file inside `/workspace` and not under
+  `/workspace/artifacts` or `THEONE_DATA_DIR` (token, database, Claude token): `403`
+  otherwise, `404` when it does not exist, `400` for directories. Symlinks are followed
+  first, so a link that leaves the workspace is refused.
+- **Project.** An explicit `projectId` must exist (`404`); without one, the path must be
+  inside `/workspace/projects/<id>/` (`400` "pass --project or share a file inside a project").
+- **Storage.** The file is copied (never moved) to `/workspace/artifacts/<name>`, where
+  `<name>` is the source basename or `name`; collisions get `-2`, `-3`, … before the
+  extension. `platform` comes from the extension (`.apk`/`.aab` android, `.exe`/`.msi`
+  windows, `.deb`/`.rpm`/`.AppImage` linux, else `file`). The row has `source: "agent"`,
+  the `note`, and `agentRunId` when it names a known run (the CLI sends
+  `THEONE_AGENT_RUN_ID`, and `CLAUDE_CODE_SESSION_ID` as `sessionId`). `artifact.created`
+  fires as for builds.
+- **Inbox.** Each share adds a `file` item "New file: <name>" (body: the note, else size
+  and project) with `artifactId`, `sessionId` and `agentRunId`. `file` items are never
+  bumped, so every share is its own row.
+- **Delete.** `DELETE /v1/artifacts/:id` (any source) removes the file when it is inside
+  the artifacts directory, deletes the row, sets `artifactId` to null on the inbox items
+  that announced it (they keep their text) and publishes `artifact.deleted`.
+- **Taildrop.** Needs the LocalAPI socket opt-in ([security model](security-model.md)).
+  `GET /v1/taildrop/targets` maps `/localapi/v0/file-targets` to `{ id: StableID, hostName,
+  dnsName, os, online }`; no socket or any failure gives `{ available: false, targets: [] }`.
+  `POST /v1/artifacts/:id/taildrop { targetId }` checks the target is listed, then streams
+  the file with `PUT /localapi/v0/file-put/<StableID>/<fileName>` (`Content-Length` set,
+  15 min timeout). No LocalAPI or a failed push → `503`, unknown target → `404`, tailscaled
+  refusing (`403`) → `403`.
+
 ## Headless Claude runs
 
 ```text
-claude -p <prompt> --output-format stream-json --verbose --permission-mode $THEONE_CLAUDE_PERMISSION_MODE [--resume <sessionId>]
+claude -p --output-format stream-json --verbose --permission-mode <mode | $THEONE_CLAUDE_PERMISSION_MODE> \
+  [--add-dir /workspace/.theone/uploads] [--resume <sessionId>]   # prompt on stdin
 ```
+
+- `mode` (`plan`, `acceptEdits`, `bypassPermissions`) overrides the configured permission
+  mode for one run; the run stores `null` when it was not given.
+- `attachmentIds` are resolved before Claude starts (404 for an unknown id) and stored on the
+  run as full `Upload` objects. Non-audio attachments add `--add-dir` for the uploads directory
+  and a block to the stdin prompt:
+  `\n\nAttached files (read them with the Read tool):\n- /workspace/.theone/uploads/upl_…/shot.png (image/png)`.
+  Audio attachments are not listed: the app sends their transcript as the prompt and keeps the
+  recording on the run for replay.
 
 - Runs in the project directory (or `/workspace`) as `dev`. The prompt always
   goes through stdin, never argv, so it cannot inject options. `CLAUDECODE` is
@@ -218,14 +271,170 @@ claude -p <prompt> --output-format stream-json --verbose --permission-mode $THEO
   events, tool calls become `tool_use` (tool name plus a one-line summary),
   tool results become `tool_result` (with `isError`), and init and
   diagnostics become `system`. The final `result` message fills `result`,
-  `costUsd` and `sessionId`.
+  `usage` (tokens from its `usage` object; `total_cost_usd` is ignored) and `sessionId`.
 - Events are persisted (`agent_run_events`), streamed on
   `/v1/agent/runs/:id/stream`, and summarized as `agent.updated`.
+- Finished runs can be archived (`archived_at`, hidden from the default list,
+  `agent.updated` again) or deleted with their events (`agent.deleted`; inbox
+  items keep their row, unlinked). Running runs are skipped by both.
 - Cancel kills the process group. The run ends as `cancelled`. Anything the
   run left in its group or session (a dev server started with `&`) is stopped
   when it ends and reported as a `system` event.
 - Without credentials, Claude exits within about a second ("Not logged in ·
   Please run /login") and the run ends as `failed`.
+
+## Uploads and speech-to-text
+
+`POST /v1/uploads` takes `{ name, mimeType, data }` with base64 data (whitespace and missing
+padding tolerated, at most 20 MiB decoded, empty refused). The name is reduced to its last path
+segment without control characters or leading dots (≤ 200 UTF-8 bytes, extension kept), the MIME
+type to its lower-cased essence, and `kind` follows the MIME type (`image/*`, `application/pdf`,
+`audio/*`, else `file`). `GET /v1/uploads/:id/content` serves the file inline (attachment for
+`file`) with `nosniff` and `Content-Security-Policy: sandbox`, answers single `Range` requests
+with 206, and refuses files that were removed or no longer resolve inside the uploads dir.
+
+`POST /v1/transcriptions` transcribes an audio upload. The engine is chosen per request:
+
+| `THEONE_STT_ENGINE` | Engine |
+|---|---|
+| `whisper.cpp` (default) | ffmpeg → 16 kHz mono s16le WAV in a private temp dir, then `whisper-cli -m <model> -t <threads> -f <wav> -l <lang\|auto> -oj -of <base> -np -nt`, both prefixed with the profile's `ionice -c3` / `nice -n <n>` (each skipped when the binary is missing); the JSON segments form the text (stdout as fallback), `durationMs` comes from the WAV size. Each step has a 5 min timeout and runs detached (the group is killed on timeout); the temp dir is always removed |
+| `openai-compatible` | multipart `POST <THEONE_STT_URL>/audio/transcriptions` with `file` (an extension-less name gets one from the MIME type), `model` (`THEONE_STT_MODEL`), `response_format=verbose_json`, `language?`, `Authorization: Bearer <THEONE_STT_API_KEY>` (optional here), 5 min timeout. `text`, `language` and `duration` are read from JSON; a non-JSON reply is taken as the text |
+| `auto` | whisper.cpp when `THEONE_WHISPER_BIN`, `THEONE_FFMPEG_BIN` and a model file exist; else openai-compatible when `THEONE_STT_URL` and `THEONE_STT_API_KEY` are set; else 503 naming these variables |
+| `none` | 503 |
+
+The whisper.cpp default keeps voice notes on the machine; a paid API is only called when
+`THEONE_STT_ENGINE` is `openai-compatible` or `auto` with a URL and key.
+
+A resource profile keeps transcription from slowing the host. `GET /v1/stt` reports it,
+`PUT /v1/stt { profile }` switches it at runtime (stored in the `settings` table, key
+`stt.profile`; `THEONE_STT_PROFILE`, default `eco`, applies until then) and publishes
+`stt.updated`. `cpus` is `os.availableParallelism()` capped by the cgroup v2 `cpu.max` quota.
+
+| Profile | Model | Threads (`-t`) | Priority |
+|---|---|---|---|
+| `off` | — | — | `POST /v1/transcriptions` is 503 `Speech-to-text is off (select a profile in the desktop app)` |
+| `eco` | `base` | 2 | `nice -n 19` + `ionice -c3` (idle I/O) |
+| `balanced` | `base` | max(2, cpus/4) | `nice -n 10` |
+| `performance` | `small` | min(cpus, max(4, cpus/2)) | `nice 0` (no prefix) |
+
+Models are `$THEONE_WHISPER_MODELS_DIR/ggml-<model>.bin` (default `/opt/whisper/models`); when
+the profile's file is missing, `THEONE_WHISPER_MODEL` is used and `model` in the status names
+it (the symlink target's name, e.g. `base` for `ggml-model.bin`). `available` per profile
+reflects only its own file. Whatever the profile, one transcription runs at a time; the others
+wait in FIFO order (`busy`, `queued`). Engine and model are resolved again when a job starts, so
+a profile switch applies to queued jobs.
+
+Failures of the engine are 503 with the tool's error (the key is redacted); `[BLANK_AUDIO]`-style
+markers are dropped and an empty result is 400 `No speech detected`. The HTTP idle timeout is
+lifted for this request. The API key is never logged and is not passed to children.
+
+## Claude login
+
+`services/claude-auth.ts` reports the Claude Code login the sandbox uses. The only supported
+credential is the host's Claude Max login in `~/.claude`, bind-mounted at `/home/dev/.claude`
+(`$CLAUDE_CONFIG_DIR`); the controller neither stores a token nor injects one into children,
+and the stack passes no Claude credential through the environment.
+
+- `GET /v1/claude/auth` reads, never returns, the secrets:
+  `claudeAiOauth.accessToken` in `$CLAUDE_CONFIG_DIR/.credentials.json`, plus
+  `CLAUDE_CODE_OAUTH_TOKEN` (`oauthTokenFromEnv` equals `sources.oauthToken`) and
+  `ANTHROPIC_API_KEY` in the environment, which are reported only if someone sets them
+  manually. The account comes from `oauthAccount` in the global config
+  (`$CLAUDE_CONFIG_DIR/.claude.json` if the variable is set, else `$HOME/.claude.json`).
+- `POST /v1/claude/import` (sent by the desktop app) writes credentials, the account keys
+  and whitelisted config files (`CLAUDE_IMPORT_PATHS`). Paths are refused unless
+  normalized and relative; parent directories are walked one by one and a symlink must
+  resolve inside the config dir; the final write is temp file + rename, so a symlinked
+  target is replaced, not followed. `settings.json` loses the keys that run host
+  commands (`hooks`, `apiKeyHelper`, `statusLine`, …); the sandbox's own hooks live in
+  `/etc/claude-code/managed-settings.json` and are unaffected. The previous
+  `settings.json`, `.credentials.json` and global config are kept as `<file>.theone-bak`.
+  `importedAt` is recorded in `$THEONE_DATA_DIR/claude-import.json`.
+
+## Inbox and Claude hooks
+
+The inbox tells the phone when Claude needs a human and when work ends. Items
+come from three sources:
+
+- **Claude Code hooks.** `/etc/claude-code/managed-settings.json` in the image
+  registers `theone-controller hook` for `Notification`, `Stop`, `StopFailure`
+  and `UserPromptSubmit` in every Claude session, interactive terminal or
+  `claude -p`. The command reads the hook JSON from stdin, adds
+  `theone_terminal_id`/`theone_agent_run_id` from `THEONE_TERMINAL_ID`/
+  `THEONE_AGENT_RUN_ID` (the controller sets them for its terminals and runs),
+  and POSTs it to `/v1/hooks/claude`. It gives up after 1.5 s, prints nothing and
+  always exits 0, so a stopped controller never blocks or changes Claude.
+- **Shared files.** `POST /v1/artifacts` adds a `file` item per share ([above](#shared-files)).
+- **Agent runs.** `InboxService` follows `agent.updated`: a run it saw running that ends
+  `succeeded` adds `completed` (body: the result, 280 chars max), `failed` adds
+  `failed` (the error). `cancelled` adds nothing. Later updates of finished runs
+  (archiving) add nothing.
+
+| Hook | Inbox |
+|---|---|
+| `Notification`, `notification_type` `permission_prompt` (or no type and a message mentioning "permission") | `permission` "Claude needs permission", body = message |
+| `Notification`, `idle_prompt`, `agent_needs_input`, `elicitation_dialog`, `elicitation_url_dialog`, unknown types | `needs_input` "Claude is waiting for input" |
+| `Notification`, `elicitation_complete`, `elicitation_response` | clears the session's attention items |
+| `Notification`, `quota_*` | `status` "Claude usage quota" |
+| `Notification`, `auth_success`, `agent_completed` | ignored |
+| `Stop` | clears attention, then `completed` "Claude finished"; body = `last_assistant_message`, else the last assistant text in the last 64 KiB of `transcript_path`, else the project id or cwd |
+| `StopFailure` | clears attention, then `failed` "Claude stopped with an error" (`error_type`) |
+| `UserPromptSubmit` | clears the session's attention items (the human answered) |
+| anything else (`SubagentStop`, …) | ignored |
+
+`projectId` is the directory under `$THEONE_WORKSPACE/projects` that contains
+`cwd`. `agentRunId` is the running agent run with the hook's `session_id` (or the
+`theone_agent_run_id` run while it has no session yet); `terminalId` is the
+forwarded terminal id when that terminal is known.
+
+Rules: a new item (except `file`) for the same kind and the same `sessionId` or `agentRunId` as
+an **unread** item bumps that item (`title`, `body`, `updatedAt`, missing links)
+instead of adding a row; `completed` and `failed` count as one kind, so a run's
+outcome and the `Stop` hook of its session make one item, and a run whose Stop
+item was already read is not posted again. "Clears attention" marks the unread
+`needs_input`/`permission` items of that session or run read. Every change
+publishes `inbox.updated` with the new counts (and the item when one was added
+or bumped). After each insert only the newest 1 000 items by `updatedAt` are kept.
+
+**Push.** Phones register an Expo push token with `POST /v1/push/devices` (table
+`push_devices`). `PushService` follows `inbox.updated`: an unread `completed`, `failed`,
+`needs_input`, `permission` or `file` item is POSTed to `THEONE_PUSH_URL` (Expo's push API,
+which delivers through FCM on Android and APNs on iOS) as one message per device, 100 per
+request, with channel `inbox` and `data` = `PushData { url: "/inbox", sandboxId, itemId, kind,
+artifactId }`. The same item id is pushed at most once per 15 s, so the Stop hook and the
+run's end that bump one item send one push. Tokens whose ticket says `DeviceNotRegistered` are
+deleted; other errors and network failures are logged and never reach the inbox.
+`THEONE_EXPO_ACCESS_TOKEN` is sent as a bearer token when set; `THEONE_PUSH_URL=off` turns
+pushes off.
+
+## Live Activities
+
+The iOS app shows the sandbox in a Live Activity (Dynamic Island / lock screen). It registers
+ActivityKit tokens with `POST /v1/push/live-activities` (table `live_activity_tokens`): the
+app's `push-to-start` token and, once an activity runs, its `activity` update token.
+`LiveActivityService` (`services/live-activity.ts`) follows `agent.updated`, `agent.deleted`,
+`process.updated` and `build.updated`, recomputes the `IslandState` after a 1 s debounce
+(running runs → `runs`, title = first prompt line ≤ 60 chars, project = project name; running
+processes and queued/running builds → `commands`; `GET /v1/usage`-style totals for today and
+the last 7 days plus the runs started today → `usage`, zeros when transcripts are unavailable;
+`sandboxName` = the Tailscale host name, else the container hostname) and, when the content
+changed, sends ActivityKit pushes straight to APNs (`services/apns.ts`, `node:http2`, one
+session per host reused and reopened on close, 10 s per request):
+
+- every `activity` token gets `event: "update"`, or `event: "end"` with a `dismissal-date`
+  5 min ahead when no run or command is left (those tokens are then deleted; the next activity
+  registers a new one);
+- with no `activity` token, a run that just started is sent as `event: "start"` to every
+  `push-to-start` token with `attributes-type: "IslandAttributes"`, `attributes: { sandboxId,
+  sandboxName }` and an `alert`.
+
+Headers: `authorization: bearer <JWT>` (ES256 over the `.p8` key, `iss` = team id, cached
+50 min), `apns-topic: <bundle id>.push-type.liveactivity`, `apns-push-type: liveactivity`,
+`apns-priority: 10`, `apns-expiration: 0`; body `{ aps: { timestamp, event, "content-state":
+IslandState, "stale-date" | "dismissal-date", … } }`. A `410`, or a `400` with reason
+`BadDeviceToken`, `Unregistered` or `ExpiredToken`, deletes the token; other errors are logged.
+Without `THEONE_APNS_KEY_FILE`, `THEONE_APNS_KEY_ID` and `THEONE_APNS_TEAM_ID` the routes still
+store tokens and the service only logs at `debug` ([runbook](../runbooks/live-activities.md)).
 
 ## Display and VNC bridge
 
@@ -237,6 +446,10 @@ claude -p <prompt> --output-format stream-json --verbose --permission-mode $THEO
   `/run/theone/controller.env`) so noVNC can authenticate.
 - `GET /v1/display/screenshot` runs `import -window root -display :1 png:-`
   (falling back to `xwd -root | convert`, `xwd` from x11-apps) and returns `image/png`.
+- `GET /v1/display/browser` reads Chromium's DevTools `/json/list` on
+  `127.0.0.1:$THEONE_CHROMIUM_DEBUG_PORT` (1.5 s timeout) and returns the `page` tabs
+  with a `phoneUrl` whose loopback host is replaced by the sandbox Tailscale address
+  (blueprint §5.2). No endpoint means `{ available: false, tabs: [] }`.
 - `WS /v1/display/vnc` opens a TCP socket to Xvnc per WebSocket and copies
   bytes both ways (binary frames). It echoes `Sec-WebSocket-Protocol: binary`
   when offered. Either side closing closes the other.
@@ -245,7 +458,7 @@ claude -p <prompt> --output-format stream-json --verbose --permission-mode $THEO
 
 `/workspace/.agent/RUNTIME.md` is rewritten (debounced, temp file + rename)
 on every `process.updated`, `terminal.updated`, `build.updated`,
-`agent.updated` and `artifact.created`. It lists the display and VNC state,
+`agent.updated`, `artifact.created` and `artifact.deleted`. It lists the display and VNC state,
 running processes (id, project, name, pid, port, display, command), recently
 ended processes, terminals, active and recent builds, and recent agent runs.
 Claude reads it at session start ([SPEC §3](../../SPEC.md#3-persistent-memory))
@@ -260,6 +473,8 @@ theone-controller status [--json]        # SandboxStatus from the local API, for
 theone-controller emit --status <s> --message <m> [--project <p>] [--stage <s>] [--platform <p>]
 theone-controller token [--rotate]       # print the token, or write a new one (restart required)
 theone-controller api <METHOD> <PATH> [JSON|-]   # call the local API (in-sandbox agent)
+theone-controller share <file> [--project <id>] [--name <n>] [--note <t>] [--json]   # POST /v1/artifacts
+theone-controller hook                   # Claude Code hook → POST /v1/hooks/claude; silent, always exits 0
 theone-controller --version | --help
 ```
 
@@ -301,7 +516,7 @@ Repositories are treated as hostile input:
   repository's config gets empty `clean`/`smudge`/`process` and
   `required=false`, so listing a project never runs commands from its
   `.git/config` or attributes.
-- Children never see `THEONE_TOKEN` or `THEONE_VNC_PASSWORD`. This prevents
+- Children never see `THEONE_TOKEN`, `THEONE_VNC_PASSWORD` or `THEONE_STT_API_KEY`. This prevents
   accidental leaks only: code running as `dev` can still read the token file
   and the controller's `/proc/<pid>/environ` ([security-model](security-model.md#same-user-limit)).
 

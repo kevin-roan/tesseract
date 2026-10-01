@@ -17,7 +17,7 @@ const ConnectionDot = ({ tone, label }: ConnectionDotProps) => {
   const styles = useMemo(() => createStyles(theme, tone), [theme, tone]);
 
   return (
-    <View style={styles.row} accessibilityLabel={label}>
+    <View style={styles.row} accessible={!!label} accessibilityLabel={label}>
       <View style={styles.halo}>
         <View style={styles.dot} />
       </View>

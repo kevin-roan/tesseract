@@ -2,7 +2,7 @@ import { useMemo, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import type { Icon } from "phosphor-react-native";
 
-import { GlassSurface } from "@/components/glass";
+import { Surface } from "@/components/surface";
 import StatusBadge, { type StatusBadgeProps } from "@/components/status-badge";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -70,7 +70,7 @@ const ResourceCard = ({
   );
 
   return (
-    <GlassSurface style={styles.card}>
+    <Surface style={styles.card}>
       {onPress ? (
         <Pressable
           accessibilityRole="button"
@@ -84,7 +84,7 @@ const ResourceCard = ({
         <View style={styles.summary}>{summary}</View>
       )}
       {footer ? <View style={styles.footer}>{footer}</View> : null}
-    </GlassSurface>
+    </Surface>
   );
 };
 

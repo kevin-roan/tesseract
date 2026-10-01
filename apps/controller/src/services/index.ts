@@ -13,16 +13,29 @@ import { Repositories } from "../db/repositories";
 import { VERSION } from "../version";
 import { AgentRunService } from "./agent-runs";
 import { ArtifactService } from "./artifacts";
+import { BrowserService } from "./browser";
 import { BuildService } from "./builds";
+import { ClaudeAuthService } from "./claude-auth";
+import { ClaudeHookService } from "./claude-hooks";
 import { readAgentContext } from "./context";
 import { DisplayService } from "./display";
 import { GitService } from "./git";
+import { IdentityService, type IdentityOptions } from "./identity";
+import { InboxService } from "./inbox";
+import { LiveActivityService, type LiveActivityOptions } from "./live-activity";
+import { PortService } from "./ports";
 import { ProcessService } from "./processes";
 import { ProjectService } from "./projects";
+import { PushService, type PushOptions } from "./push";
 import { RuntimeMirror } from "./runtime-mirror";
 import { StatusService } from "./status";
+import { SyncBackService, type SyncBackOptions } from "./sync-back";
+import { TaildropService, type TaildropOptions } from "./taildrop";
 import { TerminalService } from "./terminals";
 import { defaultProbes, ToolService, type ToolProbe } from "./tools";
+import { TranscriptionService, type TranscriptionOptions } from "./transcriptions";
+import { UploadService } from "./uploads";
+import { UsageService } from "./usage";
 
 export type ServiceOptions = {
   logger?: Logger;
@@ -30,6 +43,12 @@ export type ServiceOptions = {
   stopGraceMs?: number;
   runtimeDebounceMs?: number;
   toolProbes?: ToolProbe[];
+  identity?: IdentityOptions;
+  taildrop?: TaildropOptions;
+  transcription?: TranscriptionOptions;
+  push?: PushOptions;
+  liveActivity?: LiveActivityOptions;
+  syncBack?: SyncBackOptions;
 };
 
 export type Services = {
@@ -46,12 +65,25 @@ export type Services = {
   tools: ToolService;
   processes: ProcessService;
   projects: ProjectService;
+  syncBack: SyncBackService;
   terminals: TerminalService;
   artifacts: ArtifactService;
   builds: BuildService;
   display: DisplayService;
+  browser: BrowserService;
   agentRuns: AgentRunService;
   status: StatusService;
+  identity: IdentityService;
+  taildrop: TaildropService;
+  claudeAuth: ClaudeAuthService;
+  inbox: InboxService;
+  push: PushService;
+  liveActivity: LiveActivityService;
+  claudeHooks: ClaudeHookService;
+  ports: PortService;
+  usage: UsageService;
+  uploads: UploadService;
+  transcriptions: TranscriptionService;
   runtime: RuntimeMirror;
   context: () => ReturnType<typeof readAgentContext>;
   close: () => Promise<void>;
@@ -84,12 +116,21 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
   const tools = new ToolService(options.toolProbes ?? defaultProbes(config.claudeBin));
   const git = new GitService(realpathOrNull(config.projectsDir) ?? config.projectsDir);
   const processes = new ProcessService(config, repos, logs, hub, logger.child("processes"), stopGraceMs);
-  const projects = new ProjectService(config, git, hub, processes, logger.child("projects"));
+  const syncBack = new SyncBackService(config, git, repos, hub, logger.child("sync-back"), options.syncBack);
+  syncBack.start();
+  const projects = new ProjectService(config, git, hub, processes, syncBack, logger.child("projects"));
   const terminals = new TerminalService(config, repos, hub, logger.child("terminals"), LIMITS.terminalScrollbackBytes, stopGraceMs);
-  const artifacts = new ArtifactService(config, repos, hub, logger.child("artifacts"));
+  const inbox = new InboxService(repos, hub, logger.child("inbox"));
+  inbox.follow(hub);
+  const push = new PushService(config, repos, logger.child("push"), options.push);
+  push.follow(hub);
+  const artifacts = new ArtifactService(config, repos, hub, inbox, logger.child("artifacts"));
   const builds = new BuildService(config, repos, logs, hub, projects, artifacts, tools, logger.child("builds"), stopGraceMs);
   const display = new DisplayService(config);
-  const agentRuns = new AgentRunService(config, repos, hub, logger.child("agent"), stopGraceMs);
+  const uploads = new UploadService(config, repos, logger.child("uploads"));
+  uploads.prune();
+  const transcriptions = new TranscriptionService(config, uploads, repos, hub, logger.child("stt"), options.transcription);
+  const agentRuns = new AgentRunService(config, repos, hub, uploads, logger.child("agent"), stopGraceMs);
   const status = new StatusService(config, VERSION, tools, display, () => ({
     projects: projects.count(),
     runningProcesses: processes.runningCount(),
@@ -97,6 +138,28 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
     terminals: terminals.runningCount(),
     agentRuns: agentRuns.runningCount(),
   }));
+  const identity = new IdentityService(config, logger.child("identity"), options.identity);
+  const claudeAuth = new ClaudeAuthService(config, logger.child("claude-auth"));
+  const taildrop = new TaildropService(config, artifacts, logger.child("taildrop"), options.taildrop);
+  const claudeHooks = new ClaudeHookService(config, inbox, agentRuns, terminals, logger.child("hooks"));
+  const ports = new PortService(config, processes, identity);
+  const browser = new BrowserService(config, identity);
+  const usage = new UsageService(config, { runs: () => [...agentRuns.list(), ...agentRuns.list({ archived: true })], terminals: () => terminals.list() });
+  const liveActivity = new LiveActivityService(
+    config,
+    repos,
+    {
+      runs: () => [...agentRuns.list(), ...agentRuns.list({ archived: true })],
+      processes: () => processes.running(),
+      builds: () => builds.activeBuilds(),
+      usage: (days) => usage.usage({ days }),
+      projectName: async (id) => (await projects.get(id)).name,
+      sandboxName: async () => (await identity.selfNode())?.hostName ?? null,
+    },
+    logger.child("live-activity"),
+    options.liveActivity,
+  );
+  liveActivity.start(hub);
   const runtime = new RuntimeMirror(
     config,
     { version: VERSION, apiUrl: localApiUrl(config), repos, processes, terminals, builds, agentRuns, display },
@@ -108,8 +171,10 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
   let closing: Promise<void> | null = null;
   const close = () => {
     closing ??= (async () => {
+      syncBack.stop();
       await Promise.allSettled([builds.shutdown(), processes.shutdown(), terminals.shutdown(), agentRuns.shutdown()]);
       await runtime.stop();
+      await liveActivity.stop();
       logs.flushAll();
       db.close();
     })();
@@ -130,12 +195,25 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
     tools,
     processes,
     projects,
+    syncBack,
     terminals,
     artifacts,
     builds,
     display,
+    browser,
     agentRuns,
     status,
+    identity,
+    taildrop,
+    claudeAuth,
+    inbox,
+    push,
+    liveActivity,
+    claudeHooks,
+    ports,
+    usage,
+    uploads,
+    transcriptions,
     runtime,
     context: () => readAgentContext(config.agentDir),
     close,

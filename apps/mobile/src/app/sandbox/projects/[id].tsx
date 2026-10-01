@@ -13,6 +13,8 @@ import BuildTargetCard from "@/features/sandbox/components/build-target-card";
 import GitCard from "@/features/sandbox/components/git-card";
 import ProcessCard from "@/features/sandbox/components/process-card";
 import ScriptCard from "@/features/sandbox/components/script-card";
+import SyncSection from "@/features/sandbox/components/sync-section";
+import WebLinkCard from "@/features/sandbox/components/web-link-card";
 import { useProjectDetail } from "@/features/sandbox/hooks/use-project-detail";
 import { GIT_PREVIEW } from "@/features/sandbox/utils/constants";
 import { firstParam } from "@/features/sandbox/utils/routes";
@@ -42,6 +44,8 @@ export default function ProjectScreen() {
 
   return (
     <ScreenScaffold
+      refreshing={detail.refreshing}
+      onRefresh={detail.refresh}
       header={
         <ScreenHeader
           title={project.name}
@@ -61,6 +65,17 @@ export default function ProjectScreen() {
             fileLimit={GIT_PREVIEW.files}
             commitLimit={GIT_PREVIEW.commits}
           />
+        </Section>
+      ) : null}
+
+      <SyncSection sync={detail.sync} />
+
+      {detail.sites.length > 0 ? (
+        <Section title="Websites" testID="project-sites">
+          {detail.siteError ? <Notice tone="danger" message={detail.siteError} /> : null}
+          {detail.sites.map((site) => (
+            <WebLinkCard key={site.port} site={site} onOpen={detail.openSite} />
+          ))}
         </Section>
       ) : null}
 
@@ -97,6 +112,8 @@ export default function ProjectScreen() {
             stopping={detail.stoppingId === process.id}
             onToggleLogs={() => detail.toggleLogs(process.id)}
             logsOpen={detail.logsId === process.id}
+            site={detail.siteFor(process.id)}
+            onOpenSite={detail.openSite}
           />
         ))}
         {detail.logsId ? (

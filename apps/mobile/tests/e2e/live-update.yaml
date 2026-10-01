@@ -1,0 +1,37 @@
+appId: com.kevinbpract.theone
+name: live-update
+tags:
+  - sandbox
+---
+- runFlow: subflows/open-app.yaml
+- runFlow: subflows/pair-if-needed.yaml
+- runScript:
+    file: scripts/processes.js
+    env:
+      ACTION: cleanup
+- runFlow:
+    file: subflows/tab.yaml
+    env:
+      TAB: Projects
+- extendedWaitUntil:
+    visible:
+      id: "running-section"
+    timeout: 20000
+- assertNotVisible: "Stop e2e-sleeper"
+- runScript:
+    file: scripts/processes.js
+    env:
+      ACTION: start
+- extendedWaitUntil:
+    visible: "Stop e2e-sleeper"
+    timeout: 15000
+- assertVisible: "Stop ticker"
+- tapOn: "Stop e2e-sleeper"
+- extendedWaitUntil:
+    notVisible: "Stop e2e-sleeper"
+    timeout: 15000
+- assertVisible: "Stop ticker"
+- runScript:
+    file: scripts/processes.js
+    env:
+      ACTION: assert-stopped

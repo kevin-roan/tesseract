@@ -4,6 +4,7 @@ import type { Icon } from "phosphor-react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { useHapticPress } from "@/hooks/use-haptic-press";
 import { HitSlop, IconSize, MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
@@ -21,6 +22,9 @@ export type ActionButtonProps = {
   disabled?: boolean;
   stretch?: boolean;
   accessibilityLabel?: string;
+  testID?: string;
+  /** Light impact on press (native only). On by default. */
+  haptics?: boolean;
 };
 
 const ActionButton = ({
@@ -33,11 +37,14 @@ const ActionButton = ({
   disabled = false,
   stretch = false,
   accessibilityLabel,
+  testID,
+  haptics = true,
 }: ActionButtonProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme, variant, size, stretch), [theme, variant, size, stretch]);
   const { foreground } = ActionButtonColors[variant];
   const inactive = disabled || loading;
+  const handlePress = useHapticPress(onPress, haptics);
 
   return (
     <Pressable
@@ -46,7 +53,8 @@ const ActionButton = ({
       accessibilityState={{ disabled: inactive, busy: loading }}
       disabled={inactive}
       hitSlop={HitSlop.sm}
-      onPress={onPress}
+      onPress={handlePress}
+      testID={testID}
       style={({ pressed }) => [styles.button, pressed && styles.pressed, disabled && styles.disabled]}
     >
       {loading ? (

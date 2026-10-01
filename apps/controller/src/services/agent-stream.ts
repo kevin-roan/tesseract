@@ -1,4 +1,4 @@
-import type { AgentRunEvent } from "@theone/protocol";
+import type { AgentRunEvent, AgentRunUsage } from "@theone/protocol";
 
 export type AgentEventBody =
   | { kind: "text"; text: string }
@@ -9,7 +9,7 @@ export type AgentEventBody =
 export type AgentStreamResult = {
   isError: boolean;
   result: string | null;
-  costUsd: number | null;
+  usage: AgentRunUsage | null;
   subtype: string | null;
 };
 
@@ -26,6 +26,18 @@ const INPUT_KEYS = ["command", "file_path", "path", "pattern", "url", "query", "
 
 const isObject = (value: unknown): value is Json => typeof value === "object" && value !== null && !Array.isArray(value);
 const asString = (value: unknown): string | null => (typeof value === "string" ? value : null);
+const tokenCount = (value: unknown): number => (typeof value === "number" && Number.isFinite(value) && value > 0 ? Math.floor(value) : 0);
+
+/** Maps the `usage` object of a `result` message (Anthropic API field names) to AgentRunUsage; null when absent. */
+function parseUsage(value: unknown): AgentRunUsage | null {
+  if (!isObject(value)) return null;
+  const inputTokens = tokenCount(value.input_tokens);
+  const outputTokens = tokenCount(value.output_tokens);
+  const cacheReadTokens = tokenCount(value.cache_read_input_tokens);
+  const cacheWriteTokens = tokenCount(value.cache_creation_input_tokens);
+  const totalTokens = inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens;
+  return { inputTokens, outputTokens, cacheReadTokens, cacheWriteTokens, totalTokens };
+}
 
 export function truncate(text: string, length = SUMMARY_LENGTH): string {
   const single = text.replace(/\s+/g, " ").trim();
@@ -133,14 +145,14 @@ export class AgentStreamParser {
   private result(message: Json, sessionId: string | undefined): AgentStreamUpdate {
     const subtype = asString(message.subtype);
     const isError = message.is_error === true || (subtype !== null && subtype !== "success");
-    const cost = typeof message.total_cost_usd === "number" ? message.total_cost_usd : null;
+    const usage = parseUsage(message.usage);
     const duration = typeof message.duration_ms === "number" ? ` in ${(message.duration_ms / 1000).toFixed(1)} s` : "";
     const turns = typeof message.num_turns === "number" ? `, ${message.num_turns} turns` : "";
-    const costText = cost !== null ? `, $${cost.toFixed(4)}` : "";
+    const tokens = usage ? `, ${usage.totalTokens.toLocaleString("en-US")} tokens` : "";
     return {
       sessionId,
-      events: [{ kind: "system", text: `${isError ? `Run failed (${subtype ?? "error"})` : "Run finished"}${duration}${turns}${costText}` }],
-      result: { isError, result: asString(message.result), costUsd: cost, subtype },
+      events: [{ kind: "system", text: `${isError ? `Run failed (${subtype ?? "error"})` : "Run finished"}${duration}${turns}${tokens}` }],
+      result: { isError, result: asString(message.result), usage, subtype },
     };
   }
 }

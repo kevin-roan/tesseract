@@ -1,0 +1,15 @@
+# Opt-in (--tailscale-api / THEONE_TAILSCALE_LOCALAPI=1) for the host-tailscale and local
+# modes: the host's tailscaled socket directory, read-only, so GET /v1/identity can ask the
+# LocalAPI who is calling. The directory (not the socket file) is mounted so a tailscaled
+# restart does not leave a stale socket behind. Trade-off: docs/architecture/security-model.md.
+services:
+  sandbox:
+    environment:
+      THEONE_TAILSCALE_SOCKET: /run/tailscale/tailscaled.sock
+    volumes:
+      - type: bind
+        source: ${THEONE_TAILSCALE_HOST_SOCKET_DIR:-/var/run/tailscale}
+        target: /run/tailscale
+        read_only: true
+        bind:
+          create_host_path: false

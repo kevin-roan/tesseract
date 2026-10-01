@@ -1,0 +1,20 @@
+# Opt-in (--tailscale-api / THEONE_TAILSCALE_LOCALAPI=1) for the tailscale mode: the
+# sidecar puts its LocalAPI socket on a shared volume that the sandbox mounts read-only,
+# so GET /v1/identity can report the node, its owner and the tailnet. The viewer still
+# comes from the serve headers. Trade-off: docs/architecture/security-model.md.
+services:
+  tailscale:
+    environment:
+      TS_SOCKET: /var/run/tailscale/tailscaled.sock
+    volumes:
+      - theone-tailscale-run:/var/run/tailscale
+
+  sandbox:
+    environment:
+      THEONE_TAILSCALE_SOCKET: /run/tailscale/tailscaled.sock
+    volumes:
+      - theone-tailscale-run:/run/tailscale:ro
+
+volumes:
+  theone-tailscale-run:
+    name: ${THEONE_VOLUME_PREFIX:-${THEONE_COMPOSE_PROJECT:-theone}}-tailscale-run

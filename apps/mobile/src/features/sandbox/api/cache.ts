@@ -8,11 +8,14 @@ import type {
   Project,
   ServerEvent,
   StatusEvent,
+  SyncRequest,
   TerminalInfo,
 } from "@theone/protocol";
 
+import { storeInboxEvent } from "@/features/inbox/api/cache";
+
 import { ACTIVITY_LIMIT } from "../utils/constants";
-import { prependCapped, upsertById, type UpsertPlacement } from "../utils/collections";
+import { prependCapped, removeByIds, upsertById, type UpsertPlacement } from "../utils/collections";
 import { filterFromKey, matchesFilter, sandboxKeys } from "./query-keys";
 
 function patchFilteredLists<T extends { id: string }>(
@@ -25,6 +28,10 @@ function patchFilteredLists<T extends { id: string }>(
     if (!data || !matchesFilter(filterFromKey(queryKey), projectId)) continue;
     queryClient.setQueryData<T[]>(queryKey, upsertById(data, item));
   }
+}
+
+function removeFromLists<T extends { id: string }>(queryClient: QueryClient, listsKey: QueryKey, ids: string[]): void {
+  queryClient.setQueriesData<T[]>({ queryKey: listsKey }, (data) => (data ? removeByIds(data, ids) : data));
 }
 
 function patchList<T extends { id: string }>(
@@ -57,18 +64,41 @@ export function storeArtifact(queryClient: QueryClient, sandboxId: string, artif
   );
 }
 
+export function removeArtifact(queryClient: QueryClient, sandboxId: string, id: string): void {
+  removeFromLists<Artifact>(queryClient, sandboxKeys.artifactLists(sandboxId), [id]);
+  for (const [queryKey, build] of queryClient.getQueriesData<BuildJob>({ queryKey: sandboxKeys.buildDetails(sandboxId) })) {
+    if (build?.artifacts.some((artifact) => artifact.id === id)) {
+      queryClient.setQueryData<BuildJob>(queryKey, { ...build, artifacts: removeByIds(build.artifacts, [id]) });
+    }
+  }
+}
+
 export function storeAgentRun(queryClient: QueryClient, sandboxId: string, run: AgentRun, seed = false): void {
   queryClient.setQueryData<AgentRunDetail>(sandboxKeys.agentRun(sandboxId, run.id), (detail) => {
     if (detail) return { ...detail, ...run };
     return seed ? { ...run, events: [] } : detail;
   });
+  if (run.archivedAt) return removeFromLists(queryClient, sandboxKeys.agentRunLists(sandboxId), [run.id]);
   patchFilteredLists(queryClient, sandboxKeys.agentRunLists(sandboxId), run, run.projectId);
+}
+
+export function removeAgentRuns(queryClient: QueryClient, sandboxId: string, ids: string[]): void {
+  removeFromLists(queryClient, sandboxKeys.agentRunLists(sandboxId), ids);
+  for (const id of ids) queryClient.removeQueries({ queryKey: sandboxKeys.agentRun(sandboxId, id), exact: true });
 }
 
 export function storeProject(queryClient: QueryClient, sandboxId: string, project: Project): void {
   queryClient.setQueryData(sandboxKeys.project(sandboxId, project.id), project);
   patchList(queryClient, sandboxKeys.projects(sandboxId), project, "end");
   void queryClient.invalidateQueries({ queryKey: sandboxKeys.projectGit(sandboxId, project.id) });
+}
+
+export function storeSyncRequest(queryClient: QueryClient, sandboxId: string, request: SyncRequest): void {
+  patchList(queryClient, sandboxKeys.syncRequests(sandboxId, request.projectId), request);
+}
+
+export function invalidateSyncChanges(queryClient: QueryClient, sandboxId: string, projectId: string): Promise<void> {
+  return queryClient.invalidateQueries({ queryKey: sandboxKeys.syncChanges(sandboxId, projectId) });
 }
 
 export function storeActivity(queryClient: QueryClient, sandboxId: string, event: StatusEvent): void {
@@ -87,12 +117,22 @@ export function applyServerEvent(queryClient: QueryClient, sandboxId: string, ev
       return storeBuild(queryClient, sandboxId, event.build);
     case "artifact.created":
       return storeArtifact(queryClient, sandboxId, event.artifact);
+    case "artifact.deleted":
+      return removeArtifact(queryClient, sandboxId, event.id);
     case "agent.updated":
       return storeAgentRun(queryClient, sandboxId, event.run);
+    case "agent.deleted":
+      return removeAgentRuns(queryClient, sandboxId, event.ids);
     case "project.updated":
       return storeProject(queryClient, sandboxId, event.project);
     case "status":
       return storeActivity(queryClient, sandboxId, event.event);
+    case "sync.updated":
+      return storeSyncRequest(queryClient, sandboxId, event.request);
+    case "sync.changed":
+      return void invalidateSyncChanges(queryClient, sandboxId, event.projectId);
+    case "inbox.updated":
+      return storeInboxEvent(queryClient, sandboxId, event);
     case "hello":
     case "ping":
       return;

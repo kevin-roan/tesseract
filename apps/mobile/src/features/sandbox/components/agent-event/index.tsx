@@ -20,16 +20,14 @@ const AgentEvent = ({ event }: AgentEventProps) => {
   switch (event.kind) {
     case "text":
       return (
-        <View style={styles.bubble}>
-          <ThemedText variant="body" color="bubbleAssistantText" selectable>
-            {event.text}
-          </ThemedText>
-        </View>
+        <ThemedText variant="body" color="bubbleAssistantText" selectable>
+          {event.text}
+        </ThemedText>
       );
     case "tool_use":
       return (
         <View style={styles.tool}>
-          <WrenchIcon size={IconSize.sm} color={theme.colors.accentPressed} weight="bold" />
+          <WrenchIcon size={IconSize.sm} color={theme.colors.accentPressed} weight="bold" style={styles.icon} />
           <View style={styles.toolBody}>
             <ThemedText variant="label">{event.tool}</ThemedText>
             <ThemedText variant="code" color="textSecondary" numberOfLines={3} selectable>
@@ -46,6 +44,7 @@ const AgentEvent = ({ event }: AgentEventProps) => {
             size={IconSize.sm}
             color={event.isError ? theme.colors.danger : theme.colors.success}
             weight="fill"
+            style={styles.icon}
           />
           <View style={styles.toolBody}>
             {event.tool ? <ThemedText variant="label">{event.tool}</ThemedText> : null}

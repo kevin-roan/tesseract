@@ -11,12 +11,14 @@ default mode needs nothing on the host except Docker. Decision record:
 | `tailscale` (default) | `compose.yml` + `compose.tailscale.yml` | `https://<THEONE_HOSTNAME>.<tailnet>.ts.net` (443 → 7700) and `<THEONE_HOSTNAME>:5901`; **no host ports** | normal use |
 | `host-tailscale` | `compose.yml` + `compose.local.yml`, `THEONE_BIND_ADDR=<host 100.x IP>` | `http://<host tailnet IP>:7700`, `:5901` (host ports `THEONE_CONTROLLER_HOST_PORT`, `THEONE_VNC_HOST_PORT`) | the host already runs Tailscale and you prefer not to add a node |
 | `local` | `compose.yml` + `compose.local.yml`, `THEONE_BIND_ADDR=127.0.0.1` | `http://127.0.0.1:7700` on the host only (same host-port variables) | development, e2e tests, CI |
+| `+tailscale-api` | tailscale: + `compose.tailscale-api-sidecar.yml`; host-tailscale, local: + `compose.tailscale-api.yml` | unchanged; the sandbox can query tailscaled's LocalAPI for `GET /v1/identity` | the app should show the real Tailscale user and node ([below](#tailscale-identity-localapi)) |
 | `+dind` | any of the above + `compose.dind.yml` | unchanged; adds a Docker daemon for the sandbox | projects that need Docker ([ADR 0006](../adr/0006-optional-docker-in-docker.md)) |
 
 The operator CLI picks the files. The mode comes from `--mode <mode>` (for
 example `bun run sandbox up --mode local`), then `THEONE_MODE` in the
 environment or `infra/compose/.env`, and defaults to `tailscale`. dind is added
-with `--dind` or `THEONE_DIND=1`. The modes are overlay files, not compose
+with `--dind` or `THEONE_DIND=1`, the LocalAPI share with `--tailscale-api` or
+`THEONE_TAILSCALE_LOCALAPI=1`. The modes are overlay files, not compose
 profiles. The CLI reads `infra/compose/.env`, or only the file named with
 `--env-file <path>` (which it also hands to compose). In `host-tailscale` mode it
 runs the read-only `tailscale ip -4` on the host when `THEONE_BIND_ADDR` is
@@ -170,7 +172,45 @@ or behind an SSH tunnel (`ssh -L 7700:127.0.0.1:7700 host`). The public URL is
 - Funnel is never enabled, so nothing is reachable from the internet.
 - The dind daemon's API (`tcp://docker:2376`, mutual TLS) is reachable only
   from the compose network, never published.
-- The sidecar's LocalAPI socket and state volume are not mounted into the sandbox.
+- The sidecar's state volume is never mounted into the sandbox, and its LocalAPI
+  socket (or the host's) only with the opt-in `--tailscale-api`.
+
+## Tailscale identity (LocalAPI)
+
+`GET /v1/identity` tells the app who is calling (`viewer`), which tailnet node the
+sandbox is reachable through (`node`), who owns it (`owner`) and the tailnet's MagicDNS
+suffix. The controller resolves it like this:
+
+1. **Serve headers.** `tailscale serve` adds `Tailscale-User-Login`, `Tailscale-User-Name`
+   and `Tailscale-User-Profile-Pic` to proxied requests (not for tagged source devices).
+   They are trusted only when the TCP peer is loopback, because serve proxies from
+   `127.0.0.1` inside the shared namespace. This works in `tailscale` mode without any
+   socket.
+2. **LocalAPI whois.** Otherwise the controller asks tailscaled
+   (`GET /localapi/v0/whois?addr=<peer ip:port>`) over the unix socket
+   `THEONE_TAILSCALE_SOCKET` (default `/run/tailscale/tailscaled.sock`).
+3. **LocalAPI status** gives `node` (`Self`), `owner` (`User[Self.UserID]`) and
+   `tailnet`; it is cached for 30 s. Calls time out after 1.5 s; no socket means
+   `available: false` and nulls, never an error response.
+
+The socket is only there with `--tailscale-api` (`THEONE_TAILSCALE_LOCALAPI=1`):
+
+| Mode | What is shared |
+|---|---|
+| `tailscale` | `compose.tailscale-api-sidecar.yml` sets `TS_SOCKET=/var/run/tailscale/tailscaled.sock` in the sidecar, keeps that directory on the volume `<prefix>-tailscale-run` and mounts it read-only at `/run/tailscale` in the sandbox. `docker exec <project>-tailscale-1 tailscale status` then also works without `--socket` |
+| `host-tailscale`, `local` | `compose.tailscale-api.yml` bind-mounts the host directory `THEONE_TAILSCALE_HOST_SOCKET_DIR` (default `/var/run/tailscale`) read-only at `/run/tailscale`. The directory, not the socket file, so a tailscaled restart does not leave a stale socket. `sandbox up` refuses when `tailscaled.sock` is missing there |
+
+In `host-tailscale` mode, Docker's port publishing DNATs tailnet traffic that arrives on
+`tailscale0`, so the controller sees the peer's own tailnet address and whois resolves the
+phone's user and device. Traffic that goes through `docker-proxy` instead (for example a
+connection from the host to `127.0.0.1`, which host-tailscale does not bind) would show
+the Docker gateway and resolve no viewer; the owner and node are still reported. In
+`tailscale` mode without serve (a peer on plain `:7700`), userspace forwarding makes the
+peer look like loopback, so there is no viewer either.
+
+A mounted read-only socket still accepts requests: the `:ro` flag only protects the
+directory entry. What a client may do is decided by tailscaled from the peer's uid; see
+the [security model](security-model.md#tailscale-localapi-opt-in) before enabling it.
 
 ## Egress
 

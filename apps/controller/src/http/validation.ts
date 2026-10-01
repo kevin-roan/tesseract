@@ -8,6 +8,9 @@ const ID_LABELS: Record<IdKind, string> = {
   build: "Build",
   artifact: "Artifact",
   agentRun: "Agent run",
+  inbox: "Inbox item",
+  upload: "Upload",
+  sync: "Sync request",
 };
 
 export function parseWith<T>(schema: Schema<T>, data: unknown, what: string): T {

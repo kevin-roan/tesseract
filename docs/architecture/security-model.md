@@ -23,6 +23,8 @@ Related: [overview → trust boundaries](overview.md#trust-boundaries),
 | Tailscale auth key and node key | `infra/compose/.env` on the host, sidecar state volume | lets a device join the tailnet |
 | Project secrets and signing keys | project `.env*.local`, `/home/dev/.secrets/<project>/` | code signing identity, cloud and API access |
 | VNC password | `THEONE_VNC_PASSWORD` or generated once into `/home/dev/.vnc/password` (0600); hash in `/home/dev/.vnc/passwd`; controller copy in `/run/theone/controller.env` | view and control of the display |
+| Speech-to-text API key (optional) | `THEONE_STT_API_KEY` in `.env`, moved into `/run/theone/controller.env`; only the controller's environment | billable transcription account; voice notes are sent to `THEONE_STT_URL` |
+| Phone uploads (attachments, voice notes) | `/workspace/.theone/uploads` (0700 dirs, 0600 files), pruned after 30 days | the user's photos, documents and recordings |
 
 ## Adversaries and scenarios
 
@@ -102,7 +104,7 @@ Related: [overview → trust boundaries](overview.md#trust-boundaries),
 |---|---|
 | No privilege | no `privileged`, no `/dev/net/tun`, no `NET_ADMIN` (userspace Tailscale) |
 | Capabilities | `cap_drop: [ALL]`, `cap_add` only `CHOWN, DAC_OVERRIDE, FOWNER, SETUID, SETGID, KILL, AUDIT_WRITE` (needed by the entrypoint and `sudo`) |
-| Filesystem | named volumes only. No host bind mounts except the read-only Tailscale serve config. No Docker socket |
+| Filesystem | named volumes only. No host bind mounts except the read-only Tailscale serve config (and the read-only host tailscale socket directory with the opt-in `--tailscale-api`, [below](#tailscale-localapi-opt-in)). No Docker socket |
 | Resources | CPU and memory limits from `.env`, `pids_limit`, `shm_size: 2g` |
 | User | every program runs as `dev` (uid 1000), including supervisord (`user=dev`). Only the entrypoint runs as root; it never follows symlinks in the volumes and runs its tool probes as `dev`, so a binary `dev` planted in `/opt/android-sdk` cannot get root at the next start. `dev` has passwordless `sudo` by default (`ENABLE_SUDO=true`), so container root is one command away, still confined by the capability set. Build with `ENABLE_SUDO=false` to remove it |
 | PID 1 | tini (reaping), supervisord for fixed programs |
@@ -111,6 +113,47 @@ Residual risk: a kernel exploit from inside the container. Keep the host
 kernel patched. Seccomp and AppArmor defaults from Docker stay enabled: never
 set `seccomp=unconfined` for the sandbox. The sandbox cannot use
 `no-new-privileges`, because sudo needs setuid. The Tailscale sidecar does use it.
+
+### Tailscale LocalAPI (opt-in)
+
+`--tailscale-api` (`THEONE_TAILSCALE_LOCALAPI=1`) mounts a tailscaled LocalAPI socket into
+the sandbox so `GET /v1/identity` can name the Tailscale user and node. The read-only mount
+does not make the API read-only: tailscaled authorises each connection by the peer's uid
+(`SO_PEERCRED`, which containers share with the host because Docker does not remap uids):
+
+- **Any uid:** read access. `status`, `whois`, `prefs`, the list of peers, their
+  addresses, OS and owners, i.e. the tailnet's device inventory, become visible to all
+  code in the sandbox, including untrusted project code (A3).
+- **uid 0, or the tailscale operator uid:** full write access. The sandbox's `dev` has
+  passwordless `sudo` by default, so root is always one command away; and on Linux hosts
+  where the operator (`tailscale up --operator=<user>`) is the uid-1000 desktop user,
+  `dev` (uid 1000) is treated as the operator without sudo. Verified on the reference
+  host: `dev` passed a write-only LocalAPI check. Write access can change prefs, the
+  exit node, subnet routes and `serve`/Funnel configuration, or log the node out.
+- **`host-tailscale`/`local` mode:** that is the **host's** tailscaled. A compromised
+  sandbox could, for example, add a serve or Funnel rule that exposes a host service,
+  advertise routes, or disconnect the host from the tailnet. This breaks the "host stays
+  untouched" goal for everything Tailscale controls. Enable it only on a host whose
+  Tailscale you would also trust the sandbox's workload with, and turn it off otherwise.
+- **`tailscale` mode:** the sidecar's own node. The worst case is the sandbox node:
+  reconfiguring serve (Funnel still needs the `funnel` node attribute from your tailnet
+  policy), logging it out, or changing its tags within what the policy allows.
+
+Taildrop uses the same socket: `GET /v1/taildrop/targets` (`file-targets`, read access)
+and `POST /v1/artifacts/:id/taildrop` (`file-put`). Without the opt-in the targets list is
+empty with `available: false` and sends answer `503`; nothing else is attempted.
+tailscaled only accepts `file-put` from a connection with write access (the root/operator
+case above; otherwise the controller returns its `403`), and only offers the node's
+Taildrop targets, i.e. devices of the same user (a tagged sidecar node usually has none).
+The controller pushes only files already in `/workspace/artifacts`, to a target listed by
+tailscaled, and only for a caller holding the token.
+
+Mitigations: keep it off unless the Profile tab or Taildrop needs it; build with `ENABLE_SUDO=false`
+and a `DEV_UID` that is not the host's operator uid, which leaves read access only; do not
+grant `tag:theone` the `funnel` attribute. The serve headers need no socket and give the
+viewer in `tailscale` mode. Identity data is informational: nothing in the controller
+authorises on it, and a caller that already holds the token can fake serve headers from
+loopback.
 
 ### Docker-in-Docker (opt-in)
 
@@ -179,7 +222,7 @@ console. Either step alone cuts access, and doing both is best.
 
 ### Controller hardening against its own workload
 
-- **Child environment.** `THEONE_TOKEN` and `THEONE_VNC_PASSWORD` are removed
+- **Child environment.** `THEONE_TOKEN`, `THEONE_VNC_PASSWORD` and `THEONE_STT_API_KEY` are removed
   from the environment of every process, build step, terminal, agent run and
   git/zip helper, and neither reaches Xvnc, openbox or GUI apps. This prevents
   accidental leaks (crash reporters, `env` in a log), nothing more.
@@ -224,7 +267,8 @@ Regression tests: `apps/controller/tests/hardening.test.ts` and
 ## What is never exposed
 
 - No published host ports in the default mode, no Funnel, no public DNS.
-- The host Docker socket and host filesystem.
+- The host Docker socket and host filesystem (the host's tailscale socket directory only
+  with the opt-in `--tailscale-api`).
 - The controller token, in any API response. The only exceptions are the
   CLI `pair`/`token` output (run by the operator through `bun run sandbox pair`).
 - `/workspace/.agent/controller/` contents through `/v1/context`, which
@@ -234,6 +278,8 @@ Regression tests: `apps/controller/tests/hardening.test.ts` and
 
 - A single token without scopes or per-device identity, and no audit log of API calls.
 - Tickets are not bound to a purpose or target.
+- `--tailscale-api` hands the raw LocalAPI socket to the sandbox; a filtering proxy that
+  only forwards `status` and `whois` would remove the write access.
 - No egress filtering: the sandbox reaches the internet, the host's published
   ports, the LAN and metadata endpoints. Use `DOCKER-USER` iptables rules on the
   host or an egress proxy for sensitive work.

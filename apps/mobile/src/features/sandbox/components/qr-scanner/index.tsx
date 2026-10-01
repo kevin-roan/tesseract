@@ -51,7 +51,7 @@ const QrScanner = ({ permission, onRequestPermission, onScanned, paused, onResca
           <CameraIcon size={IconSize.xl} color={theme.colors.textSecondary} weight="duotone" />
           <ThemedText variant="bodySmall" color="textSecondary" style={styles.centered}>
             {permission === "blocked"
-              ? "Camera access is turned off for TheOne. Allow it in Settings to scan the pairing code."
+              ? "Camera access is turned off for Monolith. Allow it in Settings to scan the pairing code."
               : "Scan the QR code printed by `theone-controller pair` to connect in one step."}
           </ThemedText>
           {permission === "blocked" ? (

@@ -151,7 +151,7 @@ specifics: [electron-windows-wine.md](electron-windows-wine.md).
    and starts long work through the controller (`theone-controller api`:
    builds, `display: true` processes). Anything it merely backgrounds is
    stopped when the run ends.
-5. The run ends with `result`, `costUsd` and `sessionId`. The phone can
+5. The run ends with `result`, token `usage` and `sessionId`. The phone can
    continue the conversation with `resumeSessionId`.
 
 Interactive Claude runs in a `claude` terminal instead: same PTY path as the

@@ -11,7 +11,16 @@ export default function createStyles(theme: Theme) {
     },
     titles: {
       flex: 1,
+      minWidth: 0,
       gap: theme.spacing.xxs,
+    },
+    titleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+    },
+    title: {
+      flexShrink: 1,
     },
   });
 }

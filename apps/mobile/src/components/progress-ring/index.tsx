@@ -4,6 +4,8 @@ import Svg, { Circle } from "react-native-svg";
 
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { clampProgress, percentLabel } from "@/lib/progress";
+import { MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
 
@@ -13,7 +15,7 @@ export type ProgressRingProps = {
   /** Outer diameter in dp. */
   size?: number;
   thickness?: number;
-  /** Colour of the filled arc. Defaults to the theme accent. */
+  /** Colour of the filled arc. Defaults to `accentStrong`, which holds 3:1 on light surfaces. */
   color?: string;
   /** Colour of the unfilled remainder. */
   trackColor?: string;
@@ -22,30 +24,34 @@ export type ProgressRingProps = {
   labelColor?: string;
 };
 
-const clamp = (value: number) => Math.min(1, Math.max(0, value));
-
 /**
- * Thin percentage ring used on stat cards. The arc starts at 12 o'clock and
- * runs clockwise, which is why the SVG is rotated -90°.
+ * Percentage ring. The arc starts at 12 o'clock and runs clockwise, which is
+ * why the SVG is rotated -90°. The label is sized from the inner diameter so
+ * "100%" always fits inside the stroke.
  */
 const ProgressRing = ({
   progress,
-  size = 40,
-  thickness = 3,
+  size = 56,
+  thickness = 5,
   color,
   trackColor,
   showLabel = true,
   labelColor,
 }: ProgressRingProps) => {
   const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(size), [size]);
+  const styles = useMemo(() => createStyles(size, thickness), [size, thickness]);
 
-  const value = clamp(progress);
+  const value = clampProgress(progress);
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      accessible
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(value * 100) }}
+    >
       <Svg width={size} height={size} style={styles.svg}>
         <Circle
           cx={size / 2}
@@ -59,7 +65,7 @@ const ProgressRing = ({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={color ?? theme.colors.accent}
+          stroke={color ?? theme.colors.accentStrong}
           strokeWidth={thickness}
           strokeLinecap="round"
           strokeDasharray={circumference}
@@ -69,11 +75,14 @@ const ProgressRing = ({
       </Svg>
       {showLabel ? (
         <ThemedText
-          variant="caption"
+          variant="label"
           color="textSecondary"
-          style={labelColor ? { color: labelColor } : undefined}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+          style={[styles.label, labelColor ? { color: labelColor } : undefined]}
         >
-          {Math.round(value * 100)}%
+          {percentLabel(value)}
         </ThemedText>
       ) : null}
     </View>

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import type { VncAction } from "@theone/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
 
@@ -9,12 +10,12 @@ import { OFFLINE_BADGE, pageTone, stateLabel } from "../utils/states";
 import { useDisplayStatus } from "./use-sandbox-queries";
 import { useWebPageSession } from "./use-web-page-session";
 
-export function useDisplaySession() {
+export function useDisplaySession(onAction?: (action: VncAction) => void) {
   const display = useDisplayStatus();
   const data = display.data;
   const outage = displayOutage(data);
   const ready = data !== undefined && outage === null;
-  const session = useWebPageSession("vnc", null, (client) => client.vncPageUrl(), ready);
+  const session = useWebPageSession("vnc", null, (client) => client.vncPageUrl(), ready, onAction);
   const { reconnect } = session;
   const { refetch } = display;
 

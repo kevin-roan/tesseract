@@ -8,7 +8,7 @@
     </item>
     <item label="Chromium">
       <action name="Execute">
-        <command>chromium</command>
+        <command>chromium --start-maximized --no-first-run --no-default-browser-check</command>
       </action>
     </item>
     <separator />

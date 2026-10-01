@@ -21,7 +21,7 @@ const StatusBadge = ({ label, tone = "neutral", icon: IconComponent }: StatusBad
   const { foreground } = ToneColors[tone];
 
   return (
-    <View style={styles.badge} accessibilityLabel={label}>
+    <View style={styles.badge} accessible accessibilityLabel={label}>
       {IconComponent ? (
         <IconComponent size={IconSize.xs} color={theme.colors[foreground]} weight="bold" />
       ) : (

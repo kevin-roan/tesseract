@@ -31,7 +31,12 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
+
+# firebase native configs (uploaded to EAS as file env vars)
+google-services.json
+GoogleService-Info.plist
 
 # typescript
 *.tsbuildinfo
@@ -51,3 +56,6 @@ apps/controller/dist/
 # sandbox infrastructure secrets
 infra/compose/.env
 infra/compose/secrets/
+
+# Sentry auth token
+.env.sentry-build-plugin

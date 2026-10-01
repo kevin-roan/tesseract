@@ -16,6 +16,7 @@ export type RemoteSurfaceProps = {
   onMessage: (data: string) => void;
   onLoad: () => void;
   onError: () => void;
+  onTerminate: () => void;
   onReconnect: () => void;
 };
 
@@ -29,6 +30,7 @@ const RemoteSurface = ({
   onMessage,
   onLoad,
   onError,
+  onTerminate,
   onReconnect,
 }: RemoteSurfaceProps) => {
   if (url && origin) {
@@ -41,7 +43,7 @@ const RemoteSurface = ({
         onMessage={onMessage}
         onLoad={onLoad}
         onError={onError}
-        onTerminate={onReconnect}
+        onTerminate={onTerminate}
       />
     );
   }

@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# theone-controller-run, theone-wine-init and /etc/profile.d/theone.sh.
+# theone-controller-run, theone-wine-init, /etc/profile.d/theone.sh, /etc/chromium.d/theone and the Claude Code managed settings and memory.
 
 load lib/common
 
@@ -116,7 +116,7 @@ wineserver -w"
 profile() {
   run env -i HOME="${HOME}" PATH="${BASE_PATH:-/usr/bin:/bin}" ${JAVA_HOME:+JAVA_HOME="${JAVA_HOME}"} \
     ${ANDROID_HOME:+ANDROID_HOME="${ANDROID_HOME}"} ${DISPLAY:+DISPLAY="${DISPLAY}"} \
-    ${THEONE_DISPLAY:+THEONE_DISPLAY="${THEONE_DISPLAY}"} \
+    ${THEONE_DISPLAY:+THEONE_DISPLAY="${THEONE_DISPLAY}"} ${THEONE_DATA_DIR:+THEONE_DATA_DIR="${THEONE_DATA_DIR}"} \
     sh ${SH_FLAGS:-} -c ". '${ROOTFS}/etc/profile.d/theone.sh'; $1"
 }
 
@@ -157,4 +157,64 @@ gone"
 
   DISPLAY=:9 THEONE_DISPLAY=:3 SH_FLAGS=-i profile 'echo "display=${DISPLAY}"'
   assert_output --partial "display=:9"
+}
+
+@test "profile: never exports a Claude token" {
+  export THEONE_DATA_DIR="${BATS_TEST_TMPDIR}/data"
+  mkdir -p "${THEONE_DATA_DIR}"
+  printf 'sk-ant-oat01-stored\n' > "${THEONE_DATA_DIR}/claude-oauth-token"
+  profile 'echo "token=${CLAUDE_CODE_OAUTH_TOKEN-unset}"'
+  assert_output "token=unset"
+}
+
+# --- /etc/chromium.d/theone (Chromium flags; DevTools endpoint for GET /v1/display/browser) ---
+
+@test "chromium: exposes DevTools on loopback with a non-default profile" {
+  run env -i HOME=/home/dev CHROMIUM_FLAGS=--existing sh -c '. "$1"; printf "%s\n" "${CHROMIUM_FLAGS}"' chromium "${ROOTFS}/etc/chromium.d/theone"
+  assert_success
+  assert_output "--existing --no-sandbox --password-store=basic --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=/home/dev/.config/chromium-theone"
+  run env -i HOME=/home/dev THEONE_CHROMIUM_DEBUG_PORT=9333 sh -c '. "$1"; printf "%s\n" "${CHROMIUM_FLAGS}"' chromium "${ROOTFS}/etc/chromium.d/theone"
+  assert_output --partial "--remote-debugging-port=9333 "
+}
+
+# --- /etc/claude-code/managed-settings.json (Claude Code hooks → controller inbox) ---
+
+MANAGED_SETTINGS="${ROOTFS}/etc/claude-code/managed-settings.json"
+
+@test "claude settings: managed-settings.json is a JSON object with only hooks" {
+  run jq -e 'type == "object" and (keys == ["hooks"])' "${MANAGED_SETTINGS}"
+  assert_success
+}
+
+@test "claude settings: Notification, Stop, StopFailure and UserPromptSubmit run theone-controller hook" {
+  run jq -r '.hooks | keys | join(" ")' "${MANAGED_SETTINGS}"
+  assert_output "Notification Stop StopFailure UserPromptSubmit"
+  run jq -r '[.hooks[][] | select(has("matcher") | not) | .hooks[] | "\(.type) \(.command) \(.timeout)"] | unique | join("\n")' "${MANAGED_SETTINGS}"
+  assert_output "command /usr/local/bin/theone-controller hook 5"
+  run jq -r '[.hooks[] | length] | unique | join(" ")' "${MANAGED_SETTINGS}"
+  assert_output "1"
+}
+
+@test "claude settings: the image puts the rootfs and the controller where the hooks expect them" {
+  local dockerfile="${REPO}/infra/docker/sandbox/Dockerfile"
+  grep -qx 'COPY infra/docker/sandbox/rootfs/ /' "${dockerfile}"
+  grep -q ' /usr/local/bin/theone-controller$' "${dockerfile}"
+}
+
+# --- /etc/claude-code/CLAUDE.md (managed memory: share deliverables with the app) ---
+
+@test "claude memory: CLAUDE.md tells Claude to share deliverables with a command the controller has" {
+  local memory="${ROOTFS}/etc/claude-code/CLAUDE.md"
+  [[ -s "${memory}" ]]
+  grep -q 'theone-controller share <file> --note' "${memory}"
+  grep -q 'theone-controller share <file> \[--project <id>\] \[--name <name>\] \[--note <text>\]' "${REPO}/apps/controller/src/cli/commands.ts"
+}
+
+@test "claude memory: the image prepends SPEC.md to the managed CLAUDE.md, never ~/.claude" {
+  local dockerfile="${REPO}/infra/docker/sandbox/Dockerfile"
+  grep -qx 'COPY SPEC.md /etc/theone/SPEC.md' "${dockerfile}"
+  grep -qF '{ cat /etc/theone/SPEC.md; printf '"'"'\n'"'"'; cat /etc/claude-code/CLAUDE.md; }' "${dockerfile}"
+  run grep -n '\.claude' "${ROOTFS}/usr/local/bin/theone-entrypoint"
+  assert_output --partial 'prune'
+  refute_output --partial 'CLAUDE.md'
 }

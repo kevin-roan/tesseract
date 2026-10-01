@@ -1,12 +1,15 @@
+import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { renderANSI } from "uqr";
-import { buildPairingLink, StatusEventInputSchema, validate, type SandboxStatus } from "@theone/protocol";
+import { buildPairingLink, isIdOfKind, restPaths, ShareArtifactSchema, StatusEventInputSchema, validate, type Artifact, type SandboxStatus } from "@theone/protocol";
 import { resolveToken, rotateToken } from "../auth/token";
 import { loadConfig, type Config } from "../config";
 import type { Env } from "../core/exec";
 import { startController } from "../server";
+import { formatBytes } from "../services/artifacts";
 import { VERSION } from "../version";
 import { api, API_USAGE, redactVncPasswords } from "./api";
+import { hook } from "./hook";
 import { callLocalApi, CliError, isControllerUp } from "./local-api";
 import { consoleOutput, type Output } from "./output";
 
@@ -23,9 +26,13 @@ Usage:
   ${API_USAGE}
                                      call the local API (GET, POST or DELETE; PATH under /v1/; body as an
                                      argument or "-" for stdin); prints the JSON response, VNC password redacted
+  theone-controller share <file> [--project <id>] [--name <name>] [--note <text>] [--json]
+                                     copy a workspace file into the artifacts, announce it in the inbox and
+                                     make it downloadable on paired devices (tags the Claude run/session)
+  theone-controller hook             forward a Claude Code hook (JSON on stdin) to the inbox; silent, always exits 0
   theone-controller --version | --help`;
 
-export type CliIo = { env?: Env; output?: Output; readStdin?: () => Promise<string> };
+export type CliIo = { env?: Env; output?: Output; readStdin?: () => Promise<string>; cwd?: string };
 
 const readProcessStdin = () => Bun.stdin.text();
 
@@ -108,6 +115,34 @@ async function emit(config: Config, args: string[], output: Output): Promise<num
   return 0;
 }
 
+async function share(config: Config, args: string[], env: Env, cwd: string, output: Output): Promise<number> {
+  const { values, positionals } = parseArgs({
+    args,
+    options: {
+      project: { type: "string" },
+      name: { type: "string" },
+      note: { type: "string" },
+      json: { type: "boolean", default: false },
+    },
+    allowPositionals: true,
+    strict: true,
+  });
+  if (positionals.length !== 1) throw new CliError(`share takes exactly one file\n\n${USAGE}`, 2);
+  const input = validate(ShareArtifactSchema, {
+    path: resolve(cwd, positionals[0] ?? ""),
+    ...(values.project ? { projectId: values.project } : {}),
+    ...(values.name ? { name: values.name } : {}),
+    ...(values.note ? { note: values.note } : {}),
+    ...(env.THEONE_AGENT_RUN_ID && isIdOfKind("agentRun", env.THEONE_AGENT_RUN_ID) ? { agentRunId: env.THEONE_AGENT_RUN_ID } : {}),
+    ...(env.CLAUDE_CODE_SESSION_ID ? { sessionId: env.CLAUDE_CODE_SESSION_ID } : {}),
+  });
+  if (!input.ok) throw new CliError(`Invalid share: ${input.error.message}`, 2);
+  const artifact = await callLocalApi<Artifact>(config, "POST", restPaths.artifacts(), input.value);
+  if (!artifact) throw new CliError("Empty share response");
+  output.out(values.json ? JSON.stringify(artifact) : `shared ${artifact.fileName} (${formatBytes(artifact.sizeBytes)}, ${artifact.projectId}) as ${artifact.id}`);
+  return 0;
+}
+
 function token(config: Config, args: string[], output: Output): number {
   const { values } = parseArgs({ args, options: { rotate: { type: "boolean", default: false } }, strict: true });
   if (!values.rotate) {
@@ -135,6 +170,7 @@ export async function runCli(argv: string[], io: CliIo = {}): Promise<number | n
     output.out(VERSION);
     return 0;
   }
+  if (command === "hook") return hook(io.env ?? process.env, io.readStdin ?? readProcessStdin);
   try {
     const config = loadConfig(io.env ?? process.env);
     switch (command) {
@@ -148,6 +184,8 @@ export async function runCli(argv: string[], io: CliIo = {}): Promise<number | n
         return await emit(config, rest, output);
       case "token":
         return token(config, rest, output);
+      case "share":
+        return await share(config, rest, io.env ?? process.env, io.cwd ?? process.cwd(), output);
       case "api":
         return await api(config, rest, output, io.readStdin ?? readProcessStdin);
       default:

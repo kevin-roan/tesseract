@@ -3,10 +3,16 @@ import { StyleSheet } from "react-native";
 import type { Theme } from "@/theme";
 
 export default function createStyles(theme: Theme, avatar: number) {
+  const inset = theme.spacing.base;
+  const textColumn = avatar + theme.spacing.md;
+
   return StyleSheet.create({
     card: {
-      gap: theme.spacing.md,
-      padding: theme.spacing.base,
+      gap: theme.spacing.sm,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: inset,
+    },
+    framed: {
       borderRadius: theme.radius.lg,
       borderCurve: "continuous",
       overflow: "hidden",
@@ -17,33 +23,37 @@ export default function createStyles(theme: Theme, avatar: number) {
       alignItems: "center",
       gap: theme.spacing.md,
     },
-    avatar: {
-      width: avatar,
-      height: avatar,
-      borderRadius: theme.radius.full,
-      alignItems: "center",
-      justifyContent: "center",
-      overflow: "hidden",
-      backgroundColor: theme.colors.accentMuted,
-    },
-    avatarImage: {
-      width: "100%",
-      height: "100%",
-    },
     /** Takes the slack so the timestamp stays pinned to the right. */
     headline: {
       flex: 1,
-      gap: theme.spacing.xxs,
+      minWidth: 0,
+    },
+    /** Sits on the actor line rather than floating in the middle of the block. */
+    time: {
+      flexShrink: 0,
+      alignSelf: "flex-start",
+      lineHeight: theme.text.bodyStrong.lineHeight,
     },
 
     /** Figures line up under the headline, clear of the avatar column. */
     metrics: {
       flexDirection: "row",
-      paddingLeft: avatar + theme.spacing.md,
+      gap: theme.spacing.base,
+      paddingLeft: textColumn,
     },
     metric: {
       flex: 1,
-      gap: theme.spacing.xxs,
+      minWidth: 0,
+    },
+
+    list: {
+      paddingVertical: theme.spacing.xxs,
+    },
+    /** Starts under the text column so the avatars read as one rail. */
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      marginLeft: inset + textColumn,
+      backgroundColor: theme.colors.divider,
     },
 
     pressed: {

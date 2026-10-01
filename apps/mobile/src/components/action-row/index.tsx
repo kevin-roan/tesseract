@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { View } from "react-native";
 
-import ActionCard, { type ActionCardProps } from "@/components/action-card";
+import type { ActionCardProps } from "@/components/action-card";
+import ActionTile from "@/components/action-tile";
 import { useAppTheme } from "@/hooks/use-app-theme";
 
 import createStyles from "./styles";
@@ -15,8 +16,8 @@ export type ActionRowProps = {
 };
 
 /**
- * Row of quick-action tiles. Cells share the row evenly and wrap once there
- * are more tiles than columns, so a fifth action drops to a second line.
+ * Row of round quick-action tiles. Cells share the row evenly and wrap once
+ * there are more tiles than columns, so a fifth action drops to a second line.
  */
 const ActionRow = ({ items, columns }: ActionRowProps) => {
   const theme = useAppTheme();
@@ -27,7 +28,7 @@ const ActionRow = ({ items, columns }: ActionRowProps) => {
     <View style={styles.row}>
       {items.map(({ id, ...card }) => (
         <View key={id} style={styles.cell}>
-          <ActionCard {...card} />
+          <ActionTile {...card} />
         </View>
       ))}
     </View>

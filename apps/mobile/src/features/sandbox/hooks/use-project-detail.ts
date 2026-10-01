@@ -9,11 +9,16 @@ import { LIST_PREVIEW_LIMIT } from "../utils/constants";
 import { describeError } from "../utils/errors";
 import { buildTargetOptions, frameworkLabel } from "../utils/labels";
 import { gitSummaryLabel, prefersDisplay, scriptCommand } from "../utils/projects";
+import { processSite, projectSites } from "../utils/sites";
 import { useArtifactDownload } from "./use-artifact-download";
 import { useLogStream } from "./use-log-stream";
-import { useStartBuild, useStartProcess, useStopProcess } from "./use-sandbox-mutations";
+import { useOpenSite } from "./use-open-site";
+import { useConfirmedStop } from "./use-confirmed-stop";
+import { useStartBuild, useStartProcess } from "./use-sandbox-mutations";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
-import { useArtifacts, useBuilds, useProcesses, useProject, useProjectGit } from "./use-sandbox-queries";
+import { useArtifacts, useBuilds, useListeningPorts, useProcesses, useProject, useProjectGit } from "./use-sandbox-queries";
+import { useSandboxRefresh } from "./use-sandbox-refresh";
+import { useSyncBack } from "./use-sync-back";
 
 export function useProjectDetail(projectId: string, initialProcessId: string | null) {
   const nav = useSandboxNavigation();
@@ -22,12 +27,16 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
   const processes = useProcesses({ projectId });
   const builds = useBuilds({ projectId });
   const artifacts = useArtifacts({ projectId });
+  const ports = useListeningPorts();
+  const openSite = useOpenSite();
   const startProcess = useStartProcess();
-  const stopProcess = useStopProcess();
+  const stopProcess = useConfirmedStop();
   const startBuild = useStartBuild();
   const downloads = useArtifactDownload();
+  const sync = useSyncBack(projectId);
   const [logsId, setLogsId] = useState<string | null>(initialProcessId);
   const logs = useLogStream(logsId ? { kind: "process", id: logsId } : null);
+  const { refreshing, refresh } = useSandboxRefresh();
   const data = project.data;
 
   const runScript = useCallback(
@@ -56,6 +65,10 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     [nav, projectId],
   );
 
+  const sites = useMemo(() => projectSites(ports.data?.ports, projectId), [ports.data, projectId]);
+
+  const siteFor = useCallback((processId: string) => processSite(ports.data?.ports, processId), [ports.data]);
+
   const actionError = startProcess.error ?? startBuild.error ?? stopProcess.error;
 
   return {
@@ -74,15 +87,22 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     targets: buildTargetOptions(data?.buildTargets ?? []),
     build,
     buildingTarget: startBuild.isPending ? (startBuild.variables?.target ?? null) : null,
+    sites,
+    siteFor,
+    openSite: openSite.open,
+    siteError: openSite.error,
     processes: newestFirst(processes.data ?? [], (process) => process.startedAt),
-    stopProcess: (id: string) => stopProcess.mutate(id),
-    stoppingId: stopProcess.isPending ? stopProcess.variables : null,
+    stopProcess: stopProcess.stop,
+    stoppingId: stopProcess.stoppingId,
     logsId,
     toggleLogs: (id: string) => setLogsId((current) => (current === id ? null : id)),
     logs,
     builds: newestFirst(builds.data ?? [], (job) => job.createdAt, LIST_PREVIEW_LIMIT),
     artifacts: newestFirst(artifacts.data ?? [], (artifact) => artifact.createdAt),
     downloads,
+    sync,
     actionError: actionError ? describeError(actionError) : null,
+    refreshing,
+    refresh,
   };
 }

@@ -7,6 +7,12 @@ services:
     image: tailscale/tailscale:stable
     hostname: ${THEONE_HOSTNAME:-theone-sandbox}
     restart: unless-stopped
+    # Docker copies the host's resolvers. A host on Tailscale MagicDNS lists only
+    # 100.100.100.100, which a container can't reach, so every lookup in the sandbox
+    # (which shares this namespace) fails with EAI_AGAIN. Name public resolvers instead.
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     environment:
       TS_AUTHKEY: ${TS_AUTHKEY:-}
       TS_HOSTNAME: ${THEONE_HOSTNAME:-theone-sandbox}

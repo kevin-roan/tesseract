@@ -1,5 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
 import type { ProcessInfo, TerminalInfo } from "@theone/protocol";
 
 import type { ActionTileItem } from "@/components/action-tile-row";
@@ -8,22 +7,22 @@ import type { HeaderAction } from "@/components/screen-header";
 import type { StatItem } from "@/components/stat-grid";
 import { confirm } from "@/lib/confirm";
 
-import { sandboxKeys } from "../api/query-keys";
 import { useSandboxStore } from "../store/sandbox-store";
 import type { HubActionId } from "../types";
 import { HUB_HEADER_ACTIONS } from "../utils/actions";
 import { newestFirst } from "../utils/collections";
 import { LIST_PREVIEW_LIMIT } from "../utils/constants";
 import { sandboxSubtitle } from "../utils/describe";
-import { describeError, issueForError } from "../utils/errors";
+import { describeError } from "../utils/errors";
 import { HUB_ACTIONS, ResourceIcons } from "../utils/icons";
 import { buildShortcutProject, isActiveProcess } from "../utils/projects";
 import { cpuGauge, storageGauge } from "../utils/resources";
-import { issueNotice } from "../utils/states";
 import { useSandboxClient } from "./use-sandbox-client";
-import { useSandboxIssue, useSandboxLink } from "./use-sandbox-events";
-import { useCloseTerminal, useRemoveSandbox, useStopProcess } from "./use-sandbox-mutations";
+import { useSandboxLink } from "./use-sandbox-events";
+import { useConfirmedStop } from "./use-confirmed-stop";
+import { useCloseTerminal, useRemoveSandbox } from "./use-sandbox-mutations";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
+import { useSandboxProblems } from "./use-sandbox-problems";
 import {
   useAgentRuns,
   useBuilds,
@@ -33,15 +32,14 @@ import {
   useSandboxStatus,
   useTerminals,
 } from "./use-sandbox-queries";
+import { useSandboxRefresh } from "./use-sandbox-refresh";
 
 export function useSandboxHub() {
   const nav = useSandboxNavigation();
-  const queryClient = useQueryClient();
-  const { sandbox, hydrated, missingToken } = useSandboxClient();
+  const { sandbox, hydrated } = useSandboxClient();
   const sandboxes = useSandboxStore((state) => state.sandboxes);
   const setActive = useSandboxStore((state) => state.setActive);
   const link = useSandboxLink();
-  const linkIssue = useSandboxIssue();
   const status = useSandboxStatus();
   const projects = useProjects();
   const processes = useProcesses();
@@ -49,16 +47,13 @@ export function useSandboxHub() {
   const builds = useBuilds();
   const runs = useAgentRuns();
   const activity = useSandboxActivity();
-  const stopProcess = useStopProcess();
+  const stopProcess = useConfirmedStop();
   const closeTerminal = useCloseTerminal();
   const removeSandbox = useRemoveSandbox();
-  const [refreshing, setRefreshing] = useState(false);
+  const problems = useSandboxProblems(status.error);
+  const { refreshing, refresh } = useSandboxRefresh();
 
-  const issue = linkIssue ?? issueForError(status.error);
-  const repair = useCallback(() => {
-    if (sandbox) nav.repair({ url: sandbox.baseUrl, name: sandbox.name });
-  }, [nav, sandbox]);
-
+  const actionError = stopProcess.error ?? closeTerminal.error;
   const buildProjectId = buildShortcutProject(builds.data, projects.data);
 
   const actions = useMemo<ActionTileItem[]>(() => {
@@ -83,8 +78,8 @@ export function useSandboxHub() {
     const memory = storageGauge(resources.memory);
     const disk = storageGauge(resources.disk);
     return [
-      { id: "cpu", icon: ResourceIcons.cpu, label: "CPU load", value: cpu.value, unit: cpu.unit, progress: cpu.fraction },
-      { id: "memory", icon: ResourceIcons.memory, label: "Memory", value: memory.value, unit: memory.unit, progress: memory.fraction },
+      { id: "cpu", icon: ResourceIcons.cpu, label: "CPU load", value: cpu.value, unit: cpu.unit, progress: cpu.fraction, tone: "violet" },
+      { id: "memory", icon: ResourceIcons.memory, label: "Memory", value: memory.value, unit: memory.unit, progress: memory.fraction, tone: "indigo" },
       { id: "disk", icon: ResourceIcons.disk, label: "Workspace disk", value: disk.value, unit: disk.unit, progress: disk.fraction },
       {
         id: "display",
@@ -101,20 +96,6 @@ export function useSandboxHub() {
     () => sandboxes.map((entry) => ({ id: entry.id, label: entry.name })),
     [sandboxes],
   );
-
-  const refresh = useCallback(async () => {
-    if (!sandbox) return;
-    setRefreshing(true);
-    try {
-      await queryClient.refetchQueries({
-        queryKey: sandboxKeys.all(sandbox.id),
-        type: "active",
-        predicate: (query) => query.queryKey[2] !== "page" && query.queryKey[2] !== "activity",
-      });
-    } finally {
-      setRefreshing(false);
-    }
-  }, [queryClient, sandbox]);
 
   const remove = useCallback(async () => {
     if (!sandbox) return;
@@ -160,12 +141,12 @@ export function useSandboxHub() {
     nav,
     hydrated,
     sandbox,
-    missingToken,
+    missingToken: problems.missingToken,
     link,
     subtitle: sandboxSubtitle(status.data),
-    issue: issue ? issueNotice(issue) : null,
-    repair,
-    statusError: status.error && !issue ? describeError(status.error) : null,
+    issue: problems.issue,
+    repair: problems.repair,
+    statusError: problems.error,
     retryStatus: () => void status.refetch(),
     stats,
     actions,
@@ -176,17 +157,20 @@ export function useSandboxHub() {
     projectsLoading: projects.isLoading,
     addProject: nav.newProject,
     runningProcesses: (processes.data ?? []).filter(isActiveProcess),
-    stoppingId: stopProcess.isPending ? stopProcess.variables : null,
+    stoppingId: stopProcess.stoppingId,
     processPress,
-    stopProcess: (id: string) => stopProcess.mutate(id),
+    stopProcess: stopProcess.stop,
     sessions: (terminals.data ?? []).filter((terminal) => terminal.state === "running"),
     closingId: closeTerminal.isPending ? closeTerminal.variables : null,
     closeSession,
     recentBuilds: newestFirst(builds.data ?? [], (build) => build.createdAt, LIST_PREVIEW_LIMIT),
+    buildsLoading: builds.isLoading,
     recentRuns: newestFirst(runs.data ?? [], (run) => run.startedAt, LIST_PREVIEW_LIMIT),
+    runsLoading: runs.isLoading,
     refreshing,
-    refresh: () => void refresh(),
+    refresh,
     headerActions,
     removeError: removeSandbox.error ? describeError(removeSandbox.error) : null,
+    actionError: actionError ? describeError(actionError) : null,
   };
 }

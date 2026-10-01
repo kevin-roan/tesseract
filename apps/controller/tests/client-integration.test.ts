@@ -55,6 +55,11 @@ describe("@theone/client against a live controller", () => {
     expect(status.sandboxId).toBe("test-sandbox");
     expect(status.display.vnc.password).toBe("vnc-secret");
     expect((await client.context()).files.map((file) => file.name)).toContain("CURRENT_TASK.md");
+    expect(await client.identity()).toMatchObject({ sandboxId: "test-sandbox", tailscale: { available: false, source: "none" } });
+    expect(await client.ports()).toMatchObject({ tailscaleIp: null });
+    expect(await client.claudeAuth()).toMatchObject({ available: true, method: "none", importedAt: null });
+    expect(await client.inbox({ unread: true })).toMatchObject({ unreadCount: 0, attentionCount: 0 });
+    expect(await client.markInboxRead({ all: true })).toEqual({ unreadCount: 0, attentionCount: 0 });
     expect((await client.displayStatus()).webPath).toBe("/ui/vnc");
     const screenshot = await client.screenshot().catch((error: unknown) => error);
     expect(screenshot).toBeInstanceOf(ApiError);
@@ -168,6 +173,20 @@ describe("@theone/client against a live controller", () => {
     expect(detail.events.length).toBe(kinds.length);
     expect((await client.listAgentRuns({ projectId: "site" })).map((item) => item.id)).toContain(run.id);
     expect((await client.cancelAgentRun(run.id)).state).toBe("succeeded");
+  });
+
+  test("uploads, their ticketed content and transcription errors", async () => {
+    const upload = await client.createUpload({ name: "notes.txt", mimeType: "text/plain", data: Buffer.from("remember this").toString("base64") });
+    expect(upload).toMatchObject({ name: "notes.txt", kind: "file", sizeBytes: 13 });
+    expect(await (await fetch(await client.uploadContentUrl(upload.id))).text()).toBe("remember this");
+    const error = await client.transcribe({ uploadId: upload.id }).catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(ApiError);
+    expect((error as ApiError).code).toBe("bad_request");
+    expect((await client.stt()).profiles).toHaveLength(4);
+    expect(await client.updateStt({ profile: "performance" })).toMatchObject({ profile: "performance", engine: null, ready: false });
+    expect((await client.updateStt({ profile: "eco" })).profile).toBe("eco");
+    const run = await client.startAgentRun({ prompt: "read it", mode: "acceptEdits", attachmentIds: [upload.id] });
+    expect(run).toMatchObject({ mode: "acceptEdits", attachments: [upload] });
   });
 
   test("the events stream says hello and carries updates", async () => {

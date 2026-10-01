@@ -2,13 +2,14 @@ import { useMemo } from "react";
 import { Pressable, View } from "react-native";
 import type { Icon } from "phosphor-react-native";
 
-import { GlassSurface } from "@/components/glass";
-import ProgressRing from "@/components/progress-ring";
+import { Glass } from "@/components/glass";
+import PercentBadge from "@/components/percent-badge";
+import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { IconSize } from "@/theme";
+import { IconSize, type SurfaceTone } from "@/theme";
 
-import createStyles, { RingSize } from "./styles";
+import createStyles from "./styles";
 
 export type StatCardProps = {
   icon: Icon;
@@ -16,88 +17,48 @@ export type StatCardProps = {
   label: string;
   /** The headline figure, pre-formatted — "24,891", "92%", "4.9 - 5.0". */
   value: string;
-  /** Trailing qualifier rendered small next to the value, e.g. "/month". */
+  /** Trailing qualifier rendered small next to the value, e.g. "/ 1 000". */
   unit?: string;
-  /** Ring completion in the 0–1 range. Omit to hide the ring. */
+  /** Completion in the 0–1 range, shown as a percentage pill. Omit to hide it. */
   progress?: number;
-  /** Accent-filled treatment. One card per grid, at most. */
-  featured?: boolean;
+  /** Card fill. Defaults to `neutral`. */
+  tone?: SurfaceTone;
   onPress?: () => void;
 };
 
 /**
- * Square-ish metric tile: icon badge and progress ring on top, label and
- * headline value below. Cards come in two skins — glass by default, and an
- * accent fill for the one metric a screen wants to lead with.
+ * Pastel metric card: a glass icon badge and optional percentage pill on top,
+ * the label and a large headline figure with its small grey qualifier below.
  */
-const StatCard = ({
-  icon: IconComponent,
-  label,
-  value,
-  unit,
-  progress,
-  featured = false,
-  onPress,
-}: StatCardProps) => {
-  const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme, featured), [theme, featured]);
+const StatCard = ({ icon: IconComponent, label, value, unit, progress, tone = "neutral", onPress }: StatCardProps) => {
+  const theme = useAppTheme(tone);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const iconColor = featured ? theme.colors.textOnAccent : theme.colors.text;
-  const ringColor = featured ? theme.colors.textOnAccent : theme.colors.accentPressed;
-  const ringTrack = featured ? theme.colors.accentPressed : theme.colors.border;
-
-  const content = (
-    <>
+  const card = (
+    <Surface tone={tone} style={styles.card}>
       <View style={styles.top}>
-        <View style={styles.iconBadge}>
-          <IconComponent size={IconSize.md} color={iconColor} weight="duotone" />
-        </View>
-        {progress !== undefined ? (
-          <ProgressRing
-            progress={progress}
-            size={theme.isTablet ? RingSize.lg : RingSize.md}
-            color={ringColor}
-            trackColor={ringTrack}
-            labelColor={featured ? theme.colors.textOnAccent : theme.colors.textSecondary}
-          />
-        ) : null}
+        <Glass style={styles.iconBadge}>
+          <IconComponent size={IconSize.md} color={theme.colors.text} weight="bold" />
+        </Glass>
+        {progress !== undefined ? <PercentBadge progress={progress} /> : null}
       </View>
 
       <View style={styles.bottom}>
-        <ThemedText
-          variant="bodySmall"
-          color={featured ? "textOnAccent" : "textSecondary"}
-          numberOfLines={1}
-        >
+        <ThemedText variant="label" color="textSecondary" numberOfLines={1}>
           {label}
         </ThemedText>
         <View style={styles.valueRow}>
-          <ThemedText
-            variant="h2"
-            color={featured ? "textOnAccent" : "text"}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
+          <ThemedText variant="metric" style={styles.value} numberOfLines={1} adjustsFontSizeToFit>
             {value}
           </ThemedText>
           {unit ? (
-            <ThemedText
-              variant="caption"
-              color={featured ? "textOnAccent" : "textTertiary"}
-              style={styles.unit}
-            >
+            <ThemedText variant="bodySmall" color="textTertiary" style={styles.unit} numberOfLines={1}>
               {unit}
             </ThemedText>
           ) : null}
         </View>
       </View>
-    </>
-  );
-
-  const card = featured ? (
-    <View style={styles.card}>{content}</View>
-  ) : (
-    <GlassSurface style={styles.card}>{content}</GlassSurface>
+    </Surface>
   );
 
   if (!onPress) return card;

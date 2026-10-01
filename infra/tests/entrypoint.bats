@@ -63,7 +63,7 @@ victim_file() {
     assert_equal "$(owner_mode "${dir}")" "dev:dev 755"
   done
   assert_equal "$(owner_mode "${AGENT}/controller")" "dev:dev 700"
-  assert_equal "$(owner_mode "${DEV_HOME}/.claude")" "dev:dev 700"
+  assert_file_not_exists "${DEV_HOME}/.claude"
   assert_equal "$(owner_mode "${DEV_HOME}/.vnc")" "dev:dev 700"
   assert_equal "$(owner_mode "/run/user/${DEV_UID}")" "dev:dev 700"
   assert_equal "$(owner_mode /run/supervisor)" "dev:dev 700"
@@ -89,14 +89,14 @@ victim_file() {
   echo "my notes" > "${AGENT}/GLOBAL_CONTEXT.md"
   rm "${AGENT}/DECISIONS.md"
   local before
-  before="$(find "${WS}" "${DEV_HOME}/.vnc" "${DEV_HOME}/.claude" ! -name ENVIRONMENT.md ! -name DECISIONS.md -printf '%p %u %g %m\n' | sort)"
+  before="$(find "${WS}" "${DEV_HOME}/.vnc" ! -name ENVIRONMENT.md ! -name DECISIONS.md -printf '%p %u %g %m\n' | sort)"
 
   entrypoint
   assert_success
   assert_output --partial "seeded 1 agent memory file(s)"
   assert_equal "$(cat "${AGENT}/GLOBAL_CONTEXT.md")" "my notes"
   assert_file_exists "${AGENT}/DECISIONS.md"
-  assert_equal "$(find "${WS}" "${DEV_HOME}/.vnc" "${DEV_HOME}/.claude" ! -name ENVIRONMENT.md ! -name DECISIONS.md -printf '%p %u %g %m\n' | sort)" "${before}"
+  assert_equal "$(find "${WS}" "${DEV_HOME}/.vnc" ! -name ENVIRONMENT.md ! -name DECISIONS.md -printf '%p %u %g %m\n' | sort)" "${before}"
 
   entrypoint
   refute_output --partial "seeded"
@@ -104,17 +104,22 @@ victim_file() {
   refute_output --partial "fixing ownership"
 }
 
-@test "installs SPEC.md as ~/.claude/CLAUDE.md once" {
-  [[ -r /etc/theone/SPEC.md ]] || skip "no /etc/theone/SPEC.md"
+@test "never writes to ~/.claude (the host's Claude dir), even when fixing ownership" {
+  install -d -o root -g root -m 0700 "${DEV_HOME}/.claude"
+  echo '{}' > "${DEV_HOME}/.claude/.credentials.json"
+  chown root:root "${DEV_HOME}/.claude/.credentials.json"
+  chmod 0600 "${DEV_HOME}/.claude/.credentials.json"
+  echo notes > "${DEV_HOME}/.bashrc.theone-test"
+  chown root:root "${DEV_HOME}" "${DEV_HOME}/.bashrc.theone-test"
   entrypoint
-  assert_output --partial "installed /etc/theone/SPEC.md as ${DEV_HOME}/.claude/CLAUDE.md"
-  cmp -s /etc/theone/SPEC.md "${DEV_HOME}/.claude/CLAUDE.md"
-  assert_equal "$(owner_mode "${DEV_HOME}/.claude/CLAUDE.md")" "dev:dev 644"
-
-  echo custom > "${DEV_HOME}/.claude/CLAUDE.md"
-  entrypoint
-  refute_output --partial "installed"
-  assert_equal "$(cat "${DEV_HOME}/.claude/CLAUDE.md")" "custom"
+  assert_success
+  assert_output --partial "fixing ownership of ${DEV_HOME} for uid ${DEV_UID}"
+  assert_equal "$(stat -c %U:%G "${DEV_HOME}")" dev:dev
+  assert_equal "$(stat -c %U "${DEV_HOME}/.bashrc.theone-test")" dev
+  assert_equal "$(owner_mode "${DEV_HOME}/.claude")" "root:root 700"
+  assert_equal "$(owner_mode "${DEV_HOME}/.claude/.credentials.json")" "root:root 600"
+  assert_equal "$(ls -A "${DEV_HOME}/.claude")" ".credentials.json"
+  rm -f "${DEV_HOME}/.bashrc.theone-test"
 }
 
 @test "generates an 8 character VNC password once and reuses it" {
@@ -176,12 +181,12 @@ ${token}"
 }
 
 @test "empty THEONE_, ANTHROPIC_, CLAUDE_ and DOCKER_ variables are dropped" {
-  run env THEONE_EMPTY= ANTHROPIC_API_KEY= CLAUDE_CODE_OAUTH_TOKEN= DOCKER_HOST= KEEP_EMPTY= THEONE_SET=v \
+  run env THEONE_EMPTY= ANTHROPIC_API_KEY= CLAUDE_CODE_USE_BEDROCK= DOCKER_HOST= KEEP_EMPTY= THEONE_SET=v \
     "${ENTRYPOINT}" env
   assert_success
   refute_line "THEONE_EMPTY="
   refute_line "ANTHROPIC_API_KEY="
-  refute_line "CLAUDE_CODE_OAUTH_TOKEN="
+  refute_line "CLAUDE_CODE_USE_BEDROCK="
   refute_line "DOCKER_HOST="
   assert_line "KEEP_EMPTY="
   assert_line "THEONE_SET=v"
@@ -241,12 +246,11 @@ THEONE_TOKEN=secret-token"
   ln -s /etc/theone-victim-dir "${AGENT}/logs"
   ln -s /etc/theone-victim-dir "${AGENT}/controller"
   ln -s /etc/theone-victim-dir "${AGENT}/projects/_template"
-  ln -s /etc/theone-victim-dir "${DEV_HOME}/.claude"
   ln -s /etc/theone-victim-dir "${DEV_HOME}/.vnc"
   entrypoint
   assert_success
   local dir
-  for dir in "${AGENT}/logs" "${AGENT}/controller" "${AGENT}/projects/_template" "${DEV_HOME}/.claude" "${DEV_HOME}/.vnc"; do
+  for dir in "${AGENT}/logs" "${AGENT}/controller" "${AGENT}/projects/_template" "${DEV_HOME}/.vnc"; do
     assert_not_symlink_to /etc/theone-victim-dir "${dir}"
     assert_dir_exists "${dir}"
     [[ ! -L "${dir}" ]]

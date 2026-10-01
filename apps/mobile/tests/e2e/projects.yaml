@@ -1,0 +1,42 @@
+appId: com.kevinbpract.theone
+name: projects
+tags:
+  - sandbox
+---
+- runFlow: subflows/open-app.yaml
+- runFlow: subflows/pair-if-needed.yaml
+- runFlow:
+    file: subflows/tab.yaml
+    env:
+      TAB: Projects
+- extendedWaitUntil:
+    visible:
+      id: "projects-list"
+    timeout: 20000
+- assertNotVisible: "Customer Insights survey"
+- assertVisible:
+    id: "running-section"
+- assertVisible: "Stop ticker"
+- scrollUntilVisible:
+    element:
+      id: "project-card-hello-world"
+    direction: DOWN
+- assertVisible:
+    id: "project-card-hello-world"
+    text: "hello-world, Running, .*"
+- assertVisible: "1 active task"
+- assertVisible: "Ask Claude about hello-world"
+- takeScreenshot: ${OUTPUT_DIR}/projects
+- tapOn:
+    id: "project-card-hello-world"
+- extendedWaitUntil:
+    notVisible:
+      id: "projects-list"
+    timeout: 10000
+- assertVisible: "hello-world"
+- takeScreenshot: ${OUTPUT_DIR}/project-detail
+- back
+- extendedWaitUntil:
+    visible:
+      id: "projects-list"
+    timeout: 10000

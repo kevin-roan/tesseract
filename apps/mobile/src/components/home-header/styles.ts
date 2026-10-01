@@ -4,25 +4,38 @@ import { ControlHeight, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   const size = ControlHeight.lg;
+  const badge = theme.spacing.lg;
 
   return StyleSheet.create({
     container: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
-      gap: theme.spacing.base,
     },
-    /**
-     * A circle, not the button's default pill: GlassButton's own
-     * paddingHorizontal/paddingVertical win over a plain `padding`, so both
-     * axes are zeroed here and the size comes from width/height instead.
-     */
     action: {
       width: size,
       height: size,
       paddingHorizontal: 0,
       paddingVertical: 0,
       borderRadius: size / 2,
+    },
+    badge: {
+      position: "absolute",
+      top: -theme.spacing.xxs,
+      right: -theme.spacing.xxs,
+      minWidth: badge,
+      height: badge,
+      paddingHorizontal: theme.spacing.xs,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: theme.radius.full,
+      borderWidth: 2,
+      borderColor: theme.colors.background,
+      backgroundColor: theme.colors.notification,
+    },
+    badgeText: {
+      fontVariant: ["tabular-nums"],
+      lineHeight: badge - 4,
     },
   });
 }

@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useRef } from "react";
 import { ActivityIndicator, FlatList, View, type ListRenderItem } from "react-native";
 import { SparkleIcon } from "phosphor-react-native";
-import type { AgentRunEvent } from "@theone/protocol";
 
 import EmptyState from "@/components/empty-state";
 import Notice from "@/components/notice";
@@ -11,9 +10,12 @@ import StatusBadge from "@/components/status-badge";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useStickToBottom } from "@/hooks/use-stick-to-bottom";
+import ChatComposer from "@/features/chat/components/chat-composer";
+import MessageBubble from "@/features/chat/components/message-bubble";
+import RunMessage from "@/features/chat/components/run-message";
+import { formatClock, type ChatEventItem } from "@/features/chat/utils/messages";
 
 import { useAgentRunScreen } from "../../hooks/use-agent-run-screen";
-import AgentComposer from "../agent-composer";
 import AgentEvent from "../agent-event";
 import createStyles from "./styles";
 
@@ -21,17 +23,26 @@ export type AgentRunViewProps = {
   runId: string;
 };
 
-const keyOf = (event: AgentRunEvent) => String(event.seq);
+const keyOf = (item: ChatEventItem) => String(item.event.seq);
 
 const AgentRunView = ({ runId }: AgentRunViewProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const screen = useAgentRunScreen(runId);
   const { run, composer } = screen;
-  const listRef = useRef<FlatList<AgentRunEvent>>(null);
+  const listRef = useRef<FlatList<ChatEventItem>>(null);
   const getScrollable = useCallback(() => listRef.current, []);
   const { onScroll, onContentSizeChange } = useStickToBottom(getScrollable);
-  const renderItem: ListRenderItem<AgentRunEvent> = useCallback(({ item }) => <AgentEvent event={item} />, []);
+  const renderItem: ListRenderItem<ChatEventItem> = useCallback(
+    ({ item }) => (
+      <View style={item.showHeader && styles.turn}>
+        <MessageBubble role="assistant" author="Claude" timeLabel={formatClock(item.event.ts)} showHeader={item.showHeader}>
+          <AgentEvent event={item.event} />
+        </MessageBubble>
+      </View>
+    ),
+    [styles],
+  );
 
   return (
     <ScreenScaffold
@@ -45,6 +56,11 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
           accessory={screen.badge ? <StatusBadge {...screen.badge} /> : undefined}
           actions={screen.headerActions}
         />
+      }
+      footer={
+        run && screen.canContinue ? (
+          <ChatComposer composer={composer} placeholder="Reply to Claude…" testID="run-composer" />
+        ) : undefined
       }
     >
       {!run ? (
@@ -62,49 +78,32 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
       ) : (
         <FlatList
           ref={listRef}
-          data={screen.events}
+          data={screen.messages}
           keyExtractor={keyOf}
           renderItem={renderItem}
           onScroll={onScroll}
           onContentSizeChange={onContentSizeChange}
           scrollEventThrottle={32}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
           contentContainerStyle={styles.list}
-          ListHeaderComponent={
-            <View style={styles.prompt}>
-              <ThemedText variant="overline" color="textTertiary">
-                Prompt
-              </ThemedText>
-              <ThemedText variant="body" selectable>
-                {run.prompt}
-              </ThemedText>
-            </View>
-          }
+          ListHeaderComponent={<RunMessage run={run} />}
           ListFooterComponent={
             <View style={styles.footer}>
-              {screen.running ? <ActivityIndicator color={theme.colors.streamingCursor} /> : null}
-              {run.result ? <Notice tone="success" title="Result" message={run.result} /> : null}
+              {screen.running ? <ActivityIndicator color={theme.colors.streamingCursor} style={styles.spinner} /> : null}
+              {screen.result ? <Notice tone="success" title="Result" message={screen.result} /> : null}
               {run.error ? <Notice tone="danger" title="Error" message={run.error} /> : null}
-              {screen.cost ? (
-                <ThemedText variant="caption" color="textTertiary">
-                  {`Cost ${screen.cost}`}
+              {screen.brief ? (
+                <ThemedText variant="caption" color="textTertiary" style={styles.brief} testID="run-brief">
+                  {screen.brief}
                 </ThemedText>
               ) : null}
               {screen.streamError ? (
                 <Notice tone="warning" message={screen.streamError} actionLabel="Reconnect" onAction={screen.retry} />
               ) : null}
               {screen.cancelError ? <Notice tone="danger" message={screen.cancelError} /> : null}
-              {screen.canContinue ? (
-                <AgentComposer
-                  prompt={composer.prompt}
-                  onChangePrompt={composer.setPrompt}
-                  onSubmit={composer.submit}
-                  canSubmit={composer.canSubmit}
-                  submitting={composer.isSubmitting}
-                  submitLabel="Continue"
-                  placeholder="Reply to Claude or give the next instruction…"
-                  error={composer.error}
-                />
+              {screen.syncNotice ? (
+                <Notice {...screen.syncNotice} actionLabel="Dismiss" onAction={screen.dismissSyncNotice} />
               ) : null}
             </View>
           }

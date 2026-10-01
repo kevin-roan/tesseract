@@ -27,10 +27,10 @@ flowchart LR
 
 | Piece | Details |
 |---|---|
-| Xvnc (TigerVNC) | X server and VNC server in one process. Display `:1` (`THEONE_DISPLAY`), geometry `1600x900` (`THEONE_DISPLAY_GEOMETRY`), depth 24, RFB on 5901, `-SecurityTypes VncAuth -AlwaysShared -nolisten tcp`. The entrypoint writes the password hash to `/home/dev/.vnc/passwd`, from `THEONE_VNC_PASSWORD` or else a random 8-character password generated once and kept in `/home/dev/.vnc/password` |
-| openbox | a lightweight window manager, so windows get decorations, focus and move/resize. Right-clicking the desktop opens a menu with Terminal (xterm) and Chromium |
+| Xvnc (TigerVNC) | X server and VNC server in one process. Display `:1` (`THEONE_DISPLAY`), geometry `1600x900` (`THEONE_DISPLAY_GEOMETRY`), depth 24, RFB on 5901, `-SecurityTypes VncAuth -AlwaysShared -UseBlacklist=0 -nolisten tcp` (every client connects from 127.0.0.1, so the per-host blacklist would lock everyone out after a few pre-auth hang-ups). The entrypoint writes the password hash to `/home/dev/.vnc/passwd`, from `THEONE_VNC_PASSWORD` or else a random 8-character password generated once and kept in `/home/dev/.vnc/password` |
+| openbox | a lightweight window manager, so windows get decorations, focus and move/resize. Its autostart opens Chromium maximized on `about:blank` so web projects can be checked on the display. Right-clicking the desktop opens a menu with Terminal (xterm) and Chromium (to reopen it after closing) |
 | supervisord | runs `xvnc` and `openbox` as `dev`, restarts either if it dies |
-| Controller | `GET /v1/display` (status and password; `vnc.available` means an RFB banner was read within 1 s), `GET /v1/display/screenshot` (PNG), `WS /v1/display/vnc` (binary bridge), and static `/ui/vnc` (noVNC) |
+| Controller | `GET /v1/display` (status and password; `vnc.available` means an RFB banner was read within 1 s), `GET /v1/display/screenshot` (PNG), `GET /v1/display/browser` (Chromium tabs via DevTools on `127.0.0.1:9222`, see `/etc/chromium.d/theone`), `WS /v1/display/vnc` (binary bridge), and static `/ui/vnc` (noVNC) |
 
 ## The phone path (noVNC through the controller)
 

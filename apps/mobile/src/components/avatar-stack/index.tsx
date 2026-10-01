@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { View } from "react-native";
-import { Image } from "expo-image";
 
+import Avatar from "@/components/avatar";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { AvatarSize } from "@/theme";
@@ -21,15 +21,6 @@ export type AvatarStackProps = {
   max?: number;
   size?: number;
 };
-
-/** First letter of the first two words — "Ada Lovelace" becomes "AL". */
-const initialsOf = (name: string) =>
-  name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
 
 /**
  * Overlapping row of member avatars. Anything past `max` collapses into a
@@ -53,27 +44,14 @@ const AvatarStack = ({ people, max = 3, size = AvatarSize.sm }: AvatarStackProps
           key={person.id}
           style={[styles.slot, index === 0 && styles.firstSlot]}
         >
-          <View style={styles.avatar}>
-            {person.photo ? (
-              <Image
-                source={{ uri: person.photo }}
-                style={styles.image}
-                contentFit="cover"
-                transition={200}
-              />
-            ) : (
-              <ThemedText variant="caption" color="textSecondary">
-                {initialsOf(person.name)}
-              </ThemedText>
-            )}
-          </View>
+          <Avatar name={person.name} photo={person.photo} size={size} style={styles.ring} />
         </View>
       ))}
 
       {overflow > 0 ? (
         <View style={styles.slot}>
-          <View style={[styles.avatar, styles.overflowBadge]}>
-            <ThemedText variant="caption" color="textSecondary">
+          <View style={[styles.avatar, styles.ring, styles.overflowBadge]}>
+            <ThemedText variant="caption" color="textSecondary" maxFontSizeMultiplier={1}>
               +{overflow}
             </ThemedText>
           </View>

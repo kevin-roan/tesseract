@@ -4,6 +4,7 @@ import type { BuildJob, ProcessInfo } from "@theone/protocol";
 import { sampleBuild, sampleProcess } from "@theone/protocol/fixtures";
 
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
+import { registerPushToken } from "@/features/inbox/api/push";
 import { useRemoveSandbox, useStartBuild, useStopProcess } from "@/features/sandbox/hooks/use-sandbox-mutations";
 import { useConnectionStore } from "@/features/sandbox/store/connection-store";
 import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
@@ -14,7 +15,13 @@ jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), Th
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 
 const MockClient = TheOneClient as unknown as jest.Mock;
-const fake = { startBuild: jest.fn(), stopProcess: jest.fn() };
+const fake = {
+  startBuild: jest.fn(),
+  stopProcess: jest.fn(),
+  health: jest.fn(async () => ({ sandboxId: "remote" })),
+  registerPushDevice: jest.fn(async () => ({})),
+  unregisterPushDevice: jest.fn(async () => ({})),
+};
 const SID = TEST_SANDBOX.id;
 
 beforeEach(() => {
@@ -123,5 +130,15 @@ describe("useRemoveSandbox", () => {
     expect(queryClient.getQueryData(sandboxKeys.status(SID))).toBeUndefined();
     expect(queryClient.getQueryData(sandboxKeys.status("sbx_other"))).toEqual({ ok: true });
     expect(useConnectionStore.getState().links).toEqual({});
+  });
+
+  it("unregisters this device's push token from the sandbox before forgetting it", async () => {
+    const push = "ExponentPushToken[abc]";
+    await registerPushToken(push, useSandboxStore.getState().sandboxes, useSandboxStore.getState().tokens);
+    const { result } = await renderHook(() => useRemoveSandbox(), { wrapper: createWrapper(createTestQueryClient()) });
+    await act(async () => {
+      await result.current.mutateAsync(SID);
+    });
+    expect(fake.unregisterPushDevice).toHaveBeenCalledWith(push);
   });
 });

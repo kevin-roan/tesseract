@@ -1,0 +1,84 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:1:1-44:12
+INJECTED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:1:1-44:12
+	package
+		INJECTED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:1:11-69
+application
+ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:2:3-43:17
+receiver#com.kevinbpract.theone.island.IslandActionReceiver
+ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:3:5-5:34
+	android:exported
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:5:7-31
+	android:name
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:4:7-43
+activity#com.kevinbpract.theone.island.CaptureActivity
+ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:7:5-14:69
+	android:excludeFromRecents
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:10:7-40
+	android:launchMode
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:12:7-38
+	android:noHistory
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:11:7-31
+	android:exported
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:9:7-31
+	android:theme
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:14:7-66
+	android:taskAffinity
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:13:7-30
+	android:name
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:8:7-38
+service#com.kevinbpract.theone.island.ScreenCaptureService
+ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:16:5-19:57
+	android:exported
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:18:7-31
+	android:foregroundServiceType
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:19:7-54
+	android:name
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:17:7-43
+activity#com.kevinbpract.theone.island.ShareReceiverActivity
+ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:21:5-42:16
+	android:label
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:27:7-29
+	android:excludeFromRecents
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:24:7-40
+	android:noHistory
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:25:7-31
+	android:exported
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:23:7-30
+	android:theme
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:28:7-66
+	android:taskAffinity
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:26:7-30
+	android:name
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:22:7-44
+intent-filter#action:name:android.intent.action.SEND+category:name:android.intent.category.DEFAULT+data:mimeType:application/*+data:mimeType:image/*+data:mimeType:text/plain
+ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:29:7-35:23
+action#android.intent.action.SEND
+ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:30:9-61
+	android:name
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:30:17-58
+category#android.intent.category.DEFAULT
+ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:31:9-68
+	android:name
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:31:19-65
+data
+ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:32:9-44
+	android:mimeType
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:32:15-41
+intent-filter#action:name:android.intent.action.SEND_MULTIPLE+category:name:android.intent.category.DEFAULT+data:mimeType:application/*+data:mimeType:image/*
+ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:36:7-41:23
+action#android.intent.action.SEND_MULTIPLE
+ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:37:9-70
+	android:name
+		ADDED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml:37:17-67
+uses-sdk
+INJECTED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml
+INJECTED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /mnt/data/dev/Projects/work/theone-mobile/apps/mobile/modules/theone-island/android/src/main/AndroidManifest.xml

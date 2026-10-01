@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { TabList, TabSlot, TabTrigger, Tabs, type TabTriggerSlotProps } from 'expo-router/ui';
 import {
   FolderSimpleIcon,
@@ -10,30 +11,24 @@ import {
 import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
 
 import { useAppTheme } from '@/hooks/use-app-theme';
+import { IconSize, MaxFontSizeMultiplier, MinTouchTarget, type Theme } from '@/theme';
 
+/**
+ * Web tab bar. It sits in normal flow under the slot rather than floating
+ * over it, so the last rows of a scrolling screen are never hidden behind it.
+ */
 export default function AppTabs() {
-  const { spacing, radius, maxContentWidth } = useAppTheme();
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <Tabs>
+    <Tabs style={styles.root}>
       <TabSlot style={styles.slot} />
       <TabList asChild>
-        <View style={[styles.tabList, { padding: spacing.base }]}>
-          <ThemedView
-            background="backgroundElement"
-            style={[
-              styles.tabBar,
-              {
-                gap: spacing.sm,
-                paddingVertical: spacing.sm,
-                paddingHorizontal: spacing.xl,
-                borderRadius: radius.full,
-                maxWidth: maxContentWidth,
-              },
-            ]}>
+        <View style={styles.tabList}>
+          <View style={styles.tabBar} accessibilityRole="tablist">
             <TabTrigger name="index" href="/" asChild>
               <TabButton icon={HouseIcon}>Home</TabButton>
             </TabTrigger>
@@ -49,7 +44,7 @@ export default function AppTabs() {
             <TabTrigger name="profile" href="/profile" asChild>
               <TabButton icon={UserCircleIcon}>Profile</TabButton>
             </TabTrigger>
-          </ThemedView>
+          </View>
         </View>
       </TabList>
     </Tabs>
@@ -59,56 +54,74 @@ export default function AppTabs() {
 type TabButtonProps = TabTriggerSlotProps & { icon: Icon };
 
 function TabButton({ children, icon: TabIcon, isFocused, ...props }: TabButtonProps) {
-  const { spacing, radius, colors, text } = useAppTheme();
+  const theme = useAppTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView
-        background={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={[
-          styles.button,
-          {
-            gap: spacing.xs,
-            paddingVertical: spacing.xs,
-            paddingHorizontal: spacing.base,
-            borderRadius: radius.md,
-          },
-        ]}>
-        <TabIcon
-          color={isFocused ? colors.text : colors.textSecondary}
-          size={text.bodySmall.fontSize}
-          weight={isFocused ? 'fill' : 'regular'}
-        />
-        <ThemedText variant="bodySmall" color={isFocused ? 'text' : 'textSecondary'}>
-          {children}
-        </ThemedText>
-      </ThemedView>
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityState={{ selected: !!isFocused }}
+      {...props}
+      style={({ pressed }) => [styles.button, isFocused && styles.buttonFocused, pressed && styles.pressed]}
+    >
+      <TabIcon
+        color={isFocused ? theme.colors.text : theme.colors.textSecondary}
+        size={IconSize.md}
+        weight={isFocused ? 'fill' : 'regular'}
+      />
+      <ThemedText
+        variant="caption"
+        color={isFocused ? 'text' : 'textSecondary'}
+        numberOfLines={1}
+        maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+      >
+        {children}
+      </ThemedText>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  slot: {
-    height: '100%',
-  },
-  tabList: {
-    position: 'absolute',
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  tabBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexGrow: 1,
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-});
+function createStyles(theme: Theme) {
+  return StyleSheet.create({
+    root: {
+      flex: 1,
+    },
+    slot: {
+      flex: 1,
+    },
+    tabList: {
+      width: '100%',
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: theme.spacing.base,
+    },
+    tabBar: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexGrow: 1,
+      gap: theme.spacing.xxs,
+      padding: theme.spacing.xs,
+      borderRadius: theme.radius.xl,
+      maxWidth: theme.maxContentWidth,
+      backgroundColor: theme.colors.backgroundElement,
+    },
+    /** Icon over label and an equal share each, so five tabs fit a 320dp phone. */
+    button: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: theme.spacing.xxs,
+      minHeight: MinTouchTarget,
+      paddingHorizontal: theme.spacing.xs,
+      borderRadius: theme.radius.lg,
+    },
+    buttonFocused: {
+      backgroundColor: theme.colors.backgroundSelected,
+    },
+    pressed: {
+      opacity: 0.7,
+    },
+  });
+}

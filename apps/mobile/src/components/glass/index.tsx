@@ -1,220 +1,92 @@
 import { useMemo } from "react";
-import {
-  Pressable,
-  type PressableProps,
-  StyleProp,
-  StyleSheet,
-  View,
-  ViewStyle,
-} from "react-native";
+import { Pressable, StyleSheet, View, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
 import { BlurView } from "expo-blur";
-import {
-  LiquidGlassView,
-  isLiquidGlassSupported,
-} from "@callstack/liquid-glass";
+import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from "expo-glass-effect";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { BlurIntensity, type Theme } from "@/theme";
+import { useSurfaceTone } from "@/hooks/use-surface-tone";
+import { BlurIntensity, type BlurToken } from "@/theme";
 
 import createStyles from "./styles";
 
-export type GlassEffect = "clear" | "regular";
-
-export interface GlassSurfaceProps {
+export type GlassProps = {
   children?: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
-  effect?: GlassEffect;
+  /** Reacts to touch with the native liquid-glass shimmer (iOS 26+). */
   interactive?: boolean;
-  tintOnFallback?: string;
-}
+  /** Blur strength of the fallback material; raise it over busy or moving content. */
+  intensity?: BlurToken;
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
+};
 
-export interface GlassButtonProps extends Omit<
-  PressableProps,
-  "style" | "children"
-> {
+export type GlassButtonProps = Omit<PressableProps, "style" | "children"> & {
   children: React.ReactNode;
+  intensity?: BlurToken;
   style?: StyleProp<ViewStyle>;
-  effect?: GlassEffect;
-  interactive?: boolean;
-  tintOnFallback?: string;
-}
-
-export interface GlassPillProps {
-  children: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
-  effect?: GlassEffect;
-  tintOnFallback?: string;
-}
-
-const intensityFor = (effect: GlassEffect) =>
-  effect === "clear" ? BlurIntensity.light : BlurIntensity.medium;
-
-function useGlassStyles(theme: Theme) {
-  return useMemo(() => createStyles(theme), [theme]);
-}
-
-interface FallbackGlassProps {
-  children?: React.ReactNode;
-  style?: StyleProp<ViewStyle>;
-  baseStyle: ViewStyle;
-  effect: GlassEffect;
-  tintOnFallback?: string;
-  theme: Theme;
-}
+};
 
 /**
- * Blur + tint stand-in for platforms without native liquid glass (Android, web,
- * and iOS below 26).
+ * Frosted panel that takes its look from the surface it sits on. Renders the
+ * native liquid-glass material where the OS has it, and everywhere else a
+ * blur under frosted white (light) or smoke (dark) with a hairline rim and a
+ * top sheen.
+ *
+ *   <Glass style={styles.stats}>…</Glass>
  */
-const FallbackGlass: React.FC<FallbackGlassProps> = ({
-  children,
-  style,
-  baseStyle,
-  effect,
-  tintOnFallback,
-  theme,
-}) => {
-  const flattened = StyleSheet.flatten([baseStyle, style]);
-  const cornerStyle: ViewStyle = {
-    borderRadius: flattened.borderRadius,
-    borderCurve: flattened.borderCurve,
-  };
+export const Glass = ({ children, interactive = false, intensity = "light", style, testID }: GlassProps) => {
+  const theme = useAppTheme();
+  const tone = useSurfaceTone() ?? "neutral";
+  const glass = theme.surfaces[tone].glass;
+  const styles = useMemo(() => createStyles(theme, glass), [theme, glass]);
+
+  if (isLiquidGlassAvailable() && isGlassEffectAPIAvailable()) {
+    return (
+      <GlassView
+        glassEffectStyle="regular"
+        colorScheme={glass.scheme}
+        isInteractive={interactive}
+        style={[styles.glass, style]}
+        testID={testID}
+      >
+        {children}
+      </GlassView>
+    );
+  }
 
   return (
-    <View style={[baseStyle, style]}>
-      <BlurView
-        style={[StyleSheet.absoluteFill, cornerStyle]}
-        intensity={intensityFor(effect)}
-        tint={theme.scheme === "dark" ? "dark" : "light"}
-      />
-      <View
-        style={[
-          StyleSheet.absoluteFill,
-          cornerStyle,
-          { backgroundColor: tintOnFallback ?? theme.colors.glassFallback },
-        ]}
+    <View style={[styles.glass, styles.frosted, style]} testID={testID}>
+      <BlurView intensity={BlurIntensity[intensity]} tint={glass.scheme} style={StyleSheet.absoluteFill} />
+      <LinearGradient
+        colors={[glass.sheen, "transparent"]}
+        locations={[0, 0.6]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
       />
       {children}
     </View>
   );
 };
 
-export const GlassSurface: React.FC<GlassSurfaceProps> = ({
-  children,
-  style,
-  effect = "regular",
-  interactive = false,
-  tintOnFallback,
-}) => {
+/** Round glass control for header and nav rows: a frosted circle with a hairline rim, floating on a soft shadow. */
+export const GlassButton = ({ children, intensity, style, disabled, ...pressableProps }: GlassButtonProps) => {
   const theme = useAppTheme();
-  const styles = useGlassStyles(theme);
-
-  if (!isLiquidGlassSupported) {
-    return (
-      <FallbackGlass
-        baseStyle={styles.surface}
-        style={style}
-        effect={effect}
-        tintOnFallback={tintOnFallback}
-        theme={theme}
-      >
-        {children}
-      </FallbackGlass>
-    );
-  }
-
-  return (
-    <LiquidGlassView
-      style={[styles.surface, style]}
-      effect={effect}
-      interactive={interactive}
-    >
-      {children}
-    </LiquidGlassView>
-  );
-};
-
-/**
- * Pill-shaped liquid glass button. On iOS 26+ the native view supplies its own
- * press response via `interactive`; elsewhere the blur fallback gets a small
- * scale-down instead.
- */
-export const GlassButton: React.FC<GlassButtonProps> = ({
-  children,
-  style,
-  effect = "regular",
-  tintOnFallback,
-  disabled,
-  interactive = false,
-  ...pressableProps
-}) => {
-  const theme = useAppTheme();
-  const styles = useGlassStyles(theme);
+  const tone = useSurfaceTone() ?? "neutral";
+  const styles = useMemo(() => createStyles(theme, theme.surfaces[tone].glass), [theme, tone]);
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
+      style={styles.float}
       {...pressableProps}
     >
-      {({ pressed }) => {
-        const stateStyle = [
-          disabled && styles.buttonDisabled,
-          pressed && !isLiquidGlassSupported && styles.buttonPressed,
-          style,
-        ];
-
-        return isLiquidGlassSupported ? (
-          <LiquidGlassView
-            style={[styles.button, stateStyle]}
-            effect={effect}
-            interactive={interactive}
-          >
-            {children}
-          </LiquidGlassView>
-        ) : (
-          <FallbackGlass
-            baseStyle={styles.button}
-            style={stateStyle}
-            effect={effect}
-            tintOnFallback={tintOnFallback}
-            theme={theme}
-          >
-            {children}
-          </FallbackGlass>
-        );
-      }}
+      {({ pressed }) => (
+        <Glass interactive intensity={intensity} style={[styles.button, disabled && styles.disabled, pressed && styles.pressed, style]}>
+          {children}
+        </Glass>
+      )}
     </Pressable>
-  );
-};
-
-export const GlassPill: React.FC<GlassPillProps> = ({
-  children,
-  style,
-  effect = "clear",
-  tintOnFallback,
-}) => {
-  const theme = useAppTheme();
-  const styles = useGlassStyles(theme);
-
-  if (!isLiquidGlassSupported) {
-    return (
-      <FallbackGlass
-        baseStyle={styles.pill}
-        style={style}
-        effect={effect}
-        tintOnFallback={tintOnFallback}
-        theme={theme}
-      >
-        {children}
-      </FallbackGlass>
-    );
-  }
-
-  return (
-    <LiquidGlassView style={[styles.pill, style]} effect={effect}>
-      {children}
-    </LiquidGlassView>
   );
 };

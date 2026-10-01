@@ -43,14 +43,14 @@ export class Overlay {
  * A row of on-screen keys for phone keyboards that lack Esc, Tab, Ctrl and
  * arrows. Sticky keys toggle and apply to the next key press.
  */
-export class KeyBar {
-  private readonly active = new Set<KeyId>();
-  private readonly buttons = new Map<KeyId, HTMLButtonElement>();
+export class KeyBar<K extends string = KeyId> {
+  private readonly active = new Set<K>();
+  private readonly buttons = new Map<K, HTMLButtonElement>();
 
   constructor(
     container: HTMLElement,
-    keys: readonly KeyDefinition[],
-    private readonly onPress: (key: KeyId) => void,
+    keys: readonly KeyDefinition<K>[],
+    private readonly onPress: (key: K) => void,
   ) {
     for (const key of keys) {
       const button = document.createElement("button");
@@ -67,24 +67,24 @@ export class KeyBar {
     }
   }
 
-  isActive(key: KeyId): boolean {
+  isActive(key: K): boolean {
     return this.active.has(key);
   }
 
   /** Returns whether the sticky key was armed, and releases it. */
-  consume(key: KeyId): boolean {
+  consume(key: K): boolean {
     if (!this.active.has(key)) return false;
     this.setActive(key, false);
     return true;
   }
 
-  private toggle(key: KeyId): void {
-    this.setActive(key, !this.active.has(key));
-  }
-
-  private setActive(key: KeyId, on: boolean): void {
+  setActive(key: K, on: boolean): void {
     if (on) this.active.add(key);
     else this.active.delete(key);
     this.buttons.get(key)?.setAttribute("aria-pressed", String(on));
+  }
+
+  private toggle(key: K): void {
+    this.setActive(key, !this.active.has(key));
   }
 }

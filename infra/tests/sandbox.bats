@@ -162,6 +162,41 @@ last_env() {
   done
 }
 
+@test "--tailscale-api and THEONE_TAILSCALE_LOCALAPI pick the overlay for the mode" {
+  run "${SANDBOX}" --mode local --tailscale-api ps
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix theone local tailscale-api) ps"
+  : > "${STUB_LOG}"
+  write_env THEONE_TAILSCALE_LOCALAPI=1
+  run "${SANDBOX}" ps
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix theone tailscale tailscale-api-sidecar) ps"
+  : > "${STUB_LOG}"
+  write_env THEONE_MODE=local THEONE_TAILSCALE_LOCALAPI=0
+  run "${SANDBOX}" ps
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix theone local) ps"
+}
+
+@test "--tailscale-api up needs the host socket and warns about the trade-off" {
+  local dir="${BATS_TEST_TMPDIR}/tsrun"
+  mkdir -p "${dir}"
+  write_env THEONE_MODE=local "THEONE_TAILSCALE_HOST_SOCKET_DIR=${dir}"
+  run "${SANDBOX}" --tailscale-api up
+  assert_failure 1
+  assert_output --partial "no tailscaled socket at ${dir}/tailscaled.sock"
+  assert_equal "$(calls_of docker)" ""
+  python3 -c 'import socket,sys; socket.socket(socket.AF_UNIX).bind(sys.argv[1])' "${dir}/tailscaled.sock"
+  run "${SANDBOX}" --tailscale-api up
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix theone local tailscale-api) up --detach"
+  assert_output --partial "tailscale LocalAPI shared with the sandbox"
+  write_env THEONE_MODE=local THEONE_TAILSCALE_HOST_SOCKET_DIR=relative
+  run "${SANDBOX}" --tailscale-api ps
+  assert_failure 1
+  assert_output --partial "must be an absolute path"
+}
+
 @test "--env-file is passed to compose and replaces infra/compose/.env" {
   write_env THEONE_MODE=tailscale THEONE_COMPOSE_PROJECT=wrong
   printf 'THEONE_MODE=local\nTHEONE_COMPOSE_PROJECT=theone-alt\n' > "${BATS_TEST_TMPDIR}/alt.env"

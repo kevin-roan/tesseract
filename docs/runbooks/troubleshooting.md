@@ -239,17 +239,19 @@ process may still be running untracked. → Find it with `ss -ltnp` or
 ## Claude
 
 **`claude` asks to log in again**
-→ `/home/dev/.claude` was lost (the home volume was recreated), or the login
-expired. → Log in again ([claude-in-sandbox](claude-in-sandbox.md#1-log-in-once-per-home-volume)).
+→ The host's `~/.claude` is not logged in, or it is not mounted at
+`/home/dev/.claude` (check `ls ~/.claude/.credentials.json` in `bun run sandbox shell`).
+→ Log in on the host and recreate the sandbox if the mount is missing
+([claude-in-sandbox](claude-in-sandbox.md#1-log-in-on-the-host)).
 
 **A headless run ends immediately with an auth error**
-→ Not logged in and no `ANTHROPIC_API_KEY`/`CLAUDE_CODE_OAUTH_TOKEN` (the run
-fails within a second: "Not logged in · Please run /login"; `theone-doctor`
-warns `claude-auth`). → Log in once in a Claude terminal.
+→ The host is not logged in (the run fails within a second: "Not logged in ·
+Please run /login"; `theone-doctor` warns `claude-auth`). → Log in with `claude`
+(Claude Max) on the host (`~/.claude` is bind-mounted into the sandbox).
 
 **Claude ignores the SPEC rules**
-→ `~/.claude/CLAUDE.md` is missing or outdated. → `diff /etc/theone/SPEC.md ~/.claude/CLAUDE.md`
-and copy it over ([claude-in-sandbox](claude-in-sandbox.md#2-specmd-as-the-user-level-claudemd)).
+→ `/etc/claude-code/CLAUDE.md` is outdated. → rebuild the image with `bun run sandbox up --build`
+([claude-in-sandbox](claude-in-sandbox.md#2-specmd-as-the-managed-claudemd)).
 
 ## Resources
 

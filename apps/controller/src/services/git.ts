@@ -69,9 +69,9 @@ export class GitService {
     private readonly timeoutMs = 3_000,
   ) {}
 
-  private git(dir: string, args: string[], config: string[] = NEUTRAL_CONFIG) {
+  private git(dir: string, args: string[], config: string[] = NEUTRAL_CONFIG, timeoutMs = this.timeoutMs) {
     return run(["git", ...config, "-C", dir, ...args], {
-      timeoutMs: this.timeoutMs,
+      timeoutMs,
       env: {
         ...childEnv(),
         GIT_CEILING_DIRECTORIES: this.ceilingDir,
@@ -105,6 +105,13 @@ export class GitService {
         return { sha, subject, author, date: toUtcIso(date) ?? new Date(0).toISOString() };
       })
       .filter((commit) => commit.sha.length > 0);
+  }
+
+  /** Tracked and untracked, not ignored files (`ls-files -co --exclude-standard`), or `null` when `dir` is not a git checkout. */
+  async listFiles(dir: string, timeoutMs = 60_000): Promise<string[] | null> {
+    const result = await this.git(dir, ["ls-files", "-z", "--cached", "--others", "--exclude-standard"], NEUTRAL_CONFIG, timeoutMs);
+    if (!result.ok) return null;
+    return [...new Set(result.stdout.split("\0").filter(Boolean))];
   }
 
   async summary(dir: string): Promise<GitSummary | null> {

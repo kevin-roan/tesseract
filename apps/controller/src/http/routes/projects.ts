@@ -1,6 +1,9 @@
 import type { Hono } from "hono";
 import { CreateProjectSchema, routePatterns } from "@theone/protocol";
 import type { Services } from "../../services";
+import { badRequest } from "../../core/errors";
+import { isSyncFormat } from "../../services/projects";
+import { disableIdleTimeout } from "../idle-timeout";
 import { jsonBody } from "../validation";
 
 export function registerProjectRoutes(app: Hono, services: Services): void {
@@ -14,6 +17,16 @@ export function registerProjectRoutes(app: Hono, services: Services): void {
   });
 
   app.get(rest.project, async (c) => c.json(await services.projects.get(c.req.param("id") ?? "")));
+
+  app.post(rest.projectSync, async (c) => {
+    const format = (c.req.header("content-type") ?? "").split(";")[0]!.trim().toLowerCase();
+    if (!isSyncFormat(format)) throw badRequest("Send the archive as application/x-tar or application/gzip");
+    const body = c.req.raw.body;
+    if (!body) throw badRequest("Missing archive body");
+    disableIdleTimeout(c);
+    const { project, created } = await services.projects.sync(c.req.param("id") ?? "", format, body);
+    return c.json(project, created ? 201 : 200);
+  });
 
   app.get(rest.projectGit, async (c) => c.json(await services.projects.gitDetails(c.req.param("id") ?? "")));
 }

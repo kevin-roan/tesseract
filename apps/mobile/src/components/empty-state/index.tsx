@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from "react-native";
 import type { Icon } from "phosphor-react-native";
 
 import ActionButton from "@/components/action-button";
+import { Glass } from "@/components/glass";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { IconSize } from "@/theme";
@@ -38,12 +39,12 @@ const EmptyState = ({
       {loading ? (
         <ActivityIndicator color={theme.colors.textSecondary} accessibilityLabel={title} />
       ) : IconComponent ? (
-        <View style={styles.iconBadge}>
+        <Glass style={styles.iconBadge}>
           <IconComponent size={IconSize.xl} color={theme.colors.text} weight="duotone" />
-        </View>
+        </Glass>
       ) : null}
       <View style={styles.copy}>
-        <ThemedText variant="h3" style={styles.centered}>
+        <ThemedText variant="h2" style={styles.centered} accessibilityRole="header">
           {title}
         </ThemedText>
         {message ? (
@@ -52,9 +53,15 @@ const EmptyState = ({
           </ThemedText>
         ) : null}
       </View>
-      {actionLabel && onAction ? <ActionButton label={actionLabel} onPress={onAction} /> : null}
+      {actionLabel && onAction ? (
+        <View>
+          <ActionButton label={actionLabel} onPress={onAction} />
+        </View>
+      ) : null}
       {secondaryLabel && onSecondary ? (
-        <ActionButton label={secondaryLabel} onPress={onSecondary} variant="secondary" size="sm" />
+        <View>
+          <ActionButton label={secondaryLabel} onPress={onSecondary} variant="secondary" size="sm" />
+        </View>
       ) : null}
     </View>
   );

@@ -10,11 +10,6 @@ import { cleanLogText } from "@/components/log-view/lines";
 import StatusBadge from "@/components/status-badge";
 import { createTheme } from "@/theme";
 
-jest.mock("@/components/glass", () => {
-  const { View } = jest.requireActual<typeof import("react-native")>("react-native");
-  return { GlassSurface: View };
-});
-
 const theme = createTheme({ scheme: "light", width: 390, height: 844 });
 const colorOf = (node: { props: { style?: unknown } }) =>
   StyleSheet.flatten(node.props.style as StyleProp<TextStyle>)?.color;

@@ -1,117 +1,116 @@
-import { ScrollView, StyleSheet, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { LinearGradient } from "expo-linear-gradient";
+import {
+  ClockCounterClockwiseIcon,
+  InfoIcon,
+  SparkleIcon,
+} from "phosphor-react-native";
 
-import ActivityItem, { type ActivityItemProps } from "@/components/activity-item";
-import ProfileHero, { type ProfileStat } from "@/components/profile-hero";
-import SectionHeader from "@/components/section-header";
-import { ThemedView } from "@/components/themed-view";
-import { useAppTheme } from "@/hooks/use-app-theme";
-
-const user = {
-  name: "Louis Saville",
-  tagline: "Product lead, shipping in small slices",
-  team: "Core Platform",
-};
-
-const stats: ProfileStat[] = [
-  { id: "projects", value: "24", label: "Projects" },
-  { id: "issues", value: "1 420", label: "Issues closed" },
-  { id: "cycles", value: "38", label: "Cycles" },
-];
-
-type Activity = ActivityItemProps & { id: string };
-
-const activity: Activity[] = [
-  {
-    id: "created-project",
-    actor: user.name,
-    action: "created project",
-    target: "Mobile revamp",
-    timeAgo: "6h ago",
-    metrics: [
-      { id: "issues", value: "18", label: "Issues" },
-      { id: "members", value: "4", label: "Members" },
-      { id: "due", value: "12.10", label: "Target" },
-    ],
-  },
-  {
-    id: "completed-cycle",
-    actor: user.name,
-    action: "completed cycle",
-    target: "Cycle 38",
-    timeAgo: "12h ago",
-    metrics: [
-      { id: "done", value: "31", label: "Completed" },
-      { id: "carried", value: "5", label: "Carried" },
-      { id: "scope", value: "92%", label: "Scope hit" },
-    ],
-  },
-  {
-    id: "closed-issue",
-    actor: user.name,
-    action: "closed issue",
-    target: "Auth token refresh loop",
-    timeAgo: "1d ago",
-  },
-  {
-    id: "commented",
-    actor: user.name,
-    action: "commented on",
-    target: "Design tokens RFC",
-    timeAgo: "2d ago",
-  },
-  {
-    id: "assigned",
-    actor: user.name,
-    action: "was assigned",
-    target: "Offline sync spike",
-    timeAgo: "3d ago",
-  },
-];
+import { ActivityList } from "@/components/activity-item";
+import ContentSheet from "@/components/content-sheet";
+import EmptyState from "@/components/empty-state";
+import ListCard from "@/components/list-card";
+import Notice from "@/components/notice";
+import ProfileHero from "@/components/profile-hero";
+import ScreenScaffold from "@/components/screen-scaffold";
+import Section from "@/components/section";
+import SandboxGate from "@/features/sandbox/components/sandbox-gate";
+import SandboxNotices from "@/features/sandbox/components/sandbox-notices";
+import { useProfileScreen } from "@/features/sandbox/hooks/use-profile-screen";
+import { useStatusBarStyle } from "@/hooks/use-status-bar-style";
 
 export default function ProfileScreen() {
-  const theme = useAppTheme();
+  const screen = useProfileScreen();
+  useStatusBarStyle("light");
+
+  if (!screen.sandbox || !screen.profile) {
+    return <SandboxGate />;
+  }
 
   return (
-    <ThemedView style={styles.container}>
-      <LinearGradient {...theme.gradients.dusk} style={StyleSheet.absoluteFill} />
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView
-          contentContainerStyle={[
-            styles.content,
-            { gap: theme.sectionGap, padding: theme.gutter },
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          <ProfileHero
-            name={user.name}
-            tagline={user.tagline}
-            team={user.team}
-            stats={stats}
-            onPressMenu={() => {}}
-          />
+    <ScreenScaffold
+      edges={["left", "right", "bottom"]}
+      refreshing={screen.refreshing}
+      onRefresh={screen.refresh}
+    >
+      <ProfileHero
+        name={screen.profile.name}
+        tagline={screen.profile.tagline}
+        team={screen.profile.team}
+        photo={screen.profile.photo}
+        stats={screen.stats}
+        nameTestID="profile-name"
+        teamTestID="profile-tailnet"
+        menuLabel="Open the sandbox hub"
+        onPressMenu={screen.openHub}
+      />
 
-          <View style={{ gap: theme.spacing.md }}>
-            <SectionHeader title="Activity" />
-            {activity.map(({ id, ...item }) => (
-              <ActivityItem key={id} {...item} onPress={() => {}} />
-            ))}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </ThemedView>
+      <ContentSheet>
+        <SandboxNotices
+          missingToken={screen.missingToken}
+          onPair={screen.nav.pair}
+          issue={screen.issue}
+          onRepair={screen.repair}
+          error={screen.statusError}
+          onRetry={screen.retryStatus}
+        />
+        {screen.tailscaleMissing ? (
+          <Notice
+            tone="info"
+            icon={InfoIcon}
+            title="Tailscale identity not exposed"
+            message="This sandbox doesn't share who you are on the tailnet. Start it with --tailscale-api (THEONE_TAILSCALE_LOCALAPI=1) to show your Tailscale profile."
+          />
+        ) : null}
+        {screen.identityError ? (
+          <Notice
+            tone="danger"
+            message={screen.identityError}
+            actionLabel="Retry"
+            onAction={screen.retryIdentity}
+          />
+        ) : null}
+
+        <Section title="Configure" testID="profile-configure">
+          <ListCard
+            icon={SparkleIcon}
+            title="Claude account"
+            subtitle={screen.claudeAccount}
+            onPress={screen.openClaudeAccount}
+          />
+        </Section>
+
+        <Section title="Activity" testID="profile-activity">
+          {screen.activityError ? (
+            <Notice
+              tone="danger"
+              message={screen.activityError}
+              actionLabel="Retry"
+              onAction={screen.retryActivity}
+            />
+          ) : null}
+          {screen.activity.length > 0 ? (
+            <ActivityList items={screen.activity} />
+          ) : screen.activityError ? null : (
+            <EmptyState
+              loading={screen.activityLoading}
+              icon={ClockCounterClockwiseIcon}
+              title={
+                screen.activityLoading ? "Loading activity…" : "No activity yet"
+              }
+              message={
+                screen.activityLoading
+                  ? undefined
+                  : "Builds, Claude runs and processes on this sandbox show up here."
+              }
+              actionLabel={screen.activityLoading ? undefined : "Ask Claude"}
+              onAction={
+                screen.activityLoading
+                  ? undefined
+                  : () => screen.nav.newAgentRun()
+              }
+            />
+          )}
+        </Section>
+      </ContentSheet>
+    </ScreenScaffold>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  content: {
-    flexGrow: 1,
-  },
-});

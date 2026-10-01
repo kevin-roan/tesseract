@@ -130,7 +130,7 @@ describe("usePairScreen", () => {
     const { result } = await renderScreen();
     await act(async () => result.current.scanner.onBarcodeScanned(scan("https://example.com")));
 
-    expect(result.current.form.message).toMatch(/not a TheOne pairing link/);
+    expect(result.current.form.message).toMatch(/not a Monolith pairing link/);
     expect(result.current.canRescan).toBe(true);
     expect(MockClient).not.toHaveBeenCalled();
     expect(mockRouter.dismissTo).not.toHaveBeenCalled();

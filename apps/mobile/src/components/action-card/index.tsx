@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable } from "react-native";
 import type { Icon } from "phosphor-react-native";
 
-import { GlassSurface } from "@/components/glass";
+import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { IconSize } from "@/theme";
+import { IconSize, type SurfaceTone } from "@/theme";
 
 import createStyles from "./styles";
 
@@ -13,45 +13,23 @@ export type ActionCardProps = {
   icon: Icon;
   /** Short verb, one word where possible — "Create", "Share". */
   label: string;
-  /** Accent-filled treatment for the primary action. One per row, at most. */
-  featured?: boolean;
+  /** Card fill. Defaults to `neutral`; give the action a section leads with `yellow`. */
+  tone?: SurfaceTone;
   onPress?: () => void;
 };
 
-/**
- * Square quick-action tile: centred icon over a one-word label. Glass by
- * default, accent-filled for the action a section wants to lead with.
- */
-const ActionCard = ({
-  icon: IconComponent,
-  label,
-  featured = false,
-  onPress,
-}: ActionCardProps) => {
-  const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme, featured), [theme, featured]);
+/** Square quick-action tile: centred icon over a one-word label. */
+const ActionCard = ({ icon: IconComponent, label, tone = "neutral", onPress }: ActionCardProps) => {
+  const theme = useAppTheme(tone);
+  const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const content = (
-    <>
-      <IconComponent
-        size={IconSize.lg}
-        color={featured ? theme.colors.textOnAccent : theme.colors.text}
-      />
-      <ThemedText
-        variant="caption"
-        color={featured ? "textOnAccent" : "textSecondary"}
-        style={styles.label}
-        numberOfLines={1}
-      >
+  const card = (
+    <Surface tone={tone} style={styles.card}>
+      <IconComponent size={IconSize.lg} color={theme.colors.text} />
+      <ThemedText variant="caption" color="textSecondary" style={styles.label} numberOfLines={1}>
         {label}
       </ThemedText>
-    </>
-  );
-
-  const card = featured ? (
-    <View style={styles.card}>{content}</View>
-  ) : (
-    <GlassSurface style={styles.card}>{content}</GlassSurface>
+    </Surface>
   );
 
   if (!onPress) return card;

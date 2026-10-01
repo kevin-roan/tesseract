@@ -5,16 +5,23 @@ import {
   sampleAgentRunDetail,
   sampleArtifact,
   sampleBuild,
+  sampleClaudeSession,
   sampleContext,
   sampleDisplay,
   sampleGitDetails,
   sampleHealth,
+  sampleIdentity,
   sampleLogLine,
+  sampleInbox,
+  samplePorts,
   sampleProcess,
   sampleProject,
   sampleStatus,
+  sampleSyncChanges,
+  sampleSyncRequest,
   sampleTerminal,
   sampleTicket,
+  sampleUsageReport,
 } from "@theone/protocol/fixtures";
 import {
   AbortError,
@@ -32,6 +39,14 @@ import {
 } from "../src/index";
 
 const BASE = "https://theone-sandbox.tail1234.ts.net";
+const liveActivityToken = "ab".repeat(32);
+const sampleLiveActivityToken = {
+  kind: "activity",
+  token: liveActivityToken,
+  activityId: "act-1",
+  createdAt: "2026-09-30T10:00:00.000Z",
+  updatedAt: "2026-09-30T10:00:00.000Z",
+};
 const TOKEN = "secret-token";
 
 type Call = { url: string; init: HttpRequestInit };
@@ -90,6 +105,44 @@ describe("REST endpoints", () => {
     { name: "createTicket", call: (c) => c.createTicket(), method: "POST", path: "/v1/auth/ticket", response: sampleTicket },
     { name: "status", call: (c) => c.status(), method: "GET", path: "/v1/status", response: sampleStatus },
     { name: "context", call: (c) => c.context(), method: "GET", path: "/v1/context", response: sampleContext },
+    { name: "identity", call: (c) => c.identity(), method: "GET", path: "/v1/identity", response: sampleIdentity },
+    { name: "ports", call: (c) => c.ports(), method: "GET", path: "/v1/ports", response: samplePorts },
+    { name: "inbox", call: (c) => c.inbox(), method: "GET", path: "/v1/inbox", response: sampleInbox },
+    {
+      name: "inbox unread",
+      call: (c) => c.inbox({ limit: 20, unread: true }),
+      method: "GET",
+      path: "/v1/inbox?limit=20&unread=true",
+      response: sampleInbox,
+    },
+    {
+      name: "markInboxRead",
+      call: (c) => c.markInboxRead({ ids: ["inb_4k2m9q7x1a"] }),
+      method: "POST",
+      path: "/v1/inbox/read",
+      status: 200,
+      body: { ids: ["inb_4k2m9q7x1a"] },
+      response: { unreadCount: 0, attentionCount: 0 },
+    },
+    {
+      name: "markInboxRead all",
+      call: (c) => c.markInboxRead({ all: true }),
+      method: "POST",
+      path: "/v1/inbox/read",
+      status: 200,
+      body: { all: true },
+      response: { unreadCount: 0, attentionCount: 0 },
+    },
+    { name: "usage", call: (c) => c.usage(), method: "GET", path: "/v1/usage", response: sampleUsageReport },
+    { name: "usage days", call: (c) => c.usage({ days: 7 }), method: "GET", path: "/v1/usage?days=7", response: sampleUsageReport },
+    { name: "sessions", call: (c) => c.sessions(), method: "GET", path: "/v1/sessions", response: [sampleClaudeSession] },
+    {
+      name: "sessions filtered",
+      call: (c) => c.sessions({ limit: 5, projectId: "app" }),
+      method: "GET",
+      path: "/v1/sessions?limit=5&projectId=app",
+      response: [sampleClaudeSession],
+    },
     { name: "listProjects", call: (c) => c.listProjects(), method: "GET", path: "/v1/projects", response: [sampleProject] },
     {
       name: "createProject",
@@ -153,6 +206,75 @@ describe("REST endpoints", () => {
     },
     { name: "getAgentRun", call: (c) => c.getAgentRun("run_1"), method: "GET", path: "/v1/agent/runs/run_1", response: sampleAgentRunDetail },
     { name: "cancelAgentRun", call: (c) => c.cancelAgentRun("run_1"), method: "DELETE", path: "/v1/agent/runs/run_1", response: sampleAgentRun },
+    { name: "listArchivedAgentRuns", call: (c) => c.listAgentRuns({ archived: true }), method: "GET", path: "/v1/agent/runs?archived=true", response: [] },
+    {
+      name: "archiveAgentRuns",
+      call: (c) => c.archiveAgentRuns({ all: true, archived: true, projectId: "app" }),
+      method: "POST",
+      path: "/v1/agent/runs/archive",
+      body: { all: true, archived: true, projectId: "app" },
+      response: { count: 2 },
+    },
+    {
+      name: "deleteAgentRuns",
+      call: (c) => c.deleteAgentRuns({ ids: ["run_q1w2e3r4t5"] }),
+      method: "POST",
+      path: "/v1/agent/runs/delete",
+      body: { ids: ["run_q1w2e3r4t5"] },
+      response: { count: 1 },
+    },
+    { name: "syncChanges", call: (c) => c.syncChanges("app"), method: "GET", path: "/v1/projects/app/sync/changes", response: sampleSyncChanges },
+    {
+      name: "syncAck",
+      call: (c) => c.syncAck("app", { changes: [{ path: "src/main.ts", sha256: "a".repeat(64) }] }),
+      method: "POST",
+      path: "/v1/projects/app/sync/ack",
+      body: { changes: [{ path: "src/main.ts", sha256: "a".repeat(64) }] },
+      response: sampleSyncChanges,
+    },
+    { name: "syncRequests", call: (c) => c.syncRequests("app"), method: "GET", path: "/v1/projects/app/sync/requests", response: [sampleSyncRequest] },
+    {
+      name: "createSyncRequest",
+      call: (c) => c.createSyncRequest("app", { kind: "pull", source: "mobile" }),
+      method: "POST",
+      path: "/v1/projects/app/sync/requests",
+      status: 201,
+      body: { kind: "pull", source: "mobile" },
+      response: sampleSyncRequest,
+    },
+    { name: "pendingSyncRequests", call: (c) => c.pendingSyncRequests(), method: "GET", path: "/v1/sync/requests?status=pending", response: [] },
+    {
+      name: "claimSyncRequest",
+      call: (c) => c.claimSyncRequest("sync_1", { host: "workstation" }),
+      method: "POST",
+      path: "/v1/sync/requests/sync_1/claim",
+      body: { host: "workstation" },
+      response: sampleSyncRequest,
+    },
+    {
+      name: "completeSyncRequest",
+      call: (c) => c.completeSyncRequest("sync_1", { status: "failed", error: "boom" }),
+      method: "POST",
+      path: "/v1/sync/requests/sync_1/complete",
+      body: { status: "failed", error: "boom" },
+      response: sampleSyncRequest,
+    },
+    { name: "cancelSyncRequest", call: (c) => c.cancelSyncRequest("sync_1"), method: "POST", path: "/v1/sync/requests/sync_1/cancel", response: sampleSyncRequest },
+    {
+      name: "registerLiveActivity",
+      call: (c) => c.registerLiveActivity({ kind: "activity", token: liveActivityToken, activityId: "act-1" }),
+      method: "POST",
+      path: "/v1/push/live-activities",
+      body: { kind: "activity", token: liveActivityToken, activityId: "act-1" },
+      response: sampleLiveActivityToken,
+    },
+    {
+      name: "unregisterLiveActivity",
+      call: (c) => c.unregisterLiveActivity(liveActivityToken),
+      method: "DELETE",
+      path: `/v1/push/live-activities/${liveActivityToken}`,
+      response: sampleLiveActivityToken,
+    },
   ];
 
   for (const testCase of cases) {
@@ -193,6 +315,26 @@ describe("REST endpoints", () => {
     expect(new Uint8Array(bytes)).toEqual(png);
     expect(calls[0]?.url).toBe(`${BASE}/v1/display/screenshot`);
     expect(calls[0]?.init.headers.Authorization).toBe(`Bearer ${TOKEN}`);
+  });
+
+  test("syncExport posts the paths and returns the archive bytes", async () => {
+    const gzip = new Uint8Array([0x1f, 0x8b, 0x08, 0x00]);
+    const { client, calls } = clientWith(() => ({
+      ...respond(200, undefined, { "content-type": "application/gzip" }),
+      arrayBuffer: async () => gzip.buffer,
+    }));
+    const bytes = await client.syncExport("app", ["src/main.ts"]);
+    expect(new Uint8Array(bytes)).toEqual(gzip);
+    expect(calls[0]?.url).toBe(`${BASE}/v1/projects/app/sync/export`);
+    expect(calls[0]?.init.method).toBe("POST");
+    expect(JSON.parse(calls[0]?.init.body ?? "null")).toEqual({ paths: ["src/main.ts"] });
+  });
+
+  test("syncHeartbeat resolves on 204", async () => {
+    const { client, calls } = clientWith(() => respond(204, undefined));
+    expect(await client.syncHeartbeat({ host: "workstation", projects: ["app"] })).toBeUndefined();
+    expect(calls[0]?.url).toBe(`${BASE}/v1/sync/heartbeat`);
+    expect(JSON.parse(calls[0]?.init.body ?? "null")).toEqual({ host: "workstation", projects: ["app"] });
   });
 
   test("publishStatus posts the event and resolves on 202", async () => {
@@ -241,6 +383,12 @@ describe("error mapping", () => {
 
     const version = await clientWith(() => respond(200, { ...sampleHealth, protocolVersion: 2 })).client.health().catch((e: unknown) => e);
     expect(version).toBeInstanceOf(ProtocolError);
+
+    const usage = await clientWith(() => respond(200, { ...sampleUsageReport, days: 0 })).client.usage().catch((e: unknown) => e);
+    expect(usage).toBeInstanceOf(ProtocolError);
+
+    const sessions = await clientWith(() => respond(200, [{ ...sampleClaudeSession, source: "web" }])).client.sessions().catch((e: unknown) => e);
+    expect(sessions).toBeInstanceOf(ProtocolError);
   });
 
   test("a health payload with another protocol version becomes ProtocolVersionError", async () => {
@@ -363,5 +511,16 @@ describe("url helpers", () => {
   test("artifactDownloadUrl", async () => {
     const { client } = ticketingClient();
     expect(await client.artifactDownloadUrl("art_1")).toBe(`${BASE}/v1/artifacts/art_1/download?ticket=tk%201`);
+  });
+});
+
+describe("inbox", () => {
+  test("rejects responses that do not match the protocol", async () => {
+    const list = await clientWith(() => respond(200, { items: sampleInbox.items })).client.inbox().catch((e: unknown) => e);
+    expect(list).toBeInstanceOf(ProtocolError);
+    const counts = await clientWith(() => respond(200, { unreadCount: -1, attentionCount: 0 }))
+      .client.markInboxRead({ all: true })
+      .catch((e: unknown) => e);
+    expect(counts).toBeInstanceOf(ProtocolError);
   });
 });

@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProjectFilter, StatusEvent } from "@theone/protocol";
 
 import { sandboxKeys } from "../api/query-keys";
-import { STATUS_REFRESH_INTERVAL_MS } from "../utils/constants";
+import { PORTS_REFRESH_INTERVAL_MS, STATUS_REFRESH_INTERVAL_MS } from "../utils/constants";
 import { useActiveSandbox } from "./use-sandbox-client";
 import { useSandboxQuery } from "./use-sandbox-query";
 
@@ -11,8 +11,14 @@ export const useSandboxStatus = () =>
     refetchInterval: STATUS_REFRESH_INTERVAL_MS,
   });
 
+export const useSandboxIdentity = () =>
+  useSandboxQuery(sandboxKeys.identity, (client, signal) => client.identity({ signal }));
+
 export const useDisplayStatus = () =>
   useSandboxQuery(sandboxKeys.display, (client, signal) => client.displayStatus({ signal }));
+
+export const useDisplayBrowser = (enabled = true) =>
+  useSandboxQuery(sandboxKeys.displayBrowser, (client, signal) => client.displayBrowser({ signal }), { enabled });
 
 export const useProjects = () =>
   useSandboxQuery(sandboxKeys.projects, (client, signal) => client.listProjects({ signal }));
@@ -31,6 +37,20 @@ export const useProjectGit = (projectId: string, enabled = true) =>
     { enabled: enabled && projectId.length > 0 },
   );
 
+export const useSyncChanges = (projectId: string, refetchInterval?: number) =>
+  useSandboxQuery(
+    (sandboxId) => sandboxKeys.syncChanges(sandboxId, projectId),
+    (client, signal) => client.syncChanges(projectId, { signal }),
+    { enabled: projectId.length > 0, refetchInterval },
+  );
+
+export const useSyncRequests = (projectId: string) =>
+  useSandboxQuery(
+    (sandboxId) => sandboxKeys.syncRequests(sandboxId, projectId),
+    (client, signal) => client.syncRequests(projectId, { signal }),
+    { enabled: projectId.length > 0 },
+  );
+
 export const useProcesses = (filter?: ProjectFilter) =>
   useSandboxQuery(
     (sandboxId) => sandboxKeys.processes(sandboxId, filter),
@@ -39,6 +59,11 @@ export const useProcesses = (filter?: ProjectFilter) =>
 
 export const useTerminals = () =>
   useSandboxQuery(sandboxKeys.terminals, (client, signal) => client.listTerminals({ signal }));
+
+export const useListeningPorts = () =>
+  useSandboxQuery(sandboxKeys.ports, (client, signal) => client.ports({ signal }), {
+    refetchInterval: PORTS_REFRESH_INTERVAL_MS,
+  });
 
 export const useBuilds = (filter?: ProjectFilter) =>
   useSandboxQuery(
@@ -58,6 +83,9 @@ export const useArtifacts = (filter?: ProjectFilter) =>
     (sandboxId) => sandboxKeys.artifacts(sandboxId, filter),
     (client, signal) => client.listArtifacts(filter, { signal }),
   );
+
+export const useTaildropTargets = (enabled = true) =>
+  useSandboxQuery(sandboxKeys.taildropTargets, (client, signal) => client.taildropTargets({ signal }), { enabled });
 
 export const useAgentRuns = (filter?: ProjectFilter) =>
   useSandboxQuery(

@@ -9,6 +9,8 @@ import {
   sampleGitDetails,
   sampleProcess,
   sampleProject,
+  sampleSyncChanges,
+  sampleSyncRequest,
 } from "@theone/protocol/fixtures";
 
 import PairScreen from "@/app/pair";
@@ -18,8 +20,14 @@ import DisplayScreen from "@/app/sandbox/display";
 import ProjectScreen from "@/app/sandbox/projects/[id]";
 import NewProjectScreen from "@/app/sandbox/projects/new";
 import TerminalScreen from "@/app/sandbox/terminal/[id]";
+import { toChatEvents } from "@/features/chat/utils/messages";
 import { EMPTY_PAIRING_DRAFT } from "@/features/sandbox/utils/pairing";
 import { buildTargetOptions } from "@/features/sandbox/utils/labels";
+import { describeSyncRequest, SYNC_COPY } from "@/features/sandbox/utils/sync";
+import { useDisplayStore } from "@/features/sandbox/store/display-store";
+import { injectJavaScript } from "../../mocks/react-native-webview";
+import { TEST_SITE } from "../sandbox/helpers";
+import { chatComposerState } from "../chat/fixtures";
 
 const mockNav = {
   back: jest.fn(),
@@ -38,15 +46,26 @@ const mockHooks: Record<string, jest.Mock> = {
   newProject: jest.fn(),
   launcher: jest.fn(),
   terminal: jest.fn(),
+  browser: jest.fn(),
 };
 
-jest.mock("expo-router", () => ({ useLocalSearchParams: () => mockParams }));
-jest.mock("@/components/glass", () => {
-  const { Pressable, View } = jest.requireActual<typeof import("react-native")>("react-native");
-  return { GlassSurface: View, GlassPill: View, GlassButton: Pressable };
-});
+jest.mock("expo-router", () => ({
+  useLocalSearchParams: () => mockParams,
+  useNavigation: () => ({ setOptions: jest.fn() }),
+}));
+jest.mock("react-native-safe-area-context", () => require("react-native-safe-area-context/jest/mock").default);
+jest.mock("expo-screen-orientation", () => ({
+  lockAsync: jest.fn(async () => undefined),
+  OrientationLock: { PORTRAIT_UP: 3, LANDSCAPE: 5 },
+}));
+jest.mock("@/features/sandbox/hooks/use-browser-sheet", () => ({
+  useBrowserSheet: (visible: boolean) => mockHooks.browser(visible),
+}));
 jest.mock("@/features/sandbox/hooks/use-sandbox-navigation", () => ({ useSandboxNavigation: () => mockNav }));
 jest.mock("@/features/sandbox/hooks/use-pair-screen", () => ({ usePairScreen: () => mockHooks.pair() }));
+jest.mock("@/features/attachments/hooks/use-upload-source", () => ({
+  useUploadSource: () => ({ uri: "http://127.0.0.1:7700/v1/uploads/upl/content", headers: { Authorization: "Bearer t" } }),
+}));
 jest.mock("@/features/sandbox/hooks/use-agent-run-screen", () => ({
   useAgentRunScreen: (id: string) => mockHooks.agentRun(id),
 }));
@@ -80,20 +99,6 @@ function session(overrides: object = {}) {
     handleLoad: jest.fn(),
     handleError: jest.fn(),
     reconnect: jest.fn(),
-    ...overrides,
-  };
-}
-
-function composer(overrides: object = {}) {
-  return {
-    prompt: "",
-    setPrompt: jest.fn(),
-    projectId: null,
-    toggleProject: jest.fn(),
-    canSubmit: true,
-    submit: jest.fn(),
-    isSubmitting: false,
-    error: null,
     ...overrides,
   };
 }
@@ -159,33 +164,61 @@ describe("AgentRunScreen", () => {
     nav: mockNav,
     run: sampleAgentRun,
     events: sampleAgentRunEvents,
+    messages: toChatEvents(sampleAgentRunEvents),
     running: true,
     badge: { label: "Running", tone: "info" },
-    cost: null,
+    result: null,
+    brief: null,
     canContinue: false,
-    composer: composer(),
+    composer: chatComposerState(),
     headerActions: [headerAction("Stop run")],
     isLoading: false,
     loadError: null,
     streamError: null,
     cancelError: null,
+    syncNotice: null,
+    dismissSyncNotice: jest.fn(),
     retry: jest.fn(),
     ...overrides,
   });
 
   it("starts a new run for the new route with a normalised project", async () => {
     mockParams = { id: "new", projectId: "Electron-Hello" };
-    const state = composer({ projectId: "electron-hello" });
-    mockHooks.newAgentRun.mockReturnValue({ nav: mockNav, composer: state, projectOptions: [{ id: "electron-hello", label: "electron-hello" }] });
+    const selectProject = jest.fn();
+    const state = chatComposerState({
+      projectId: "electron-hello",
+      project: {
+        id: "electron-hello",
+        label: "electron-hello",
+        options: [{ id: "electron-hello", label: "electron-hello" }],
+        select: selectProject,
+      },
+      text: "build it",
+      primary: "send",
+      canSend: true,
+    });
+    const selectSuggestion = jest.fn();
+    mockHooks.newAgentRun.mockReturnValue({
+      nav: mockNav,
+      composer: state,
+      projectOptions: [{ id: "electron-hello", label: "electron-hello" }],
+      greeting: "Hello, Ada\nHow can I help you?",
+      suggestions: { visible: true, items: [{ id: "api", label: "Build a REST API" }], select: selectSuggestion },
+    });
     await render(<AgentRunScreen />);
 
     expect(mockHooks.newAgentRun).toHaveBeenCalledWith("electron-hello");
-    expect(screen.getByText("Ask Claude")).toBeOnTheScreen();
-    expect(screen.getByLabelText("Project for this run")).toBeOnTheScreen();
-    await fireEvent.press(screen.getByLabelText("Start run"));
-    expect(state.submit).toHaveBeenCalled();
+    expect(screen.getByText(/Hello, Ada/)).toBeOnTheScreen();
+    await fireEvent.press(screen.getByLabelText("Build a REST API"));
+    expect(selectSuggestion).toHaveBeenCalledWith({ id: "api", label: "Build a REST API" });
+    await fireEvent.press(screen.getByLabelText("Send"));
+    expect(state.send).toHaveBeenCalled();
     await fireEvent.press(screen.getByLabelText("electron-hello"));
-    expect(state.toggleProject).toHaveBeenCalledWith("electron-hello");
+    expect(state.openSheet).toHaveBeenCalledWith("project");
+    await fireEvent.press(screen.getByLabelText("Auto"));
+    expect(state.openSheet).toHaveBeenCalledWith("mode");
+    await fireEvent.press(screen.getByLabelText("Attach"));
+    expect(state.openSheet).toHaveBeenCalledWith("attach");
   });
 
   it("streams a running run's events", async () => {
@@ -197,17 +230,19 @@ describe("AgentRunScreen", () => {
     expect(screen.getByText(sampleAgentRun.prompt)).toBeOnTheScreen();
     expect(screen.getByText("Starting the build.")).toBeOnTheScreen();
     expect(screen.getByText("Running")).toBeOnTheScreen();
-    expect(screen.queryByLabelText("Continue")).toBeNull();
+    expect(screen.queryByTestId("run-composer")).toBeNull();
+    expect(screen.getAllByText("Claude").length).toBeGreaterThan(0);
   });
 
-  it("shows the outcome, cost, stream problems and a continue box for a finished run", async () => {
+  it("shows the outcome, a one-line brief, stream problems and a continue box for a finished run", async () => {
     const retry = jest.fn();
     mockParams = { id: sampleAgentRun.id };
     mockHooks.agentRun.mockReturnValue(
       runScreen({
         run: { ...sampleAgentRun, state: "failed", result: "Partial installer", error: "wine crashed" },
         running: false,
-        cost: "$0.42",
+        result: "Partial installer",
+        brief: "Failed in 5m · 12.3k tokens · 8k in · 4.3k out",
         canContinue: true,
         streamError: "Stream dropped",
         cancelError: "Cancel failed",
@@ -218,11 +253,35 @@ describe("AgentRunScreen", () => {
 
     expect(screen.getByText("Partial installer")).toBeOnTheScreen();
     expect(screen.getByText("wine crashed")).toBeOnTheScreen();
-    expect(screen.getByText("Cost $0.42")).toBeOnTheScreen();
+    expect(screen.getByTestId("run-brief")).toHaveTextContent("Failed in 5m · 12.3k tokens · 8k in · 4.3k out");
     expect(screen.getByText("Cancel failed")).toBeOnTheScreen();
     await fireEvent.press(screen.getByLabelText("Reconnect"));
     expect(retry).toHaveBeenCalled();
-    expect(screen.getByLabelText("Continue")).toBeOnTheScreen();
+    expect(screen.getByTestId("run-composer")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Record voice message")).toBeOnTheScreen();
+  });
+
+  it("offers Sync to host next to Reload and shows its progress", async () => {
+    const sync = jest.fn();
+    const dismissSyncNotice = jest.fn();
+    mockParams = { id: sampleAgentRun.id };
+    mockHooks.agentRun.mockReturnValue(
+      runScreen({
+        running: false,
+        headerActions: [headerAction("Reload"), headerAction("Sync to host", sync)],
+        syncNotice: { tone: "success", title: "Synced to host", message: "1 added · 1 modified · 1 deleted" },
+        dismissSyncNotice,
+      }),
+    );
+    await render(<AgentRunScreen />);
+
+    expect(screen.getByLabelText("Reload")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByLabelText("Sync to host"));
+    expect(sync).toHaveBeenCalled();
+    expect(screen.getByText("Synced to host")).toBeOnTheScreen();
+    expect(screen.getByText("1 added · 1 modified · 1 deleted")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByLabelText("Dismiss"));
+    expect(dismissSyncNotice).toHaveBeenCalled();
   });
 
   it("shows loading and load errors before the run arrives", async () => {
@@ -319,12 +378,99 @@ describe("DisplayScreen", () => {
     recheck: jest.fn(),
     ...overrides,
   });
+  const CURRENT_TAB = { id: "t1", title: "Vite App", url: "http://localhost:5173/", phoneUrl: "http://100.64.0.1:5173/" };
+  const OTHER_TAB = { id: "t2", title: "Docs", url: "https://docs.expo.dev/", phoneUrl: "https://docs.expo.dev/" };
+  const browser = (overrides: object = {}) => ({
+    summary: { kind: "tabs", current: CURRENT_TAB, others: [OTHER_TAB] },
+    loading: false,
+    refreshing: false,
+    error: null,
+    openError: null,
+    refresh: jest.fn(),
+    open: jest.fn(),
+    share: jest.fn(),
+    ...overrides,
+  });
 
-  it("hosts the VNC page", async () => {
+  beforeEach(() => {
+    injectJavaScript.mockClear();
+    useDisplayStore.setState({ inputMode: "trackpad" });
+    mockHooks.browser.mockReturnValue(browser());
+  });
+
+  it("hosts the VNC page under a floating bar", async () => {
     mockHooks.display.mockReturnValue(display());
     await render(<DisplayScreen />);
     expect(screen.getByTestId("webview")).toBeOnTheScreen();
     expect(screen.getByText(":1 · 1600×900")).toBeOnTheScreen();
+    expect(screen.getByText("Connected")).toBeOnTheScreen();
+    for (const label of ["Go back", "Trackpad mode. Switch to touch mode", "Show the browser's page", "Rotate screen", "Full screen"]) {
+      expect(screen.getByLabelText(label)).toBeOnTheScreen();
+    }
+    await fireEvent.press(screen.getByLabelText("Go back"));
+    expect(mockNav.back).toHaveBeenCalled();
+  });
+
+  it("pushes the insets and the input mode into the connected page", async () => {
+    mockHooks.display.mockReturnValue(display());
+    await render(<DisplayScreen />);
+    const scripts = injectJavaScript.mock.calls.map(([script]) => String(script));
+    expect(scripts.some((script) => script.includes('t.setInputMode("trackpad")'))).toBe(true);
+    expect(scripts.some((script) => script.includes("t.setInsets({"))).toBe(true);
+  });
+
+  it("switches and remembers the input mode", async () => {
+    mockHooks.display.mockReturnValue(display());
+    await render(<DisplayScreen />);
+    await fireEvent.press(screen.getByLabelText("Trackpad mode. Switch to touch mode"));
+    expect(useDisplayStore.getState().inputMode).toBe("touch");
+    expect(screen.getByLabelText("Touch mode. Switch to trackpad mode")).toBeOnTheScreen();
+    expect(injectJavaScript).toHaveBeenLastCalledWith(expect.stringContaining('t.setInputMode("touch")'));
+  });
+
+  it("goes full screen behind a single exit button", async () => {
+    mockHooks.display.mockReturnValue(display());
+    await render(<DisplayScreen />);
+    await fireEvent.press(screen.getByLabelText("Full screen"));
+    expect(screen.queryByLabelText("Go back")).toBeNull();
+    expect(injectJavaScript).toHaveBeenCalledWith(expect.stringContaining('"top":0'));
+
+    await fireEvent.press(screen.getByLabelText("Exit full screen"));
+    expect(screen.getByLabelText("Go back")).toBeOnTheScreen();
+  });
+
+  it("shows the browser's current page and opens or shares its phone URL", async () => {
+    const sheet = browser();
+    mockHooks.browser.mockReturnValue(sheet);
+    mockHooks.display.mockReturnValue(display());
+    await render(<DisplayScreen />);
+    expect(mockHooks.browser).toHaveBeenLastCalledWith(false);
+
+    await fireEvent.press(screen.getByLabelText("Show the browser's page"));
+    expect(mockHooks.browser).toHaveBeenLastCalledWith(true);
+    expect(screen.getByText("Vite App")).toBeOnTheScreen();
+    expect(screen.getByText("http://localhost:5173/")).toBeOnTheScreen();
+    expect(screen.getByText("http://100.64.0.1:5173/")).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByLabelText("Open"));
+    expect(sheet.open).toHaveBeenCalledWith(CURRENT_TAB);
+    await fireEvent.press(screen.getByLabelText("Share"));
+    expect(sheet.share).toHaveBeenCalledWith(CURRENT_TAB);
+    await fireEvent.press(screen.getByLabelText("Share Docs"));
+    expect(sheet.share).toHaveBeenCalledWith(OTHER_TAB);
+  });
+
+  it("explains a localhost page without a Tailscale address and a browser without debugging", async () => {
+    mockHooks.display.mockReturnValue(display());
+    mockHooks.browser.mockReturnValue(browser({ summary: { kind: "tabs", current: { ...CURRENT_TAB, phoneUrl: null }, others: [] } }));
+    await render(<DisplayScreen />);
+    await fireEvent.press(screen.getByLabelText("Show the browser's page"));
+    expect(screen.getByText(/no Tailscale address/)).toBeOnTheScreen();
+
+    mockHooks.browser.mockReturnValue(browser({ summary: { kind: "unavailable" } }));
+    await render(<DisplayScreen />);
+    await fireEvent.press(screen.getByLabelText("Show the browser's page"));
+    expect(screen.getByText("Can't read Chromium's tabs")).toBeOnTheScreen();
   });
 
   it("explains an outage and rechecks", async () => {
@@ -348,6 +494,35 @@ describe("DisplayScreen", () => {
 });
 
 describe("ProjectScreen", () => {
+  const syncState = (overrides: object = {}) => ({
+    loading: false,
+    loadError: null,
+    actionError: null,
+    host: "Monolith on workstation · online",
+    empty: null,
+    changes: sampleSyncChanges.changes,
+    summary: "3 files · 1 added · 1 modified · 1 deleted",
+    confirmMessage: "3 files. A snapshot is taken first, so you can revert it.",
+    files: sampleSyncChanges.changes,
+    fileToggleLabel: null,
+    toggleExpanded: jest.fn(),
+    canSync: true,
+    syncing: false,
+    canRevert: true,
+    reverting: false,
+    revert: jest.fn(),
+    showForce: false,
+    force: false,
+    setForce: jest.fn(),
+    sheetOpen: false,
+    openSheet: jest.fn(),
+    closeSheet: jest.fn(),
+    submit: jest.fn(),
+    requests: [{ id: sampleSyncRequest.id, view: describeSyncRequest(sampleSyncRequest) }],
+    cancel: jest.fn(),
+    cancellingId: null,
+    ...overrides,
+  });
   const detail = (overrides: object = {}) => ({
     nav: mockNav,
     project: sampleProject,
@@ -364,6 +539,10 @@ describe("ProjectScreen", () => {
     targets: buildTargetOptions(["electron-windows"]),
     build: jest.fn(),
     buildingTarget: null,
+    sites: [],
+    siteFor: jest.fn(() => undefined),
+    openSite: jest.fn(),
+    siteError: null,
     processes: [sampleProcess],
     stopProcess: jest.fn(),
     stoppingId: null,
@@ -373,6 +552,7 @@ describe("ProjectScreen", () => {
     builds: [sampleBuild],
     artifacts: [sampleArtifact],
     downloads: { download: jest.fn(), pendingId: null, error: null },
+    sync: syncState(),
     actionError: null,
     ...overrides,
   });
@@ -427,12 +607,100 @@ describe("ProjectScreen", () => {
     expect(screen.getByText("Build refused")).toBeOnTheScreen();
   });
 
+  it("lists the project's websites and opens them in the browser", async () => {
+    mockParams = { id: sampleProject.id };
+    const state = detail({ sites: [TEST_SITE], siteFor: jest.fn(() => TEST_SITE), siteError: "Can't open that link" });
+    mockHooks.project.mockReturnValue(state);
+    await render(<ProjectScreen />);
+
+    expect(screen.getByTestId("project-sites")).toBeOnTheScreen();
+    expect(screen.getByText(TEST_SITE.url!)).toBeOnTheScreen();
+    expect(screen.getByText("Can't open that link")).toBeOnTheScreen();
+    await fireEvent.press(screen.getAllByLabelText("Open :5173 in browser")[0]);
+    expect(state.openSite).toHaveBeenCalledWith(TEST_SITE.url);
+    expect(screen.getAllByLabelText("Open :5173 in browser")).toHaveLength(2);
+    expect(state.siteFor).toHaveBeenCalledWith(sampleProcess.id);
+  });
+
+  it("hides the websites section when nothing listens", async () => {
+    mockParams = { id: sampleProject.id };
+    mockHooks.project.mockReturnValue(detail());
+    await render(<ProjectScreen />);
+    expect(screen.queryByTestId("project-sites")).toBeNull();
+  });
+
   it("shows a download error above the artifacts", async () => {
     mockParams = { id: sampleProject.id };
     mockHooks.project.mockReturnValue(detail({ downloads: { download: jest.fn(), pendingId: sampleArtifact.id, error: "Download refused" } }));
     await render(<ProjectScreen />);
     expect(screen.getByText("Download refused")).toBeOnTheScreen();
     expect(screen.getByLabelText(`Download ${sampleArtifact.fileName}`).props.accessibilityState.busy).toBe(true);
+  });
+
+  it("lists sync-back changes and opens the confirm sheet", async () => {
+    mockParams = { id: sampleProject.id };
+    const sync = syncState({ fileToggleLabel: "Show all 12 files" });
+    mockHooks.project.mockReturnValue(detail({ sync }));
+    await render(<ProjectScreen />);
+
+    expect(screen.getByTestId("project-sync")).toBeOnTheScreen();
+    expect(screen.getByText("Monolith on workstation · online")).toBeOnTheScreen();
+    expect(screen.getByText(sync.summary)).toBeOnTheScreen();
+    expect(screen.getByLabelText("added src/new-file.ts")).toBeOnTheScreen();
+    expect(screen.getByText(/^Synced 3 files/)).toBeOnTheScreen();
+    await fireEvent.press(screen.getByLabelText("Show all 12 files"));
+    expect(sync.toggleExpanded).toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText("Sync to host"));
+    expect(sync.openSheet).toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText("Revert last sync"));
+    expect(sync.revert).toHaveBeenCalled();
+  });
+
+  it("confirms a sync with the force toggle after conflicts", async () => {
+    mockParams = { id: sampleProject.id };
+    const sync = syncState({ sheetOpen: true, showForce: true });
+    mockHooks.project.mockReturnValue(detail({ sync }));
+    await render(<ProjectScreen />);
+
+    expect(screen.getByTestId("sync-confirm-sheet")).toBeOnTheScreen();
+    await fireEvent(screen.getByLabelText("Overwrite host edits"), "valueChange", true);
+    expect(sync.setForce).toHaveBeenCalledWith(true);
+    await fireEvent.press(screen.getByLabelText("Sync 3 files"));
+    expect(sync.submit).toHaveBeenCalled();
+  });
+
+  it("shows pending requests with cancel, conflicts and empty states", async () => {
+    mockParams = { id: sampleProject.id };
+    const pending = { ...sampleSyncRequest, id: "sync_pending", status: "pending" as const, result: null };
+    const failed = {
+      ...sampleSyncRequest,
+      id: "sync_failed",
+      status: "failed" as const,
+      error: "1 file changed on the host",
+      result: { added: 0, modified: 0, deleted: 0, conflicts: ["src/main.ts"], snapshotId: null, hostPath: null },
+    };
+    const sync = syncState({
+      empty: "up-to-date",
+      changes: [],
+      files: [],
+      canRevert: false,
+      requests: [pending, failed].map((request) => ({ id: request.id, view: describeSyncRequest(request) })),
+    });
+    mockHooks.project.mockReturnValue(detail({ sync }));
+    await render(<ProjectScreen />);
+
+    expect(screen.getByText(SYNC_COPY.upToDate)).toBeOnTheScreen();
+    expect(screen.queryByLabelText("Sync to host")).toBeNull();
+    expect(screen.queryByLabelText("Revert last sync")).toBeNull();
+    expect(screen.getByText(SYNC_COPY.pending)).toBeOnTheScreen();
+    expect(screen.getByText("1 file changed on the host")).toBeOnTheScreen();
+    expect(screen.getByText("src/main.ts")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByLabelText("Cancel Sync all changes"));
+    expect(sync.cancel).toHaveBeenCalledWith("sync_pending");
+
+    mockHooks.project.mockReturnValue(detail({ sync: syncState({ empty: "never-pushed", changes: [], files: [], requests: [] }) }));
+    await render(<ProjectScreen />);
+    expect(screen.getByText(SYNC_COPY.neverPushed)).toBeOnTheScreen();
   });
 
   it("shows loading and load errors", async () => {

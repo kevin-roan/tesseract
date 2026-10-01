@@ -1,18 +1,9 @@
 import { StyleSheet } from "react-native";
 
-import { BorderWidth, type Theme } from "@/theme";
+import { BorderWidth, IconSize, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
-    bubble: {
-      alignSelf: "flex-start",
-      maxWidth: theme.maxBubbleWidth,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
-      borderRadius: theme.radius.lg,
-      borderCurve: "continuous",
-      backgroundColor: theme.colors.bubbleAssistant,
-    },
     tool: {
       flexDirection: "row",
       alignItems: "flex-start",
@@ -23,6 +14,9 @@ export default function createStyles(theme: Theme) {
       borderWidth: BorderWidth.thin,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.codeBackground,
+    },
+    icon: {
+      marginTop: ((theme.text.label.lineHeight ?? IconSize.sm) - IconSize.sm) / 2,
     },
     toolError: {
       borderColor: theme.colors.danger,

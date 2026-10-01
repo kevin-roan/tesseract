@@ -9,7 +9,6 @@ readonly DEV_HOME=/home/dev
 readonly WORKSPACE="${THEONE_WORKSPACE:-/workspace}"
 readonly AGENT_DIR="${WORKSPACE}/.agent"
 readonly TEMPLATE_DIR=/etc/theone/agent-templates
-readonly SPEC_FILE=/etc/theone/SPEC.md
 readonly VNC_DIR="${DEV_HOME}/.vnc"
 readonly RUN_DIR=/run/theone
 readonly CONTROLLER_ENV="${RUN_DIR}/controller.env"
@@ -38,12 +37,13 @@ drop_empty_env() {
   done
 }
 
+# ~/.claude is the host's Claude dir (bind mount): its ownership belongs to the host user.
 ensure_owned_by_dev() {
   local dir=$1
   [[ -d "${dir}" ]] || return 0
   if [[ "$(stat -c '%u:%g' "${dir}")" != "${DEV_UID}:${DEV_GID}" ]]; then
     log "fixing ownership of ${dir} for uid ${DEV_UID}"
-    chown -R "${DEV_UID}:${DEV_GID}" "${dir}"
+    find "${dir}" -path "${DEV_HOME}/.claude" -prune -o -exec chown -h "${DEV_UID}:${DEV_GID}" {} +
   fi
 }
 
@@ -96,22 +96,14 @@ seed_agent_templates() {
   fi
 }
 
-install_claude_md() {
-  dev_dir 0700 "${DEV_HOME}/.claude"
-  if [[ -r "${SPEC_FILE}" && ! -e "${DEV_HOME}/.claude/CLAUDE.md" ]]; then
-    install -o "${DEV_USER}" -g "${DEV_USER}" -m 0644 "${SPEC_FILE}" "${DEV_HOME}/.claude/CLAUDE.md"
-    log "installed ${SPEC_FILE} as ${DEV_HOME}/.claude/CLAUDE.md"
-  fi
-}
-
 generate_password() {
   python3 -c 'import secrets, string; a = string.ascii_letters + string.digits; print("".join(secrets.choice(a) for _ in range(8)))'
 }
 
 # The plaintext password is persisted (0600) in the home volume so it survives restarts,
 # and handed to the controller through an env file that only its launcher reads, together
-# with THEONE_TOKEN when compose sets one. main() then removes both from the environment
-# supervisord passes to every program.
+# with THEONE_TOKEN and THEONE_STT_API_KEY when compose sets them. main() then removes them
+# from the environment supervisord passes to every program.
 setup_vnc_password() {
   local password_file="${VNC_DIR}/password" password
   dev_dir 0700 "${VNC_DIR}"
@@ -136,6 +128,9 @@ setup_vnc_password() {
     printf 'THEONE_VNC_PASSWORD=%q\n' "${password}"
     if [[ -n "${THEONE_TOKEN:-}" ]]; then
       printf 'THEONE_TOKEN=%q\n' "${THEONE_TOKEN}"
+    fi
+    if [[ -n "${THEONE_STT_API_KEY:-}" ]]; then
+      printf 'THEONE_STT_API_KEY=%q\n' "${THEONE_STT_API_KEY}"
     fi
   } | write_dev_file "${CONTROLLER_ENV}" 0600
 }
@@ -274,7 +269,6 @@ main() {
   ensure_owned_by_dev "${DEV_HOME}"
   prepare_workspace
   seed_agent_templates
-  install_claude_md
   setup_vnc_password
   prepare_runtime_dirs
   write_environment_md || log "could not write ${AGENT_DIR}/ENVIRONMENT.md"
@@ -282,7 +276,7 @@ main() {
   if (($# > 0)); then
     exec "$@"
   fi
-  unset THEONE_TOKEN THEONE_VNC_PASSWORD
+  unset THEONE_TOKEN THEONE_VNC_PASSWORD THEONE_STT_API_KEY
   exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf
 }
 

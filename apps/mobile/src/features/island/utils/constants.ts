@@ -1,0 +1,13 @@
+export const RUN_TITLE_MAX = 60;
+export const USAGE_DAYS = 7;
+export const ACTIVITY_UPDATE_THROTTLE_MS = 1000;
+export const ACTIVITY_END_GRACE_MS = 5000;
+export const ELAPSED_TICK_MS = 1000;
+export const CAPTURE_HIDE_DELAY_MS = 80;
+export const MIN_CROP_SIZE = 48;
+export const CROP_HANDLE_SIZE = 28;
+export const INITIAL_CROP_INSET = 0.1;
+export const CAPTURE_IMAGE_MIME_TYPE = "image/png";
+export const RECENT_CHATS_LIMIT = 5;
+export const ISLAND_ROUTE = "/island";
+export const CORNERS = ["topLeft", "topRight", "bottomLeft", "bottomRight"] as const;

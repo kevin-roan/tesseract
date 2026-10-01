@@ -36,7 +36,7 @@ Containers are removed on exit, also on failure and Ctrl-C.
 | `entrypoint.bats` | `theone-entrypoint`: layout and ownership, template seeding idempotency, VNC password and `controller.env`, secrets kept from supervisord, symlink hardening, `ENVIRONMENT.md` |
 | `doctor.bats` | every `theone-doctor` check and status, with stubbed probes and a fake RFB server on 127.0.0.1 |
 | `rootfs-x11.bats` | `theone-wait-x`, `theone-xvnc` (stale X locks), `theone-screenshot` |
-| `rootfs-misc.bats` | `theone-controller-run`, `theone-wine-init`, `/etc/profile.d/theone.sh` |
+| `rootfs-misc.bats` | `theone-controller-run`, `theone-wine-init`, `/etc/profile.d/theone.sh`, the Claude Code hooks in `/etc/claude-code/managed-settings.json` |
 | `lint.bats` | `bash -n`/`sh -n`, shellcheck (warnings), strict mode, supervisord confs vs. rootfs |
 
 Stubs (`lib/common.bash`): `setup_stubs` puts an empty directory first on `PATH`,

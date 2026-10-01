@@ -46,6 +46,21 @@ export const DisplayStatusSchema = z.object({
 });
 export type DisplayStatus = z.infer<typeof DisplayStatusSchema>;
 
+export const BrowserTabSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  url: z.string(),
+  phoneUrl: z.string().nullable(),
+});
+export type BrowserTab = z.infer<typeof BrowserTabSchema>;
+
+/** Chromium pages in the sandbox; `tabs[0]` is the current (most recently active) tab. */
+export const BrowserStatusSchema = z.object({
+  available: z.boolean(),
+  tabs: z.array(BrowserTabSchema),
+});
+export type BrowserStatus = z.infer<typeof BrowserStatusSchema>;
+
 const CountSchema = z.int().nonnegative();
 
 export const SandboxResourcesSchema = z.object({

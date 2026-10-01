@@ -1,0 +1,11 @@
+{
+  "name": "@monolith/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "python3 -m monolith_desktop",
+    "typecheck": "python3 -m compileall -q monolith_desktop tests",
+    "lint": "python3 -m compileall -q monolith_desktop tests",
+    "test": "python3 -m pytest -q tests"
+  }
+}

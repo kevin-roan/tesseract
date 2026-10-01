@@ -1,56 +1,46 @@
 import { StyleSheet } from "react-native";
 
-import { Shadows, type Theme } from "@/theme";
+import { ControlHeight, type Theme } from "@/theme";
 
-/** Diameter of the corner progress ring, per device size. */
-export const RingSize = { md: 40, lg: 48 } as const;
-
-export default function createStyles(theme: Theme, featured: boolean) {
-  const badge = theme.isTablet ? 44 : 38;
+export default function createStyles(theme: Theme) {
+  const badge = theme.isTablet ? ControlHeight.lg : ControlHeight.md;
 
   return StyleSheet.create({
     /** Fills the grid cell so cards sharing a row end up the same height. */
     card: {
       flex: 1,
-      minHeight: theme.isTablet ? 168 : 148,
+      minHeight: theme.isTablet ? 184 : 164,
       justifyContent: "space-between",
       gap: theme.spacing.lg,
       padding: theme.spacing.base,
-      borderRadius: theme.radius.xl,
+      borderRadius: theme.radius["2xl"],
       borderCurve: "continuous",
-      overflow: "hidden",
-      ...(featured && {
-        backgroundColor: theme.colors.accent,
-        ...Shadows.level1,
-      }),
     },
     top: {
       flexDirection: "row",
-      alignItems: "flex-start",
+      alignItems: "center",
       justifyContent: "space-between",
+      gap: theme.spacing.sm,
     },
-    /**
-     * Rounded square behind the icon. On the accent card it is a deeper wash of
-     * the accent rather than a light surface, which would blow out next to it.
-     */
     iconBadge: {
       width: badge,
       height: badge,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: theme.radius.md,
-      borderCurve: "continuous",
-      backgroundColor: featured
-        ? theme.colors.accentPressed
-        : theme.colors.surfaceElevated,
+      borderRadius: theme.radius.full,
     },
     bottom: {
-      gap: theme.spacing.xxs,
+      gap: theme.spacing.xs,
     },
     valueRow: {
       flexDirection: "row",
+      flexWrap: "wrap",
       alignItems: "baseline",
-      gap: theme.spacing.xxs,
+      columnGap: theme.spacing.xs,
+    },
+    value: {
+      flexShrink: 1,
+      fontVariant: ["tabular-nums"],
     },
     unit: {
       flexShrink: 1,

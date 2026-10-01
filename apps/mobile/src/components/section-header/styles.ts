@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import type { Theme } from "@/theme";
+import { ControlHeight, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -13,13 +13,16 @@ export default function createStyles(theme: Theme) {
     title: {
       flexShrink: 1,
     },
-    /** Keeps the tap target comfortable without pushing the row taller. */
     action: {
-      paddingVertical: theme.spacing.xs,
-      paddingLeft: theme.spacing.sm,
+      minHeight: ControlHeight.sm,
+      paddingHorizontal: theme.spacing.md,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: theme.radius.pill,
     },
     actionPressed: {
-      opacity: 0.6,
+      opacity: 0.7,
+      transform: [{ scale: 0.96 }],
     },
   });
 }

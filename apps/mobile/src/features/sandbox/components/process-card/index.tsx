@@ -1,11 +1,12 @@
-import { ScrollIcon, StopIcon, TerminalIcon } from "phosphor-react-native";
-import type { ProcessInfo } from "@theone/protocol";
+import { ArrowSquareOutIcon, ScrollIcon, StopIcon, TerminalIcon } from "phosphor-react-native";
+import type { ListeningPort, ProcessInfo } from "@theone/protocol";
 
 import ActionButton from "@/components/action-button";
 import ResourceCard from "@/components/resource-card";
 
 import { processMeta } from "../../utils/describe";
 import { commandLabel, isActiveProcess } from "../../utils/projects";
+import { siteLabel, siteUrl } from "../../utils/sites";
 import { processTone, stateLabel } from "../../utils/states";
 
 export type ProcessCardProps = {
@@ -15,10 +16,22 @@ export type ProcessCardProps = {
   stopping?: boolean;
   onToggleLogs?: () => void;
   logsOpen?: boolean;
+  site?: ListeningPort;
+  onOpenSite?: (url: string) => void;
 };
 
-const ProcessCard = ({ process, onPress, onStop, stopping = false, onToggleLogs, logsOpen = false }: ProcessCardProps) => {
+const ProcessCard = ({
+  process,
+  onPress,
+  onStop,
+  stopping = false,
+  onToggleLogs,
+  logsOpen = false,
+  site,
+  onOpenSite,
+}: ProcessCardProps) => {
   const active = isActiveProcess(process);
+  const url = site && onOpenSite && active ? siteUrl(site) : null;
 
   return (
     <ResourceCard
@@ -30,8 +43,18 @@ const ProcessCard = ({ process, onPress, onStop, stopping = false, onToggleLogs,
       badge={{ label: stateLabel(process.state), tone: processTone(process.state) }}
       onPress={onPress}
       footer={
-        onToggleLogs || (onStop && active) ? (
+        url || onToggleLogs || (onStop && active) ? (
           <>
+            {url && site && onOpenSite ? (
+              <ActionButton
+                label={`Open ${siteLabel(site)}`}
+                icon={ArrowSquareOutIcon}
+                variant="secondary"
+                size="sm"
+                onPress={() => onOpenSite(url)}
+                accessibilityLabel={`Open ${siteLabel(site)} in browser`}
+              />
+            ) : null}
             {onToggleLogs ? (
               <ActionButton
                 label={logsOpen ? "Hide logs" : "Logs"}

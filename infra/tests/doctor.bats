@@ -13,7 +13,8 @@ setup() {
   export HOME="${BATS_TEST_TMPDIR}/home" THEONE_WORKSPACE="${BATS_TEST_TMPDIR}/workspace"
   mkdir -p "${HOME}/.wine" "${THEONE_WORKSPACE}"
   touch "${HOME}/.wine/system.reg"
-  export ANTHROPIC_API_KEY=sk-test
+  mkdir -p "${HOME}/.claude"
+  echo '{"claudeAiOauth":{"subscriptionType":"max"}}' > "${HOME}/.claude/.credentials.json"
 
   stub xdpyinfo 'echo "  dimensions:    1600x900 pixels (423x238 millimeters)"'
   stub xprop 'echo "_NET_SUPPORTING_WM_CHECK(WINDOW): window id # 0x400001"'
@@ -84,7 +85,7 @@ row() {
   assert_line "$(row node PASS v24.1.0)"
   assert_line "$(row bun PASS 1.4.2)"
   assert_line "$(row claude PASS "2.1.0 (Claude Code)")"
-  assert_line "$(row claude-auth PASS "ANTHROPIC_API_KEY is set")"
+  assert_line "$(row claude-auth PASS "logged in (${HOME}/.claude/.credentials.json)")"
   assert_line "$(row java PASS 'openjdk version "17.0.12" 2024-07-16')"
   assert_line "$(row adb PASS "Android Debug Bridge version 1.0.41")"
   assert_line "$(row docker SKIP "no DOCKER_HOST (start the stack with --dind)")"
@@ -197,20 +198,23 @@ row() {
   assert_line "$(row bun FAIL "bun not found on PATH")"
 }
 
-@test "claude-auth: API key, then OAuth token, then stored credentials, else a warning" {
-  unset ANTHROPIC_API_KEY
-  CLAUDE_CODE_OAUTH_TOKEN=tok run "${DOCTOR}"
-  assert_line "$(row claude-auth PASS "CLAUDE_CODE_OAUTH_TOKEN is set")"
-
+@test "claude-auth: only the host's mounted Claude Max login counts" {
+  rm -f "${HOME}/.claude/.credentials.json"
   run "${DOCTOR}"
-  assert_line "$(row claude-auth WARN "not authenticated: run 'claude' in a sandbox terminal and log in")"
+  assert_line "$(row claude-auth WARN "not authenticated: log in with 'claude' (Claude Max) on the host (its ~/.claude is mounted here)")"
 
-  mkdir -p "${HOME}/.claude"
+  ANTHROPIC_API_KEY=key CLAUDE_CODE_OAUTH_TOKEN=tok run "${DOCTOR}"
+  assert_line --partial "claude-auth     WARN"
+
   : > "${HOME}/.claude/.credentials.json"
   run "${DOCTOR}"
   assert_line --partial "claude-auth     WARN"
 
   echo '{}' > "${HOME}/.claude/.credentials.json"
+  run "${DOCTOR}"
+  assert_line --partial "claude-auth     WARN"
+
+  echo '{"claudeAiOauth":{"accessToken":"x"}}' > "${HOME}/.claude/.credentials.json"
   run "${DOCTOR}"
   assert_line "$(row claude-auth PASS "logged in (${HOME}/.claude/.credentials.json)")"
 }
@@ -259,7 +263,7 @@ row() {
 
 @test "warnings alone never fail the run" {
   stub xprop 'exit 1'
-  unset ANTHROPIC_API_KEY
+  rm -f "${HOME}/.claude/.credentials.json"
   run "${DOCTOR}"
   assert_success
   assert_line "16 checks, 0 failed, 2 warnings"

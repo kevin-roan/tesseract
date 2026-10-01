@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from "react";
-import { View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import type { Icon } from "phosphor-react-native";
 
 import ActionButton from "@/components/action-button";
@@ -12,30 +12,45 @@ import createStyles from "./styles";
 export type SectionProps = SectionHeaderProps & {
   children?: ReactNode;
   isEmpty?: boolean;
+  /** Shows a spinner in place of the content while the first load runs. */
+  loading?: boolean;
+  /** Screen-reader label for the spinner. Defaults to "Loading <title>". */
+  loadingLabel?: string;
   emptyLabel?: string;
   emptyActionLabel?: string;
   emptyActionIcon?: Icon;
   onEmptyAction?: () => void;
+  testID?: string;
 };
 
 const Section = ({
   children,
   isEmpty = false,
+  loading = false,
+  loadingLabel,
   emptyLabel,
   emptyActionLabel,
   emptyActionIcon,
   onEmptyAction,
+  testID,
   ...header
 }: SectionProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <View style={styles.section}>
+    <View style={styles.section} testID={testID}>
       <SectionHeader {...header} />
-      {isEmpty && emptyLabel ? (
+      {loading ? (
+        <View style={styles.loading}>
+          <ActivityIndicator
+            color={theme.colors.textSecondary}
+            accessibilityLabel={loadingLabel ?? `Loading ${header.title}`}
+          />
+        </View>
+      ) : isEmpty && emptyLabel ? (
         <View style={styles.empty}>
-          <ThemedText variant="bodySmall" color="textTertiary">
+          <ThemedText variant="bodySmall" color="textSecondary">
             {emptyLabel}
           </ThemedText>
           {emptyActionLabel && onEmptyAction ? (

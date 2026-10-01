@@ -17,11 +17,23 @@ export default function createStyles(theme: Theme) {
       backgroundColor: theme.colors.surfaceElevated,
     },
     selected: {
-      borderColor: theme.colors.accent,
+      borderColor: theme.colors.accentStrong,
       backgroundColor: theme.colors.accentMuted,
+    },
+    label: {
+      flexShrink: 1,
+    },
+    ghost: {
+      flexShrink: 1,
+      paddingHorizontal: theme.spacing.sm,
+      borderColor: "transparent",
+      backgroundColor: "transparent",
     },
     pressed: {
       opacity: 0.8,
+    },
+    disabled: {
+      opacity: 0.45,
     },
   });
 }

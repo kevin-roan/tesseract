@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import type { Theme } from "@/theme";
+import { BorderWidth, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme, size: number) {
   return StyleSheet.create({
@@ -22,13 +22,11 @@ export default function createStyles(theme: Theme, size: number) {
       alignItems: "center",
       justifyContent: "center",
       overflow: "hidden",
-      backgroundColor: theme.colors.accentMuted,
-      borderWidth: 2,
-      borderColor: theme.colors.surfaceElevated,
     },
-    image: {
-      width: "100%",
-      height: "100%",
+    /** Separates overlapping faces. */
+    ring: {
+      borderWidth: BorderWidth.thick,
+      borderColor: theme.colors.surfaceElevated,
     },
     overflowBadge: {
       backgroundColor: theme.colors.backgroundSelected,

@@ -1,10 +1,20 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from "bun:test";
 import { Window } from "happy-dom";
 import { KeyBar, Overlay, StatusBadge } from "../../src/ui/lib/components";
-import { API_PATHS, APPLICATION_CURSOR_SEQUENCES, HARDWARE_KEYS, HOST_MESSAGES, KEY_BAR, KEYSYMS, TERMINAL_SEQUENCES, VNC_KEYS } from "../../src/ui/lib/config";
-import { keepFocus, requireElement } from "../../src/ui/lib/dom";
+import {
+  API_PATHS,
+  APPLICATION_CURSOR_SEQUENCES,
+  HARDWARE_KEYS,
+  HOST_MESSAGES,
+  KEY_BAR,
+  KEYSYMS,
+  TERMINAL_SEQUENCES,
+  VNC_HOST_KEYS,
+  VNC_KEYS,
+} from "../../src/ui/lib/config";
+import { applyInsets, keepFocus, requireElement } from "../../src/ui/lib/dom";
 import { takeFragment } from "../../src/ui/lib/fragment";
-import { exposeHostApi, hasHost, postToHost } from "../../src/ui/lib/host";
+import { exposeHostApi, hasHost, parseInputMode, parseInsets, postToHost } from "../../src/ui/lib/host";
 import { keysymForChar, withCtrl } from "../../src/ui/lib/keys";
 import { webSocketUrl } from "../../src/ui/lib/socket";
 
@@ -129,7 +139,15 @@ describe("host bridge", () => {
   test("exposeHostApi accepts only well-formed reconnect messages", () => {
     const reconnect = mock((_ticket: string) => {});
     exposeHostApi({ reconnect });
-    expect((dom as unknown as { theone: unknown }).theone).toEqual({ reconnect });
+    const theone = (dom as unknown as globalThis.Window).theone;
+    expect(Object.keys(theone ?? {}).sort()).toEqual(["reconnect", "setInputMode", "setInsets"]);
+    theone?.setInputMode("touch");
+    theone?.setInsets({ top: 1, bottom: 2 });
+    theone?.reconnect("");
+    expect(reconnect).not.toHaveBeenCalled();
+    theone?.reconnect("t0");
+    expect(reconnect).toHaveBeenCalledWith("t0");
+    reconnect.mockClear();
     const send = (data: unknown) => dom.dispatchEvent(new dom.MessageEvent("message", { data }));
     send(HOST_MESSAGES.reconnect);
     send(null);
@@ -139,6 +157,42 @@ describe("host bridge", () => {
     expect(reconnect).not.toHaveBeenCalled();
     send({ type: HOST_MESSAGES.reconnect, ticket: "t1" });
     expect(reconnect).toHaveBeenCalledWith("t1");
+  });
+
+  test("input mode and insets are validated on both paths", () => {
+    expect(parseInputMode("trackpad")).toBe("trackpad");
+    expect(parseInputMode("touch")).toBe("touch");
+    expect(parseInputMode("mouse")).toBeNull();
+    expect(parseInputMode(null)).toBeNull();
+    expect(parseInsets({ top: 60, bottom: 0 })).toEqual({ top: 60, bottom: 0 });
+    for (const bad of [null, "x", { top: 1 }, { top: -1, bottom: 0 }, { top: Number.NaN, bottom: 0 }, { top: "1", bottom: 1 }]) {
+      expect(parseInsets(bad)).toBeNull();
+    }
+
+    const setInputMode = mock((_mode: string) => {});
+    const setInsets = mock((_insets: { top: number; bottom: number }) => {});
+    exposeHostApi({ reconnect: () => {}, setInputMode, setInsets });
+    const theone = (dom as unknown as globalThis.Window).theone;
+    const send = (data: unknown) => dom.dispatchEvent(new dom.MessageEvent("message", { data }));
+    send({ type: HOST_MESSAGES.inputMode, mode: "stylus" });
+    send({ type: HOST_MESSAGES.insets, top: -4, bottom: 0 });
+    theone?.setInputMode("bogus" as never);
+    theone?.setInsets({ top: Infinity, bottom: 0 });
+    expect(setInputMode).not.toHaveBeenCalled();
+    expect(setInsets).not.toHaveBeenCalled();
+    send({ type: HOST_MESSAGES.inputMode, mode: "touch" });
+    send({ type: HOST_MESSAGES.insets, top: 88, bottom: 34 });
+    theone?.setInputMode("trackpad");
+    theone?.setInsets({ top: 10, bottom: 0 });
+    expect(setInputMode.mock.calls).toEqual([["touch"], ["trackpad"]]);
+    expect(setInsets.mock.calls).toEqual([[{ top: 88, bottom: 34 }], [{ top: 10, bottom: 0 }]]);
+  });
+
+  test("applyInsets exposes CSS variables", () => {
+    applyInsets({ top: 72, bottom: 12.5 });
+    const style = dom.document.documentElement.style;
+    expect(style.getPropertyValue("--inset-top")).toBe("72px");
+    expect(style.getPropertyValue("--inset-bottom")).toBe("12.5px");
   });
 });
 
@@ -219,5 +273,22 @@ describe("dom helpers and components", () => {
     const down = new dom.Event("pointerdown", { cancelable: true });
     buttons[1]?.dispatchEvent(down);
     expect(down.defaultPrevented).toBe(true);
+  });
+
+  test("KeyBar takes page-specific keys and can mark them pressed", () => {
+    const container = dom.document.createElement("div");
+    const pressed: string[] = [];
+    const bar = new KeyBar(container as never, [...VNC_HOST_KEYS, ...KEY_BAR], (key) => pressed.push(key));
+    const buttons = [...container.querySelectorAll("button")];
+    expect(buttons.slice(0, 2).map((button) => [button.textContent, button.getAttribute("aria-label")])).toEqual([
+      ["⌨", "Keyboard"],
+      ["URL", "Browser URL"],
+    ]);
+    buttons[1]?.click();
+    expect(pressed).toEqual(["browser"]);
+    bar.setActive("keyboard", true);
+    expect(buttons[0]?.getAttribute("aria-pressed")).toBe("true");
+    bar.setActive("keyboard", false);
+    expect(buttons[0]?.getAttribute("aria-pressed")).toBe("false");
   });
 });

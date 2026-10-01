@@ -6,50 +6,35 @@ is disabled with `DISABLE_AUTOUPDATER=1`, so versions change with image
 rebuilds and bumping the version rebuilds only that layer). It runs as `dev`, inside the sandbox
 only. The rules it follows are in [SPEC.md](../../SPEC.md).
 
-## 1. Log in (once per home volume)
+## 1. Log in (on the host)
 
-The login lives in `/home/dev/.claude/` on the `theone-home` volume and
-survives restarts and image upgrades. Never copy credentials from the host.
+The sandbox uses the host's Claude Code login: the host's `~/.claude/` is
+bind-mounted into the sandbox at `/home/dev/.claude/`. Log in once on the
+host (`claude`, then `/login`); the sandbox sees the same credentials,
+settings and CLAUDE.md, and a token refreshed on either side is shared. There
+is no token to paste into the app or save through the controller.
 
-**From the phone:** on a project screen, choose **Open an interactive Claude
-Code session** (a `claude` terminal). Or use the **Terminal** quick action
-on the Agents tab and run `claude`. Choose the login method and follow the
-URL: open it in the phone browser, approve, and paste the code back into the
-terminal.
+If `claude` in the sandbox still asks to log in, the host is not logged in
+or the mount is missing: check `ls -la ~/.claude/.credentials.json` inside
+`bun run sandbox shell`, and log in on the host.
 
-**From the host shell:**
-
-```bash
-bun run sandbox shell        # a bash login shell as dev inside the sandbox
-claude                       # then /login if it does not prompt automatically
-```
-
-**With an API key** instead of a subscription login: add
-`ANTHROPIC_API_KEY=…` to `infra/compose/.env` and run `bun run sandbox up`
-(which recreates the container with the new environment), or use a
-long-lived subscription token from `claude setup-token` as
-`CLAUDE_CODE_OAUTH_TOKEN`. Either variable is then visible to every process in
-the sandbox, including project code (the controller only strips its own
-secrets), so a subscription login stored in the home volume is the
-lower-exposure option. `theone-doctor` reports the result as `claude-auth`.
+This host Claude Max login is the only supported authentication: the stack
+passes no API key or long-lived token (`ANTHROPIC_API_KEY`,
+`CLAUDE_CODE_OAUTH_TOKEN`) into the sandbox. `theone-doctor` reports the
+result as `claude-auth` (PASS when `~/.claude/.credentials.json` holds a
+`claudeAiOauth` login).
 
 Check with `claude --version` and `claude -p "say ok"`.
 
-## 2. SPEC.md as the user-level CLAUDE.md
+## 2. SPEC.md as the managed CLAUDE.md
 
-- The image contains the repository's `SPEC.md` at `/etc/theone/SPEC.md`.
-- On every start, the entrypoint copies it to `/home/dev/.claude/CLAUDE.md`
-  **only if that file does not exist**, so your edits inside the sandbox survive.
+- The image build writes the repository's `SPEC.md` (followed by
+  `rootfs/etc/claude-code/CLAUDE.md`) to `/etc/claude-code/CLAUDE.md`, Claude
+  Code's managed memory file. Nothing is written into `~/.claude`, which is the
+  host's own folder.
 - Claude loads it in every session (interactive and headless), together with
-  the project's own `CLAUDE.md`/`AGENTS.md` if present.
-
-After upgrading the image with a new SPEC, take the new version deliberately:
-
-```bash
-bun run sandbox shell
-diff /etc/theone/SPEC.md ~/.claude/CLAUDE.md     # review
-cp /etc/theone/SPEC.md ~/.claude/CLAUDE.md       # adopt (merge your edits first if any)
-```
+  the host's `~/.claude/CLAUDE.md` and the project's own `CLAUDE.md`/`AGENTS.md`.
+- A SPEC change needs an image rebuild (`bun run sandbox up --build`).
 
 ## 3. Permission mode
 
@@ -93,7 +78,7 @@ Background: [security-model.md](../architecture/security-model.md#claude-with-by
 3. The run screen (`sandbox/agent/[id]`) streams condensed events: text,
    tool use (`Bash: npm test`), tool results, system messages. Status events
    that Claude emits (`[BUILD] …`) appear in the activity feed.
-4. When it finishes you see the result, the cost and the session id.
+4. When it finishes you see the result, the tokens used and the session id.
    **Continue** starts a new run with `resumeSessionId`, which is the same conversation.
 5. **Cancel** sends `DELETE /v1/agent/runs/:id` and stops the process.
 
@@ -138,8 +123,8 @@ plus `projects/<id>/*.md`) via `GET /v1/context`. If Claude seems confused about
 project, read these first. You can edit them from a terminal. The layout is in
 [SPEC §3](../../SPEC.md#3-persistent-memory).
 
-## 7. Costs and limits
+## 7. Usage and limits
 
-- `costUsd` is reported per headless run (from Claude's result message).
+- Token `usage` is reported per headless run (from Claude's result message); `/v1/usage` sums tokens from the transcripts.
 - Long runs keep going when the phone disconnects. Cancel runs you no longer need.
 - The model and other defaults come from `/home/dev/.claude/settings.json` (for example `"model"`), or `/model` in an interactive session.

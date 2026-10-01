@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync } from "node:fs";
-import { hostname as osHostname } from "node:os";
+import { homedir, hostname as osHostname } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
-import { DEFAULT_PORT, isValidToken, parseBaseUrl } from "@theone/protocol";
+import { DEFAULT_PORT, isValidToken, parseBaseUrl, STT_PROFILES, type SttProfile } from "@theone/protocol";
 import { isLogLevel, type LogLevel } from "./core/logger";
 import type { Env } from "./core/exec";
 
@@ -11,6 +11,7 @@ export type Config = {
   workspace: string;
   projectsDir: string;
   artifactsDir: string;
+  uploadsDir: string;
   agentDir: string;
   dataDir: string;
   logsDir: string;
@@ -22,13 +23,56 @@ export type Config = {
   vncHost: string;
   vncPort: number;
   vncPassword: string | null;
+  chromiumDebugPort: number;
   claudeBin: string;
   claudePermissionMode: string;
+  claudeConfigDir: string;
+  /** Claude Code's global config: `$CLAUDE_CONFIG_DIR/.claude.json` when the variable is set, else `$HOME/.claude.json`. */
+  claudeGlobalConfig: string;
+  claudeEnvAuth: { oauthToken: boolean; apiKey: boolean };
+  tailscaleSocket: string;
   sandboxId: string;
   hostname: string;
   logLevel: LogLevel;
   corsOrigins: string[];
   shell: string[];
+  ffmpegBin: string;
+  stt: SttConfig;
+  push: PushConfig;
+  apns: ApnsConfig;
+};
+
+export const APNS_ENVIRONMENTS = ["production", "sandbox"] as const;
+export type ApnsEnvironment = (typeof APNS_ENVIRONMENTS)[number];
+
+/** ActivityKit pushes go straight to APNs; `enabled` needs the key file, key id and team id. */
+export type ApnsConfig = {
+  enabled: boolean;
+  keyFile: string | null;
+  keyId: string | null;
+  teamId: string | null;
+  bundleId: string;
+  environment: ApnsEnvironment;
+};
+
+export type PushConfig = {
+  url: string | null;
+  accessToken: string | null;
+};
+
+export const STT_ENGINES = ["auto", "whisper.cpp", "openai-compatible", "none"] as const;
+export type SttEngineSetting = (typeof STT_ENGINES)[number];
+
+export type SttConfig = {
+  engine: SttEngineSetting;
+  /** Profile used until one is chosen through `PUT /v1/stt` (then the stored choice wins). */
+  profile: SttProfile;
+  whisperBin: string;
+  whisperModelsDir: string;
+  whisperModel: string | null;
+  url: string | null;
+  apiKey: string | null;
+  model: string;
 };
 
 export class ConfigError extends Error {
@@ -41,6 +85,10 @@ export class ConfigError extends Error {
 const DISPLAY_PATTERN = /^[A-Za-z0-9.-]*:\d+(?:\.\d+)?$/;
 const PERMISSION_MODE_PATTERN = /^[A-Za-z]{1,32}$/;
 const HOST_PATTERN = /^[A-Za-z0-9.:[\]-]+$/;
+const STT_MODEL_PATTERN = /^[\w.:/-]{1,128}$/;
+const APNS_ID_PATTERN = /^[A-Za-z0-9]{1,64}$/;
+const BUNDLE_ID_PATTERN = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
+const DEFAULT_APNS_BUNDLE_ID = "com.kevinbpract.theone";
 
 function read(env: Env, name: string): string | undefined {
   const value = env[name]?.trim();
@@ -62,6 +110,76 @@ function absolutePath(env: Env, name: string, fallback: string): string {
   const value = read(env, name) ?? fallback;
   if (!isAbsolute(value)) throw new ConfigError(`${name} must be an absolute path (got "${value}")`);
   return resolve(value);
+}
+
+function httpUrl(env: Env, name: string): string | null {
+  const raw = read(env, name);
+  if (raw === undefined) return null;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new ConfigError(`${name} must be an http(s) URL (got "${raw}")`);
+  }
+  if ((url.protocol !== "http:" && url.protocol !== "https:") || url.username || url.password || url.search || url.hash) {
+    throw new ConfigError(`${name} must be an http(s) URL without credentials, query or fragment (got "${raw}")`);
+  }
+  return url.href.replace(/\/+$/, "");
+}
+
+function sttConfig(env: Env): SttConfig {
+  const engine = read(env, "THEONE_STT_ENGINE") ?? "whisper.cpp";
+  if (!STT_ENGINES.includes(engine as SttEngineSetting)) {
+    throw new ConfigError(`THEONE_STT_ENGINE must be ${STT_ENGINES.join(", ")} (got "${engine}")`);
+  }
+  const profile = read(env, "THEONE_STT_PROFILE") ?? "eco";
+  if (!STT_PROFILES.includes(profile as SttProfile)) {
+    throw new ConfigError(`THEONE_STT_PROFILE must be ${STT_PROFILES.join(", ")} (got "${profile}")`);
+  }
+  const model = read(env, "THEONE_STT_MODEL") ?? "whisper-1";
+  if (!STT_MODEL_PATTERN.test(model)) throw new ConfigError(`THEONE_STT_MODEL is not a valid model name (got "${model}")`);
+  const whisperModel = read(env, "THEONE_WHISPER_MODEL");
+  return {
+    engine: engine as SttEngineSetting,
+    profile: profile as SttProfile,
+    whisperBin: read(env, "THEONE_WHISPER_BIN") ?? "whisper-cli",
+    whisperModelsDir: absolutePath(env, "THEONE_WHISPER_MODELS_DIR", "/opt/whisper/models"),
+    whisperModel: whisperModel === undefined ? null : absolutePath(env, "THEONE_WHISPER_MODEL", whisperModel),
+    url: httpUrl(env, "THEONE_STT_URL"),
+    apiKey: read(env, "THEONE_STT_API_KEY") ?? null,
+    model,
+  };
+}
+
+const DEFAULT_PUSH_URL = "https://exp.host/--/api/v2/push/send";
+
+function pushConfig(env: Env): PushConfig {
+  return {
+    url: read(env, "THEONE_PUSH_URL") === "off" ? null : (httpUrl(env, "THEONE_PUSH_URL") ?? DEFAULT_PUSH_URL),
+    accessToken: read(env, "THEONE_EXPO_ACCESS_TOKEN") ?? null,
+  };
+}
+
+function apnsConfig(env: Env): ApnsConfig {
+  const keyFileRaw = read(env, "THEONE_APNS_KEY_FILE");
+  const keyFile = keyFileRaw === undefined ? null : absolutePath(env, "THEONE_APNS_KEY_FILE", keyFileRaw);
+  const ids = { THEONE_APNS_KEY_ID: read(env, "THEONE_APNS_KEY_ID") ?? null, THEONE_APNS_TEAM_ID: read(env, "THEONE_APNS_TEAM_ID") ?? null };
+  for (const [name, value] of Object.entries(ids)) {
+    if (value !== null && !APNS_ID_PATTERN.test(value)) throw new ConfigError(`${name} must be 1-64 letters or digits (got "${value}")`);
+  }
+  const bundleId = read(env, "THEONE_APNS_BUNDLE_ID") ?? DEFAULT_APNS_BUNDLE_ID;
+  if (!BUNDLE_ID_PATTERN.test(bundleId)) throw new ConfigError(`THEONE_APNS_BUNDLE_ID is not a valid bundle id (got "${bundleId}")`);
+  const environment = read(env, "THEONE_APNS_ENV") ?? "production";
+  if (!APNS_ENVIRONMENTS.includes(environment as ApnsEnvironment)) {
+    throw new ConfigError(`THEONE_APNS_ENV must be ${APNS_ENVIRONMENTS.join(" or ")} (got "${environment}")`);
+  }
+  const values = { THEONE_APNS_KEY_FILE: keyFile, ...ids };
+  const set = Object.entries(values).filter(([, value]) => value !== null).map(([name]) => name);
+  if (set.length > 0 && set.length < 3) {
+    const missing = Object.keys(values).filter((name) => !set.includes(name));
+    throw new ConfigError(`${set.join(", ")} need ${missing.join(" and ")} as well (Live Activity pushes)`);
+  }
+  return { enabled: set.length === 3, keyFile, keyId: ids.THEONE_APNS_KEY_ID, teamId: ids.THEONE_APNS_TEAM_ID, bundleId, environment: environment as ApnsEnvironment };
 }
 
 function shellCommand(env: Env): string[] {
@@ -103,6 +221,8 @@ export function loadConfig(env: Env = process.env): Config {
     .map((origin) => origin.trim())
     .filter(Boolean);
 
+  const home = read(env, "HOME") ?? homedir();
+  const claudeConfigDir = absolutePath(env, "CLAUDE_CONFIG_DIR", join(home, ".claude"));
   const hostname = osHostname();
   return {
     host,
@@ -110,6 +230,7 @@ export function loadConfig(env: Env = process.env): Config {
     workspace,
     projectsDir: join(workspace, "projects"),
     artifactsDir: join(workspace, "artifacts"),
+    uploadsDir: join(workspace, ".theone", "uploads"),
     agentDir,
     dataDir,
     logsDir: join(dataDir, "logs"),
@@ -121,13 +242,22 @@ export function loadConfig(env: Env = process.env): Config {
     vncHost: read(env, "THEONE_VNC_HOST") ?? "127.0.0.1",
     vncPort: parsePort(env, "THEONE_VNC_PORT", 5901, false),
     vncPassword: read(env, "THEONE_VNC_PASSWORD") ?? null,
+    chromiumDebugPort: parsePort(env, "THEONE_CHROMIUM_DEBUG_PORT", 9222, false),
     claudeBin: read(env, "THEONE_CLAUDE_BIN") ?? "claude",
     claudePermissionMode,
+    claudeConfigDir,
+    claudeGlobalConfig: read(env, "CLAUDE_CONFIG_DIR") ? join(claudeConfigDir, ".claude.json") : join(home, ".claude.json"),
+    claudeEnvAuth: { oauthToken: read(env, "CLAUDE_CODE_OAUTH_TOKEN") !== undefined, apiKey: read(env, "ANTHROPIC_API_KEY") !== undefined },
+    tailscaleSocket: absolutePath(env, "THEONE_TAILSCALE_SOCKET", "/run/tailscale/tailscaled.sock"),
     sandboxId: read(env, "THEONE_SANDBOX_ID") ?? hostname,
     hostname,
     logLevel,
     corsOrigins: corsOrigins.length ? corsOrigins : ["*"],
     shell: shellCommand(env),
+    ffmpegBin: read(env, "THEONE_FFMPEG_BIN") ?? "ffmpeg",
+    stt: sttConfig(env),
+    push: pushConfig(env),
+    apns: apnsConfig(env),
   };
 }
 

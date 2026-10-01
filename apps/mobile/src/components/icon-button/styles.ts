@@ -2,8 +2,8 @@ import { StyleSheet } from "react-native";
 
 import { ControlHeight, type Theme } from "@/theme";
 
-export default function createStyles(theme: Theme) {
-  const size = ControlHeight.lg;
+export default function createStyles(theme: Theme, variant: "md" | "lg") {
+  const size = ControlHeight[variant];
 
   return StyleSheet.create({
     button: {

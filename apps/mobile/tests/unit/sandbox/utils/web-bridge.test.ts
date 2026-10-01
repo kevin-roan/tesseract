@@ -1,6 +1,10 @@
-import { PAGE_MESSAGES, PAGE_STATES } from "@theone/protocol";
+import { INPUT_MODES, PAGE_MESSAGES, PAGE_STATES, VNC_ACTIONS } from "@theone/protocol";
 
 import {
+  inputModeMessage,
+  inputModeScript,
+  insetsMessage,
+  insetsScript,
   isDroppedPageState,
   pageConnectionFor,
   parsePageMessage,
@@ -51,6 +55,55 @@ describe("parsePageMessage", () => {
     expect(parsePageMessage({ type: "vnc-state" })).toBeNull();
     expect(parsePageMessage({ type: "other" })).toBeNull();
     expect(parsePageMessage(null)).toBeNull();
+  });
+});
+
+describe("parsePageMessage actions", () => {
+  it("parses the VNC page's browser action", () => {
+    expect(parsePageMessage({ type: PAGE_MESSAGES.vncAction, action: "browser" }, "vnc")).toEqual({
+      page: "vnc",
+      kind: "action",
+      action: "browser",
+    });
+    expect(parsePageMessage('{"type":"vnc:action","action":"browser"}')?.kind).toBe("action");
+  });
+
+  it("drops unknown or missing actions", () => {
+    expect(parsePageMessage({ type: "vnc-action", action: "explode" })).toBeNull();
+    expect(parsePageMessage({ type: "vnc-action" })).toBeNull();
+    expect(parsePageMessage({ type: "vnc-action", action: "browser" }, "terminal")).toBeNull();
+  });
+
+  it("understands every action the pages post", () => {
+    for (const action of VNC_ACTIONS) {
+      expect(parsePageMessage({ type: PAGE_MESSAGES.vncAction, action })).toEqual({ page: "vnc", kind: "action", action });
+    }
+  });
+});
+
+describe("page bridge calls", () => {
+  it("sets the insets and the input mode through window.theone when the page has them", () => {
+    const setInsets = jest.fn();
+    const setInputMode = jest.fn();
+    new Function("window", insetsScript({ top: 64, bottom: 34 }))({ theone: { setInsets } });
+    new Function("window", inputModeScript("touch"))({ theone: { setInputMode } });
+    expect(setInsets).toHaveBeenCalledWith({ top: 64, bottom: 34 });
+    expect(setInputMode).toHaveBeenCalledWith("touch");
+  });
+
+  it("does nothing on a page without the bridge", () => {
+    for (const script of [insetsScript({ top: 0, bottom: 0 }), inputModeScript("trackpad")]) {
+      expect(script.endsWith("true;")).toBe(true);
+      expect(() => new Function("window", script)({})).not.toThrow();
+      expect(() => new Function("window", script)({ theone: {} })).not.toThrow();
+    }
+  });
+
+  it("frames the postMessage fallbacks the pages listen for", () => {
+    expect(insetsMessage({ top: 60, bottom: 20 })).toEqual({ type: PAGE_MESSAGES.insets, top: 60, bottom: 20 });
+    for (const mode of INPUT_MODES) {
+      expect(inputModeMessage(mode)).toEqual({ type: PAGE_MESSAGES.inputMode, mode });
+    }
   });
 });
 

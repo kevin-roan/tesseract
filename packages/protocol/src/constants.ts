@@ -34,6 +34,9 @@ export const ID_PREFIXES = {
   build: "bld_",
   artifact: "art_",
   agentRun: "run_",
+  inbox: "inb_",
+  upload: "upl_",
+  sync: "sync_",
 } as const;
 export type IdKind = keyof typeof ID_PREFIXES;
 
@@ -74,9 +77,42 @@ export const TERMINAL_KINDS = ["shell", "claude"] as const;
 export const TERMINAL_STATES = ["running", "exited"] as const;
 export const AGENT_RUN_STATES = ["running", "succeeded", "failed", "cancelled"] as const;
 export const FINAL_AGENT_RUN_STATES = ["succeeded", "failed", "cancelled"] as const;
+/** `--permission-mode` values a run may ask for: plan (read-only), acceptEdits (edits, no shell prompts), bypassPermissions (everything). */
+export const AGENT_RUN_MODES = ["plan", "acceptEdits", "bypassPermissions"] as const;
+export const UPLOAD_KINDS = ["image", "pdf", "audio", "file"] as const;
+export const STT_PROFILES = ["off", "eco", "balanced", "performance"] as const;
+export const STT_ENGINE_NAMES = ["whisper.cpp", "openai-compatible"] as const;
 export const AGENT_RUN_EVENT_KINDS = ["text", "tool_use", "tool_result", "system"] as const;
 export const LOG_STREAMS = ["stdout", "stderr", "system"] as const;
 export const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
+export const INBOX_KINDS = ["needs_input", "permission", "completed", "failed", "status", "file"] as const;
+/** `build`: collected by a build recipe; `agent`: shared with `theone-controller share` (or `POST /v1/artifacts`). */
+export const ARTIFACT_SOURCES = ["build", "agent"] as const;
+export const CLAUDE_SESSION_SOURCES = ["agent-run", "terminal", "cli"] as const;
+export const SYNC_CHANGE_KINDS = ["added", "modified", "deleted"] as const;
+export const SYNC_REQUEST_KINDS = ["pull", "revert"] as const;
+export const SYNC_REQUEST_STATUSES = ["pending", "claimed", "applied", "failed", "cancelled"] as const;
+export const SYNC_REQUEST_SOURCES = ["mobile", "desktop", "cli"] as const;
+export const IDENTITY_SOURCES = ["serve", "localapi", "none"] as const;
+
+export const CLAUDE_AUTH_METHODS = ["oauth_token", "credentials", "api_key", "none"] as const;
+
+/** `~/.claude.json` keys a Claude import may set; everything else (projects, caches) stays sandbox-local. */
+export const CLAUDE_IMPORT_ACCOUNT_KEYS = [
+  "oauthAccount",
+  "userID",
+  "hasCompletedOnboarding",
+  "lastOnboardingVersion",
+  "theme",
+  "editorMode",
+  "verbose",
+] as const;
+
+/** Files (relative to `$CLAUDE_CONFIG_DIR`) a Claude import may write: exact names or `dir/` prefixes. */
+export const CLAUDE_IMPORT_PATHS = ["settings.json", "CLAUDE.md", "skills/", "agents/", "commands/", "output-styles/"] as const;
+
+/** Top-level `settings.json` keys dropped on import: they run host commands or point at host paths. */
+export const CLAUDE_IMPORT_DROPPED_SETTINGS = ["hooks", "apiKeyHelper", "awsCredentialExport", "awsAuthRefresh", "statusLine", "otelHeadersHelper"] as const;
 export const SERVER_EVENT_TYPES = [
   "hello",
   "ping",
@@ -85,8 +121,14 @@ export const SERVER_EVENT_TYPES = [
   "terminal.updated",
   "build.updated",
   "artifact.created",
+  "artifact.deleted",
   "agent.updated",
+  "agent.deleted",
   "project.updated",
+  "inbox.updated",
+  "stt.updated",
+  "sync.updated",
+  "sync.changed",
 ] as const;
 
 export const LIMITS = {
@@ -107,4 +149,30 @@ export const LIMITS = {
   maxStatusMessageLength: 4_000,
   maxNameLength: 128,
   maxPairingNameLength: 64,
+  defaultUsageDays: 30,
+  maxUsageDays: 90,
+  defaultSessionsList: 20,
+  maxSessionsList: 200,
+  defaultInboxList: 100,
+  maxInboxList: 500,
+  maxArtifactNoteLength: 500,
+  maxAgentRunBatch: 500,
+  maxClaudeImportFiles: 500,
+  maxClaudeImportFileBytes: 512 * 1024,
+  /** Body limit of `POST /v1/claude/import` (other routes keep 1 MiB). */
+  maxClaudeImportBytes: 8 * 1024 * 1024,
+  maxUploadBytes: 20 * 1024 * 1024,
+  /** Body limit of `POST /v1/uploads`: base64 of `maxUploadBytes` plus the JSON envelope. */
+  maxUploadBodyBytes: 28 * 1024 * 1024,
+  maxUploadNameLength: 255,
+  /** Body limit of `POST /v1/projects/:id/sync` (a tar or gzip archive). */
+  maxProjectSyncBytes: 1024 * 1024 * 1024,
+  maxRunAttachments: 10,
+  maxSyncPaths: 5_000,
+  maxSyncPathLength: 4_096,
+  maxSyncHostLength: 255,
+  maxSyncRequestList: 50,
+  syncHostOnlineMs: 60_000,
+  syncClaimTimeoutMs: 10 * 60_000,
+  maxTranscriptionLanguageLength: 16,
 } as const;

@@ -27,6 +27,23 @@ beforeEach(() => {
 });
 
 describe("useWebPageSession", () => {
+  it("hands page actions to the caller without touching the connection", async () => {
+    const onAction = jest.fn();
+    const { result } = await renderHook(
+      () => useWebPageSession("vnc", null, (client) => client.vncPageUrl(), true, onAction),
+      { wrapper: createWrapper(createTestQueryClient()) },
+    );
+    await waitFor(() => expect(result.current.url).toBe(FIRST));
+
+    await act(async () => result.current.handleMessage('{"type":"vnc-action","action":"browser"}'));
+    expect(onAction).toHaveBeenCalledWith("browser");
+    expect(result.current.connection).toBe("loading");
+    expect(fake.createTicket).not.toHaveBeenCalled();
+
+    await act(async () => result.current.handleMessage('{"type":"vnc-action","action":"unknown"}'));
+    expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
   it("fetches a ticket-bearing URL and tracks the page connection state", async () => {
     const { result } = await renderSession();
 
@@ -115,5 +132,24 @@ describe("useWebPageSession", () => {
 
     await waitFor(() => expect(result.current.url).toBe(SECOND));
     expect(fake.vncPageUrl).toHaveBeenCalledTimes(2);
+  });
+
+  it("rebuilds a page whose process was killed only a limited number of times", async () => {
+    fake.vncPageUrl.mockReset().mockImplementation(async () => `${FIRST}&n=${fake.vncPageUrl.mock.calls.length}`);
+    const { result } = await renderSession();
+    await waitFor(() => expect(result.current.url).toBe(`${FIRST}&n=1`));
+
+    for (let kill = 1; kill <= 2; kill += 1) {
+      await act(async () => result.current.handleTerminate());
+      await waitFor(() => expect(result.current.url).toBe(`${FIRST}&n=${kill + 1}`));
+    }
+    await act(async () => result.current.handleTerminate());
+    expect(result.current.connection).toBe("disconnected");
+    expect(fake.vncPageUrl).toHaveBeenCalledTimes(3);
+
+    await act(async () => result.current.reconnect());
+    await waitFor(() => expect(fake.vncPageUrl).toHaveBeenCalledTimes(4));
+    await act(async () => result.current.handleTerminate());
+    await waitFor(() => expect(fake.vncPageUrl).toHaveBeenCalledTimes(5));
   });
 });

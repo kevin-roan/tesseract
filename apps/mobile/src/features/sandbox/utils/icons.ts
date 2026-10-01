@@ -3,6 +3,9 @@ import {
   AndroidLogoIcon,
   AppWindowIcon,
   AtomIcon,
+  CircleDashedIcon,
+  PlayCircleIcon,
+  WarningCircleIcon,
   CpuIcon,
   CubeIcon,
   FileJsIcon,
@@ -18,7 +21,7 @@ import {
   type Icon,
 } from "phosphor-react-native";
 
-import type { HubAction } from "../types";
+import type { HubAction, ProjectActivity } from "../types";
 
 const FRAMEWORK_ICONS: Record<Framework, Icon> = {
   expo: AtomIcon,
@@ -32,10 +35,20 @@ const FRAMEWORK_ICONS: Record<Framework, Icon> = {
   unknown: CubeIcon,
 };
 
+const PROJECT_ACTIVITY_ICONS: Record<ProjectActivity, Icon> = {
+  building: HammerIcon,
+  agent: SparkleIcon,
+  running: PlayCircleIcon,
+  failed: WarningCircleIcon,
+  idle: CircleDashedIcon,
+};
+
+export const projectActivityIcon = (activity: ProjectActivity): Icon => PROJECT_ACTIVITY_ICONS[activity];
+
 export const frameworkIcon = (framework: Framework): Icon => FRAMEWORK_ICONS[framework];
 
 export const HUB_ACTIONS: readonly HubAction[] = [
-  { id: "display", label: "Display", icon: MonitorIcon, featured: true },
+  { id: "display", label: "Display", icon: MonitorIcon, tone: "yellow" },
   { id: "terminal", label: "Terminal", icon: TerminalWindowIcon },
   { id: "claude", label: "Claude", icon: SparkleIcon },
   {

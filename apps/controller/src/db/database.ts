@@ -82,7 +82,103 @@ const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (run_id, seq)
   );
   `,
+  `
+  CREATE TABLE inbox (
+    id TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    project_id TEXT,
+    session_id TEXT,
+    agent_run_id TEXT,
+    terminal_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    read_at TEXT
+  );
+  CREATE INDEX inbox_by_updated ON inbox (updated_at);
+  CREATE INDEX inbox_unread ON inbox (read_at, kind);
+  CREATE INDEX inbox_by_session ON inbox (session_id);
+  CREATE INDEX inbox_by_agent_run ON inbox (agent_run_id);
+  `,
+  `
+  ALTER TABLE agent_runs ADD COLUMN archived_at TEXT;
+  `,
+  `
+  CREATE TABLE uploads (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    mime_type TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    path TEXT NOT NULL,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX uploads_by_created ON uploads (created_at);
+
+  ALTER TABLE agent_runs ADD COLUMN mode TEXT;
+  ALTER TABLE agent_runs ADD COLUMN attachments TEXT;
+  `,
+  `
+  ALTER TABLE artifacts ADD COLUMN source TEXT NOT NULL DEFAULT 'build';
+  ALTER TABLE artifacts ADD COLUMN agent_run_id TEXT;
+  ALTER TABLE artifacts ADD COLUMN note TEXT;
+  ALTER TABLE inbox ADD COLUMN artifact_id TEXT;
+  CREATE INDEX inbox_by_artifact ON inbox (artifact_id);
+  `,
+  `
+  CREATE TABLE push_devices (
+    token TEXT PRIMARY KEY,
+    platform TEXT NOT NULL,
+    name TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  `,
+  `
+  ALTER TABLE agent_runs ADD COLUMN input_tokens INTEGER;
+  ALTER TABLE agent_runs ADD COLUMN output_tokens INTEGER;
+  ALTER TABLE agent_runs ADD COLUMN cache_read_tokens INTEGER;
+  ALTER TABLE agent_runs ADD COLUMN cache_write_tokens INTEGER;
+  ALTER TABLE agent_runs DROP COLUMN cost_usd;
+  `,
+  `
+  CREATE TABLE settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  `,
+  `
+  CREATE TABLE sync_requests (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    status TEXT NOT NULL,
+    paths TEXT,
+    force INTEGER NOT NULL DEFAULT 0,
+    source TEXT NOT NULL,
+    claimed_by TEXT,
+    result TEXT,
+    error TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX sync_requests_by_project ON sync_requests (project_id, created_at);
+  CREATE INDEX sync_requests_by_status ON sync_requests (status, created_at);
+  `,
+  `
+  CREATE TABLE live_activity_tokens (
+    token TEXT PRIMARY KEY,
+    kind TEXT NOT NULL,
+    activity_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  `,
 ];
+
+export const SCHEMA_VERSION = MIGRATIONS.length;
 
 export function openDatabase(path: string): Database {
   const db = new Database(path, { create: true, strict: true });

@@ -16,6 +16,7 @@ bash_scripts() {
 sh_scripts() {
   printf '%s\n' \
     "${ROOTFS}/etc/profile.d/theone.sh" \
+    "${ROOTFS}/etc/chromium.d/theone" \
     "${ROOTFS}/etc/xdg/openbox/autostart"
 }
 

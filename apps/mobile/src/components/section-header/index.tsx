@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { Pressable, View } from "react-native";
 
+import { Glass } from "@/components/glass";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { HitSlop, MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
 
@@ -14,8 +16,9 @@ export type SectionHeaderProps = {
 };
 
 /**
- * Section title with an optional trailing link. The link only renders when it
- * has somewhere to go, so a header without a handler stays a plain title.
+ * Section title with an optional trailing glass pill link. The link only
+ * renders when it has somewhere to go, so a header without a handler stays a
+ * plain title.
  */
 const SectionHeader = ({ title, actionLabel, onPressAction }: SectionHeaderProps) => {
   const theme = useAppTheme();
@@ -23,7 +26,7 @@ const SectionHeader = ({ title, actionLabel, onPressAction }: SectionHeaderProps
 
   return (
     <View style={styles.header}>
-      <ThemedText variant="h4" style={styles.title} numberOfLines={1}>
+      <ThemedText variant="h3" style={styles.title} numberOfLines={1} accessibilityRole="header">
         {title}
       </ThemedText>
 
@@ -31,12 +34,15 @@ const SectionHeader = ({ title, actionLabel, onPressAction }: SectionHeaderProps
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${actionLabel}, ${title}`}
+          hitSlop={HitSlop.md}
           onPress={onPressAction}
-          style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
+          style={({ pressed }) => pressed && styles.actionPressed}
         >
-          <ThemedText variant="label" color="textSecondary">
-            {actionLabel}
-          </ThemedText>
+          <Glass style={styles.action}>
+            <ThemedText variant="label" numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
+              {actionLabel}
+            </ThemedText>
+          </Glass>
         </Pressable>
       ) : null}
     </View>

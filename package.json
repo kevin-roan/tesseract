@@ -18,5 +18,8 @@
   },
   "devDependencies": {
     "typescript": "~6.0.3"
-  }
+  },
+  "trustedDependencies": [
+    "@shopify/react-native-skia"
+  ]
 }

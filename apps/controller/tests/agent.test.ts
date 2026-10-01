@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { AgentRunDetailSchema, AgentRunSchema, AgentStreamMessageSchema, type AgentRun, type AgentRunEvent, type AgentStreamMessage } from "@theone/protocol";
+import { join } from "node:path";
+import { AgentRunDetailSchema, AgentRunSchema, AgentStreamMessageSchema, UploadSchema, type AgentRun, type AgentRunEvent, type AgentStreamMessage } from "@theone/protocol";
 import { AgentStreamParser, summarizeToolInput } from "../src/services/agent-stream";
 import { claudeArgs } from "../src/services/agent-runs";
 import { installFakeClaude, labelledPid, makeTempDir, processGone, removeTempDirs, startTestController, waitFor, writeFiles, type TestController } from "./helpers";
@@ -36,7 +37,7 @@ describe("headless runs", () => {
     expect(final.type === "run" && final.run).toMatchObject({
       state: "succeeded",
       sessionId: "sess-fake-123",
-      costUsd: 0.0123,
+      usage: { inputTokens: 12, outputTokens: 340, cacheReadTokens: 5600, cacheWriteTokens: 78, totalTokens: 6030 },
       result: "All done",
       error: null,
     });
@@ -48,7 +49,7 @@ describe("headless runs", () => {
     expect(events).toContainEqual(expect.objectContaining({ kind: "tool_use", tool: "Bash", summary: "ls -la" }));
     expect(events).toContainEqual(expect.objectContaining({ kind: "tool_result", tool: "Bash", isError: false, summary: "file-a file-b" }));
     expect(events).toContainEqual(expect.objectContaining({ kind: "text", text: "split line" }));
-    expect(events.at(-1)).toMatchObject({ kind: "system", text: expect.stringContaining("Run finished in 1.2 s") });
+    expect(events.at(-1)).toMatchObject({ kind: "system", text: "Run finished in 1.2 s, 2 turns, 6,030 tokens" });
     expect((await socket.closed).code).toBe(1000);
 
     const detail = AgentRunDetailSchema.parse((await t.json("GET", `/v1/agent/runs/${run.id}`)).body);
@@ -126,6 +127,43 @@ describe("headless runs", () => {
     expect(texts).toContainEqual(expect.stringMatching(/^Stopping 1 process left running in the process group: sleep \(\d+\)$/));
   });
 
+  test("mode picks the permission mode and attachments are listed on stdin", async () => {
+    const upload = async (name: string, mimeType: string) =>
+      UploadSchema.parse((await t.json("POST", "/v1/uploads", { name, mimeType, data: Buffer.from("bytes").toString("base64") })).body);
+    const image = await upload("shot.png", "image/png");
+    const voice = await upload("note.m4a", "audio/mp4");
+    const prompt = "what is on the screen?";
+    const run = await startRun({ prompt, mode: "plan", attachmentIds: [image.id, voice.id] });
+    expect(run).toMatchObject({ mode: "plan", attachments: [image, voice] });
+    const done = await waitFor(async () => {
+      const detail = AgentRunDetailSchema.parse((await t.json("GET", `/v1/agent/runs/${run.id}`)).body);
+      return detail.state === "running" ? null : detail;
+    }, 10_000);
+    expect(done).toMatchObject({ state: "succeeded", mode: "plan", attachments: [image, voice] });
+    const texts = done.events.flatMap((event) => (event.kind === "text" ? [event.text] : []));
+    const uploadsDir = join(t.workspace, ".theone", "uploads");
+    expect(texts.find((text) => text.startsWith("args:"))).toBe(`args: -p --output-format stream-json --verbose --permission-mode plan --add-dir ${uploadsDir}`);
+    const stdin = `${prompt}\n\nAttached files (read them with the Read tool):\n- ${image.path} (image/png)`;
+    expect(texts).toContain(`prompt length ${stdin.length}`);
+
+    const voiceOnly = await startRun({ prompt, attachmentIds: [voice.id] });
+    expect(voiceOnly).toMatchObject({ mode: null, attachments: [voice] });
+    const voiceDone = await waitFor(async () => {
+      const detail = AgentRunDetailSchema.parse((await t.json("GET", `/v1/agent/runs/${voiceOnly.id}`)).body);
+      return detail.state === "running" ? null : detail;
+    }, 10_000);
+    const voiceTexts = voiceDone.events.flatMap((event) => (event.kind === "text" ? [event.text] : []));
+    expect(voiceTexts.find((text) => text.startsWith("args:"))).toBe("args: -p --output-format stream-json --verbose --permission-mode acceptEdits");
+    expect(voiceTexts).toContain(`prompt length ${prompt.length}`);
+  });
+
+  test("unknown attachments and modes are refused before Claude starts", async () => {
+    const missing = await t.json<{ error: { code: string } }>("POST", "/v1/agent/runs", { prompt: "hi", attachmentIds: ["upl_missing0000"] });
+    expect(missing.status).toBe(404);
+    const badMode = await t.json<{ error: { code: string } }>("POST", "/v1/agent/runs", { prompt: "hi", mode: "default" });
+    expect(badMode.status).toBe(400);
+  });
+
   test("lists runs and filters by project", async () => {
     const all = (await t.json<AgentRun[]>("GET", "/v1/agent/runs")).body;
     expect(all.length).toBeGreaterThanOrEqual(4);
@@ -151,8 +189,13 @@ describe("stream-json parser", () => {
     expect(parser.parseLine("")).toBeNull();
     expect(parser.parseLine("{broken")).toBeNull();
     expect(parser.parseLine('{"type":"stream_event","event":{}}')).toBeNull();
-    const failure = parser.parseLine('{"type":"result","subtype":"error_max_turns","is_error":true,"total_cost_usd":1.5}');
-    expect(failure?.result).toEqual({ isError: true, result: null, costUsd: 1.5, subtype: "error_max_turns" });
+    const failure = parser.parseLine('{"type":"result","subtype":"error_max_turns","is_error":true,"usage":{"input_tokens":7,"output_tokens":5}}');
+    expect(failure?.result).toEqual({
+      isError: true,
+      result: null,
+      usage: { inputTokens: 7, outputTokens: 5, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 12 },
+      subtype: "error_max_turns",
+    });
   });
 
   test("summarizes tool input", () => {
@@ -167,7 +210,7 @@ describe("stream-json parser", () => {
       argv: ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "bypassPermissions"],
       stdin: "--version",
     });
-    const long = claudeArgs("z".repeat(200_000), "plan", "abc");
+    const long = claudeArgs("z".repeat(200_000), "plan", { resumeSessionId: "abc" });
     expect(long.argv).toEqual(["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan", "--resume", "abc"]);
     expect(long.stdin.length).toBe(200_000);
   });

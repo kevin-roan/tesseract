@@ -4,19 +4,28 @@ import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
   AgentContextSchema,
+  AgentRunBatchResultSchema,
   AgentRunDetailSchema,
   AgentRunListSchema,
   AgentRunSchema,
   AgentStreamMessageSchema,
   ArtifactListSchema,
+  ArtifactSchema,
+  BrowserStatusSchema,
   BuildJobSchema,
   BuildListSchema,
+  ClaudeAuthStatusSchema,
+  ClaudeImportResultSchema,
+  ClaudeSessionListSchema,
   CreateProjectResponseSchema,
   DisplayStatusSchema,
   ERROR_STATUS,
   ErrorBodySchema,
   GitDetailsSchema,
   HealthSchema,
+  InboxCountsSchema,
+  InboxSchema,
+  ListeningPortsSchema,
   LIMITS,
   LogLineListSchema,
   LogStreamMessageSchema,
@@ -25,13 +34,22 @@ import {
   ProcessLogStreamMessageSchema,
   ProjectListSchema,
   ProjectSchema,
+  PushDeviceSchema,
   SandboxStatusSchema,
   SERVER_EVENT_TYPES,
   ServerEventSchema,
+  STT_PROFILES,
+  SttStatusSchema,
+  SyncChangesSchema,
+  SyncRequestListSchema,
+  SyncRequestSchema,
+  TaildropTargetsSchema,
   TerminalInfoSchema,
   TerminalListSchema,
   TerminalServerMessageSchema,
   TicketSchema,
+  UploadSchema,
+  UsageReportSchema,
   VNC_WS_SUBPROTOCOL,
   type ErrorCode,
   type Schema,
@@ -122,6 +140,7 @@ beforeAll(async () => {
       THEONE_CLAUDE_BIN: installFakeClaude(makeTempDir("conformance-bin")),
       THEONE_VNC_PORT: String(vnc.port),
       THEONE_VNC_PASSWORD: "vnc-pass",
+      THEONE_STT_ENGINE: "none",
     },
     controller: { pingIntervalMs: 100 },
   });
@@ -152,8 +171,23 @@ describe("REST responses match @theone/protocol", () => {
     const context = await rest(AgentContextSchema, "GET", "/v1/context");
     expect(context.files.map((file) => file.name)).toContain("CURRENT_TASK.md");
 
+    const ports = await rest(ListeningPortsSchema, "GET", "/v1/ports");
+    const listed = ports.ports.map((entry) => entry.port);
+    expect(listed).not.toContain(Number(t.controller.url.port));
+    expect(listed).not.toContain(vnc.port);
+
+    const usage = await rest(UsageReportSchema, "GET", "/v1/usage?days=3");
+    expect(usage.daily).toHaveLength(3);
+    await rest(ClaudeSessionListSchema, "GET", "/v1/sessions?limit=5");
+
+    const claude = await rest(ClaudeAuthStatusSchema, "GET", "/v1/claude/auth");
+    expect(claude).toMatchObject({ available: true, method: "none", configDir: t.config.claudeConfigDir });
+    const imported = await rest(ClaudeImportResultSchema, "POST", "/v1/claude/import", { files: [{ path: "hooks.sh", content: "x" }] }, 200);
+    expect(imported.skipped).toEqual([{ path: "hooks.sh", reason: "not an importable path" }]);
+
     await rest(DisplayStatusSchema, "GET", "/v1/display");
     await restError("unavailable", await t.request("GET", "/v1/display/screenshot"));
+    expect(await rest(BrowserStatusSchema, "GET", "/v1/display/browser")).toEqual({ available: false, tabs: [] });
 
     const published = await t.request("POST", "/v1/events", { project: "site", status: "testing", message: "conformance" });
     expect(published.status).toBe(202);
@@ -229,6 +263,18 @@ describe("REST responses match @theone/protocol", () => {
     expect(download.headers.get("content-type")).toBe("application/zip");
     expect((await download.arrayBuffer()).byteLength).toBe(artifact?.sizeBytes ?? -1);
 
+    const shared = await rest(ArtifactSchema, "POST", "/v1/artifacts", { path: join(t.workspace, "projects/site/untracked.txt"), note: "conformance" });
+    expect(shared).toMatchObject({ source: "agent", projectId: "site", note: "conformance", buildId: null });
+    const announced = await rest(InboxSchema, "GET", "/v1/inbox");
+    expect(announced.items.find((item) => item.artifactId === shared.id)?.kind).toBe("file");
+    expect(await rest(TaildropTargetsSchema, "GET", "/v1/taildrop/targets")).toEqual({ available: false, targets: [] });
+    await restError("unavailable", await t.request("POST", `/v1/artifacts/${shared.id}/taildrop`, { targetId: "nPixel" }));
+    expect((await rest(ArtifactSchema, "DELETE", `/v1/artifacts/${shared.id}`)).id).toBe(shared.id);
+    await restError("not_found", await t.request("DELETE", `/v1/artifacts/${shared.id}`));
+    const outside = makeTempDir("outside");
+    writeFiles(outside, { "secret.txt": "x" });
+    await restError("forbidden", await t.request("POST", "/v1/artifacts", { path: join(outside, "secret.txt"), projectId: "site" }));
+
     await restError("bad_request", await t.request("POST", "/v1/builds", { projectId: "site", target: "android-apk" }));
     await restError("not_found", await t.request("GET", "/v1/builds/bld_missing0000"));
   });
@@ -243,6 +289,37 @@ describe("REST responses match @theone/protocol", () => {
     await rest(AgentRunListSchema, "GET", "/v1/agent/runs?projectId=site");
     const cancelled = await rest(AgentRunSchema, "DELETE", `/v1/agent/runs/${run.id}`);
     expect(cancelled.state).toBe("succeeded");
+    expect(await rest(AgentRunBatchResultSchema, "POST", "/v1/agent/runs/archive", { ids: [run.id], archived: true }, 200)).toEqual({ count: 1 });
+    const archived = await rest(AgentRunListSchema, "GET", "/v1/agent/runs?archived=1&projectId=site");
+    expect(archived.map((entry) => entry.id)).toEqual([run.id]);
+    expect(await rest(AgentRunBatchResultSchema, "POST", "/v1/agent/runs/delete", { ids: [run.id] }, 200)).toEqual({ count: 1 });
+    await restError("bad_request", await t.request("POST", "/v1/agent/runs/delete", { ids: [] }));
+  });
+
+  test("uploads, transcriptions and runs with attachments", async () => {
+    const image = await rest(UploadSchema, "POST", "/v1/uploads", { name: "shot.png", mimeType: "image/png", data: "iVBORw0KGgo=" });
+    expect(image.kind).toBe("image");
+    const content = await t.request("GET", `/v1/uploads/${image.id}/content`);
+    expect(content.headers.get("content-type")).toBe("image/png");
+    expect(new Uint8Array(await content.arrayBuffer())).toEqual(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]));
+    await restError("bad_request", await t.request("POST", "/v1/transcriptions", { uploadId: image.id }));
+    await restError("not_found", await t.request("POST", "/v1/transcriptions", { uploadId: "upl_missing0000" }));
+    const voice = await rest(UploadSchema, "POST", "/v1/uploads", { name: "note.m4a", mimeType: "audio/mp4", data: "AAAA" });
+    await restError("unavailable", await t.request("POST", "/v1/transcriptions", { uploadId: voice.id }));
+    const stt = await rest(SttStatusSchema, "GET", "/v1/stt");
+    expect(stt.profiles.map((profile) => profile.id)).toEqual([...STT_PROFILES]);
+    expect(await rest(SttStatusSchema, "PUT", "/v1/stt", { profile: "off" })).toMatchObject({ profile: "off", ready: false, engine: null });
+    await restError("unavailable", await t.request("POST", "/v1/transcriptions", { uploadId: voice.id }));
+    await restError("bad_request", await t.request("PUT", "/v1/stt", { profile: "turbo" }));
+    expect((await rest(SttStatusSchema, "PUT", "/v1/stt", { profile: stt.profile })).profile).toBe(stt.profile);
+
+    const run = await rest(AgentRunSchema, "POST", "/v1/agent/runs", { prompt: "look", mode: "plan", attachmentIds: [image.id, voice.id] });
+    expect(run.attachments).toEqual([image, voice]);
+    const detail = await waitFor(async () => {
+      const current = await rest(AgentRunDetailSchema, "GET", `/v1/agent/runs/${run.id}`);
+      return current.state === "running" ? null : current;
+    }, 10_000);
+    expect(detail).toMatchObject({ mode: "plan", attachments: [image, voice] });
   });
 
   test("errors for auth and oversized bodies", async () => {
@@ -307,6 +384,73 @@ describe("WebSocket frames match @theone/protocol", () => {
     expect(seqs).toEqual(seqs.map((_, index) => index + 1));
   });
 
+  test("inbox and Claude hooks", async () => {
+    const hook = await t.request("POST", "/v1/hooks/claude", {
+      hook_event_name: "Notification",
+      session_id: "sess-conformance",
+      notification_type: "permission_prompt",
+      message: "Claude needs your permission to use Bash",
+    });
+    expect(hook.status).toBe(202);
+    expect(await hook.text()).toBe("");
+    const inbox = await rest(InboxSchema, "GET", "/v1/inbox?unread=1&limit=10");
+    const item = inbox.items.find((entry) => entry.sessionId === "sess-conformance");
+    expect(item?.kind).toBe("permission");
+    const counts = await rest(InboxCountsSchema, "POST", "/v1/inbox/read", { ids: [item?.id] }, 200);
+    expect(counts.attentionCount).toBe(0);
+    await restError("bad_request", await t.request("POST", "/v1/inbox/read", { ids: ["bld_x"] }));
+  });
+
+  test("sync back", async () => {
+    const source = makeTempDir("conformance-sync");
+    writeFiles(source, { "a.txt": "a\n", "b.txt": "b\n" });
+    const archive = Bun.spawnSync(["tar", "-c", "-z", "-f", "-", "-C", source, "."], { stdout: "pipe" }).stdout;
+    const pushed = await fetch(`${t.baseUrl}/v1/projects/mirror/sync`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${t.controller.services.token}`, "Content-Type": "application/gzip" },
+      body: archive,
+    });
+    conforms(ProjectSchema, await pushed.json(), "POST /v1/projects/mirror/sync");
+    writeFiles(join(t.config.projectsDir, "mirror"), { "a.txt": "changed\n", "c.txt": "c\n" });
+
+    expect((await t.request("POST", "/v1/sync/heartbeat", { host: "laptop", projects: ["mirror"] })).status).toBe(204);
+    const changes = await rest(SyncChangesSchema, "GET", "/v1/projects/mirror/sync/changes");
+    expect(changes.changes.map((change) => [change.kind, change.path])).toEqual([["modified", "a.txt"], ["added", "c.txt"]]);
+    expect(changes.host).toMatchObject({ name: "laptop", online: true, linked: true });
+
+    const exported = await t.request("POST", "/v1/projects/mirror/sync/export", { paths: ["a.txt", "c.txt"] });
+    expect(exported.status).toBe(200);
+    expect(exported.headers.get("content-type")).toBe("application/gzip");
+    expect((await exported.arrayBuffer()).byteLength).toBeGreaterThan(0);
+    await restError("bad_request", await t.request("POST", "/v1/projects/mirror/sync/export", { paths: ["b.txt"] }));
+
+    const acked = await rest(SyncChangesSchema, "POST", "/v1/projects/mirror/sync/ack", { changes: [{ path: "c.txt", sha256: changes.changes[1]!.sha256 }] }, 200);
+    expect(acked.changes.map((change) => change.path)).toEqual(["a.txt"]);
+
+    const request = await rest(SyncRequestSchema, "POST", "/v1/projects/mirror/sync/requests", { kind: "pull" });
+    await restError("conflict", await t.request("POST", "/v1/projects/mirror/sync/requests", { kind: "pull" }));
+    expect((await rest(SyncRequestListSchema, "GET", "/v1/sync/requests?status=pending")).map((entry) => entry.id)).toContain(request.id);
+    await rest(SyncRequestSchema, "POST", `/v1/sync/requests/${request.id}/claim`, { host: "laptop" }, 200);
+    await restError("conflict", await t.request("POST", `/v1/sync/requests/${request.id}/cancel`));
+    const result = { added: 0, modified: 1, deleted: 0, conflicts: [], snapshotId: "s1", hostPath: "/home/me/mirror" };
+    await rest(SyncRequestSchema, "POST", `/v1/sync/requests/${request.id}/complete`, { status: "applied", result }, 200);
+    const cancelled = await rest(SyncRequestSchema, "POST", "/v1/projects/mirror/sync/requests", { kind: "revert", source: "desktop" });
+    expect((await rest(SyncRequestSchema, "POST", `/v1/sync/requests/${cancelled.id}/cancel`, undefined, 200)).status).toBe("cancelled");
+    expect((await rest(SyncRequestListSchema, "GET", "/v1/projects/mirror/sync/requests")).map((entry) => entry.status)).toEqual(["cancelled", "applied"]);
+    await restError("not_found", await t.request("POST", "/v1/sync/requests/sync_missing/claim", { host: "laptop" }));
+  });
+
+  test("push devices", async () => {
+    const token = "ExponentPushToken[conformance]";
+    const device = await rest(PushDeviceSchema, "POST", "/v1/push/devices", { token, platform: "android", name: "Pixel" }, 200);
+    expect(device).toMatchObject({ token, platform: "android", name: "Pixel" });
+    const listed = await t.json<unknown[]>("GET", "/v1/push/devices");
+    expect(listed.body.map((entry) => PushDeviceSchema.parse(entry).token)).toContain(token);
+    expect((await rest(PushDeviceSchema, "DELETE", `/v1/push/devices/${encodeURIComponent(token)}`)).token).toBe(token);
+    await restError("not_found", await t.request("DELETE", `/v1/push/devices/${encodeURIComponent(token)}`));
+    await restError("bad_request", await t.request("POST", "/v1/push/devices", { token: "nope", platform: "android" }));
+  });
+
   test("VNC bridge is binary and echoes the subprotocol", async () => {
     const socket = await t.socket("/v1/display/vnc", [VNC_WS_SUBPROTOCOL]);
     expect(socket.ws.protocol).toBe(VNC_WS_SUBPROTOCOL);
@@ -342,7 +486,7 @@ describe("after a restart", () => {
     const build = { projectId: "app", target: "script" as const, profile: "debug" as const, stage: null, progress: null, endedAt: null, createdAt: startedAt, error: null };
     repos.builds.save({ ...build, id: "bld_running0001", state: "running", stage: "compile", progress: 0.5, startedAt });
     repos.builds.save({ ...build, id: "bld_queued00001", state: "queued", startedAt: null });
-    repos.agentRuns.save({ id: "run_running0001", projectId: "app", prompt: "p", sessionId: "s", state: "running", startedAt, endedAt: null, costUsd: null, result: null, error: null });
+    repos.agentRuns.save({ id: "run_running0001", projectId: "app", prompt: "p", mode: null, attachments: [], sessionId: "s", state: "running", startedAt, endedAt: null, usage: null, result: null, error: null, archivedAt: null });
     repos.appendAgentEvent("run_running0001", { kind: "text", seq: 1, ts: startedAt, text: "before the restart" });
     repos.terminals.save({ id: "trm_running0001", kind: "shell", projectId: null, title: "Shell", cwd: workspace, pid: 999_999, cols: 80, rows: 24, state: "running", exitCode: null, createdAt: startedAt });
     db.close();

@@ -116,6 +116,25 @@ describe("useSandboxHub lists", () => {
     await waitFor(() => expect(result.current.stoppingId).toBeNull());
   });
 
+  it("asks before stopping a process and reports a failed stop", async () => {
+    const { result } = await renderHub();
+
+    mockConfirm.mockResolvedValueOnce(false);
+    await act(async () => result.current.stopProcess(sampleProcess.id));
+    expect(fake.stopProcess).not.toHaveBeenCalled();
+
+    fake.stopProcess.mockRejectedValue(new Error("not running"));
+    await act(async () => result.current.stopProcess(sampleProcess.id));
+    await waitFor(() => expect(result.current.actionError).toBe("not running"));
+  });
+
+  it("does not report empty builds or runs until they load", async () => {
+    fake.listBuilds.mockReturnValue(new Promise(() => undefined));
+    const { result } = await renderHub();
+    expect(result.current.buildsLoading).toBe(true);
+    await waitFor(() => expect(result.current.runsLoading).toBe(false));
+  });
+
   it("closes a session only after confirmation", async () => {
     const { result } = await renderHub();
 

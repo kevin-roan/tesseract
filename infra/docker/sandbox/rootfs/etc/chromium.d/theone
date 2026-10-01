@@ -1,4 +1,7 @@
 # shellcheck shell=sh
 # Unprivileged user namespaces are unavailable in the container, so Chromium's own
 # sandbox cannot start; the container is the isolation boundary.
-export CHROMIUM_FLAGS="${CHROMIUM_FLAGS:-} --no-sandbox --password-store=basic"
+# The DevTools endpoint (loopback only) lets the controller report open tabs
+# (GET /v1/display/browser). Chromium 136+ ignores remote debugging on the default
+# profile directory, hence the dedicated --user-data-dir.
+export CHROMIUM_FLAGS="${CHROMIUM_FLAGS:-} --no-sandbox --password-store=basic --remote-debugging-address=127.0.0.1 --remote-debugging-port=${THEONE_CHROMIUM_DEBUG_PORT:-9222} --user-data-dir=${HOME}/.config/chromium-theone"

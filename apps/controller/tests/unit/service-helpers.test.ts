@@ -77,16 +77,23 @@ describe("agent stream parser", () => {
   test("results: success, error subtypes and optional metrics", () => {
     const parser = new AgentStreamParser();
     expect(
-      parser.parseMessage({ type: "result", subtype: "success", result: "done", total_cost_usd: 0.12345, duration_ms: 1500, num_turns: 3 }),
+      parser.parseMessage({ type: "result", subtype: "success", result: "done", duration_ms: 1500, num_turns: 3,
+        usage: { input_tokens: 10, output_tokens: 2000, cache_read_input_tokens: 10000, cache_creation_input_tokens: 335, server_tool_use: {} },
+      }),
     ).toEqual({
       sessionId: undefined,
-      events: [{ kind: "system", text: "Run finished in 1.5 s, 3 turns, $0.1235" }],
-      result: { isError: false, result: "done", costUsd: 0.12345, subtype: "success" },
+      events: [{ kind: "system", text: "Run finished in 1.5 s, 3 turns, 12,345 tokens" }],
+      result: {
+        isError: false,
+        result: "done",
+        usage: { inputTokens: 10, outputTokens: 2000, cacheReadTokens: 10000, cacheWriteTokens: 335, totalTokens: 12345 },
+        subtype: "success",
+      },
     });
     expect(parser.parseMessage({ type: "result", subtype: "error_max_turns" })?.result).toEqual({
       isError: true,
       result: null,
-      costUsd: null,
+      usage: null,
       subtype: "error_max_turns",
     });
     expect(parser.parseMessage({ type: "result", is_error: true })?.events[0]).toEqual({ kind: "system", text: "Run failed (error)" });
@@ -109,7 +116,28 @@ describe("agent stream parser", () => {
       argv: ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan"],
       stdin: "--help",
     });
-    expect(claudeArgs("x", "plan", "abc-123").argv.slice(-2)).toEqual(["--resume", "abc-123"]);
+    expect(claudeArgs("x", "plan", { resumeSessionId: "abc-123" }).argv.slice(-2)).toEqual(["--resume", "abc-123"]);
+  });
+
+  test("claudeArgs adds the uploads dir and lists readable attachments, never audio", () => {
+    const upload = { name: "a", sizeBytes: 1, createdAt: "2024-01-01T00:00:00.000Z" };
+    const image = { ...upload, id: "upl_image00000", kind: "image" as const, mimeType: "image/png", path: "/w/.theone/uploads/upl_image00000/a.png" };
+    const pdf = { ...upload, id: "upl_pdf0000000", kind: "pdf" as const, mimeType: "application/pdf", path: "/w/.theone/uploads/upl_pdf0000000/b.pdf" };
+    const voice = { ...upload, id: "upl_voice00000", kind: "audio" as const, mimeType: "audio/mp4", path: "/w/.theone/uploads/upl_voice00000/c.m4a" };
+    expect(claudeArgs("look", "acceptEdits", { attachments: [image, voice, pdf], uploadsDir: "/w/.theone/uploads", resumeSessionId: "s1" })).toEqual({
+      argv: ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--add-dir", "/w/.theone/uploads", "--resume", "s1"],
+      stdin: [
+        "look",
+        "",
+        "Attached files (read them with the Read tool):",
+        "- /w/.theone/uploads/upl_image00000/a.png (image/png)",
+        "- /w/.theone/uploads/upl_pdf0000000/b.pdf (application/pdf)",
+      ].join("\n"),
+    });
+    expect(claudeArgs("hear", "plan", { attachments: [voice], uploadsDir: "/w/.theone/uploads" })).toEqual({
+      argv: ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan"],
+      stdin: "hear",
+    });
   });
 });
 

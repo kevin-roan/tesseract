@@ -1,9 +1,13 @@
-import { LIMITS } from "@theone/protocol";
+import { LIMITS, type InputMode } from "@theone/protocol";
 
 export const STATUS_REFRESH_INTERVAL_MS = 10_000;
+export const PORTS_REFRESH_INTERVAL_MS = 5_000;
+export const SYNC_CHANGES_REFRESH_INTERVAL_MS = 15_000;
 export const LIST_PREVIEW_LIMIT = 5;
 export const ACTIVITY_LIMIT = 20;
+export const ACTIVITY_FEED_LIMIT = 20;
 export const LOG_BUFFER_LIMIT = LIMITS.logRingBufferLines;
+export const AGENT_EVENT_LIMIT = 5000;
 export const STREAM_FLUSH_INTERVAL_MS = 80;
 export const PAIRING_TIMEOUT_MS = 10_000;
 export const TERMINAL_DEFAULT_SIZE = { cols: 80, rows: 24 } as const;
@@ -18,4 +22,10 @@ export const PROJECTS_ROOT = "/workspace/projects";
 export const MAX_GIT_URL_LENGTH = 2048;
 export const STREAM_RECONNECT_LIMIT = 5;
 export const PAGE_RECONNECT_LIMIT = 4;
+/** WebKit killing the page process twice in a row means memory pressure; stop rebuilding it and let the user retry. */
+export const PAGE_TERMINATE_LIMIT = 2;
 export const PAGE_RECONNECT_DELAY_MS = { minDelayMs: 1_000, maxDelayMs: 8_000 } as const;
+export const DISPLAY_STORE_NAME = "theone.display";
+export const DISPLAY_STORE_VERSION = 1;
+export const DEFAULT_INPUT_MODE = "trackpad" satisfies InputMode;
+export const UPLOAD_TIMEOUT_MS = 120_000;

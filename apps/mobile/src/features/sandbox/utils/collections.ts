@@ -10,6 +10,11 @@ export function upsertById<T extends { id: string }>(list: T[], item: T, placeme
   return next;
 }
 
+export function removeByIds<T extends { id: string }>(list: T[], ids: readonly string[]): T[] {
+  const next = list.filter((entry) => !ids.includes(entry.id));
+  return next.length === list.length ? list : next;
+}
+
 function cap<T>(list: T[], limit?: number): T[] {
   return limit !== undefined && list.length > limit ? list.slice(list.length - limit) : list;
 }

@@ -9,3 +9,10 @@ export function keepFocus(element: HTMLElement): void {
   element.addEventListener("pointerdown", (event) => event.preventDefault());
   element.addEventListener("mousedown", (event) => event.preventDefault());
 }
+
+/** Space the embedding app's floating chrome covers, exposed to CSS as `--inset-top` / `--inset-bottom`. */
+export function applyInsets(insets: { top: number; bottom: number }): void {
+  const style = document.documentElement.style;
+  style.setProperty("--inset-top", `${insets.top}px`);
+  style.setProperty("--inset-bottom", `${insets.bottom}px`);
+}

@@ -5,20 +5,22 @@ import type { Theme } from "@/theme";
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     list: {
-      gap: theme.spacing.md,
+      gap: theme.spacing.sm,
       paddingHorizontal: theme.gutter,
-      paddingBottom: theme.sectionGap,
+      paddingBottom: theme.spacing.base,
     },
-    prompt: {
-      gap: theme.spacing.xs,
-      padding: theme.spacing.md,
-      borderRadius: theme.radius.lg,
-      borderCurve: "continuous",
-      backgroundColor: theme.colors.accentMuted,
+    turn: {
+      paddingTop: theme.spacing.md,
     },
     footer: {
       gap: theme.spacing.md,
       paddingTop: theme.spacing.sm,
+    },
+    brief: {
+      textAlign: "center",
+    },
+    spinner: {
+      alignSelf: "flex-start",
     },
   });
 }

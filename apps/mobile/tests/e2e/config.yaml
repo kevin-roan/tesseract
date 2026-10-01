@@ -1,0 +1,9 @@
+flows:
+  - "*.yaml"
+executionOrder:
+  continueOnFailure: false
+  flowsOrder:
+    - pair
+    - profile
+    - projects
+    - live-update

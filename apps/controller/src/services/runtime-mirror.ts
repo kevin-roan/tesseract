@@ -34,7 +34,7 @@ export type RuntimeSnapshot = {
   runs: AgentRun[];
 };
 
-const WATCHED: readonly ServerEventType[] = ["process.updated", "terminal.updated", "build.updated", "agent.updated", "artifact.created"];
+const WATCHED: readonly ServerEventType[] = ["process.updated", "terminal.updated", "build.updated", "agent.updated", "artifact.created", "artifact.deleted"];
 const RECENT_PROCESSES = 10;
 const RECENT_BUILDS = 5;
 const RECENT_RUNS = 5;

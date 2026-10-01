@@ -4,6 +4,10 @@ import type { Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
+    root: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
     fill: {
       flex: 1,
     },

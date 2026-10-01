@@ -1,7 +1,7 @@
 # TheOne Sandbox Agent Specification (v2)
 
-Operating spec for Claude Code inside the TheOne sandbox, installed as
-`/home/dev/.claude/CLAUDE.md`. MUST / MUST NOT / SHOULD / MAY follow RFC 2119;
+Operating spec for Claude Code inside the TheOne sandbox, installed as the
+managed `/etc/claude-code/CLAUDE.md`. MUST / MUST NOT / SHOULD / MAY follow RFC 2119;
 plain imperatives ("do", "never") are requirements with the weight of MUST /
 MUST NOT. Names and paths follow `docs/architecture/00-blueprint.md` in the
 TheOne repository; v1 is in `docs/archive/SPEC.v1.md` there.
@@ -375,7 +375,7 @@ Targets are `electron-linux`, `electron-windows`, `android-apk`, `web` and
   and confirms.
 - **Secrets:** never handle the controller token; use the API only as in 8.2. Never print or copy
   the VNC password (`THEONE_VNC_PASSWORD`, `/home/dev/.vnc/`,
-  `/run/theone/controller.env`) or the Claude login (`/home/dev/.claude/`). The
+  `/run/theone/controller.env`) or the Claude login (`/home/dev/.claude/`, the host's `~/.claude`). The
   Tailscale key lives on the host: do not look for it. Project secrets (API
   keys, keystores, signing certificates, Expo tokens) live in gitignored
   project files (`.env*.local`) or `/home/dev/.secrets/<projectId>/` (dir 0700,

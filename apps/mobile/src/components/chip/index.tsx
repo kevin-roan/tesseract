@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Pressable } from "react-native";
-import type { Icon } from "phosphor-react-native";
+import { CaretDownIcon, type Icon } from "phosphor-react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -15,11 +15,14 @@ export type ChipProps = {
   onPress?: () => void;
   onLongPress?: () => void;
   disabled?: boolean;
+  /** `ghost` drops the pill and adds a caret, for pickers that sit inside another surface. */
+  variant?: "pill" | "ghost";
 };
 
-const Chip = ({ label, selected = false, icon: IconComponent, onPress, onLongPress, disabled }: ChipProps) => {
+const Chip = ({ label, selected = false, icon: IconComponent, onPress, onLongPress, disabled, variant = "pill" }: ChipProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const ghost = variant === "ghost";
 
   return (
     <Pressable
@@ -30,7 +33,7 @@ const Chip = ({ label, selected = false, icon: IconComponent, onPress, onLongPre
       disabled={disabled}
       onPress={onPress}
       onLongPress={onLongPress}
-      style={({ pressed }) => [styles.chip, selected && styles.selected, pressed && styles.pressed]}
+      style={({ pressed }) => [styles.chip, selected && styles.selected, ghost && styles.ghost, pressed && styles.pressed, disabled && styles.disabled]}
     >
       {IconComponent ? (
         <IconComponent
@@ -44,9 +47,11 @@ const Chip = ({ label, selected = false, icon: IconComponent, onPress, onLongPre
         color={selected ? "text" : "textSecondary"}
         numberOfLines={1}
         maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+        style={styles.label}
       >
         {label}
       </ThemedText>
+      {ghost ? <CaretDownIcon size={IconSize.xs} color={theme.colors.textSecondary} weight="bold" /> : null}
     </Pressable>
   );
 };

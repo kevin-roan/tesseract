@@ -85,7 +85,7 @@ build_images() {
 
 # Renders `sandbox config` for every mode with a fixed env file; nothing is created.
 render_compose() {
-  local rendered="${work}/compose" env_file="${work}/compose.env" variant mode dind
+  local rendered="${work}/compose" env_file="${work}/compose.env" variant mode flags
   mkdir -p "${rendered}"
   if ! docker compose version > /dev/null 2>&1; then
     log "docker compose not available: compose.bats is skipped"
@@ -102,18 +102,21 @@ THEONE_CONTROLLER_HOST_PORT=17710
 THEONE_VNC_HOST_PORT=15910
 THEONE_TOKEN=token-test
 THEONE_VNC_PASSWORD=vnctest1
-ANTHROPIC_API_KEY=sk-test
 THEONE_IMAGE=theone/sandbox:test-config
+THEONE_TAILSCALE_HOST_SOCKET_DIR=/srv/tailscale
+THEONE_HOST_CLAUDE_DIR=/srv/claude
 EOF
-  for variant in local host-tailscale tailscale local-dind tailscale-dind; do
+  for variant in local host-tailscale tailscale local-dind tailscale-dind host-tailscale-tsapi tailscale-tsapi; do
     mode="${variant%-dind}"
-    dind=()
-    [[ "${variant}" != *-dind ]] || dind=(--dind)
+    mode="${mode%-tsapi}"
+    flags=()
+    [[ "${variant}" != *-dind ]] || flags=(--dind)
+    [[ "${variant}" != *-tsapi ]] || flags=(--tailscale-api)
     env -i PATH="${PATH}" HOME="${HOME}" ${DOCKER_HOST:+DOCKER_HOST="${DOCKER_HOST}"} \
       ${DOCKER_CONFIG:+DOCKER_CONFIG="${DOCKER_CONFIG}"} ${DOCKER_CONTEXT:+DOCKER_CONTEXT="${DOCKER_CONTEXT}"} \
-      "${REPO_ROOT}/infra/scripts/sandbox" --env-file "${env_file}" --mode "${mode}" ${dind[@]+"${dind[@]}"} \
+      "${REPO_ROOT}/infra/scripts/sandbox" --env-file "${env_file}" --mode "${mode}" ${flags[@]+"${flags[@]}"} \
       config --format json > "${rendered}/${variant}.json" \
-      || die "sandbox --mode ${mode} ${dind[*]} config failed"
+      || die "sandbox --mode ${mode} ${flags[*]} config failed"
   done
 }
 

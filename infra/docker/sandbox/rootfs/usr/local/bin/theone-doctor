@@ -129,14 +129,13 @@ check_android() {
 }
 
 check_claude_auth() {
-  if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
-    record claude-auth PASS "ANTHROPIC_API_KEY is set"
-  elif [[ -n "${CLAUDE_CODE_OAUTH_TOKEN:-}" ]]; then
-    record claude-auth PASS "CLAUDE_CODE_OAUTH_TOKEN is set"
-  elif [[ -s "${HOME}/.claude/.credentials.json" ]]; then
-    record claude-auth PASS "logged in (${HOME}/.claude/.credentials.json)"
+  # The only supported login is the host's Claude Max subscription: its ~/.claude (with
+  # .credentials.json) is bind-mounted at /home/dev/.claude.
+  local creds="${HOME}/.claude/.credentials.json"
+  if [[ -s "${creds}" ]] && jq -e '.claudeAiOauth | type == "object"' "${creds}" > /dev/null 2>&1; then
+    record claude-auth PASS "logged in (${creds})"
   else
-    record claude-auth WARN "not authenticated: run 'claude' in a sandbox terminal and log in"
+    record claude-auth WARN "not authenticated: log in with 'claude' (Claude Max) on the host (its ~/.claude is mounted here)"
   fi
 }
 

@@ -3,8 +3,11 @@ import { PROTOCOL_VERSION } from "../constants";
 import { AgentRunEventSchema, AgentRunSchema, StatusEventSchema } from "./agent";
 import { ArtifactSchema, BuildJobSchema } from "./builds";
 import { LogLineSchema, ProcessInfoSchema, TerminalColsSchema, TerminalInfoSchema, TerminalRowsSchema } from "./processes";
-import { ExitCodeSchema } from "./primitives";
+import { AgentRunIdSchema, ArtifactIdSchema, ExitCodeSchema, ProjectIdSchema } from "./primitives";
+import { InboxCountsSchema, InboxItemSchema } from "./inbox";
 import { ProjectSchema } from "./projects";
+import { SttStatusSchema } from "./stt";
+import { SyncRequestSchema } from "./sync";
 
 export const TerminalInputMessageSchema = z.object({ type: z.literal("input"), data: z.string() });
 export const TerminalResizeMessageSchema = z.object({
@@ -56,8 +59,17 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("terminal.updated"), terminal: TerminalInfoSchema }),
   z.object({ type: z.literal("build.updated"), build: BuildJobSchema }),
   z.object({ type: z.literal("artifact.created"), artifact: ArtifactSchema }),
+  z.object({ type: z.literal("artifact.deleted"), id: ArtifactIdSchema }),
   z.object({ type: z.literal("agent.updated"), run: AgentRunSchema }),
+  /** Runs removed by `POST /v1/agent/runs/delete`. */
+  z.object({ type: z.literal("agent.deleted"), ids: z.array(AgentRunIdSchema) }),
   z.object({ type: z.literal("project.updated"), project: ProjectSchema }),
+  /** An item was added, bumped or read; `item` is absent after a mark-read. */
+  z.object({ type: z.literal("inbox.updated"), item: InboxItemSchema.optional(), ...InboxCountsSchema.shape }),
+  z.object({ type: z.literal("stt.updated"), stt: SttStatusSchema }),
+  z.object({ type: z.literal("sync.updated"), request: SyncRequestSchema }),
+  /** The project's sync-back baseline moved (after a push or an ack). */
+  z.object({ type: z.literal("sync.changed"), projectId: ProjectIdSchema }),
 ]);
 export type ServerEvent = z.infer<typeof ServerEventSchema>;
 export type ServerEventType = ServerEvent["type"];

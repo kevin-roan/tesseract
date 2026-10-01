@@ -165,7 +165,7 @@ describe("useAgentRunStream", () => {
 
     await waitFor(() => expect(result.current.events.map((event) => event.seq)).toEqual([0, 1, 2, 3, 4]));
 
-    await act(async () => handlers.onRun?.({ ...sampleAgentRun, state: "succeeded", result: "Done", costUsd: 0.2 }));
+    await act(async () => handlers.onRun?.({ ...sampleAgentRun, state: "succeeded", result: "Done", usage: { inputTokens: 8000, outputTokens: 4300, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 12_300 } }));
     const detail = queryClient.getQueryData<AgentRunDetail>(sandboxKeys.agentRun(SID, sampleAgentRun.id));
     expect(detail).toMatchObject({ state: "succeeded", result: "Done" });
     await waitFor(() => expect(result.current.run?.state).toBe("succeeded"));

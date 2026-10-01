@@ -13,6 +13,9 @@ export const TerminalIdSchema = z.string().regex(idPattern("terminal"), "Invalid
 export const BuildIdSchema = z.string().regex(idPattern("build"), "Invalid build id");
 export const ArtifactIdSchema = z.string().regex(idPattern("artifact"), "Invalid artifact id");
 export const AgentRunIdSchema = z.string().regex(idPattern("agentRun"), "Invalid agent run id");
+export const UploadIdSchema = z.string().regex(idPattern("upload"), "Invalid upload id");
+export const InboxIdSchema = z.string().regex(idPattern("inbox"), "Invalid inbox id");
+export const SyncRequestIdSchema = z.string().regex(idPattern("sync"), "Invalid sync request id");
 
 export const PortSchema = z.int().min(1).max(65535);
 export const ByteCountSchema = z.int().nonnegative();

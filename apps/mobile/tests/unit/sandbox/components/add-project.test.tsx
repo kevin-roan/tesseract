@@ -13,10 +13,6 @@ type NewProject = ReturnType<typeof useNewProject>;
 
 const mockUseNewProject = jest.fn<NewProject, []>();
 
-jest.mock("@/components/glass", () => {
-  const { Pressable, View } = jest.requireActual<typeof import("react-native")>("react-native");
-  return { GlassSurface: View, GlassPill: View, GlassButton: Pressable };
-});
 jest.mock("@/features/sandbox/hooks/use-new-project", () => ({ useNewProject: () => mockUseNewProject() }));
 
 const nav = { back: jest.fn() } as unknown as NewProject["nav"];
@@ -58,7 +54,7 @@ describe("<ActionTile />", () => {
     await render(
       <ActionTileRow
         items={[
-          { id: "display", icon: MonitorIcon, label: "Display", onPress, featured: true, accessibilityHint: "Opens the desktop." },
+          { id: "display", icon: MonitorIcon, label: "Display", onPress, tone: "yellow", accessibilityHint: "Opens the desktop." },
           { id: "build", icon: HammerIcon, label: "Build", disabled: true },
         ]}
       />,

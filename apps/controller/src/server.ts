@@ -34,7 +34,7 @@ export function startController(config: Config, options: ControllerOptions = {})
     port: config.port,
     development: false,
     idleTimeout: HTTP_IDLE_TIMEOUT_SEC,
-    maxRequestBodySize: MAX_BODY_BYTES * 4,
+    maxRequestBodySize: Math.max(MAX_BODY_BYTES, LIMITS.maxClaudeImportBytes, LIMITS.maxUploadBodyBytes, LIMITS.maxProjectSyncBytes) * 2,
     routes: {
       [routePatterns.ui.terminal]: terminalPage,
       [routePatterns.ui.vnc]: vncPage,
@@ -43,7 +43,7 @@ export function startController(config: Config, options: ControllerOptions = {})
       const match = matchWsRoute(new URL(request.url).pathname);
       const plainEventsRequest = match?.kind === "events" && !isWebSocketUpgrade(request) && request.method !== "GET";
       if (match && !plainEventsRequest) return upgradeWebSocket(request, bunServer, services, match);
-      return app.fetch(request);
+      return app.fetch(request, bunServer);
     },
     websocket: createWebSocketHandler(services, options.wsBackpressureLimitBytes),
     error(error) {
@@ -68,6 +68,7 @@ export function startController(config: Config, options: ControllerOptions = {})
   };
 
   const url = new URL(server.url.href);
+  services.ports.ignore(Number(url.port));
   logger.info("controller listening", {
     url: url.href,
     workspace: config.workspace,

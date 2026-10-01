@@ -10,7 +10,7 @@ import {
 } from "@theone/protocol";
 
 import { buildProfileLabel } from "./labels";
-import { capitalize, elapsedSeconds, formatBytes, formatCost, formatDuration, formatRelativeTime, formatUptime } from "./format";
+import { capitalize, elapsedSeconds, formatBytes, formatDuration, formatRelativeTime, formatUptime, formatUsageTokens } from "./format";
 
 const join = (parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(" · ");
 
@@ -41,7 +41,7 @@ export function buildSubtitle(build: BuildJob): string {
 }
 
 export function agentRunMeta(run: AgentRun, now: number = Date.now()): string {
-  return join([run.projectId ?? "No project", formatRelativeTime(run.startedAt, now), formatCost(run.costUsd)]);
+  return join([run.projectId ?? "No project", formatRelativeTime(run.startedAt, now), formatUsageTokens(run.usage)]);
 }
 
 export function artifactSubtitle(artifact: Artifact): string {

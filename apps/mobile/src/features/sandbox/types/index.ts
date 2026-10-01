@@ -1,6 +1,10 @@
 import type { ConnectionState } from "@theone/client";
-import type { BuildTarget, TerminalKind } from "@theone/protocol";
+import type { AgentRun, BuildJob, BuildTarget, ProcessInfo, TerminalKind, VncAction } from "@theone/protocol";
 import type { Icon } from "phosphor-react-native";
+
+import type { ActivityItemProps } from "@/components/activity-item";
+import type { ProjectCardProps } from "@/components/project-card";
+import type { SurfaceTone } from "@/theme";
 
 export type PairedSandbox = {
   id: string;
@@ -45,7 +49,10 @@ export type PageKind = "vnc" | "terminal";
 export type PageMessage =
   | { page: PageKind; kind: "state"; state: string }
   | { page: PageKind; kind: "need-ticket" }
-  | { page: PageKind; kind: "exit"; code: number | null };
+  | { page: PageKind; kind: "exit"; code: number | null }
+  | { page: PageKind; kind: "action"; action: VncAction };
+
+export type PageInsets = { top: number; bottom: number };
 
 export type PageConnection = "loading" | "connecting" | "connected" | "disconnected" | "exited";
 
@@ -55,7 +62,7 @@ export type HubAction = {
   id: HubActionId;
   label: string;
   icon: Icon;
-  featured?: boolean;
+  tone?: SurfaceTone;
   hint?: string;
   unavailableHint?: string;
 };
@@ -94,4 +101,40 @@ export type DisplayOutage = {
   reason: "display" | "vnc";
   title: string;
   message: string;
+};
+
+export type ProfileView = {
+  name: string;
+  tagline: string;
+  team?: string;
+  photo?: string;
+};
+
+export type ActivityRef =
+  | { kind: "build"; id: string }
+  | { kind: "run"; id: string }
+  | { kind: "process"; id: string; projectId: string | null };
+
+export type ActivityEntry = {
+  id: string;
+  ref: ActivityRef;
+  time: number;
+  item: Omit<ActivityItemProps, "onPress" | "testID">;
+};
+
+export type ActivityActor = {
+  name: string;
+  photo?: string;
+};
+
+export type ActiveWork = {
+  processes: ProcessInfo[];
+  builds: BuildJob[];
+  runs: AgentRun[];
+};
+
+export type ProjectActivity = "building" | "agent" | "running" | "failed" | "idle";
+
+export type ProjectCardModel = Omit<ProjectCardProps, "onPress" | "onPressMenu" | "onPressChat" | "chatLabel" | "testID"> & {
+  id: string;
 };

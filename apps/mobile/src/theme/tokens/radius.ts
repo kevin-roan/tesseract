@@ -12,8 +12,16 @@ export const Radius = {
   lg: 16,
   /** 20 */
   xl: 20,
-  /** 28 — modal and bottom-sheet corners */
+  /** 28 — modal corners */
   '2xl': 28,
+  /** 32 — hero panels */
+  '3xl': 32,
+  /** 22 — the white cards and grouped lists screens are built from */
+  card: 22,
+  /** 36 — top corners of bottom sheets */
+  sheet: 36,
+  /** Chips, segments and pill buttons */
+  pill: 999,
   /** Pills, avatars, FABs */
   full: 999,
 } as const;
@@ -32,7 +40,7 @@ export const BorderWidth = {
 export function createRadius(width: number, height: number) {
   const entries = Object.entries(Radius).map(([key, value]) => [
     key,
-    key === 'full' || value === 0 ? value : moderateScale(value, width, height, 0.3),
+    value >= 999 || value === 0 ? value : moderateScale(value, width, height, 0.3),
   ]);
   return Object.fromEntries(entries) as Record<RadiusToken, number>;
 }

@@ -22,6 +22,10 @@ function elevation(level: number, radius: number, offsetY: number, opacity: numb
 export const Shadows = {
   /** Flat — the default. */
   none: {} as ViewStyle,
+  /** Barely-there lift for cards on the paper — Claude's cards are almost flat. */
+  soft: elevation(1, 8, 1, 0.03),
+  /** Round glass controls floating over content. */
+  float: elevation(4, 16, 4, 0.08),
   /** Cards, list rows lifted off the background. */
   level1: elevation(2, 6, 1, 0.08),
   /** Menus, popovers, floating composer. */

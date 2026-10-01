@@ -1,3 +1,7 @@
+import type { AgentRunUsage } from "@theone/protocol";
+
+import { formatTokens } from "@/features/home/utils/tokens";
+
 const BYTE_UNITS = ["B", "KB", "MB", "GB", "TB", "PB"] as const;
 const MINUTE = 60;
 const HOUR = 60 * MINUTE;
@@ -73,10 +77,20 @@ export function clampFraction(value: number): number {
   return Math.min(1, Math.max(0, value));
 }
 
-export function formatCost(usd: number | null): string | null {
-  if (usd === null) return null;
-  if (usd > 0 && usd < 0.01) return "<$0.01";
-  return `$${usd.toFixed(2)}`;
+export function formatUsageTokens(usage: AgentRunUsage | null): string | null {
+  return usage ? `${formatTokens(usage.totalTokens)} tokens` : null;
+}
+
+export function formatUsageBreakdown(usage: AgentRunUsage | null): string | null {
+  if (!usage) return null;
+  const parts: [number, string][] = [
+    [usage.inputTokens, "in"],
+    [usage.outputTokens, "out"],
+    [usage.cacheReadTokens, "cache read"],
+    [usage.cacheWriteTokens, "cache write"],
+  ];
+  const shown = parts.filter(([count]) => count > 0).map(([count, label]) => `${formatTokens(count)} ${label}`);
+  return shown.length > 0 ? shown.join(" · ") : null;
 }
 
 export function formatLoad(load: number): string {

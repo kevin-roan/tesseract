@@ -3,7 +3,7 @@ import { renderHook } from "@testing-library/react-native";
 
 import { useColorScheme as useWebColorScheme } from "@/hooks/use-color-scheme.web";
 import { useResponsive } from "@/hooks/use-responsive";
-import { createTheme } from "@/theme";
+import { createTheme, type SurfaceTone } from "@/theme";
 import { BaseTabletWidth, BaseWidth, clamp, moderateScale, scale, scaleFont, scaleRatio } from "@/theme/responsive";
 import {
   isBreakpointDown,
@@ -114,5 +114,66 @@ describe("useColorScheme (web)", () => {
     const { result } = await renderHook(() => useWebColorScheme());
     expect(result.current).toBe("dark");
     scheme.mockRestore();
+  });
+});
+
+describe("color system", () => {
+  const luminance = (hex: string) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) =>
+      v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4,
+    );
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const contrast = (a: string, b: string) => {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+  };
+
+  it.each(["light", "dark"] as const)("keeps status ink AA on its muted fill and the background (%s)", (scheme) => {
+    const { colors } = createTheme({ scheme, width: 390, height: 844 });
+    for (const status of ["success", "warning", "danger", "info"] as const) {
+      expect(contrast(colors[status], colors[`${status}Muted`])).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(colors[status], colors.background)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(colors[`${status}Solid`], colors.background)).toBeGreaterThanOrEqual(3);
+    }
+    expect(contrast(colors.textSecondary, colors.background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(colors.textTertiary, colors.background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(colors.textOnNotification, colors.notification)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it.each(["light", "dark"] as const)("ships six distinct chart hues that hold 3:1 on the background (%s)", (scheme) => {
+    const { chart, colors } = createTheme({ scheme, width: 390, height: 844 });
+    expect(chart.categorical).toHaveLength(6);
+    expect(new Set(chart.categorical).size).toBe(6);
+    for (const color of chart.categorical) expect(contrast(color, colors.background)).toBeGreaterThanOrEqual(3);
+    expect(chart.categorical[0]).toBe(chart.named.indigo);
+    expect(chart.sequential).toHaveLength(5);
+  });
+
+  it.each(["light", "dark"] as const)("inks every surface tone so text stays legible on its fill (%s)", (scheme) => {
+    const tones: SurfaceTone[] = ["neutral", "brand", "violet", "indigo", "yellow", "lavender", "mint", "rose", "sky", "sand", "ink"];
+    for (const tone of tones) {
+      const { colors, surfaces } = createTheme({ scheme, width: 390, height: 844, tone });
+      const { fill } = surfaces[tone];
+      expect(contrast(colors.text, fill.outer)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(colors.text, fill.inner)).toBeGreaterThanOrEqual(3);
+    }
+  });
+
+  it.each(["light", "dark"] as const)("keeps badges and the primary pill AA (%s)", (scheme) => {
+    const { colors } = createTheme({ scheme, width: 390, height: 844 });
+    expect(contrast(colors.badgeText, colors.badge)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(colors.accentInk, colors.accent)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(colors.accentStrong, colors.background)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(colors.selection, colors.background)).toBeGreaterThanOrEqual(3);
+  });
+
+  it("keeps the base colors outside a surface", () => {
+    const base = createTheme({ scheme: "light", width: 390, height: 844 });
+    const ink = createTheme({ scheme: "light", width: 390, height: 844, tone: "ink" });
+    const violet = createTheme({ scheme: "light", width: 390, height: 844, tone: "violet" });
+    expect(ink.colors.text).not.toBe(base.colors.text);
+    expect(violet.colors.accent).toBe(base.colors.accent);
+    expect(createTheme({ scheme: "light", width: 390, height: 844 })).toBe(base);
   });
 });

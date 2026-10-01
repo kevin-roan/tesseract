@@ -59,9 +59,9 @@ describe("describe helpers", () => {
     expect(buildSubtitle({ ...sampleBuild, profile: "debug" })).toBe("electron-hello · Debug");
   });
 
-  it("summarises agent runs with and without project or cost", () => {
+  it("summarises agent runs with and without project or token usage", () => {
     expect(agentRunMeta(sampleAgentRun, NOW)).toBe("electron-hello · 10m ago");
-    expect(agentRunMeta({ ...sampleAgentRun, projectId: null, costUsd: 1.5 }, NOW)).toBe("No project · 10m ago · $1.50");
+    expect(agentRunMeta({ ...sampleAgentRun, projectId: null, usage: { inputTokens: 8000, outputTokens: 4300, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 12_300 } }, NOW)).toBe("No project · 10m ago · 12.3k tokens");
   });
 
   it("describes artifacts", () => {

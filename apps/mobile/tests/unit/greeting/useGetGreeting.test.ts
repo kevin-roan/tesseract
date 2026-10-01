@@ -12,9 +12,17 @@ describe("useGetGreeting", () => {
     );
 
     expect(result.current).toEqual({
-      salutation: "Hi, Kevin Roan",
+      salutation: "Good morning, Kevin Roan",
       timeOfDay: "Good morning",
     });
+  });
+
+  it("defaults to the current time", async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date(2026, 0, 15, 19, 0));
+    const { result } = await renderHook(() => useGetGreeting("Ada"));
+    expect(result.current.salutation).toBe("Good evening, Ada");
+    jest.useRealTimers();
   });
 
   it("memoizes while username and date are unchanged", async () => {
@@ -57,6 +65,6 @@ describe("useGetGreeting", () => {
 
     await rerender({ username: "Grace", dateInput: date });
 
-    expect(result.current.salutation).toBe("Hi, Grace");
+    expect(result.current.salutation).toBe("Good morning, Grace");
   });
 });

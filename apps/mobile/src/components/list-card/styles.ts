@@ -1,16 +1,17 @@
 import { StyleSheet } from "react-native";
 
-import type { Theme } from "@/theme";
+import { ControlHeight, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
-  const badge = theme.isTablet ? 52 : 44;
+  const badge = theme.isTablet ? ControlHeight.lg : ControlHeight.md;
 
   return StyleSheet.create({
     card: {
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing.md,
-      padding: theme.spacing.md,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.base,
       borderRadius: theme.radius.lg,
       borderCurve: "continuous",
       overflow: "hidden",
@@ -22,16 +23,15 @@ export default function createStyles(theme: Theme) {
       justifyContent: "center",
       borderRadius: theme.radius.md,
       borderCurve: "continuous",
-      backgroundColor: theme.colors.surfaceElevated,
+      backgroundColor: theme.colors.backgroundElement,
     },
     /** Takes the slack so the trailing figure stays pinned to the right. */
     body: {
       flex: 1,
-      gap: theme.spacing.xxs,
+      minWidth: 0,
     },
     trailing: {
       alignItems: "flex-end",
-      gap: theme.spacing.xxs,
     },
     pressed: {
       opacity: 0.85,

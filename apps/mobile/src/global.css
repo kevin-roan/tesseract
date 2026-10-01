@@ -1,6 +1,9 @@
 :root {
   --font-display:
-    Saira_400Regular, Saira, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji,
+    Exo2_400Regular, 'Exo 2', ui-sans-serif, system-ui, sans-serif, Apple Color Emoji,
+    Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+  --font-sans:
+    NotoSans_400Regular, 'Noto Sans', ui-sans-serif, system-ui, sans-serif, Apple Color Emoji,
     Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
   --font-mono:
     ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
