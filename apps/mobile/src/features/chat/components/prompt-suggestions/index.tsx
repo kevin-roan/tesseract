@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import { Pressable, ScrollView } from "react-native";
+import { ScrollView } from "react-native";
 
-import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 
 import type { PromptSuggestion } from "../../utils/suggestions";
+import SuggestionCard from "../suggestion-card";
 import createStyles from "./styles";
 
 export type PromptSuggestionsProps = {
@@ -24,18 +24,8 @@ const PromptSuggestions = ({ suggestions, onSelect }: PromptSuggestionsProps) =>
       style={styles.scroll}
       contentContainerStyle={styles.content}
     >
-      {suggestions.map((suggestion) => (
-        <Pressable
-          key={suggestion.id}
-          accessibilityRole="button"
-          accessibilityLabel={suggestion.label}
-          onPress={() => onSelect(suggestion)}
-          style={({ pressed }) => [styles.card, pressed && styles.pressed]}
-        >
-          <ThemedText variant="bodySmall" numberOfLines={2}>
-            {suggestion.label}
-          </ThemedText>
-        </Pressable>
+      {suggestions.map((suggestion, index) => (
+        <SuggestionCard key={suggestion.id} label={suggestion.label} index={index} onPress={() => onSelect(suggestion)} />
       ))}
     </ScrollView>
   );

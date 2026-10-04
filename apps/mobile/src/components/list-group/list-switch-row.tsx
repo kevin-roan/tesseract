@@ -38,6 +38,8 @@ const ListSwitchRow = ({ label, detail, value, onValueChange, disabled = false, 
         onValueChange={onValueChange}
         disabled={disabled}
         trackColor={{ false: theme.colors.borderStrong, true: theme.colors.accent }}
+        thumbColor={theme.look === "graphite" ? theme.colors[value ? "accentInk" : "text"] : undefined}
+        ios_backgroundColor={theme.colors.borderStrong}
         testID={testID}
       />
     </View>

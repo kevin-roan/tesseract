@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import { BorderWidth, type Theme } from "@/theme";
+import type { Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -10,16 +10,17 @@ export default function createStyles(theme: Theme) {
     },
     userBubble: {
       maxWidth: theme.maxBubbleWidth,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
-      borderRadius: theme.radius.xl,
+      paddingHorizontal: theme.spacing.base,
+      paddingVertical: theme.spacing.md,
+      borderRadius: theme.radius.card,
       borderCurve: "continuous",
-      borderWidth: BorderWidth.thin,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
-      backgroundColor: theme.colors.surfaceElevated,
+      backgroundColor: theme.colors.bubbleUser,
     },
     userTime: {
       paddingHorizontal: theme.spacing.xs,
+      fontVariant: ["tabular-nums"],
     },
     assistant: {
       alignItems: "stretch",
@@ -35,6 +36,9 @@ export default function createStyles(theme: Theme) {
       flexDirection: "row",
       alignItems: "baseline",
       gap: theme.spacing.sm,
+    },
+    time: {
+      fontVariant: ["tabular-nums"],
     },
   });
 }

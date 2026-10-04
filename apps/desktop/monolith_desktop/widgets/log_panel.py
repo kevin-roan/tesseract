@@ -41,10 +41,10 @@ class LogPanel(Gtk.Box):
     def set_title(self, title: str) -> None:
         self._title.set_label(title)
 
-    def set_status(self, label: str | None, tone: Tone = "neutral") -> None:
+    def set_status(self, label: str | None, tone: Tone = "neutral", live: bool = False) -> None:
         self._status.set_visible(bool(label))
         if label:
-            self._status.update(label, tone)
+            self._status.update(label, tone, live)
 
     def set_notice(self, message: str | None) -> None:
         self._notice.set_text_value(message)

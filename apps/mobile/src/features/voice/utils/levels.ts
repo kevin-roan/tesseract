@@ -54,3 +54,16 @@ export function voiceMimeType(uri: string, types: Record<string, string>, fallba
   const extension = uri.split(/[?#]/)[0]?.split(".").pop()?.toLowerCase() ?? "";
   return types[extension] ?? fallback;
 }
+
+export function dashCapacity(height: number, dash: number, gap: number): number {
+  const fits = Math.max(1, Math.floor((height + gap) / (dash + gap)));
+  return fits % 2 === 0 ? fits - 1 : fits;
+}
+
+export function dashRows(level: number, capacity: number): number {
+  return 1 + 2 * Math.round((clamp(level, 0, 1) * (capacity - 1)) / 2);
+}
+
+export function dashSpan(rows: number, dash: number, gap: number): number {
+  return rows * (dash + gap) - gap;
+}

@@ -209,7 +209,7 @@ describe("controller secrets stay out of child environments", () => {
   const clean = "token=absent vnc=absent";
 
   test("childEnv drops exactly the controller secrets", () => {
-    expect(CONTROLLER_SECRET_ENV).toEqual(["THEONE_TOKEN", "THEONE_VNC_PASSWORD", "THEONE_STT_API_KEY"]);
+    expect(CONTROLLER_SECRET_ENV).toEqual(["THEONE_TOKEN", "THEONE_VNC_PASSWORD", "THEONE_STT_API_KEY", "GEMINI_API_KEY"]);
     expect(childEnv({ THEONE_TOKEN: "a", THEONE_VNC_PASSWORD: "b", THEONE_PORT: "7700", PATH: "/bin" })).toEqual({ THEONE_PORT: "7700", PATH: "/bin" });
   });
 

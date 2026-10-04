@@ -15,6 +15,9 @@ class ChartPalette:
     grid: str
     axis: str
     label: str
+    bar: str
+    bar_empty: str
+    bar_empty_stroke: str
 
 
 def _categorical(named: MappingProxyType) -> tuple[str, str, str, str, str, str]:
@@ -47,6 +50,9 @@ CHART = MappingProxyType({
         grid=P.GRAY[200],
         axis=P.GRAY[300],
         label=COLORS["light"]["textSecondary"],
+        bar=P.INDIGO[500],
+        bar_empty="rgba(0, 0, 0, 0.04)",
+        bar_empty_stroke="rgba(0, 0, 0, 0.16)",
     ),
     "dark": ChartPalette(
         categorical=_categorical(_DARK_NAMED),
@@ -57,6 +63,22 @@ CHART = MappingProxyType({
         grid=P.GRAY[800],
         axis=P.GRAY[700],
         label=COLORS["dark"]["textSecondary"],
+        bar=P.INDIGO[400],
+        bar_empty="rgba(255, 255, 255, 0.05)",
+        bar_empty_stroke="rgba(255, 255, 255, 0.18)",
+    ),
+    "graphite": ChartPalette(
+        categorical=_categorical(_DARK_NAMED),
+        named=_DARK_NAMED,
+        sequential=(P.GRAPHITE[800], P.GRAPHITE[700], P.GRAPHITE[500], P.GRAPHITE[300], P.GRAPHITE[100]),
+        diverging=MappingProxyType({"negative": P.RED[400], "neutral": P.GRAPHITE[700], "positive": P.GREEN[400]}),
+        status=_status("graphite"),
+        grid="rgba(255, 255, 255, 0.07)",
+        axis=P.GRAPHITE[700],
+        label=COLORS["graphite"]["textSecondary"],
+        bar=P.GRAPHITE[100],
+        bar_empty="rgba(255, 255, 255, 0.06)",
+        bar_empty_stroke="rgba(255, 255, 255, 0.16)",
     ),
 })
 

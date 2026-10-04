@@ -18,6 +18,9 @@ export default function InboxScreen() {
       : inbox.unreadCount > 0
         ? `${inbox.unreadCount} unread`
         : undefined;
+  const sectionOffsets = inbox.sections.map((_, sectionIndex) =>
+    inbox.sections.slice(0, sectionIndex).reduce((total, previous) => total + previous.items.length, 0),
+  );
 
   return (
     <ScreenScaffold
@@ -26,7 +29,7 @@ export default function InboxScreen() {
       header={<ScreenHeader title="Inbox" subtitle={subtitle} onBack={inbox.back} actions={inbox.headerActions} />}
     >
       {!inbox.hydrated || inbox.loading ? (
-        <SkeletonList count={3} height={88} radius="lg" />
+        <SkeletonList count={3} height={88} radius="card" />
       ) : !inbox.paired ? (
         <EmptyState
           icon={TrayIcon}
@@ -47,11 +50,12 @@ export default function InboxScreen() {
         <>
           {inbox.markError ? <Notice tone="danger" message={inbox.markError} /> : null}
           {inbox.downloadError ? <Notice tone="danger" icon={WarningIcon} message={inbox.downloadError} /> : null}
-          {inbox.sections.map((section) => (
+          {inbox.sections.map((section, sectionIndex) => (
             <Section key={section.id} title={section.title} testID={`inbox-section-${section.id}`}>
-              {section.items.map((item) => (
+              {section.items.map((item, itemIndex) => (
                 <InboxRow
                   key={item.id}
+                  index={sectionOffsets[sectionIndex] + itemIndex}
                   item={item}
                   project={inbox.projectName(item.projectId)}
                   onPress={() => inbox.open(item)}

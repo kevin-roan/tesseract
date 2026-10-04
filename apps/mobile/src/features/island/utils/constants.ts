@@ -11,3 +11,9 @@ export const CAPTURE_IMAGE_MIME_TYPE = "image/png";
 export const RECENT_CHATS_LIMIT = 5;
 export const ISLAND_ROUTE = "/island";
 export const CORNERS = ["topLeft", "topRight", "bottomLeft", "bottomRight"] as const;
+/** Smallest shrink for a stat figure such as "12.3M" before it would truncate. */
+export const STAT_MIN_FONT_SCALE = 0.6;
+/** Scale the island card grows from as it opens out of the capsule. */
+export const ISLAND_OPEN_SCALE = 0.94;
+/** How much a crop corner grows while it is being dragged. */
+export const CROP_HANDLE_GRAB_SCALE = 1.25;

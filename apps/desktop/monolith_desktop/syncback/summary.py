@@ -26,7 +26,23 @@ def describe_revert(outcome: RevertOutcome) -> str:
     return f"Reverted snapshot {outcome.snapshot_id} in {outcome.host_path} ({counts or 'no files'})"
 
 
+def describe_get(result: dict) -> str:
+    added, modified, deleted = result.get("added", 0), result.get("modified", 0), result.get("deleted", 0)
+    total = added + modified + deleted
+    counts = breakdown((added, "added"), (modified, "modified"), (deleted, "deleted"))
+    parts = [f"Sent {plural(total, 'file')} to the sandbox ({counts})" if total else "Sandbox already up to date"]
+    if total and "insertions" in result:
+        parts.append(f"+{result['insertions']} −{result.get('deletions', 0)}")
+    if result.get("gitFiles"):
+        parts.append(f"updated .git ({plural(result['gitFiles'], 'file')})")
+    if result.get("backupPath"):
+        parts.append(f"sandbox edits kept in {result['backupPath']}")
+    return " · ".join(parts)
+
+
 def describe_result(kind: str, result: dict) -> str:
+    if kind == "get":
+        return describe_get(result)
     added, modified, deleted = result.get("added", 0), result.get("modified", 0), result.get("deleted", 0)
     where = result.get("hostPath") or ""
     if kind == "revert":

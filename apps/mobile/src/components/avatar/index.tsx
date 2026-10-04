@@ -4,7 +4,7 @@ import { Image } from "expo-image";
 
 import { ThemedText, type ThemedTextProps } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { AvatarSize } from "@/theme";
+import { AvatarSize, Durations } from "@/theme";
 
 import createStyles from "./styles";
 import { initialsOf } from "./utils/initials";
@@ -30,9 +30,9 @@ const Avatar = ({ name, photo, size = AvatarSize.md, initialsVariant = "caption"
   const styles = useMemo(() => createStyles(theme, size), [theme, size]);
 
   return (
-    <View style={[styles.avatar, style]} accessible={false}>
+    <View style={[styles.avatar, style]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {photo ? (
-        <Image source={{ uri: photo }} style={styles.image} contentFit="cover" transition={200} />
+        <Image source={{ uri: photo }} style={styles.image} contentFit="cover" transition={Durations.normal} />
       ) : (
         <ThemedText variant={initialsVariant} color="textSecondary" maxFontSizeMultiplier={1}>
           {initialsOf(name)}

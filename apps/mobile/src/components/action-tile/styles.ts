@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import { ControlHeight, type Theme } from "@/theme";
+import { ControlHeight, Opacity, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   const bubble = theme.isTablet ? ControlHeight.xl + theme.spacing.base : ControlHeight.xl + theme.spacing.sm;
@@ -19,19 +19,20 @@ export default function createStyles(theme: Theme) {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.card,
       borderCurve: "continuous",
+    },
+    plain: {
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
     },
     label: {
       alignSelf: "stretch",
       textAlign: "center",
     },
-    pressed: {
-      opacity: 0.85,
-      transform: [{ scale: 0.96 }],
-    },
     disabled: {
-      opacity: 0.45,
+      opacity: Opacity.disabled,
     },
   });
 }

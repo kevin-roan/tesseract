@@ -225,5 +225,7 @@ export function useChatComposer({
     sending,
     error,
     dismissError,
+    notice: voice.phase === "idle" ? voice.fallback : null,
+    dismissNotice: voice.dismissFallback,
   };
 }

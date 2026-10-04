@@ -3,6 +3,7 @@ import type { TCPSocketListener } from "bun";
 import { mkdirSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 import {
+  DeletedProjectSchema,
   AgentContextSchema,
   AgentRunBatchResultSchema,
   AgentRunDetailSchema,
@@ -205,6 +206,8 @@ describe("REST responses match @theone/protocol", () => {
     const created = await rest(CreateProjectResponseSchema, "POST", "/v1/projects", { name: "Fresh App" });
     expect(created.project.id).toBe("fresh-app");
     expect(created.processId).toBeUndefined();
+    await restError("conflict", await t.request("DELETE", "/v1/projects/fresh-app"));
+    expect(await rest(DeletedProjectSchema, "DELETE", "/v1/projects/fresh-app?force=1")).toMatchObject({ id: "fresh-app" });
 
     const cloned = await rest(CreateProjectResponseSchema, "POST", "/v1/projects", { name: "copy", gitUrl: `file://${site.path}` });
     expect(cloned.processId).toStartWith("prc_");
@@ -486,7 +489,7 @@ describe("after a restart", () => {
     const build = { projectId: "app", target: "script" as const, profile: "debug" as const, stage: null, progress: null, endedAt: null, createdAt: startedAt, error: null };
     repos.builds.save({ ...build, id: "bld_running0001", state: "running", stage: "compile", progress: 0.5, startedAt });
     repos.builds.save({ ...build, id: "bld_queued00001", state: "queued", startedAt: null });
-    repos.agentRuns.save({ id: "run_running0001", projectId: "app", prompt: "p", mode: null, attachments: [], sessionId: "s", state: "running", startedAt, endedAt: null, usage: null, result: null, error: null, archivedAt: null });
+    repos.agentRuns.save({ id: "run_running0001", projectId: "app", prompt: "p", mode: null, attachments: [], sessionId: "s", claudeAccountId: null, state: "running", startedAt, endedAt: null, usage: null, result: null, error: null, archivedAt: null });
     repos.appendAgentEvent("run_running0001", { kind: "text", seq: 1, ts: startedAt, text: "before the restart" });
     repos.terminals.save({ id: "trm_running0001", kind: "shell", projectId: null, title: "Shell", cwd: workspace, pid: 999_999, cols: 80, rows: 24, state: "running", exitCode: null, createdAt: startedAt });
     db.close();

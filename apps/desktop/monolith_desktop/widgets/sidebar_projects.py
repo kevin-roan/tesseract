@@ -7,6 +7,7 @@ from ..strings import SIDEBAR
 from ..theme.tokens import SIDEBAR_RUN_INDENT
 from ..util.format import format_relative_time
 from .icon import Icon
+from .motion import revealer
 from .sidebar_model import ProjectItem, RunItem, WorkspaceState, project_items, workspace_state
 from .text import Text
 from .tone import ToneBinding
@@ -80,12 +81,16 @@ class ProjectEntry(Gtk.Box):
         self._indicator = ActivityIndicator("project" if key else "agents", 16)
         self._label = Text("", "label", "text")
         self._label.set_hexpand(True)
+        self._lock = Icon("confidential", "xs", "textTertiary")
+        self._lock.set_valign(Gtk.Align.CENTER)
+        self._lock.set_tooltip_text(SIDEBAR["confidential"])
+        self._lock.set_visible(False)
         self._running = Text("", "caption")
         self._running.add_css_class("to-side-running")
         self._running.set_valign(Gtk.Align.CENTER)
         self._running.set_xalign(0.5)
         main_box = Gtk.Box(spacing=10)
-        for widget in (self._indicator, self._label, self._running):
+        for widget in (self._indicator, self._label, self._lock, self._running):
             main_box.append(widget)
         self._main = Gtk.Button(child=main_box, hexpand=True, css_classes=["to-side-row-main"])
         self._main.connect("clicked", lambda *_: on_project(key) if key else self._toggle())
@@ -107,7 +112,7 @@ class ProjectEntry(Gtk.Box):
         self._empty.add_css_class("to-side-empty-runs")
         self._runs.append(self._empty)
         self._run_buttons: list[RunButton] = []
-        self._revealer = Gtk.Revealer(child=self._runs, reveal_child=False)
+        self._revealer = revealer(child=self._runs, reveal_child=False)
         self.append(self._revealer)
 
     @property
@@ -129,6 +134,7 @@ class ProjectEntry(Gtk.Box):
             self._main.set_tooltip_text(open_label)
             self._add.set_tooltip_text(SIDEBAR["new_in_project"].format(name=item.name))
             self._add.update_property([Gtk.AccessibleProperty.LABEL], [SIDEBAR["new_in_project"].format(name=item.name)])
+        self._lock.set_visible(item.confidential)
         self._indicator.update(item.active, "info" if item.active else "neutral")
         self._running.set_text_value(str(item.running) if item.running else None)
         self._running.set_tooltip_text(SIDEBAR["running"].format(count=item.running) if item.running else None)

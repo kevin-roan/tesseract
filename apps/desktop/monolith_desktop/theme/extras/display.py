@@ -1,11 +1,11 @@
 from ..css import css_var
-from ..semantic import SchemeName
+from ..semantic import SchemeName, is_dark
 
 STAGE_RADIUS = "12px"
 
 
 def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
-    stage = css_var("background") if scheme == "dark" else css_var("backgroundSelected")
+    stage = css_var("background") if is_dark(scheme) else css_var("backgroundSelected")
     return {
         ".to-display-toolbar": {
             "color": css_var("text"),

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { BuildProfile, BuildTarget } from "@theone/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
+import { useProjectClaudeAccount } from "@/features/claude-account/hooks/use-project-claude-account";
 
 import { PROJECT_ACTIONS } from "../utils/actions";
 import { newestFirst } from "../utils/collections";
@@ -18,6 +19,7 @@ import { useStartBuild, useStartProcess } from "./use-sandbox-mutations";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
 import { useArtifacts, useBuilds, useListeningPorts, useProcesses, useProject, useProjectGit } from "./use-sandbox-queries";
 import { useSandboxRefresh } from "./use-sandbox-refresh";
+import { useScriptBookmarks } from "./use-script-bookmarks";
 import { useSyncBack } from "./use-sync-back";
 
 export function useProjectDetail(projectId: string, initialProcessId: string | null) {
@@ -34,10 +36,12 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
   const startBuild = useStartBuild();
   const downloads = useArtifactDownload();
   const sync = useSyncBack(projectId);
+  const bookmarks = useScriptBookmarks(projectId);
   const [logsId, setLogsId] = useState<string | null>(initialProcessId);
   const logs = useLogStream(logsId ? { kind: "process", id: logsId } : null);
   const { refreshing, refresh } = useSandboxRefresh();
   const data = project.data;
+  const claudeAccount = useProjectClaudeAccount(data);
 
   const runScript = useCallback(
     (script: string, display: boolean) => {
@@ -65,6 +69,15 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     [nav, projectId],
   );
 
+  const scripts = useMemo(() => {
+    const all = (data?.scripts ?? []).map((script) => ({
+      script,
+      command: scriptCommand(data?.packageManager ?? null, script),
+      bookmarked: bookmarks.isBookmarked(script),
+    }));
+    return [...all.filter((entry) => entry.bookmarked), ...all.filter((entry) => !entry.bookmarked)];
+  }, [data, bookmarks]);
+
   const sites = useMemo(() => projectSites(ports.data?.ports, projectId), [ports.data, projectId]);
 
   const siteFor = useCallback((processId: string) => processSite(ports.data?.ports, processId), [ports.data]);
@@ -80,7 +93,8 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     retry: () => void project.refetch(),
     headerActions,
     git: git.data,
-    scripts: (data?.scripts ?? []).map((script) => ({ script, command: scriptCommand(data?.packageManager ?? null, script) })),
+    scripts,
+    toggleBookmark: bookmarks.toggle,
     preferDisplay: data ? prefersDisplay(data.framework) : false,
     runScript,
     runningScript: startProcess.isPending ? (startProcess.variables?.name ?? null) : null,
@@ -101,6 +115,7 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     artifacts: newestFirst(artifacts.data ?? [], (artifact) => artifact.createdAt),
     downloads,
     sync,
+    claudeAccount,
     actionError: actionError ? describeError(actionError) : null,
     refreshing,
     refresh,

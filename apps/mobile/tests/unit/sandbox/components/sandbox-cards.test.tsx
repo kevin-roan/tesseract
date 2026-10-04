@@ -34,6 +34,8 @@ import { EMPTY_PROJECT_DRAFT } from "@/features/sandbox/utils/new-project";
 
 import { TEST_SITE } from "../helpers";
 
+jest.mock("expo-router", () => ({ useIsFocused: () => true }));
+
 const TS = "2026-09-23T10:00:00.000Z";
 const isBusy = (label: string) => screen.getByLabelText(label).props.accessibilityState?.busy;
 

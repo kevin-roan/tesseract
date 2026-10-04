@@ -2,9 +2,10 @@ import { memo, useMemo } from "react";
 import { View, type StyleProp, type ViewStyle } from "react-native";
 
 import { useAppTheme } from "@/hooks/use-app-theme";
-import type { ThemeColor } from "@/theme";
+import { ControlHeight, type ThemeColor } from "@/theme";
 
 import createStyles from "./styles";
+import { dashCapacity, dashCount } from "./utils/dashes";
 
 export type WaveformProps = {
   levels: number[];
@@ -15,32 +16,37 @@ export type WaveformProps = {
   style?: StyleProp<ViewStyle>;
 };
 
+/** Levels drawn as columns of short rounded dashes centred on the midline; played columns take the active color. */
 const Waveform = ({
   levels,
   progress = 1,
   activeColor = "accentStrong",
   inactiveColor = "borderStrong",
-  height,
+  height = ControlHeight.sm,
   style,
 }: WaveformProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme, height), [theme, height]);
+  const capacity = dashCapacity(height, theme.spacing.xxs, theme.spacing.xxs);
   const played = Math.round(progress * levels.length);
 
   return (
-    <View style={[styles.wave, style]} accessible={false} pointerEvents="none">
-      {levels.map((level, index) => (
-        <View
-          key={index}
-          style={[
-            styles.bar,
-            {
-              height: `${Math.round(level * 100)}%`,
-              backgroundColor: theme.colors[index < played ? activeColor : inactiveColor],
-            },
-          ]}
-        />
-      ))}
+    <View
+      style={[styles.wave, style]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
+    >
+      {levels.map((level, index) => {
+        const color = { backgroundColor: theme.colors[index < played ? activeColor : inactiveColor] };
+        return (
+          <View key={index} style={styles.column}>
+            {Array.from({ length: dashCount(level, capacity) }, (_, row) => (
+              <View key={row} style={[styles.dash, color]} />
+            ))}
+          </View>
+        );
+      })}
     </View>
   );
 };

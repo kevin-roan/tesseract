@@ -4,6 +4,7 @@ from gi.repository import Adw, Gtk
 
 from .buttons import ActionButton
 from .feedback import Notice
+from .motion import crossfade_stack
 from .text import Text
 
 FORM_PAGE = "form"
@@ -31,7 +32,7 @@ class FormDialog(Adw.Dialog):
         self._secondary_cb: Callable[[], None] | None = self.close
 
         header = Adw.HeaderBar(title_widget=Adw.WindowTitle(title=title, subtitle=subtitle or ""))
-        self._stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, vexpand=True)
+        self._stack = crossfade_stack(vexpand=True)
         self.body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18, css_classes=["to-form-body"])
         self._error = Notice("", tone="danger")
         self._error.set_visible(False)

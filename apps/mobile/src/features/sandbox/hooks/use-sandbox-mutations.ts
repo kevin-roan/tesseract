@@ -10,6 +10,8 @@ import type {
   StartAgentRun,
   StartBuild,
   StartProcess,
+  SyncDiscard,
+  UpdateStt,
 } from "@theone/protocol";
 
 import { unregisterPushToken } from "@/features/inbox/api/push";
@@ -17,11 +19,13 @@ import { unregisterPushToken } from "@/features/inbox/api/push";
 import { forgetSandboxClient } from "../api/client";
 import {
   removeArtifact,
+  removeProject,
   storeAgentRun,
   storeArtifact,
   storeBuild,
   storeProcess,
   storeProject,
+  storeSyncChanges,
   storeSyncRequest,
   storeTerminal,
 } from "../api/cache";
@@ -35,7 +39,7 @@ import { useSandboxClient } from "./use-sandbox-client";
 
 type Effects<TData, TVars> = (queryClient: QueryClient, sandboxId: string, data: TData, variables: TVars) => unknown;
 
-function useSandboxMutation<TVars, TData>(
+export function useSandboxMutation<TVars, TData>(
   run: (client: TheOneClient, variables: TVars) => Promise<TData>,
   effects: Effects<TData, TVars>,
 ) {
@@ -58,6 +62,12 @@ export const useCreateProject = () =>
       storeProject(queryClient, sandboxId, project);
       return queryClient.invalidateQueries({ queryKey: sandboxKeys.projects(sandboxId), exact: true });
     },
+  );
+
+export const useDeleteProject = () =>
+  useSandboxMutation(
+    (client, { id, force }: { id: string; force: boolean }) => client.deleteProject(id, force ? { force } : undefined),
+    (queryClient, sandboxId, { id }) => removeProject(queryClient, sandboxId, id),
   );
 
 export const useStartProcess = () =>
@@ -123,6 +133,12 @@ export const useTranscribe = () =>
     () => undefined,
   );
 
+export const useUpdateStt = () =>
+  useSandboxMutation(
+    (client, body: UpdateStt) => client.updateStt(body),
+    (queryClient, sandboxId, status) => queryClient.setQueryData(sandboxKeys.stt(sandboxId), status),
+  );
+
 export const useCancelAgentRun = () =>
   useSandboxMutation(
     (client, runId: string) => client.cancelAgentRun(runId),
@@ -153,6 +169,12 @@ export const useCancelSyncRequest = () =>
   useSandboxMutation(
     (client, requestId: string) => client.cancelSyncRequest(requestId),
     (queryClient, sandboxId, request) => storeSyncRequest(queryClient, sandboxId, request),
+  );
+
+export const useDiscardSyncChanges = () =>
+  useSandboxMutation(
+    (client, { projectId, ...body }: SyncDiscard & { projectId: string }) => client.syncDiscard(projectId, body),
+    (queryClient, sandboxId, result) => storeSyncChanges(queryClient, sandboxId, result.changes),
   );
 
 export function usePairSandbox() {

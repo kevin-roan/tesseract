@@ -11,6 +11,7 @@ import ChoiceGroup from "@/components/choice-group";
 import ConnectionDot from "@/components/connection-dot";
 import EmptyState from "@/components/empty-state";
 import HomeHeader from "@/components/home-header";
+import IconTile from "@/components/icon-tile";
 import KeyValueRow from "@/components/key-value-row";
 import ListCard from "@/components/list-card";
 import Notice from "@/components/notice";
@@ -21,6 +22,8 @@ import ProjectCard from "@/components/project-card";
 import ScreenHeader from "@/components/screen-header";
 import StatCard from "@/components/stat-card";
 import StatGrid from "@/components/stat-grid";
+import StatusBadge from "@/components/status-badge";
+import StatusLine, { StatusPrompt } from "@/components/status-line";
 import TextField from "@/components/text-field";
 
 const people = [
@@ -56,8 +59,8 @@ describe("<ActionCard /> and <ActionRow />", () => {
 describe("<AvatarStack />", () => {
   it("shows initials or photos and collapses the overflow", async () => {
     await render(<AvatarStack people={people} />);
-    expect(screen.getByText("AL")).toBeOnTheScreen();
-    expect(screen.getByText("A")).toBeOnTheScreen();
+    expect(screen.getByText("AL", { includeHiddenElements: true })).toBeOnTheScreen();
+    expect(screen.getByText("A", { includeHiddenElements: true })).toBeOnTheScreen();
     expect(screen.getByText("+1")).toBeOnTheScreen();
     expect(
       screen.getByLabelText(
@@ -84,7 +87,7 @@ describe("<ActivityItem />", () => {
         onPress={onPress}
       />,
     );
-    expect(screen.getByText("AL")).toBeOnTheScreen();
+    expect(screen.getByText("AL", { includeHiddenElements: true })).toBeOnTheScreen();
     expect(screen.getByText("18")).toBeOnTheScreen();
     await fireEvent.press(
       screen.getByLabelText("Ada Lovelace created project Engine, 6h ago"),
@@ -320,7 +323,7 @@ describe("<ProfileHero />", () => {
         />
       </SafeAreaProvider>,
     );
-    expect(screen.getByText("LS")).toBeOnTheScreen();
+    expect(screen.getByText("LS", { includeHiddenElements: true })).toBeOnTheScreen();
     expect(screen.getByTestId("profile-name")).toHaveTextContent(
       "Louis Saville",
     );
@@ -475,7 +478,7 @@ describe("<ScreenHeader />", () => {
         subtitle="Electron"
         onBack={onBack}
         actions={[{ id: "x", icon: PlusIcon, label: "Add", onPress: onAction }]}
-        large
+        size="large"
       />,
     );
     await fireEvent.press(screen.getByLabelText("Go back"));
@@ -516,6 +519,24 @@ describe("<TextField />", () => {
     await fireEvent(screen.getByLabelText("Host"), "focus", {});
     await fireEvent(screen.getByLabelText("Host"), "blur", {});
     expect(screen.getByText("Pick one")).toBeOnTheScreen();
+  });
+});
+
+describe("graphite chips and tiles", () => {
+  it("hides the status prompt and the icon tile from screen readers", async () => {
+    await render(<StatusLine tone="danger" message="Bad host" />);
+    expect(screen.getByText("Bad host")).toBeOnTheScreen();
+    expect(screen.queryByText(StatusPrompt)).toBeNull();
+    expect(screen.getByText(StatusPrompt, { includeHiddenElements: true })).toBeOnTheScreen();
+
+    await render(<IconTile icon={FolderIcon} />);
+    expect(screen.queryByTestId("phosphor-react-native-folder-light")).toBeNull();
+    expect(screen.getByTestId("phosphor-react-native-folder-light", { includeHiddenElements: true })).toBeOnTheScreen();
+  });
+
+  it("renders a status badge as one labelled chip", async () => {
+    await render(<StatusBadge label="Failed" tone="danger" icon={PlusIcon} />);
+    expect(screen.getByLabelText("Failed")).toBeOnTheScreen();
   });
 });
 

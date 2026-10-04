@@ -3,7 +3,6 @@ import { act, render, screen } from "@testing-library/react-native";
 import { useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "@theone/client";
 import { useFonts } from "expo-font";
-import * as SplashScreen from "expo-splash-screen";
 
 import RootLayout from "@/app/_layout";
 import TabsLayout from "@/app/(tabs)/_layout";
@@ -45,6 +44,12 @@ jest.mock("@/features/inbox/components/inbox-notifier", () => {
     return <MockText>inbox-notifier</MockText>;
   };
 });
+jest.mock("@/components/splash-overlay", () => {
+  const { Text: MockText } = jest.requireActual<typeof import("react-native")>("react-native");
+  return function MockSplashOverlay({ ready }: { ready: boolean }) {
+    return <MockText>{`splash:${ready}`}</MockText>;
+  };
+});
 jest.mock("@/components/app-tabs", () => {
   const { Text: MockText } = jest.requireActual<typeof import("react-native")>("react-native");
   return function MockAppTabs() {
@@ -62,7 +67,6 @@ function RetryProbe() {
 beforeEach(() => {
   mockEvents.mockClear();
   (bindQueryManagers as jest.Mock).mockClear();
-  (SplashScreen.hideAsync as jest.Mock).mockClear();
 });
 
 describe("QueryProvider", () => {
@@ -123,19 +127,19 @@ describe("RootLayout", () => {
   );
   afterAll(() => useSandboxStore.setState({ hydrate: original, hydrated: false, sandboxes: [], activeId: null }));
 
-  it("renders nothing until fonts settle", async () => {
+  it("shows only the splash until fonts settle", async () => {
     mockUseFonts.mockReturnValue([false, null]);
     await render(<RootLayout />);
     expect(screen.queryByTestId("stack")).toBeNull();
-    expect(SplashScreen.hideAsync).not.toHaveBeenCalled();
+    expect(screen.getByText("splash:false")).toBeOnTheScreen();
   });
 
-  it("renders nothing until the paired sandboxes are hydrated", async () => {
+  it("shows only the splash until the paired sandboxes are hydrated", async () => {
     mockUseFonts.mockReturnValue([true, null]);
     useSandboxStore.setState({ hydrated: false });
     await render(<RootLayout />);
     expect(screen.queryByTestId("stack")).toBeNull();
-    expect(SplashScreen.hideAsync).not.toHaveBeenCalled();
+    expect(screen.getByText("splash:false")).toBeOnTheScreen();
   });
 
   it.each([
@@ -144,7 +148,7 @@ describe("RootLayout", () => {
   ])("shows onboarding and pairing when unpaired once fonts are %s", async (_state, fonts) => {
     mockUseFonts.mockReturnValue(fonts);
     await render(<RootLayout />);
-    expect(SplashScreen.hideAsync).toHaveBeenCalled();
+    expect(screen.getByText("splash:true")).toBeOnTheScreen();
     expect(screen.getByText("(onboarding)")).toBeOnTheScreen();
     expect(screen.getByText("pair")).toBeOnTheScreen();
     for (const route of sandboxRoutes) expect(screen.queryByText(route)).toBeNull();

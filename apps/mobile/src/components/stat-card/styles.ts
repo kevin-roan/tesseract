@@ -2,18 +2,21 @@ import { StyleSheet } from "react-native";
 
 import { ControlHeight, type Theme } from "@/theme";
 
-export default function createStyles(theme: Theme) {
-  const badge = theme.isTablet ? ControlHeight.lg : ControlHeight.md;
+/** Card floor so a row of stat cards keeps the original footprint. */
+const CardMinHeight = { phone: 164, tablet: 184 } as const;
 
+export const iconTileSize = (theme: Theme) => (theme.isTablet ? ControlHeight.lg : ControlHeight.md);
+
+export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     /** Fills the grid cell so cards sharing a row end up the same height. */
     card: {
       flex: 1,
-      minHeight: theme.isTablet ? 184 : 164,
+      minHeight: theme.isTablet ? CardMinHeight.tablet : CardMinHeight.phone,
       justifyContent: "space-between",
       gap: theme.spacing.lg,
-      padding: theme.spacing.base,
-      borderRadius: theme.radius["2xl"],
+      padding: theme.spacing.lg,
+      borderRadius: theme.radius.card,
       borderCurve: "continuous",
     },
     top: {
@@ -21,13 +24,6 @@ export default function createStyles(theme: Theme) {
       alignItems: "center",
       justifyContent: "space-between",
       gap: theme.spacing.sm,
-    },
-    iconBadge: {
-      width: badge,
-      height: badge,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: theme.radius.full,
     },
     bottom: {
       gap: theme.spacing.xs,
@@ -47,9 +43,6 @@ export default function createStyles(theme: Theme) {
     },
     pressable: {
       flex: 1,
-    },
-    pressed: {
-      opacity: 0.85,
     },
   });
 }

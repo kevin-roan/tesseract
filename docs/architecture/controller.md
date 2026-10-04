@@ -36,13 +36,13 @@ apps/controller/src/
 
 | Service | Responsibility |
 |---|---|
-| `projects`, `project-detect`, `git` | list `/workspace/projects/*`, detect framework, package manager (lockfile), scripts and build targets; clone as a tracked process; git summary and details with the repository's own hooks neutralised ([below](#untrusted-project-content)) |
+| `projects`, `project-detect`, `git` | list `/workspace/projects/*`, detect framework, package manager (lockfile), scripts and build targets; clone as a tracked process; git summary and details with the repository's own hooks neutralised ([below](#untrusted-project-content)); confidential marks (pseudonym name, `REDACTED` commit authors) |
 | `processes` | spawn `bash -lc <command>` (or argv) in its own session, capture stdout/stderr into logs, stop with SIGTERM then SIGKILL after 5 s, reap leftovers of the group/session |
-| `terminals` | PTYs via `Bun.spawn({ terminal })`: login shell or `claude`, 256 KiB scrollback, several clients per session, resize |
+| `terminals` | PTYs via `Bun.spawn({ terminal })`: login shell or `claude` (with `--append-system-prompt <confidentialPrompt(id)>` in a confidential project), 256 KiB scrollback, several clients per session, resize |
 | `builds`, `build-recipes`, `artifacts` | FIFO build queue, recipes per target, artifact collection, naming and sha256; shared files and deletion ([below](#shared-files)) |
 | `taildrop` | `GET /v1/taildrop/targets` and `POST /v1/artifacts/:id/taildrop` over LocalAPI `file-targets`/`file-put` ([below](#shared-files)) |
 | `display`, `vnc-bridge` | `xdpyinfo` probe, RFB banner probe of 5901, screenshots, WS↔TCP bridge |
-| `agent-runs`, `agent-stream` | headless `claude -p` runs, stream-json parsing into `AgentRunEvent`s |
+| `agent-runs`, `agent-stream` | headless `claude -p` runs (with `--append-system-prompt <confidentialPrompt(id)>` in a confidential project), stream-json parsing into `AgentRunEvent`s |
 | `uploads`, `transcriptions` | phone attachments in `/workspace/.theone/uploads`, speech-to-text of voice notes ([below](#uploads-and-speech-to-text)) |
 | `inbox`, `claude-hooks` | the notification inbox (dedupe, read state, pruning, `inbox.updated`) and the mapping of Claude Code hook calls onto it ([below](#inbox-and-claude-hooks)) |
 | `push` | registered Expo push tokens and pushes of inbox items through `THEONE_PUSH_URL` ([below](#inbox-and-claude-hooks)) |
@@ -226,6 +226,8 @@ intermediate files.
   first, so a link that leaves the workspace is refused.
 - **Project.** An explicit `projectId` must exist (`404`); without one, the path must be
   inside `/workspace/projects/<id>/` (`400` "pass --project or share a file inside a project").
+  A confidential project refuses every share with `403` "Project <id> is confidential;
+  sharing artifacts is disabled"; its build artifacts are still collected.
 - **Storage.** The file is copied (never moved) to `/workspace/artifacts/<name>`, where
   `<name>` is the source basename or `name`; collisions get `-2`, `-3`, … before the
   extension. `platform` comes from the extension (`.apk`/`.aab` android, `.exe`/`.msi`
@@ -334,6 +336,25 @@ lifted for this request. The API key is never logged and is not passed to childr
 credential is the host's Claude Max login in `~/.claude`, bind-mounted at `/home/dev/.claude`
 (`$CLAUDE_CONFIG_DIR`); the controller neither stores a token nor injects one into children,
 and the stack passes no Claude credential through the environment.
+
+### Claude accounts
+
+`services/claude-accounts.ts` adds the host's other Claude Code config dirs. The primary
+account `claude` is the dir above; each `THEONE_CLAUDE_ACCOUNTS` name `<n>` is the host's
+`~/.claude-<n>` bind-mounted at `/home/dev/.claude-<n>` (id `claude-<n>`, global config
+`<dir>/.claude.json`), the same live mount as the primary, so token refreshes on either side
+reach both and the host login keeps working. The controller only reads these dirs.
+
+- `GET /v1/claude/accounts` lists them with login, account, plan and expiry (no secrets);
+  `PUT /v1/claude/accounts/default` stores the default in `settings` (`claude.defaultAccount`).
+- `PUT /v1/projects/:id/claude-account` pins a project (`project_claude_accounts`); null
+  follows the default.
+- Agent runs and `claude` terminals resolve the account as: the resumed session's (newest
+  run with that session id, `agent_runs.claude_account_id`), else the project's, else the
+  default. A non-primary account adds `CLAUDE_CONFIG_DIR=<dir>` to the child; the primary
+  adds nothing, so Claude Code keeps using `$HOME/.claude.json`. An account that is no
+  longer configured or mounted makes the start fail with 503 instead of falling back.
+- Usage and sessions read transcripts from every account's dir.
 
 - `GET /v1/claude/auth` reads, never returns, the secrets:
   `claudeAiOauth.accessToken` in `$CLAUDE_CONFIG_DIR/.credentials.json`, plus

@@ -8,10 +8,11 @@ import {
   type SurfaceTone,
 } from './colors';
 import { isTablet as isTabletSize, resolveBreakpoint, resolveDeviceClass } from './tokens/breakpoints';
-import { GridColumns, MaxBubbleWidthRatio, MaxContentWidth, SidebarWidth } from './tokens/layout';
-import { createRadius } from './tokens/radius';
+import { CompactHeight, GridColumns, MaxBubbleWidthRatio, MaxContentWidth, SidebarWidth } from './tokens/layout';
+import { createRadius, type CornerShape } from './tokens/radius';
 import { ScreenGutter, SectionGap, createSpacing } from './tokens/spacing';
-import { createTextStyles } from './typography/scale';
+import type { Typeface } from './typography/fonts';
+import { LightHeadingWeights, createTextStyles, type VariantWeights } from './typography/scale';
 
 export type ThemeInput = {
   scheme: ColorSchemeName;
@@ -22,6 +23,38 @@ export type ThemeInput = {
 };
 
 export type Theme = ReturnType<typeof buildTheme>;
+
+const ShapeFor: Record<ColorSchemeName, CornerShape> = {
+  light: 'soft',
+  dark: 'soft',
+  graphite: 'square',
+};
+
+const KeyboardAppearanceFor: Record<ColorSchemeName, 'default' | 'dark'> = {
+  light: 'default',
+  dark: 'default',
+  graphite: 'dark',
+};
+
+const TypefaceFor: Record<ColorSchemeName, Typeface> = {
+  light: 'classic',
+  dark: 'classic',
+  graphite: 'classic',
+};
+
+/** Visual language a scheme is drawn in; components branch on this, never on the typeface. */
+export type Look = 'classic' | 'graphite';
+
+const LookFor: Record<ColorSchemeName, Look> = {
+  light: 'classic',
+  dark: 'classic',
+  graphite: 'graphite',
+};
+
+const WeightsFor: Record<Look, VariantWeights> = {
+  classic: {},
+  graphite: LightHeadingWeights,
+};
 
 /**
  * Builds the resolved theme for one scheme + window size. Everything that
@@ -45,8 +78,11 @@ function buildTheme({ scheme, width, height, tone }: ThemeInput) {
     chart: chartFor(scheme),
 
     spacing: createSpacing(width, height),
-    radius: createRadius(width, height),
-    text: createTextStyles(width, height),
+    radius: createRadius(width, height, ShapeFor[scheme]),
+    text: createTextStyles(width, height, TypefaceFor[scheme], WeightsFor[LookFor[scheme]]),
+    typeface: TypefaceFor[scheme],
+    look: LookFor[scheme],
+    keyboardAppearance: KeyboardAppearanceFor[scheme],
 
     /** Viewport facts, for the occasional branch a token cannot express. */
     breakpoint,
@@ -54,6 +90,7 @@ function buildTheme({ scheme, width, height, tone }: ThemeInput) {
     isTablet: tablet,
     isPhone: !tablet,
     isLandscape: landscape,
+    isCompactHeight: height < CompactHeight,
     width,
     height,
 

@@ -4,22 +4,32 @@ import type { Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
-    card: {
+    row: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: theme.spacing.md,
+      paddingVertical: theme.spacing.lg,
+      paddingHorizontal: theme.spacing.base,
+    },
+    divider: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.divider,
+    },
+    body: {
+      flex: 1,
       gap: theme.spacing.sm,
-      paddingVertical: theme.spacing.base,
-      paddingHorizontal: theme.spacing.lg,
-      borderRadius: theme.radius.card,
     },
     top: {
       flexDirection: "row",
-      alignItems: "center",
+      alignItems: "baseline",
       gap: theme.spacing.sm,
     },
     title: {
       flex: 1,
     },
-    preview: {
-      marginBottom: theme.spacing.xxs,
+    figure: {
+      textAlign: "right",
+      fontVariant: ["tabular-nums"],
     },
     meta: {
       flexDirection: "row",
@@ -28,38 +38,12 @@ export default function createStyles(theme: Theme) {
       gap: theme.spacing.xs,
     },
     project: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing.xs,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xxs,
-      borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.backgroundElement,
-      maxWidth: "60%",
-    },
-    projectLabel: {
       flexShrink: 1,
-    },
-    active: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing.xs,
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xxs,
-      borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.successMuted,
-    },
-    dot: {
-      width: theme.spacing.xs + 2,
-      height: theme.spacing.xs + 2,
-      borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.successSolid,
+      maxWidth: "60%",
+      overflow: "hidden",
     },
     spacer: {
       flex: 1,
-    },
-    pressed: {
-      transform: [{ scale: 0.98 }],
     },
   });
 }

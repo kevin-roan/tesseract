@@ -24,7 +24,7 @@ const ActivityCard = ({ sessionBuckets, heatmap, sample, rangeTitle }: ActivityC
   const theme = useAppTheme();
   const colors = useChartColors();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const series = useMemo(() => [{ key: "sessions", label: "Sessions", color: colors.categorical[0] }], [colors]);
+  const series = useMemo(() => [{ key: "sessions", label: "Sessions", color: colors.single }], [colors]);
 
   return (
     <View style={styles.stack}>

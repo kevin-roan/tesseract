@@ -7,8 +7,7 @@ const FILE_LIST_MAX_HEIGHT = 320;
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     message: {
-      textAlign: "center",
-      paddingHorizontal: theme.spacing.base,
+      paddingHorizontal: theme.spacing.xs,
     },
     files: {
       flexGrow: 0,

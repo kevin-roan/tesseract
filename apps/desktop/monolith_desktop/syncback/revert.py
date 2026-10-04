@@ -77,12 +77,16 @@ def revert(state: SyncState, project_id: str, force: bool = False) -> RevertOutc
                 prune_empty_parents(root, target)
                 outcome.removed.append(entry.path)
         known = [entry for entry in snapshot.entries if entry.baseline_known]
-        state.update_manifest(project_id, {entry.path: entry.manifest_before for entry in known})
         for entry in known:
             change: dict[str, Any] = {"path": entry.path, "sha256": entry.manifest_before}
             if entry.manifest_before is not None and hash_path(targets[entry.path]) == entry.manifest_before:
                 change["executable"] = is_executable(targets[entry.path])
             outcome.baseline.append(change)
+        state.update_manifest(
+            project_id,
+            {entry.path: entry.manifest_before for entry in known},
+            {change["path"]: change["executable"] for change in outcome.baseline if "executable" in change},
+        )
         snapshot.reverted = True
         state.save_snapshot(snapshot)
         return outcome

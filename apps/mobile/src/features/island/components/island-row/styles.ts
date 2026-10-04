@@ -8,14 +8,14 @@ export default function createStyles(theme: Theme) {
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing.md,
-      paddingVertical: theme.spacing.xs,
+      paddingVertical: theme.spacing.sm,
     },
     body: {
       flex: 1,
       gap: theme.spacing.xxs,
     },
-    pressed: {
-      opacity: 0.7,
+    details: {
+      fontVariant: ["tabular-nums"],
     },
   });
 }

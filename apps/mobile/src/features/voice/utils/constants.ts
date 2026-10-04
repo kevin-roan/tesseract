@@ -12,3 +12,4 @@ export const DEFAULT_VOICE_MIME_TYPE = "audio/mp4";
 export const VOICE_FILE_PREFIX = "voice-message";
 export const RECORDING_OPTIONS: RecordingOptions = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
 export const PLAYER_UPDATE_MS = 100;
+export const GEMINI_FALLBACK_PREFIX = "Gemini unavailable — used native transcription";

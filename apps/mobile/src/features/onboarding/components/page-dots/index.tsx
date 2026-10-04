@@ -2,9 +2,13 @@ import { useMemo } from "react";
 import { View } from "react-native";
 import Animated, { Extrapolation, interpolate, useAnimatedStyle, type SharedValue } from "react-native-reanimated";
 
+import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { MaxFontSizeMultiplier } from "@/theme";
 
-import createStyles, { DOT_SIZE } from "./styles";
+import { usePageCounter } from "../../hooks/use-page-counter";
+import { formatPageCount } from "../../utils/content";
+import createStyles from "./styles";
 
 export type PageDotsProps = {
   count: number;
@@ -14,32 +18,38 @@ export type PageDotsProps = {
 const PageDots = ({ count, progress }: PageDotsProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const counter = usePageCounter(progress, count);
 
   return (
-    <View style={styles.row} accessibilityRole="adjustable" accessibilityLabel={`${count} pages`}>
-      {Array.from({ length: count }, (_, position) => (
-        <Dot key={position} position={position} progress={progress} style={styles.dot} />
-      ))}
+    <View style={styles.row} accessibilityRole="adjustable" accessibilityLabel={formatPageCount(count)}>
+      <ThemedText variant="caption" color="textSecondary" maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome} style={styles.counter}>
+        {counter}
+      </ThemedText>
+      <View style={styles.track}>
+        {Array.from({ length: count }, (_, position) => (
+          <Segment key={position} position={position} progress={progress} styles={styles} />
+        ))}
+      </View>
     </View>
   );
 };
 
-type DotProps = {
+type SegmentProps = {
   position: number;
   progress: SharedValue<number>;
-  style: ReturnType<typeof createStyles>["dot"];
+  styles: ReturnType<typeof createStyles>;
 };
 
-const Dot = ({ position, progress, style }: DotProps) => {
-  const animated = useAnimatedStyle(() => {
-    const range = [position - 1, position, position + 1];
-    return {
-      width: interpolate(progress.value, range, [DOT_SIZE, DOT_SIZE * 3, DOT_SIZE], Extrapolation.CLAMP),
-      opacity: interpolate(progress.value, range, [0.35, 1, 0.35], Extrapolation.CLAMP),
-    };
-  });
+const Segment = ({ position, progress, styles }: SegmentProps) => {
+  const animated = useAnimatedStyle(() => ({
+    transform: [{ scaleX: interpolate(progress.value, [position - 1, position], [0, 1], Extrapolation.CLAMP) }],
+  }));
 
-  return <Animated.View style={[style, animated]} />;
+  return (
+    <View style={styles.segment}>
+      <Animated.View style={[styles.fill, animated]} />
+    </View>
+  );
 };
 
 export default PageDots;

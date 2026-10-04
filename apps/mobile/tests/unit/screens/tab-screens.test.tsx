@@ -98,7 +98,7 @@ describe("AgentsScreen", () => {
     await render(<AgentsScreen />);
 
     expect(screen.getByText(TEST_SANDBOX.name)).toBeOnTheScreen();
-    expect(screen.getByText("Online")).toBeOnTheScreen();
+    expect(screen.queryByText("Online")).toBeNull();
     expect(screen.queryByLabelText("Paired sandboxes")).toBeNull();
     expect(screen.getByText(/^No builds yet/)).toBeOnTheScreen();
     expect(screen.getByText("No Claude runs yet.")).toBeOnTheScreen();
@@ -205,7 +205,7 @@ describe("ProfileScreen", () => {
         { id: "running", value: "1", label: "Running" },
         { id: "builds", value: "1", label: "Builds" },
       ],
-      openHub: jest.fn(),
+      openSettings: jest.fn(),
       tailscaleMissing: false,
       identityError: null,
       retryIdentity: jest.fn(),
@@ -214,6 +214,7 @@ describe("ProfileScreen", () => {
       repair: jest.fn(),
       statusError: null,
       retryStatus: jest.fn(),
+      claudeAccountTitle: "Claude accounts",
       claudeAccount: "dev@example.com",
       openClaudeAccount: jest.fn(),
       activity: [],
@@ -249,9 +250,9 @@ describe("ProfileScreen", () => {
     expect(screen.queryByText("Tailscale identity not exposed")).toBeNull();
     await fireEvent.press(screen.getByTestId("activity-build-bld_1"));
     expect(activityItem.onPress).toHaveBeenCalled();
-    await fireEvent.press(screen.getByLabelText("Open the sandbox hub"));
-    expect(state.openHub).toHaveBeenCalled();
-    await fireEvent.press(screen.getByLabelText("Claude account, dev@example.com"));
+    await fireEvent.press(screen.getByLabelText("Open settings"));
+    expect(state.openSettings).toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText("Claude accounts, dev@example.com"));
     expect(state.openClaudeAccount).toHaveBeenCalled();
   });
 
@@ -336,6 +337,9 @@ describe("ProjectsScreen", () => {
       addProject: jest.fn(),
       openProject: jest.fn(),
       askClaude: jest.fn(),
+      projectMenu: jest.fn(),
+      projectMenuSheet: { visible: false, title: "", options: [], onSelect: jest.fn(), onClose: jest.fn(), onDismissed: jest.fn() },
+      removeError: null,
       running: { processes: [], builds: [], runs: [] },
       runningCount: 0,
       processPress: jest.fn(() => undefined),
@@ -387,7 +391,8 @@ describe("ProjectsScreen", () => {
     expect(screen.getByText("1 active task")).toBeOnTheScreen();
     await fireEvent.press(screen.getByTestId(`project-card-${card.id}`));
     expect(state.openProject).toHaveBeenCalledWith(card.id);
-    expect(screen.queryByLabelText(`More options for ${card.title}`)).toBeNull();
+    await fireEvent.press(screen.getByLabelText(`More options for ${card.title}`));
+    expect(state.projectMenu).toHaveBeenCalledWith({ id: card.id, title: card.title });
     await fireEvent.press(screen.getByLabelText(`Ask Claude about ${card.title}`));
     expect(state.askClaude).toHaveBeenCalledWith(card.id);
     await fireEvent.press(screen.getByLabelText(`Stop ${sampleProcess.name}`));

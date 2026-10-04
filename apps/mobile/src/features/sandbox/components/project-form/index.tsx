@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { FolderPlusIcon, WarningCircleIcon } from "phosphor-react-native";
 
 import ActionButton from "@/components/action-button";
+import MotionItem from "@/components/motion-item";
 import Notice from "@/components/notice";
 import TextField from "@/components/text-field";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -71,7 +72,11 @@ const ProjectForm = ({
         onSubmitEditing={onSubmit}
         editable={!submitting}
       />
-      {error ? <Notice tone="danger" icon={WarningCircleIcon} message={error} /> : null}
+      {error ? (
+        <MotionItem>
+          <Notice tone="danger" icon={WarningCircleIcon} message={error} />
+        </MotionItem>
+      ) : null}
       <ActionButton label={submitLabel} icon={FolderPlusIcon} onPress={onSubmit} loading={submitting} stretch />
     </View>
   );

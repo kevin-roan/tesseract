@@ -12,14 +12,14 @@ export type ClaudeMarkProps = {
 };
 
 const ClaudeMark = ({ size = DEFAULT_MARK_SIZE, color, testID }: ClaudeMarkProps) => {
-  const { colors } = useAppTheme();
+  const { colors, look } = useAppTheme();
   const strokeWidth = size * STROKE_RATIO;
   const rays = useMemo(() => starburstRays(size, strokeWidth), [size, strokeWidth]);
 
   return (
     <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" testID={testID}>
       {rays.map((ray, index) => (
-        <Line key={index} {...ray} stroke={color ?? colors.brand} strokeWidth={strokeWidth} strokeLinecap="round" />
+        <Line key={index} {...ray} stroke={color ?? colors.brand} strokeWidth={strokeWidth} strokeLinecap={look === "graphite" ? "butt" : "round"} />
       ))}
     </Svg>
   );

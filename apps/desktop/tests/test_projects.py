@@ -271,3 +271,143 @@ def test_log_status():
     assert model.log_status("closed", 0, ended=True) == ("Exited 0", "success")
     assert model.log_status("closed", 1, ended=True) == ("Exited 1", "danger")
     assert model.log_status("closed", None, ended=True) == ("Stopped", "neutral")
+
+
+PUSHED = "2026-09-28T10:00:00Z"
+
+
+def _changes(*files, baseline=PUSHED):
+    return {"projectId": "demo", "baselineAt": baseline, "changes": list(files), "totalBytes": 0, "host": None}
+
+
+def _file(path, kind="modified", discardable=True):
+    return {"path": path, "kind": kind, "sha256": None if kind == "deleted" else "0" * 64, "size": 1, "discardable": discardable}
+
+
+def _request(kind, status, result=None):
+    return {"id": f"{kind}-{status}", "projectId": "demo", "kind": kind, "status": status, "paths": None, "force": False,
+            "source": "desktop", "claimedBy": None, "result": result, "error": None, "createdAt": PUSHED, "updatedAt": PUSHED}
+
+
+def _link():
+    from monolith_desktop.syncback.state import Link
+
+    return Link("demo", "/home/me/demo", PUSHED)
+
+
+def _snapshot(reverted=False):
+    from monolith_desktop.syncback.state import Snapshot
+
+    return Snapshot("snap1", "demo", "/home/me/demo", PUSHED, [], reverted=reverted)
+
+
+def test_client_discards_sandbox_changes(monkeypatch):
+    from monolith_desktop.api.client import ControllerClient
+    from monolith_desktop.api.paths import rest
+
+    client = ControllerClient("http://sandbox:1", "token")
+    sent = []
+    monkeypatch.setattr(client, "post", lambda path, body, **_kw: sent.append((path, body)) or {"discarded": []})
+    client.sync_discard("demo", ["a.txt"])
+    client.sync_discard("demo")
+    assert sent == [("/v1/projects/demo/sync/discard", {"paths": ["a.txt"]}), ("/v1/projects/demo/sync/discard", {})]
+    assert rest.project_sync_discard("my app") == "/v1/projects/my%20app/sync/discard"
+
+
+def test_sync_blockers_enable_every_action_when_possible():
+    view = model.SyncView(_link(), _changes(_file("a.txt")), (), (_snapshot(),))
+    assert model.sync_blockers(view) == {"pull": None, "get": None, "revert": None, "discard": None}
+
+
+def test_sync_blockers_explain_why_an_action_is_off():
+    blocked = model.SYNC_BLOCKED
+    loading = model.sync_blockers(model.SyncView(_link()))
+    assert loading["pull"] == loading["get"] == loading["discard"] == blocked["loading"]
+    assert loading["revert"] == blocked["no_snapshot"]
+    failed = model.sync_blockers(model.SyncView(_link(), error=RuntimeError("down")))
+    assert failed["discard"] == blocked["unavailable"]
+
+    unlinked = model.sync_blockers(model.SyncView(None, _changes(_file("a.txt")), (), (_snapshot(),)))
+    assert unlinked["pull"] == unlinked["get"] == unlinked["revert"] == blocked["not_linked"]
+    assert unlinked["discard"] is None
+
+    never = model.sync_blockers(model.SyncView(_link(), _changes(baseline=None)))
+    assert never["pull"] == never["get"] == never["discard"] == blocked["never_pushed"]
+
+    clean = model.sync_blockers(model.SyncView(_link(), _changes()))
+    assert clean["pull"] == blocked["nothing_to_sync"] and clean["discard"] == blocked["nothing_to_discard"]
+    assert clean["get"] is None
+
+    kept = model.sync_blockers(model.SyncView(_link(), _changes(_file("a.txt", discardable=False), {**_file("b.txt"), "discardable": None})))
+    assert kept["discard"] == blocked["not_discardable"] and kept["pull"] is None
+
+    pending = model.SyncView(_link(), _changes(_file("a.txt")), (_request("pull", "pending"),), (_snapshot(),))
+    assert set(model.sync_blockers(pending).values()) == {blocked["active"]}
+    assert set(model.sync_blockers(model.SyncView(_link(), _changes(_file("a.txt")), (), (_snapshot(),)), busy=True).values()) == {blocked["active"]}
+
+    reverted = model.sync_blockers(model.SyncView(_link(), _changes(_file("a.txt")), (), (_snapshot(reverted=True),)))
+    assert reverted["revert"] == blocked["no_snapshot"]
+
+
+def test_discardable_and_get_conflicts():
+    view = model.SyncView(_link(), _changes(_file("a.txt"), _file("b.txt", "added"), _file("c.txt", discardable=False)))
+    assert [change["path"] for change in view.discardable] == ["a.txt", "b.txt"]
+    conflicted = _request("get", "failed", {"added": 0, "modified": 0, "deleted": 0, "conflicts": ["a.txt"], "snapshotId": None, "hostPath": None})
+    assert model.SyncView(requests=(conflicted, _request("get", "applied"))).get_conflicts == ["a.txt"]
+    assert model.SyncView(requests=(_request("get", "applied"), conflicted)).get_conflicts == []
+    assert model.SyncView(requests=(_request("pull", "failed"),)).get_conflicts == []
+
+
+def test_discard_summary():
+    changes = _changes()
+    assert model.discard_summary({"discarded": ["a.txt", "b.txt"], "unavailable": [], "backupPath": None, "changes": changes}) == (
+        "Discarded 2 files in the sandbox", "success",
+    )
+    message, tone = model.discard_summary(
+        {"discarded": ["a.txt"], "unavailable": ["big.bin"], "backupPath": "/data/sync/backups/demo/x", "changes": changes}
+    )
+    assert tone == "warning"
+    assert message.splitlines() == [
+        "Discarded 1 file in the sandbox",
+        "1 file kept, the sandbox has no copy of the synced version: big.bin",
+        "Previous versions saved in /data/sync/backups/demo/x",
+    ]
+    assert model.discard_summary({"discarded": [], "unavailable": [], "backupPath": None, "changes": changes}) == (
+        "Nothing was discarded", "warning",
+    )
+
+
+def test_load_sync_view_reads_changes_for_unlinked_projects(tmp_path):
+    from monolith_desktop.syncback.state import SyncState
+
+    class Client:
+        def sync_changes(self, project_id):
+            return _changes(_file("a.txt"))
+
+        def list_sync_requests(self, project_id):
+            return [_request("get", "applied")]
+
+    view = model.load_sync_view(Client(), SyncState(tmp_path), "demo")
+    assert view.link is None and [c["path"] for c in view.files] == ["a.txt"] and len(view.requests) == 1
+    assert model.sync_blockers(view)["discard"] is None
+
+
+def test_claude_account_options_and_effective():
+    accounts = {
+        "defaultAccountId": "claude",
+        "accounts": [
+            {"id": "claude", "account": {"email": "dev@example.com"}},
+            {"id": "claude-work", "account": None},
+        ],
+    }
+    default = project("app")
+    pinned = project("app", claudeAccountId="claude-old")
+    assert model.claude_account_options(default, accounts) == [
+        ("", "Default (claude)"), ("claude", "claude · dev@example.com"), ("claude-work", "claude-work")
+    ]
+    assert model.claude_account_options(pinned, accounts)[-1] == ("claude-old", "claude-old")
+    assert model.effective_claude_account(default, accounts) == "claude"
+    assert model.effective_claude_account(pinned, accounts) == "claude-old"
+    assert model.effective_claude_account(default, None) is None
+    assert model.claude_account_label(project("app", claudeAccountId="claude-work"), None) == "Claude · claude-work"
+    assert model.project_claude_account(project("app", claudeAccountId=None)) is None

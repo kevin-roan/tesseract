@@ -4,7 +4,8 @@ import { ToneColors, type Tone } from "@/lib/tone";
 import type { Theme } from "@/theme";
 
 export default function createStyles(theme: Theme, tone: Tone) {
-  const height = theme.spacing.xs + theme.spacing.xxs;
+  const height = theme.spacing.xs;
+  const fill = tone === "info" || tone === "neutral" ? theme.colors.text : theme.colors[ToneColors[tone].foreground];
 
   return StyleSheet.create({
     track: {
@@ -16,7 +17,7 @@ export default function createStyles(theme: Theme, tone: Tone) {
     fill: {
       height,
       borderRadius: theme.radius.full,
-      backgroundColor: theme.colors[ToneColors[tone].foreground],
+      backgroundColor: fill,
     },
   });
 }

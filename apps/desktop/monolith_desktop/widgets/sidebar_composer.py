@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 PROJECT_LABEL_CHARS = 18
 PROJECT_LIST_CHARS = 32
 INPUT_INSET = (4, 2)
-SEND_ICON = "go-up-symbolic"
+SEND_ICON = "send"
 SEND_KEYS = (Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_ISO_Enter)
 
 

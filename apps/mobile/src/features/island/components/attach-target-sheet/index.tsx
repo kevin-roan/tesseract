@@ -1,9 +1,9 @@
 import { useMemo } from "react";
-import { ScrollView, View } from "react-native";
+import { ScrollView } from "react-native";
 import { ChatCircleIcon, ClockCounterClockwiseIcon, FolderSimpleIcon } from "phosphor-react-native";
 
 import BottomSheet from "@/components/bottom-sheet";
-import { ThemedText } from "@/components/themed-text";
+import { ListGroup } from "@/components/list-group";
 import { useAppTheme } from "@/hooks/use-app-theme";
 
 import { useAttachTarget } from "../../hooks/use-attach-target";
@@ -21,21 +21,21 @@ const AttachTargetSheet = () => {
     <BottomSheet visible={target.visible} title="Attach to" onClose={target.close} testID="attach-target-sheet">
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         {target.draft ? <DraftPreview draft={target.draft} /> : null}
-        <DestinationRow
-          label={target.newChat.label}
-          detail={target.newChat.detail}
-          icon={ChatCircleIcon}
-          onPress={() => target.select(target.newChat)}
-          testID="attach-new-chat"
-        />
+        <ListGroup dividerInset="text">
+          <DestinationRow
+            label={target.newChat.label}
+            detail={target.newChat.detail}
+            icon={ChatCircleIcon}
+            onPress={() => target.select(target.newChat)}
+            testID="attach-new-chat"
+          />
+        </ListGroup>
         {target.projects.length > 0 ? (
-          <View style={styles.group}>
-            <ThemedText variant="overline" color="textSecondary">
-              Projects
-            </ThemedText>
-            {target.projects.map((destination) => (
+          <ListGroup title="Projects" dividerInset="text">
+            {target.projects.map((destination, index) => (
               <DestinationRow
                 key={destination.id}
+                index={index + 1}
                 label={destination.label}
                 detail={destination.detail}
                 icon={FolderSimpleIcon}
@@ -43,16 +43,14 @@ const AttachTargetSheet = () => {
                 testID={`attach-project-${destination.id}`}
               />
             ))}
-          </View>
+          </ListGroup>
         ) : null}
         {target.chats.length > 0 ? (
-          <View style={styles.group}>
-            <ThemedText variant="overline" color="textSecondary">
-              Recent chats
-            </ThemedText>
-            {target.chats.map((destination) => (
+          <ListGroup title="Recent chats" dividerInset="text">
+            {target.chats.map((destination, index) => (
               <DestinationRow
                 key={destination.id}
+                index={index + 1 + target.projects.length}
                 label={destination.label}
                 detail={destination.detail}
                 icon={ClockCounterClockwiseIcon}
@@ -60,7 +58,7 @@ const AttachTargetSheet = () => {
                 testID={`attach-chat-${destination.id}`}
               />
             ))}
-          </View>
+          </ListGroup>
         ) : null}
       </ScrollView>
     </BottomSheet>

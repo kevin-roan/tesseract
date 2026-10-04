@@ -1,12 +1,14 @@
 import { useMemo } from "react";
 import { ActivityIndicator, View } from "react-native";
+import Animated from "react-native-reanimated";
 import type { Icon } from "phosphor-react-native";
 
 import ActionButton from "@/components/action-button";
-import { Glass } from "@/components/glass";
+import IconTile from "@/components/icon-tile";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { IconSize } from "@/theme";
+import { useEntrance } from "@/hooks/use-entrance";
+import { AvatarSize, IconSize, MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
 
@@ -33,22 +35,26 @@ const EmptyState = ({
 }: EmptyStateProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const entering = useEntrance();
 
   return (
-    <View style={styles.container}>
+    <Animated.View entering={entering} style={styles.container}>
       {loading ? (
         <ActivityIndicator color={theme.colors.textSecondary} accessibilityLabel={title} />
       ) : IconComponent ? (
-        <Glass style={styles.iconBadge}>
-          <IconComponent size={IconSize.xl} color={theme.colors.text} weight="duotone" />
-        </Glass>
+        <IconTile icon={IconComponent} size={AvatarSize.xl} iconSize={IconSize.xl} radius="card" />
       ) : null}
       <View style={styles.copy}>
-        <ThemedText variant="h2" style={styles.centered} accessibilityRole="header">
+        <ThemedText
+          variant="h3"
+          style={styles.centered}
+          accessibilityRole="header"
+          maxFontSizeMultiplier={MaxFontSizeMultiplier.heading}
+        >
           {title}
         </ThemedText>
         {message ? (
-          <ThemedText variant="body" color="textSecondary" style={styles.centered}>
+          <ThemedText variant="bodySmall" color="textSecondary" style={styles.centered}>
             {message}
           </ThemedText>
         ) : null}
@@ -63,7 +69,7 @@ const EmptyState = ({
           <ActionButton label={secondaryLabel} onPress={onSecondary} variant="secondary" size="sm" />
         </View>
       ) : null}
-    </View>
+    </Animated.View>
   );
 };
 

@@ -146,9 +146,9 @@ banner.
 | Method | Path | Request | Response |
 |---|---|---|---|
 | GET | `/v1/projects` | none | `Project[]` |
-| POST | `/v1/projects` | `CreateProject { name, gitUrl?, branch? }` | `201 { project, processId? }` |
+| POST | `/v1/projects` | `CreateProject { name, gitUrl?, branch?, confidential? }` | `201 { project, processId? }` |
 | GET | `/v1/projects/:id` | none | `Project` |
-| GET | `/v1/projects/:id/git` | none | `GitDetails` |
+| GET | `/v1/projects/:id/git` | none | `GitDetails` (`author` is `REDACTED` in a confidential project) |
 | GET | `/v1/projects/:id/sync/changes` | none | `SyncChanges` |
 | POST | `/v1/projects/:id/sync/export` | `SyncExport { paths }` | `application/gzip` tar |
 | POST | `/v1/projects/:id/sync/ack` | `SyncAck` | `SyncChanges` |
@@ -172,13 +172,20 @@ runs as a tracked process whose id comes back as `processId`: follow it on
 `/v1/processes/:id/logs/stream`. On failure the directory stays in place. The controller re-detects `framework`,
 `packageManager`, `scripts` and `buildTargets` from the files on disk.
 
+`confidential: true` (or `POST /v1/projects/:id/sync?confidential=1`) marks the project
+confidential for good: the client sends a pseudonym as `name`, `Project.name` stays the id
+(never `package.json`'s), commit authors read `REDACTED`, sharing artifacts is refused with
+`403`, and Claude runs and terminals in it are told to keep identifying details out of their
+output ([00-blueprint.md §6.1](00-blueprint.md)).
+
 ```jsonc
 // POST /v1/projects
 { "name": "electron-hello", "gitUrl": "https://github.com/acme/electron-hello.git", "branch": "main" }
 // 201
 { "project": { "id": "electron-hello", "name": "electron-hello",
                "path": "/workspace/projects/electron-hello", "framework": "unknown",
-               "packageManager": null, "scripts": [], "buildTargets": [], "git": null },
+               "packageManager": null, "scripts": [], "buildTargets": [], "git": null,
+               "confidential": false },
   "processId": "prc_0h3kq8v2mx" }
 ```
 
@@ -345,6 +352,7 @@ Client frames are limited to 1 MiB.
 { "type": "agent.updated", "run": { /* AgentRun */ } }                        // also on archive/unarchive
 { "type": "agent.deleted", "ids": ["run_…"] }
 { "type": "project.updated", "project": { /* Project */ } }
+{ "type": "project.deleted", "id": "my-app" }
 { "type": "stt.updated", "stt": { /* SttStatus */ } }                          // the STT profile changed
 { "type": "sync.updated", "request": { /* SyncRequest */ } }                  // sync request created or changed state
 { "type": "sync.changed", "projectId": "electron-hello" }                     // sync-back baseline moved (push or ack)

@@ -56,12 +56,21 @@ export function createApp(services: Services): Hono {
     maxSize: LIMITS.maxProjectSyncBytes,
     onError: (c) => c.json(errorBody("bad_request", `Request body exceeds ${LIMITS.maxProjectSyncBytes / 1024 / 1024} MiB`), 413),
   });
+  const syncPlanBodyLimit = bodyLimit({
+    maxSize: LIMITS.maxSyncPlanBytes,
+    onError: (c) => c.json(errorBody("bad_request", `Request body exceeds ${LIMITS.maxSyncPlanBytes / 1024 / 1024} MiB`), 413),
+  });
   const bodyLimits = new Map([
     [restPaths.claudeImport(), importBodyLimit],
     [restPaths.uploads(), uploadBodyLimit],
   ]);
-  const isSyncPath = (path: string) => path.startsWith(restPaths.projects() + "/") && path.endsWith("/sync");
-  app.use(api, (c, next) => (bodyLimits.get(c.req.path) ?? (isSyncPath(c.req.path) ? syncBodyLimit : defaultBodyLimit))(c, next));
+  const syncRequestsPrefix = restPaths.syncRequests() + "/";
+  const isSyncPath = (path: string) =>
+    (path.startsWith(restPaths.projects() + "/") && path.endsWith("/sync")) || (path.startsWith(syncRequestsPrefix) && path.endsWith("/apply"));
+  const isSyncPlanPath = (path: string) => path.startsWith(syncRequestsPrefix) && path.endsWith("/plan");
+  const limitFor = (path: string) =>
+    bodyLimits.get(path) ?? (isSyncPath(path) ? syncBodyLimit : isSyncPlanPath(path) ? syncPlanBodyLimit : defaultBodyLimit);
+  app.use(api, (c, next) => limitFor(c.req.path)(c, next));
   app.use(api, requireAuth(services.token, services.tickets));
 
   registerSystemRoutes(app, services);

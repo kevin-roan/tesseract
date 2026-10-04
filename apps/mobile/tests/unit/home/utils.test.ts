@@ -1,8 +1,7 @@
-import { sampleAgentRun, sampleClaudeSession, sampleProcess, sampleProject, sampleTerminal, sampleUsageReport } from "@theone/protocol/fixtures";
+import { sampleAgentRun, sampleProcess, sampleTerminal, sampleUsageReport } from "@theone/protocol/fixtures";
 
-import { projectLabel, projectNames, sessionTarget, sessionTitle } from "@/features/chats/utils/sessions";
 import { homeStats } from "@/features/home/utils/stats";
-import { cachedPercent, formatCount, formatTokens, tokenSplit } from "@/features/home/utils/tokens";
+import { cachedPercent, formatCount, formatTokens, splitCells, tokenSplit } from "@/features/home/utils/tokens";
 import {
   activeProjectIds,
   barHeight,
@@ -14,7 +13,6 @@ import {
   runningAgentCount,
   usageRangeOptions,
 } from "@/features/home/utils/usage";
-import { formatRelativeTime } from "@/features/sandbox/utils/format";
 
 describe("formatTokens", () => {
   it.each([
@@ -149,5 +147,25 @@ describe("cachedPercent", () => {
   it("shares prompt tokens served from the cache", () => {
     expect(cachedPercent({ inputTokens: 10, cacheReadTokens: 80, cacheWriteTokens: 10 })).toBe(80);
     expect(cachedPercent({ inputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 })).toBeNull();
+  });
+});
+
+describe("splitCells", () => {
+  it("hands out every cell by share, largest remainder first", () => {
+    const cells = splitCells([{ fraction: 0.5 }, { fraction: 0.3 }, { fraction: 0.2 }, { fraction: 0 }], 10);
+    expect(cells).toEqual([0, 0, 0, 0, 0, 1, 1, 1, 2, 2]);
+    expect(splitCells([{ fraction: 1 / 3 }, { fraction: 2 / 3 }], 4)).toEqual([0, 1, 1, 1]);
+  });
+
+  it("keeps at least one cell for every used part, however small", () => {
+    const cells = splitCells([{ fraction: 0.005 }, { fraction: 0.9 }, { fraction: 0.095 }, { fraction: 0 }], 32);
+    expect(cells).toHaveLength(32);
+    expect(cells.filter((cell) => cell === 0)).toHaveLength(1);
+    expect(cells.filter((cell) => cell === 2)).toHaveLength(3);
+    expect(cells).not.toContain(3);
+  });
+
+  it("leaves every cell empty when nothing was used", () => {
+    expect(splitCells([{ fraction: 0 }, { fraction: 0 }], 3)).toEqual([-1, -1, -1]);
   });
 });

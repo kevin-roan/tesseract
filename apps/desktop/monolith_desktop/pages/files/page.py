@@ -9,6 +9,7 @@ from ...widgets.choice_dropdown import ChoiceDropdown
 from ...widgets.feedback import EmptyState, Notice
 from ...widgets.header import HeaderAction, ScreenHeader
 from ...widgets.lifecycle import while_mapped
+from ...widgets.motion import crossfade_stack
 from ...widgets.page_body import PageBody
 from ..base import Page
 from .labels import FILES, TITLE
@@ -40,7 +41,7 @@ class FilesPage(Page):
         self._artifacts: list[Artifact] | None = None
         self._project = ALL
         self._source = ALL
-        self._stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
+        self._stack = crossfade_stack()
         self._state = EmptyState(FILES["loading"], loading=True)
         self._stack.add_named(self._state, STATE)
 

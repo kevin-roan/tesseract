@@ -10,5 +10,15 @@ export default function createStyles(theme: Theme) {
       paddingHorizontal: theme.gutter,
       paddingBottom: theme.spacing.base,
     },
+    fill: {
+      flex: 1,
+    },
+    log: {
+      borderRadius: theme.radius.card,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surfaceSunken,
+    },
   });
 }

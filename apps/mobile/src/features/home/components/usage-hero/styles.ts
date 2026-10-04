@@ -7,7 +7,7 @@ export const CHART_HEIGHT = 148;
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     card: {
-      gap: theme.spacing.lg,
+      gap: theme.spacing.xl,
       padding: theme.spacing.lg,
       borderRadius: theme.radius.card,
     },
@@ -16,16 +16,11 @@ export default function createStyles(theme: Theme) {
     },
     figureRow: {
       flexDirection: "row",
-      alignItems: "flex-start",
+      alignItems: "center",
       gap: theme.spacing.sm,
     },
     metric: {
       flex: 1,
-    },
-    badge: {
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.xxs,
-      borderRadius: theme.radius.full,
     },
     footer: {
       flexDirection: "row",

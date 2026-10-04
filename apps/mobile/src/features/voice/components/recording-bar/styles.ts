@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import { ControlHeight, type Theme } from "@/theme";
+import { ControlHeight, DotSize, Opacity, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -10,7 +10,7 @@ export default function createStyles(theme: Theme) {
     row: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.spacing.sm,
+      gap: theme.spacing.md,
       minHeight: ControlHeight.md,
     },
     cancel: {
@@ -18,18 +18,18 @@ export default function createStyles(theme: Theme) {
       height: ControlHeight.md,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.dangerMuted,
-    },
-    pressed: {
-      opacity: 0.7,
+      borderRadius: theme.radius.md,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
     },
     disabled: {
-      opacity: 0.4,
+      opacity: Opacity.disabled,
     },
     dot: {
-      width: theme.spacing.sm,
-      height: theme.spacing.sm,
+      width: DotSize.md,
+      height: DotSize.md,
       borderRadius: theme.radius.full,
       backgroundColor: theme.colors.dangerSolid,
     },
@@ -41,15 +41,14 @@ export default function createStyles(theme: Theme) {
       height: ControlHeight.md,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.md,
+      borderCurve: "continuous",
       backgroundColor: theme.colors.accent,
-    },
-    actionPressed: {
-      backgroundColor: theme.colors.accentPressed,
     },
     status: {
       paddingHorizontal: theme.spacing.xs,
       paddingBottom: theme.spacing.xs,
+      textAlign: "center",
     },
   });
 }

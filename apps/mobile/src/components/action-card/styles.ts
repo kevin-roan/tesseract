@@ -12,7 +12,7 @@ export default function createStyles(theme: Theme) {
       justifyContent: "center",
       gap: theme.spacing.sm,
       padding: theme.spacing.sm,
-      borderRadius: theme.radius.lg,
+      borderRadius: theme.radius.card,
       borderCurve: "continuous",
     },
     label: {
@@ -20,9 +20,6 @@ export default function createStyles(theme: Theme) {
     },
     pressable: {
       flex: 1,
-    },
-    pressed: {
-      opacity: 0.85,
     },
   });
 }

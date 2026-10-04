@@ -17,6 +17,7 @@ export default function createStyles(theme: Theme) {
     value: {
       flexShrink: 1,
       textAlign: "right",
+      fontVariant: ["tabular-nums"],
     },
   });
 }

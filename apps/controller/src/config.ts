@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync } from "node:fs";
-import { homedir, hostname as osHostname } from "node:os";
+import { homedir, hostname as osHostname, tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
-import { DEFAULT_PORT, isValidToken, parseBaseUrl, STT_PROFILES, type SttProfile } from "@theone/protocol";
+import { CLAUDE_ACCOUNT_NAME_PATTERN, CLAUDE_PRIMARY_ACCOUNT_ID, DEFAULT_PORT, isValidToken, parseBaseUrl, STT_PROFILES, type SttProfile } from "@theone/protocol";
 import { isLogLevel, type LogLevel } from "./core/logger";
 import type { Env } from "./core/exec";
 
@@ -14,6 +14,8 @@ export type Config = {
   uploadsDir: string;
   agentDir: string;
   dataDir: string;
+  /** Where `DELETE /v1/projects/:id` moves projects. */
+  trashDir: string;
   logsDir: string;
   dbPath: string;
   tokenFromEnv: string | null;
@@ -30,6 +32,8 @@ export type Config = {
   /** Claude Code's global config: `$CLAUDE_CONFIG_DIR/.claude.json` when the variable is set, else `$HOME/.claude.json`. */
   claudeGlobalConfig: string;
   claudeEnvAuth: { oauthToken: boolean; apiKey: boolean };
+  /** The primary account (`claudeConfigDir`) first, then one per `THEONE_CLAUDE_ACCOUNTS` name. */
+  claudeAccounts: ClaudeAccountDir[];
   tailscaleSocket: string;
   sandboxId: string;
   hostname: string;
@@ -40,6 +44,14 @@ export type Config = {
   stt: SttConfig;
   push: PushConfig;
   apns: ApnsConfig;
+};
+
+/** A Claude Code config dir; `env` is what children need to use it (empty for the primary, which they inherit). */
+export type ClaudeAccountDir = {
+  id: string;
+  configDir: string;
+  globalConfig: string;
+  env: Record<string, string>;
 };
 
 export const APNS_ENVIRONMENTS = ["production", "sandbox"] as const;
@@ -73,6 +85,8 @@ export type SttConfig = {
   url: string | null;
   apiKey: string | null;
   model: string;
+  geminiApiKey: string | null;
+  geminiModel: string;
 };
 
 export class ConfigError extends Error {
@@ -138,6 +152,8 @@ function sttConfig(env: Env): SttConfig {
   }
   const model = read(env, "THEONE_STT_MODEL") ?? "whisper-1";
   if (!STT_MODEL_PATTERN.test(model)) throw new ConfigError(`THEONE_STT_MODEL is not a valid model name (got "${model}")`);
+  const geminiModel = read(env, "THEONE_GEMINI_STT_MODEL") ?? "gemini-2.5-flash";
+  if (!STT_MODEL_PATTERN.test(geminiModel)) throw new ConfigError(`THEONE_GEMINI_STT_MODEL is not a valid model name (got "${geminiModel}")`);
   const whisperModel = read(env, "THEONE_WHISPER_MODEL");
   return {
     engine: engine as SttEngineSetting,
@@ -148,6 +164,8 @@ function sttConfig(env: Env): SttConfig {
     url: httpUrl(env, "THEONE_STT_URL"),
     apiKey: read(env, "THEONE_STT_API_KEY") ?? null,
     model,
+    geminiApiKey: read(env, "GEMINI_API_KEY") ?? null,
+    geminiModel,
   };
 }
 
@@ -180,6 +198,19 @@ function apnsConfig(env: Env): ApnsConfig {
     throw new ConfigError(`${set.join(", ")} need ${missing.join(" and ")} as well (Live Activity pushes)`);
   }
   return { enabled: set.length === 3, keyFile, keyId: ids.THEONE_APNS_KEY_ID, teamId: ids.THEONE_APNS_TEAM_ID, bundleId, environment: environment as ApnsEnvironment };
+}
+
+function claudeAccountDirs(env: Env, home: string, primary: ClaudeAccountDir): ClaudeAccountDir[] {
+  const names = (read(env, "THEONE_CLAUDE_ACCOUNTS") ?? "")
+    .split(/[\s,]+/)
+    .filter(Boolean);
+  const accounts = [primary];
+  for (const name of new Set(names)) {
+    if (!CLAUDE_ACCOUNT_NAME_PATTERN.test(name)) throw new ConfigError(`THEONE_CLAUDE_ACCOUNTS has an invalid account name (got "${name}")`);
+    const configDir = join(home, `.claude-${name}`);
+    accounts.push({ id: `${CLAUDE_PRIMARY_ACCOUNT_ID}-${name}`, configDir, globalConfig: join(configDir, ".claude.json"), env: { CLAUDE_CONFIG_DIR: configDir } });
+  }
+  return accounts;
 }
 
 function shellCommand(env: Env): string[] {
@@ -223,6 +254,7 @@ export function loadConfig(env: Env = process.env): Config {
 
   const home = read(env, "HOME") ?? homedir();
   const claudeConfigDir = absolutePath(env, "CLAUDE_CONFIG_DIR", join(home, ".claude"));
+  const claudeGlobalConfig = read(env, "CLAUDE_CONFIG_DIR") ? join(claudeConfigDir, ".claude.json") : join(home, ".claude.json");
   const hostname = osHostname();
   return {
     host,
@@ -233,6 +265,7 @@ export function loadConfig(env: Env = process.env): Config {
     uploadsDir: join(workspace, ".theone", "uploads"),
     agentDir,
     dataDir,
+    trashDir: join(tmpdir(), "theone-deleted-projects"),
     logsDir: join(dataDir, "logs"),
     dbPath: join(dataDir, "state.db"),
     tokenFromEnv,
@@ -246,8 +279,9 @@ export function loadConfig(env: Env = process.env): Config {
     claudeBin: read(env, "THEONE_CLAUDE_BIN") ?? "claude",
     claudePermissionMode,
     claudeConfigDir,
-    claudeGlobalConfig: read(env, "CLAUDE_CONFIG_DIR") ? join(claudeConfigDir, ".claude.json") : join(home, ".claude.json"),
+    claudeGlobalConfig,
     claudeEnvAuth: { oauthToken: read(env, "CLAUDE_CODE_OAUTH_TOKEN") !== undefined, apiKey: read(env, "ANTHROPIC_API_KEY") !== undefined },
+    claudeAccounts: claudeAccountDirs(env, home, { id: CLAUDE_PRIMARY_ACCOUNT_ID, configDir: claudeConfigDir, globalConfig: claudeGlobalConfig, env: {} }),
     tailscaleSocket: absolutePath(env, "THEONE_TAILSCALE_SOCKET", "/run/tailscale/tailscaled.sock"),
     sandboxId: read(env, "THEONE_SANDBOX_ID") ?? hostname,
     hostname,

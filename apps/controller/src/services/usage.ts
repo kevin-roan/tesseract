@@ -27,6 +27,7 @@ export type SessionSources = {
   terminals: () => TerminalInfo[];
 };
 
+type AccountFile = TranscriptFile & { accountId: string };
 type Links = { runs: Map<string, AgentRun>; terminals: Map<string, string> };
 
 const DAY_MS = 86_400_000;
@@ -108,7 +109,7 @@ export class UsageService {
     const limit = query.limit ?? LIMITS.defaultSessionsList;
     const files = await this.files();
     const main = files.filter((file) => !file.subagent).sort((a, b) => b.mtimeMs - a.mtimeMs);
-    const subagents = new Map<string, TranscriptFile[]>();
+    const subagents = new Map<string, AccountFile[]>();
     for (const file of files) {
       if (file.subagent) subagents.set(file.sessionId, [...(subagents.get(file.sessionId) ?? []), file]);
     }
@@ -131,6 +132,7 @@ export class UsageService {
       const terminalId = links.terminals.get(file.sessionId) ?? null;
       sessions.push({
         sessionId: file.sessionId,
+        claudeAccountId: file.accountId,
         projectId,
         cwd: transcript.cwd,
         title: transcript.title,
@@ -154,8 +156,14 @@ export class UsageService {
     return (real ? projectForCwd(real, cwd) : null) ?? projectForCwd(this.config.projectsDir, cwd);
   }
 
-  private async files(): Promise<TranscriptFile[]> {
-    const files = await listTranscripts(join(this.config.claudeConfigDir, "projects"));
+  /** Transcripts of every Claude account's config dir. */
+  private async files(): Promise<AccountFile[]> {
+    const perAccount = await Promise.all(
+      this.config.claudeAccounts.map(async (account) =>
+        (await listTranscripts(join(account.configDir, "projects"))).map((file) => ({ ...file, accountId: account.id })),
+      ),
+    );
+    const files = perAccount.flat();
     const present = new Set(files.map((file) => file.path));
     for (const path of this.cache.keys()) {
       if (!present.has(path)) this.cache.delete(path);
@@ -225,13 +233,16 @@ export class UsageService {
   }
 
   private async sessionOfPid(pid: number): Promise<string | null> {
-    try {
-      const data: unknown = JSON.parse(await readFile(join(this.config.claudeConfigDir, "sessions", `${pid}.json`), "utf8"));
-      if (typeof data !== "object" || data === null) return null;
-      const { pid: owner, sessionId } = data as { pid?: unknown; sessionId?: unknown };
-      return owner === pid && typeof sessionId === "string" && sessionId ? sessionId : null;
-    } catch {
-      return null;
+    for (const account of this.config.claudeAccounts) {
+      try {
+        const data: unknown = JSON.parse(await readFile(join(account.configDir, "sessions", `${pid}.json`), "utf8"));
+        if (typeof data !== "object" || data === null) continue;
+        const { pid: owner, sessionId } = data as { pid?: unknown; sessionId?: unknown };
+        if (owner === pid && typeof sessionId === "string" && sessionId) return sessionId;
+      } catch {
+        continue;
+      }
     }
+    return null;
   }
 }

@@ -24,4 +24,5 @@ export * from "./schemas/agent";
 export * from "./schemas/messages";
 export * from "./schemas/queries";
 export * from "./schemas/lists";
+export * from "./schemas/host";
 export * from "./validate";

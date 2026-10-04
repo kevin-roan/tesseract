@@ -5,7 +5,7 @@ import type { Theme } from "@/theme";
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     stack: {
-      gap: theme.spacing.md,
+      gap: theme.spacing.base,
     },
   });
 }

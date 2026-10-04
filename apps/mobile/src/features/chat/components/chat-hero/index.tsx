@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 import { View } from "react-native";
+import Animated from "react-native-reanimated";
 
-import AuraOrb from "@/components/aura-orb";
+import DotSphere from "@/components/dot-sphere";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { useEntrance } from "@/hooks/use-entrance";
 
 import { useFitSize } from "./hooks/use-fit-size";
 import createStyles from "./styles";
@@ -16,23 +18,31 @@ export type ChatHeroProps = {
 const ChatHero = ({ title, subtitle }: ChatHeroProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const orb = useFitSize();
+  const mark = useFitSize();
+  const titlesEntering = useEntrance(0);
+  const markEntering = useEntrance(1, "loose");
 
   return (
     <View style={styles.container}>
-      <View style={styles.titles}>
-        <ThemedText variant="h1" accessibilityRole="header" style={styles.title}>
+      <Animated.View entering={titlesEntering} style={styles.titles}>
+        <ThemedText variant="h2" accessibilityRole="header" style={styles.title}>
           {title}
         </ThemedText>
         {subtitle ? (
-          <ThemedText variant="bodySmall" color="textSecondary" style={styles.subtitle}>
+          <ThemedText variant="body" color="textSecondary" style={styles.subtitle}>
             {subtitle}
           </ThemedText>
         ) : null}
-      </View>
-      <View style={styles.orb} onLayout={orb.onLayout}>
-        {orb.size > 0 ? <AuraOrb size={orb.size} /> : null}
-      </View>
+      </Animated.View>
+      <Animated.View
+        entering={markEntering}
+        style={styles.mark}
+        onLayout={mark.onLayout}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        {mark.size > 0 ? <DotSphere size={mark.size} color="textSecondary" /> : null}
+      </Animated.View>
     </View>
   );
 };

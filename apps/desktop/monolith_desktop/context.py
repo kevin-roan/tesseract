@@ -5,6 +5,7 @@ from .api.client import ControllerClient
 from .api.events import EventStream
 from .api.socket import SOUP_AVAILABLE, SocketSession
 from .api.tasks import Task, run_async
+from .hostshell import HostShellService
 from .poller import Poller
 from .services.connection import ConnectionService
 from .services.metrics import MetricsHistory
@@ -31,6 +32,7 @@ class AppContext:
         self.workspace = WorkspaceService(store, connection.require_client, connection.events)
         self.metrics = MetricsHistory(store)
         self.syncback = SyncBackService(app, store, connection.require_client, connection.events)
+        self.host_shell = HostShellService()
 
     @property
     def events(self) -> EventStream:

@@ -7,13 +7,14 @@ export const DailyBarsFrame = {
   axisBand: 20,
   fontSize: 11,
   floor: 10,
-  hatch: 5,
-  dash: "4 3",
+  hatch: 4,
+  radius: 4,
+  stroke: 1,
 } as const;
 
-/** Airy gaps for a week of pills, tight ones for a month. */
+/** Airy gaps for a week of bars, barcode-tight ones for a month. */
 export function barGap(count: number): number {
-  return count <= 14 ? 10 : 3;
+  return count <= 14 ? 8 : 2;
 }
 
 export default function createStyles(theme: Theme) {
@@ -30,9 +31,16 @@ export default function createStyles(theme: Theme) {
       flex: 1,
     },
     readoutPill: {
-      paddingHorizontal: theme.spacing.md,
+      paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xxs,
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.sm,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
+    },
+    readoutValue: {
+      fontVariant: ["tabular-nums"],
     },
     frame: {
       height: DailyBarsFrame.height + DailyBarsFrame.axisBand,

@@ -9,8 +9,11 @@ export default function createStyles(theme: Theme, size: number) {
       height: size,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: theme.radius.full,
-      overflow: "hidden",
+      borderRadius: theme.radius.xs,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surfaceElevated,
     },
   });
 }

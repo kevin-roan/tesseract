@@ -4,7 +4,7 @@ import { ArrowDownRightIcon, ArrowUpRightIcon } from "phosphor-react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { IconSize } from "@/theme";
+import { IconSize, MaxFontSizeMultiplier } from "@/theme";
 
 import type { Headline as HeadlineModel } from "../../utils/view-model";
 import createStyles from "./styles";
@@ -29,19 +29,21 @@ const Headline = ({ label, headline, testID }: HeadlineProps) => {
       accessible
       accessibilityLabel={`${label}: ${headline.exact}${headline.caption ? `. ${headline.caption}` : ""}`}
     >
-      <ThemedText variant="label" color="textSecondary">
+      <ThemedText variant="label" color="textSecondary" maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
         {label}
       </ThemedText>
       <View style={styles.figure}>
-        <ThemedText variant="display">{headline.value}</ThemedText>
-        <ThemedText variant="caption" color="textTertiary">
+        <ThemedText variant="metric" numberOfLines={1} style={styles.value}>
+          {headline.value}
+        </ThemedText>
+        <ThemedText variant="caption" color="textSecondary" style={styles.tabular}>
           {headline.exact}
         </ThemedText>
       </View>
       {headline.caption ? (
         <View style={styles.delta}>
-          {DeltaIcon ? <DeltaIcon size={IconSize.xs} color={theme.colors.textSecondary} weight="bold" /> : null}
-          <ThemedText variant="bodySmall" color="textSecondary">
+          {DeltaIcon ? <DeltaIcon size={IconSize.xs} color={theme.colors.textSecondary} weight="regular" /> : null}
+          <ThemedText variant="caption" color="textSecondary" style={styles.tabular}>
             {headline.caption}
           </ThemedText>
         </View>

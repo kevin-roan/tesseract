@@ -8,6 +8,7 @@ import type {
   Project,
   ServerEvent,
   StatusEvent,
+  SyncChanges,
   SyncRequest,
   TerminalInfo,
 } from "@theone/protocol";
@@ -93,12 +94,32 @@ export function storeProject(queryClient: QueryClient, sandboxId: string, projec
   void queryClient.invalidateQueries({ queryKey: sandboxKeys.projectGit(sandboxId, project.id) });
 }
 
+export function removeProject(queryClient: QueryClient, sandboxId: string, projectId: string): void {
+  queryClient.setQueryData<Project[]>(sandboxKeys.projects(sandboxId), (data) => (data ? removeByIds(data, [projectId]) : data));
+  queryClient.removeQueries({ queryKey: sandboxKeys.project(sandboxId, projectId) });
+}
+
 export function storeSyncRequest(queryClient: QueryClient, sandboxId: string, request: SyncRequest): void {
   patchList(queryClient, sandboxKeys.syncRequests(sandboxId, request.projectId), request);
 }
 
+export function storeSyncChanges(queryClient: QueryClient, sandboxId: string, changes: SyncChanges): void {
+  queryClient.setQueryData(sandboxKeys.syncChanges(sandboxId, changes.projectId), changes);
+}
+
 export function invalidateSyncChanges(queryClient: QueryClient, sandboxId: string, projectId: string): Promise<void> {
   return queryClient.invalidateQueries({ queryKey: sandboxKeys.syncChanges(sandboxId, projectId) });
+}
+
+/** A request moved: patch it in, and once it applied the sandbox's changes (and the host baseline) moved too. */
+function applySyncRequest(queryClient: QueryClient, sandboxId: string, request: SyncRequest): void {
+  storeSyncRequest(queryClient, sandboxId, request);
+  if (request.status === "applied") void invalidateSyncChanges(queryClient, sandboxId, request.projectId);
+}
+
+function refreshSyncState(queryClient: QueryClient, sandboxId: string, projectId: string): void {
+  void invalidateSyncChanges(queryClient, sandboxId, projectId);
+  void queryClient.invalidateQueries({ queryKey: sandboxKeys.syncRequests(sandboxId, projectId) });
 }
 
 export function storeActivity(queryClient: QueryClient, sandboxId: string, event: StatusEvent): void {
@@ -125,12 +146,14 @@ export function applyServerEvent(queryClient: QueryClient, sandboxId: string, ev
       return removeAgentRuns(queryClient, sandboxId, event.ids);
     case "project.updated":
       return storeProject(queryClient, sandboxId, event.project);
+    case "project.deleted":
+      return removeProject(queryClient, sandboxId, event.id);
     case "status":
       return storeActivity(queryClient, sandboxId, event.event);
     case "sync.updated":
-      return storeSyncRequest(queryClient, sandboxId, event.request);
+      return applySyncRequest(queryClient, sandboxId, event.request);
     case "sync.changed":
-      return void invalidateSyncChanges(queryClient, sandboxId, event.projectId);
+      return refreshSyncState(queryClient, sandboxId, event.projectId);
     case "inbox.updated":
       return storeInboxEvent(queryClient, sandboxId, event);
     case "hello":

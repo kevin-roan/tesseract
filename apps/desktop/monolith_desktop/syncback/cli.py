@@ -14,6 +14,7 @@ from .summary import describe_pull, describe_revert, plural
 EXIT_OK, EXIT_ERROR, EXIT_CONFLICT = 0, 1, 2
 KIND_CODES = {"added": "A", "modified": "M", "deleted": "D"}
 MAX_LISTED = 50
+GET_IN_SANDBOX = "monolith --get runs inside the sandbox (in /workspace/projects/<id>); on this computer use monolith --sync"
 
 ClientFactory = Callable[[], Any]
 
@@ -123,6 +124,11 @@ def run_revert(
     return EXIT_OK
 
 
+def run_get_on_host(err: TextIO | None = None) -> int:
+    print(GET_IN_SANDBOX, file=err or sys.stderr)
+    return EXIT_ERROR
+
+
 def run_status(
     cwd: str,
     client_factory: ClientFactory,
@@ -138,7 +144,7 @@ def run_status(
     except SyncBackError as error:
         print(f"monolith: {error}", file=err)
         return EXIT_ERROR
-    print(f"{link.project_id} ↔ {link.host_path} · pushed {link.pushed_at or 'never'}", file=out)
+    print(f"{link.project_id} ↔ {link.host_path} · pushed {link.pushed_at or 'never'} · got {link.got_at or 'never'}", file=out)
     code = EXIT_OK
     client = client_factory()
     if client is None:

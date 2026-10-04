@@ -5,6 +5,7 @@ from gi.repository import Adw, GLib, Gtk
 
 from ...api.errors import describe_error
 from ...api.types import AgentRun, InboxItem, run_total_tokens
+from ...theme.tone import Tone
 from ...util.format import format_tokens, join_meta
 from ...widgets.badges import StatusBadge
 from ...widgets.buttons import ActionButton, IconButton
@@ -21,7 +22,10 @@ from ...widgets.conversation import (
 )
 from ...widgets.feedback import EmptyState, Notice
 from ...widgets.icon import Icon
+from ...widgets.motion import crossfade_stack
 from ...widgets.text import Text
+from ..projects.labels import SYNC
+from ..projects.sync_actions import SyncActions
 from . import model
 from .feed import LinkState, RunFeed
 from .labels import ATTENTION, CONVERSATION, MANAGE
@@ -70,13 +74,15 @@ class ConversationPane(Gtk.Box):
         self._tick_source: int | None = None
         self._previous_id: str | None = None
         self._notice_error: str | None = None
+        self._sync_notice: tuple[str, Tone] | None = None
+        self._sync_running = False
         self._feed = RunFeed(ctx, self._run_updated, self._render_timeline, self._link_changed, self._load_failed)
 
         self.append(self._build_header())
         self._notices = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, css_classes=["to-convo-notices"])
         self.append(self._notices)
 
-        self._stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, vexpand=True)
+        self._stack = crossfade_stack(vexpand=True)
         self._stack.add_named(EmptyState(CONVERSATION["loading"], loading=True), "loading")
         self._error = EmptyState(CONVERSATION["load_failed_title"], icon="warning", action_label=CONVERSATION["retry"], on_action=self._feed.reload)
         self._stack.add_named(self._error, "error")
@@ -176,6 +182,7 @@ class ConversationPane(Gtk.Box):
         actions = Gtk.Box(spacing=4, valign=Gtk.Align.CENTER)
         self._terminal_button = ActionButton(CONVERSATION["open_terminal"], self._open_terminal, "secondary", "terminal")
         actions.append(self._terminal_button)
+        actions.append(self._build_sync_menu())
         self._copy_button = IconButton("copy", CONVERSATION["copy_session"], self._copy_session)
         actions.append(self._copy_button)
         self._reload_button = IconButton("refresh", CONVERSATION["reload"], lambda: self._feed.reload())
@@ -190,6 +197,30 @@ class ConversationPane(Gtk.Box):
         actions.append(self._cancel_button)
         header.append(actions)
         return header
+
+    def _build_sync_menu(self) -> Gtk.Widget:
+        items = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, margin_top=6, margin_bottom=6, margin_start=6, margin_end=6)
+        popover = Gtk.Popover(child=items, has_arrow=False)
+        self._sync = SyncActions(self._ctx, self, on_report=self._show_sync_notice, on_activate=popover.popdown)
+        for button in self._sync.buttons.values():
+            button.set_halign(Gtk.Align.FILL)
+            items.append(button)
+        self._sync_button = ActionButton(SYNC["menu"], lambda: self._open_sync_menu(popover), "secondary", "sync")
+        popover.set_parent(self._sync_button)
+        return self._sync_button
+
+    def _open_sync_menu(self, popover: Gtk.Popover) -> None:
+        self._sync.render()
+        self._sync.refresh()
+        popover.popup()
+
+    def _show_sync_notice(self, message: str, tone: Tone) -> None:
+        self._sync_notice = (message, tone)
+        self._render_notices()
+
+    def _clear_sync_notice(self) -> None:
+        self._sync_notice = None
+        self._render_notices()
 
     def _run_updated(self, run: AgentRun, notify: bool = True) -> None:
         if notify:
@@ -210,7 +241,7 @@ class ConversationPane(Gtk.Box):
         running = run is not None and run["state"] == "running"
         self._title.set_label(model.run_title(run.get("prompt")) if run else "")
         if run:
-            self._badge.update(model.state_label(run["state"]), model.state_tone(run["state"]))
+            self._badge.update(model.state_label(run["state"]), model.state_tone(run["state"]), running)
             self._badge.set_visible(True)
             session = run.get("sessionId")
             session_label = CONVERSATION["session"].format(id=model.short_id(session)) if session else None
@@ -228,6 +259,14 @@ class ConversationPane(Gtk.Box):
         self._unarchive_button.set_visible(manageable and model.is_archived(run))
         self._delete_button.set_visible(manageable)
         self._terminal_button.set_visible(model.terminal_for_run(run, self._sessions) is not None)
+        project_id = run.get("projectId") if run else None
+        if project_id != self._sync.project_id:
+            self._sync_notice = None
+            self._sync.set_project(project_id)
+        elif self._sync_running and not running:
+            self._sync.refresh()
+        self._sync_running = running
+        self._sync_button.set_visible(project_id is not None)
 
     def _render_notices(self) -> None:
         while (child := self._notices.get_first_child()) is not None:
@@ -241,6 +280,11 @@ class ConversationPane(Gtk.Box):
             error = Notice(self._notice_error, tone="danger")
             error.set_action(CONVERSATION["dismiss"], lambda: self._show_error_notice(None))
             self._notices.append(error)
+        if self._sync_notice:
+            message, tone = self._sync_notice
+            notice = Notice(message, tone=tone)
+            notice.set_action(CONVERSATION["dismiss"], self._clear_sync_notice)
+            self._notices.append(notice)
         if run is not None:
             for item in model.attention_for_run(run, self._attention):
                 icon, tone = model.notice_style(item)

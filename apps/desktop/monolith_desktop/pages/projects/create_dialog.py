@@ -5,8 +5,10 @@ from gi.repository import Gtk
 
 from ...api.errors import describe_error
 from ...api.types import CreateProjectResponse
+from ...pseudonym import pseudonym
 from ...services.workspace import upsert
 from ...widgets.badges import StatusBadge
+from ...widgets.buttons import IconButton
 from ...widgets.form_dialog import FormDialog
 from ...widgets.log_panel import LogPanel
 from ...widgets.text import Text
@@ -27,12 +29,18 @@ class CreateProjectDialog:
         self._on_open = on_open
         self._project_id: str | None = None
         self._cloning = False
+        self._typed_name = ""
         dialog = FormDialog(CREATE["title"], CREATE["subtitle"], CREATE["create"], self._submit, CREATE["cancel"])
         self.dialog = dialog
         self._details = dialog.add_group(CREATE["details"], location_hint(""))
         self._name = dialog.add_entry(self._details, "name", CREATE["name"])
         self._name.connect("changed", lambda row: self._details.set_description(location_hint(row.get_text())))
-        source = dialog.add_group(CREATE["source"], CREATE["source_hint"])
+        self._reroll = IconButton("shuffle", CREATE["reroll"], self._roll_pseudonym)
+        self._reroll.set_visible(False)
+        self._name.add_suffix(self._reroll)
+        self._confidential = dialog.add_switch(self._details, CREATE["confidential"], CREATE["confidential_hint"])
+        self._confidential.connect("notify::active", lambda row, _param: self._set_confidential(row.get_active()))
+        self._source = source = dialog.add_group(CREATE["source"], CREATE["source_hint"])
         self._git_url = dialog.add_entry(source, "git_url", CREATE["git_url"])
         self._branch = dialog.add_entry(source, "branch", CREATE["branch"])
         self._git_url.connect("changed", lambda row: dialog.set_primary(create_label(row.get_text()), self._submit))
@@ -64,8 +72,23 @@ class CreateProjectDialog:
     def _existing_ids(self) -> list[str]:
         return [project["id"] for project in self._ctx.store.projects.value or []]
 
+    def _set_confidential(self, confidential: bool) -> None:
+        if confidential:
+            self._typed_name = self._name.get_text()
+            self._roll_pseudonym()
+        else:
+            self._name.set_text(self._typed_name)
+        self._name.set_editable(not confidential)
+        self._reroll.set_visible(confidential)
+        self._source.set_description(CREATE["source_hint_confidential" if confidential else "source_hint"])
+
+    def _roll_pseudonym(self) -> None:
+        self._name.set_text(pseudonym([*self._existing_ids(), self._name.get_text()]))
+
     def _submit(self) -> None:
-        draft = ProjectDraft(self._name.get_text(), self._git_url.get_text(), self._branch.get_text())
+        draft = ProjectDraft(
+            self._name.get_text(), self._git_url.get_text(), self._branch.get_text(), self._confidential.get_active()
+        )
         result = validate_project_draft(draft, self._existing_ids())
         self.dialog.set_error(None)
         self.dialog.set_field_errors(result.errors)
@@ -73,7 +96,7 @@ class CreateProjectDialog:
             return
         self.dialog.set_busy(True)
         self._ctx.call(
-            lambda client: client.create_project(result.name, result.git_url, result.branch),
+            lambda client: client.create_project(result.name, result.git_url, result.branch, result.confidential),
             self._created,
             lambda error: self._failed(error, result.project_id),
             lambda: self.dialog.set_busy(False),

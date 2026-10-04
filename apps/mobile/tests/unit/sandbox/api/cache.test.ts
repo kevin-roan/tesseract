@@ -137,6 +137,19 @@ describe("applyServerEvent", () => {
     expect(client.getQueryState(sandboxKeys.projectGit(SID, sampleProject.id))?.isInvalidated).toBe(true);
   });
 
+  it("drops a deleted project from the list and its detail queries", () => {
+    const client = createTestQueryClient();
+    client.setQueryData(sandboxKeys.projects(SID), [sampleProject]);
+    client.setQueryData(sandboxKeys.project(SID, sampleProject.id), sampleProject);
+    client.setQueryData(sandboxKeys.projectGit(SID, sampleProject.id), { branch: "main", ahead: 0, behind: 0, files: [], log: [] });
+
+    applyServerEvent(client, SID, { type: "project.deleted", id: sampleProject.id });
+
+    expect(client.getQueryData(sandboxKeys.projects(SID))).toEqual([]);
+    expect(client.getQueryData(sandboxKeys.project(SID, sampleProject.id))).toBeUndefined();
+    expect(client.getQueryData(sandboxKeys.projectGit(SID, sampleProject.id))).toBeUndefined();
+  });
+
   it("keeps the latest agent status events first", () => {
     const client = createTestQueryClient();
     const second: StatusEvent = { ...sampleStatusEvent, status: "done", message: "Installer ready" };
@@ -162,10 +175,23 @@ describe("applyServerEvent", () => {
       [sampleSyncRequest.id, "applied"],
     ]);
     expect(client.getQueryData(sandboxKeys.syncRequests(SID, "notes"))).toEqual([]);
+    expect(client.getQueryState(sandboxKeys.syncChanges(SID, projectId))?.isInvalidated).toBe(false);
+
+    applyServerEvent(client, SID, { type: "sync.updated", request: { ...pending, status: "applied" } });
+    await Promise.resolve();
+    expect(client.getQueryState(sandboxKeys.syncChanges(SID, projectId))?.isInvalidated).toBe(true);
+  });
+
+  it("refreshes a project's changes and requests on sync.changed", async () => {
+    const client = createTestQueryClient();
+    const projectId = sampleSyncRequest.projectId;
+    client.setQueryData(sandboxKeys.syncRequests(SID, projectId), [sampleSyncRequest]);
+    client.setQueryData(sandboxKeys.syncChanges(SID, projectId), sampleSyncChanges);
 
     applyServerEvent(client, SID, { type: "sync.changed", projectId });
     await Promise.resolve();
     expect(client.getQueryState(sandboxKeys.syncChanges(SID, projectId))?.isInvalidated).toBe(true);
+    expect(client.getQueryState(sandboxKeys.syncRequests(SID, projectId))?.isInvalidated).toBe(true);
   });
 
   it("ignores pings and hellos", () => {

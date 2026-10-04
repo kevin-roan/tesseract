@@ -19,7 +19,7 @@ export default function createStyles(theme: Theme) {
     subtitle: {
       textAlign: "center",
     },
-    orb: {
+    mark: {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",

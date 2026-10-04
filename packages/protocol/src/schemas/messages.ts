@@ -64,6 +64,8 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
   /** Runs removed by `POST /v1/agent/runs/delete`. */
   z.object({ type: z.literal("agent.deleted"), ids: z.array(AgentRunIdSchema) }),
   z.object({ type: z.literal("project.updated"), project: ProjectSchema }),
+  /** The project was moved out of the sandbox by `DELETE /v1/projects/:id`. */
+  z.object({ type: z.literal("project.deleted"), id: ProjectIdSchema }),
   /** An item was added, bumped or read; `item` is absent after a mark-read. */
   z.object({ type: z.literal("inbox.updated"), item: InboxItemSchema.optional(), ...InboxCountsSchema.shape }),
   z.object({ type: z.literal("stt.updated"), stt: SttStatusSchema }),

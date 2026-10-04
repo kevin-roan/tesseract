@@ -31,11 +31,11 @@ const SeriesReadout = ({ title, total, items, live = false }: SeriesReadoutProps
   return (
     <View style={styles.readout} accessibilityLiveRegion={live ? "polite" : "none"}>
       <View style={styles.head}>
-        <ThemedText variant="label" color="textSecondary" numberOfLines={1}>
+        <ThemedText variant="caption" color="textTertiary" numberOfLines={1} style={styles.title}>
           {title}
         </ThemedText>
         {total ? (
-          <ThemedText variant="bodyStrong" style={styles.value}>
+          <ThemedText variant="h4" style={styles.value}>
             {total}
           </ThemedText>
         ) : null}
@@ -48,7 +48,7 @@ const SeriesReadout = ({ title, total, items, live = false }: SeriesReadoutProps
               <ThemedText variant="label" style={styles.value}>
                 {item.value}
               </ThemedText>
-              <ThemedText variant="caption" color="textSecondary">
+              <ThemedText variant="caption" color="textTertiary">
                 {item.label}
               </ThemedText>
             </View>

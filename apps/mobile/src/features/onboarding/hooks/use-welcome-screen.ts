@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 
-import { ONBOARDING_LABELS, ONBOARDING_SLIDES } from "../utils/content";
+import { BRAND_MARK, ONBOARDING_LABELS, ONBOARDING_SLIDES } from "../utils/content";
 import { useOnboardingNavigation } from "./use-onboarding-navigation";
 import { useOnboardingPager } from "./use-onboarding-pager";
 
@@ -16,6 +16,7 @@ export function useWelcomeScreen() {
   return {
     slides: ONBOARDING_SLIDES,
     labels: ONBOARDING_LABELS,
+    brandMark: BRAND_MARK,
     pager,
     advance,
     skip: nav.setup,

@@ -1,18 +1,18 @@
 import { act, fireEvent, render, renderHook, screen } from "@testing-library/react-native";
 import type { NativeScrollEvent, NativeSyntheticEvent } from "react-native";
-import { useSharedValue } from "react-native-reanimated";
-import { CubeIcon } from "phosphor-react-native";
+import { useSharedValue, type SharedValue } from "react-native-reanimated";
 
 import SetupScreen from "@/app/(onboarding)/setup";
 import WelcomeScreen from "@/app/(onboarding)/welcome";
-import HeroOrb from "@/features/onboarding/components/hero-orb";
+import BarStrip from "@/components/bar-strip";
+import CellMatrix from "@/components/cell-matrix";
 import OnboardingSlide from "@/features/onboarding/components/onboarding-slide";
 import PageDots from "@/features/onboarding/components/page-dots";
 import SetupStep from "@/features/onboarding/components/setup-step";
 import { useOnboardingPager } from "@/features/onboarding/hooks/use-onboarding-pager";
 import { useSetupScreen } from "@/features/onboarding/hooks/use-setup-screen";
 import { useWelcomeScreen } from "@/features/onboarding/hooks/use-welcome-screen";
-import { ONBOARDING_LABELS, ONBOARDING_SLIDES, SETUP_STEPS } from "@/features/onboarding/utils/content";
+import { ONBOARDING_LABELS, ONBOARDING_SLIDES, SETUP_STEPS, formatPage } from "@/features/onboarding/utils/content";
 
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: jest.fn(() => true) };
 
@@ -20,6 +20,7 @@ jest.mock("expo-router", () => ({
   get router() {
     return mockRouter;
   },
+  useIsFocused: () => true,
 }));
 
 const settle = (x: number) => ({ nativeEvent: { contentOffset: { x, y: 0 } } }) as NativeSyntheticEvent<NativeScrollEvent>;
@@ -118,6 +119,11 @@ function SlideHarness() {
   );
 }
 
+function SlideAt({ position }: { position: number }) {
+  const progress = useSharedValue(position);
+  return <OnboardingSlide slide={ONBOARDING_SLIDES[position]} position={position} progress={progress} width={390} />;
+}
+
 describe("onboarding components", () => {
   it("renders a slide with its copy and the page dots", async () => {
     await render(<SlideHarness />);
@@ -126,6 +132,7 @@ describe("onboarding components", () => {
     expect(screen.getByText(slide.title)).toBeOnTheScreen();
     expect(screen.getByText(slide.message)).toBeOnTheScreen();
     expect(screen.getByLabelText("3 pages")).toBeOnTheScreen();
+    expect(screen.getByText(formatPage(1, 3))).toBeOnTheScreen();
   });
 
   it("renders a setup step with its number and command", async () => {
@@ -144,9 +151,36 @@ describe("onboarding components", () => {
     expect(screen.queryByText(/^\$ /)).toBeNull();
   });
 
-  it("renders the hero orb", async () => {
-    const { toJSON } = await render(<HeroOrb icon={CubeIcon} />);
+  it("renders every slide's dashboard panel", async () => {
+    for (const [position, slide] of ONBOARDING_SLIDES.entries()) {
+      await render(<SlideAt position={position} />);
+      const hidden = { includeHiddenElements: true };
+      expect(screen.queryByText(slide.panel.title)).toBeNull();
+      expect(screen.getByText(slide.panel.title, hidden)).toBeOnTheScreen();
+      for (const stat of slide.panel.stats) expect(screen.getByText(stat.value, hidden)).toBeOnTheScreen();
+      for (const tick of slide.panel.axis) expect(screen.getByText(tick, hidden)).toBeOnTheScreen();
+    }
+  });
+
+  it("hides slides that are not current from accessibility", async () => {
+    const progress = { value: 0 } as SharedValue<number>;
+    await render(<OnboardingSlide slide={ONBOARDING_SLIDES[1]} position={1} progress={progress} width={390} active={false} />);
+    expect(screen.queryByText(ONBOARDING_SLIDES[1].title)).toBeNull();
+    expect(screen.getByText(ONBOARDING_SLIDES[1].title, { includeHiddenElements: true })).toBeOnTheScreen();
+  });
+
+  it("renders the matrix and bar visuals", async () => {
+    const { toJSON } = await render(
+      <>
+        <CellMatrix levels={[[0, 1], [2, 3]]} live={[[1, 1]]} shape="dot" />
+        <BarStrip values={[0.2, 0.8, 0.5]} emphasis={0.5} stream />
+      </>,
+    );
     expect(toJSON()).toBeTruthy();
+  });
+
+  it("formats the page counter", () => {
+    expect(formatPage(1, 3)).toBe("01 / 03");
   });
 });
 

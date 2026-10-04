@@ -118,6 +118,13 @@ EOF
       config --format json > "${rendered}/${variant}.json" \
       || die "sandbox --mode ${mode} ${flags[*]} config failed"
   done
+  mkdir -p "${work}/claude-work" "${work}/claude-other"
+  env -i PATH="${PATH}" HOME="${HOME}" XDG_STATE_HOME="${work}/state" ${DOCKER_HOST:+DOCKER_HOST="${DOCKER_HOST}"} \
+    ${DOCKER_CONFIG:+DOCKER_CONFIG="${DOCKER_CONFIG}"} ${DOCKER_CONTEXT:+DOCKER_CONTEXT="${DOCKER_CONTEXT}"} \
+    THEONE_HOST_CLAUDE_ACCOUNTS="work=${work}/claude-work,other=${work}/claude-other missing=${work}/claude-missing" \
+    "${REPO_ROOT}/infra/scripts/sandbox" --env-file "${env_file}" --mode local config --format json \
+    > "${rendered}/local-claude-accounts.json" 2> /dev/null \
+    || die "sandbox --mode local config with THEONE_HOST_CLAUDE_ACCOUNTS failed"
 }
 
 mounts() {

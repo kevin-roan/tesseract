@@ -219,6 +219,22 @@ row() {
   assert_line "$(row claude-auth PASS "logged in (${HOME}/.claude/.credentials.json)")"
 }
 
+@test "claude-auth: every extra account in THEONE_CLAUDE_ACCOUNTS is checked on its own mount" {
+  mkdir -p "${HOME}/.claude-work" "${HOME}/.claude-personal"
+  echo '{"claudeAiOauth":{"accessToken":"x"}}' > "${HOME}/.claude-work/.credentials.json"
+  echo '{}' > "${HOME}/.claude-personal/.credentials.json"
+  THEONE_CLAUDE_ACCOUNTS=work,personal,gone,Bad run "${DOCTOR}"
+  assert_success
+  assert_line "$(row claude-auth PASS "logged in (${HOME}/.claude/.credentials.json)")"
+  assert_line "$(row claude-auth:work PASS "logged in (${HOME}/.claude-work/.credentials.json)")"
+  assert_line "$(row claude-auth:personal WARN "not authenticated: log in with 'CLAUDE_CONFIG_DIR=~/.claude-personal claude' (Claude Max) on the host")"
+  assert_line "$(row claude-auth:gone WARN "${HOME}/.claude-gone is not mounted (THEONE_HOST_CLAUDE_ACCOUNTS on the host)")"
+  assert_line "$(row claude-auth:Bad WARN "invalid account name in THEONE_CLAUDE_ACCOUNTS")"
+
+  run "${DOCTOR}"
+  refute_output --partial "claude-auth:"
+}
+
 @test "android: images without the SDK skip java and adb" {
   run "${DOCTOR}"
   assert_success

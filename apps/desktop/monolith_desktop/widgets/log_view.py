@@ -4,11 +4,11 @@ from typing import Any
 from gi.repository import GLib, Gtk
 
 from ..theme.manager import theme
-from ..util.text import clean_log_text
+from ..util.text import clean_log_text, log_line_kind
 from .buttons import IconButton
 from .text import Text
 
-STREAM_COLORS: Mapping[str, str] = {"stdout": "text", "stderr": "danger", "system": "textTertiary"}
+STREAM_COLORS: Mapping[str, str] = {"stdout": "text", "stderr": "textSecondary", "system": "textTertiary", "error": "danger"}
 DEFAULT_MAX_LINES = 5000
 FOLLOW_THRESHOLD_PX = 24
 
@@ -87,7 +87,7 @@ class LogView(Gtk.Overlay):
                     continue
                 self._last_seq = seq
             text = clean_log_text(str(line.get("text", "")))
-            stream = line.get("stream", "stdout")
+            stream = log_line_kind(str(line.get("stream", "stdout")), text)
             prefix = "\n" if self._count else ""
             self._buffer.insert_with_tags(self._buffer.get_end_iter(), prefix + text, self._tags.get(stream, self._tags["stdout"]))
             self._count += 1

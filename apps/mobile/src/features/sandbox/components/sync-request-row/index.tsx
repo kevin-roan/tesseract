@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { ActivityIndicator, View } from "react-native";
 
 import ActionButton from "@/components/action-button";
+import MotionItem from "@/components/motion-item";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { ToneColors } from "@/lib/tone";
@@ -21,13 +22,18 @@ const SyncRequestRow = ({ view, onCancel, cancelling = false, testID }: SyncRequ
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <View style={styles.row} testID={testID}>
+    <MotionItem style={styles.row} testID={testID}>
       <View style={styles.header}>
+        <View
+          style={[styles.dot, { backgroundColor: theme.colors[ToneColors[view.tone].foreground] }]}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
         <View style={styles.body}>
           <ThemedText variant="body" numberOfLines={1}>
             {view.title}
           </ThemedText>
-          <ThemedText variant="bodySmall" color={ToneColors[view.tone].foreground}>
+          <ThemedText variant="caption" color="textSecondary">
             {view.status}
           </ThemedText>
         </View>
@@ -44,18 +50,23 @@ const SyncRequestRow = ({ view, onCancel, cancelling = false, testID }: SyncRequ
         ) : null}
       </View>
       {view.conflicts.length > 0 ? (
-        <View style={styles.conflicts}>
+        <MotionItem style={styles.conflicts}>
           <ThemedText variant="caption" color="textSecondary">
-            Changed on the host since the push:
+            {view.conflictsLabel}
           </ThemedText>
-          {view.conflicts.map((path) => (
-            <ThemedText key={path} variant="code" color="danger" numberOfLines={1} ellipsizeMode="head">
-              {path}
-            </ThemedText>
-          ))}
-        </View>
+          <View style={styles.tree}>
+            {view.conflicts.map((path) => (
+              <View key={path} style={styles.leaf}>
+                <View style={styles.branch} />
+                <ThemedText variant="code" color="danger" numberOfLines={1} ellipsizeMode="head" style={styles.path}>
+                  {path}
+                </ThemedText>
+              </View>
+            ))}
+          </View>
+        </MotionItem>
       ) : null}
-    </View>
+    </MotionItem>
   );
 };
 

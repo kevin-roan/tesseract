@@ -1,11 +1,11 @@
 import { useMemo } from "react";
-import { Pressable } from "react-native";
 import type { Icon } from "phosphor-react-native";
 
+import PressableScale from "@/components/pressable-scale";
 import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { IconSize, type SurfaceTone } from "@/theme";
+import { IconSize, MaxFontSizeMultiplier, type SurfaceTone } from "@/theme";
 
 import createStyles from "./styles";
 
@@ -25,8 +25,14 @@ const ActionCard = ({ icon: IconComponent, label, tone = "neutral", onPress }: A
 
   const card = (
     <Surface tone={tone} style={styles.card}>
-      <IconComponent size={IconSize.lg} color={theme.colors.text} />
-      <ThemedText variant="caption" color="textSecondary" style={styles.label} numberOfLines={1}>
+      <IconComponent size={IconSize.lg} color={theme.colors.text} weight="light" />
+      <ThemedText
+        variant="caption"
+        color="textSecondary"
+        style={styles.label}
+        numberOfLines={1}
+        maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+      >
         {label}
       </ThemedText>
     </Surface>
@@ -35,14 +41,9 @@ const ActionCard = ({ icon: IconComponent, label, tone = "neutral", onPress }: A
   if (!onPress) return card;
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
-    >
+    <PressableScale accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.pressable}>
       {card}
-    </Pressable>
+    </PressableScale>
   );
 };
 

@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import { Pressable } from "react-native";
 import { CaretDownIcon, type Icon } from "phosphor-react-native";
 
+import PressableScale from "@/components/pressable-scale";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { HitSlop, IconSize, MaxFontSizeMultiplier } from "@/theme";
 
+import { useChipSelection } from "./hooks/use-chip-selection";
 import createStyles from "./styles";
 
 export type ChipProps = {
@@ -23,9 +24,11 @@ const Chip = ({ label, selected = false, icon: IconComponent, onPress, onLongPre
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const ghost = variant === "ghost";
+  const selection = useChipSelection(theme, selected, !ghost);
 
   return (
-    <Pressable
+    <PressableScale
+      depth="control"
       accessibilityRole="button"
       accessibilityState={{ selected, disabled: !!disabled }}
       accessibilityLabel={label}
@@ -33,13 +36,13 @@ const Chip = ({ label, selected = false, icon: IconComponent, onPress, onLongPre
       disabled={disabled}
       onPress={onPress}
       onLongPress={onLongPress}
-      style={({ pressed }) => [styles.chip, selected && styles.selected, ghost && styles.ghost, pressed && styles.pressed, disabled && styles.disabled]}
+      style={[styles.chip, ghost ? styles.ghost : selection, disabled && styles.disabled]}
     >
       {IconComponent ? (
         <IconComponent
           size={IconSize.sm}
           color={selected ? theme.colors.text : theme.colors.textSecondary}
-          weight={selected ? "fill" : "regular"}
+          weight={selected ? "fill" : theme.look === "graphite" ? "light" : "regular"}
         />
       ) : null}
       <ThemedText
@@ -51,8 +54,8 @@ const Chip = ({ label, selected = false, icon: IconComponent, onPress, onLongPre
       >
         {label}
       </ThemedText>
-      {ghost ? <CaretDownIcon size={IconSize.xs} color={theme.colors.textSecondary} weight="bold" /> : null}
-    </Pressable>
+      {ghost ? <CaretDownIcon size={IconSize.xs} color={theme.colors.textSecondary} weight="regular" /> : null}
+    </PressableScale>
   );
 };
 

@@ -25,6 +25,11 @@ GRADIENTS = MappingProxyType({
         "brand": Gradient((P.PERIWINKLE[400], P.PERIWINKLE[500], P.PERIWINKLE[600]), (0, 0.55, 1), *HORIZONTAL),
         "scrim": Gradient(("rgba(0, 0, 0, 0)", "rgba(0, 0, 0, 0.85)", P.BLACK), (0, 0.6, 1), *VERTICAL),
     }),
+    "graphite": MappingProxyType({
+        "brand": Gradient((P.GRAPHITE[100], P.GRAPHITE[100]), (0, 1), *HORIZONTAL),
+        "scrim": Gradient(("rgba(13, 13, 13, 0)", "rgba(13, 13, 13, 0.85)", P.GRAPHITE[950]), (0, 0.6, 1), *VERTICAL),
+        "wash": Gradient((P.CLAY[900], P.GRAPHITE[950], P.GRAPHITE[950]), (0, 0.45, 1), *VERTICAL),
+    }),
 })
 
 

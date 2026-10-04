@@ -155,7 +155,7 @@ class LogFollower:
 
     def _on_state(self, state: str) -> None:
         if not self._ended:
-            self._panel.set_status(*log_status(state))
+            self._panel.set_status(*log_status(state), live=state == "open")
 
     def _on_close(self, _code: int, will_reconnect: bool) -> None:
         if will_reconnect or self._ended or self._target is None:

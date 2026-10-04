@@ -1,11 +1,13 @@
 import { useMemo, type ReactNode } from "react";
 import { ActivityIndicator, View } from "react-native";
+import Animated from "react-native-reanimated";
 import type { Icon } from "phosphor-react-native";
 
 import ActionButton from "@/components/action-button";
 import SectionHeader, { type SectionHeaderProps } from "@/components/section-header";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { useLayoutMotion } from "@/hooks/use-layout-motion";
 
 import createStyles from "./styles";
 
@@ -37,6 +39,7 @@ const Section = ({
 }: SectionProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const motion = useLayoutMotion();
 
   return (
     <View style={styles.section} testID={testID}>
@@ -49,7 +52,7 @@ const Section = ({
           />
         </View>
       ) : isEmpty && emptyLabel ? (
-        <View style={styles.empty}>
+        <Animated.View entering={motion.fadeIn} style={styles.empty}>
           <ThemedText variant="bodySmall" color="textSecondary">
             {emptyLabel}
           </ThemedText>
@@ -62,7 +65,7 @@ const Section = ({
               size="sm"
             />
           ) : null}
-        </View>
+        </Animated.View>
       ) : (
         children
       )}

@@ -1,9 +1,12 @@
 import { StyleSheet } from "react-native";
 
-import { ControlHeight, type Theme } from "@/theme";
+import { squareButtonLook } from "@/components/icon-button/styles";
+import { ControlHeight, Opacity, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   const button = ControlHeight.md;
+  const graphite = theme.look === "graphite";
+  const square = squareButtonLook(theme);
 
   return StyleSheet.create({
     bar: {
@@ -11,7 +14,7 @@ export default function createStyles(theme: Theme) {
       alignItems: "center",
       gap: theme.spacing.xxs,
       padding: theme.spacing.xs,
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.pill,
     },
     titles: {
       flex: 1,
@@ -23,21 +26,22 @@ export default function createStyles(theme: Theme) {
       alignItems: "center",
       gap: theme.spacing.sm,
     },
+    title: {
+      flexShrink: 1,
+    },
     button: {
       width: button,
       height: button,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: theme.radius.full,
+      ...(graphite ? square.frame : { borderRadius: theme.radius.full }),
     },
     selected: {
       backgroundColor: theme.colors.backgroundSelected,
     },
-    pressed: {
-      backgroundColor: theme.colors.backgroundElement,
-    },
+    pressed: graphite ? square.pressed : { backgroundColor: theme.colors.backgroundElement },
     disabled: {
-      opacity: 0.5,
+      opacity: Opacity.disabled,
     },
   });
 }

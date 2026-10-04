@@ -1,13 +1,14 @@
 from gi.repository import Adw, Gtk
 
 from ..api.tasks import Task, run_async
-from ..api.types import ClaudeAuthStatus
+from ..api.types import ClaudeAccountList, ClaudeAuthStatus
 from ..claude import model
-from ..claude.host import HostClaudeState, read_host_state
+from ..claude.host import HostClaudeState, read_host_states
 from ..services.connection_view import connection_label
 from ..store import ConnectionState
 from ..strings import CLAUDE as S
-from ..widgets import PreferenceRows
+from ..widgets import PreferenceRows, RadioRows
+from ..theme.icons import resolve_icon
 from .base import PreferencesPage
 
 
@@ -16,18 +17,19 @@ class ClaudePreferences(PreferencesPage):
     order = 10
 
     def __init__(self, ctx, dialog) -> None:
-        super().__init__(ctx, dialog, title=S["title"], icon_name=S["icon"])
+        super().__init__(ctx, dialog, title=S["title"], icon=S["icon"])
         self._status: ClaudeAuthStatus | None = None
+        self._accounts: ClaudeAccountList | None = None
+        self._host_accounts: dict[str, tuple[Adw.ExpanderRow, PreferenceRows]] = {}
+        self._pending = False
         self._tasks: list[Task] = []
         self._was_online = False
 
-        refresh = Gtk.Button(icon_name="view-refresh-symbolic", tooltip_text=S["refresh"], valign=Gtk.Align.CENTER)
+        refresh = Gtk.Button(icon_name=resolve_icon("refresh"), tooltip_text=S["refresh"], valign=Gtk.Align.CENTER)
         refresh.add_css_class("flat")
         refresh.connect("clicked", lambda *_: self._refresh())
 
-        self._host_group = Adw.PreferencesGroup(title=S["host_group"])
-        self._host_rows = PreferenceRows(self._host_group)
-        self._host_rows.set_rows([(S["login"], S["loading"])])
+        self._host_group = Adw.PreferencesGroup(title=S["host_group"], description=S["loading"])
         self.add(self._host_group)
 
         self._sandbox_group = Adw.PreferencesGroup(
@@ -35,6 +37,11 @@ class ClaudePreferences(PreferencesPage):
         )
         self._sandbox_rows = PreferenceRows(self._sandbox_group, selectable=True)
         self.add(self._sandbox_group)
+
+        self._accounts_group = Adw.PreferencesGroup(title=S["accounts_group"], description=S["accounts_description"])
+        self._accounts_message = PreferenceRows(self._accounts_group)
+        self._account_rows = RadioRows(self._accounts_group, self._on_default_selected)
+        self.add(self._accounts_group)
 
         self.connect("destroy", lambda *_: self._cancel_tasks())
         self._load_host()
@@ -57,11 +64,22 @@ class ClaudePreferences(PreferencesPage):
         self._load_sandbox()
 
     def _load_host(self) -> None:
-        self._track(run_async(read_host_state, on_success=self._render_host))
+        self._track(run_async(read_host_states, on_success=self._render_host))
 
-    def _render_host(self, state: HostClaudeState) -> None:
-        self._host_group.set_description(S["host_description"].format(path=state.config_dir))
-        self._host_rows.set_rows(model.host_rows(state))
+    def _render_host(self, states: list[HostClaudeState]) -> None:
+        self._host_group.set_description(S["host_description"])
+        ids = [state.account_id for state in states]
+        for account_id in [account_id for account_id in self._host_accounts if account_id not in ids]:
+            self._host_group.remove(self._host_accounts.pop(account_id)[0])
+        for state in states:
+            if state.account_id not in self._host_accounts:
+                expander = Adw.ExpanderRow(use_markup=False, expanded=not self._host_accounts)
+                self._host_group.add(expander)
+                self._host_accounts[state.account_id] = (expander, PreferenceRows(expander))
+            expander, rows = self._host_accounts[state.account_id]
+            expander.set_title(state.account_id)
+            expander.set_subtitle(model.host_account_subtitle(state))
+            rows.set_rows(model.host_rows(state))
 
     def _render_connection(self, state: ConnectionState) -> None:
         was_online, self._was_online = self._was_online, state.online
@@ -69,13 +87,24 @@ class ClaudePreferences(PreferencesPage):
             if not was_online:
                 self._load_sandbox()
         else:
-            self._render_sandbox(None, connection_label(state) + (f" — {state.error_message}" if state.error_message else ""))
+            message = connection_label(state) + (f" — {state.error_message}" if state.error_message else "")
+            self._render_sandbox(None, message)
+            self._render_accounts(None, message)
 
     def _load_sandbox(self) -> None:
         if not self._online:
             return
         if self._status is None:
             self._sandbox_rows.set_rows([(S["status"], S["loading"])])
+        if self._accounts is None:
+            self._accounts_message.set_rows([(S["status"], S["loading"])])
+        self._track(
+            self.ctx.call(
+                lambda client: client.claude_accounts(),
+                on_success=self._render_accounts,
+                on_error=lambda error: self._render_accounts(None, model.sandbox_error_message(error, "accounts_outdated")),
+            )
+        )
         self._track(
             self.ctx.call(
                 lambda client: client.claude_auth(),
@@ -92,6 +121,44 @@ class ClaudePreferences(PreferencesPage):
         else:
             self._sandbox_group.set_description(f"{S['sandbox_description']} · {status['configDir']}")
             self._sandbox_rows.set_rows(model.sandbox_rows(status))
+
+    def _render_accounts(self, accounts: ClaudeAccountList | None, message: str | None = None) -> None:
+        self._accounts = accounts
+        if accounts is None:
+            self._accounts_message.set_rows([(S["status"], message or S["disconnected"])])
+        else:
+            self._accounts_message.set_rows([] if accounts["accounts"] else [(S["status"], S["accounts_empty"])])
+        self._account_rows.set_choices(
+            model.account_choices(accounts), accounts["defaultAccountId"] if accounts else None, self._pending
+        )
+
+    def _on_default_selected(self, account_id: str) -> None:
+        if self._accounts is None or self._accounts["defaultAccountId"] == account_id:
+            return
+        self._pending = True
+        self._render_accounts(self._accounts)
+        self._track(
+            self.ctx.call(
+                lambda client: client.set_default_claude_account(account_id),
+                on_success=self._on_default_changed,
+                on_error=self._on_default_change_failed,
+                on_done=self._on_default_change_done,
+            )
+        )
+
+    def _on_default_changed(self, accounts: ClaudeAccountList) -> None:
+        self._accounts = accounts
+        self.dialog.add_toast(Adw.Toast(title=S["default_changed"].format(id=accounts["defaultAccountId"])))
+        self._load_sandbox()
+        self.ctx.workspace.refresh()
+
+    def _on_default_change_failed(self, error: BaseException) -> None:
+        message = model.sandbox_error_message(error, "accounts_outdated")
+        self.dialog.add_toast(Adw.Toast(title=S["default_change_failed"].format(error=message), timeout=6))
+
+    def _on_default_change_done(self) -> None:
+        self._pending = False
+        self._render_accounts(self._accounts)
 
 
 PREFERENCES_PAGE = ClaudePreferences

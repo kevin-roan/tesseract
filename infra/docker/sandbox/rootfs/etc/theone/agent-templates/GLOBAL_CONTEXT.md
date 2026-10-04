@@ -22,6 +22,7 @@ Keep it short (the phone shows it) and never write secrets here.
 - Never read, list, print, copy or edit anything under `/workspace/.agent/controller/` (token, database, logs).
 - `theone-controller api` redacts the token and the VNC password; never print them from anywhere else (`/home/dev/.vnc/`, `/run/theone/`).
 - Never discard user work without explicit permission.
+- A project pushed from the user's computer (`monolith --sync` there) gets its later host changes with `monolith --get` run in the project folder; it stops on conflicts with sandbox edits, and `--force` overwrites them, so use it only when asked.
 
 ## Projects
 

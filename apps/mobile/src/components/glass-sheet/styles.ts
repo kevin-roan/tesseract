@@ -21,7 +21,10 @@ export default function createStyles(theme: Theme, bottomInset: number) {
       borderTopRightRadius: theme.radius.sheet,
       borderCurve: "continuous",
       overflow: "hidden",
-      backgroundColor: theme.colors.background,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderBottomWidth: 0,
+      borderColor: theme.colors.border,
     },
     handle: {
       alignSelf: "center",
@@ -29,7 +32,7 @@ export default function createStyles(theme: Theme, bottomInset: number) {
       height: theme.spacing.xs,
       marginTop: theme.spacing.sm,
       borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.borderStrong,
+      backgroundColor: theme.colors.backgroundSelected,
     },
     header: {
       paddingHorizontal: theme.gutter,

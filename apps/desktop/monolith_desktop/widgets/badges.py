@@ -39,9 +39,16 @@ class StatusBadge(Gtk.Box):
         self._icon.set_visible(icon is not None)
         self._dot.set_visible(icon is None)
 
-    def update(self, label: str, tone: Tone) -> None:
+    def set_live(self, live: bool) -> None:
+        if live:
+            self.add_css_class("live")
+        else:
+            self.remove_css_class("live")
+
+    def update(self, label: str, tone: Tone, live: bool = False) -> None:
         self.set_label(label)
         self.set_tone(tone)
+        self.set_live(live)
 
 
 class ConnectionDot(Gtk.Box):

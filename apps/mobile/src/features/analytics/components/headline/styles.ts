@@ -1,21 +1,28 @@
 import { StyleSheet } from "react-native";
 
-import type { Theme } from "@/theme";
+import { FontWeights, displayFor, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     headline: {
-      gap: theme.spacing.xxs,
+      gap: theme.spacing.sm,
     },
     figure: {
       flexDirection: "row",
       alignItems: "baseline",
-      gap: theme.spacing.sm,
+      flexWrap: "wrap",
+      columnGap: theme.spacing.sm,
+    },
+    value: {
+      fontFamily: displayFor(FontWeights.regular),
     },
     delta: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.spacing.xs,
+      gap: theme.spacing.xxs,
+    },
+    tabular: {
+      fontVariant: ["tabular-nums"],
     },
   });
 }

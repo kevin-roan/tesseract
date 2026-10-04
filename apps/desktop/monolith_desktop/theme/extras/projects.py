@@ -1,6 +1,6 @@
 from ..css import css_var
 from ..semantic import SchemeName
-from ..tokens import BORDER_WIDTH, RADIUS, SPACING
+from ..tokens import BORDER_WIDTH, SPACING, radius_for
 
 
 def _px(value: float) -> str:
@@ -8,13 +8,13 @@ def _px(value: float) -> str:
 
 
 def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
-    s, r = SPACING, RADIUS
+    s, r = SPACING, radius_for(scheme)
     hairline = f"{_px(BORDER_WIDTH['thin'])} solid {css_var('border')}"
     return {
         "list.to-record-list": {
             "background-color": css_var("surfaceElevated"),
             "border": hairline,
-            "border-radius": _px(r["lg"]),
+            "border-radius": _px(r["card"]),
             "padding": "0",
         },
         "list.to-record-list > row": {
@@ -22,11 +22,11 @@ def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
             "border-bottom": hairline,
             "border-radius": "0",
         },
-        "list.to-record-list > row:first-child": {"border-top-left-radius": _px(r["lg"]), "border-top-right-radius": _px(r["lg"])},
+        "list.to-record-list > row:first-child": {"border-top-left-radius": _px(r["card"]), "border-top-right-radius": _px(r["card"])},
         "list.to-record-list > row:last-child": {
             "border-bottom": "none",
-            "border-bottom-left-radius": _px(r["lg"]),
-            "border-bottom-right-radius": _px(r["lg"]),
+            "border-bottom-left-radius": _px(r["card"]),
+            "border-bottom-right-radius": _px(r["card"]),
         },
         "list.to-record-list > row:hover": {"background-color": css_var("backgroundSelected")},
         "list.to-record-list > row:not(.activatable):hover": {"background-color": "transparent"},
@@ -46,16 +46,16 @@ def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
         ".to-project-surface .to-icon-badge": {"background-color": css_var("accentMuted"), "color": css_var("accentStrong")},
         "button.to-pressable:hover > .to-project-surface": {"opacity": "1", "border-color": css_var("borderStrong")},
         "button.to-pressable:focus-visible > .to-project-surface": {"border-color": css_var("focusRing")},
-        "button.to-project-ask": {"border-radius": _px(r["full"]), "min-width": _px(34), "min-height": _px(34)},
+        "button.to-project-ask": {"border-radius": _px(r["pill"]), "min-width": _px(34), "min-height": _px(34)},
         "button.to-project-ask:hover": {"background-color": css_var("accentMuted"), "color": css_var("accentStrong")},
         ".to-project-tag": {
             "padding": f"{_px(s['xxs'])} {_px(s['sm'])}",
-            "border-radius": _px(r["full"]),
+            "border-radius": _px(r["sm"]),
             "border": hairline,
         },
         ".to-project-commit": {"padding-top": _px(s["xxs"])},
         ".to-project-tabs": {"margin-top": _px(s["xs"])},
-        "entry.to-project-search, .to-project-search": {"min-height": _px(38), "border-radius": _px(r["full"])},
+        "entry.to-project-search, .to-project-search": {"min-height": _px(38), "border-radius": _px(r["pill"])},
         ".to-form-body": {"padding": f"{_px(s['base'])} {_px(s['xl'])} {_px(s['xl'])} {_px(s['xl'])}"},
         ".to-form-actions": {"padding": f"{_px(s['md'])} {_px(s['xl'])}"},
         ".to-form-error": {"margin-left": _px(s["xs"])},

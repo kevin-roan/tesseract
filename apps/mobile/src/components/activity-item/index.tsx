@@ -1,8 +1,9 @@
 import { Fragment, useMemo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 
 import Avatar from "@/components/avatar";
 import { Glass } from "@/components/glass";
+import PressableScale from "@/components/pressable-scale";
 import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -76,7 +77,7 @@ const ActivityItem = ({
           </ThemedText>
         </View>
 
-        <ThemedText variant="caption" color="textTertiary" numberOfLines={1} style={styles.time}>
+        <ThemedText variant="caption" color="textTertiary" numberOfLines={1} style={[styles.time, styles.figure]}>
           {timeAgo}
         </ThemedText>
       </View>
@@ -85,10 +86,10 @@ const ActivityItem = ({
         <View style={styles.metrics}>
           {metrics.map((metric) => (
             <View key={metric.id} style={styles.metric}>
-              <ThemedText variant="overline" color="textTertiary" numberOfLines={1}>
+              <ThemedText variant="caption" color="textTertiary" numberOfLines={1}>
                 {metric.label}
               </ThemedText>
-              <ThemedText variant="label" numberOfLines={1}>
+              <ThemedText variant="label" numberOfLines={1} style={styles.figure}>
                 {metric.value}
               </ThemedText>
             </View>
@@ -101,15 +102,14 @@ const ActivityItem = ({
   if (!onPress) return <View testID={testID}>{card}</View>;
 
   return (
-    <Pressable
+    <PressableScale
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={`${actor} ${action} ${target}, ${timeAgo}`}
       onPress={onPress}
-      style={({ pressed }) => pressed && styles.pressed}
     >
       {card}
-    </Pressable>
+    </PressableScale>
   );
 };
 

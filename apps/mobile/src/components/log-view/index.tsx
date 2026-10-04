@@ -1,11 +1,13 @@
 import { memo, useCallback, useMemo, useRef } from "react";
-import { FlatList, Pressable, ScrollView, View, type ListRenderItem, type StyleProp, type ViewStyle } from "react-native";
+import { FlatList, ScrollView, View, type ListRenderItem, type StyleProp, type ViewStyle } from "react-native";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { ArrowDownIcon } from "phosphor-react-native";
 
+import PressableScale from "@/components/pressable-scale";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useStickToBottom } from "@/hooks/use-stick-to-bottom";
-import { HitSlop, IconSize } from "@/theme";
+import { Durations, HitSlop, IconSize } from "@/theme";
 
 import { INLINE_LINE_LIMIT, StreamColors, cleanLogText, type LogViewLine } from "./lines";
 import createStyles from "./styles";
@@ -74,15 +76,18 @@ const LogView = ({ lines, emptyLabel = "No output yet.", inline = false, style }
         />
       )}
       {!following && lines.length > 0 ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Jump to latest output"
-          hitSlop={HitSlop.md}
-          onPress={jumpToEnd}
-          style={({ pressed }) => [styles.jump, pressed && styles.pressed]}
-        >
-          <ArrowDownIcon size={IconSize.sm} color={theme.colors.textOnAccent} weight="bold" />
-        </Pressable>
+        <Animated.View entering={FadeIn.duration(Durations.fast)} exiting={FadeOut.duration(Durations.fast)} style={styles.jumpSlot}>
+          <PressableScale
+            depth="control"
+            accessibilityRole="button"
+            accessibilityLabel="Jump to latest output"
+            hitSlop={HitSlop.md}
+            onPress={jumpToEnd}
+            style={styles.jump}
+          >
+            <ArrowDownIcon size={IconSize.sm} color={theme.colors.textOnAccent} weight="regular" />
+          </PressableScale>
+        </Animated.View>
       ) : null}
     </View>
   );

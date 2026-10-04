@@ -12,6 +12,7 @@ import { parseRange } from "../src/http/file-response";
 import {
   audioFileName,
   cleanTranscript,
+  GEMINI_KEY_MISSING,
   normalizeLanguage,
   selectEngine,
   STT_OFF_MESSAGE,
@@ -239,7 +240,11 @@ describe("engine selection", () => {
       url: null,
       apiKey: null,
       model: "whisper-1",
+      geminiApiKey: null,
+      geminiModel: "gemini-2.5-flash",
     });
+    expect(base({ GEMINI_API_KEY: " AIza-key ", THEONE_GEMINI_STT_MODEL: "gemini-2.5-pro" }).stt).toMatchObject({ geminiApiKey: "AIza-key", geminiModel: "gemini-2.5-pro" });
+    expect(() => base({ THEONE_GEMINI_STT_MODEL: "bad model" })).toThrow("THEONE_GEMINI_STT_MODEL");
     expect(base({ THEONE_STT_PROFILE: "performance" }).stt.profile).toBe("performance");
     expect(() => base({ THEONE_STT_PROFILE: "turbo" })).toThrow("THEONE_STT_PROFILE");
     expect(() => base({ THEONE_WHISPER_MODELS_DIR: "models" })).toThrow("THEONE_WHISPER_MODELS_DIR");
@@ -309,7 +314,7 @@ describe("transcriptions over HTTP", () => {
     const voice = await upload("voice", "audio/mp4");
     const { status, body } = await transcribe({ uploadId: voice.id, language: "en-GB" });
     expect(status).toBe(200);
-    expect(TranscriptionSchema.parse(body)).toEqual({ uploadId: voice.id, text: "Fix the login bug.", language: "english", durationMs: 2500, engine: "openai-compatible" });
+    expect(TranscriptionSchema.parse(body)).toEqual({ uploadId: voice.id, text: "Fix the login bug.", language: "english", durationMs: 2500, engine: "openai-compatible", fallbackReason: null });
     expect(requests.at(-1)).toEqual({
       url: "/openai/v1/audio/transcriptions",
       authorization: "Bearer sk-secret-key",
@@ -353,7 +358,7 @@ describe("transcriptions over HTTP", () => {
     writeFileSync(model, "hello world");
     const voice = await upload("voice.m4a", "audio/mp4");
     const auto = TranscriptionSchema.parse((await transcribe({ uploadId: voice.id })).body);
-    expect(auto).toEqual({ uploadId: voice.id, text: "hello world (lang=auto)", language: "en", durationMs: 1500, engine: "whisper.cpp" });
+    expect(auto).toEqual({ uploadId: voice.id, text: "hello world (lang=auto)", language: "en", durationMs: 1500, engine: "whisper.cpp", fallbackReason: null });
     const hinted = TranscriptionSchema.parse((await transcribe({ uploadId: voice.id, language: "de" })).body);
     expect(hinted).toMatchObject({ text: "hello world (lang=de)", language: "de" });
 
@@ -379,5 +384,129 @@ describe("transcriptions over HTTP", () => {
     const voice = await uploads.create({ name: "v.m4a", mimeType: "audio/mp4", data: b64("x") });
     const service = new TranscriptionService(config, uploads, repos, new EventHub(silentLogger), silentLogger);
     expect(await asyncCode(() => service.transcribe({ uploadId: voice.id }))).toBe("unavailable: Speech-to-text is disabled (THEONE_STT_ENGINE=none)");
+  });
+});
+
+type GeminiRequest = { url: string; key: string | null; body: { contents: Array<{ parts: Array<{ inline_data?: { mime_type: string; data: string }; text?: string }> }>; generationConfig: unknown } };
+
+describe("gemini transcriptions", () => {
+  let t: TestController;
+  let model: string;
+  let reply: () => Response = () => Response.json({});
+  const requests: GeminiRequest[] = [];
+  const geminiText = (text: string) => Response.json({ candidates: [{ content: { parts: [{ text }] } }] });
+  const sttOptions: TranscriptionOptions = {
+    fetch: async (url, init) => {
+      requests.push({ url, key: new Headers(init.headers).get("x-goog-api-key"), body: JSON.parse(String(init.body)) });
+      return reply();
+    },
+  };
+
+  beforeAll(async () => {
+    const bin = makeTempDir("gemini-bin");
+    const tools: Record<string, string> = { "whisper-cli": installFixture(bin, "fake-whisper.sh", "whisper-cli"), ffmpeg: installFixture(bin, "fake-ffmpeg.sh", "ffmpeg") };
+    sttOptions.which = (name) => tools[name] ?? null;
+    model = join(bin, "ggml-test.bin");
+    writeFileSync(model, "native words");
+    t = await startTestController({
+      env: { THEONE_WHISPER_MODEL: model, GEMINI_API_KEY: "AIza-secret", THEONE_GEMINI_STT_MODEL: "gemini-test" },
+      controller: { transcription: sttOptions },
+    });
+  });
+
+  afterAll(async () => {
+    await t.stop();
+    removeTempDirs();
+  });
+
+  async function upload(): Promise<Upload> {
+    const { body } = await t.json("POST", "/v1/uploads", { name: "voice.m4a", mimeType: "audio/mp4", data: b64("audio bytes") });
+    return UploadSchema.parse(body);
+  }
+
+  const transcribe = (body: Record<string, unknown>) => t.json("POST", "/v1/transcriptions", body);
+  const transcript = async (body: Record<string, unknown>) => TranscriptionSchema.parse((await transcribe(body)).body);
+
+  test("sends the audio inline to Gemini and returns its transcript", async () => {
+    reply = () => geminiText(" Ship the release. \n");
+    const voice = await upload();
+    expect(await transcript({ uploadId: voice.id, provider: "gemini", language: "en-US" })).toEqual({
+      uploadId: voice.id,
+      text: "Ship the release.",
+      language: "en",
+      durationMs: null,
+      engine: "gemini",
+      fallbackReason: null,
+    });
+    const request = requests.at(-1);
+    expect(request?.url).toBe("https://generativelanguage.googleapis.com/v1beta/models/gemini-test:generateContent");
+    expect(request?.key).toBe("AIza-secret");
+    expect(request?.body.generationConfig).toEqual({ temperature: 0 });
+    const parts = request?.body.contents[0]?.parts ?? [];
+    expect(parts[0]?.inline_data).toEqual({ mime_type: "audio/m4a", data: b64("audio bytes") });
+    expect(parts[1]?.text).toContain('"en"');
+  });
+
+  test("Gemini works while the native profile is off and treats empty output as no speech", async () => {
+    const voice = await upload();
+    await t.json("PUT", "/v1/stt", { profile: "off" });
+    try {
+      reply = () => geminiText("Still here");
+      expect(await transcript({ uploadId: voice.id, provider: "gemini" })).toMatchObject({ text: "Still here", engine: "gemini" });
+      reply = () => Response.json({ candidates: [{ content: { role: "model" }, finishReason: "STOP" }] });
+      const silent = await transcribe({ uploadId: voice.id, provider: "gemini" });
+      expect(silent.status).toBe(400);
+      expect(ErrorBodySchema.parse(silent.body).error.message).toBe("No speech detected");
+
+      reply = () => Response.json({ error: { code: 429, message: "Quota exceeded", status: "RESOURCE_EXHAUSTED" } }, { status: 429 });
+      const both = await transcribe({ uploadId: voice.id, provider: "gemini" });
+      expect(both.status).toBe(503);
+      expect(ErrorBodySchema.parse(both.body).error.message).toBe(
+        `Gemini quota exhausted or rate limited (HTTP 429): Quota exceeded; the native engine failed too: ${STT_OFF_MESSAGE}`,
+      );
+    } finally {
+      await t.json("PUT", "/v1/stt", { profile: "eco" });
+    }
+  });
+
+  test("falls back to the native engine with the reason when Gemini fails", async () => {
+    const voice = await upload();
+    reply = () => Response.json({ error: { code: 429, message: "Resource has been exhausted (e.g. check quota).", status: "RESOURCE_EXHAUSTED" } }, { status: 429 });
+    expect(await transcript({ uploadId: voice.id, provider: "gemini" })).toMatchObject({
+      text: "native words (lang=auto)",
+      engine: "whisper.cpp",
+      fallbackReason: "Gemini quota exhausted or rate limited (HTTP 429): Resource has been exhausted (e.g. check quota).",
+    });
+
+    reply = () => Response.json({ error: { code: 403, message: "Permission denied for key AIza-secret", status: "PERMISSION_DENIED" } }, { status: 403 });
+    expect((await transcript({ uploadId: voice.id, provider: "gemini" })).fallbackReason).toBe("Gemini rejected the API key (HTTP 403): Permission denied for key ***");
+
+    reply = () =>
+      Response.json(
+        { error: { code: 400, message: "API key not valid. Please pass a valid API key.", status: "INVALID_ARGUMENT", details: [{ reason: "API_KEY_INVALID" }] } },
+        { status: 400 },
+      );
+    expect((await transcript({ uploadId: voice.id, provider: "gemini" })).fallbackReason).toBe(
+      "Gemini rejected the API key (HTTP 400): API key not valid. Please pass a valid API key.",
+    );
+
+    reply = () => Response.json({ error: { code: 500, message: "Internal error", status: "INTERNAL" } }, { status: 500 });
+    expect((await transcript({ uploadId: voice.id, provider: "gemini" })).fallbackReason).toBe("Gemini returned HTTP 500: Internal error");
+  });
+
+  test("uses the native engine without a key or without the gemini provider", async () => {
+    const voice = await upload();
+    const calls = requests.length;
+    expect(await transcript({ uploadId: voice.id })).toMatchObject({ engine: "whisper.cpp", fallbackReason: null });
+    expect(await transcript({ uploadId: voice.id, provider: "native" })).toMatchObject({ engine: "whisper.cpp", fallbackReason: null });
+    t.config.stt.geminiApiKey = null;
+    try {
+      expect(await transcript({ uploadId: voice.id, provider: "gemini" })).toMatchObject({ engine: "whisper.cpp", fallbackReason: GEMINI_KEY_MISSING });
+      expect((await t.json("GET", "/v1/stt")).body).toMatchObject({ gemini: { configured: false, model: "gemini-test" } });
+    } finally {
+      t.config.stt.geminiApiKey = "AIza-secret";
+    }
+    expect(requests.length).toBe(calls);
+    expect((await t.json("GET", "/v1/stt")).body).toMatchObject({ gemini: { configured: true, model: "gemini-test" } });
   });
 });

@@ -6,4 +6,5 @@ export type MenuOption = {
   description?: string;
   icon?: Icon;
   badge?: string;
+  disabled?: boolean;
 };

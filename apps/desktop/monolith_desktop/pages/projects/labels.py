@@ -119,6 +119,14 @@ DETAIL = MappingProxyType({
     "dismiss": "Dismiss",
 })
 
+CLAUDE_ACCOUNT = MappingProxyType({
+    "tooltip": "Claude account for this project",
+    "default": "Default ({id})",
+    "badge": "Claude · {id}",
+    "changed": "{project} now uses the {account} Claude account",
+    "change_failed": "Couldn't change the Claude account: {error}",
+})
+
 TABS = MappingProxyType({
     "git": "Git",
     "sync": "Sync back",
@@ -214,6 +222,7 @@ CREATE = MappingProxyType({
     "details": "Project",
     "source": "Clone from",
     "source_hint": "Leave empty to create an empty project.",
+    "source_hint_confidential": "Leave empty to create an empty project. The sandbox still receives the git URL to clone it.",
     "create": "Create",
     "clone": "Clone",
     "cancel": "Cancel",
@@ -233,6 +242,13 @@ CREATE = MappingProxyType({
     "background": "Cloning continues in the background.",
     "created": "Created {name}",
     "conflict": "{root}/{id} already exists.",
+    "confidential": "Confidential",
+    "confidential_hint": "The real name stays on this computer and the sandbox only sees a pseudonym. Claude won't share artifacts and redacts names, URLs and authors.",
+    "reroll": "New pseudonym",
+})
+
+CONFIDENTIAL = MappingProxyType({
+    "badge": "Confidential",
 })
 
 VALIDATION = MappingProxyType({
@@ -267,6 +283,7 @@ SYNC = MappingProxyType({
     "error": "Couldn't read sandbox changes: {error}",
     "host_path": "Host folder",
     "pushed": "Linked",
+    "got": "Last get",
     "baseline": "Sandbox baseline",
     "changes": "Sandbox changes",
     "changes_subtitle": "{count} · {size}",
@@ -275,7 +292,10 @@ SYNC = MappingProxyType({
     "conflict_badge": "Host edit",
     "sync": "Sync to host",
     "syncing": "Syncing…",
+    "get": "Sync from host",
     "revert": "Revert last sync",
+    "discard": "Discard changes",
+    "menu": "Sync",
     "snapshots": "Snapshots",
     "snapshots_subtitle": "Taken before every sync to host; the newest 20 are kept",
     "snapshots_empty": "No syncs yet.",
@@ -293,8 +313,44 @@ SYNC = MappingProxyType({
     "revert_title": "Revert snapshot {id}?",
     "revert_body": "Puts back the {count} as they were before that sync. The sandbox is not changed.",
     "revert_confirm": "Revert",
+    "get_title": "Sync from {path}?",
+    "get_body": "Copies what changed in {path} since the last push or sync into the sandbox.",
+    "get_conflicts": "The last sync from this computer stopped because the sandbox also edited {count}. Syncing again overwrites them; copies of the sandbox versions are kept on the sandbox.\n\n{files}",
+    "get_confirm": "Sync",
+    "get_force": "Overwrite and Sync",
+    "discard_title": "Discard {count} in the sandbox?",
+    "discard_body": "Puts these files back as they were at the last sync. Added files are deleted. The host folder is not changed.\n\n{files}",
+    "discard_skipped": "\n\n{count} can't be restored by the sandbox and stay as they are.",
+    "discard_confirm": "Discard",
+    "discarded": "Discarded {count} in the sandbox",
+    "discarded_none": "Nothing was discarded",
+    "discard_unavailable": "{count} kept, the sandbox has no copy of the synced version: {files}",
+    "discard_backup": "Previous versions saved in {path}",
+    "discard_failed": "Couldn't discard the sandbox changes: {error}",
+    "dismiss": "Dismiss",
     "more": "… and {count} more",
-    "queued": "Sync requested",
+    "queued_pull": "Sync requested",
+    "queued_get": "Sync from host requested",
+    "queued_revert": "Revert requested",
+})
+
+SYNC_HINTS = MappingProxyType({
+    "pull": "Copy the sandbox changes into the host folder",
+    "get": "Copy the host folder's changes into the sandbox",
+    "revert": "Undo the last sync to host on this computer",
+    "discard": "Throw away the sandbox changes and restore the synced versions",
+})
+
+SYNC_BLOCKED = MappingProxyType({
+    "loading": "Loading the sandbox changes…",
+    "unavailable": "The sandbox changes couldn't be read",
+    "not_linked": "Not linked on this computer. Run monolith --sync in the checkout first",
+    "never_pushed": "Never pushed. Run monolith --sync in the checkout first",
+    "active": "A sync request is already in progress",
+    "nothing_to_sync": "Nothing to sync. The host folder matches the sandbox",
+    "nothing_to_discard": "Nothing to discard. The sandbox matches the last sync",
+    "not_discardable": "The sandbox has no copy of the synced versions of these files",
+    "no_snapshot": "No sync to revert",
 })
 
 SYNC_STATES = MappingProxyType({
@@ -305,6 +361,6 @@ SYNC_STATES = MappingProxyType({
     "cancelled": ("Cancelled", "neutral"),
 })
 
-SYNC_KINDS = MappingProxyType({"pull": "Sync to host", "revert": "Revert"})
+SYNC_KINDS = MappingProxyType({"pull": "Sync to host", "revert": "Revert", "get": "Sync from host"})
 
 SYNC_CODES = MappingProxyType({"added": ("A", "success"), "modified": ("M", "warning"), "deleted": ("D", "danger")})

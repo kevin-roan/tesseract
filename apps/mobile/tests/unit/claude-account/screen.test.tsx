@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { sampleClaudeAuthStatus } from "@theone/protocol/fixtures";
+import { sampleClaudeAccountList, sampleClaudeAuthStatus } from "@theone/protocol/fixtures";
 
 import ClaudeAccountScreen from "@/app/sandbox/claude";
+import { claudeAccountRows } from "@/features/claude-account/utils/accounts";
 import { claudeStatusView } from "@/features/claude-account/utils/status";
 
 const mockScreen = jest.fn();
@@ -15,6 +16,13 @@ function state(overrides: object = {}) {
     view: claudeStatusView(sampleClaudeAuthStatus),
     error: null,
     retry: jest.fn(),
+    accounts: claudeAccountRows(sampleClaudeAccountList, null),
+    accountsLoading: false,
+    accountsError: null,
+    accountsUnsupported: false,
+    retryAccounts: jest.fn(),
+    selectDefault: jest.fn(),
+    defaultError: null,
     refreshing: false,
     refresh: jest.fn(),
     ...overrides,
@@ -24,14 +32,44 @@ function state(overrides: object = {}) {
 beforeEach(() => mockScreen.mockReset());
 
 describe("ClaudeAccountScreen", () => {
-  it("shows the read-only status and where credentials come from", async () => {
+  it("lists the accounts, the primary sign-in and where credentials come from", async () => {
     mockScreen.mockReturnValue(state());
     await render(<ClaudeAccountScreen />);
 
+    expect(screen.getByText("claude-work")).toBeOnTheScreen();
+    expect(screen.getByText("Default")).toBeOnTheScreen();
     expect(screen.getByText("Signed in")).toBeOnTheScreen();
     expect(screen.getByText("OAuth token")).toBeOnTheScreen();
-    expect(screen.getByText(/host machine's ~\/\.claude folder/)).toBeOnTheScreen();
-    expect(screen.queryByText(/setup-token/)).toBeNull();
+    expect(screen.getByText(/~\/\.claude-<name>/)).toBeOnTheScreen();
+    expect(screen.getByText(/never changes the host's login/)).toBeOnTheScreen();
+  });
+
+  it("sets the default account on tap", async () => {
+    const current = state();
+    mockScreen.mockReturnValue(current);
+    await render(<ClaudeAccountScreen />);
+
+    await fireEvent.press(screen.getByTestId("claude-account-claude-work"));
+    expect(current.selectDefault).toHaveBeenCalledWith("claude-work");
+  });
+
+  it("shows a switch error and an outdated sandbox", async () => {
+    mockScreen.mockReturnValue(state({ defaultError: "boom" }));
+    await render(<ClaudeAccountScreen />);
+    expect(screen.getByText("boom")).toBeOnTheScreen();
+
+    mockScreen.mockReturnValue(state({ accounts: null, accountsUnsupported: true }));
+    await render(<ClaudeAccountScreen />);
+    expect(screen.getByText(/Update the sandbox/)).toBeOnTheScreen();
+  });
+
+  it("retries a failed account list", async () => {
+    const failed = state({ accounts: null, accountsError: "Can't reach the sandbox." });
+    mockScreen.mockReturnValue(failed);
+    await render(<ClaudeAccountScreen />);
+    expect(screen.getByText("Couldn't load the Claude accounts")).toBeOnTheScreen();
+    await fireEvent.press(screen.getAllByText("Try again")[0]);
+    expect(failed.retryAccounts).toHaveBeenCalled();
   });
 
   it("shows loading and error states", async () => {

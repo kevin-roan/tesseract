@@ -12,7 +12,7 @@ from monolith_desktop.util.format import (
     ratio,
     split_bytes,
 )
-from monolith_desktop.util.text import clean_log_text, initials_of
+from monolith_desktop.util.text import clean_log_text, initials_of, log_line_kind
 
 NOW = 1_800_000_000.0
 
@@ -82,3 +82,14 @@ def test_text_helpers():
     assert initials_of("Ada Lovelace") == "AL"
     assert initials_of("  theone  ") == "T"
     assert initials_of("") == ""
+
+
+def test_stderr_is_muted_unless_it_reads_as_an_error():
+    assert log_line_kind("stderr", '[1.73ms] ".env"') == "stderr"
+    assert log_line_kind("stderr", "Resolving dependencies") == "stderr"
+    assert log_line_kind("stderr", "1 error") == "stderr"
+    assert log_line_kind("stderr", 'error: Could not resolve "x"') == "error"
+    assert log_line_kind("stderr", "TypeError: x is not a function") == "error"
+    assert log_line_kind("stderr", "src/a.ts(3,1): error TS2304: Cannot find name") == "error"
+    assert log_line_kind("stdout", "error: not on stderr") == "stdout"
+    assert log_line_kind("system", "exited") == "system"

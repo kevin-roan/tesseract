@@ -50,6 +50,23 @@ export const ControlHeight = {
   xl: 56,
 } as const;
 
+/** Status and unread dots. */
+export const DotSize = {
+  sm: 6,
+  md: 8,
+} as const;
+
+/**
+ * Opacity steps. `pressed` dims a tapped row or card, `pressedSoft` a large
+ * tappable surface, `disabled` an inert control, `muted` secondary marks.
+ */
+export const Opacity = {
+  muted: 0.45,
+  disabled: 0.5,
+  pressed: 0.7,
+  pressedSoft: 0.85,
+} as const;
+
 export const IconSize = {
   xs: 14,
   sm: 16,
@@ -76,7 +93,8 @@ export const GridColumns: Record<Breakpoint, number> = {
   xl: 4,
 };
 
-export const BottomTabInset = Platform.select({ ios: 50, android: 80 }) ?? 0;
+/** Windows shorter than this (dp) are compact: fixed layouts drop secondary detail. */
+export const CompactHeight = 700;
 
 /** Stacking order. Keep every absolute overlay in this list. */
 export const ZIndex = {

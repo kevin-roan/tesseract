@@ -15,7 +15,7 @@ async function startRun(body: Record<string, unknown>): Promise<AgentRun> {
 
 beforeAll(async () => {
   const workspace = makeTempDir("agent");
-  writeFiles(workspace, { "projects/app/.keep": "" });
+  writeFiles(workspace, { "projects/app/.keep": "", "projects/morning-cat/.keep": "" });
   const claude = installFakeClaude(makeTempDir("bin"));
   t = await startTestController({ workspace, env: { THEONE_CLAUDE_BIN: claude, THEONE_CLAUDE_PERMISSION_MODE: "acceptEdits" } });
 });
@@ -71,6 +71,19 @@ describe("headless runs", () => {
     expect(texts).toContain("prompt length 150000");
     expect(texts.find((text) => text.startsWith("args:"))).toContain("--resume sess-old");
     expect(done.projectId).toBeNull();
+  });
+
+  test("runs in a confidential project, resumed or not, get the confidential system prompt", async () => {
+    t.controller.services.projects.markConfidential("morning-cat");
+    for (const extra of [{}, { resumeSessionId: "sess-old" }]) {
+      const run = await startRun({ projectId: "morning-cat", prompt: "hello", ...extra });
+      const done = await waitFor(async () => {
+        const detail = AgentRunDetailSchema.parse((await t.json("GET", `/v1/agent/runs/${run.id}`)).body);
+        return detail.state === "running" ? null : detail;
+      }, 10_000);
+      const args = done.events.flatMap((event) => (event.kind === "text" && event.text.startsWith("args:") ? [event.text] : []))[0];
+      expect(args).toContain("--append-system-prompt This project is confidential and known only by the pseudonym morning-cat.");
+    }
   });
 
   test("prompts that look like CLI options or subcommands are never parsed as arguments", async () => {

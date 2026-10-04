@@ -1,11 +1,15 @@
 import { useMemo, type ReactNode } from "react";
-import { ActivityIndicator, Pressable, TextInput, View } from "react-native";
+import { ActivityIndicator, TextInput, View } from "react-native";
+import Animated, { LayoutAnimationConfig } from "react-native-reanimated";
 import { ArrowUpIcon, MicrophoneIcon, PlusIcon, WaveformIcon } from "phosphor-react-native";
 
+import PressableScale from "@/components/pressable-scale";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useHapticPress } from "@/hooks/use-haptic-press";
 import { HitSlop, IconSize } from "@/theme";
 
+import { useComposerFocus } from "./hooks/use-composer-focus";
+import { useEnableMotion } from "./hooks/use-enable-motion";
 import createStyles from "./styles";
 
 export type ComposerPrimary = "send" | "mic";
@@ -70,9 +74,11 @@ const ComposerBar = ({
   const PrimaryIcon = primary === "send" ? ArrowUpIcon : WaveformIcon;
   const disabled = primaryDisabled || busy;
   const showMic = onMic && primary === "send";
+  const focus = useComposerFocus(onFocus, onBlur);
+  const primaryMotion = useEnableMotion(!disabled);
 
   return (
-    <View style={styles.card} testID={testID}>
+    <Animated.View style={[styles.card, focus.style]} testID={testID}>
       {banner}
       {accessory}
       {replacement ?? (
@@ -80,11 +86,11 @@ const ComposerBar = ({
           <TextInput
             value={value}
             onChangeText={onChangeText}
-            onFocus={onFocus}
-            onBlur={onBlur}
+            onFocus={focus.onFocus}
+            onBlur={focus.onBlur}
             placeholder={placeholder}
             accessibilityLabel={placeholder}
-            placeholderTextColor={theme.colors.textTertiary}
+            placeholderTextColor={theme.colors.textSecondary}
             selectionColor={theme.colors.focusRing}
             multiline
             maxLength={maxLength}
@@ -94,53 +100,63 @@ const ComposerBar = ({
           />
           <View style={styles.actions}>
             {onAttach ? (
-              <Pressable
+              <PressableScale
+                depth="control"
                 accessibilityRole="button"
                 accessibilityLabel={attachLabel}
                 accessibilityState={{ disabled: attachDisabled }}
                 hitSlop={HitSlop.sm}
                 disabled={attachDisabled}
                 onPress={onAttach}
-                style={({ pressed }) => [styles.round, styles.outlined, pressed && styles.pressed, attachDisabled && styles.disabled]}
+                style={[styles.button, styles.outlined, attachDisabled && styles.disabled]}
               >
-                <PlusIcon size={IconSize.md} color={theme.colors.text} />
-              </Pressable>
+                <PlusIcon size={IconSize.md} color={theme.colors.text} weight="light" />
+              </PressableScale>
             ) : null}
             <View style={styles.tools}>
               {chips}
               {toolbar}
             </View>
             {showMic ? (
-              <Pressable
+              <PressableScale
+                depth="control"
                 accessibilityRole="button"
                 accessibilityLabel={micLabel}
                 accessibilityState={{ disabled: micDisabled }}
                 hitSlop={HitSlop.sm}
                 disabled={micDisabled}
                 onPress={handleMic}
-                style={({ pressed }) => [styles.round, pressed && styles.pressed, micDisabled && styles.disabled]}
+                style={[styles.button, micDisabled && styles.disabled]}
               >
-                <MicrophoneIcon size={IconSize.md} color={theme.colors.text} />
-              </Pressable>
+                <MicrophoneIcon size={IconSize.md} color={theme.colors.textSecondary} weight="light" />
+              </PressableScale>
             ) : null}
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={primary === "send" ? sendLabel : micLabel}
-              accessibilityState={{ disabled, busy }}
-              disabled={disabled}
-              onPress={handlePrimary}
-              style={({ pressed }) => [styles.round, styles.primary, pressed && styles.pressed, disabled && styles.disabled]}
-            >
-              {busy ? (
-                <ActivityIndicator size="small" color={theme.colors.accentInk} />
-              ) : (
-                <PrimaryIcon size={IconSize.md} color={theme.colors.accentInk} weight="bold" />
-              )}
-            </Pressable>
+            <Animated.View style={primaryMotion.style}>
+              <PressableScale
+                depth="control"
+                accessibilityRole="button"
+                accessibilityLabel={primary === "send" ? sendLabel : micLabel}
+                accessibilityState={{ disabled, busy }}
+                hitSlop={HitSlop.sm}
+                disabled={disabled}
+                onPress={handlePrimary}
+                style={[styles.button, styles.primary]}
+              >
+                <LayoutAnimationConfig skipEntering>
+                  <Animated.View key={busy ? "busy" : primary} entering={primaryMotion.iconEntering}>
+                    {busy ? (
+                      <ActivityIndicator size="small" color={theme.colors.accentInk} />
+                    ) : (
+                      <PrimaryIcon size={IconSize.md} color={theme.colors.accentInk} weight="regular" />
+                    )}
+                  </Animated.View>
+                </LayoutAnimationConfig>
+              </PressableScale>
+            </Animated.View>
           </View>
         </>
       )}
-    </View>
+    </Animated.View>
   );
 };
 

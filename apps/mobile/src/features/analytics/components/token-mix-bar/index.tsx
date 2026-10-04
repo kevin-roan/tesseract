@@ -1,8 +1,10 @@
 import { useMemo } from "react";
 import { View } from "react-native";
+import Animated from "react-native-reanimated";
 
 import { useAppTheme } from "@/hooks/use-app-theme";
 
+import { useGrowIn } from "../../hooks/use-grow-in";
 import type { ChartSeries } from "../../types";
 import SeriesReadout from "../series-readout";
 import createStyles from "./styles";
@@ -20,20 +22,25 @@ const TokenMixBar = ({ title, series, values, formatValue, testID }: TokenMixBar
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const total = values.reduce((sum, value) => sum + value, 0);
+  const grow = useGrowIn("x");
 
   return (
     <View style={styles.mix} testID={testID}>
-      <View style={styles.bar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <Animated.View
+        style={[styles.bar, grow]}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
         {total > 0 ? (
           series.map((item, index) =>
             values[index] > 0 ? (
-              <View key={item.key} style={{ flex: values[index] / total, backgroundColor: item.color }} />
+              <View key={item.key} style={[styles.segment, { flex: values[index] / total, backgroundColor: item.color }]} />
             ) : null,
           )
         ) : (
-          <View style={styles.empty} />
+          <View style={[styles.segment, styles.empty]} />
         )}
-      </View>
+      </Animated.View>
       <SeriesReadout
         title={title}
         total={formatValue(total)}

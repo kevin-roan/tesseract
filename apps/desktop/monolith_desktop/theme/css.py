@@ -4,12 +4,13 @@ from collections.abc import Iterable
 from .chart import chart_for
 from .extras import extra_rules
 from .gradients import css_linear_gradient, gradients_for
-from .semantic import COLORS, SchemeName
+from .semantic import COLORS, SchemeName, is_dark, look_for
 from .surfaces import SURFACE_TONES, surfaces_for
-from .tokens import BORDER_WIDTH, CONTROL_HEIGHT, RADIUS, SHADOWS, SPACING
+from .tokens import BORDER_WIDTH, CHART_MOTION, CONTROL_HEIGHT, SHADOWS, SPACING, radius_for
 from .tone import TONE_COLORS, TONES
 from .typography import (
     DESKTOP_FONT_SCALE,
+    DISPLAY_STACK,
     MONO_STACK,
     SANS_STACK,
     TEXT_VARIANTS,
@@ -91,21 +92,34 @@ def _root_block(scheme: SchemeName, sans: str, mono: str) -> str:
     return _block(":root", props)
 
 
-def _typography(sans: str, mono: str) -> str:
-    out = [_block("window, dialog, popover", {"font-family": sans})]
+DISPLAY_SELECTORS = (
+    "headerbar .title", "windowtitle .title", ".title-1", ".title-2", ".title-3", ".title-4", ".large-title",
+    ".heading", ".numeric", f".{PREFIX}-sidebar-badge",
+    "button.text-button label", f"button.{PREFIX}-primary label", f"button.{PREFIX}-secondary label",
+    f"button.{PREFIX}-chip label", "button.suggested-action label", "button.destructive-action label",
+)
+
+
+def _typography(sans: str, display: str, mono: str) -> str:
+    out = [
+        _block(":root", {f"--{PREFIX}-font-display": display}),
+        _block("window, dialog, popover", {"font-family": sans}),
+    ]
     for name, v in TEXT_VARIANTS.items():
         props = {
             "font-size": _px(v.size * DESKTOP_FONT_SCALE),
             "font-weight": str(v.weight),
             "line-height": f"{round(v.line_height / v.size, 3)}",
+            "font-family": mono if v.mono else display if v.display else sans,
         }
         if v.letter_spacing:
-            props["letter-spacing"] = _px(v.letter_spacing)
+            props["letter-spacing"] = _px(v.letter_spacing * DESKTOP_FONT_SCALE)
         if v.uppercase:
             props["text-transform"] = "uppercase"
-        if v.mono:
-            props["font-family"] = mono
+        if v.tabular:
+            props["font-feature-settings"] = '"tnum"'
         out.append(_block(f".{PREFIX}-text-{kebab(name)}", props))
+    out.append(_block(", ".join(DISPLAY_SELECTORS), {"font-family": display}))
     return "".join(out)
 
 
@@ -126,7 +140,7 @@ def _chart_classes(scheme: SchemeName) -> str:
 
 def _surfaces(scheme: SchemeName) -> str:
     out = [_block(f".{PREFIX}-surface", {
-        "border-radius": _px(RADIUS["lg"]),
+        "border-radius": _px(radius_for(scheme)["card"]),
         "border": f"{_px(BORDER_WIDTH['thin'])} solid transparent",
     })]
     for tone in SURFACE_TONES:
@@ -160,7 +174,9 @@ def _tones() -> str:
 
 
 def _components(scheme: SchemeName) -> str:
-    s, r = SPACING, RADIUS
+    s, r = SPACING, radius_for(scheme)
+    graphite = look_for(scheme) == "graphite"
+    hairline = f"{_px(BORDER_WIDTH['thin'])} solid"
     shadow1 = SHADOWS["level1"].css()
     shadow2 = SHADOWS["level2"].css()
     brand = css_linear_gradient(gradients_for(scheme)["brand"])
@@ -168,8 +184,8 @@ def _components(scheme: SchemeName) -> str:
         f".{PREFIX}-page": {"padding": f"{_px(s['xl'])} {_px(s['2xl'])} {_px(s['4xl'])} {_px(s['2xl'])}"},
         f".{PREFIX}-card": {
             "padding": _px(s["base"]),
-            "border-radius": _px(r["xl"]),
-            "box-shadow": shadow1 if scheme == "light" else "none",
+            "border-radius": _px(r["card"]),
+            "box-shadow": "none" if is_dark(scheme) else shadow1,
         },
         f".{PREFIX}-card.compact": {"padding": _px(s["md"]), "border-radius": _px(r["lg"])},
         f".{PREFIX}-icon-badge": {
@@ -187,15 +203,20 @@ def _components(scheme: SchemeName) -> str:
         },
         f".{PREFIX}-status-badge": {
             "padding": f"{_px(s['xxs'])} {_px(s['sm'])}",
-            "border-radius": _px(r["full"]),
+            "border-radius": _px(r["sm"] if graphite else r["full"]),
         },
+        f".{PREFIX}-status-badge.{PREFIX}-tone-bg": {
+            "background-color": css_var("backgroundElement"),
+            "border": f"{hairline} {css_var('border')}",
+        } if graphite else {},
         f".{PREFIX}-tone-dot": {"min-width": _px(6), "min-height": _px(6), "border-radius": _px(r["full"])},
         f".{PREFIX}-connection-halo": {"min-width": _px(12), "min-height": _px(12), "border-radius": _px(r["full"])},
         f".{PREFIX}-connection-halo .{PREFIX}-tone-dot": {"min-width": _px(8), "min-height": _px(8)},
+        f".{PREFIX}-connection-halo.{PREFIX}-tone-bg": {"background-color": "transparent"} if graphite else {},
         f"button.{PREFIX}-chip": {
             "min-height": _px(CONTROL_HEIGHT["sm"]),
             "padding": f"0 {_px(s['md'])}",
-            "border-radius": _px(r["full"]),
+            "border-radius": _px(r["pill"]),
             "border": f"{_px(BORDER_WIDTH['thin'])} solid {css_var('border')}",
             "background": css_var("surfaceElevated"),
             "color": css_var("textSecondary"),
@@ -213,15 +234,15 @@ def _components(scheme: SchemeName) -> str:
             "background-color": css_var("backgroundSelected"),
         },
         f".{PREFIX}-progress-fill": {"min-height": _px(6), "border-radius": _px(r["full"])},
-        f".{PREFIX}-notice": {"padding": _px(s["md"]), "border-radius": _px(r["lg"])},
+        f".{PREFIX}-notice": {"padding": _px(s["md"]), "border-radius": _px(r["card"])},
         f".{PREFIX}-log-view, .{PREFIX}-log-view > textview, .{PREFIX}-log-view text": {
             "background-color": css_var("codeBackground"),
         },
-        f".{PREFIX}-log-view": {"border-radius": _px(r["lg"])},
+        f".{PREFIX}-log-view": {"border-radius": _px(r["card"]), "border": f"{hairline} {css_var('border')}"},
         f".{PREFIX}-log-view textview": {"padding": _px(s["md"]), "font-family": css_var("font-mono")},
         f".{PREFIX}-jump-button": {
             "min-width": _px(CONTROL_HEIGHT["md"]), "min-height": _px(CONTROL_HEIGHT["md"]),
-            "border-radius": _px(r["full"]),
+            "border-radius": _px(r["pill"]),
             "background": css_var("accent"),
             "color": css_var("textOnAccent"),
             "box-shadow": shadow2,
@@ -244,14 +265,19 @@ def _components(scheme: SchemeName) -> str:
         f"button.{PREFIX}-primary": {
             "background-image": brand,
             "color": css_var("textOnAccent"),
-            "border-radius": _px(r["full"]),
+            "border-radius": _px(r["pill"]),
             "padding": f"{_px(s['sm'])} {_px(s['lg'])}",
             "font-weight": "600",
         },
         f"button.{PREFIX}-secondary": {
-            "border-radius": _px(r["full"]),
+            "border-radius": _px(r["pill"]),
             "padding": f"{_px(s['sm'])} {_px(s['lg'])}",
         },
+        f"button.{PREFIX}-secondary:not(:hover):not(:active)": {
+            "background": "none",
+            "border": f"{hairline} {css_var('borderStrong')}",
+            "box-shadow": "none",
+        } if graphite else {},
         f".{PREFIX}-qr": {
             "padding": _px(s["base"]),
             "border-radius": _px(r["xl"]),
@@ -260,7 +286,7 @@ def _components(scheme: SchemeName) -> str:
         f"button.{PREFIX}-pressable": {
             "padding": "0",
             "background": "none",
-            "border-radius": _px(r["xl"]),
+            "border-radius": _px(r["card"]),
             "box-shadow": "none",
         },
         f"button.{PREFIX}-pressable:hover > .{PREFIX}-surface": {"opacity": "0.92"},
@@ -273,20 +299,35 @@ def _components(scheme: SchemeName) -> str:
         f".{PREFIX}-sparkline": {"min-height": _px(36)},
         f".{PREFIX}-brand-mark": {"border-radius": _px(r["md"])},
     }
-    return "".join(_block(selector, props) for selector, props in rules.items())
+    return "".join(_block(selector, props) for selector, props in rules.items() if props)
+
+
+def _keyframes(name: str, frames: dict[str, dict[str, str]]) -> str:
+    body = "".join(_block(stop, props) for stop, props in frames.items())
+    return f"@keyframes {PREFIX}-{name} {{\n{body}}}\n"
+
+
+def _animations() -> str:
+    floor = str(CHART_MOTION["pulse_floor"])
+    return "".join([
+        _keyframes("pulse", {"0%": {"opacity": "1"}, "50%": {"opacity": floor}, "100%": {"opacity": "1"}}),
+        _keyframes("shimmer", {"from": {"background-position": "-100% 0"}, "to": {"background-position": "200% 0"}}),
+    ])
 
 
 def generate_css(scheme: SchemeName, installed_fonts: Iterable[str] = ()) -> str:
     installed = set(installed_fonts)
     sans = font_stack(installed_first(SANS_STACK, installed))
+    display = font_stack(installed_first(DISPLAY_STACK, installed))
     mono = font_stack(installed_first(MONO_STACK, installed))
     return "".join([
         _root_block(scheme, sans, mono),
-        _typography(sans, mono),
+        _typography(sans, display, mono),
         _color_classes(scheme),
         _chart_classes(scheme),
         _surfaces(scheme),
         _tones(),
         _components(scheme),
+        _animations(),
         "".join(_block(selector, props) for selector, props in extra_rules(scheme).items()),
     ])

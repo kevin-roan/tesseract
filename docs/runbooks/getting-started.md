@@ -51,6 +51,7 @@ Minimum settings for the default (`tailscale`) mode:
 | `THEONE_VNC_PASSWORD` | *(empty)* | empty = generate one on first start. VncAuth uses 8 characters |
 | `WITH_ANDROID` / `WITH_MONO` | `true` / `true` | `false` for a smaller, faster image |
 | `THEONE_HOST_CLAUDE_DIR` | *(empty)* = `$HOME/.claude` | the host's Claude Code dir, mounted at `/home/dev/.claude`; log in there with `claude` (Claude Max). This is the only Claude authentication |
+| `THEONE_HOST_CLAUDE_ACCOUNTS` | *(empty)* | extra accounts, e.g. `"work personal"`: each existing `~/.claude-<name>` (or `name=/abs/path`) is mounted at `/home/dev/.claude-<name>` the same way; missing dirs are skipped with a warning |
 
 `infra/compose/.env` is gitignored. It holds the auth key, so keep it `0600`.
 Every variable is documented in `.env.example` and in

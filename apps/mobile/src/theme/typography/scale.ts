@@ -1,7 +1,7 @@
 import { Platform, type TextStyle } from 'react-native';
 
 import { scaleFont } from '../responsive';
-import { FontWeights, Fonts, LetterSpacing, displayFor, sansFor } from './fonts';
+import { FontWeights, Fonts, LetterSpacing, displayFor, monoFor, sansFor, type Typeface } from './fonts';
 
 /** Which family a variant draws from: Exo 2 (`display`) or Noto Sans (`text`). */
 export type TypeFamily = 'display' | 'text';
@@ -144,29 +144,59 @@ export const TextVariants = {
 
 export type TextVariant = keyof typeof TextVariants;
 
+/** Per-variant weight overrides a look applies on top of `TextVariants`. */
+export type VariantWeights = Partial<Record<TextVariant, TextStyle['fontWeight']>>;
+
+/** Display headings and figures set in medium, for looks that want lighter, calmer headings. */
+export const LightHeadingWeights: VariantWeights = {
+  title: FontWeights.medium,
+  h1: FontWeights.medium,
+  h2: FontWeights.medium,
+  h3: FontWeights.medium,
+  h4: FontWeights.medium,
+  metric: FontWeights.medium,
+  metricSmall: FontWeights.medium,
+};
+
 /** Android pads the fonts' tall ascent/descent on top of the line height; drop it so text boxes and icon alignment match iOS. */
 const AndroidTextMetrics: TextStyle =
   Platform.OS === 'android' ? { includeFontPadding: false, textAlignVertical: 'center' } : {};
 
 /**
  * Scales every variant's font size and line height for the current window, and
- * resolves `fontWeight` to the Exo 2 or Noto Sans face that carries it (per the
- * variant's `family`) — Android will not pick a heavier face out of a custom
- * family on its own. Variants that name
- * their own family (`code`) keep it and keep the plain weight.
+ * resolves `fontWeight` to the face that carries it — Android will not pick a
+ * heavier face out of a custom family on its own. In the `classic` typeface a
+ * variant's `family` picks Exo 2 or Noto Sans, and variants that name their own
+ * family (`code`) keep it with the plain weight. The `mono` typeface sets every
+ * variant in Geist Mono and eases the tight display tracking, which a
+ * fixed-width face does not need. `weights` swaps the weight of individual
+ * variants, so a look can lighten its headings without touching the scale.
  */
-export function createTextStyles(width: number, height: number): Record<TextVariant, TextStyle> {
+export function createTextStyles(
+  width: number,
+  height: number,
+  typeface: Typeface = 'classic',
+  weights: VariantWeights = {},
+): Record<TextVariant, TextStyle> {
   const entries = Object.entries(TextVariants).map(([key, variant]) => {
-    const { family, fontSize, lineHeight, fontWeight, fontFamily, ...rest } = variant as VariantStyle;
+    const { family, fontSize, lineHeight, fontWeight: baseWeight, fontFamily, letterSpacing, ...rest } = variant as VariantStyle;
+    const fontWeight = weights[key as TextVariant] ?? baseWeight;
     const faceFor = family === 'display' ? displayFor : sansFor;
+    const face =
+      typeface === 'mono'
+        ? { fontFamily: monoFor(fontWeight) }
+        : fontFamily === undefined
+          ? { fontFamily: faceFor(fontWeight) }
+          : { fontFamily, fontWeight };
+    const tracking =
+      typeface === 'mono' && letterSpacing !== undefined ? Math.max(letterSpacing, LetterSpacing.tight) : letterSpacing;
     return [
       key,
       {
         ...rest,
         ...AndroidTextMetrics,
-        ...(fontFamily === undefined
-          ? { fontFamily: faceFor(fontWeight) }
-          : { fontFamily, fontWeight }),
+        ...face,
+        ...(tracking !== undefined && { letterSpacing: tracking }),
         ...(fontSize !== undefined && { fontSize: scaleFont(fontSize, width, height) }),
         ...(lineHeight !== undefined && { lineHeight: scaleFont(lineHeight, width, height) }),
       },

@@ -37,13 +37,15 @@ drop_empty_env() {
   done
 }
 
-# ~/.claude is the host's Claude dir (bind mount): its ownership belongs to the host user.
+# ~/.claude and ~/.claude-<account> are host Claude dirs (bind mounts): their ownership
+# belongs to the host user.
 ensure_owned_by_dev() {
   local dir=$1
   [[ -d "${dir}" ]] || return 0
   if [[ "$(stat -c '%u:%g' "${dir}")" != "${DEV_UID}:${DEV_GID}" ]]; then
     log "fixing ownership of ${dir} for uid ${DEV_UID}"
-    find "${dir}" -path "${DEV_HOME}/.claude" -prune -o -exec chown -h "${DEV_UID}:${DEV_GID}" {} +
+    find "${dir}" \( -path "${DEV_HOME}/.claude" -o -path "${DEV_HOME}/.claude-*" \) -prune \
+      -o -exec chown -h "${DEV_UID}:${DEV_GID}" {} +
   fi
 }
 
@@ -102,7 +104,7 @@ generate_password() {
 
 # The plaintext password is persisted (0600) in the home volume so it survives restarts,
 # and handed to the controller through an env file that only its launcher reads, together
-# with THEONE_TOKEN and THEONE_STT_API_KEY when compose sets them. main() then removes them
+# with THEONE_TOKEN, THEONE_STT_API_KEY and GEMINI_API_KEY when compose sets them. main() then removes them
 # from the environment supervisord passes to every program.
 setup_vnc_password() {
   local password_file="${VNC_DIR}/password" password
@@ -131,6 +133,9 @@ setup_vnc_password() {
     fi
     if [[ -n "${THEONE_STT_API_KEY:-}" ]]; then
       printf 'THEONE_STT_API_KEY=%q\n' "${THEONE_STT_API_KEY}"
+    fi
+    if [[ -n "${GEMINI_API_KEY:-}" ]]; then
+      printf 'GEMINI_API_KEY=%q\n' "${GEMINI_API_KEY}"
     fi
   } | write_dev_file "${CONTROLLER_ENV}" 0600
 }
@@ -276,7 +281,7 @@ main() {
   if (($# > 0)); then
     exec "$@"
   fi
-  unset THEONE_TOKEN THEONE_VNC_PASSWORD THEONE_STT_API_KEY
+  unset THEONE_TOKEN THEONE_VNC_PASSWORD THEONE_STT_API_KEY GEMINI_API_KEY
   exec /usr/bin/supervisord -n -c /etc/supervisor/supervisord.conf
 }
 

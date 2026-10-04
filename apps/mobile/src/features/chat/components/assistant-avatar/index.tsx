@@ -1,6 +1,5 @@
 import { useMemo } from "react";
-import { StyleSheet, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { View } from "react-native";
 import { SparkleIcon } from "phosphor-react-native";
 
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -17,9 +16,8 @@ const AssistantAvatar = ({ size = AvatarSize.xs }: AssistantAvatarProps) => {
   const styles = useMemo(() => createStyles(theme, size), [theme, size]);
 
   return (
-    <View style={styles.avatar} accessible={false}>
-      <LinearGradient {...theme.gradients.brand} style={StyleSheet.absoluteFill} />
-      <SparkleIcon size={Math.min(IconSize.xs, size * 0.6)} color={theme.colors.textOnAccent} weight="fill" />
+    <View style={styles.avatar} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <SparkleIcon size={Math.min(IconSize.xs, size * 0.6)} color={theme.colors.text} weight="light" />
     </View>
   );
 };

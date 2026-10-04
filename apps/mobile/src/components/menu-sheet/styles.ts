@@ -1,8 +1,10 @@
 import { StyleSheet } from "react-native";
 
-import { ControlHeight, MinTouchTarget, type Theme } from "@/theme";
+import { MinTouchTarget, Opacity, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
+  const check = theme.spacing.lg;
+
   return StyleSheet.create({
     row: {
       flexDirection: "row",
@@ -15,22 +17,23 @@ export default function createStyles(theme: Theme) {
       borderCurve: "continuous",
     },
     selected: {
-      backgroundColor: theme.colors.accentMuted,
-    },
-    pressed: {
       backgroundColor: theme.colors.backgroundElement,
     },
-    icon: {
-      width: ControlHeight.md,
-      height: ControlHeight.md,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.accentMuted,
+    disabled: {
+      opacity: Opacity.disabled,
     },
     body: {
       flex: 1,
       gap: theme.spacing.xxs,
+    },
+    check: {
+      width: check,
+      height: check,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: theme.radius.sm,
+      borderCurve: "continuous",
+      backgroundColor: theme.colors.accent,
     },
   });
 }

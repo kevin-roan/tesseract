@@ -1,15 +1,22 @@
 import { useMemo } from "react";
-import { View } from "react-native";
+import { View, type StyleProp, type ViewStyle } from "react-native";
+import Animated from "react-native-reanimated";
 
 import { useAppTheme } from "@/hooks/use-app-theme";
 import type { Tone } from "@/lib/tone";
 
 import createStyles from "./styles";
+import { useProgressFill } from "./use-progress-fill";
 
 export type ProgressBarProps = {
   progress: number | null;
   tone?: Tone;
   label?: string;
+};
+
+const ProgressFill = ({ percent, style }: { percent: number; style: StyleProp<ViewStyle> }) => {
+  const width = useProgressFill(percent);
+  return <Animated.View style={[style, width]} />;
 };
 
 const ProgressBar = ({ progress, tone = "info", label }: ProgressBarProps) => {
@@ -24,7 +31,7 @@ const ProgressBar = ({ progress, tone = "info", label }: ProgressBarProps) => {
       accessibilityLabel={label}
       accessibilityValue={percent === null ? undefined : { min: 0, max: 100, now: percent }}
     >
-      {percent === null ? null : <View style={[styles.fill, { width: `${percent}%` }]} />}
+      {percent === null ? null : <ProgressFill percent={percent} style={styles.fill} />}
     </View>
   );
 };

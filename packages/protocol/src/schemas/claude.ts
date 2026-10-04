@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CLAUDE_AUTH_METHODS, LIMITS } from "../constants";
+import { CLAUDE_ACCOUNT_ID_PATTERN, CLAUDE_AUTH_METHODS, LIMITS } from "../constants";
 
 export const ClaudeAuthMethodSchema = z.enum(CLAUDE_AUTH_METHODS);
 export type ClaudeAuthMethod = z.infer<typeof ClaudeAuthMethodSchema>;
@@ -74,3 +74,37 @@ export const ClaudeImportResultSchema = z.object({
   skipped: z.array(z.object({ path: z.string(), reason: z.string() })),
 });
 export type ClaudeImportResult = z.infer<typeof ClaudeImportResultSchema>;
+
+export const ClaudeAccountIdSchema = z.string().regex(CLAUDE_ACCOUNT_ID_PATTERN, "Invalid Claude account id");
+export type ClaudeAccountId = z.infer<typeof ClaudeAccountIdSchema>;
+
+/** One Claude Code config dir linked from the host (`~/.claude` or `~/.claude-<name>`). Never contains a secret. */
+export const ClaudeAccountProfileSchema = z.object({
+  /** `claude` for the host's `~/.claude`, `claude-<name>` for `~/.claude-<name>` (the host alias name). */
+  id: ClaudeAccountIdSchema,
+  primary: z.boolean(),
+  /** The config dir is mounted in the sandbox. */
+  present: z.boolean(),
+  loggedIn: z.boolean(),
+  account: ClaudeAccountSchema.nullable(),
+  subscriptionType: z.string().nullable(),
+  credentialsExpiresAt: z.string().nullable(),
+  settingsPresent: z.boolean(),
+  configDir: z.string(),
+});
+export type ClaudeAccountProfile = z.infer<typeof ClaudeAccountProfileSchema>;
+
+/** `GET /v1/claude/accounts`. */
+export const ClaudeAccountListSchema = z.object({
+  defaultAccountId: ClaudeAccountIdSchema,
+  accounts: z.array(ClaudeAccountProfileSchema),
+});
+export type ClaudeAccountList = z.infer<typeof ClaudeAccountListSchema>;
+
+/** `PUT /v1/claude/accounts/default`. */
+export const SetDefaultClaudeAccountSchema = z.object({ accountId: ClaudeAccountIdSchema });
+export type SetDefaultClaudeAccount = z.infer<typeof SetDefaultClaudeAccountSchema>;
+
+/** `PUT /v1/projects/:id/claude-account`: null follows the default account. */
+export const SetProjectClaudeAccountSchema = z.object({ accountId: ClaudeAccountIdSchema.nullable() });
+export type SetProjectClaudeAccount = z.infer<typeof SetProjectClaudeAccountSchema>;

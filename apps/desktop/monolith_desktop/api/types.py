@@ -16,7 +16,8 @@ ArtifactSource = Literal["build", "agent"]
 LogStream = Literal["stdout", "stderr", "system"]
 ClaudeAuthMethod = Literal["oauth_token", "credentials", "api_key", "none"]
 SyncChangeKind = Literal["added", "modified", "deleted"]
-SyncRequestKind = Literal["pull", "revert"]
+SyncRequestKind = Literal["pull", "revert", "get"]
+SyncFileMode = Literal["100644", "100755", "120000"]
 SyncRequestStatus = Literal["pending", "claimed", "applied", "failed", "cancelled"]
 SyncSource = Literal["mobile", "desktop", "cli"]
 
@@ -170,6 +171,8 @@ class Project(TypedDict):
     scripts: list[str]
     buildTargets: list[BuildTarget]
     git: GitSummary | None
+    confidential: NotRequired[bool]
+    claudeAccountId: NotRequired[str | None]
 
 
 class GitFileStatus(TypedDict):
@@ -198,6 +201,7 @@ class SyncFileChange(TypedDict):
     kind: SyncChangeKind
     sha256: str | None
     size: int | None
+    discardable: NotRequired[bool]
 
 
 class SyncHost(TypedDict):
@@ -213,6 +217,26 @@ class SyncChanges(TypedDict):
     changes: list[SyncFileChange]
     totalBytes: int
     host: SyncHost | None
+    lastGetAt: NotRequired[str | None]
+
+
+class SyncDiscardResult(TypedDict):
+    discarded: list[str]
+    unavailable: list[str]
+    backupPath: str | None
+    changes: SyncChanges
+
+
+class SyncFileStat(TypedDict):
+    path: str
+    kind: SyncChangeKind
+    insertions: int
+    deletions: int
+    binary: bool
+    oldMode: SyncFileMode | None
+    newMode: SyncFileMode | None
+    oldSize: int | None
+    newSize: int | None
 
 
 class SyncResult(TypedDict):
@@ -222,6 +246,13 @@ class SyncResult(TypedDict):
     conflicts: list[str]
     snapshotId: str | None
     hostPath: str | None
+    files: NotRequired[list[SyncFileStat]]
+    insertions: NotRequired[int]
+    deletions: NotRequired[int]
+    gitFiles: NotRequired[int]
+    syncedAt: NotRequired[str]
+    previousSyncAt: NotRequired[str | None]
+    backupPath: NotRequired[str | None]
 
 
 class SyncRequest(TypedDict):
@@ -237,6 +268,30 @@ class SyncRequest(TypedDict):
     error: str | None
     createdAt: str
     updatedAt: str
+
+
+class SyncGetChange(TypedDict):
+    path: str
+    kind: SyncChangeKind
+    sha256: str | None
+    executable: bool
+
+
+class SyncGetGit(TypedDict):
+    changed: list[str]
+    deleted: list[str]
+
+
+class SyncGetPlan(TypedDict):
+    hostPath: str
+    changes: list[SyncGetChange]
+    git: SyncGetGit | None
+
+
+class SyncGetPlanResponse(TypedDict):
+    request: SyncRequest
+    upload: list[str]
+    gitUpload: list[str]
 
 
 class CreateProjectResponse(TypedDict):
@@ -358,6 +413,7 @@ class AgentRun(TypedDict):
     result: str | None
     error: str | None
     archivedAt: NotRequired[str | None]
+    claudeAccountId: NotRequired[str | None]
 
 
 class AgentRunEvent(TypedDict):
@@ -437,7 +493,25 @@ class ClaudeAuthStatus(TypedDict):
     importedAt: str | None
 
 
+class ClaudeAccountProfile(TypedDict):
+    id: str
+    primary: bool
+    present: bool
+    loggedIn: bool
+    account: ClaudeAccount | None
+    subscriptionType: str | None
+    credentialsExpiresAt: str | None
+    settingsPresent: bool
+    configDir: str
+
+
+class ClaudeAccountList(TypedDict):
+    defaultAccountId: str
+    accounts: list[ClaudeAccountProfile]
+
+
 CLAUDE_AUTH_METHODS: tuple[str, ...] = ("oauth_token", "credentials", "api_key", "none")
+PRIMARY_CLAUDE_ACCOUNT_ID = "claude"
 
 
 def _object(value: Any, what: str) -> dict[str, Any]:
@@ -478,10 +552,19 @@ def run_total_tokens(run: Any) -> int | None:
     return usage["totalTokens"] if usage else None
 
 
+def parse_claude_account(value: Any) -> ClaudeAccount | None:
+    if not isinstance(value, dict):
+        return None
+    return {
+        "email": _opt_str(value.get("email")),
+        "displayName": _opt_str(value.get("displayName")),
+        "organization": _opt_str(value.get("organization")),
+    }
+
+
 def parse_claude_auth_status(value: Any) -> ClaudeAuthStatus:
     raw = _object(value, "claude auth status")
     sources = raw.get("sources") if isinstance(raw.get("sources"), dict) else {}
-    account = raw.get("account")
     method = raw.get("method")
     return {
         "available": raw.get("available") is True,
@@ -493,18 +576,37 @@ def parse_claude_auth_status(value: Any) -> ClaudeAuthStatus:
             "apiKey": sources.get("apiKey") is True,
         },
         "oauthTokenFromEnv": raw.get("oauthTokenFromEnv") is True,
-        "account": {
-            "email": _opt_str(account.get("email")),
-            "displayName": _opt_str(account.get("displayName")),
-            "organization": _opt_str(account.get("organization")),
-        }
-        if isinstance(account, dict)
-        else None,
+        "account": parse_claude_account(raw.get("account")),
         "subscriptionType": _opt_str(raw.get("subscriptionType")),
         "credentialsExpiresAt": _opt_str(raw.get("credentialsExpiresAt")),
         "settingsPresent": raw.get("settingsPresent") is True,
         "configDir": raw.get("configDir") if isinstance(raw.get("configDir"), str) else "",
         "importedAt": _opt_str(raw.get("importedAt")),
+    }
+
+
+def parse_claude_account_profile(value: Any) -> ClaudeAccountProfile | None:
+    if not isinstance(value, dict) or not _opt_str(value.get("id")):
+        return None
+    return {
+        "id": value["id"],
+        "primary": value.get("primary") is True,
+        "present": value.get("present") is True,
+        "loggedIn": value.get("loggedIn") is True,
+        "account": parse_claude_account(value.get("account")),
+        "subscriptionType": _opt_str(value.get("subscriptionType")),
+        "credentialsExpiresAt": _opt_str(value.get("credentialsExpiresAt")),
+        "settingsPresent": value.get("settingsPresent") is True,
+        "configDir": value.get("configDir") if isinstance(value.get("configDir"), str) else "",
+    }
+
+
+def parse_claude_account_list(value: Any) -> ClaudeAccountList:
+    raw = _object(value, "claude accounts")
+    accounts = raw.get("accounts") if isinstance(raw.get("accounts"), list) else []
+    return {
+        "defaultAccountId": _opt_str(raw.get("defaultAccountId")) or PRIMARY_CLAUDE_ACCOUNT_ID,
+        "accounts": [profile for profile in map(parse_claude_account_profile, accounts) if profile is not None],
     }
 
 

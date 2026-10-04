@@ -5,22 +5,32 @@ import type { Theme } from "@/theme";
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     list: {
-      gap: theme.spacing.sm,
+      gap: theme.spacing.md,
       paddingHorizontal: theme.gutter,
-      paddingBottom: theme.spacing.base,
+      paddingBottom: theme.spacing.lg,
     },
     turn: {
-      paddingTop: theme.spacing.md,
+      paddingTop: theme.spacing.base,
     },
     footer: {
       gap: theme.spacing.md,
-      paddingTop: theme.spacing.sm,
+      paddingTop: theme.spacing.md,
+    },
+    activity: {
+      alignSelf: "stretch",
     },
     brief: {
-      textAlign: "center",
+      paddingVertical: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.base,
+      borderRadius: theme.radius.pill,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.surface,
     },
-    spinner: {
-      alignSelf: "flex-start",
+    briefText: {
+      textAlign: "center",
+      fontVariant: ["tabular-nums"],
     },
   });
 }

@@ -8,6 +8,7 @@ export type UsageFilter = { days?: number };
 export type SessionsFilter = { limit?: number; projectId?: string };
 export type InboxFilter = { limit?: number; unread?: boolean };
 export type SyncRequestFilter = { status?: (typeof SYNC_REQUEST_STATUSES)[number] };
+export type ForceParam = { force?: boolean };
 export type AgentRunFilter = { projectId?: string; archived?: boolean };
 export type TerminalPageParams = { ticket: string; session: string };
 export type VncPageParams = { ticket: string; password?: string | null };
@@ -23,18 +24,24 @@ export const restPaths = {
   identity: () => api("/identity"),
   claudeAuth: () => api("/claude/auth"),
   claudeImport: () => api("/claude/import"),
+  claudeAccounts: () => api("/claude/accounts"),
+  claudeDefaultAccount: () => api("/claude/accounts/default"),
   projects: () => api("/projects"),
-  project: (id: string) => api(`/projects/${segment(id)}`),
+  project: (id: string, query?: ForceParam) => api(`/projects/${segment(id)}${buildQuery(query)}`),
   projectGit: (id: string) => api(`/projects/${segment(id)}/git`),
+  projectClaudeAccount: (id: string) => api(`/projects/${segment(id)}/claude-account`),
   projectSync: (id: string) => api(`/projects/${segment(id)}/sync`),
   projectSyncChanges: (id: string) => api(`/projects/${segment(id)}/sync/changes`),
   projectSyncExport: (id: string) => api(`/projects/${segment(id)}/sync/export`),
   projectSyncAck: (id: string) => api(`/projects/${segment(id)}/sync/ack`),
+  projectSyncDiscard: (id: string) => api(`/projects/${segment(id)}/sync/discard`),
   projectSyncRequests: (id: string) => api(`/projects/${segment(id)}/sync/requests`),
   syncRequests: (query?: SyncRequestFilter) => api(`/sync/requests${buildQuery(query)}`),
   syncRequestClaim: (id: string) => api(`/sync/requests/${segment(id)}/claim`),
   syncRequestComplete: (id: string) => api(`/sync/requests/${segment(id)}/complete`),
   syncRequestCancel: (id: string) => api(`/sync/requests/${segment(id)}/cancel`),
+  syncRequestPlan: (id: string) => api(`/sync/requests/${segment(id)}/plan`),
+  syncRequestApply: (id: string) => api(`/sync/requests/${segment(id)}/apply`),
   syncHeartbeat: () => api("/sync/heartbeat"),
   processes: (query?: ProjectFilter) => api(`/processes${buildQuery(query)}`),
   process: (id: string) => api(`/processes/${segment(id)}`),
@@ -71,6 +78,8 @@ export const restPaths = {
   transcriptions: () => api("/transcriptions"),
   stt: () => api("/stt"),
   events: () => api("/events"),
+  hostLock: () => api("/host/lock"),
+  hostUnlock: () => api("/host/unlock"),
 } as const;
 
 export const wsPaths = {
@@ -97,18 +106,24 @@ export const routePatterns = {
     identity: api("/identity"),
     claudeAuth: api("/claude/auth"),
     claudeImport: api("/claude/import"),
+    claudeAccounts: api("/claude/accounts"),
+    claudeDefaultAccount: api("/claude/accounts/default"),
     projects: api("/projects"),
     project: api("/projects/:id"),
     projectGit: api("/projects/:id/git"),
+    projectClaudeAccount: api("/projects/:id/claude-account"),
     projectSync: api("/projects/:id/sync"),
     projectSyncChanges: api("/projects/:id/sync/changes"),
     projectSyncExport: api("/projects/:id/sync/export"),
     projectSyncAck: api("/projects/:id/sync/ack"),
+    projectSyncDiscard: api("/projects/:id/sync/discard"),
     projectSyncRequests: api("/projects/:id/sync/requests"),
     syncRequests: api("/sync/requests"),
     syncRequestClaim: api("/sync/requests/:id/claim"),
     syncRequestComplete: api("/sync/requests/:id/complete"),
     syncRequestCancel: api("/sync/requests/:id/cancel"),
+    syncRequestPlan: api("/sync/requests/:id/plan"),
+    syncRequestApply: api("/sync/requests/:id/apply"),
     syncHeartbeat: api("/sync/heartbeat"),
     processes: api("/processes"),
     process: api("/processes/:id"),
@@ -145,6 +160,8 @@ export const routePatterns = {
     transcriptions: api("/transcriptions"),
     stt: api("/stt"),
     events: api("/events"),
+    hostLock: api("/host/lock"),
+    hostUnlock: api("/host/unlock"),
   },
   ws: {
     events: api("/events"),

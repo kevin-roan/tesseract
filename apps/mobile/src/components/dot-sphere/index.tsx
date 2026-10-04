@@ -73,7 +73,7 @@ const DotSphere = ({ size, dots = 72, color = "text", period = Durations.slowest
   const fill = theme.colors[color];
 
   return (
-    <Svg width={size} height={size} accessible={false}>
+    <Svg width={size} height={size} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
       {Array.from({ length: DEPTH_BANDS }, (_, band) => (
         <Band key={band} paths={paths} band={band} color={fill} />
       ))}

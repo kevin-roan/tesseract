@@ -125,6 +125,12 @@ class ControllerClient:
     def claude_auth(self) -> T.ClaudeAuthStatus:
         return T.parse_claude_auth_status(self.get(rest.claude_auth()))
 
+    def claude_accounts(self) -> T.ClaudeAccountList:
+        return T.parse_claude_account_list(self.get(rest.claude_accounts()))
+
+    def set_default_claude_account(self, account_id: str) -> T.ClaudeAccountList:
+        return T.parse_claude_account_list(self.put(rest.claude_default_account(), {"accountId": account_id}))
+
     def stt_status(self) -> T.SttStatus:
         return T.parse_stt_status(self.get(rest.stt()))
 
@@ -154,23 +160,30 @@ class ControllerClient:
     def list_projects(self) -> list[T.Project]:
         return self.get(rest.projects())
 
-    def create_project(self, name: str, git_url: str | None = None, branch: str | None = None) -> T.CreateProjectResponse:
-        body: dict[str, str] = {"name": name}
+    def create_project(
+        self, name: str, git_url: str | None = None, branch: str | None = None, confidential: bool = False
+    ) -> T.CreateProjectResponse:
+        body: dict[str, Any] = {"name": name}
         if git_url:
             body["gitUrl"] = git_url
         if branch:
             body["branch"] = branch
+        if confidential:
+            body["confidential"] = True
         return self.post(rest.projects(), body)
 
     def get_project(self, id: str) -> T.Project:
         return self.get(rest.project(id))
 
+    def set_project_claude_account(self, id: str, account_id: str | None) -> T.Project:
+        return self.put(rest.project_claude_account(id), {"accountId": account_id})
+
     def get_project_git(self, id: str) -> T.GitDetails:
         return self.get(rest.project_git(id))
 
-    def sync_project(self, id: str, archive: BinaryIO, size: int) -> tuple[T.Project, bool]:
+    def sync_project(self, id: str, archive: BinaryIO, size: int, confidential: bool = False) -> tuple[T.Project, bool]:
         """Extracts a gzip tar over the project; returns the project and whether it was created."""
-        path = rest.project_sync(id)
+        path = rest.project_sync(id, 1 if confidential else None)
         status, _headers, payload = self.request_raw("POST", path, content=("application/gzip", archive, size), timeout=SYNC_TIMEOUT_S)
         try:
             return json.loads(payload), status == 201
@@ -186,6 +199,10 @@ class ControllerClient:
 
     def sync_ack(self, project_id: str, changes: list[dict[str, Any]]) -> T.SyncChanges:
         return self.post(rest.project_sync_ack(project_id), {"changes": changes})
+
+    def sync_discard(self, project_id: str, paths: list[str] | None = None) -> T.SyncDiscardResult:
+        """Restores the sandbox files of `paths` (default: every change) to the sync baseline."""
+        return self.post(rest.project_sync_discard(project_id), {"paths": list(paths)} if paths else {}, timeout=SYNC_TIMEOUT_S)
 
     def list_sync_requests(self, project_id: str) -> list[T.SyncRequest]:
         return self.get(rest.project_sync_requests(project_id))
@@ -221,6 +238,13 @@ class ControllerClient:
 
     def cancel_sync_request(self, request_id: str) -> T.SyncRequest:
         return self.post(rest.sync_request_cancel(request_id))
+
+    def sync_get_plan(self, request_id: str, plan: T.SyncGetPlan | dict[str, Any]) -> T.SyncGetPlanResponse:
+        return self.post(rest.sync_request_plan(request_id), plan, timeout=SYNC_TIMEOUT_S)
+
+    def sync_get_apply(self, request_id: str, archive: BinaryIO, size: int) -> T.SyncRequest:
+        """Uploads the gzip tar of a planned get (exactly `upload` + `.git/<gitUpload>`)."""
+        return self.request("POST", rest.sync_request_apply(request_id), content=("application/gzip", archive, size), timeout=SYNC_TIMEOUT_S)
 
     def sync_heartbeat(self, host: str, projects: list[str]) -> None:
         self.post(rest.sync_heartbeat(), {"host": host, "projects": list(projects)})

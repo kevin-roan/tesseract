@@ -9,7 +9,8 @@ from gi.repository import Adw, Gdk, Gtk, PangoCairo  # noqa: E402
 
 from .chart import ChartPalette, chart_for  # noqa: E402
 from .css import generate_css, scale_css  # noqa: E402
-from .semantic import COLORS, SchemeName  # noqa: E402
+from .fonts import register_bundled_fonts  # noqa: E402
+from .semantic import COLORS, RENDERED_SCHEME, SchemeName  # noqa: E402
 from .surfaces import surfaces_for  # noqa: E402
 from .tokens import ZOOM_STEPS  # noqa: E402
 from .tone import TONE_COLORS, Tone  # noqa: E402
@@ -28,15 +29,16 @@ class ThemeManager:
         self._zoom = 1.0
         self._listeners: list[Callable[[SchemeName], None]] = []
         self._style = Adw.StyleManager.get_default()
+        register_bundled_fonts()
         self._fonts = {family.get_name() for family in PangoCairo.FontMap.get_default().list_families()}
-        self._scheme: SchemeName = "dark" if self._style.get_dark() else "light"
+        self._scheme: SchemeName = RENDERED_SCHEME
 
     def install(self, display: Gdk.Display | None = None) -> None:
         display = display or Gdk.Display.get_default()
         Gtk.StyleContext.add_provider_for_display(
             display, self._provider, Gtk.STYLE_PROVIDER_PRIORITY_USER + 1
         )
-        self._style.connect("notify::dark", self._on_dark_changed)
+        self._style.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
         self._reload()
 
     def add_stylesheet(self, css: str) -> None:
@@ -93,12 +95,6 @@ class ThemeManager:
     def subscribe(self, listener: Callable[[SchemeName], None]) -> Callable[[], None]:
         self._listeners.append(listener)
         return lambda: self._listeners.remove(listener) if listener in self._listeners else None
-
-    def _on_dark_changed(self, *_args) -> None:
-        self._scheme = "dark" if self._style.get_dark() else "light"
-        self._reload()
-        for listener in list(self._listeners):
-            listener(self._scheme)
 
     def _reload(self) -> None:
         self._provider.load_from_string(scale_css(self.css(), self._zoom))

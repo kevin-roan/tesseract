@@ -4,6 +4,7 @@ import type { LogLine } from "@theone/protocol";
 import { WarningCircleIcon } from "phosphor-react-native";
 
 import LogView from "@/components/log-view";
+import MotionItem from "@/components/motion-item";
 import Notice from "@/components/notice";
 import { useAppTheme } from "@/hooks/use-app-theme";
 
@@ -23,16 +24,20 @@ const CloneProgress = ({ lines, emptyLabel, failure, onOpenProject }: CloneProgr
   return (
     <View style={styles.body}>
       {failure ? (
-        <Notice
-          tone="danger"
-          icon={WarningCircleIcon}
-          title="Clone failed"
-          message={failure}
-          actionLabel="Open project"
-          onAction={onOpenProject}
-        />
+        <MotionItem>
+          <Notice
+            tone="danger"
+            icon={WarningCircleIcon}
+            title="Clone failed"
+            message={failure}
+            actionLabel="Open project"
+            onAction={onOpenProject}
+          />
+        </MotionItem>
       ) : null}
-      <LogView lines={lines} emptyLabel={emptyLabel} />
+      <MotionItem style={styles.fill}>
+        <LogView lines={lines} emptyLabel={emptyLabel} style={styles.log} />
+      </MotionItem>
     </View>
   );
 };

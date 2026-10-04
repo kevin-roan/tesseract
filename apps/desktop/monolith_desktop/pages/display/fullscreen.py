@@ -3,6 +3,7 @@ from collections.abc import Callable
 from gi.repository import GLib, Gtk
 
 from ...widgets import IconButton
+from ...widgets.motion import revealer
 
 REVEAL_S = 3
 EDGE_PX = 48
@@ -33,7 +34,7 @@ class FullscreenHost:
         exit_button = IconButton(self._exit_icon, self._exit_label, self._on_exit, flat=False)
         exit_button.add_css_class("osd")
         exit_button.add_css_class("circular")
-        self._revealer = Gtk.Revealer(
+        self._revealer = revealer(
             child=exit_button,
             transition_type=Gtk.RevealerTransitionType.CROSSFADE,
             halign=Gtk.Align.END,

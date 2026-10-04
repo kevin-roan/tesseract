@@ -20,7 +20,20 @@ export default function createStyles(theme: Theme, tone: Tone) {
       alignItems: "center",
       justifyContent: "center",
       borderRadius: theme.radius.full,
+      backgroundColor: theme.look === "graphite" ? "transparent" : theme.colors[background],
+    },
+    chip: {
+      alignSelf: "flex-start",
+      paddingVertical: theme.spacing.xxs,
+      paddingLeft: theme.spacing.sm,
+      paddingRight: theme.spacing.md,
+      borderRadius: theme.radius.full,
       backgroundColor: theme.colors[background],
+      borderWidth: theme.look === "graphite" ? StyleSheet.hairlineWidth : 0,
+      borderColor: theme.colors.border,
+    },
+    bare: {
+      backgroundColor: "transparent",
     },
     dot: {
       width: dot,

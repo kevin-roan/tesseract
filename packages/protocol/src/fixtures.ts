@@ -14,6 +14,7 @@ import type {
   Health,
   Identity,
   ClaudeAuthStatus,
+  ClaudeAccountList,
   Inbox,
   InboxItem,
   ListeningPorts,
@@ -92,6 +93,34 @@ export const sampleClaudeAuthStatus: ClaudeAuthStatus = {
   importedAt: "2026-01-01T00:00:00.000Z",
 };
 
+export const sampleClaudeAccountList: ClaudeAccountList = {
+  defaultAccountId: "claude",
+  accounts: [
+    {
+      id: "claude",
+      primary: true,
+      present: true,
+      loggedIn: true,
+      account: { email: "dev@example.com", displayName: "Dev", organization: "Example" },
+      subscriptionType: "max",
+      credentialsExpiresAt: "2026-01-01T08:00:00.000Z",
+      settingsPresent: true,
+      configDir: "/home/dev/.claude",
+    },
+    {
+      id: "claude-work",
+      primary: false,
+      present: true,
+      loggedIn: true,
+      account: { email: "dev@work.example", displayName: "Dev", organization: "Work" },
+      subscriptionType: "team",
+      credentialsExpiresAt: "2026-01-01T08:00:00.000Z",
+      settingsPresent: true,
+      configDir: "/home/dev/.claude-work",
+    },
+  ],
+};
+
 export const sampleIdentity: Identity = {
   sandboxId: "theone-sandbox",
   tailscale: {
@@ -166,6 +195,8 @@ export const sampleProject: Project = {
     behind: 0,
     lastCommit: { sha: "3f2a9c1", subject: "Initial commit", date: TS },
   },
+  confidential: false,
+  claudeAccountId: null,
 };
 
 export const sampleGitDetails: GitDetails = {
@@ -253,6 +284,7 @@ export const sampleTranscription: Transcription = {
   language: "en",
   durationMs: 2_400,
   engine: "whisper.cpp",
+  fallbackReason: null,
 };
 
 export const sampleSttStatus: SttStatus = {
@@ -270,6 +302,7 @@ export const sampleSttStatus: SttStatus = {
   cpus: 8,
   busy: false,
   queued: 0,
+  gemini: { configured: false, model: "gemini-2.5-flash" },
 };
 
 export const sampleAgentRun: AgentRun = {
@@ -279,6 +312,7 @@ export const sampleAgentRun: AgentRun = {
   mode: "bypassPermissions",
   attachments: [sampleUpload],
   sessionId: "5f0c2d7e-9d1b-4f6a-8a3e-2b7c1d0e9f11",
+  claudeAccountId: "claude",
   state: "running",
   startedAt: TS,
   endedAt: null,
@@ -356,6 +390,7 @@ export const sampleUsageReport: UsageReport = {
 
 export const sampleClaudeSession: ClaudeSession = {
   sessionId: "ba4ddfd2-862d-49b0-8d2f-3d809897c89c",
+  claudeAccountId: "claude",
   projectId: "electron-hello",
   cwd: "/workspace/projects/electron-hello",
   title: "Add a dark mode toggle to the settings screen",

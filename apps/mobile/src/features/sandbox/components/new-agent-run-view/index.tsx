@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { View } from "react-native";
 import { ArrowLeftIcon } from "phosphor-react-native";
 
-import { GlassButton } from "@/components/glass";
+import Reveal from "@/components/reveal";
 import ScreenScaffold from "@/components/screen-scaffold";
+import HeaderButton from "@/components/screen-header/header-button";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { IconSize } from "@/theme";
 import ChatComposer from "@/features/chat/components/chat-composer";
 import ChatHero from "@/features/chat/components/chat-hero";
 import PromptSuggestions from "@/features/chat/components/prompt-suggestions";
@@ -28,19 +28,23 @@ const NewAgentRunView = ({ projectId }: NewAgentRunViewProps) => {
       avoidKeyboard
       header={
         <View style={styles.header}>
-          <GlassButton accessibilityLabel="Go back" onPress={nav.back} style={styles.headerButton}>
-            <ArrowLeftIcon size={IconSize.md} color={theme.colors.text} weight="bold" />
-          </GlassButton>
+          <HeaderButton icon={ArrowLeftIcon} label="Go back" onPress={nav.back} size="md" />
         </View>
       }
       footer={
         <View style={styles.footer}>
-          {suggestions.visible ? <PromptSuggestions suggestions={suggestions.items} onSelect={suggestions.select} /> : null}
+          {suggestions.visible ? (
+            <Reveal>
+              <PromptSuggestions suggestions={suggestions.items} onSelect={suggestions.select} />
+            </Reveal>
+          ) : null}
           <ChatComposer composer={composer} placeholder="How can I help you today?" noProjectLabel="New project" testID="new-run-composer" />
         </View>
       }
     >
-      <ChatHero title={greeting} subtitle="Plan, edit, debug and ship code with Claude in your sandbox." />
+      <View style={styles.hero}>
+        <ChatHero title={greeting} subtitle="Plan, edit, debug and ship code with Claude in your sandbox." />
+      </View>
     </ScreenScaffold>
   );
 };

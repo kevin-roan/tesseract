@@ -13,16 +13,26 @@ export default function createStyles(theme: Theme) {
       flex: 1,
     },
     scrollContent: {
-      paddingHorizontal: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.sm,
+      paddingTop: theme.spacing.xs,
       paddingBottom: theme.spacing.xl,
-      gap: theme.spacing.lg,
+      gap: theme.spacing.xl,
+    },
+    group: {
+      gap: theme.spacing.xxs,
+    },
+    groupTitle: {
+      paddingHorizontal: theme.spacing.md,
+      paddingBottom: theme.spacing.xs,
     },
     allChats: {
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing.xs,
-      paddingHorizontal: theme.spacing.base,
-      paddingVertical: theme.spacing.sm,
+      minHeight: ControlHeight.lg,
+      paddingHorizontal: theme.spacing.md,
+      borderRadius: theme.radius.md,
+      borderCurve: "continuous",
     },
     footer: {
       flexDirection: "row",
@@ -32,9 +42,8 @@ export default function createStyles(theme: Theme) {
       paddingHorizontal: theme.spacing.lg,
       paddingTop: theme.spacing.md,
       paddingBottom: theme.spacing.sm,
-    },
-    pressed: {
-      opacity: 0.7,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: theme.colors.divider,
     },
     newChat: {
       flexDirection: "row",
@@ -43,10 +52,8 @@ export default function createStyles(theme: Theme) {
       minHeight: ControlHeight.lg,
       paddingHorizontal: theme.spacing.lg,
       borderRadius: theme.radius.pill,
+      borderCurve: "continuous",
       backgroundColor: theme.colors.accent,
-    },
-    newChatPressed: {
-      backgroundColor: theme.colors.accentPressed,
     },
   });
 }

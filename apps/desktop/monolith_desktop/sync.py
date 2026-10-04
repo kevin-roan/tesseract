@@ -1,5 +1,3 @@
-import os
-import subprocess
 import sys
 import tarfile
 import tempfile
@@ -11,34 +9,10 @@ from .api.client import ControllerClient
 from .api.errors import ControllerError
 from .config.discovery import DiscoveryError, discover_docker, initial_config
 from .pages.projects.model import project_id_from_name
-from .syncback.manifest import Manifest, build_manifest
+from .pseudonym import pseudonym
+from .syncback.manifest import GIT_DIR
 from .syncback.state import Link, SyncState, iso, utc_now
-
-GIT_DIR = ".git"
-
-
-def _git(root: Path, *args: str) -> str | None:
-    try:
-        result = subprocess.run(["git", "-C", str(root), *args], capture_output=True, check=True)
-    except (OSError, subprocess.CalledProcessError):
-        return None
-    return result.stdout.decode("utf-8", "surrogateescape")
-
-
-def collect_files(root: Path) -> Iterator[str]:
-    """Paths relative to `root`: tracked and unignored files of a git checkout (plus `.git` at its top), else everything."""
-    listed = _git(root, "ls-files", "-z", "--cached", "--others", "--exclude-standard")
-    if listed is None:
-        for dirpath, dirnames, filenames in os.walk(root):
-            base = Path(dirpath).relative_to(root)
-            for name in filenames + [d for d in dirnames if (Path(dirpath) / d).is_symlink()]:
-                yield str(base / name)
-        return
-    if (root / GIT_DIR).exists():
-        yield GIT_DIR
-    for path in dict.fromkeys(filter(None, listed.split("\0"))):
-        if os.path.lexists(root / path):
-            yield path
+from .syncback.tree import HostTree, collect_files, scan_tree
 
 
 def write_archive(root: Path, files: Iterator[str], out: BinaryIO) -> int:
@@ -50,15 +24,17 @@ def write_archive(root: Path, files: Iterator[str], out: BinaryIO) -> int:
     return count
 
 
-def sync_directory(client: ControllerClient, root: Path, project_id: str) -> tuple[dict, bool, int, Manifest]:
+def sync_directory(
+    client: ControllerClient, root: Path, project_id: str, confidential: bool = False
+) -> tuple[dict, bool, int, HostTree]:
     files = list(collect_files(root))
-    manifest = build_manifest(root, files)
+    tree = scan_tree(root, files)
     with tempfile.TemporaryFile() as archive:
         count = write_archive(root, iter(files), archive)
         size = archive.tell()
         archive.seek(0)
-        project, created = client.sync_project(project_id, archive, size)
-    return project, created, count, manifest
+        project, created = client.sync_project(project_id, archive, size, confidential)
+    return project, created, count, tree
 
 
 def connect() -> tuple[ControllerClient, str] | None:
@@ -80,25 +56,51 @@ def connect_client() -> ControllerClient | None:
     return connection[0] if connection else None
 
 
-def run_sync(cwd: str, state: SyncState | None = None) -> int:
+def sandbox_project_ids(client: ControllerClient) -> list[str]:
+    try:
+        return [project["id"] for project in client.list_projects()]
+    except (ControllerError, OSError, KeyError, TypeError):
+        return []
+
+
+def run_sync(cwd: str, state: SyncState | None = None, confidential: bool = False) -> int:
     root = Path(cwd).resolve()
-    project_id = project_id_from_name(root.name)
-    if not project_id:
+    state = state or SyncState()
+    link = state.link_for_path(root)
+    replaces = None
+    if link is not None and confidential and not link.confidential:
+        replaces, link = link.project_id, None
+    if link is not None:
+        project_id, confidential = link.project_id, link.confidential
+    else:
+        project_id = None if confidential else project_id_from_name(root.name)
+    if not project_id and not confidential:
         print(f"monolith: cannot derive a project id from {root.name!r}", file=sys.stderr)
         return 1
     connection = connect()
     if connection is None:
         return 1
     client, label = connection
-    print(f"Syncing {root} to {project_id} on {label}…", flush=True)
+    if not project_id:
+        project_id = pseudonym([*state.links(), *sandbox_project_ids(client)])
+    print(f"Syncing {root} to {project_id}{' (confidential)' if confidential else ''} on {label}…", flush=True)
     try:
-        project, created, count, manifest = sync_directory(client, root, project_id)
+        project, created, count, tree = sync_directory(client, root, project_id, confidential)
     except (ControllerError, OSError) as error:
         print(f"monolith: sync failed: {error}", file=sys.stderr)
         return 1
     try:
-        (state or SyncState()).save_link(Link(project_id, str(root), iso(utc_now()), manifest))
+        state.save_link(
+            Link(project_id, str(root), iso(utc_now()), tree.manifest, tree.executable, tree.git, confidential=confidential),
+            replaces,
+        )
     except OSError as error:
         print(f"monolith: pushed, but could not record the link for sync back: {error}", file=sys.stderr)
     print(f"{'Created' if created else 'Updated'} {project['path']} ({count} entries) · linked for sync back")
+    if replaces:
+        print(
+            f"monolith: the earlier copy {replaces} is still in the sandbox under its real name and is no longer linked;"
+            f" remove it there with: rm -rf /workspace/projects/{replaces}",
+            file=sys.stderr,
+        )
     return 0

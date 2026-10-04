@@ -175,6 +175,19 @@ const MIGRATIONS: readonly string[] = [
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+  `,  `
+  CREATE TABLE confidential_projects (
+    project_id TEXT PRIMARY KEY,
+    marked_at TEXT NOT NULL
+  );
+  `,
+  `
+  CREATE TABLE project_claude_accounts (
+    project_id TEXT PRIMARY KEY,
+    account_id TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  ALTER TABLE agent_runs ADD COLUMN claude_account_id TEXT;
   `,
 ];
 

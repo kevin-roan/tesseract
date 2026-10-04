@@ -9,10 +9,9 @@ Read the exact versioned docs at https://docs.expo.dev/versions/v55.0.0/ before 
 - Coding rules: `CODING.md`.
 - Verify with `bun run typecheck` and `bun run test` from the repo root.
 
-# After changing the mobile app: restart Expo yourself
+# Never start or restart the mobile app yourself
 
-Don't ask; do it at the end of every task that touches `apps/mobile` (or `packages/*` it imports), then tell the user to reload the app on the device.
+The user runs the Expo dev server. Do not run `expo start`, `npx expo ...`, `bun run start`/`ios`/`android`, or kill/restart the dev server, unless the user explicitly asks in that message.
 
-1. Kill the running dev server: `pkill -f "node .*expo start"` (a bare `pkill -f "expo start"` also kills the shell running it, exit 144), then check that port 8081 is free (`ss -ltn | grep :8081`).
-2. Start it again from `apps/mobile` as a background command: `npx expo start --clear > /tmp/theone-expo.log 2>&1`. Do not set `CI=1`, because that turns off reloads.
-3. Wait until `curl -s localhost:8081/status` returns `packager-status:running`, then check `/tmp/theone-expo.log` for bundling errors.
+- If a server is already on port 8081 (`ss -ltn | grep :8081`), leave it alone. It hot-reloads changes on its own.
+- After changing `apps/mobile` (or `packages/*` it imports), verify with `bun run typecheck` and `bun run test`, then tell the user to reload the app on the device. If the change needs a clean Metro cache, say so and let the user restart it.

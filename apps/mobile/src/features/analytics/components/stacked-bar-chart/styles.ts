@@ -20,6 +20,14 @@ export default function createStyles(theme: Theme) {
     frame: {
       height: ChartFrame.plotHeight + ChartFrame.topPad + ChartFrame.axisBand,
     },
+    bars: {
+      position: "absolute",
+      top: ChartFrame.topPad,
+      left: ChartFrame.axisGutter,
+      right: 0,
+      height: ChartFrame.plotHeight,
+      transformOrigin: "bottom",
+    },
     overlay: {
       position: "absolute",
       top: 0,

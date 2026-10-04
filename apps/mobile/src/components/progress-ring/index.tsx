@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { View } from "react-native";
+import Animated from "react-native-reanimated";
 import Svg, { Circle } from "react-native-svg";
 
 import { ThemedText } from "@/components/themed-text";
@@ -8,6 +9,9 @@ import { clampProgress, percentLabel } from "@/lib/progress";
 import { MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
+import { useRingSweep } from "./use-ring-sweep";
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 export type ProgressRingProps = {
   /** Completion in the 0–1 range; values outside are clamped. */
@@ -44,6 +48,7 @@ const ProgressRing = ({
   const value = clampProgress(progress);
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
+  const sweep = useRingSweep(value, circumference);
 
   return (
     <View
@@ -57,11 +62,11 @@ const ProgressRing = ({
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke={trackColor ?? theme.colors.border}
+          stroke={trackColor ?? theme.colors.backgroundSelected}
           strokeWidth={thickness}
           fill="none"
         />
-        <Circle
+        <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
           r={radius}
@@ -69,7 +74,7 @@ const ProgressRing = ({
           strokeWidth={thickness}
           strokeLinecap="round"
           strokeDasharray={circumference}
-          strokeDashoffset={circumference * (1 - value)}
+          animatedProps={sweep}
           fill="none"
         />
       </Svg>

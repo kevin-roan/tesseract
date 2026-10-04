@@ -20,6 +20,7 @@ FILES_DIR = "files"
 DISPLACED_DIR = "displaced"
 LOCKS_DIR = "locks"
 KEEP_SNAPSHOTS = 20
+REDACTED = "REDACTED"
 
 Before = Literal["file", "absent"]
 
@@ -43,21 +44,52 @@ class Link:
     host_path: str
     pushed_at: str
     manifest: Manifest = field(default_factory=dict)
+    executable: list[str] | None = None
+    git_manifest: dict[str, str] | None = None
+    got_at: str | None = None
+    confidential: bool = False
 
     def to_json(self) -> dict[str, Any]:
-        return {"hostPath": self.host_path, "pushedAt": self.pushed_at, "manifest": self.manifest}
+        data: dict[str, Any] = {"hostPath": self.host_path, "pushedAt": self.pushed_at, "manifest": self.manifest}
+        if self.executable is not None:
+            data["executable"] = self.executable
+        if self.git_manifest is not None:
+            data["gitManifest"] = self.git_manifest
+        if self.got_at is not None:
+            data["gotAt"] = self.got_at
+        if self.confidential:
+            data["confidential"] = True
+        return data
+
+    @property
+    def shared_path(self) -> str:
+        return REDACTED if self.confidential else self.host_path
+
+    def redact(self, text: str) -> str:
+        if not self.confidential:
+            return text
+        return text.replace(self.host_path, REDACTED).replace(Path(self.host_path).name, REDACTED)
 
     @classmethod
     def from_json(cls, project_id: str, data: Any) -> "Link | None":
         if not isinstance(data, dict) or not isinstance(data.get("hostPath"), str):
             return None
-        manifest = data.get("manifest")
+        executable = data.get("executable")
+        got_at = data.get("gotAt")
         return cls(
             project_id,
             data["hostPath"],
             str(data.get("pushedAt") or ""),
-            {k: v for k, v in manifest.items() if isinstance(k, str) and isinstance(v, str)} if isinstance(manifest, dict) else {},
+            _strings(data.get("manifest")) or {},
+            [p for p in executable if isinstance(p, str)] if isinstance(executable, list) else None,
+            _strings(data.get("gitManifest")),
+            got_at if isinstance(got_at, str) else None,
+            data.get("confidential") is True,
         )
+
+
+def _strings(value: Any) -> dict[str, str] | None:
+    return {k: v for k, v in value.items() if isinstance(k, str) and isinstance(v, str)} if isinstance(value, dict) else None
 
 
 @dataclass
@@ -141,23 +173,46 @@ class SyncState:
         target = str(host_path)
         return next((link for link in self.links().values() if link.host_path == target), None)
 
-    def save_link(self, link: Link) -> None:
+    def save_link(self, link: Link, replaces: str | None = None) -> None:
         with self._links_lock():
             data = self._read_links()
+            if replaces is not None:
+                data.pop(replaces, None)
             data[link.project_id] = link.to_json()
             self._write_links(data)
 
-    def update_manifest(self, project_id: str, changes: Mapping[str, str | None]) -> None:
+    def update_manifest(
+        self, project_id: str, changes: Mapping[str, str | None], executable: Mapping[str, bool] | None = None
+    ) -> None:
         with self._links_lock():
             data = self._read_links()
             link = Link.from_json(project_id, data.get(project_id))
             if link is None:
                 return
+            bits = set(link.executable or ())
             for path, digest in changes.items():
                 if digest is None:
                     link.manifest.pop(path, None)
+                    bits.discard(path)
                 else:
                     link.manifest[path] = digest
+                if executable and path in executable:
+                    (bits.add if executable[path] else bits.discard)(path)
+            if link.executable is not None:
+                link.executable = sorted(bits)
+            data[project_id] = link.to_json()
+            self._write_links(data)
+
+    def record_get(
+        self, project_id: str, manifest: Manifest, executable: list[str], git_manifest: dict[str, str] | None, got_at: str
+    ) -> None:
+        """After an applied get: the host tree that was sent becomes the link's baseline (hostPath and pushedAt kept)."""
+        with self._links_lock():
+            data = self._read_links()
+            link = Link.from_json(project_id, data.get(project_id))
+            if link is None:
+                return
+            link.manifest, link.executable, link.git_manifest, link.got_at = dict(manifest), list(executable), git_manifest, got_at
             data[project_id] = link.to_json()
             self._write_links(data)
 

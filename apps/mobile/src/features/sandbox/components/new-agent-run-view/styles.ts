@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import { ControlHeight, type Theme } from "@/theme";
+import type { Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -8,9 +8,8 @@ export default function createStyles(theme: Theme) {
       flexDirection: "row",
       alignItems: "center",
     },
-    headerButton: {
-      width: ControlHeight.md,
-      height: ControlHeight.md,
+    hero: {
+      flex: 1,
     },
     footer: {
       gap: theme.spacing.md,

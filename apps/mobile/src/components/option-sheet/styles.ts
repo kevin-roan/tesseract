@@ -3,6 +3,8 @@ import { StyleSheet } from "react-native";
 import { ControlHeight, displayFor, FontWeights, sansFor, MinTouchTarget, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
+  const graphite = theme.look === "graphite";
+
   return StyleSheet.create({
     header: {
       flexDirection: "row",
@@ -15,19 +17,19 @@ export default function createStyles(theme: Theme) {
       height: ControlHeight.sm,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: theme.radius.full,
+      borderRadius: graphite ? theme.radius.md : theme.radius.full,
+      borderCurve: "continuous",
+      borderWidth: graphite ? StyleSheet.hairlineWidth : 0,
+      borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElement,
-    },
-    pressed: {
-      opacity: 0.7,
     },
     title: {
       flex: 1,
       textAlign: "center",
-      fontFamily: displayFor(FontWeights.bold),
+      ...(graphite ? null : { fontFamily: displayFor(FontWeights.bold) }),
     },
     group: {
-      borderRadius: theme.radius.lg,
+      borderRadius: theme.radius.card,
       borderCurve: "continuous",
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
@@ -41,9 +43,6 @@ export default function createStyles(theme: Theme) {
       minHeight: MinTouchTarget,
       paddingVertical: theme.spacing.md,
       paddingHorizontal: theme.spacing.base,
-    },
-    rowPressed: {
-      backgroundColor: theme.colors.backgroundElement,
     },
     divider: {
       height: StyleSheet.hairlineWidth,
@@ -65,12 +64,14 @@ export default function createStyles(theme: Theme) {
     badge: {
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xxs,
-      borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.badge,
+      borderRadius: graphite ? theme.radius.sm : theme.radius.full,
+      borderCurve: "continuous",
+      borderWidth: graphite ? StyleSheet.hairlineWidth : 0,
+      borderColor: theme.colors.border,
+      backgroundColor: graphite ? theme.colors.backgroundSelected : theme.colors.badge,
     },
     badgeText: {
-      color: theme.colors.badgeText,
-      fontFamily: sansFor(FontWeights.medium),
+      ...(graphite ? null : { color: theme.colors.badgeText, fontFamily: sansFor(FontWeights.medium) }),
     },
     footnote: {
       paddingHorizontal: theme.spacing.xs,

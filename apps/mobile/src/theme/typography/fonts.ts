@@ -10,7 +10,8 @@ import { Platform, type TextStyle } from 'react-native';
  * React Native does not synthesise weights for a custom family on Android, so
  * each weight is a separately registered face and the family name carries the
  * weight — use `sansFor(weight)` / `displayFor(weight)` rather than
- * `fontWeight` when styling text. Serif and mono stay on the platform defaults.
+ * `fontWeight` when styling text. Code and terminals use Geist Mono; serif stays
+ * on the platform default.
  */
 export const Fonts = Platform.select({
   ios: {
@@ -19,15 +20,14 @@ export const Fonts = Platform.select({
     /** iOS `UIFontDescriptorSystemDesignSerif` */
     serif: 'ui-serif',
     rounded: 'Exo2_500Medium',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
+    mono: 'GeistMono_400Regular',
   },
   default: {
     sans: 'NotoSans_400Regular',
     display: 'Exo2_400Regular',
     serif: 'serif',
     rounded: 'Exo2_500Medium',
-    mono: 'monospace',
+    mono: 'GeistMono_400Regular',
   },
   web: {
     sans: 'NotoSans_400Regular',
@@ -70,6 +70,20 @@ export const DisplayFaces: Record<string, string> = {
   '800': 'Exo2_800ExtraBold',
 };
 
+export const MonoFaces: Record<string, string> = {
+  '400': 'GeistMono_400Regular',
+  '500': 'GeistMono_500Medium',
+  '600': 'GeistMono_600SemiBold',
+  '700': 'GeistMono_700Bold',
+  '800': 'GeistMono_700Bold',
+};
+
+/**
+ * The face set a scheme draws its text in. `classic` pairs Exo 2 headings with
+ * Noto Sans copy; `mono` sets every variant, code included, in Geist Mono.
+ */
+export type Typeface = 'classic' | 'mono';
+
 /** Noto Sans face for a numeric weight, falling back to regular. */
 export function sansFor(weight: TextStyle['fontWeight']): string {
   return SansFaces[String(weight)] ?? SansFaces['400'];
@@ -78,6 +92,11 @@ export function sansFor(weight: TextStyle['fontWeight']): string {
 /** Exo 2 face for a numeric weight, falling back to regular. */
 export function displayFor(weight: TextStyle['fontWeight']): string {
   return DisplayFaces[String(weight)] ?? DisplayFaces['400'];
+}
+
+/** Geist Mono face for a numeric weight, falling back to regular. */
+export function monoFor(weight: TextStyle['fontWeight']): string {
+  return MonoFaces[String(weight)] ?? MonoFaces['400'];
 }
 
 /**

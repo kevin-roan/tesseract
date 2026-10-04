@@ -14,6 +14,7 @@ export function useCropBox(image: Size, container: Size) {
   const bounds = useSharedValue<Rect>({ x: fit.x, y: fit.y, width: fit.width, height: fit.height });
   const rect = useSharedValue<Rect>(initialCrop(fit));
   const origin = useSharedValue<Rect>(rect.get());
+  const grabbed = useSharedValue<Corner | null>(null);
 
   useEffect(() => {
     const next = { x: fit.x, y: fit.y, width: fit.width, height: fit.height };
@@ -39,11 +40,15 @@ export function useCropBox(image: Size, container: Size) {
         .hitSlop(CROP_HANDLE_SIZE / 2)
         .onBegin(() => {
           origin.set(rect.get());
+          grabbed.set(corner);
         })
         .onUpdate((event) => {
           rect.set(clampRect(resizeFromCorner(origin.get(), corner, event.translationX, event.translationY, bounds.get()), bounds.get()));
+        })
+        .onFinalize(() => {
+          grabbed.set(null);
         }),
-    [origin, rect, bounds],
+    [origin, rect, bounds, grabbed],
   );
 
   const corners = useMemo(() => CORNERS.map((corner) => ({ corner, gesture: cornerGesture(corner) })), [cornerGesture]);
@@ -72,5 +77,5 @@ export function useCropBox(image: Size, container: Size) {
     return clampRect(value, { x: 0, y: 0, width: image.width, height: image.height }, 1);
   }, [rect, fit, image]);
 
-  return { fit, move, corners, boxStyle, dims: { top: dimTop, bottom: dimBottom, left: dimLeft, right: dimRight }, readRect };
+  return { fit, move, corners, grabbed, boxStyle, dims: { top: dimTop, bottom: dimBottom, left: dimLeft, right: dimRight }, readRect };
 }

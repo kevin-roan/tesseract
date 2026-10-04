@@ -20,6 +20,12 @@ export default function createStyles(theme: Theme, topInset: number) {
       bottom: 0,
       backgroundColor: theme.colors.overlay,
     },
+    fill: {
+      flex: 1,
+    },
+    card: {
+      transformOrigin: "top",
+    },
     island: {
       position: "absolute",
       top: topInset + theme.spacing.sm,

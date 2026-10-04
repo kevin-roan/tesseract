@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { View } from "react-native";
 import type { Icon } from "phosphor-react-native";
 
-import { Glass } from "@/components/glass";
+import IconTile from "@/components/icon-tile";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { IconSize } from "@/theme";
+import { ControlHeight, IconSize, MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
 
@@ -15,17 +15,21 @@ export type CardTitleProps = {
   trailing?: React.ReactNode;
 };
 
-/** Round glass icon badge, a heading, and an optional control pinned to the right. */
-const CardTitle = ({ icon: IconComponent, title, trailing }: CardTitleProps) => {
+/** Rounded icon tile, a light display heading, and an optional control pinned to the right. */
+const CardTitle = ({ icon, title, trailing }: CardTitleProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <View style={styles.row}>
-      <Glass style={styles.badge}>
-        <IconComponent size={IconSize.md} color={theme.colors.text} weight="duotone" />
-      </Glass>
-      <ThemedText variant="h4" numberOfLines={1} style={styles.title} accessibilityRole="header">
+      <IconTile icon={icon} size={ControlHeight.md} iconSize={IconSize.md} radius="md" />
+      <ThemedText
+        variant="h4"
+        numberOfLines={1}
+        maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+        style={styles.title}
+        accessibilityRole="header"
+      >
         {title}
       </ThemedText>
       {trailing}

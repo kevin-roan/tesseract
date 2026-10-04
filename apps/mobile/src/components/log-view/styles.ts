@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import { ControlHeight, Shadows, type Theme } from "@/theme";
+import { ControlHeight, type Theme } from "@/theme";
 
 import { INLINE_HEIGHT_RATIO } from "./lines";
 
@@ -11,8 +11,10 @@ export default function createStyles(theme: Theme) {
     container: {
       flex: 1,
       overflow: "hidden",
-      borderRadius: theme.radius.lg,
+      borderRadius: theme.radius.card,
       borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
       backgroundColor: theme.colors.codeBackground,
     },
     inline: {
@@ -23,20 +25,19 @@ export default function createStyles(theme: Theme) {
       padding: theme.spacing.md,
       gap: theme.spacing.xxs,
     },
-    jump: {
+    jumpSlot: {
       position: "absolute",
       right: theme.spacing.md,
       bottom: theme.spacing.md,
+    },
+    jump: {
       width: jump,
       height: jump,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.pill,
+      borderCurve: "continuous",
       backgroundColor: theme.colors.accent,
-      ...Shadows.level2,
-    },
-    pressed: {
-      opacity: 0.85,
     },
   });
 }

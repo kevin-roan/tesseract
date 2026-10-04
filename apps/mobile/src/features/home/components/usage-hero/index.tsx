@@ -1,13 +1,15 @@
 import { useMemo } from "react";
 import { View } from "react-native";
+import Animated from "react-native-reanimated";
 import { ChartBarIcon } from "phosphor-react-native";
 
-import { Glass } from "@/components/glass";
 import Notice from "@/components/notice";
 import Skeleton from "@/components/skeleton";
 import { Surface } from "@/components/surface";
+import TagChip from "@/components/tag-chip";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { useEntrance } from "@/hooks/use-entrance";
 import type { SurfaceTone } from "@/theme";
 
 import { useUsageBarColors } from "../../hooks/use-usage-bar-colors";
@@ -42,11 +44,15 @@ export type UsageHeroProps = {
   tone?: SurfaceTone;
 };
 
-const UsageHero = ({ range, ranges, onChangeRange, data, loading, error, onRetry, tone = "lavender" }: UsageHeroProps) => {
+const UsageHero = ({ range, ranges, onChangeRange, data, loading, error, onRetry, tone = "neutral" }: UsageHeroProps) => {
   const theme = useAppTheme(tone);
   const styles = useMemo(() => createStyles(theme), [theme]);
   const options = useMemo(() => usageRangeOptions(ranges), [ranges]);
   const barColors = useUsageBarColors(tone);
+  const figureEntering = useEntrance(0);
+  const chartEntering = useEntrance(1);
+  const splitEntering = useEntrance(2);
+  const footerEntering = useEntrance(3);
 
   return (
     <Surface tone={tone} style={styles.card}>
@@ -60,13 +66,13 @@ const UsageHero = ({ range, ranges, onChangeRange, data, loading, error, onRetry
         <Notice tone="danger" title="Usage is unavailable" message={error} actionLabel="Retry" onAction={onRetry} />
       ) : loading || !data ? (
         <View style={styles.skeleton} testID="usage-hero-loading">
-          <Skeleton height={theme.text.metric.lineHeight ?? 0} width="55%" radius="full" />
-          <Skeleton height={CHART_HEIGHT} radius="xl" />
-          <Skeleton height={12} radius="full" />
+          <Skeleton height={theme.text.metric.lineHeight ?? 0} width="55%" radius="xs" />
+          <Skeleton height={CHART_HEIGHT} radius="sm" />
+          <Skeleton height={theme.spacing.md} radius="none" />
         </View>
       ) : (
         <>
-          <View style={styles.figure}>
+          <Animated.View entering={figureEntering} style={styles.figure}>
             <View style={styles.figureRow}>
               <View style={styles.metric}>
                 <MetricFigure
@@ -76,11 +82,7 @@ const UsageHero = ({ range, ranges, onChangeRange, data, loading, error, onRetry
                 />
               </View>
               {!data.empty && data.cachedPercent != null ? (
-                <Glass style={styles.badge}>
-                  <ThemedText variant="label" numberOfLines={1}>
-                    {data.cachedPercent}% cached
-                  </ThemedText>
-                </Glass>
+                <TagChip label={`${data.cachedPercent}% cached`} />
               ) : null}
             </View>
             {data.empty ? (
@@ -88,19 +90,23 @@ const UsageHero = ({ range, ranges, onChangeRange, data, loading, error, onRetry
                 No Claude activity in the last {rangeLabel(range)}. Start a chat and it shows up here.
               </ThemedText>
             ) : null}
-          </View>
+          </Animated.View>
 
           {data.empty ? null : (
             <>
-              <DailyBars days={data.daily} colors={barColors} testID="usage-daily" />
-              <TokenSplit parts={data.split} />
+              <Animated.View entering={chartEntering}>
+                <DailyBars days={data.daily} colors={barColors} testID="usage-daily" />
+              </Animated.View>
+              <Animated.View entering={splitEntering}>
+                <TokenSplit parts={data.split} />
+              </Animated.View>
             </>
           )}
 
-          <View style={styles.footer}>
+          <Animated.View entering={footerEntering} style={styles.footer}>
             <GlassStat value={formatCount(data.messages)} label="Messages" />
             <GlassStat value={formatCount(data.sessions)} label="Sessions" />
-          </View>
+          </Animated.View>
         </>
       )}
     </Surface>

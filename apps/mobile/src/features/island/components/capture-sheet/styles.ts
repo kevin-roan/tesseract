@@ -17,5 +17,8 @@ export default function createStyles(theme: Theme) {
       paddingHorizontal: theme.gutter,
       paddingBottom: theme.spacing.base,
     },
+    step: {
+      flex: 1,
+    },
   });
 }

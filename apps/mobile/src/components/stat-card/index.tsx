@@ -1,15 +1,16 @@
 import { useMemo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import type { Icon } from "phosphor-react-native";
 
-import { Glass } from "@/components/glass";
+import IconTile from "@/components/icon-tile";
 import PercentBadge from "@/components/percent-badge";
+import PressableScale from "@/components/pressable-scale";
 import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { IconSize, type SurfaceTone } from "@/theme";
+import { MaxFontSizeMultiplier, type SurfaceTone } from "@/theme";
 
-import createStyles from "./styles";
+import createStyles, { iconTileSize } from "./styles";
 
 export type StatCardProps = {
   icon: Icon;
@@ -27,8 +28,8 @@ export type StatCardProps = {
 };
 
 /**
- * Pastel metric card: a glass icon badge and optional percentage pill on top,
- * the label and a large headline figure with its small grey qualifier below.
+ * Stat tile: a dark icon tile and optional percentage chip on top, a grey
+ * label and a large, light tabular figure with its grey qualifier below.
  */
 const StatCard = ({ icon: IconComponent, label, value, unit, progress, tone = "neutral", onPress }: StatCardProps) => {
   const theme = useAppTheme(tone);
@@ -37,14 +38,17 @@ const StatCard = ({ icon: IconComponent, label, value, unit, progress, tone = "n
   const card = (
     <Surface tone={tone} style={styles.card}>
       <View style={styles.top}>
-        <Glass style={styles.iconBadge}>
-          <IconComponent size={IconSize.md} color={theme.colors.text} weight="bold" />
-        </Glass>
+        <IconTile icon={IconComponent} size={iconTileSize(theme)} radius="md" />
         {progress !== undefined ? <PercentBadge progress={progress} /> : null}
       </View>
 
       <View style={styles.bottom}>
-        <ThemedText variant="label" color="textSecondary" numberOfLines={1}>
+        <ThemedText
+          variant="bodySmall"
+          color="textSecondary"
+          numberOfLines={1}
+          maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+        >
           {label}
         </ThemedText>
         <View style={styles.valueRow}>
@@ -52,7 +56,7 @@ const StatCard = ({ icon: IconComponent, label, value, unit, progress, tone = "n
             {value}
           </ThemedText>
           {unit ? (
-            <ThemedText variant="bodySmall" color="textTertiary" style={styles.unit} numberOfLines={1}>
+            <ThemedText variant="bodySmall" color="textSecondary" style={styles.unit} numberOfLines={1}>
               {unit}
             </ThemedText>
           ) : null}
@@ -64,14 +68,14 @@ const StatCard = ({ icon: IconComponent, label, value, unit, progress, tone = "n
   if (!onPress) return card;
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={`${label}, ${value}${unit ?? ""}`}
       onPress={onPress}
-      style={({ pressed }) => [styles.pressable, pressed && styles.pressed]}
+      style={styles.pressable}
     >
       {card}
-    </Pressable>
+    </PressableScale>
   );
 };
 

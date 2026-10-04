@@ -1,14 +1,16 @@
 import { useMemo, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
+import Animated from "react-native-reanimated";
 import type { Icon } from "phosphor-react-native";
 
+import IconTile from "@/components/icon-tile";
 import { Surface } from "@/components/surface";
 import StatusBadge, { type StatusBadgeProps } from "@/components/status-badge";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { IconSize } from "@/theme";
+import { usePressScale } from "@/hooks/use-press-scale";
 
-import createStyles from "./styles";
+import createStyles, { iconTileSize } from "./styles";
 
 export type ResourceCardProps = {
   title: string;
@@ -19,6 +21,7 @@ export type ResourceCardProps = {
   monospaceSubtitle?: boolean;
   onPress?: () => void;
   footer?: ReactNode;
+  accessory?: ReactNode;
   children?: ReactNode;
 };
 
@@ -31,21 +34,21 @@ const ResourceCard = ({
   monospaceSubtitle = false,
   onPress,
   footer,
+  accessory,
   children,
 }: ResourceCardProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const press = usePressScale();
 
   const summary = (
     <>
       <View style={styles.header}>
         {IconComponent ? (
-          <View style={styles.iconBadge}>
-            <IconComponent size={IconSize.md} color={theme.colors.text} weight="duotone" />
-          </View>
+          <IconTile icon={IconComponent} size={iconTileSize(theme)} radius="md" />
         ) : null}
         <View style={styles.body}>
-          <ThemedText variant="bodyStrong" numberOfLines={1}>
+          <ThemedText variant="h4" numberOfLines={1}>
             {title}
           </ThemedText>
           {subtitle ? (
@@ -59,6 +62,7 @@ const ResourceCard = ({
           ) : null}
         </View>
         {badge ? <StatusBadge {...badge} /> : null}
+        {accessory}
       </View>
       {meta ? (
         <ThemedText variant="caption" color="textTertiary" numberOfLines={1}>
@@ -70,21 +74,24 @@ const ResourceCard = ({
   );
 
   return (
-    <Surface style={styles.card}>
-      {onPress ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={[title, subtitle, badge?.label].filter(Boolean).join(", ")}
-          onPress={onPress}
-          style={({ pressed }) => [styles.summary, pressed && styles.pressed]}
-        >
-          {summary}
-        </Pressable>
-      ) : (
-        <View style={styles.summary}>{summary}</View>
-      )}
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
-    </Surface>
+    <Animated.View style={press.style}>
+      <Surface style={styles.card}>
+        {onPress ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={[title, subtitle, badge?.label].filter(Boolean).join(", ")}
+            onPress={onPress}
+            {...press.handlers}
+            style={styles.summary}
+          >
+            {summary}
+          </Pressable>
+        ) : (
+          <View style={styles.summary}>{summary}</View>
+        )}
+        {footer ? <View style={styles.footer}>{footer}</View> : null}
+      </Surface>
+    </Animated.View>
   );
 };
 

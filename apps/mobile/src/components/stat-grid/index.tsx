@@ -1,9 +1,10 @@
 import { useMemo } from "react";
 import { View } from "react-native";
 
-import StatCard, { type StatCardProps } from "@/components/stat-card";
+import type { StatCardProps } from "@/components/stat-card";
 import { useAppTheme } from "@/hooks/use-app-theme";
 
+import StatCell from "./stat-cell";
 import createStyles from "./styles";
 
 export type StatItem = StatCardProps & { id: string };
@@ -23,10 +24,8 @@ const StatGrid = ({ items }: StatGridProps) => {
 
   return (
     <View style={styles.grid}>
-      {items.map(({ id, ...card }) => (
-        <View key={id} style={styles.cell}>
-          <StatCard {...card} />
-        </View>
+      {items.map(({ id, ...card }, index) => (
+        <StatCell key={id} card={card} index={index} style={styles.cell} />
       ))}
     </View>
   );

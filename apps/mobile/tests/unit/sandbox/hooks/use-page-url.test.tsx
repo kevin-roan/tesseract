@@ -54,4 +54,16 @@ describe("usePageUrl", () => {
     expect(result.current).toMatchObject({ url: null, origin: null, error: null });
     expect(fake.terminalPageUrl).not.toHaveBeenCalled();
   });
+
+  it("uses a given target client, key and origin instead of the active sandbox", async () => {
+    const other = { terminalPageUrl: jest.fn().mockResolvedValue("http://100.64.0.1:7701/ui/terminal#ticket=h") };
+    const target = { key: ["host", "page", "trm_1"], client: other as unknown as TheOneClient, origin: "http://100.64.0.1:7701" };
+    const { result } = await renderHook(() => usePageUrl("terminal", "trm_1", (client) => (client as unknown as typeof other).terminalPageUrl(), true, target), {
+      wrapper: createWrapper(queryClient),
+    });
+    await waitFor(() => expect(result.current.url).toBe("http://100.64.0.1:7701/ui/terminal#ticket=h"));
+    expect(result.current.origin).toBe("http://100.64.0.1:7701");
+    expect(fake.terminalPageUrl).not.toHaveBeenCalled();
+    expect(queryClient.getQueryData(["host", "page", "trm_1"])).toBe(result.current.url);
+  });
 });

@@ -110,3 +110,13 @@ q() {
     assert_equal "$(q "${variant}" '[.services[] | select(.volumes) | .volumes[] | select(.source == "/srv/claude")] | length')" "1"
   done
 }
+
+@test "claude accounts: each extra host Claude dir is a live bind mount at /home/dev/.claude-<name>" {
+  local variant=local-claude-accounts
+  assert_equal "$(q "${variant}" '.services.sandbox.environment.THEONE_CLAUDE_ACCOUNTS')" "work,other"
+  assert_equal "$(q "${variant}" '[.services.sandbox.volumes[] | select(.target | startswith("/home/dev/.claude-")) | "\(.type) \(.source | split("/") | last)->\(.target) ro=\(.read_only // false) create=\(.bind.create_host_path)"] | join(",")')" \
+    "bind claude-work->/home/dev/.claude-work ro=false create=false,bind claude-other->/home/dev/.claude-other ro=false create=false"
+  assert_equal "$(q "${variant}" '.services.sandbox.volumes[] | select(.target == "/home/dev/.claude") | .source')" "/srv/claude"
+  assert_equal "$(q "${variant}" '[.services.sandbox.volumes[] | .target] | (index("/home/dev") < index("/home/dev/.claude-work"))')" "true"
+  assert_equal "$(q local '.services.sandbox.environment | has("THEONE_CLAUDE_ACCOUNTS")')" "false"
+}

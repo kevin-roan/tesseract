@@ -7,10 +7,12 @@ import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
 import Section from "@/components/section";
+import ProjectClaudeAccount from "@/features/claude-account/components/project-claude-account";
 import ArtifactCard from "@/features/sandbox/components/artifact-card";
 import BuildCard from "@/features/sandbox/components/build-card";
 import BuildTargetCard from "@/features/sandbox/components/build-target-card";
 import GitCard from "@/features/sandbox/components/git-card";
+import MotionItem from "@/components/motion-item";
 import ProcessCard from "@/features/sandbox/components/process-card";
 import ScriptCard from "@/features/sandbox/components/script-card";
 import SyncSection from "@/features/sandbox/components/sync-section";
@@ -55,95 +57,139 @@ export default function ProjectScreen() {
         />
       }
     >
-      {detail.actionError ? <Notice tone="danger" message={detail.actionError} /> : null}
+      {detail.actionError ? (
+        <MotionItem>
+          <Notice tone="danger" message={detail.actionError} />
+        </MotionItem>
+      ) : null}
 
       {project.git ? (
-        <Section title="Git">
-          <GitCard
-            summary={project.git}
-            details={detail.git}
-            fileLimit={GIT_PREVIEW.files}
-            commitLimit={GIT_PREVIEW.commits}
-          />
-        </Section>
+        <MotionItem index={0}>
+          <Section title="Git">
+            <GitCard
+              summary={project.git}
+              details={detail.git}
+              fileLimit={GIT_PREVIEW.files}
+              commitLimit={GIT_PREVIEW.commits}
+            />
+          </Section>
+        </MotionItem>
       ) : null}
 
-      <SyncSection sync={detail.sync} />
+      <MotionItem index={1}>
+        <SyncSection sync={detail.sync} />
+      </MotionItem>
+
+      {detail.claudeAccount.visible ? (
+        <MotionItem index={1}>
+          <ProjectClaudeAccount state={detail.claudeAccount} />
+        </MotionItem>
+      ) : null}
 
       {detail.sites.length > 0 ? (
-        <Section title="Websites" testID="project-sites">
-          {detail.siteError ? <Notice tone="danger" message={detail.siteError} /> : null}
-          {detail.sites.map((site) => (
-            <WebLinkCard key={site.port} site={site} onOpen={detail.openSite} />
-          ))}
-        </Section>
+        <MotionItem index={2}>
+          <Section title="Websites" testID="project-sites">
+            {detail.siteError ? (
+              <MotionItem>
+                <Notice tone="danger" message={detail.siteError} />
+              </MotionItem>
+            ) : null}
+            {detail.sites.map((site) => (
+              <MotionItem key={site.port}>
+                <WebLinkCard site={site} onOpen={detail.openSite} />
+              </MotionItem>
+            ))}
+          </Section>
+        </MotionItem>
       ) : null}
 
-      <Section title="Scripts" isEmpty={detail.scripts.length === 0} emptyLabel="No package scripts found.">
-        {detail.scripts.map(({ script, command }) => (
-          <ScriptCard
-            key={script}
-            script={script}
-            command={command}
-            preferDisplay={detail.preferDisplay}
-            onRun={(display) => detail.runScript(script, display)}
-            running={detail.runningScript === script}
-          />
-        ))}
-      </Section>
+      <MotionItem index={3}>
+        <Section title="Scripts" isEmpty={detail.scripts.length === 0} emptyLabel="No package scripts found.">
+          {detail.scripts.map(({ script, command, bookmarked }) => (
+            <ScriptCard
+              key={script}
+              script={script}
+              command={command}
+              preferDisplay={detail.preferDisplay}
+              onRun={(display) => detail.runScript(script, display)}
+              running={detail.runningScript === script}
+              bookmarked={bookmarked}
+              onToggleBookmark={() => detail.toggleBookmark(script)}
+            />
+          ))}
+        </Section>
+      </MotionItem>
 
-      <Section title="Build" isEmpty={detail.targets.length === 0} emptyLabel="No build targets detected.">
-        {detail.targets.map((option) => (
-          <BuildTargetCard
-            key={option.target}
-            option={option}
-            onBuild={(profile) => detail.build(option.target, profile)}
-            building={detail.buildingTarget === option.target}
-          />
-        ))}
-      </Section>
+      <MotionItem index={4}>
+        <Section title="Build" isEmpty={detail.targets.length === 0} emptyLabel="No build targets detected.">
+          {detail.targets.map((option) => (
+            <BuildTargetCard
+              key={option.target}
+              option={option}
+              onBuild={(profile) => detail.build(option.target, profile)}
+              building={detail.buildingTarget === option.target}
+            />
+          ))}
+        </Section>
+      </MotionItem>
 
-      <Section title="Processes" isEmpty={detail.processes.length === 0} emptyLabel="Nothing has run here yet.">
-        {detail.processes.map((process) => (
-          <ProcessCard
-            key={process.id}
-            process={process}
-            onStop={() => detail.stopProcess(process.id)}
-            stopping={detail.stoppingId === process.id}
-            onToggleLogs={() => detail.toggleLogs(process.id)}
-            logsOpen={detail.logsId === process.id}
-            site={detail.siteFor(process.id)}
-            onOpenSite={detail.openSite}
-          />
-        ))}
-        {detail.logsId ? (
-          <LogView
-            lines={detail.logs.lines}
-            emptyLabel={detail.logs.error ?? "Waiting for output…"}
-            inline
-          />
-        ) : null}
-      </Section>
+      <MotionItem index={5}>
+        <Section title="Processes" isEmpty={detail.processes.length === 0} emptyLabel="Nothing has run here yet.">
+          {detail.processes.map((process) => (
+            <MotionItem key={process.id}>
+              <ProcessCard
+                process={process}
+                onStop={() => detail.stopProcess(process.id)}
+                stopping={detail.stoppingId === process.id}
+                onToggleLogs={() => detail.toggleLogs(process.id)}
+                logsOpen={detail.logsId === process.id}
+                site={detail.siteFor(process.id)}
+                onOpenSite={detail.openSite}
+              />
+            </MotionItem>
+          ))}
+          {detail.logsId ? (
+            <MotionItem key={`logs-${detail.logsId}`}>
+              <LogView
+                lines={detail.logs.lines}
+                emptyLabel={detail.logs.error ?? "Waiting for output…"}
+                inline
+              />
+            </MotionItem>
+          ) : null}
+        </Section>
+      </MotionItem>
 
       {detail.builds.length > 0 ? (
-        <Section title="Recent builds">
-          {detail.builds.map((build) => (
-            <BuildCard key={build.id} build={build} onPress={() => detail.nav.build(build.id)} />
-          ))}
-        </Section>
+        <MotionItem index={6}>
+          <Section title="Recent builds">
+            {detail.builds.map((build) => (
+              <MotionItem key={build.id}>
+                <BuildCard build={build} onPress={() => detail.nav.build(build.id)} />
+              </MotionItem>
+            ))}
+          </Section>
+        </MotionItem>
       ) : null}
 
-      <Section title="Artifacts" isEmpty={detail.artifacts.length === 0} emptyLabel="No artifacts yet.">
-        {detail.downloads.error ? <Notice tone="danger" message={detail.downloads.error} /> : null}
-        {detail.artifacts.map((artifact) => (
-          <ArtifactCard
-            key={artifact.id}
-            artifact={artifact}
-            onDownload={() => detail.downloads.download(artifact.id)}
-            downloading={detail.downloads.pendingId === artifact.id}
-          />
-        ))}
-      </Section>
+      <MotionItem index={7}>
+        <Section title="Artifacts" isEmpty={detail.artifacts.length === 0} emptyLabel="No artifacts yet.">
+          {detail.downloads.error ? (
+            <MotionItem>
+              <Notice tone="danger" message={detail.downloads.error} />
+            </MotionItem>
+          ) : null}
+          {detail.artifacts.map((artifact) => (
+            <MotionItem key={artifact.id}>
+              <ArtifactCard
+                artifact={artifact}
+                onDownload={() => detail.downloads.download(artifact.id)}
+                downloading={detail.downloads.pendingId === artifact.id}
+              />
+            </MotionItem>
+          ))}
+        </Section>
+      </MotionItem>
     </ScreenScaffold>
   );
 }

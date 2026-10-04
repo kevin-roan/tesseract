@@ -2,6 +2,7 @@ from collections.abc import Callable
 
 from gi.repository import Adw, Gtk
 
+from .motion import crossfade_stack
 from .text import Text
 
 
@@ -52,7 +53,7 @@ class Section(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
         self.header = SectionHeader(title, action_label, on_action, subtitle)
         self.append(self.header)
-        self._stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, vhomogeneous=False, hhomogeneous=False)
+        self._stack = crossfade_stack(vhomogeneous=False, hhomogeneous=False)
         self._stack.add_named(Adw.Spinner(halign=Gtk.Align.START, width_request=24, height_request=24), "loading")
         self._empty = Text(empty_label or "", "bodySmall", "textSecondary", wrap=True, lines=None)
         self._stack.add_named(self._empty, "empty")

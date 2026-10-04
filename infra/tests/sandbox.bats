@@ -539,3 +539,117 @@ ${prefix} exec -T -u dev sandbox theone-controller status"
 $(compose_prefix theone-two tailscale) up --detach"
   assert_equal "$(last_env)" "unset|theone-two|two|7700|5901"
 }
+
+claude_home() {
+  CLAUDE_HOME="${BATS_TEST_TMPDIR}/home"
+  STATE="${BATS_TEST_TMPDIR}/state"
+  OVERRIDE="${STATE}/theone/compose.theone.claude-accounts.yml"
+  mkdir -p "${CLAUDE_HOME}"
+}
+
+claude_sandbox() {
+  HOME="${CLAUDE_HOME}" XDG_STATE_HOME="${STATE}" run "${SANDBOX}" "$@"
+}
+
+@test "claude accounts: none configured adds no override and writes nothing" {
+  claude_home
+  mkdir "${CLAUDE_HOME}/.claude-work"
+  claude_sandbox --mode local ps
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix theone local) ps"
+  assert_file_not_exists "${STATE}/theone"
+}
+
+@test "claude accounts: each existing ~/.claude-<name> is bind-mounted through an override for every command" {
+  claude_home
+  mkdir "${CLAUDE_HOME}/.claude-work" "${CLAUDE_HOME}/.claude-personal"
+  write_env 'THEONE_HOST_CLAUDE_ACCOUNTS="work, personal"'
+  claude_sandbox --mode local ps
+  claude_sandbox --mode local down -v
+  claude_sandbox --mode local logs -f
+  claude_sandbox --mode local config --quiet
+  assert_success
+  local prefix
+  prefix="$(compose_prefix theone local) -f ${OVERRIDE}"
+  assert_equal "$(calls_of docker)" "${prefix} ps
+${prefix} down --remove-orphans -v
+${prefix} logs --tail=200 -f
+${prefix} config --quiet"
+  assert_equal "$(cat "${OVERRIDE}")" 'services:
+  sandbox:
+    environment:
+      THEONE_CLAUDE_ACCOUNTS: "work,personal"
+    volumes:
+      - type: bind
+        source: "'"${CLAUDE_HOME}"'/.claude-work"
+        target: "/home/dev/.claude-work"
+        bind:
+          create_host_path: false
+      - type: bind
+        source: "'"${CLAUDE_HOME}"'/.claude-personal"
+        target: "/home/dev/.claude-personal"
+        bind:
+          create_host_path: false'
+  assert_equal "$(find "${STATE}" -type f | wc -l)" 1
+}
+
+@test "claude accounts: the override follows the project and comes after the other overlays" {
+  claude_home
+  mkdir "${CLAUDE_HOME}/.claude-work"
+  THEONE_HOST_CLAUDE_ACCOUNTS=work THEONE_COMPOSE_PROJECT=theone-two claude_sandbox --mode local --dind ps
+  assert_success
+  assert_equal "$(calls_of docker)" \
+    "$(compose_prefix theone-two local dind) -f ${STATE}/theone/compose.theone-two.claude-accounts.yml ps"
+}
+
+@test "claude accounts: a missing directory is skipped with a warning and never created" {
+  claude_home
+  mkdir "${CLAUDE_HOME}/.claude-work"
+  THEONE_HOST_CLAUDE_ACCOUNTS="personal work" claude_sandbox --mode local ps
+  assert_success
+  assert_output "sandbox: warning: Claude account 'personal' skipped: ${CLAUDE_HOME}/.claude-personal is not a directory"
+  assert_file_not_exists "${CLAUDE_HOME}/.claude-personal"
+  run grep -c 'type: bind' "${OVERRIDE}"
+  assert_output 1
+  grep -qx '      THEONE_CLAUDE_ACCOUNTS: "work"' "${OVERRIDE}"
+
+  : > "${STUB_LOG}"
+  THEONE_HOST_CLAUDE_ACCOUNTS=personal claude_sandbox --mode local ps
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix theone local) ps"
+  assert_file_not_exists "${CLAUDE_HOME}/.claude-personal"
+}
+
+@test "claude accounts: name=/abs/path mounts another host dir, quoted for YAML and compose" {
+  claude_home
+  local dir="${BATS_TEST_TMPDIR}/odd\"dir\$x\\y"
+  mkdir -p "${dir}"
+  THEONE_HOST_CLAUDE_ACCOUNTS="team_2=${dir}" claude_sandbox --mode local ps
+  assert_success
+  grep -qxF "        source: \"${BATS_TEST_TMPDIR}/odd\\\"dir\$\$x\\\\y\"" "${OVERRIDE}"
+  grep -qxF '        target: "/home/dev/.claude-team_2"' "${OVERRIDE}"
+}
+
+@test "claude accounts: invalid names, relative paths and duplicates fail before compose runs" {
+  claude_home
+  mkdir "${CLAUDE_HOME}/.claude-work"
+  local value
+  for value in Work -work "a/b" "../x" "work=" "x=relative/dir" "$(printf 'a%.0s' {1..33})"; do
+    THEONE_HOST_CLAUDE_ACCOUNTS="${value}" claude_sandbox --mode local ps
+    assert_failure 1
+    assert_output --partial "sandbox: THEONE_HOST_CLAUDE_ACCOUNTS: "
+  done
+  THEONE_HOST_CLAUDE_ACCOUNTS="work,work" claude_sandbox --mode local ps
+  assert_failure 1
+  assert_output "sandbox: THEONE_HOST_CLAUDE_ACCOUNTS: account 'work' is listed twice"
+  assert_equal "$(calls)" ""
+  assert_file_not_exists "${STATE}/theone"
+}
+
+@test "claude accounts: a relative XDG_STATE_HOME falls back to ~/.local/state" {
+  claude_home
+  mkdir "${CLAUDE_HOME}/.claude-work"
+  HOME="${CLAUDE_HOME}" XDG_STATE_HOME=relative THEONE_HOST_CLAUDE_ACCOUNTS=work run "${SANDBOX}" --mode local ps
+  assert_success
+  assert_file_exists "${CLAUDE_HOME}/.local/state/theone/compose.theone.claude-accounts.yml"
+}

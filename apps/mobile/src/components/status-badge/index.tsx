@@ -1,11 +1,10 @@
 import { useMemo } from "react";
-import { View } from "react-native";
+import Animated from "react-native-reanimated";
 import type { Icon } from "phosphor-react-native";
 
-import { ThemedText } from "@/components/themed-text";
-import { useAppTheme } from "@/hooks/use-app-theme";
-import { ToneColors, type Tone } from "@/lib/tone";
-import { IconSize, MaxFontSizeMultiplier } from "@/theme";
+import TagChip from "@/components/tag-chip";
+import { useLayoutMotion } from "@/hooks/use-layout-motion";
+import type { Tone } from "@/lib/tone";
 
 import createStyles from "./styles";
 
@@ -15,27 +14,23 @@ export type StatusBadgeProps = {
   icon?: Icon;
 };
 
-const StatusBadge = ({ label, tone = "neutral", icon: IconComponent }: StatusBadgeProps) => {
-  const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme, tone), [theme, tone]);
-  const { foreground } = ToneColors[tone];
+/**
+ * Tinted status chip: a tone dot (or icon) and the label in the tone color,
+ * announced as one element. A new label or tone cross-fades in over the old.
+ */
+const StatusBadge = ({ label, tone = "neutral", icon }: StatusBadgeProps) => {
+  const styles = useMemo(() => createStyles(), []);
+  const motion = useLayoutMotion();
 
   return (
-    <View style={styles.badge} accessible accessibilityLabel={label}>
-      {IconComponent ? (
-        <IconComponent size={IconSize.xs} color={theme.colors[foreground]} weight="bold" />
-      ) : (
-        <View style={styles.dot} />
-      )}
-      <ThemedText
-        variant="caption"
-        color={foreground}
-        numberOfLines={1}
-        maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
-      >
-        {label}
-      </ThemedText>
-    </View>
+    <Animated.View
+      key={`${tone}:${label}`}
+      entering={motion.fadeIn}
+      exiting={motion.fadeOut}
+      style={styles.badge}
+    >
+      <TagChip label={label} tone={tone} icon={icon} dot={!icon} tinted accessibilityLabel={label} />
+    </Animated.View>
   );
 };
 

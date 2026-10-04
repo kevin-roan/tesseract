@@ -1,12 +1,12 @@
-import { ShieldCheckIcon } from "phosphor-react-native";
-
-import Notice from "@/components/notice";
+import DataCard from "@/components/data-card";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
-import Section from "@/components/section";
+import TagChip from "@/components/tag-chip";
+import { ThemedText } from "@/components/themed-text";
 import PairingForm from "@/features/sandbox/components/pairing-form";
 import QrScanner from "@/features/sandbox/components/qr-scanner";
 import { usePairScreen } from "@/features/sandbox/hooks/use-pair-screen";
+import { PAIR_SCREEN } from "@/features/sandbox/utils/pair-content";
 
 export default function PairScreen() {
   const { nav, form, scanner, pair, fromLink, canRescan } = usePairScreen();
@@ -14,28 +14,44 @@ export default function PairScreen() {
   return (
     <ScreenScaffold
       avoidKeyboard
-      header={<ScreenHeader title="Pair a sandbox" subtitle="Connect over your tailnet" onBack={nav.back} dismissible />}
+      header={
+        <ScreenHeader
+          title={PAIR_SCREEN.title}
+          subtitle={PAIR_SCREEN.subtitle}
+          onBack={nav.back}
+          dismissible
+        />
+      }
     >
       {fromLink ? (
-        <Notice
-          tone="info"
-          icon={ShieldCheckIcon}
-          title="Opened from a pairing link"
-          message="Only pair with a sandbox you run yourself. The token gives full control of it."
-        />
+        <DataCard
+          index={0}
+          title={PAIR_SCREEN.linkTitle}
+          aside={<TagChip label={PAIR_SCREEN.linkChip} tone="warning" dot />}
+        >
+          <ThemedText variant="bodySmall" color="textSecondary">
+            {PAIR_SCREEN.linkMessage}
+          </ThemedText>
+        </DataCard>
       ) : (
-        <Section title="Scan the pairing code">
-          <QrScanner
-            permission={scanner.permission}
-            onRequestPermission={() => void scanner.requestPermission()}
-            onScanned={scanner.onBarcodeScanned}
-            paused={form.status === "validating"}
-            onRescan={canRescan ? scanner.rescan : undefined}
-          />
-        </Section>
+        <QrScanner
+          permission={scanner.permission}
+          onRequestPermission={() => void scanner.requestPermission()}
+          onScanned={scanner.onBarcodeScanned}
+          paused={form.status === "validating"}
+          onRescan={canRescan ? scanner.rescan : undefined}
+        />
       )}
 
-      <Section title={fromLink ? "Check the details" : "Or enter it by hand"}>
+      <DataCard
+        index={1}
+        title={fromLink ? PAIR_SCREEN.linkFormTitle : PAIR_SCREEN.manualTitle}
+        aside={
+          <TagChip
+            label={fromLink ? PAIR_SCREEN.linkFormChip : PAIR_SCREEN.manualChip}
+          />
+        }
+      >
         <PairingForm
           draft={form.draft}
           errors={form.errors}
@@ -44,7 +60,7 @@ export default function PairScreen() {
           onChange={form.setField}
           onSubmit={pair}
         />
-      </Section>
+      </DataCard>
     </ScreenScaffold>
   );
 }

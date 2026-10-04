@@ -13,7 +13,7 @@ export default function createStyles(theme: Theme, avatar: number) {
       paddingHorizontal: inset,
     },
     framed: {
-      borderRadius: theme.radius.lg,
+      borderRadius: theme.radius.card,
       borderCurve: "continuous",
       overflow: "hidden",
     },
@@ -45,6 +45,9 @@ export default function createStyles(theme: Theme, avatar: number) {
       flex: 1,
       minWidth: 0,
     },
+    figure: {
+      fontVariant: ["tabular-nums"],
+    },
 
     list: {
       paddingVertical: theme.spacing.xxs,
@@ -54,10 +57,6 @@ export default function createStyles(theme: Theme, avatar: number) {
       height: StyleSheet.hairlineWidth,
       marginLeft: inset + textColumn,
       backgroundColor: theme.colors.divider,
-    },
-
-    pressed: {
-      opacity: 0.85,
     },
   });
 }

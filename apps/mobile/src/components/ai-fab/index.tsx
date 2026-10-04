@@ -1,10 +1,12 @@
 import { SparkleIcon } from "phosphor-react-native";
 import { useMemo } from "react";
-import { Pressable, type PressableProps } from "react-native";
+import type { PressableProps } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import PressableScale from "@/components/pressable-scale";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { BottomTabInset, IconSize } from "@/theme";
+import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
+import { IconSize } from "@/theme";
 import createStyles from "./styles";
 
 type AiFabProps = Pick<PressableProps, "onPress"> & {
@@ -16,20 +18,16 @@ type AiFabProps = Pick<PressableProps, "onPress"> & {
 const AiFab = ({ onPress, label = "Ask AI" }: AiFabProps) => {
   const theme = useAppTheme();
   const insets = useSafeAreaInsets();
+  const tabBarInset = useTabBarInset();
   const styles = useMemo(
-    () => createStyles(theme, BottomTabInset + insets.bottom + theme.spacing.base),
-    [theme, insets.bottom],
+    () => createStyles(theme, tabBarInset + insets.bottom + theme.spacing.base),
+    [theme, tabBarInset, insets.bottom],
   );
 
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      onPress={onPress}
-      style={({ pressed }) => [styles.fab, pressed && styles.pressed]}
-    >
-      <SparkleIcon color={theme.colors.textOnAccent} size={IconSize.lg} weight="fill" />
-    </Pressable>
+    <PressableScale depth="control" accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.fab} pressedStyle={styles.pressed}>
+      <SparkleIcon color={theme.colors.textOnAccent} size={IconSize.lg} weight={theme.look === "graphite" ? "light" : "fill"} />
+    </PressableScale>
   );
 };
 

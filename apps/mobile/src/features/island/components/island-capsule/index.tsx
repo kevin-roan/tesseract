@@ -1,30 +1,32 @@
 import { useMemo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { CaretDownIcon } from "phosphor-react-native";
 
-import DotSphere from "@/components/dot-sphere";
-import { Glass } from "@/components/glass";
+import PressableScale from "@/components/pressable-scale";
+import { Surface } from "@/components/surface";
+import TagChip from "@/components/tag-chip";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useHapticPress } from "@/hooks/use-haptic-press";
-import { IconSize } from "@/theme";
+import { IconSize, MaxFontSizeMultiplier } from "@/theme";
 
-import createStyles, { SPHERE } from "./styles";
+import createStyles from "./styles";
 
 export type IslandCapsuleProps = {
   title: string;
   badge: string | null;
+  live?: boolean;
   onPress: () => void;
   testID?: string;
 };
 
-const IslandCapsule = ({ title, badge, onPress, testID }: IslandCapsuleProps) => {
+const IslandCapsule = ({ title, badge, live = false, onPress, testID }: IslandCapsuleProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const press = useHapticPress(onPress);
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={badge ? `${title}, ${badge}` : title}
       accessibilityHint="Shows running work and controls"
@@ -32,20 +34,18 @@ const IslandCapsule = ({ title, badge, onPress, testID }: IslandCapsuleProps) =>
       testID={testID}
     >
       {({ pressed }) => (
-        <Glass intensity="medium" style={[styles.capsule, pressed && styles.pressed]}>
-          <DotSphere size={SPHERE.size} dots={SPHERE.dots} />
-          <ThemedText variant="h4" numberOfLines={1} style={styles.title}>
+        <Surface style={[styles.capsule, pressed && styles.pressed]}>
+          <View style={styles.tile} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+            <View style={[styles.dot, live && styles.dotLive]} />
+          </View>
+          <ThemedText variant="label" numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome} style={styles.title}>
             {title}
           </ThemedText>
-          {badge ? (
-            <View style={styles.pill}>
-              <ThemedText variant="label">{badge}</ThemedText>
-            </View>
-          ) : null}
-          <CaretDownIcon size={IconSize.sm} color={theme.colors.textSecondary} weight="bold" />
-        </Glass>
+          {badge ? <TagChip label={badge} /> : null}
+          <CaretDownIcon size={IconSize.sm} color={theme.colors.textSecondary} weight="regular" />
+        </Surface>
       )}
-    </Pressable>
+    </PressableScale>
   );
 };
 

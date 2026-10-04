@@ -1,24 +1,8 @@
 import type { ReactElement, ReactNode } from "react";
 import { render, screen } from "@testing-library/react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import AppTabs from "@/components/app-tabs";
-import WebAppTabs from "@/components/app-tabs.web";
-
-jest.mock("expo-router/unstable-native-tabs", () => {
-  const { Text, View } = jest.requireActual<typeof import("react-native")>("react-native");
-  const NativeTabs = ({ children }: { children: ReactNode }) => <View testID="native-tabs">{children}</View>;
-  const Trigger = ({ name, children }: { name: string; children: ReactNode }) => (
-    <View testID={`tab-${name}`}>{children}</View>
-  );
-  Trigger.Label = function Label({ children }: { children: ReactNode }) {
-    return <Text>{children}</Text>;
-  };
-  Trigger.Icon = function TabIcon() {
-    return null;
-  };
-  NativeTabs.Trigger = Trigger;
-  return { NativeTabs };
-});
 
 jest.mock("expo-router/ui", () => {
   const { View } = jest.requireActual<typeof import("react-native")>("react-native");
@@ -28,21 +12,22 @@ jest.mock("expo-router/ui", () => {
     Tabs: Pass,
     TabSlot: () => <View testID="tab-slot" />,
     TabList: Pass,
-    TabTrigger: ({ name, children }: { name: string; children: ReactElement }) =>
-      cloneElement(children as ReactElement<{ isFocused?: boolean }>, { isFocused: name === "agents" }),
+    TabTrigger: ({ name, children }: { name: string; children?: ReactElement }) =>
+      children ? cloneElement(children as ReactElement<{ isFocused?: boolean }>, { isFocused: name === "agents" }) : null,
   };
 });
 
-describe("AppTabs", () => {
-  it("registers the native tabs", async () => {
-    await render(<AppTabs />);
-    for (const name of ["index", "agents", "projects", "profile"]) expect(screen.getByTestId(`tab-${name}`)).toBeOnTheScreen();
-    expect(screen.getByText("Agents")).toBeOnTheScreen();
-  });
+const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
 
-  it("renders the web tab bar with the focused tab highlighted", async () => {
-    await render(<WebAppTabs />);
+describe("AppTabs", () => {
+  it("renders the floating tab bar with the focused tab selected", async () => {
+    await render(
+      <SafeAreaProvider initialMetrics={metrics}>
+        <AppTabs />
+      </SafeAreaProvider>,
+    );
     expect(screen.getByTestId("tab-slot")).toBeOnTheScreen();
     for (const label of ["Home", "Agents", "Tasks", "Projects", "Profile"]) expect(screen.getByText(label)).toBeOnTheScreen();
+    expect(screen.getByRole("tab", { selected: true })).toHaveTextContent("Agents");
   });
 });

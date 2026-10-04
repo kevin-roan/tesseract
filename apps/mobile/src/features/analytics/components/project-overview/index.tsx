@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { View } from "react-native";
 import type { ClaudeSession } from "@theone/protocol";
 
+import MotionItem from "@/components/motion-item";
 import Notice from "@/components/notice";
 import Section from "@/components/section";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -44,31 +45,37 @@ const ProjectOverview = ({
     <View style={[styles.overview, stale && styles.stale]} testID="project-overview">
       <KpiGrid items={view.kpis} testID="project-kpis" />
 
-      <ChartCard title="Token mix" subtitle="How this project's tokens split by kind.">
-        <TokenMixBar title={title} series={series} values={view.tokenMix} formatValue={formatCompact} testID="token-mix" />
-      </ChartCard>
+      <MotionItem index={1}>
+        <ChartCard title="Token mix" subtitle="How this project's tokens split by kind.">
+          <TokenMixBar title={title} series={series} values={view.tokenMix} formatValue={formatCompact} testID="token-mix" />
+        </ChartCard>
+      </MotionItem>
 
-      <Section title="Activity" testID="project-activity">
-        <ActivityCard heatmap={view.heatmap} sample={view.heatmapSample} rangeTitle={title} />
-      </Section>
+      <MotionItem index={2}>
+        <Section title="Activity" testID="project-activity">
+          <ActivityCard heatmap={view.heatmap} sample={view.heatmapSample} rangeTitle={title} />
+        </Section>
+      </MotionItem>
 
-      <Section
-        title="Sessions"
-        testID="project-sessions-section"
-        isEmpty={!sessionsLoading && !sessionsError && view.sessions.length === 0}
-        emptyLabel="No sessions in this project were active in this range."
-      >
-        {sessionsError ? (
-          <Notice tone="danger" message={sessionsError} actionLabel="Retry" onAction={onRetrySessions} />
-        ) : (
-          <SessionList
-            sessions={view.sessions}
-            onPress={sessionPress}
-            caption="Ranked by each session's lifetime tokens."
-            testID="project-sessions"
-          />
-        )}
-      </Section>
+      <MotionItem index={3}>
+        <Section
+          title="Sessions"
+          testID="project-sessions-section"
+          isEmpty={!sessionsLoading && !sessionsError && view.sessions.length === 0}
+          emptyLabel="No sessions in this project were active in this range."
+        >
+          {sessionsError ? (
+            <Notice tone="danger" message={sessionsError} actionLabel="Retry" onAction={onRetrySessions} />
+          ) : (
+            <SessionList
+              sessions={view.sessions}
+              onPress={sessionPress}
+              caption="Ranked by each session's lifetime tokens."
+              testID="project-sessions"
+            />
+          )}
+        </Section>
+      </MotionItem>
     </View>
   );
 };

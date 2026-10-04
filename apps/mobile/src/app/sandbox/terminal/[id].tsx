@@ -8,6 +8,7 @@ import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
 import StatusBadge from "@/components/status-badge";
+import MotionItem from "@/components/motion-item";
 import RemoteSurface from "@/features/sandbox/components/remote-surface";
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
 import { useTerminalLauncher } from "@/features/sandbox/hooks/use-terminal-launcher";
@@ -62,7 +63,13 @@ function TerminalSession({ id }: { id: string }) {
           actions={terminal.headerActions}
         />
       }
-      footer={terminal.closeError ? <Notice tone="danger" message={terminal.closeError} /> : undefined}
+      footer={
+        terminal.closeError ? (
+          <MotionItem>
+            <Notice tone="danger" message={terminal.closeError} />
+          </MotionItem>
+        ) : undefined
+      }
     >
       <RemoteSurface
         title="Terminal"

@@ -15,6 +15,7 @@ import { AgentRunService } from "./agent-runs";
 import { ArtifactService } from "./artifacts";
 import { BrowserService } from "./browser";
 import { BuildService } from "./builds";
+import { ClaudeAccountService } from "./claude-accounts";
 import { ClaudeAuthService } from "./claude-auth";
 import { ClaudeHookService } from "./claude-hooks";
 import { readAgentContext } from "./context";
@@ -76,6 +77,7 @@ export type Services = {
   identity: IdentityService;
   taildrop: TaildropService;
   claudeAuth: ClaudeAuthService;
+  claudeAccounts: ClaudeAccountService;
   inbox: InboxService;
   push: PushService;
   liveActivity: LiveActivityService;
@@ -118,19 +120,25 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
   const processes = new ProcessService(config, repos, logs, hub, logger.child("processes"), stopGraceMs);
   const syncBack = new SyncBackService(config, git, repos, hub, logger.child("sync-back"), options.syncBack);
   syncBack.start();
-  const projects = new ProjectService(config, git, hub, processes, syncBack, logger.child("projects"));
-  const terminals = new TerminalService(config, repos, hub, logger.child("terminals"), LIMITS.terminalScrollbackBytes, stopGraceMs);
+  const claudeAccounts = new ClaudeAccountService(config, repos);
+  const projects = new ProjectService(config, git, hub, processes, syncBack, repos, logger.child("projects"), (id): string[] => [
+    ...processes.running().filter((process) => process.projectId === id).map((process) => `process ${process.name}`),
+    ...builds.activeBuilds().filter((build) => build.projectId === id).map((build) => `build ${build.id}`),
+    ...terminals.running().filter((terminal) => terminal.projectId === id).map((terminal) => `terminal ${terminal.title}`),
+    ...agentRuns.running().filter((run) => run.projectId === id).map((run) => `agent run ${run.id}`),
+  ]);
+  const terminals = new TerminalService(config, repos, hub, projects, claudeAccounts, logger.child("terminals"), LIMITS.terminalScrollbackBytes, stopGraceMs);
   const inbox = new InboxService(repos, hub, logger.child("inbox"));
   inbox.follow(hub);
   const push = new PushService(config, repos, logger.child("push"), options.push);
   push.follow(hub);
-  const artifacts = new ArtifactService(config, repos, hub, inbox, logger.child("artifacts"));
+  const artifacts = new ArtifactService(config, repos, hub, inbox, projects, logger.child("artifacts"));
   const builds = new BuildService(config, repos, logs, hub, projects, artifacts, tools, logger.child("builds"), stopGraceMs);
   const display = new DisplayService(config);
   const uploads = new UploadService(config, repos, logger.child("uploads"));
   uploads.prune();
   const transcriptions = new TranscriptionService(config, uploads, repos, hub, logger.child("stt"), options.transcription);
-  const agentRuns = new AgentRunService(config, repos, hub, uploads, logger.child("agent"), stopGraceMs);
+  const agentRuns = new AgentRunService(config, repos, hub, uploads, projects, claudeAccounts, logger.child("agent"), stopGraceMs);
   const status = new StatusService(config, VERSION, tools, display, () => ({
     projects: projects.count(),
     runningProcesses: processes.runningCount(),
@@ -206,6 +214,7 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
     identity,
     taildrop,
     claudeAuth,
+    claudeAccounts,
     inbox,
     push,
     liveActivity,

@@ -4,6 +4,8 @@ import sys
 from typing import Any
 
 IGNORED_ENV = ("GTK_THEME",)
+# `--hidden` at login can start before the panel's tray: wait this long for it before showing the window.
+TRAY_WAIT_S = 10
 
 
 def _sanitize_environment() -> None:
@@ -50,6 +52,7 @@ class MonolithApplication(Adw.Application):
         GLib.set_application_name(APP_NAME)
         self.hide_on_close = False
         self.tray_attached = False
+        self.tray_item: Any = None
         self.ctx: AppContext | None = None
         self.window: Any = None
         self._held = False
@@ -59,17 +62,23 @@ class MonolithApplication(Adw.Application):
         self.add_main_option("quit", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, "Quit the running instance", None)
         self.add_main_option("debug", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, "Verbose logging", None)
         self.add_main_option("sync", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, "Copy the current directory to the sandbox and exit", None)
+        self.add_main_option("confidential", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, "With --sync: send the project under a pseudonym and keep its name on this computer", None)
         self.add_main_option("pull", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, "Copy sandbox changes back into the current directory and exit", None)
         self.add_main_option("dry-run", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, "With --pull: show what would change, write nothing", None)
         self.add_main_option("force", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, "With --pull/--revert: overwrite files edited on the host", None)
         self.add_main_option("revert", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, "Undo the last --pull in the current directory and exit", None)
         self.add_main_option("sync-status", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, "Show sandbox changes and sync-back snapshots and exit", None)
+        self.add_main_option("get", 0, GLib.OptionFlags.NONE, GLib.OptionArg.NONE, "Runs inside the sandbox; on this computer use --sync", None)
 
     def do_handle_local_options(self, options: GLib.VariantDict) -> int:
+        if options.contains("get"):
+            from .syncback.cli import run_get_on_host
+
+            return run_get_on_host()
         if options.contains("sync"):
             from .sync import run_sync
 
-            return run_sync(os.getcwd())
+            return run_sync(os.getcwd(), confidential=options.contains("confidential"))
         if options.contains("pull") or options.contains("revert") or options.contains("sync-status"):
             return self._run_sync_back(options)
         return -1
@@ -101,6 +110,7 @@ class MonolithApplication(Adw.Application):
         self.ctx = AppContext(self, store, ConnectionService(store), theme())
         self._install_actions()
         self.ctx.connection.start()
+        self.ctx.host_shell.start_if_enabled()
         self.tray_attached = tray.attach(self)
         if self.tray_attached:
             self.set_hide_on_close(True)
@@ -117,6 +127,10 @@ class MonolithApplication(Adw.Application):
         hidden = bool(options.get("hidden")) and first
         if hidden and self.tray_attached:
             self.ensure_window()
+        elif hidden and self.tray_item is not None:
+            self.ensure_window()
+            self.hold()
+            GLib.timeout_add_seconds(TRAY_WAIT_S, self._tray_wait_done)
         else:
             if hidden:
                 log.info("--hidden ignored: no tray is available")
@@ -132,10 +146,26 @@ class MonolithApplication(Adw.Application):
         if self.ctx:
             self.ctx.workspace.stop()
             self.ctx.syncback.stop()
+            self.ctx.host_shell.shutdown()
             self.ctx.connection.stop()
         tray.detach(self)
         tasks.shutdown()
         Adw.Application.do_shutdown(self)
+
+    def tray_host_changed(self, available: bool) -> None:
+        """The panel's tray started or went away: closing the window hides it only while the icon is shown."""
+        lost = self.tray_attached and not available
+        self.tray_attached = available
+        self.set_hide_on_close(available)
+        if lost and self.window is not None and not self.window.get_visible():
+            self.show_window()
+
+    def _tray_wait_done(self) -> bool:
+        self.release()
+        if not self.tray_attached:
+            log.info("--hidden ignored: no tray appeared")
+            self.show_window()
+        return GLib.SOURCE_REMOVE
 
     def ensure_window(self):
         if self.window is None:
@@ -190,6 +220,8 @@ class MonolithApplication(Adw.Application):
             "about": lambda *_: self._with_window(self._show_about),
             "refresh": lambda *_: self.ctx.connection.refresh(),
             "rediscover": lambda *_: self.ctx.connection.rediscover(),
+            "pair": lambda *_: self._with_window(self._show_pairing),
+            "pair-host": lambda *_: self._with_window(lambda: self._show_pairing("host")),
             "new-conversation": lambda *_: self._with_window(lambda: self.window.new_conversation()),
             "zoom-in": lambda *_: self._zoom(1),
             "zoom-out": lambda *_: self._zoom(-1),
@@ -223,6 +255,11 @@ class MonolithApplication(Adw.Application):
     def _with_window(self, fn) -> None:
         self.show_window()
         fn()
+
+    def _show_pairing(self, target: str = "sandbox") -> None:
+        from .widgets.pair_dialog import show_pairing
+
+        show_pairing(self.ctx, target)
 
     def _show_about(self) -> None:
         about = Adw.AboutDialog(

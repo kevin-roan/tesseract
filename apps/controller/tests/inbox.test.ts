@@ -40,6 +40,7 @@ function endedRun(overrides: Partial<AgentRun> = {}): AgentRun {
     mode: null,
     attachments: [],
     sessionId: "sess-1",
+    claudeAccountId: null,
     state: "succeeded",
     startedAt: "2024-01-01T00:00:00.000Z",
     endedAt: "2024-01-01T00:01:00.000Z",

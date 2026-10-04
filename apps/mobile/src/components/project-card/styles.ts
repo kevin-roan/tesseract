@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import type { Theme } from "@/theme";
+import { type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   const action = theme.isTablet ? 52 : 44;
@@ -8,8 +8,8 @@ export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     card: {
       gap: theme.spacing.base,
-      padding: theme.spacing.base,
-      borderRadius: theme.radius["2xl"],
+      padding: theme.spacing.lg,
+      borderRadius: theme.radius.card,
       borderCurve: "continuous",
       overflow: "hidden",
     },
@@ -29,7 +29,7 @@ export default function createStyles(theme: Theme) {
       justifyContent: "center",
       width: theme.spacing.xl,
       height: theme.spacing.xl,
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.sm,
     },
 
     metaRow: {
@@ -54,7 +54,11 @@ export default function createStyles(theme: Theme) {
       gap: theme.spacing.xxs,
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xxs,
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.sm,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
       maxWidth: "100%",
     },
 
@@ -71,7 +75,7 @@ export default function createStyles(theme: Theme) {
       paddingLeft: theme.spacing.xs,
       paddingRight: theme.spacing.md,
       paddingVertical: theme.spacing.xs,
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.pill,
       borderCurve: "continuous",
       overflow: "hidden",
     },
@@ -80,16 +84,13 @@ export default function createStyles(theme: Theme) {
       height: action,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.pill,
+      borderCurve: "continuous",
       backgroundColor: theme.colors.accent,
     },
 
     shrink: {
       flexShrink: 1,
-    },
-
-    pressed: {
-      opacity: 0.85,
     },
   });
 }

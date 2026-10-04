@@ -107,7 +107,31 @@ const dark: ChartPalette = {
   barEmptyStroke: 'rgba(255, 255, 255, 0.18)',
 };
 
-export const ChartColors = { light, dark } as const;
+const graphite: ChartPalette = {
+  ...dark,
+  sequential: [
+    Palette.graphite[700],
+    Palette.graphite[600],
+    Palette.graphite[500],
+    Palette.graphite[300],
+    Palette.graphite[100],
+  ],
+  diverging: { negative: Palette.red[400], neutral: Palette.graphite[700], positive: Palette.green[400] },
+  status: {
+    success: Colors.graphite.successSolid,
+    warning: Colors.graphite.warningSolid,
+    danger: Colors.graphite.dangerSolid,
+    info: Colors.graphite.infoSolid,
+  },
+  grid: 'rgba(255, 255, 255, 0.07)',
+  axis: Palette.graphite[700],
+  label: Colors.graphite.textSecondary,
+  bar: Palette.graphite[100],
+  barEmpty: 'rgba(255, 255, 255, 0.06)',
+  barEmptyStroke: 'rgba(255, 255, 255, 0.16)',
+};
+
+export const ChartColors = { light, dark, graphite } as const;
 
 export type ChartSeriesName = keyof ChartPalette['named'];
 

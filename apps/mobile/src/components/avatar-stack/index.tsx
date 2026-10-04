@@ -51,7 +51,7 @@ const AvatarStack = ({ people, max = 3, size = AvatarSize.sm }: AvatarStackProps
       {overflow > 0 ? (
         <View style={styles.slot}>
           <View style={[styles.avatar, styles.ring, styles.overflowBadge]}>
-            <ThemedText variant="caption" color="textSecondary" maxFontSizeMultiplier={1}>
+            <ThemedText variant="caption" color="textSecondary" maxFontSizeMultiplier={1} style={styles.count}>
               +{overflow}
             </ThemedText>
           </View>

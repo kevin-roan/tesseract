@@ -83,6 +83,7 @@ function agentRun(overrides: Partial<AgentRun> = {}): AgentRun {
     mode: null,
     attachments: [],
     sessionId: null,
+    claudeAccountId: null,
     state: "running",
     startedAt: TS,
     endedAt: null,
@@ -104,6 +105,22 @@ describe("database and repositories", () => {
     const second = openDatabase(path);
     expect(new Repositories(second).processes.get("p1")?.command).toEqual(["npm", "run", "dev"]);
     second.close();
+  });
+
+  test("confidential marks are one-way, idempotent and survive reopening", () => {
+    const path = join(makeTempDir("db"), "state.db");
+    const first = openDatabase(path);
+    const repos = new Repositories(first);
+    expect(repos.isConfidential("morning-cat")).toBe(false);
+    repos.markConfidential("morning-cat", TS);
+    repos.markConfidential("morning-cat", "2025-01-01T00:00:00.000Z");
+    repos.markConfidential("blue-owl", TS);
+    expect(first.query<{ marked_at: string }, []>("SELECT marked_at FROM confidential_projects WHERE project_id = 'morning-cat'").get()?.marked_at).toBe(TS);
+    first.close();
+    const second = new Repositories(openDatabase(path));
+    expect(second.isConfidential("morning-cat")).toBe(true);
+    expect(second.isConfidential("app")).toBe(false);
+    expect(second.confidentialProjectIds()).toEqual(["blue-owl", "morning-cat"]);
   });
 
   test("agent runs keep mode and attachments; rows from before migration 4 read as null and []", () => {
@@ -202,7 +219,7 @@ describe("ArtifactService", () => {
     const events: string[] = [];
     hub.subscribe((event) => events.push(event.type));
     const inbox = new InboxService(repos, hub, silentLogger);
-    return { config, repos, events, inbox, service: new ArtifactService(config, repos, hub, inbox, silentLogger), db };
+    return { config, repos, events, inbox, service: new ArtifactService(config, repos, hub, inbox, repos, silentLogger), db };
   }
   const meta = { projectId: "app", buildId: "b1", platform: "web", profile: "debug" as const, version: "1.0" };
 
@@ -224,6 +241,17 @@ describe("ArtifactService", () => {
     expect(service.list("other")).toEqual([]);
     expect(service.get(first.id).sha256).toBe(first.sha256);
     expect(() => service.get("artifact_missing")).toThrow(/not found/);
+    db.close();
+  });
+
+  test("share refuses files of a confidential project", async () => {
+    const { config, repos, service, db } = setup();
+    mkdirSync(join(config.projectsDir, "morning-cat"), { recursive: true });
+    writeFileSync(join(config.projectsDir, "morning-cat", "report.txt"), "secret");
+    repos.markConfidential("morning-cat", TS);
+    const refused = service.share({ path: join(config.projectsDir, "morning-cat", "report.txt") });
+    await expect(refused).rejects.toMatchObject({ status: 403, message: "Project morning-cat is confidential; sharing artifacts is disabled" });
+    expect(repos.artifacts.list()).toEqual([]);
     db.close();
   });
 

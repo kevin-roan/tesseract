@@ -10,7 +10,8 @@ bash_scripts() {
     "${REPO}/infra/e2e/run" \
     "${REPO}/infra/e2e/web/run" \
     "${REPO}/infra/tests/run" \
-    "${ROOTFS_BIN}"/theone-*
+    "${ROOTFS_BIN}"/theone-* \
+    "${ROOTFS_BIN}/monolith"
 }
 
 sh_scripts() {

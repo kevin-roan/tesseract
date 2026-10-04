@@ -13,7 +13,7 @@ import { agentRunTone, stateLabel } from "../utils/states";
 import { useAgentRunStream } from "./use-agent-run-stream";
 import { useCancelAgentRun } from "./use-sandbox-mutations";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
-import { useSyncToHost } from "./use-sync-to-host";
+import { useSyncMenu } from "./use-sync-menu";
 
 /** One line under a finished run, e.g. "Succeeded in 2s · 142k tokens · 2 in · 22 out". */
 export function runBrief(run: AgentRun): string {
@@ -30,8 +30,8 @@ export function useAgentRunScreen(runId: string) {
   const running = run ? !isFinalAgentRunState(run.state) : false;
   const { mutate } = cancelRun;
   const { reconnect } = stream;
-  const syncToHost = useSyncToHost(run?.projectId ?? null, running);
-  const syncAction = syncToHost.action;
+  const sync = useSyncMenu(run?.projectId ?? null, running);
+  const syncAction = sync.action;
   const onStarted = useCallback((next: AgentRun) => nav.replaceWithAgentRun(next.id), [nav]);
   const composer = useChatComposer({
     defaultProjectId: run?.projectId ?? null,
@@ -78,8 +78,9 @@ export function useAgentRunScreen(runId: string) {
     loadError: stream.loadError ? describeError(stream.loadError) : null,
     streamError: stream.error,
     cancelError: cancelRun.error ? describeError(cancelRun.error) : null,
-    syncNotice: syncToHost.notice,
-    dismissSyncNotice: syncToHost.dismiss,
+    syncMenu: sync.menu,
+    syncNotice: sync.notice,
+    dismissSyncNotice: sync.dismiss,
     retry: reconnect,
   };
 }

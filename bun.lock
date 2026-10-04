@@ -39,6 +39,7 @@
         "@bacons/apple-targets": "^5.0.0",
         "@callstack/liquid-glass": "^0.8.1",
         "@expo-google-fonts/exo-2": "^0.4.2",
+        "@expo-google-fonts/geist-mono": "^0.4.3",
         "@expo-google-fonts/noto-sans": "^0.4.2",
         "@expo-google-fonts/saira": "^0.4.2",
         "@expo/vector-icons": "^15.0.2",
@@ -347,6 +348,8 @@
     "@eslint/plugin-kit": ["@eslint/plugin-kit@0.4.1", "", { "dependencies": { "@eslint/core": "^0.17.0", "levn": "^0.4.1" } }, "sha512-43/qtrDUokr7LJqoF2c3+RInu/t4zfrpYdoSDfYyhg52rwLV6TnOvdG4fXm7IkSB3wErkcmJS9iEhjVtOSEjjA=="],
 
     "@expo-google-fonts/exo-2": ["@expo-google-fonts/exo-2@0.4.2", "", {}, "sha512-NHl98DsSHurvtGhOKeMAJsnaN+gVj+FMrlwVdAgiID1RfAKELhw0JojznSJ5cR91bIhiSkcrUMLjYieDQe7RAQ=="],
+
+    "@expo-google-fonts/geist-mono": ["@expo-google-fonts/geist-mono@0.4.3", "", {}, "sha512-gjnwv1QOG4meZpMhrLjTIPC/+lhyNu8EcXa2eJPVbPrYvguVjCfBq+Ezq6cWKWW8ung6fqb2TjvuTalE6lqlnw=="],
 
     "@expo-google-fonts/material-symbols": ["@expo-google-fonts/material-symbols@0.4.45", "", {}, "sha512-D5gd/uFa7KfMJX9S11hvej4GpQnBl27oKiUgyIq3cLTPtyDOWBwRgmeePIdV6+PGcedlDkaCND2BnRgAkxzNaA=="],
 

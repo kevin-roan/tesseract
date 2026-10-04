@@ -11,6 +11,7 @@ from ...widgets.badges import StatusBadge
 from ...widgets.buttons import IconButton
 from ...widgets.feedback import EmptyState, Notice
 from ...widgets.icon import Icon
+from ...widgets.motion import crossfade_stack
 from ...widgets.text import Text
 from ...widgets.terminal.view import estimate_grid
 from ..base import Page
@@ -50,7 +51,7 @@ class TerminalsPage(Page):
         self._launchers: list[LaunchButton] = []
 
     def build(self) -> Gtk.Widget:
-        self._root = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
+        self._root = crossfade_stack()
         self._empty = EmptyState("")
         self._root.add_named(self._empty, "empty")
 

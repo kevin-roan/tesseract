@@ -39,6 +39,7 @@ class ProjectItem:
     running: int
     runs: tuple[RunItem, ...]
     last_activity: float | None
+    confidential: bool = False
 
     @property
     def active(self) -> bool:
@@ -84,7 +85,15 @@ def _sorted_runs(runs: list[AgentRun]) -> list[AgentRun]:
     return sorted(runs, key=lambda run: (run.get("state") == "running", run_activity(run) or 0.0), reverse=True)
 
 
-def _item(project_id: str | None, name: str, branch: str | None, runs: list[AgentRun], base: float | None, limit: int) -> ProjectItem:
+def _item(
+    project_id: str | None,
+    name: str,
+    branch: str | None,
+    runs: list[AgentRun],
+    base: float | None,
+    limit: int,
+    confidential: bool = False,
+) -> ProjectItem:
     ordered = _sorted_runs(runs)
     return ProjectItem(
         id=project_id,
@@ -93,6 +102,7 @@ def _item(project_id: str | None, name: str, branch: str | None, runs: list[Agen
         running=sum(1 for run in runs if run.get("state") == "running"),
         runs=tuple(run_item(run) for run in ordered[:limit]),
         last_activity=_latest(base, *(run_activity(run) for run in runs)),
+        confidential=confidential,
     )
 
 
@@ -114,6 +124,7 @@ def project_items(
             by_project.get(project["id"], []),
             project_activity(project),
             limit,
+            bool(project.get("confidential", False)),
         )
         for project in projects or []
     ]

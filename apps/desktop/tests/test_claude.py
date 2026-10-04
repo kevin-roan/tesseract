@@ -4,9 +4,10 @@ from pathlib import Path
 import pytest
 
 from monolith_desktop.api.errors import ProtocolError
-from monolith_desktop.api.types import parse_claude_auth_status
+from monolith_desktop.api.client import ControllerClient
+from monolith_desktop.api.types import parse_claude_account_list, parse_claude_auth_status
 from monolith_desktop.claude import model
-from monolith_desktop.claude.host import HostPaths, host_paths, read_host_state
+from monolith_desktop.claude.host import HostPaths, host_accounts, host_paths, read_host_state, read_host_states
 
 OAUTH = {
     "accessToken": "sk-ant-oat-access",
@@ -36,6 +37,27 @@ STATUS = {
     "settingsPresent": True,
     "configDir": "/home/dev/.claude",
     "importedAt": None,
+}
+
+PROFILE = {
+    "id": "claude-work",
+    "primary": False,
+    "present": True,
+    "loggedIn": True,
+    "account": {"email": "dev@work.example", "displayName": None, "organization": "Work"},
+    "subscriptionType": "team",
+    "credentialsExpiresAt": "2033-05-18T03:33:20Z",
+    "settingsPresent": False,
+    "configDir": "/home/dev/.claude-work",
+}
+ACCOUNTS = {
+    "defaultAccountId": "claude-work",
+    "accounts": [
+        {**PROFILE, "id": "claude", "primary": True, "account": None, "subscriptionType": None,
+         "credentialsExpiresAt": None, "loggedIn": False, "configDir": "/home/dev/.claude"},
+        PROFILE,
+        {**PROFILE, "id": "claude-personal", "present": False, "loggedIn": False, "configDir": "/home/dev/.claude-personal"},
+    ],
 }
 
 
@@ -130,3 +152,92 @@ def test_sandbox_error_message_flags_outdated_controller():
 
     assert sandbox_error_message(ApiError(404, "not_found", "No route for GET /v1/claude/auth")) == CLAUDE["outdated"]
     assert sandbox_error_message(ApiError(500, "internal", "boom")) != CLAUDE["outdated"]
+
+
+def _account_dir(home: Path, name: str, email: str, credentials: bool = True) -> Path:
+    config = home / name
+    config.mkdir()
+    if credentials:
+        (config / ".credentials.json").write_text(json.dumps({"claudeAiOauth": {**OAUTH, "subscriptionType": "pro"}}))
+    (config / ".claude.json").write_text(json.dumps({"oauthAccount": {"emailAddress": email}}))
+    return config
+
+
+def test_host_accounts_discovers_alias_dirs(claude_home: HostPaths):
+    home = claude_home.config_dir.parent
+    work = _account_dir(home, ".claude-work", "dev@work.example")
+    _account_dir(home, ".claude-personal", "me@home.example")
+    _account_dir(home, ".claude-nologin", "x@example.com", credentials=False)
+    _account_dir(home, ".claude-Bad", "y@example.com")
+    (home / ".claude-file").write_text("not a dir")
+
+    accounts = host_accounts({}, home=home)
+    assert [account.id for account in accounts] == ["claude", "claude-personal", "claude-work"]
+    assert accounts[0].paths == claude_home
+    assert accounts[2].paths == HostPaths(work, work / ".claude.json")
+
+    states = read_host_states({}, home=home, platform="linux")
+    assert [(state.account_id, state.email, state.subscription_type) for state in states] == [
+        ("claude", "dev@example.com", "max"),
+        ("claude-personal", "me@home.example", "pro"),
+        ("claude-work", "dev@work.example", "pro"),
+    ]
+    assert "sk-ant" not in repr(states)
+    assert model.host_account_subtitle(states[2]) == f"dev@work.example · {work}"
+
+
+def test_host_accounts_skips_primary_override_and_missing_home(tmp_path: Path):
+    work = _account_dir(tmp_path, ".claude-work", "dev@work.example")
+    accounts = host_accounts({"CLAUDE_CONFIG_DIR": str(work)}, home=tmp_path)
+    assert [(account.id, account.paths.config_dir) for account in accounts] == [("claude", work)]
+    assert [account.id for account in host_accounts({}, home=tmp_path / "missing")] == ["claude"]
+
+
+def test_parse_account_list_and_defaults():
+    assert parse_claude_account_list(ACCOUNTS) == ACCOUNTS
+    loose = parse_claude_account_list({"accounts": [{"id": ""}, None, {"id": "claude", "present": "yes"}]})
+    assert loose["defaultAccountId"] == "claude"
+    assert [(profile["id"], profile["present"], profile["configDir"]) for profile in loose["accounts"]] == [("claude", False, "")]
+    with pytest.raises(ProtocolError):
+        parse_claude_account_list([])
+
+
+def test_account_choices():
+    choices = model.account_choices(parse_claude_account_list(ACCOUNTS), now=2_000_000_000 - 7200)
+    assert [(choice.id, choice.title, choice.available) for choice in choices] == [
+        ("claude", "claude · primary", True),
+        ("claude-work", "claude-work", True),
+        ("claude-personal", "claude-personal", False),
+    ]
+    assert choices[0].subtitle.splitlines() == ["—", "— · Not signed in", "/home/dev/.claude"]
+    assert choices[1].subtitle.splitlines() == [
+        "dev@work.example · Work", "Team · Signed in · Expires in 2h", "/home/dev/.claude-work"
+    ]
+    assert "Not linked into the sandbox" in choices[2].subtitle
+    assert model.account_choices(None) == []
+
+
+def test_accounts_error_message_flags_outdated_controller():
+    from monolith_desktop.api.errors import ApiError
+    from monolith_desktop.strings import CLAUDE
+
+    assert model.sandbox_error_message(ApiError(404, "not_found", "nope"), "accounts_outdated") == CLAUDE["accounts_outdated"]
+
+
+def test_client_account_routes(monkeypatch):
+    calls = []
+
+    def fake_request(self, method, path, body=None, **_kwargs):
+        calls.append((method, path, body))
+        return {"id": "app", "claudeAccountId": body["accountId"]} if "/projects/" in path else ACCOUNTS
+
+    monkeypatch.setattr(ControllerClient, "request", fake_request)
+    client = ControllerClient("http://127.0.0.1:1", "secret")
+    assert client.claude_accounts() == ACCOUNTS
+    assert client.set_default_claude_account("claude-work")["defaultAccountId"] == "claude-work"
+    assert client.set_project_claude_account("my app", None)["claudeAccountId"] is None
+    assert calls == [
+        ("GET", "/v1/claude/accounts", None),
+        ("PUT", "/v1/claude/accounts/default", {"accountId": "claude-work"}),
+        ("PUT", "/v1/projects/my%20app/claude-account", {"accountId": None}),
+    ]

@@ -6,6 +6,7 @@ import {
   sampleAgentRunEvents,
   sampleArtifact,
   sampleBuild,
+  sampleClaudeAccountList,
   sampleGitDetails,
   sampleProcess,
   sampleProject,
@@ -20,10 +21,12 @@ import DisplayScreen from "@/app/sandbox/display";
 import ProjectScreen from "@/app/sandbox/projects/[id]";
 import NewProjectScreen from "@/app/sandbox/projects/new";
 import TerminalScreen from "@/app/sandbox/terminal/[id]";
+import { DEFAULT_ACCOUNT_CHOICE, projectAccountOptions } from "@/features/claude-account/utils/accounts";
 import { toChatEvents } from "@/features/chat/utils/messages";
 import { EMPTY_PAIRING_DRAFT } from "@/features/sandbox/utils/pairing";
 import { buildTargetOptions } from "@/features/sandbox/utils/labels";
-import { describeSyncRequest, SYNC_COPY } from "@/features/sandbox/utils/sync";
+import { SYNC_ACTIONS } from "@/features/sandbox/utils/actions";
+import { describeSyncRequest, describeSyncSheet, SYNC_COPY, type SyncSheetMode } from "@/features/sandbox/utils/sync";
 import { useDisplayStore } from "@/features/sandbox/store/display-store";
 import { injectJavaScript } from "../../mocks/react-native-webview";
 import { TEST_SITE } from "../sandbox/helpers";
@@ -50,6 +53,7 @@ const mockHooks: Record<string, jest.Mock> = {
 };
 
 jest.mock("expo-router", () => ({
+  useIsFocused: () => true,
   useLocalSearchParams: () => mockParams,
   useNavigation: () => ({ setOptions: jest.fn() }),
 }));
@@ -176,6 +180,7 @@ describe("AgentRunScreen", () => {
     loadError: null,
     streamError: null,
     cancelError: null,
+    syncMenu: { visible: false, options: [], onSelect: jest.fn(), onClose: jest.fn(), onDismissed: jest.fn() },
     syncNotice: null,
     dismissSyncNotice: jest.fn(),
     retry: jest.fn(),
@@ -261,14 +266,25 @@ describe("AgentRunScreen", () => {
     expect(screen.getByLabelText("Record voice message")).toBeOnTheScreen();
   });
 
-  it("offers Sync to host next to Reload and shows its progress", async () => {
+  it("offers a Sync menu next to Reload and shows its progress", async () => {
     const sync = jest.fn();
+    const onSelect = jest.fn();
     const dismissSyncNotice = jest.fn();
     mockParams = { id: sampleAgentRun.id };
     mockHooks.agentRun.mockReturnValue(
       runScreen({
         running: false,
-        headerActions: [headerAction("Reload"), headerAction("Sync to host", sync)],
+        headerActions: [headerAction("Reload"), headerAction("Sync", sync)],
+        syncMenu: {
+          visible: true,
+          options: [
+            { id: "pull", label: "Sync to host" },
+            { id: "discard", label: "Discard changes", description: "No sandbox changes to discard", disabled: true },
+          ],
+          onSelect,
+          onClose: jest.fn(),
+          onDismissed: jest.fn(),
+        },
         syncNotice: { tone: "success", title: "Synced to host", message: "1 added · 1 modified · 1 deleted" },
         dismissSyncNotice,
       }),
@@ -276,8 +292,12 @@ describe("AgentRunScreen", () => {
     await render(<AgentRunScreen />);
 
     expect(screen.getByLabelText("Reload")).toBeOnTheScreen();
-    await fireEvent.press(screen.getByLabelText("Sync to host"));
+    await fireEvent.press(screen.getByLabelText("Sync"));
     expect(sync).toHaveBeenCalled();
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Sync to host" }));
+    expect(onSelect).toHaveBeenCalledWith("pull");
+    await fireEvent.press(screen.getByRole("menuitem", { name: "Discard changes" }));
+    expect(onSelect).toHaveBeenCalledTimes(1);
     expect(screen.getByText("Synced to host")).toBeOnTheScreen();
     expect(screen.getByText("1 added · 1 modified · 1 deleted")).toBeOnTheScreen();
     await fireEvent.press(screen.getByLabelText("Dismiss"));
@@ -494,29 +514,47 @@ describe("DisplayScreen", () => {
 });
 
 describe("ProjectScreen", () => {
+  const syncAction = (id: "get" | "revert" | "discard", detail: string, disabled = false) => ({
+    ...SYNC_ACTIONS[id],
+    detail,
+    disabled,
+    onPress: jest.fn(),
+  });
+  const sheetView = (mode: SyncSheetMode, showForce = false) => ({
+    ...describeSyncSheet(mode, { changes: discardableChanges, selected: 2, showForce }),
+    icon: SYNC_ACTIONS[mode].icon,
+  });
+  const discardableChanges = sampleSyncChanges.changes.map((change) => ({ ...change, discardable: change.kind !== "deleted" }));
   const syncState = (overrides: object = {}) => ({
     loading: false,
     loadError: null,
     actionError: null,
+    notice: null,
+    dismissNotice: jest.fn(),
     host: "Monolith on workstation · online",
     empty: null,
     changes: sampleSyncChanges.changes,
     summary: "3 files · 1 added · 1 modified · 1 deleted",
-    confirmMessage: "3 files. A snapshot is taken first, so you can revert it.",
     files: sampleSyncChanges.changes,
     fileToggleLabel: null,
     toggleExpanded: jest.fn(),
     canSync: true,
     syncing: false,
-    canRevert: true,
-    reverting: false,
-    revert: jest.fn(),
-    showForce: false,
-    force: false,
-    setForce: jest.fn(),
+    actions: [
+      syncAction("get", "Copy what changed on your computer into the sandbox"),
+      syncAction("revert", "Restore the host files from the snapshot taken before the last sync"),
+      syncAction("discard", SYNC_COPY.notDiscardable, true),
+    ],
     sheetOpen: false,
+    sheet: sheetView("pull"),
     openSheet: jest.fn(),
     closeSheet: jest.fn(),
+    selected: new Set<string>(),
+    toggleFile: jest.fn(),
+    force: false,
+    setForce: jest.fn(),
+    submitting: false,
+    canSubmit: true,
     submit: jest.fn(),
     requests: [{ id: sampleSyncRequest.id, view: describeSyncRequest(sampleSyncRequest) }],
     cancel: jest.fn(),
@@ -532,7 +570,8 @@ describe("ProjectScreen", () => {
     retry: jest.fn(),
     headerActions: [headerAction("Open a shell in this project")],
     git: sampleGitDetails,
-    scripts: [{ script: "start", command: "npm run start" }],
+    scripts: [{ script: "start", command: "npm run start", bookmarked: false }],
+    toggleBookmark: jest.fn(),
     preferDisplay: true,
     runScript: jest.fn(),
     runningScript: null,
@@ -553,7 +592,22 @@ describe("ProjectScreen", () => {
     artifacts: [sampleArtifact],
     downloads: { download: jest.fn(), pendingId: null, error: null },
     sync: syncState(),
+    claudeAccount: claudeAccountState(),
     actionError: null,
+    ...overrides,
+  });
+  const claudeAccountState = (overrides: object = {}) => ({
+    visible: true,
+    summary: "Default (claude) · dev@example.com · Example · Max",
+    canChoose: true,
+    saving: false,
+    error: null,
+    sheetOpen: false,
+    open: jest.fn(),
+    close: jest.fn(),
+    options: projectAccountOptions(sampleClaudeAccountList),
+    selectedId: DEFAULT_ACCOUNT_CHOICE,
+    select: jest.fn(),
     ...overrides,
   });
 
@@ -577,6 +631,21 @@ describe("ProjectScreen", () => {
     expect(mockNav.build).toHaveBeenCalledWith(sampleBuild.id);
     await fireEvent.press(screen.getByLabelText(`Download ${sampleArtifact.fileName}`));
     expect(state.downloads.download).toHaveBeenCalledWith(sampleArtifact.id);
+  });
+
+  it("shows the project's Claude account and opens the picker", async () => {
+    mockParams = { id: sampleProject.id };
+    const account = claudeAccountState();
+    mockHooks.project.mockReturnValue(detail({ claudeAccount: account }));
+    await render(<ProjectScreen />);
+
+    expect(screen.getByText("Default (claude) · dev@example.com · Example · Max")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId("project-claude-account-row"));
+    expect(account.open).toHaveBeenCalled();
+
+    mockHooks.project.mockReturnValue(detail({ claudeAccount: claudeAccountState({ visible: false }) }));
+    await render(<ProjectScreen />);
+    expect(screen.queryByTestId("project-claude-account")).toBeNull();
   });
 
   it("shows empty sections, inline logs and errors", async () => {
@@ -651,14 +720,39 @@ describe("ProjectScreen", () => {
     await fireEvent.press(screen.getByLabelText("Show all 12 files"));
     expect(sync.toggleExpanded).toHaveBeenCalled();
     await fireEvent.press(screen.getByLabelText("Sync to host"));
-    expect(sync.openSheet).toHaveBeenCalled();
-    await fireEvent.press(screen.getByLabelText("Revert last sync"));
-    expect(sync.revert).toHaveBeenCalled();
+    expect(sync.openSheet).toHaveBeenCalledWith("pull");
+    await fireEvent.press(screen.getByLabelText(/^Sync from host, Copy what changed/));
+    expect(sync.actions[0].onPress).toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText(/^Revert last sync, /));
+    expect(sync.actions[1].onPress).toHaveBeenCalled();
+    expect(screen.getByLabelText(`Discard changes, ${SYNC_COPY.notDiscardable}`)).toBeDisabled();
+  });
+
+  it("selects files to discard and shows the discard result", async () => {
+    mockParams = { id: sampleProject.id };
+    const sync = syncState({
+      sheetOpen: true,
+      sheet: sheetView("discard"),
+      selected: new Set(["src/main.ts"]),
+      notice: { tone: "success", title: "Discarded sandbox changes", message: "1 file back to the last synced version" },
+    });
+    mockHooks.project.mockReturnValue(detail({ sync }));
+    await render(<ProjectScreen />);
+
+    expect(screen.getByText("Discarded sandbox changes")).toBeOnTheScreen();
+    expect(screen.getByRole("checkbox", { name: "modified src/main.ts" })).toBeChecked();
+    await fireEvent.press(screen.getByRole("checkbox", { name: "added src/new-file.ts" }));
+    expect(sync.toggleFile).toHaveBeenCalledWith("src/new-file.ts");
+    expect(screen.queryByRole("checkbox", { name: "deleted README.old.md" })).toBeNull();
+    await fireEvent.press(screen.getByLabelText("Discard 2 files"));
+    expect(sync.submit).toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText("Dismiss"));
+    expect(sync.dismissNotice).toHaveBeenCalled();
   });
 
   it("confirms a sync with the force toggle after conflicts", async () => {
     mockParams = { id: sampleProject.id };
-    const sync = syncState({ sheetOpen: true, showForce: true });
+    const sync = syncState({ sheetOpen: true, sheet: sheetView("pull", true) });
     mockHooks.project.mockReturnValue(detail({ sync }));
     await render(<ProjectScreen />);
 
@@ -683,7 +777,12 @@ describe("ProjectScreen", () => {
       empty: "up-to-date",
       changes: [],
       files: [],
-      canRevert: false,
+      canSync: false,
+      actions: [
+        syncAction("get", SYNC_COPY.inProgress, true),
+        syncAction("revert", SYNC_COPY.inProgress, true),
+        syncAction("discard", SYNC_COPY.nothingToDiscard, true),
+      ],
       requests: [pending, failed].map((request) => ({ id: request.id, view: describeSyncRequest(request) })),
     });
     mockHooks.project.mockReturnValue(detail({ sync }));
@@ -691,7 +790,7 @@ describe("ProjectScreen", () => {
 
     expect(screen.getByText(SYNC_COPY.upToDate)).toBeOnTheScreen();
     expect(screen.queryByLabelText("Sync to host")).toBeNull();
-    expect(screen.queryByLabelText("Revert last sync")).toBeNull();
+    expect(screen.getByLabelText(`Revert last sync, ${SYNC_COPY.inProgress}`)).toBeDisabled();
     expect(screen.getByText(SYNC_COPY.pending)).toBeOnTheScreen();
     expect(screen.getByText("1 file changed on the host")).toBeOnTheScreen();
     expect(screen.getByText("src/main.ts")).toBeOnTheScreen();

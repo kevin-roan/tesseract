@@ -11,6 +11,7 @@ import {
   BrowserStatusSchema,
   BuildJobSchema,
   BuildListSchema,
+  ClaudeAccountListSchema,
   ClaudeAuthStatusSchema,
   ClaudeImportResultSchema,
   ClaudeSessionListSchema,
@@ -19,9 +20,14 @@ import {
   errorCodeForStatus,
   GitDetailsSchema,
   HealthSchema,
+  HostHealthSchema,
+  HostLockStatusSchema,
+  HostSessionSchema,
   IdentitySchema,
   InboxCountsSchema,
   SyncChangesSchema,
+  SyncDiscardResultSchema,
+  DeletedProjectSchema,
   SyncRequestListSchema,
   SyncRequestSchema,
   InboxSchema,
@@ -87,7 +93,13 @@ import {
   type EventsClientMessage,
   type GitDetails,
   type Health,
+  type HostHealth,
+  type HostLockStatus,
+  type HostSession,
+  type ClaudeAccountList,
   type ClaudeAuthStatus,
+  type SetDefaultClaudeAccount,
+  type SetProjectClaudeAccount,
   type ClaudeImport,
   type ClaudeImportResult,
   type Identity,
@@ -99,6 +111,10 @@ import {
   type CreateSyncRequest,
   type SyncAck,
   type SyncChanges,
+  type SyncDiscard,
+  type SyncDiscardResult,
+  type DeletedProject,
+  type ForceParam,
   type SyncHeartbeat,
   type SyncRequest,
   type ListeningPorts,
@@ -266,7 +282,7 @@ export class TheOneClient {
   private readonly fetchImpl: FetchLike;
   private readonly webSocketImpl: SocketConstructor | undefined;
 
-  constructor(options: TheOneClientOptions) {
+  constructor(protected readonly options: TheOneClientOptions) {
     const baseUrl = normalizeBaseUrl(options.baseUrl);
     if (!baseUrl) throw new TypeError(`Invalid controller URL: ${options.baseUrl}`);
     if (!options.token) throw new TypeError("A controller token is required");
@@ -299,6 +315,18 @@ export class TheOneClient {
 
   claudeAuth(options?: RequestOptions): Promise<ClaudeAuthStatus> {
     return this.request("GET", restPaths.claudeAuth(), { read: json(ClaudeAuthStatusSchema), options });
+  }
+
+  claudeAccounts(options?: RequestOptions): Promise<ClaudeAccountList> {
+    return this.request("GET", restPaths.claudeAccounts(), { read: json(ClaudeAccountListSchema), options });
+  }
+
+  setDefaultClaudeAccount(body: SetDefaultClaudeAccount, options?: RequestOptions): Promise<ClaudeAccountList> {
+    return this.request("PUT", restPaths.claudeDefaultAccount(), { read: json(ClaudeAccountListSchema), body, options });
+  }
+
+  setProjectClaudeAccount(id: string, body: SetProjectClaudeAccount, options?: RequestOptions): Promise<Project> {
+    return this.request("PUT", restPaths.projectClaudeAccount(id), { read: json(ProjectSchema), body, options });
   }
 
   importClaude(body: ClaudeImport, options?: RequestOptions): Promise<ClaudeImportResult> {
@@ -353,6 +381,11 @@ export class TheOneClient {
     return this.request("GET", restPaths.project(id), { read: json(ProjectSchema), options });
   }
 
+  /** Moves the project out of the sandbox; without `force`, 409 when it has changes not synced back to the host. */
+  deleteProject(id: string, query?: ForceParam, options?: RequestOptions): Promise<DeletedProject> {
+    return this.request("DELETE", restPaths.project(id, query), { read: json(DeletedProjectSchema), options });
+  }
+
   getProjectGit(id: string, options?: RequestOptions): Promise<GitDetails> {
     return this.request("GET", restPaths.projectGit(id), { read: json(GitDetailsSchema), options });
   }
@@ -368,6 +401,10 @@ export class TheOneClient {
 
   syncAck(id: string, body: SyncAck, options?: RequestOptions): Promise<SyncChanges> {
     return this.request("POST", restPaths.projectSyncAck(id), { read: json(SyncChangesSchema), body, options });
+  }
+
+  syncDiscard(id: string, body: SyncDiscard = {}, options?: RequestOptions): Promise<SyncDiscardResult> {
+    return this.request("POST", restPaths.projectSyncDiscard(id), { read: json(SyncDiscardResultSchema), body, options });
   }
 
   syncRequests(id: string, options?: RequestOptions): Promise<SyncRequest[]> {
@@ -678,7 +715,7 @@ export class TheOneClient {
     }).start();
   }
 
-  private request<T>(method: string, path: string, init: SendInit<T>): Promise<T> {
+  protected request<T>(method: string, path: string, init: SendInit<T>): Promise<T> {
     const timeoutMs = init.options?.timeoutMs ?? this.timeoutMs;
     const external = init.options?.signal;
     if (external?.aborted) return Promise.reject(new AbortError(path));
@@ -728,5 +765,33 @@ export class TheOneClient {
       clearTimeout(timer);
       if (external && onAbort) external.removeEventListener("abort", onAbort);
     });
+  }
+}
+
+/**
+ * Client of the host shell daemon (`theone-controller host serve`). `token` is the host token from
+ * `theone-controller host pair`; it only reads the lock state and trades the PIN for a session.
+ * Terminals, tickets and the `/ui/terminal` page go through `sessionClient(session)`.
+ */
+export class HostShellClient extends TheOneClient {
+  hostHealth(options?: RequestOptions): Promise<HostHealth> {
+    return this.request("GET", restPaths.health(), { read: json(HostHealthSchema, true), auth: false, options });
+  }
+
+  lockStatus(options?: RequestOptions): Promise<HostLockStatus> {
+    return this.request("GET", restPaths.hostLock(), { read: json(HostLockStatusSchema), options });
+  }
+
+  /** 403 for a wrong PIN or while locked out (see `lockStatus`), 503 when no PIN is set on the host. */
+  unlock(pin: string, options?: RequestOptions): Promise<HostSession> {
+    return this.request("POST", restPaths.hostUnlock(), { read: json(HostSessionSchema), body: { pin }, options });
+  }
+
+  lock(session: string, options?: RequestOptions): Promise<void> {
+    return this.request("POST", restPaths.hostLock(), { read: ignoreBody, body: { session }, options });
+  }
+
+  sessionClient(session: string): TheOneClient {
+    return new TheOneClient({ ...this.options, token: session });
   }
 }

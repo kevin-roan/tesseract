@@ -59,6 +59,8 @@ export function chatComposerState({ voice, attachments, ...overrides }: Override
       retry: jest.fn(),
       discard: jest.fn(),
       clearError: jest.fn(),
+      fallback: null,
+      dismissFallback: jest.fn(),
       ...voice,
     },
     primary: "mic",
@@ -68,6 +70,8 @@ export function chatComposerState({ voice, attachments, ...overrides }: Override
     sending: false,
     error: null,
     dismissError: jest.fn(),
+    notice: null,
+    dismissNotice: jest.fn(),
     ...overrides,
   };
 }

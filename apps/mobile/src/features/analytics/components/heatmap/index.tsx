@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import Animated from "react-native-reanimated";
 import Svg, { G, Rect, Text as SvgText } from "react-native-svg";
 
 import { ThemedText } from "@/components/themed-text";
@@ -11,6 +12,7 @@ import { useLayoutWidth } from "../../hooks/use-layout-width";
 import type { HeatmapGrid } from "../../types";
 import { busiestCell, heatLevel } from "../../utils/activity";
 import { WEEKDAYS, formatHour, plural } from "../../utils/format";
+import { rowFadeIn } from "../../utils/motion";
 import SeriesReadout from "../series-readout";
 import createStyles, { GRID_HEIGHT, HeatmapFrame } from "./styles";
 
@@ -20,7 +22,8 @@ export type HeatmapProps = {
   testID?: string;
 };
 
-const HOURS = 24;
+const HOURS = HeatmapFrame.hours;
+const ROW_STEP = HeatmapFrame.cellHeight + HeatmapFrame.gap;
 
 const Heatmap = ({ grid, unit, testID }: HeatmapProps) => {
   const theme = useAppTheme();
@@ -30,8 +33,10 @@ const Heatmap = ({ grid, unit, testID }: HeatmapProps) => {
   const plotWidth = Math.max(0, width - HeatmapFrame.labelGutter);
   const { selected, handlers } = useGridSelection(WEEKDAYS.length, HOURS, plotWidth, GRID_HEIGHT);
 
-  const ramp = colors.sequential;
+  const ramp = colors.heat;
   const cellWidth = Math.max(1, (plotWidth - (HOURS - 1) * HeatmapFrame.gap) / HOURS);
+  const columnStep = cellWidth + HeatmapFrame.gap;
+  const rowEntrances = useMemo(() => WEEKDAYS.map((_, row) => rowFadeIn(row)), []);
   const busiest = busiestCell(grid);
   const font = theme.text.caption.fontFamily;
 
@@ -47,55 +52,78 @@ const Heatmap = ({ grid, unit, testID }: HeatmapProps) => {
       <SeriesReadout title={title} total={plural(count, unit)} items={[]} live={selected !== null} />
       <View style={styles.frame} onLayout={onLayout}>
         {width > 0 ? (
-          <Svg width={width} height={GRID_HEIGHT + HeatmapFrame.axisBand}>
-            {WEEKDAYS.map((day, row) => (
-              <SvgText
-                key={day}
-                x={0}
-                y={row * (HeatmapFrame.cellHeight + HeatmapFrame.gap) + HeatmapFrame.cellHeight - 4}
-                fill={colors.axis}
-                fontSize={HeatmapFrame.fontSize}
-                fontFamily={font}
+          <>
+            <Svg width={width} height={GRID_HEIGHT + HeatmapFrame.axisBand} style={StyleSheet.absoluteFill}>
+              {WEEKDAYS.map((day, row) => (
+                <SvgText
+                  key={day}
+                  x={0}
+                  y={row * ROW_STEP + HeatmapFrame.cellHeight / 2}
+                  alignmentBaseline="central"
+                  fill={colors.axis}
+                  fontSize={HeatmapFrame.fontSize}
+                  fontFamily={font}
+                >
+                  {day}
+                </SvgText>
+              ))}
+              <G x={HeatmapFrame.labelGutter}>
+                {Array.from({ length: HOURS / HeatmapFrame.hourStep }, (_, index) => index * HeatmapFrame.hourStep).map(
+                  (hour) => (
+                    <SvgText
+                      key={hour}
+                      x={hour * columnStep}
+                      y={GRID_HEIGHT + HeatmapFrame.axisBand - HeatmapFrame.axisBaseline}
+                      fill={colors.axis}
+                      fontSize={HeatmapFrame.fontSize}
+                      fontFamily={font}
+                    >
+                      {formatHour(hour)}
+                    </SvgText>
+                  ),
+                )}
+              </G>
+            </Svg>
+            {grid.cells.map((cells, row) => (
+              <Animated.View
+                key={WEEKDAYS[row]}
+                entering={rowEntrances[row]}
+                style={[styles.row, { top: row * ROW_STEP }]}
+                pointerEvents="none"
               >
-                {day}
-              </SvgText>
+                <Svg width={plotWidth} height={HeatmapFrame.cellHeight}>
+                  {cells.map((value, column) => {
+                    const level = heatLevel(value, grid.max, ramp.length + 1);
+                    return (
+                      <Rect
+                        key={column}
+                        x={column * columnStep}
+                        y={0}
+                        width={cellWidth}
+                        height={HeatmapFrame.cellHeight}
+                        rx={HeatmapFrame.cellRadius}
+                        fill={level === 0 ? colors.empty : ramp[level - 1]}
+                      />
+                    );
+                  })}
+                </Svg>
+              </Animated.View>
             ))}
-            <G x={HeatmapFrame.labelGutter}>
-              {grid.cells.map((cells, row) =>
-                cells.map((value, column) => {
-                  const level = heatLevel(value, grid.max, ramp.length + 1);
-                  const isSelected = selected?.row === row && selected.column === column;
-                  return (
-                    <Rect
-                      key={`${row}-${column}`}
-                      x={column * (cellWidth + HeatmapFrame.gap)}
-                      y={row * (HeatmapFrame.cellHeight + HeatmapFrame.gap)}
-                      width={cellWidth}
-                      height={HeatmapFrame.cellHeight}
-                      rx={HeatmapFrame.radius}
-                      fill={level === 0 ? colors.empty : ramp[level - 1]}
-                      stroke={isSelected ? theme.colors.text : undefined}
-                      strokeWidth={isSelected ? 1.5 : 0}
-                    />
-                  );
-                }),
-              )}
-              {Array.from({ length: HOURS / HeatmapFrame.hourStep }, (_, index) => index * HeatmapFrame.hourStep).map(
-                (hour) => (
-                  <SvgText
-                    key={hour}
-                    x={hour * (cellWidth + HeatmapFrame.gap)}
-                    y={GRID_HEIGHT + HeatmapFrame.axisBand - 4}
-                    fill={colors.axis}
-                    fontSize={HeatmapFrame.fontSize}
-                    fontFamily={font}
-                  >
-                    {formatHour(hour)}
-                  </SvgText>
-                ),
-              )}
-            </G>
-          </Svg>
+            {selected ? (
+              <Svg width={width} height={GRID_HEIGHT} style={styles.selection} pointerEvents="none">
+                <Rect
+                  x={HeatmapFrame.labelGutter + selected.column * columnStep}
+                  y={selected.row * ROW_STEP}
+                  width={cellWidth}
+                  height={HeatmapFrame.cellHeight}
+                  rx={HeatmapFrame.cellRadius}
+                  fill="none"
+                  stroke={theme.colors.text}
+                  strokeWidth={HeatmapFrame.gap}
+                />
+              </Svg>
+            ) : null}
+          </>
         ) : null}
         <View
           style={styles.overlay}

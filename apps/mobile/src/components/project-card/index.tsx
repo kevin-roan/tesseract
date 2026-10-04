@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import {
   CaretDoubleRightIcon,
   ChatCircleIcon,
@@ -8,6 +8,7 @@ import {
 } from "phosphor-react-native";
 
 import AvatarStack, { type AvatarPerson } from "@/components/avatar-stack";
+import PressableScale from "@/components/pressable-scale";
 import { SurfacePill, Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -68,7 +69,8 @@ const ProjectCard = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const statusColors = ToneColors[status.tone ?? "neutral"];
-  const tagColors = ToneColors[tag.tone ?? "info"];
+  const tagTone = tag.tone ?? "info";
+  const tagInk = tagTone === "info" || tagTone === "neutral" ? "textSecondary" : ToneColors[tagTone].foreground;
   const StatusIcon = status.icon;
   const TagIcon = tag.icon;
 
@@ -76,7 +78,7 @@ const ProjectCard = ({
     <Surface style={styles.card}>
       <View style={styles.header}>
         <View style={styles.titles}>
-          <ThemedText variant="h3" numberOfLines={2}>
+          <ThemedText variant="h4" numberOfLines={2}>
             {title}
           </ThemedText>
           {subtitle ? (
@@ -87,19 +89,20 @@ const ProjectCard = ({
         </View>
 
         {onPressMenu ? (
-          <Pressable
+          <PressableScale
+            depth="control"
             accessibilityRole="button"
             accessibilityLabel={`More options for ${title}`}
             hitSlop={HitSlop.md}
             onPress={onPressMenu}
-            style={({ pressed }) => [styles.menuButton, pressed && styles.pressed]}
+            style={styles.menuButton}
           >
             <DotsThreeIcon
               size={IconSize.lg}
               color={theme.colors.textSecondary}
-              weight="bold"
+              weight="regular"
             />
-          </Pressable>
+          </PressableScale>
         ) : null}
       </View>
 
@@ -113,7 +116,7 @@ const ProjectCard = ({
               <StatusIcon
                 size={IconSize.sm}
                 color={theme.colors[statusColors.foreground]}
-                weight="duotone"
+                weight="regular"
               />
             ) : null}
             <ThemedText variant="bodySmall" numberOfLines={1} style={styles.shrink}>
@@ -126,11 +129,9 @@ const ProjectCard = ({
           <ThemedText variant="caption" color="textTertiary">
             {tag.caption}
           </ThemedText>
-          <View style={[styles.tagPill, { backgroundColor: theme.colors[tagColors.background] }]}>
-            {TagIcon ? (
-              <TagIcon size={IconSize.xs} color={theme.colors[tagColors.foreground]} weight="bold" />
-            ) : null}
-            <ThemedText variant="caption" color={tagColors.foreground} numberOfLines={1} style={styles.shrink}>
+          <View style={styles.tagPill}>
+            {TagIcon ? <TagIcon size={IconSize.xs} color={theme.colors[tagInk]} weight="regular" /> : null}
+            <ThemedText variant="caption" color={tagInk} numberOfLines={1} style={styles.shrink}>
               {tag.value}
             </ThemedText>
           </View>
@@ -162,24 +163,25 @@ const ProjectCard = ({
         </SurfacePill>
 
         {onPressChat ? (
-          <Pressable
+          <PressableScale
+            depth="control"
             accessibilityRole="button"
             accessibilityLabel={chatLabel}
             onPress={onPressChat}
-            style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
+            style={styles.actionButton}
           >
             <ChatCircleIcon
-              size={IconSize.lg}
+              size={IconSize.md}
               color={theme.colors.textOnAccent}
-              weight="fill"
+              weight="light"
             />
-          </Pressable>
+          </PressableScale>
         ) : null}
 
         <CaretDoubleRightIcon
           size={IconSize.md}
           color={theme.colors.textTertiary}
-          weight="bold"
+          weight="light"
         />
       </View>
     </Surface>
@@ -195,7 +197,7 @@ const ProjectCard = ({
   ];
 
   return (
-    <Pressable
+    <PressableScale
       testID={testID}
       accessibilityRole="button"
       accessibilityLabel={`${title}, ${status.value}, ${tag.value}, ${detail.value}`}
@@ -205,10 +207,9 @@ const ProjectCard = ({
         if (nativeEvent.actionName === "menu") onPressMenu?.();
       }}
       onPress={onPress}
-      style={({ pressed }) => pressed && styles.pressed}
     >
       {card}
-    </Pressable>
+    </PressableScale>
   );
 };
 

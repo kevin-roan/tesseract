@@ -309,6 +309,7 @@ export class Repositories {
         mode: (r) => r.mode,
         attachments: (r) => (r.attachments.length > 0 ? JSON.stringify(r.attachments) : null),
         session_id: (r) => r.sessionId,
+        claude_account_id: (r) => r.claudeAccountId,
         state: (r) => r.state,
         started_at: (r) => r.startedAt,
         ended_at: (r) => r.endedAt,
@@ -327,6 +328,7 @@ export class Repositories {
         mode: textOrNull(row, "mode") as AgentRunMode | null,
         attachments: jsonList<Upload>(row, "attachments"),
         sessionId: textOrNull(row, "session_id"),
+        claudeAccountId: textOrNull(row, "claude_account_id"),
         state: text(row, "state") as AgentRunState,
         startedAt: text(row, "started_at"),
         endedAt: textOrNull(row, "ended_at"),
@@ -507,6 +509,43 @@ export class Repositories {
     this.db
       .query("INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at")
       .run(key, value, at);
+  }
+
+  markConfidential(projectId: string, at: string): void {
+    this.db.query("INSERT INTO confidential_projects (project_id, marked_at) VALUES (?, ?) ON CONFLICT(project_id) DO NOTHING").run(projectId, at);
+  }
+
+  isConfidential(projectId: string): boolean {
+    return this.db.query<Row, [string]>("SELECT 1 FROM confidential_projects WHERE project_id = ?").get(projectId) !== null;
+  }
+
+  confidentialProjectIds(): string[] {
+    return this.db.query<Row, []>("SELECT project_id FROM confidential_projects ORDER BY project_id").all().map((row) => text(row, "project_id"));
+  }
+
+  projectClaudeAccount(projectId: string): string | null {
+    const row = this.db.query<Row, [string]>("SELECT account_id FROM project_claude_accounts WHERE project_id = ?").get(projectId);
+    return row ? text(row, "account_id") : null;
+  }
+
+  setProjectClaudeAccount(projectId: string, accountId: string | null, at: string): void {
+    if (accountId === null) {
+      this.db.query("DELETE FROM project_claude_accounts WHERE project_id = ?").run(projectId);
+      return;
+    }
+    this.db
+      .query(
+        "INSERT INTO project_claude_accounts (project_id, account_id, updated_at) VALUES (?, ?, ?) ON CONFLICT(project_id) DO UPDATE SET account_id = excluded.account_id, updated_at = excluded.updated_at",
+      )
+      .run(projectId, accountId, at);
+  }
+
+  /** Account of the newest agent run with this Claude session id. */
+  sessionClaudeAccount(sessionId: string): string | null {
+    const row = this.db
+      .query<Row, [string]>("SELECT claude_account_id FROM agent_runs WHERE session_id = ? ORDER BY started_at DESC, rowid DESC LIMIT 1")
+      .get(sessionId);
+    return row ? textOrNull(row, "claude_account_id") : null;
   }
 
   pushDevices(): PushDevice[] {

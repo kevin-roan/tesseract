@@ -37,6 +37,10 @@ export const ProjectSchema = z.object({
   scripts: z.array(z.string()),
   buildTargets: z.array(BuildTargetSchema),
   git: GitSummarySchema.nullable(),
+  /** Controllers older than confidential projects omit it. */
+  confidential: z.boolean().default(false),
+  /** Claude account pinned to the project; null follows the default. Older controllers omit it. */
+  claudeAccountId: z.string().nullable().default(null),
 });
 export type Project = z.infer<typeof ProjectSchema>;
 
@@ -69,6 +73,7 @@ export const CreateProjectSchema = z.object({
   name: NameSchema.refine((name) => projectIdFromName(name) !== null, "Name must contain letters or digits"),
   gitUrl: z.string().trim().max(2048).regex(GIT_URL_PATTERN, "Unsupported git URL").optional(),
   branch: z.string().trim().regex(GIT_REF_PATTERN, "Invalid branch name").optional(),
+  confidential: z.boolean().optional(),
 });
 export type CreateProject = z.infer<typeof CreateProjectSchema>;
 
@@ -77,3 +82,10 @@ export const CreateProjectResponseSchema = z.object({
   processId: ProcessIdSchema.optional(),
 });
 export type CreateProjectResponse = z.infer<typeof CreateProjectResponseSchema>;
+
+/** `trashPath`: where the sandbox copy was moved (`DELETE /v1/projects/:id`). */
+export const DeletedProjectSchema = z.object({
+  id: ProjectIdSchema,
+  trashPath: z.string(),
+});
+export type DeletedProject = z.infer<typeof DeletedProjectSchema>;

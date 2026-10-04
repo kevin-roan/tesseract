@@ -11,7 +11,7 @@ from .labels import MANAGE, NO_PROJECT, NO_PROJECT_OPTION, STATES, UNTITLED
 FINAL_STATES = ("succeeded", "failed", "cancelled")
 TITLE_LIMIT = 80
 STATE_TONES: Mapping[str, Tone] = {"running": "info", "succeeded": "success", "failed": "danger", "cancelled": "neutral"}
-STATE_ICONS: Mapping[str, str] = {"succeeded": "success", "failed": "close", "cancelled": "stop"}
+STATE_ICONS: Mapping[str, str] = {"succeeded": "success", "failed": "failed", "cancelled": "stop"}
 NO_PROJECT_KEY = ""
 TERMINAL_SOURCES = ("terminal", "cli")
 ARCHIVED_FILTER = "archived"
@@ -164,6 +164,7 @@ def header_meta(run: AgentRun, names: Mapping[str, str], now: float | None = Non
         format_relative_time(run.get("startedAt"), now),
         run_duration(run, now),
         format_tokens(run_total_tokens(run)),
+        run.get("claudeAccountId"),
     )
 
 

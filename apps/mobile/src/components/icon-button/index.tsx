@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { Icon } from "phosphor-react-native";
 
+import PressableScale from "@/components/pressable-scale";
 import { SurfaceButton } from "@/components/surface";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useHapticPress } from "@/hooks/use-haptic-press";
@@ -9,6 +10,8 @@ import { HitSlop, IconSize } from "@/theme";
 
 import createStyles from "./styles";
 
+export { squareButtonLook } from "./styles";
+
 export type IconButtonProps = {
   icon: Icon;
   label: string;
@@ -16,6 +19,7 @@ export type IconButtonProps = {
   onPress?: () => void;
   disabled?: boolean;
   tone?: Tone;
+  filled?: boolean;
   /** `md` is the 40pt toolbar size; its hit area is extended back past the touch minimum. */
   size?: "md" | "lg";
   /** Light impact on press (native only). On by default. */
@@ -23,11 +27,33 @@ export type IconButtonProps = {
   testID?: string;
 };
 
-const IconButton = ({ icon: IconComponent, label, hint, onPress, disabled, tone, size = "lg", haptics = true, testID }: IconButtonProps) => {
+const IconButton = ({ icon: IconComponent, label, hint, onPress, disabled, tone, filled = false, size = "lg", haptics = true, testID }: IconButtonProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme, size), [theme, size]);
   const handlePress = useHapticPress(onPress, haptics);
   const color = tone ? theme.colors[ToneColors[tone].foreground] : theme.colors.text;
+  const hitSlop = size === "md" ? HitSlop.sm : undefined;
+  const icon = <IconComponent size={IconSize.md} color={color} weight={filled ? "fill" : "regular"} />;
+
+  if (theme.look === "graphite") {
+    return (
+      <PressableScale
+        depth="control"
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        accessibilityHint={hint}
+        accessibilityState={{ disabled: !!disabled, selected: filled }}
+        disabled={disabled}
+        hitSlop={hitSlop}
+        onPress={handlePress}
+        testID={testID}
+        style={[styles.square, disabled && styles.disabled]}
+        pressedStyle={styles.pressed}
+      >
+        {icon}
+      </PressableScale>
+    );
+  }
 
   return (
     <SurfaceButton
@@ -35,11 +61,11 @@ const IconButton = ({ icon: IconComponent, label, hint, onPress, disabled, tone,
       accessibilityHint={hint}
       onPress={handlePress}
       disabled={disabled}
-      hitSlop={size === "md" ? HitSlop.sm : undefined}
+      hitSlop={hitSlop}
       style={styles.button}
       testID={testID}
     >
-      <IconComponent size={IconSize.md} color={color} weight="bold" />
+      {icon}
     </SurfaceButton>
   );
 };

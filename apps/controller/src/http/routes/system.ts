@@ -2,6 +2,7 @@ import type { Context, Hono } from "hono";
 import { getConnInfo } from "hono/bun";
 import {
   ClaudeImportSchema,
+  SetDefaultClaudeAccountSchema,
   PROTOCOL_VERSION,
   routePatterns,
   SessionsQuerySchema,
@@ -48,6 +49,12 @@ export function registerSystemRoutes(app: Hono, services: Services): void {
   app.get(rest.claudeAuth, (c) => c.json(services.claudeAuth.status()));
 
   app.post(rest.claudeImport, async (c) => c.json(services.claudeAuth.import(await jsonBody(c, ClaudeImportSchema))));
+
+  app.get(rest.claudeAccounts, (c) => c.json(services.claudeAccounts.list()));
+
+  app.put(rest.claudeDefaultAccount, async (c) =>
+    c.json(services.claudeAccounts.setDefault((await jsonBody(c, SetDefaultClaudeAccountSchema)).accountId)),
+  );
 
   app.get(rest.ports, async (c) => c.json(await services.ports.list()));
 

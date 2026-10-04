@@ -65,6 +65,8 @@ export const MaxFontSizeMultiplier = {
   content: 2.4,
   /** Headings and titles. */
   heading: 1.6,
+  /** Copy on screens that cannot scroll. */
+  fixed: 1.35,
   /** Chrome that must stay on one line. */
   chrome: 1.2,
 } as const;

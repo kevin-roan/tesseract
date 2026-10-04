@@ -1,8 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import type { Theme } from "@/theme";
-
-export const SPHERE = { size: 28, dots: 28 } as const;
+import { ControlHeight, DotSize, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -13,19 +11,33 @@ export default function createStyles(theme: Theme) {
       paddingVertical: theme.spacing.sm,
       paddingLeft: theme.spacing.sm,
       paddingRight: theme.spacing.base,
+      borderRadius: theme.radius.card,
+    },
+    tile: {
+      width: ControlHeight.sm,
+      height: ControlHeight.sm,
+      borderRadius: theme.radius.md,
+      borderCurve: "continuous",
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
+    },
+    dot: {
+      width: DotSize.md,
+      height: DotSize.md,
       borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.textTertiary,
+    },
+    dotLive: {
+      backgroundColor: theme.colors.success,
     },
     title: {
       flex: 1,
     },
-    pill: {
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xxs,
-      borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.backgroundElement,
-    },
     pressed: {
-      transform: [{ scale: 0.98 }],
+      backgroundColor: theme.colors.backgroundElement,
     },
   });
 }

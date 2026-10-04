@@ -11,6 +11,7 @@ from ...store import Observable
 from ...widgets.buttons import IconButton
 from ...widgets.confirm_dialog import confirm
 from ...widgets.icon import Icon
+from ...widgets.motion import crossfade_stack
 from ..base import Page
 from . import model
 from .conversation import ConversationPane
@@ -76,7 +77,7 @@ class AgentsPage(Page):
         self._conversation = ConversationPane(
             self.ctx, self._follow_up, self.select_run, self._mark_read, self._open_attention, self._run_changed, self._manage
         )
-        self._content = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, hexpand=True, vexpand=True)
+        self._content = crossfade_stack(hexpand=True, vexpand=True)
         self._content.add_named(self._new, "new")
         self._content.add_named(self._conversation, "conversation")
 

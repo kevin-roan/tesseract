@@ -1,14 +1,16 @@
 import { useMemo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { CaretRightIcon, type Icon } from "phosphor-react-native";
 
 import { Glass } from "@/components/glass";
+import IconTile from "@/components/icon-tile";
+import PressableScale from "@/components/pressable-scale";
 import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { IconSize } from "@/theme";
 
-import createStyles from "./styles";
+import createStyles, { iconTileSize } from "./styles";
 
 export type ListCardProps = {
   icon: Icon;
@@ -45,9 +47,7 @@ const ListCard = ({
 
   const card = (
     <Card style={styles.card}>
-      <View style={styles.iconBadge}>
-        <IconComponent size={IconSize.md} color={theme.colors.text} weight="duotone" />
-      </View>
+      <IconTile icon={IconComponent} size={iconTileSize(theme)} iconSize={IconSize.md} radius="md" />
 
       <View style={styles.body}>
         <ThemedText variant="bodyStrong" numberOfLines={1}>
@@ -62,7 +62,7 @@ const ListCard = ({
 
       {value ? (
         <View style={styles.trailing}>
-          <ThemedText variant="h4" numberOfLines={1}>
+          <ThemedText variant="h4" numberOfLines={1} style={styles.figure}>
             {value}
           </ThemedText>
           {valueLabel ? (
@@ -72,7 +72,7 @@ const ListCard = ({
           ) : null}
         </View>
       ) : onPress ? (
-        <CaretRightIcon size={IconSize.sm} color={theme.colors.textTertiary} weight="bold" />
+        <CaretRightIcon size={IconSize.sm} color={theme.colors.textTertiary} weight="regular" />
       ) : null}
     </Card>
   );
@@ -80,14 +80,13 @@ const ListCard = ({
   if (!onPress) return card;
 
   return (
-    <Pressable
+    <PressableScale
       accessibilityRole="button"
       accessibilityLabel={[title, subtitle, value, valueLabel].filter(Boolean).join(", ")}
       onPress={onPress}
-      style={({ pressed }) => pressed && styles.pressed}
     >
       {card}
-    </Pressable>
+    </PressableScale>
   );
 };
 

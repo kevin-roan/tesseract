@@ -307,7 +307,7 @@ describe("useChatComposer", () => {
       expect.objectContaining({ mimeType: "audio/mp4", data: "AAAA" }),
       expect.anything(),
     );
-    expect(fake.transcribe).toHaveBeenCalledWith({ uploadId: sampleUpload.id }, expect.anything());
+    expect(fake.transcribe).toHaveBeenCalledWith({ uploadId: sampleUpload.id, provider: "gemini" }, expect.anything());
     expect(fake.startAgentRun).toHaveBeenCalledWith(
       { prompt: sampleTranscription.text, mode: "bypassPermissions", attachmentIds: [sampleUpload.id], projectId: "build-the-windows-installer" }
     );
@@ -398,7 +398,7 @@ describe("useAgentRunScreen", () => {
     expect(result.current.brief).toBeNull();
     expect(result.current.headerActions).toHaveLength(2);
     expect(result.current.headerActions[0]).toMatchObject({ id: "cancel", label: "Stop run" });
-    expect(result.current.headerActions[1]).toMatchObject({ id: "sync-to-host", label: "Sync to host" });
+    expect(result.current.headerActions[1]).toMatchObject({ id: "sync", label: "Sync" });
 
     mockConfirm.mockResolvedValueOnce(false);
     await act(async () => result.current.headerActions[0].onPress());

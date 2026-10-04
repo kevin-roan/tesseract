@@ -5,7 +5,9 @@ import { ArrowSquareOutIcon, ExportIcon, GlobeXIcon, WarningIcon } from "phospho
 import ActionButton from "@/components/action-button";
 import EmptyState from "@/components/empty-state";
 import GlassSheet from "@/components/glass-sheet";
+import MotionItem from "@/components/motion-item";
 import Notice from "@/components/notice";
+import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 
@@ -57,32 +59,36 @@ const BrowserSheet = ({ visible, onClose }: BrowserSheetProps) => {
         />
       ) : (
         <>
-          <View style={styles.current}>
-            <ThemedText variant="bodyStrong" numberOfLines={2}>
-              {tabTitle(summary.current)}
-            </ThemedText>
-            <View style={styles.field}>
-              <ThemedText variant="overline" color="textTertiary">
-                In the sandbox
+          <MotionItem index={0}>
+            <Surface>
+              <ThemedText variant="bodyLarge" numberOfLines={2} style={styles.title}>
+                {tabTitle(summary.current)}
               </ThemedText>
-              <ThemedText variant="code" color="textSecondary" selectable>
-                {summary.current.url}
-              </ThemedText>
-            </View>
-            {summary.current.phoneUrl ? (
               <View style={styles.field}>
-                <ThemedText variant="overline" color="textTertiary">
-                  On your phone
+                <ThemedText variant="caption" color="textTertiary">
+                  In the sandbox
                 </ThemedText>
-                <ThemedText variant="code" selectable>
-                  {summary.current.phoneUrl}
+                <ThemedText variant="code" color="textSecondary" selectable>
+                  {summary.current.url}
                 </ThemedText>
               </View>
-            ) : (
-              <Notice tone="warning" icon={WarningIcon} message={BROWSER_COPY.noPhoneUrl} />
-            )}
-          </View>
-          <View style={styles.actions}>
+              {summary.current.phoneUrl ? (
+                <View style={styles.field}>
+                  <ThemedText variant="caption" color="textTertiary">
+                    On your phone
+                  </ThemedText>
+                  <ThemedText variant="code" selectable>
+                    {summary.current.phoneUrl}
+                  </ThemedText>
+                </View>
+              ) : (
+                <View style={styles.notice}>
+                  <Notice tone="warning" icon={WarningIcon} message={BROWSER_COPY.noPhoneUrl} />
+                </View>
+              )}
+            </Surface>
+          </MotionItem>
+          <MotionItem index={1} style={styles.actions}>
             <ActionButton
               label="Open"
               icon={ArrowSquareOutIcon}
@@ -96,17 +102,25 @@ const BrowserSheet = ({ visible, onClose }: BrowserSheetProps) => {
               disabled={!summary.current.phoneUrl}
               onPress={() => browser.share(summary.current)}
             />
-          </View>
-          {browser.openError ? <Notice tone="danger" message={browser.openError} /> : null}
+          </MotionItem>
+          {browser.openError ? (
+            <MotionItem>
+              <Notice tone="danger" message={browser.openError} />
+            </MotionItem>
+          ) : null}
           {summary.others.length > 0 ? (
-            <View style={styles.others}>
-              <ThemedText variant="overline" color="textTertiary">
-                Other tabs
-              </ThemedText>
-              {summary.others.map((tab) => (
-                <BrowserTabRow key={tab.id} tab={tab} onOpen={browser.open} onShare={browser.share} />
-              ))}
-            </View>
+            <MotionItem index={2}>
+              <Surface>
+                <ThemedText variant="caption" color="textTertiary" accessibilityRole="header" style={styles.othersTitle}>
+                  Other tabs
+                </ThemedText>
+                {summary.others.map((tab) => (
+                  <MotionItem key={tab.id}>
+                    <BrowserTabRow tab={tab} onOpen={browser.open} onShare={browser.share} />
+                  </MotionItem>
+                ))}
+              </Surface>
+            </MotionItem>
           ) : null}
         </>
       )}

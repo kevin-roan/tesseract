@@ -65,6 +65,8 @@ export type ClaudeSessionSource = z.infer<typeof ClaudeSessionSourceSchema>;
 /** One Claude Code conversation (a transcript file), the unit of the app's chat list. */
 export const ClaudeSessionSchema = z.object({
   sessionId: z.string(),
+  /** Claude account whose config dir holds the transcript. */
+  claudeAccountId: z.string().default("claude"),
   projectId: ProjectIdSchema.nullable(),
   cwd: z.string().nullable(),
   /** First real user prompt, trimmed to one line and at most 120 characters; null when there is none yet. */

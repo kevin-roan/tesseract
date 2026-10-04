@@ -1,23 +1,47 @@
 import { StyleSheet } from "react-native";
 
-import { ControlHeight, type Theme } from "@/theme";
+import { ControlHeight, FontWeights, sansFor, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
+  const inset = theme.spacing.xxs;
+
   return StyleSheet.create({
     row: {
       flexDirection: "row",
-      gap: theme.spacing.xs,
+      gap: inset,
+      padding: inset,
+      borderRadius: theme.radius.md,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
     },
-    pill: {
+    indicator: {
+      position: "absolute",
+      top: inset,
+      bottom: inset,
+      left: 0,
+      borderRadius: theme.radius.sm,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.borderStrong,
+      backgroundColor: theme.colors.backgroundSelected,
+    },
+    segment: {
       minHeight: ControlHeight.sm,
-      minWidth: ControlHeight.sm + theme.spacing.md,
+      minWidth: ControlHeight.sm + theme.spacing.xs,
       alignItems: "center",
       justifyContent: "center",
-      paddingHorizontal: theme.spacing.md,
-      borderRadius: theme.radius.full,
+      paddingHorizontal: theme.spacing.sm,
+      borderRadius: theme.radius.sm,
+      borderCurve: "continuous",
     },
-    pressed: {
-      transform: [{ scale: 0.96 }],
+    selected: {
+      backgroundColor: theme.colors.backgroundSelected,
+    },
+    labelSelected: {
+      fontFamily: sansFor(FontWeights.medium),
+      fontWeight: FontWeights.medium,
     },
   });
 }

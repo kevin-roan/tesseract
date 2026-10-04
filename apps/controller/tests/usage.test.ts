@@ -164,6 +164,7 @@ describe("UsageService", () => {
     mode: null,
     attachments: [],
     sessionId: null,
+    claudeAccountId: null,
     state: "succeeded",
     startedAt: "2026-09-23T09:00:00.000Z",
     endedAt: null,

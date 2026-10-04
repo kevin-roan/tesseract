@@ -87,7 +87,7 @@ describe("useSandboxHub lists", () => {
     expect(result.current.sessions[0].id).toBe(sampleTerminal.id);
     await waitFor(() => expect(result.current.recentRuns).toEqual([sampleAgentRun]));
     expect(result.current.projects).toEqual([sampleProject]);
-    expect(result.current.subtitle).toBe("up 1h · sandbox · v0.1.0");
+    expect(result.current.subtitle).toBe("v0.1.0 · up 1h");
     expect(result.current.latestActivity).toBeNull();
     expect(result.current.switcher).toEqual([{ id: TEST_SANDBOX.id, label: TEST_SANDBOX.name }]);
   });

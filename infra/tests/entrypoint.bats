@@ -17,7 +17,7 @@ setup() {
   AGENT="${WS}/.agent"
   export THEONE_WORKSPACE="${WS}"
   DEV_UID="$(id -u dev)"
-  rm -rf "${DEV_HOME}/.vnc" "${DEV_HOME}/.claude" /run/theone /run/supervisor /etc/theone-victim*
+  rm -rf "${DEV_HOME}/.vnc" "${DEV_HOME}/.claude" "${DEV_HOME}"/.claude-* /run/theone /run/supervisor /etc/theone-victim*
   TOOLS=/tmp/theone-test-tools
   rm -rf "${TOOLS}"
 }
@@ -122,6 +122,27 @@ victim_file() {
   rm -f "${DEV_HOME}/.bashrc.theone-test"
 }
 
+@test "never writes to ~/.claude-<account> (extra host Claude dirs), even when fixing ownership" {
+  local account
+  for account in work personal; do
+    install -d -o root -g root -m 0700 "${DEV_HOME}/.claude-${account}" "${DEV_HOME}/.claude-${account}/projects"
+    echo '{}' > "${DEV_HOME}/.claude-${account}/.credentials.json"
+    chmod 0600 "${DEV_HOME}/.claude-${account}/.credentials.json"
+  done
+  install -d -o root -g root -m 0755 "${DEV_HOME}/.claudex.theone-test"
+  chown root:root "${DEV_HOME}"
+  entrypoint
+  assert_success
+  assert_output --partial "fixing ownership of ${DEV_HOME} for uid ${DEV_UID}"
+  assert_equal "$(stat -c %U "${DEV_HOME}/.claudex.theone-test")" dev
+  for account in work personal; do
+    assert_equal "$(owner_mode "${DEV_HOME}/.claude-${account}")" "root:root 700"
+    assert_equal "$(owner_mode "${DEV_HOME}/.claude-${account}/projects")" "root:root 700"
+    assert_equal "$(owner_mode "${DEV_HOME}/.claude-${account}/.credentials.json")" "root:root 600"
+  done
+  rm -rf "${DEV_HOME}/.claudex.theone-test"
+}
+
 @test "generates an 8 character VNC password once and reuses it" {
   entrypoint
   assert_output --partial "generated a VNC password (${DEV_HOME}/.vnc/password)"
@@ -208,15 +229,17 @@ ${token}"
   cat > /usr/bin/supervisord << 'EOF'
 #!/bin/sh
 echo "supervisord $*"
-echo "token=${THEONE_TOKEN-unset} password=${THEONE_VNC_PASSWORD-unset} other=${THEONE_SANDBOX_ID-unset}"
+echo "token=${THEONE_TOKEN-unset} password=${THEONE_VNC_PASSWORD-unset} stt=${THEONE_STT_API_KEY-unset} gemini=${GEMINI_API_KEY-unset} other=${THEONE_SANDBOX_ID-unset}"
 EOF
   chmod +x /usr/bin/supervisord
-  THEONE_TOKEN=secret-token THEONE_VNC_PASSWORD=secretpw THEONE_SANDBOX_ID=box run "${ENTRYPOINT}"
+  THEONE_TOKEN=secret-token THEONE_VNC_PASSWORD=secretpw THEONE_STT_API_KEY=sk-stt GEMINI_API_KEY=AIza-gemini THEONE_SANDBOX_ID=box run "${ENTRYPOINT}"
   assert_success
   assert_line "supervisord -n -c /etc/supervisor/supervisord.conf"
-  assert_line "token=unset password=unset other=box"
+  assert_line "token=unset password=unset stt=unset gemini=unset other=box"
   assert_equal "$(cat /run/theone/controller.env)" "THEONE_VNC_PASSWORD=secretpw
-THEONE_TOKEN=secret-token"
+THEONE_TOKEN=secret-token
+THEONE_STT_API_KEY=sk-stt
+GEMINI_API_KEY=AIza-gemini"
 }
 
 @test "repairs the ownership of volumes created by root" {

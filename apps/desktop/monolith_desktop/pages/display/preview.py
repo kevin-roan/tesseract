@@ -3,6 +3,7 @@ from collections.abc import Callable
 from gi.repository import Adw, Gdk, GLib, Gtk
 
 from ...widgets import Notice, Text
+from ...widgets.motion import crossfade_stack
 
 
 class ScreenshotPreview(Gtk.Box):
@@ -10,7 +11,7 @@ class ScreenshotPreview(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12, css_classes=["to-display-preview"])
         self._notice = Notice(message, title, "warning", "display", action_label, on_action)
         self.append(self._notice)
-        self._frames = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, vexpand=True, hexpand=True)
+        self._frames = crossfade_stack(vexpand=True, hexpand=True)
         self._frames.add_css_class("to-display-stage")
         loading = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER)
         loading.append(Adw.Spinner(width_request=32, height_request=32))

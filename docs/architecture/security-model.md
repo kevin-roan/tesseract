@@ -24,6 +24,7 @@ Related: [overview → trust boundaries](overview.md#trust-boundaries),
 | Project secrets and signing keys | project `.env*.local`, `/home/dev/.secrets/<project>/` | code signing identity, cloud and API access |
 | VNC password | `THEONE_VNC_PASSWORD` or generated once into `/home/dev/.vnc/password` (0600); hash in `/home/dev/.vnc/passwd`; controller copy in `/run/theone/controller.env` | view and control of the display |
 | Speech-to-text API key (optional) | `THEONE_STT_API_KEY` in `.env`, moved into `/run/theone/controller.env`; only the controller's environment | billable transcription account; voice notes are sent to `THEONE_STT_URL` |
+| Host shell token and PIN hash (opt-in) | `~/.config/theone/host-shell/state.json` on the host (0600 in a 0700 dir), host token also in the phone's secure store | together they are a shell on the host as the user running `host serve` |
 | Phone uploads (attachments, voice notes) | `/workspace/.theone/uploads` (0700 dirs, 0600 files), pruned after 30 days | the user's photos, documents and recordings |
 
 ## Adversaries and scenarios
@@ -97,6 +98,38 @@ Related: [overview → trust boundaries](overview.md#trust-boundaries),
   without a container escape, and without tailnet access they cannot reach
   the controller at all. Rotate immediately, then review `SESSION_LOG.md`,
   `git status` of projects, and recent processes, builds and agent runs.
+
+### Host shell (opt-in)
+
+`theone-controller host serve` deliberately crosses the host boundary, so it is
+built so that nothing in the sandbox can use it:
+
+- **Runs on the host, owned by the host.** The daemon, its token and the PIN hash
+  live in the host user's `~/.config/theone/host-shell/`. The sandbox has no route
+  to that file, no copy of the token and no SSH key for the host; a compromised
+  sandbox or a prompt-injected Claude gains nothing new (A3, A4).
+- **Tailnet only.** It binds one IPv4 and refuses wildcards and anything outside
+  loopback and `100.64.0.0/10`, so it is never on a LAN or public interface (A1).
+  Tailscale ACLs can narrow it further to your own devices (A2).
+- **Two factors.** Every call except `/v1/health` needs the host token (32 random
+  bytes, constant-time compare). A shell additionally needs a session, which only
+  `POST /v1/host/unlock` with the correct PIN issues. A leaked token alone (A6) or
+  a PIN alone opens nothing.
+- **PIN brute force.** The PIN is stored as an argon2id hash. Attempts are
+  serialized; 5 wrong PINs lock unlocking for 5 min, doubling on every further
+  lockout up to 24 h. Counters persist in `state.json`, so restarting the daemon
+  does not reset them; only a correct PIN or `host pin` does. Failed attempts are
+  logged with the peer address.
+- **Short sessions.** Sessions are random, kept in daemon memory only (never on
+  disk, never persisted by the app), expire after 15 min and die when the PIN
+  changes, the token is rotated or the phone taps **Lock**. A terminal already
+  attached keeps streaming; reconnecting needs a new ticket and thus a session.
+- **Lost phone (A5).** The secure store holds only the host token; the PIN is not
+  stored. Run `theone-controller host token --rotate` (and `host pin` if the PIN
+  may have been seen), then pair the remaining phones again.
+- **Blast radius.** Token + PIN = a login shell as the user who runs
+  `host serve`, with that user's sudo rights. Run it as an unprivileged account
+  if that matters, and stop the service when you don't need it.
 
 ### Container hardening (A3, A4 → host)
 

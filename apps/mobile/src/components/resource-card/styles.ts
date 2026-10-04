@@ -2,14 +2,14 @@ import { StyleSheet } from "react-native";
 
 import { AvatarSize, type Theme } from "@/theme";
 
-export default function createStyles(theme: Theme) {
-  const badge = theme.isTablet ? AvatarSize.lg : AvatarSize.md;
+export const iconTileSize = (theme: Theme) => (theme.isTablet ? AvatarSize.lg : AvatarSize.md);
 
+export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     card: {
-      gap: theme.spacing.sm,
-      padding: theme.spacing.md,
-      borderRadius: theme.radius.lg,
+      gap: theme.spacing.md,
+      padding: theme.spacing.base,
+      borderRadius: theme.radius.card,
       borderCurve: "continuous",
       overflow: "hidden",
     },
@@ -21,15 +21,6 @@ export default function createStyles(theme: Theme) {
       alignItems: "center",
       gap: theme.spacing.md,
     },
-    iconBadge: {
-      width: badge,
-      height: badge,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: theme.radius.md,
-      borderCurve: "continuous",
-      backgroundColor: theme.colors.surfaceElevated,
-    },
     body: {
       flex: 1,
       gap: theme.spacing.xxs,
@@ -39,9 +30,6 @@ export default function createStyles(theme: Theme) {
       flexWrap: "wrap",
       alignItems: "center",
       gap: theme.spacing.sm,
-    },
-    pressed: {
-      opacity: 0.85,
     },
   });
 }

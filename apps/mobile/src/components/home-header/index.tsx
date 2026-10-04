@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { View } from "react-native";
+import Animated from "react-native-reanimated";
 import { ListIcon, TrayIcon } from "phosphor-react-native";
 
 import { GlassButton } from "@/components/glass";
@@ -8,6 +9,7 @@ import { useAppTheme } from "@/hooks/use-app-theme";
 import { IconSize, MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
+import { badgeEntering } from "./utils/motion";
 import { inboxBadgeLabel, inboxButtonLabel } from "./utils/labels";
 
 export type HomeHeaderProps = {
@@ -26,7 +28,7 @@ const HomeHeader = ({ onOpenMenu, onOpenInbox, inboxCount = 0, menuLabel = "Open
     <View style={styles.container}>
       {onOpenMenu ? (
         <GlassButton accessibilityLabel={menuLabel} onPress={onOpenMenu} style={styles.action} testID="home-header-menu">
-          <ListIcon size={IconSize.md} color={theme.colors.text} weight="bold" />
+          <ListIcon size={IconSize.md} color={theme.colors.text} weight="regular" />
         </GlassButton>
       ) : (
         <View style={styles.action} />
@@ -39,10 +41,15 @@ const HomeHeader = ({ onOpenMenu, onOpenInbox, inboxCount = 0, menuLabel = "Open
             style={styles.action}
             testID="home-header-inbox"
           >
-            <TrayIcon size={IconSize.md} color={theme.colors.text} weight="bold" />
+            <TrayIcon size={IconSize.md} color={theme.colors.text} weight="regular" />
           </GlassButton>
           {badge ? (
-            <View style={styles.badge} pointerEvents="none" importantForAccessibility="no-hide-descendants">
+            <Animated.View
+              entering={badgeEntering}
+              style={styles.badge}
+              pointerEvents="none"
+              importantForAccessibility="no-hide-descendants"
+            >
               <ThemedText
                 variant="caption"
                 color="textOnNotification"
@@ -51,7 +58,7 @@ const HomeHeader = ({ onOpenMenu, onOpenInbox, inboxCount = 0, menuLabel = "Open
               >
                 {badge}
               </ThemedText>
-            </View>
+            </Animated.View>
           ) : null}
         </View>
       ) : null}

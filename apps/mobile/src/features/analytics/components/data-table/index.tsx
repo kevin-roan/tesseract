@@ -41,7 +41,7 @@ const DataTable = ({ columns, rows, testID }: DataTableProps) => {
           {row.cells.map((cell, index) => (
             <ThemedText
               key={`${row.id}-${columns[index] ?? index}`}
-              variant={index === 0 ? "caption" : "label"}
+              variant="caption"
               color={index === 0 ? "textSecondary" : "text"}
               numberOfLines={1}
               style={index === 0 ? styles.first : styles.cell}

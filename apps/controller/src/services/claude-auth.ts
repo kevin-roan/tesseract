@@ -31,10 +31,10 @@ const MAX_JSON_BYTES = 64 * 1024 * 1024;
 const ACCOUNT_KEYS: ReadonlySet<string> = new Set(CLAUDE_IMPORT_ACCOUNT_KEYS);
 const DROPPED_SETTINGS: ReadonlySet<string> = new Set(CLAUDE_IMPORT_DROPPED_SETTINGS);
 
-const isObject = (value: unknown): value is Json => typeof value === "object" && value !== null && !Array.isArray(value);
-const text = (value: unknown): string | null => (typeof value === "string" && value.trim() ? value.trim() : null);
+export const isObject = (value: unknown): value is Json => typeof value === "object" && value !== null && !Array.isArray(value);
+export const text = (value: unknown): string | null => (typeof value === "string" && value.trim() ? value.trim() : null);
 
-function readJson(path: string): { exists: boolean; value: Json | null } {
+export function readJson(path: string): { exists: boolean; value: Json | null } {
   if (!existsSync(path)) return { exists: false, value: null };
   const file = readRegularFile(path, { maxBytes: MAX_JSON_BYTES, followSymlinks: true });
   if (!file) return { exists: true, value: null };
@@ -51,7 +51,7 @@ export function mapAccount(value: unknown): ClaudeAccount | null {
   return { email: text(value.emailAddress), displayName: text(value.displayName), organization: text(value.organizationName) };
 }
 
-function expiresAtIso(value: unknown): string | null {
+export function expiresAtIso(value: unknown): string | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date.toISOString();

@@ -2,39 +2,51 @@ import { StyleSheet } from "react-native";
 
 import type { Theme } from "@/theme";
 
-const BAR_HEIGHT = 12;
-
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     container: {
-      gap: theme.spacing.md,
+      gap: theme.spacing.base,
     },
     bar: {
+      height: theme.spacing.md,
+    },
+    clip: {
+      height: "100%",
+      overflow: "hidden",
+    },
+    cells: {
       flexDirection: "row",
-      height: BAR_HEIGHT,
+      height: "100%",
       gap: theme.spacing.xxs,
     },
-    segment: {
-      minWidth: BAR_HEIGHT,
-      borderRadius: theme.radius.full,
+    cell: {
+      flex: 1,
+      borderRadius: theme.radius.xs,
+      borderCurve: "continuous",
     },
     legend: {
       flexDirection: "row",
       flexWrap: "wrap",
-      gap: theme.spacing.xs,
+      rowGap: theme.spacing.sm,
     },
-    chip: {
+    item: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.spacing.xs,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.xs,
-      borderRadius: theme.radius.full,
+      gap: theme.spacing.sm,
+      width: "50%",
+      paddingRight: theme.spacing.md,
     },
     swatch: {
       width: theme.spacing.sm,
       height: theme.spacing.sm,
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.xs,
+      borderCurve: "continuous",
+    },
+    label: {
+      flex: 1,
+    },
+    value: {
+      fontVariant: ["tabular-nums"],
     },
   });
 }

@@ -26,10 +26,13 @@ export default function createStyles(theme: Theme, size: number) {
     /** Separates overlapping faces. */
     ring: {
       borderWidth: BorderWidth.thick,
-      borderColor: theme.colors.surfaceElevated,
+      borderColor: theme.colors.surface,
     },
     overflowBadge: {
       backgroundColor: theme.colors.backgroundSelected,
+    },
+    count: {
+      fontVariant: ["tabular-nums"],
     },
   });
 }

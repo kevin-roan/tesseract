@@ -1,14 +1,19 @@
 import { useCallback, useMemo, useRef } from "react";
-import { ActivityIndicator, FlatList, View, type ListRenderItem } from "react-native";
+import { FlatList, View, type ListRenderItem } from "react-native";
+import Animated from "react-native-reanimated";
 import { SparkleIcon } from "phosphor-react-native";
 
+import BarStrip from "@/components/bar-strip";
 import EmptyState from "@/components/empty-state";
+import MenuSheet from "@/components/menu-sheet";
 import Notice from "@/components/notice";
+import Reveal from "@/components/reveal";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
 import StatusBadge from "@/components/status-badge";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { useFreshEntrance } from "@/hooks/use-fresh-entrance";
 import { useStickToBottom } from "@/hooks/use-stick-to-bottom";
 import ChatComposer from "@/features/chat/components/chat-composer";
 import MessageBubble from "@/features/chat/components/message-bubble";
@@ -16,6 +21,7 @@ import RunMessage from "@/features/chat/components/run-message";
 import { formatClock, type ChatEventItem } from "@/features/chat/utils/messages";
 
 import { useAgentRunScreen } from "../../hooks/use-agent-run-screen";
+import { RUN_ACTIVITY_LEVELS } from "../../utils/run-activity";
 import AgentEvent from "../agent-event";
 import createStyles from "./styles";
 
@@ -24,6 +30,7 @@ export type AgentRunViewProps = {
 };
 
 const keyOf = (item: ChatEventItem) => String(item.event.seq);
+const seqOf = (item: ChatEventItem) => item.event.seq;
 
 const AgentRunView = ({ runId }: AgentRunViewProps) => {
   const theme = useAppTheme();
@@ -33,15 +40,17 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
   const listRef = useRef<FlatList<ChatEventItem>>(null);
   const getScrollable = useCallback(() => listRef.current, []);
   const { onScroll, onContentSizeChange } = useStickToBottom(getScrollable);
+  const seqs = useMemo(() => screen.messages.map(seqOf), [screen.messages]);
+  const entranceFor = useFreshEntrance(seqs, Boolean(run));
   const renderItem: ListRenderItem<ChatEventItem> = useCallback(
     ({ item }) => (
-      <View style={item.showHeader && styles.turn}>
+      <Animated.View entering={entranceFor(item.event.seq)} style={item.showHeader && styles.turn}>
         <MessageBubble role="assistant" author="Claude" timeLabel={formatClock(item.event.ts)} showHeader={item.showHeader}>
           <AgentEvent event={item.event} />
         </MessageBubble>
-      </View>
+      </Animated.View>
     ),
-    [styles],
+    [styles, entranceFor],
   );
 
   return (
@@ -53,7 +62,13 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
           title="Claude"
           subtitle={run?.projectId ?? undefined}
           onBack={screen.nav.back}
-          accessory={screen.badge ? <StatusBadge {...screen.badge} /> : undefined}
+          accessory={
+            screen.badge ? (
+              <Reveal key={screen.badge.label}>
+                <StatusBadge {...screen.badge} />
+              </Reveal>
+            ) : undefined
+          }
           actions={screen.headerActions}
         />
       }
@@ -90,25 +105,48 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
           ListHeaderComponent={<RunMessage run={run} />}
           ListFooterComponent={
             <View style={styles.footer}>
-              {screen.running ? <ActivityIndicator color={theme.colors.streamingCursor} style={styles.spinner} /> : null}
-              {screen.result ? <Notice tone="success" title="Result" message={screen.result} /> : null}
-              {run.error ? <Notice tone="danger" title="Error" message={run.error} /> : null}
+              {screen.running ? (
+                <Reveal>
+                  <BarStrip values={RUN_ACTIVITY_LEVELS} stream height={theme.spacing.xl} style={styles.activity} />
+                </Reveal>
+              ) : null}
+              {screen.result ? (
+                <Reveal>
+                  <Notice tone="success" title="Result" message={screen.result} />
+                </Reveal>
+              ) : null}
+              {run.error ? (
+                <Reveal>
+                  <Notice tone="danger" title="Error" message={run.error} />
+                </Reveal>
+              ) : null}
               {screen.brief ? (
-                <ThemedText variant="caption" color="textTertiary" style={styles.brief} testID="run-brief">
-                  {screen.brief}
-                </ThemedText>
+                <Reveal style={styles.brief}>
+                  <ThemedText variant="caption" color="textSecondary" style={styles.briefText} testID="run-brief">
+                    {screen.brief}
+                  </ThemedText>
+                </Reveal>
               ) : null}
               {screen.streamError ? (
-                <Notice tone="warning" message={screen.streamError} actionLabel="Reconnect" onAction={screen.retry} />
+                <Reveal>
+                  <Notice tone="warning" message={screen.streamError} actionLabel="Reconnect" onAction={screen.retry} />
+                </Reveal>
               ) : null}
-              {screen.cancelError ? <Notice tone="danger" message={screen.cancelError} /> : null}
+              {screen.cancelError ? (
+                <Reveal>
+                  <Notice tone="danger" message={screen.cancelError} />
+                </Reveal>
+              ) : null}
               {screen.syncNotice ? (
-                <Notice {...screen.syncNotice} actionLabel="Dismiss" onAction={screen.dismissSyncNotice} />
+                <Reveal>
+                  <Notice {...screen.syncNotice} actionLabel="Dismiss" onAction={screen.dismissSyncNotice} />
+                </Reveal>
               ) : null}
             </View>
           }
         />
       )}
+      <MenuSheet title="Sync" testID="sync-menu" {...screen.syncMenu} />
     </ScreenScaffold>
   );
 };

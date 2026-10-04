@@ -1,8 +1,12 @@
 import { useMemo, type ReactNode } from "react";
 import { KeyboardAvoidingView, RefreshControl, ScrollView, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
+import DotGrid from "@/components/dot-grid";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { useEntrance } from "@/hooks/use-entrance";
+import { useTabBarInset } from "@/hooks/use-tab-bar-inset";
 
 import createStyles from "./styles";
 
@@ -31,7 +35,9 @@ const ScreenScaffold = ({
   testID,
 }: ScreenScaffoldProps) => {
   const theme = useAppTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const tabBarInset = useTabBarInset();
+  const styles = useMemo(() => createStyles(theme, tabBarInset, !!footer), [theme, tabBarInset, footer]);
+  const headerEntrance = useEntrance(0);
 
   const body = scroll ? (
     <ScrollView
@@ -47,14 +53,19 @@ const ScreenScaffold = ({
       {children}
     </ScrollView>
   ) : (
-    <View style={styles.fill}>{children}</View>
+    <View style={[styles.fill, styles.body]}>{children}</View>
   );
 
   return (
     <View style={styles.root} testID={testID}>
+      {theme.look === "graphite" ? <DotGrid /> : null}
       <SafeAreaView style={styles.fill} edges={edges}>
         <KeyboardAvoidingView style={styles.fill} behavior="padding" enabled={avoidKeyboard}>
-          {header ? <View style={styles.header}>{header}</View> : null}
+          {header ? (
+            <Animated.View entering={headerEntrance} style={styles.header}>
+              {header}
+            </Animated.View>
+          ) : null}
           {body}
           {footer ? <View style={styles.footer}>{footer}</View> : null}
         </KeyboardAvoidingView>

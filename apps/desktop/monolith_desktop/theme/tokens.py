@@ -26,7 +26,32 @@ BASE_FONT_SIZE = 14
 ZOOM_STEPS = (0.67, 0.75, 0.8, 0.9, 1.0, 1.1, 1.25, 1.5, 1.75, 2.0)
 SIDEBAR_RUN_INDENT = 30
 
-RADIUS = MappingProxyType({"none": 0, "xs": 4, "sm": 8, "md": 12, "lg": 16, "xl": 20, "2xl": 28, "full": 999})
+RADIUS = MappingProxyType({
+    "none": 0, "xs": 4, "sm": 8, "md": 12, "lg": 16, "xl": 20, "2xl": 28, "3xl": 32,
+    "card": 22, "sheet": 36, "pill": 999, "full": 999,
+})
+SQUARE_CORNERS = MappingProxyType({"card": 20, "sheet": 28, "pill": 14})
+CORNER_SHAPES = MappingProxyType({"light": "soft", "dark": "soft", "graphite": "square"})
+
+DURATIONS = MappingProxyType({
+    "instant": 0, "fastest": 80, "fast": 140, "normal": 220, "slow": 320, "slower": 480, "slowest": 720,
+})
+EASINGS = MappingProxyType({
+    "standard": (0.2, 0, 0, 1),
+    "decelerate": (0, 0, 0, 1),
+    "accelerate": (0.3, 0, 1, 1),
+    "emphasized": (0.2, 0, 0, 1),
+    "overshoot": (0.34, 1.56, 0.64, 1),
+    "linear": (0, 0, 1, 1),
+})
+PRESS_SCALE = MappingProxyType({"card": 0.98, "control": 0.95})
+CHART_MOTION = MappingProxyType({
+    "reveal": DURATIONS["slowest"] * 2,
+    "pulse": DURATIONS["slowest"] * 4,
+    "stream": DURATIONS["slowest"] * 20,
+    "pulse_floor": 0.35,
+})
+SHIMMER_CYCLE = DURATIONS["slowest"] * 2
 
 BORDER_WIDTH = MappingProxyType({"none": 0, "hairline": 0.5, "thin": 1, "thick": 2, "focus": 3})
 
@@ -60,3 +85,17 @@ def spacing(token: str) -> int:
 
 def radius(token: str) -> int:
     return RADIUS[token]
+
+
+def radius_for(scheme: str) -> MappingProxyType:
+    if CORNER_SHAPES.get(scheme) == "square":
+        return MappingProxyType({**RADIUS, **SQUARE_CORNERS})
+    return RADIUS
+
+
+def easing(token: str) -> str:
+    return "cubic-bezier({})".format(", ".join(f"{value:g}" for value in EASINGS[token]))
+
+
+def transition(*properties: str, duration: str = "fast", curve: str = "standard") -> str:
+    return ", ".join(f"{prop} {DURATIONS[duration]}ms {easing(curve)}" for prop in properties)

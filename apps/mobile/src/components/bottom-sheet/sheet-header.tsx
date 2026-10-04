@@ -5,7 +5,7 @@ import { XIcon } from "phosphor-react-native";
 import { GlassButton } from "@/components/glass";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { IconSize } from "@/theme";
+import { IconSize, MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
 
@@ -16,7 +16,7 @@ export type SheetHeaderProps = {
   closeLabel?: string;
 };
 
-/** Sheet title row: a round close button on the left and the title centered. */
+/** Sheet title row: a close tile on the left and the title centered. */
 export const SheetHeader = ({ title, subtitle, onClose, closeLabel = "Close" }: SheetHeaderProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -24,11 +24,17 @@ export const SheetHeader = ({ title, subtitle, onClose, closeLabel = "Close" }: 
   return (
     <View style={styles.header}>
       <GlassButton accessibilityLabel={closeLabel} onPress={onClose} hitSlop={theme.spacing.xs} style={styles.close}>
-        <XIcon size={IconSize.md} color={theme.colors.text} weight="bold" />
+        <XIcon size={IconSize.md} color={theme.colors.text} weight="regular" />
       </GlassButton>
       <View style={styles.titles}>
         {title ? (
-          <ThemedText variant="h4" numberOfLines={1} accessibilityRole="header" style={styles.centered}>
+          <ThemedText
+            variant="h4"
+            numberOfLines={1}
+            accessibilityRole="header"
+            maxFontSizeMultiplier={MaxFontSizeMultiplier.heading}
+            style={styles.centered}
+          >
             {title}
           </ThemedText>
         ) : null}

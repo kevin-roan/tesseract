@@ -5,6 +5,7 @@ import type { EdgeInsets } from "react-native-safe-area-context";
 
 import { GlassButton } from "@/components/glass";
 import GlassToolbar, { type GlassToolbarAction, type GlassToolbarProps } from "@/components/glass-toolbar";
+import MotionItem from "@/components/motion-item";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { IconSize } from "@/theme";
 
@@ -30,18 +31,20 @@ const DisplayStage = ({ children, toolbar, fullscreen, exitFullscreen, safeArea 
       {children}
       {fullscreen ? (
         // GlassButton styles its inner glass, not its Pressable, so the placement lives on a wrapper.
-        <View style={styles.exit}>
+        <MotionItem style={styles.exit}>
           <GlassButton
             accessibilityLabel={exitFullscreen.label}
             onPress={exitFullscreen.onPress}
             intensity="heavy"
             style={styles.exitButton}
           >
-            <ExitIcon size={IconSize.md} color={theme.colors.text} weight="bold" />
+            <ExitIcon size={IconSize.md} color={theme.colors.text} weight="regular" />
           </GlassButton>
-        </View>
+        </MotionItem>
       ) : (
-        <GlassToolbar {...toolbar} style={styles.bar} />
+        <MotionItem style={styles.bar}>
+          <GlassToolbar {...toolbar} />
+        </MotionItem>
       )}
     </View>
   );

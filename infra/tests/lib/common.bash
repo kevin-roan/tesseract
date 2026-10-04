@@ -47,7 +47,7 @@ unset_theone_env() {
   for name in $(compgen -e); do
     case "${name}" in
       THEONE_TEST_*) ;;
-      THEONE_* | TS_* | ANTHROPIC_* | CLAUDE_CODE_* | DOCKER_HOST | DISPLAY) unset "${name}" ;;
+      THEONE_* | TS_* | ANTHROPIC_* | CLAUDE_CODE_* | GEMINI_API_KEY | DOCKER_HOST | DISPLAY) unset "${name}" ;;
     esac
   done
 }

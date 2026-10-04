@@ -11,9 +11,14 @@ export default function createStyles(theme: Theme, height: number = ControlHeigh
       gap: theme.spacing.xxs,
       height,
     },
-    bar: {
+    column: {
       flex: 1,
-      minHeight: theme.spacing.xxs,
+      justifyContent: "center",
+      gap: theme.spacing.xxs,
+      height,
+    },
+    dash: {
+      height: theme.spacing.xxs,
       borderRadius: theme.radius.full,
     },
   });

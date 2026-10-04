@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { Pressable } from "react-native";
 
+import PressableScale from "@/components/pressable-scale";
 import type { HeaderAction } from "@/components/screen-header";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useHapticPress } from "@/hooks/use-haptic-press";
@@ -18,17 +18,19 @@ const ToolbarButton = ({ icon: IconComponent, label, onPress, disabled, tone, se
   const color = tone ? theme.colors[ToneColors[tone].foreground] : theme.colors.text;
 
   return (
-    <Pressable
+    <PressableScale
+      depth="control"
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!disabled, selected }}
       onPress={handlePress}
       disabled={disabled}
       hitSlop={HitSlop.sm}
-      style={({ pressed }) => [styles.button, selected && styles.selected, pressed && styles.pressed, disabled && styles.disabled]}
+      style={[styles.button, selected && styles.selected, disabled && styles.disabled]}
+      pressedStyle={styles.pressed}
     >
-      <IconComponent size={IconSize.md} color={color} weight={selected ? "fill" : "bold"} />
-    </Pressable>
+      <IconComponent size={IconSize.md} color={color} weight={selected ? "fill" : "regular"} />
+    </PressableScale>
   );
 };
 

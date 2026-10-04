@@ -37,8 +37,22 @@ export const BorderWidth = {
   focus: 3,
 } as const;
 
-export function createRadius(width: number, height: number) {
-  const entries = Object.entries(Radius).map(([key, value]) => [
+/**
+ * Corner shape a scheme draws in. `soft` is the rounded Claude look; `square`
+ * is the graphite look, where cards, pills and sheets become
+ * calmer, rounded-square radii. `full` stays round in both, for avatars and dots.
+ */
+export type CornerShape = 'soft' | 'square';
+
+const SquareCorners: Partial<Record<RadiusToken, number>> = {
+  card: 20,
+  sheet: 28,
+  pill: 14,
+};
+
+export function createRadius(width: number, height: number, shape: CornerShape = 'soft') {
+  const base = shape === 'square' ? { ...Radius, ...SquareCorners } : Radius;
+  const entries = Object.entries(base).map(([key, value]) => [
     key,
     value >= 999 || value === 0 ? value : moderateScale(value, width, height, 0.3),
   ]);

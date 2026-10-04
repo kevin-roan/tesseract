@@ -9,6 +9,7 @@
     "mobile": "bun run --cwd apps/mobile start",
     "controller:dev": "bun run --cwd apps/controller dev",
     "controller:build": "bun run --cwd apps/controller build",
+    "host": "bun apps/controller/src/index.ts host",
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun run --filter '*' test",
     "lint": "bun run --filter '*' lint",

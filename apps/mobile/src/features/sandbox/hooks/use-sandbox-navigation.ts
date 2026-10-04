@@ -12,6 +12,7 @@ export function useSandboxNavigation() {
       repair: (prefill: PairingPrefill) => router.push({ pathname: "/pair", params: prefill }),
       display: () => router.push("/sandbox/display"),
       claudeAccount: () => router.push("/sandbox/claude"),
+      settings: () => router.push("/settings"),
       files: (downloadId?: string) =>
         router.push(
           (downloadId ? { pathname: FILES_ROUTE, params: { [FILE_DOWNLOAD_PARAM]: downloadId } } : FILES_ROUTE) as Href,

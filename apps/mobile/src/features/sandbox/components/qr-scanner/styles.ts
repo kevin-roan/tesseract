@@ -4,44 +4,28 @@ import { BorderWidth, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
-    frame: {
+    viewport: {
       width: "100%",
       maxWidth: theme.maxContentWidth,
       aspectRatio: 1,
       alignSelf: "center",
+      alignItems: "center",
+      justifyContent: "center",
       overflow: "hidden",
-      borderRadius: theme.radius["2xl"],
+      borderRadius: theme.radius.md,
       borderCurve: "continuous",
+      borderWidth: BorderWidth.thin,
+      borderColor: theme.colors.border,
       backgroundColor: theme.colors.surfaceSunken,
     },
     camera: {
-      flex: 1,
+      ...StyleSheet.absoluteFill,
     },
-    reticle: {
-      position: "absolute",
-      top: "18%",
-      left: "18%",
-      right: "18%",
-      bottom: "18%",
-      borderRadius: theme.radius.xl,
-      borderWidth: BorderWidth.focus,
-      borderColor: theme.colors.accent,
+    prompt: {
+      gap: theme.spacing.md,
     },
-    overlayAction: {
-      position: "absolute",
-      left: 0,
-      right: 0,
-      bottom: theme.spacing.base,
-      alignItems: "center",
-    },
-    placeholder: {
-      alignItems: "center",
-      justifyContent: "center",
-      gap: theme.spacing.base,
-      padding: theme.spacing.xl,
-    },
-    centered: {
-      textAlign: "center",
+    footerText: {
+      flexShrink: 1,
     },
   });
 }

@@ -3,8 +3,12 @@ import {
   type CreateSyncRequest,
   type SyncChangeKind,
   type SyncChanges,
+  type SyncDiscard,
+  type SyncDiscardResult,
   type SyncFileChange,
   type SyncRequest,
+  type SyncRequestKind,
+  type SyncRequestStatus,
   type SyncResult,
 } from "@theone/protocol";
 
@@ -19,6 +23,7 @@ export type SyncRequestView = {
   status: string;
   tone: Tone;
   conflicts: string[];
+  conflictsLabel: string;
   active: boolean;
   cancellable: boolean;
 };
@@ -30,6 +35,24 @@ export type SyncNotice = {
   title: string;
   message: string;
 };
+
+export type SyncActionId = SyncRequestKind | "discard";
+
+export type SyncActionReasons = Record<SyncActionId, string | null>;
+
+export type SyncSheetMode = "pull" | "get" | "discard";
+
+export type SyncSheetView = {
+  title: string;
+  message: string;
+  files: SyncFileChange[];
+  selectable: boolean;
+  force: { label: string; footnote: string } | null;
+  confirmLabel: string;
+  destructive: boolean;
+};
+
+export const SYNC_ACTION_IDS: readonly SyncActionId[] = ["pull", "get", "revert", "discard"];
 
 const KIND_CODES: Record<SyncChangeKind, string> = { added: "A", modified: "M", deleted: "D" };
 const KIND_TONES: Record<SyncChangeKind, Tone> = { added: "success", modified: "warning", deleted: "danger" };
@@ -49,7 +72,50 @@ export const SYNC_COPY = {
   cancelled: "Cancelled",
   cancelledOnHost: "Nothing was written to your computer",
   failed: "Failed",
+  loading: "Checking the sandbox for changes…",
+  nothingToRevert: "No sync to host to revert",
+  nothingToDiscard: "No sandbox changes to discard",
+  notDiscardable: "The synced versions of these files aren't kept in the sandbox",
+  cancelledInSandbox: "Nothing was written to the sandbox",
+  pullConflicts: "Changed on the host since the push:",
+  getConflicts: "Changed in the sandbox since the last sync:",
+  pullForceLabel: "Overwrite host edits",
+  pullForceFootnote: "The last sync stopped because files changed on your computer. Turn this on to replace them.",
+  getForceLabel: "Overwrite sandbox edits",
+  getForceFootnote:
+    "The last sync from host stopped because files changed in the sandbox. Turn this on to replace them; copies are kept in a backup.",
 } as const;
+
+export const SYNC_ACTION_DESCRIPTIONS: Record<SyncActionId, string> = {
+  pull: "Copy the sandbox changes to your computer",
+  get: "Copy what changed on your computer into the sandbox",
+  revert: "Restore the host files from the snapshot taken before the last sync",
+  discard: "Put the sandbox files back to the last synced version",
+};
+
+const NOTICE_TITLES: Record<SyncRequestKind, Record<SyncRequestStatus, string>> = {
+  pull: {
+    pending: "Sync queued",
+    claimed: "Syncing to host",
+    applied: "Synced to host",
+    failed: "Sync failed",
+    cancelled: "Sync cancelled",
+  },
+  get: {
+    pending: "Sync from host queued",
+    claimed: "Syncing from host",
+    applied: "Synced from host",
+    failed: "Sync from host failed",
+    cancelled: "Sync from host cancelled",
+  },
+  revert: {
+    pending: "Revert queued",
+    claimed: "Reverting on host",
+    applied: "Reverted on host",
+    failed: "Revert failed",
+    cancelled: "Revert cancelled",
+  },
+};
 
 export const syncKindCode = (kind: SyncChangeKind): string => KIND_CODES[kind];
 
@@ -108,6 +174,48 @@ export function syncDisabledReason(empty: SyncEmptyState, busy: boolean): string
   return busy ? SYNC_COPY.inProgress : null;
 }
 
+/** Requests wait while the companion is offline, but are never claimed for a project it has not linked. */
+function syncHostBlocker(changes: SyncChanges): string | null {
+  return changes.host?.linked ? null : SYNC_COPY.notLinked;
+}
+
+export const discardableChanges = (changes: readonly SyncFileChange[]): SyncFileChange[] =>
+  changes.filter((change) => change.discardable === true);
+
+function discardDisabledReason(changes: readonly SyncFileChange[], busy: boolean): string | null {
+  if (changes.length === 0) return SYNC_COPY.nothingToDiscard;
+  if (busy) return SYNC_COPY.inProgress;
+  return discardableChanges(changes).length > 0 ? null : SYNC_COPY.notDiscardable;
+}
+
+const everyAction = (reason: string): SyncActionReasons => ({ pull: reason, get: reason, revert: reason, discard: reason });
+
+/** Why each sync action can't run right now (`null`: it can). */
+export function syncActionReasons(
+  changes: SyncChanges | undefined,
+  requests: readonly SyncRequest[],
+  busy: boolean,
+): SyncActionReasons {
+  if (!changes) return everyAction(SYNC_COPY.loading);
+  if (changes.baselineAt === null) return everyAction(SYNC_COPY.neverPushed);
+  const host = syncHostBlocker(changes);
+  const queue = busy ? SYNC_COPY.inProgress : host;
+  return {
+    pull: syncDisabledReason(syncEmptyState(changes), busy) ?? host,
+    get: queue,
+    revert: busy ? SYNC_COPY.inProgress : canRevertLastSync(requests) ? host : SYNC_COPY.nothingToRevert,
+    discard: discardDisabledReason(changes.changes, busy),
+  };
+}
+
+export function syncActionDetail(id: SyncActionId, reason: string | null, changes: readonly SyncFileChange[]): string {
+  if (reason) return reason;
+  if (id === "discard") return `${pluralize(discardableChanges(changes).length, "file")} can go back to the last synced version`;
+  return SYNC_ACTION_DESCRIPTIONS[id];
+}
+
+export const isSyncActionId = (id: string): id is SyncActionId => (SYNC_ACTION_IDS as readonly string[]).includes(id);
+
 export const syncResultFiles = (result: SyncResult | null): number =>
   result ? result.added + result.modified + result.deleted : 0;
 
@@ -119,14 +227,14 @@ export const activeSyncRequest = (requests: readonly SyncRequest[]): SyncRequest
 
 const isSettled = (request: SyncRequest): boolean => request.status === "applied" || request.status === "failed";
 
-export function lastPullFailedOnConflicts(requests: readonly SyncRequest[]): boolean {
-  const last = requests.find((request) => request.kind === "pull" && isSettled(request));
+export function lastFailedOnConflicts(requests: readonly SyncRequest[], kind: SyncRequestKind): boolean {
+  const last = requests.find((request) => request.kind === kind && isSettled(request));
   return last?.status === "failed" && (last.result?.conflicts.length ?? 0) > 0;
 }
 
 export function canRevertLastSync(requests: readonly SyncRequest[]): boolean {
   for (const request of requests) {
-    if (request.status !== "applied") continue;
+    if (request.status !== "applied" || request.kind === "get") continue;
     return request.kind === "pull";
   }
   return false;
@@ -134,19 +242,28 @@ export function canRevertLastSync(requests: readonly SyncRequest[]): boolean {
 
 function syncRequestTitle(request: SyncRequest): string {
   if (request.kind === "revert") return "Revert last sync";
+  if (request.kind === "get") return "Sync from host";
   return request.paths ? `Sync ${pluralize(request.paths.length, "file")}` : "Sync all changes";
+}
+
+/** `git diff --stat` style line counts of a `get`, e.g. "+12 −4"; null when the result has none. */
+export function syncLineStats(result: SyncResult | null): string | null {
+  if (!result || (result.insertions === undefined && result.deletions === undefined)) return null;
+  return `+${result.insertions ?? 0} −${result.deletions ?? 0}`;
 }
 
 function syncRequestStatus(request: SyncRequest, now: number): { status: string; tone: Tone } {
   const when = formatRelativeTime(request.updatedAt, now);
+  const host = request.claimedBy ?? "your computer";
   switch (request.status) {
     case "pending":
       return { status: SYNC_COPY.pending, tone: "info" };
     case "claimed":
-      return { status: `Applying on ${request.claimedBy ?? "your computer"}…`, tone: "info" };
+      return { status: request.kind === "get" ? `Getting changes from ${host}…` : `Applying on ${host}…`, tone: "info" };
     case "applied": {
-      const verb = request.kind === "revert" ? "Reverted" : "Synced";
-      return { status: `${verb} ${pluralize(syncResultFiles(request.result), "file")} · ${when}`, tone: "success" };
+      const verb = request.kind === "revert" ? "Reverted" : request.kind === "get" ? "Got" : "Synced";
+      const parts = [`${verb} ${pluralize(syncResultFiles(request.result), "file")}`, syncLineStats(request.result), when];
+      return { status: parts.filter(Boolean).join(" · "), tone: "success" };
     }
     case "failed":
       return { status: request.error ?? SYNC_COPY.failed, tone: "danger" };
@@ -160,6 +277,7 @@ export function describeSyncRequest(request: SyncRequest, now: number = Date.now
     title: syncRequestTitle(request),
     ...syncRequestStatus(request, now),
     conflicts: request.status === "failed" ? (request.result?.conflicts ?? []) : [],
+    conflictsLabel: request.kind === "get" ? SYNC_COPY.getConflicts : SYNC_COPY.pullConflicts,
     active: isSyncRequestActive(request),
     cancellable: request.status === "pending",
   };
@@ -170,37 +288,130 @@ export function syncResultSummary(result: SyncResult | null): string {
   const parts = (["added", "modified", "deleted"] as const)
     .filter((kind) => result[kind] > 0)
     .map((kind) => `${result[kind]} ${kind}`);
+  const lines = syncLineStats(result);
+  if (lines) parts.push(lines);
+  if (result.gitFiles) parts.push(`.git ${pluralize(result.gitFiles, "file")}`);
   if (result.conflicts.length > 0) parts.push(`${pluralize(result.conflicts.length, "conflict")} overwritten`);
   return parts.length > 0 ? parts.join(" · ") : SYNC_COPY.noFileChanges;
 }
 
-function syncConflictsLine(conflicts: readonly string[], limit: number = SYNC_CONFLICT_PREVIEW): string | null {
-  if (conflicts.length === 0) return null;
-  const extra = conflicts.length - limit;
-  return `Conflicts: ${conflicts.slice(0, limit).join(", ")}${extra > 0 ? ` and ${extra} more` : ""}`;
+/** "a, b, c and 2 more". */
+export function syncPathsPreview(paths: readonly string[], limit: number = SYNC_CONFLICT_PREVIEW): string {
+  const extra = paths.length - limit;
+  return `${paths.slice(0, limit).join(", ")}${extra > 0 ? ` and ${extra} more` : ""}`;
 }
+
+function syncConflictsLine(conflicts: readonly string[]): string | null {
+  return conflicts.length > 0 ? `Conflicts: ${syncPathsPreview(conflicts)}` : null;
+}
+
+const backupLine = (backupPath: string | null | undefined): string | null => (backupPath ? `Backup: ${backupPath}` : null);
+
+const lines = (...parts: (string | null)[]): string => parts.filter(Boolean).join("\n");
 
 /** Feedback for one request the user started, kept live by `sync.updated`. */
 export function syncRequestNotice(request: SyncRequest, changes: SyncChanges | undefined): SyncNotice {
+  const title = NOTICE_TITLES[request.kind][request.status];
   switch (request.status) {
     case "pending":
-      return { tone: "info", title: "Sync queued", message: syncHostWarning(changes) ?? SYNC_COPY.pending };
+      return { tone: "info", title, message: syncHostWarning(changes) ?? SYNC_COPY.pending };
     case "claimed":
-      return { tone: "info", title: "Syncing to host", message: describeSyncRequest(request).status };
+      return { tone: "info", title, message: describeSyncRequest(request).status };
     case "applied":
-      return { tone: "success", title: "Synced to host", message: syncResultSummary(request.result) };
-    case "failed": {
-      const lines = [request.error ?? SYNC_COPY.failed, syncConflictsLine(request.result?.conflicts ?? [])];
-      return { tone: "danger", title: "Sync failed", message: lines.filter(Boolean).join("\n") };
-    }
+      return { tone: "success", title, message: lines(syncResultSummary(request.result), backupLine(request.result?.backupPath)) };
+    case "failed":
+      return { tone: "danger", title, message: lines(request.error ?? SYNC_COPY.failed, syncConflictsLine(request.result?.conflicts ?? [])) };
     case "cancelled":
-      return { tone: "neutral", title: "Sync cancelled", message: SYNC_COPY.cancelledOnHost };
+      return {
+        tone: "neutral",
+        title,
+        message: request.kind === "get" ? SYNC_COPY.cancelledInSandbox : SYNC_COPY.cancelledOnHost,
+      };
   }
+}
+
+export const syncFailureTitle = (id: SyncActionId): string =>
+  id === "discard" ? "Discard failed" : NOTICE_TITLES[id].failed;
+
+export function syncDiscardNotice(result: SyncDiscardResult): SyncNotice {
+  const { discarded, unavailable, backupPath } = result;
+  const message = lines(
+    discarded.length > 0 ? `${pluralize(discarded.length, "file")} back to the last synced version` : null,
+    unavailable.length > 0 ? `Kept (no synced copy): ${syncPathsPreview(unavailable)}` : null,
+    backupLine(backupPath),
+  );
+  if (discarded.length === 0) return { tone: "warning", title: "Nothing discarded", message: message || SYNC_COPY.noFileChanges };
+  return { tone: unavailable.length > 0 ? "warning" : "success", title: "Discarded sandbox changes", message };
 }
 
 export function syncConfirmMessage(changes: readonly SyncFileChange[]): string {
   return `${syncChangesSummary(changes)}. A snapshot is taken first, so you can revert it.`;
 }
+
+export const syncDiscardMessage = (count: number): string =>
+  `${pluralize(count, "file")} go back to the last synced version (added files are removed). Copies of the sandbox versions are kept in a backup.`;
+
+export const SYNC_REVERT_CONFIRM = {
+  title: "Revert last sync?",
+  message: "Monolith restores the host files from the snapshot it took before the last sync.",
+  confirmLabel: "Revert",
+  cancelLabel: "Keep changes",
+  destructive: true,
+} as const;
+
+export const syncDiscardConfirm = (paths: readonly string[]) => ({
+  title: "Discard sandbox changes?",
+  message: `${syncDiscardMessage(paths.length)}\n\n${syncPathsPreview(paths)}`,
+  confirmLabel: "Discard",
+  cancelLabel: "Keep changes",
+  destructive: true,
+});
+
+export function describeSyncSheet(
+  mode: SyncSheetMode,
+  input: { changes: readonly SyncFileChange[]; selected: number; showForce: boolean },
+): SyncSheetView {
+  switch (mode) {
+    case "pull":
+      return {
+        title: "Sync to host",
+        message: syncConfirmMessage(input.changes),
+        files: [...input.changes],
+        selectable: false,
+        force: input.showForce ? { label: SYNC_COPY.pullForceLabel, footnote: SYNC_COPY.pullForceFootnote } : null,
+        confirmLabel: `Sync ${pluralize(input.changes.length, "file")}`,
+        destructive: false,
+      };
+    case "get":
+      return {
+        title: "Sync from host",
+        message: `${SYNC_ACTION_DESCRIPTIONS.get}. Sandbox edits to the same files stop it unless you overwrite them.`,
+        files: [],
+        selectable: false,
+        force: input.showForce ? { label: SYNC_COPY.getForceLabel, footnote: SYNC_COPY.getForceFootnote } : null,
+        confirmLabel: "Sync from host",
+        destructive: false,
+      };
+    case "discard": {
+      const files = discardableChanges(input.changes);
+      return {
+        title: "Discard changes",
+        message: syncDiscardMessage(input.selected),
+        files,
+        selectable: true,
+        force: null,
+        confirmLabel: `Discard ${pluralize(input.selected, "file")}`,
+        destructive: true,
+      };
+    }
+  }
+}
+
+export function syncDiscardBody(paths: readonly string[]): SyncDiscard {
+  return paths.length > LIMITS.maxSyncPaths ? {} : { paths: [...paths] };
+}
+
+export const syncGetBody = (force: boolean): CreateSyncRequest => ({ kind: "get", force, source: "mobile" });
 
 export function syncPullBody(changes: readonly SyncFileChange[], force: boolean): CreateSyncRequest {
   const paths = changes.length > 0 && changes.length <= LIMITS.maxSyncPaths ? changes.map((change) => change.path) : undefined;

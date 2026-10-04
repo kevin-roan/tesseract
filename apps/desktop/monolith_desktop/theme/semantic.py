@@ -3,11 +3,15 @@ from typing import Literal
 
 from . import palette as P
 
-SchemeName = Literal["light", "dark"]
-SCHEMES: tuple[SchemeName, ...] = ("light", "dark")
+SchemeName = Literal["light", "dark", "graphite"]
+SCHEMES: tuple[SchemeName, ...] = ("light", "dark", "graphite")
+RENDERED_SCHEME: SchemeName = "graphite"
+Look = Literal["classic", "graphite"]
+LOOKS: MappingProxyType = MappingProxyType({"light": "classic", "dark": "classic", "graphite": "graphite"})
 
 LIGHT = MappingProxyType({
     "background": P.CANVAS,
+    "backgroundPattern": "rgba(0, 0, 0, 0)",
     "backgroundElement": P.GRAY[100],
     "backgroundSelected": P.GRAY[200],
     "surface": P.CANVAS,
@@ -24,11 +28,17 @@ LIGHT = MappingProxyType({
     "borderStrong": P.GRAY[300],
     "divider": P.GRAY[100],
     "accent": P.PERIWINKLE[500],
+    "accentInk": P.PERIWINKLE[900],
     "accentPressed": P.PERIWINKLE[600],
     "accentMuted": P.PERIWINKLE[100],
     "accentStrong": P.PERIWINKLE[700],
     "focusRing": P.PERIWINKLE[700],
     "highlight": P.YELLOW[700],
+    "brand": P.PERIWINKLE[600],
+    "brandMuted": P.PERIWINKLE[100],
+    "selection": P.BLUE[550],
+    "badge": P.BLUE[150],
+    "badgeText": P.BLUE[650],
     "success": P.GREEN[700],
     "successMuted": P.GREEN[100],
     "successSolid": P.GREEN[500],
@@ -50,10 +60,13 @@ LIGHT = MappingProxyType({
     "codeBackground": P.GRAY[50],
     "streamingCursor": P.PERIWINKLE[600],
     "voiceActive": P.VIOLET[500],
+    "auraWarm": P.PERIWINKLE[300],
+    "auraCool": P.PERIWINKLE[100],
 })
 
 DARK = MappingProxyType({
     "background": P.BLACK,
+    "backgroundPattern": "rgba(255, 255, 255, 0)",
     "backgroundElement": P.GRAY[900],
     "backgroundSelected": P.GRAY[800],
     "surface": P.GRAY[950],
@@ -70,11 +83,17 @@ DARK = MappingProxyType({
     "borderStrong": P.GRAY[700],
     "divider": P.GRAY[900],
     "accent": P.PERIWINKLE[500],
+    "accentInk": P.PERIWINKLE[900],
     "accentPressed": P.PERIWINKLE[300],
     "accentMuted": "#221C3D",
     "accentStrong": P.PERIWINKLE[300],
     "focusRing": P.PERIWINKLE[400],
     "highlight": P.YELLOW[400],
+    "brand": P.PERIWINKLE[500],
+    "brandMuted": "#221C3D",
+    "selection": P.BLUE[450],
+    "badge": P.BLUE[850],
+    "badgeText": P.BLUE[250],
     "success": P.GREEN[400],
     "successMuted": P.GREEN[900],
     "successSolid": P.GREEN[500],
@@ -96,10 +115,75 @@ DARK = MappingProxyType({
     "codeBackground": P.GRAY[950],
     "streamingCursor": P.PERIWINKLE[500],
     "voiceActive": P.VIOLET[500],
+    "auraWarm": P.PERIWINKLE[500],
+    "auraCool": "#221C3D",
 })
 
-COLORS = MappingProxyType({"light": LIGHT, "dark": DARK})
+GRAPHITE = MappingProxyType({
+    "background": P.GRAPHITE[950],
+    "backgroundPattern": "rgba(237, 237, 237, 0.07)",
+    "backgroundElement": P.GRAPHITE[850],
+    "backgroundSelected": P.GRAPHITE[750],
+    "surface": P.GRAPHITE[900],
+    "surfaceElevated": P.GRAPHITE[850],
+    "surfaceSunken": P.GRAPHITE[950],
+    "overlay": "rgba(0, 0, 0, 0.7)",
+    "shimmer": "#FFFFFF14",
+    "text": P.GRAPHITE[100],
+    "textSecondary": P.GRAPHITE[400],
+    "textTertiary": P.GRAPHITE[500],
+    "textInverse": P.GRAPHITE[950],
+    "textOnAccent": P.GRAPHITE[950],
+    "border": "rgba(255, 255, 255, 0.07)",
+    "borderStrong": "rgba(255, 255, 255, 0.14)",
+    "divider": "rgba(255, 255, 255, 0.06)",
+    "accent": P.GRAPHITE[100],
+    "accentInk": P.GRAPHITE[950],
+    "accentPressed": P.GRAPHITE[300],
+    "accentMuted": P.GRAPHITE[850],
+    "accentStrong": P.GRAPHITE[50],
+    "focusRing": P.GRAPHITE[300],
+    "highlight": P.GRAPHITE[100],
+    "brand": P.CLAY[400],
+    "brandMuted": P.CLAY[900],
+    "selection": P.GRAPHITE[100],
+    "badge": P.GRAPHITE[800],
+    "badgeText": P.GRAPHITE[200],
+    "success": P.GREEN[400],
+    "successMuted": P.GREEN[900],
+    "successSolid": P.GREEN[500],
+    "warning": P.AMBER[300],
+    "warningMuted": P.AMBER[900],
+    "warningSolid": P.AMBER[500],
+    "danger": P.RED[400],
+    "dangerMuted": P.RED[900],
+    "dangerSolid": P.RED[500],
+    "info": P.BLUE[300],
+    "infoMuted": P.BLUE[900],
+    "infoSolid": P.BLUE[400],
+    "notification": P.RED[400],
+    "textOnNotification": P.BLACK,
+    "bubbleUser": P.GRAPHITE[850],
+    "bubbleUserText": P.GRAPHITE[100],
+    "bubbleAssistant": P.GRAPHITE[950],
+    "bubbleAssistantText": P.GRAPHITE[100],
+    "codeBackground": P.GRAPHITE[900],
+    "streamingCursor": P.GRAPHITE[100],
+    "voiceActive": P.GRAPHITE[100],
+    "auraWarm": P.GRAPHITE[300],
+    "auraCool": P.GRAPHITE[800],
+})
+
+COLORS = MappingProxyType({"light": LIGHT, "dark": DARK, "graphite": GRAPHITE})
 
 
 def colors_for(scheme: SchemeName) -> MappingProxyType:
     return COLORS[scheme]
+
+
+def is_dark(scheme: SchemeName) -> bool:
+    return scheme != "light"
+
+
+def look_for(scheme: SchemeName) -> Look:
+    return LOOKS[scheme]

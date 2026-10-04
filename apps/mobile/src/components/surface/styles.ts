@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import type { Theme } from "@/theme";
+import { Opacity, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -11,8 +11,10 @@ export default function createStyles(theme: Theme) {
       overflow: "hidden",
     },
     pill: {
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.pill,
       borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
       overflow: "hidden",
       paddingHorizontal: theme.spacing.md,
       paddingVertical: theme.spacing.xs,
@@ -25,12 +27,8 @@ export default function createStyles(theme: Theme) {
       paddingHorizontal: theme.spacing.xl,
       paddingVertical: theme.spacing.md,
     },
-    buttonPressed: {
-      opacity: 0.85,
-      transform: [{ scale: 0.98 }],
-    },
     buttonDisabled: {
-      opacity: 0.5,
+      opacity: Opacity.disabled,
     },
   });
 }

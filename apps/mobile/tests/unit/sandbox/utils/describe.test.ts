@@ -71,7 +71,7 @@ describe("describe helpers", () => {
 
   it("describes the sandbox only once its status is known", () => {
     expect(sandboxSubtitle(undefined)).toBeUndefined();
-    expect(sandboxSubtitle(sampleStatus)).toBe("up 1h · sandbox · v0.1.0");
+    expect(sandboxSubtitle(sampleStatus)).toBe("v0.1.0 · up 1h");
   });
 
   it("titles activity events, falling back to the sandbox", () => {
@@ -119,7 +119,7 @@ describe("project helpers", () => {
     expect(gitFileCode(file)).toBe("M");
     expect(gitFileTone(file)).toBe("warning");
     expect(gitFileCode({ ...file, index: " ", worktree: " " })).toBe("?");
-    expect(gitFileTone({ ...file, index: "?", worktree: "?" })).toBe("info");
+    expect(gitFileTone({ ...file, index: "?", worktree: "?" })).toBe("neutral");
     expect(gitFileTone({ ...file, index: "U", worktree: "U" })).toBe("danger");
     expect(gitFileTone({ ...file, index: " ", worktree: "D" })).toBe("danger");
     expect(gitFileTone({ ...file, index: "A", worktree: " " })).toBe("success");

@@ -111,6 +111,7 @@ settings. `DISPLAY` is deliberately not set image-wide.
 | `/workspace` | volume `<prefix>-workspace` (default `theone-workspace`) | `projects/<id>`, `artifacts/`, `.agent/` (memory, controller data, supervisor logs) |
 | `/home/dev` | volume `<prefix>-home` (default `theone-home`) | `.wine/`, `.vnc/`, `.gradle/`, `.cache/` (electron, electron-builder, npm, bun), `.secrets/` |
 | `/home/dev/.claude` | bind mount of the host's `THEONE_HOST_CLAUDE_DIR` (default `$HOME/.claude`), listed after the home volume so it overlays it | the host user's Claude Code login (`.credentials.json`), settings and session history, shared read-write with the host. Compose refuses to start if the directory does not exist (`create_host_path: false`); the image and entrypoint never write to it |
+| `/home/dev/.claude-<name>` | bind mount of each existing host dir in `THEONE_HOST_CLAUDE_ACCOUNTS` (default `$HOME/.claude-<name>`), through the override `infra/scripts/sandbox` generates | extra Claude Code accounts, shared read-write with the host like `.claude` (never copied, so OAuth token refreshes stay in sync); the entrypoint skips them when fixing ownership |
 | `/opt/android-sdk`, `/opt/java/openjdk` | image | SDK, owned by `dev`; runtime additions (NDK, CMake that Gradle installs) are lost on recreate |
 | `/etc/theone/` | image | `SPEC.md`, `agent-templates/` |
 | `/etc/claude-code/` | image | `CLAUDE.md` (managed memory: `SPEC.md` followed by the rootfs notes), `managed-settings.json` (hooks → `theone-controller hook`) |

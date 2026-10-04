@@ -66,7 +66,7 @@ export function gitFileCode(file: GitFileStatus): string {
 
 export function gitFileTone(file: GitFileStatus): Tone {
   const code = gitFileCode(file);
-  if (code.includes("?")) return "info";
+  if (code.includes("?")) return "neutral";
   if (code.includes("U") || code.includes("D")) return "danger";
   if (code.includes("A")) return "success";
   return "warning";

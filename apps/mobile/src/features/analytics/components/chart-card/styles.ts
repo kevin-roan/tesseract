@@ -1,30 +1,29 @@
 import { StyleSheet } from "react-native";
 
-import { BorderWidth, type Theme } from "@/theme";
+import { ControlHeight, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     card: {
-      gap: theme.spacing.base,
-      padding: theme.spacing.base,
-      borderRadius: theme.radius.xl,
-      borderCurve: "continuous",
-      borderWidth: BorderWidth.thin,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.surfaceElevated,
+      gap: theme.spacing.lg,
+      padding: theme.spacing.lg,
     },
     head: {
-      gap: theme.spacing.xxs,
+      gap: theme.spacing.xs,
     },
     footer: {
       flexDirection: "row",
       justifyContent: "flex-end",
     },
     toggle: {
-      paddingVertical: theme.spacing.xs,
-    },
-    pressed: {
-      opacity: 0.6,
+      minHeight: ControlHeight.sm,
+      justifyContent: "center",
+      paddingHorizontal: theme.spacing.base,
+      borderRadius: theme.radius.pill,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
     },
   });
 }

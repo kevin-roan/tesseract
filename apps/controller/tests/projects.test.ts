@@ -206,4 +206,42 @@ describe("REST", () => {
     const json = await sync("synced", "{}", "application/json");
     expect(json.status).toBe(400);
   });
+
+  test("sync?confidential=1 marks the project: pseudonym name, flag and redacted git authors", async () => {
+    const source = makeTempDir("confidential");
+    writeFiles(source, { "package.json": JSON.stringify({ name: "acme-billing-portal" }) });
+    git(source, "init", "-q");
+    git(source, "add", ".");
+    git(source, "commit", "-q", "-m", "Seed");
+    const archive = Bun.spawnSync(["tar", "-c", "-f", "-", "-C", source, "."], { stdout: "pipe" }).stdout;
+    const sync = (id: string, query: string) =>
+      fetch(`${t.baseUrl}/v1/projects/${id}/sync${query}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${t.controller.services.token}`, "Content-Type": "application/x-tar" },
+        body: archive,
+      });
+
+    const plain = ProjectSchema.parse(await (await sync("open-fox", "?confidential=true")).json());
+    expect(plain).toMatchObject({ id: "open-fox", name: "acme-billing-portal", confidential: false });
+    const plainGit = GitDetailsSchema.parse((await t.json("GET", "/v1/projects/open-fox/git")).body);
+    expect(plainGit.log[0]?.author).toBe("Test");
+
+    const marked = ProjectSchema.parse(await (await sync("morning-cat", "?confidential=1")).json());
+    expect(marked).toMatchObject({ id: "morning-cat", name: "morning-cat", confidential: true });
+    const again = ProjectSchema.parse(await (await sync("morning-cat", "")).json());
+    expect(again).toMatchObject({ name: "morning-cat", confidential: true });
+    const details = GitDetailsSchema.parse((await t.json("GET", "/v1/projects/morning-cat/git")).body);
+    expect(details.log.map((commit) => commit.author)).toEqual(["REDACTED"]);
+    expect(details.log[0]?.subject).toBe("Seed");
+    const listed = ProjectListSchema.parse((await t.json("GET", "/v1/projects")).body);
+    expect(listed.find((project) => project.id === "morning-cat")).toMatchObject({ name: "morning-cat", confidential: true });
+    expect(listed.find((project) => project.id === "desktop-app")?.confidential).toBe(false);
+  });
+
+  test("creates a confidential project", async () => {
+    const created = await t.json("POST", "/v1/projects", { name: "quiet-heron", confidential: true });
+    expect(created.status).toBe(201);
+    expect(CreateProjectResponseSchema.parse(created.body).project).toMatchObject({ id: "quiet-heron", name: "quiet-heron", confidential: true });
+    expect(t.controller.services.projects.isConfidential("quiet-heron")).toBe(true);
+  });
 });

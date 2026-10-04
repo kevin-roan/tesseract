@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import { BorderWidth, type Theme } from "@/theme";
+import type { Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -8,12 +8,22 @@ export default function createStyles(theme: Theme) {
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing.md,
-      paddingVertical: theme.spacing.md,
-      borderBottomWidth: BorderWidth.thin,
-      borderColor: theme.colors.divider,
+      paddingVertical: theme.spacing.base,
+      paddingHorizontal: theme.spacing.lg,
     },
     rank: {
-      width: theme.spacing.xl,
+      minWidth: theme.spacing.xl,
+      height: theme.spacing.xl,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: theme.spacing.xs,
+      borderRadius: theme.radius.xs,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
+    },
+    rankText: {
       fontVariant: ["tabular-nums"],
     },
     body: {
@@ -22,13 +32,11 @@ export default function createStyles(theme: Theme) {
     },
     end: {
       alignItems: "flex-end",
-      gap: theme.spacing.xxs,
+      gap: theme.spacing.xs,
     },
     value: {
+      textAlign: "right",
       fontVariant: ["tabular-nums"],
-    },
-    pressed: {
-      opacity: 0.6,
     },
   });
 }

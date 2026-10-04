@@ -31,6 +31,10 @@ Modes (default: $THEONE_MODE, then THEONE_MODE in the env file, then tailscale):
                    Sandbox root can then control that tailscaled (docs/architecture/security-model.md)
   --env-file PATH  read the configuration from PATH instead of infra/compose/.env
 
+Extra Claude Code accounts (THEONE_HOST_CLAUDE_ACCOUNTS="work personal", or name=/abs/path)
+are bind-mounted at /home/dev/.claude-<name> like ~/.claude, through an override written to
+${XDG_STATE_HOME:-~/.local/state}/theone/compose.<project>.claude-accounts.yml.
+
 Commands:
   up [--build] [compose up args]   start the stack in the background
   down [-v]                        stop and remove containers (-v also deletes the volumes)
@@ -113,6 +117,7 @@ controller_port=""
 vnc_port=""
 host_socket_dir=""
 compose_files=()
+readonly CLAUDE_ACCOUNT_PATTERN='^[a-z0-9][a-z0-9_-]{0,31}$'
 
 set_env_file() {
   local path=$1
@@ -279,6 +284,60 @@ resolve_mode() {
   fi
 }
 
+yaml_string() {
+  local value=$1
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  value="${value//\$/\$\$}"
+  printf '"%s"' "${value}"
+}
+
+claude_accounts_override() {
+  local state_dir=${XDG_STATE_HOME:-}
+  [[ "${state_dir}" == /* ]] || state_dir="${HOME}/.local/state"
+  printf '%s/theone/compose.%s.claude-accounts.yml' "${state_dir}" "${project}"
+}
+
+# Extra host Claude Code dirs are shared like ~/.claude, never copied: a copy would fork
+# the OAuth refresh token and log the host out. Missing dirs are skipped, never created.
+resolve_claude_accounts() {
+  local raw entries=() entry name path seen=" " names=() paths=() i override tmp
+  raw="$(config_value THEONE_HOST_CLAUDE_ACCOUNTS)"
+  read -r -a entries <<< "${raw//,/ }"
+  for entry in ${entries[@]+"${entries[@]}"}; do
+    name="${entry%%=*}"
+    path="${HOME}/.claude-${name}"
+    [[ "${entry}" != *=* ]] || path="${entry#*=}"
+    [[ "${name}" =~ ${CLAUDE_ACCOUNT_PATTERN} ]] \
+      || die "THEONE_HOST_CLAUDE_ACCOUNTS: invalid account name '${name}' (lowercase letters, digits, '-' and '_', at most 32)"
+    [[ "${seen}" != *" ${name} "* ]] || die "THEONE_HOST_CLAUDE_ACCOUNTS: account '${name}' is listed twice"
+    seen+="${name} "
+    [[ "${path}" == /* && "${path}" != *[[:cntrl:]]* ]] \
+      || die "THEONE_HOST_CLAUDE_ACCOUNTS: ${name}=${path} is not an absolute path"
+    if [[ ! -d "${path}" ]]; then
+      info "warning: Claude account '${name}' skipped: ${path} is not a directory"
+      continue
+    fi
+    names+=("${name}")
+    paths+=("${path}")
+  done
+  ((${#names[@]} > 0)) || return 0
+
+  override="$(claude_accounts_override)"
+  mkdir -p "${override%/*}"
+  tmp="$(mktemp "${override}.XXXXXX")"
+  {
+    printf 'services:\n  %s:\n    environment:\n      THEONE_CLAUDE_ACCOUNTS: %s\n    volumes:\n' \
+      "${SERVICE}" "$(yaml_string "$(IFS=,; printf '%s' "${names[*]}")")"
+    for i in "${!names[@]}"; do
+      printf '      - type: bind\n        source: %s\n        target: %s\n        bind:\n          create_host_path: false\n' \
+        "$(yaml_string "${paths[i]}")" "$(yaml_string "/home/dev/.claude-${names[i]}")"
+    done
+  } > "${tmp}"
+  mv -f "${tmp}" "${override}"
+  compose_files+=(-f "${override}")
+}
+
 compose() {
   docker compose --project-name "${project}" --project-directory "${COMPOSE_DIR}" \
     ${env_file_option[@]+"${env_file_option[@]}"} "${compose_files[@]}" "$@"
@@ -374,6 +433,7 @@ main() {
   command -v docker > /dev/null 2>&1 || die "docker is not installed"
   resolve_stack
   resolve_mode "${command}"
+  resolve_claude_accounts
 
   case "${command}" in
     up) cmd_up "$@" ;;

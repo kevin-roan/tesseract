@@ -1,7 +1,7 @@
 import { StyleSheet } from "react-native";
 
 import { ToneColors, type Tone } from "@/lib/tone";
-import { BorderWidth, ControlHeight, type Theme } from "@/theme";
+import { DotSize, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme, tone: Tone, emphasized: boolean) {
   const colors = ToneColors[tone];
@@ -9,22 +9,9 @@ export default function createStyles(theme: Theme, tone: Tone, emphasized: boole
     card: {
       flexDirection: "row",
       alignItems: "flex-start",
-      gap: theme.spacing.md,
-      padding: theme.spacing.base,
-      borderRadius: theme.radius.lg,
-      borderCurve: "continuous",
-      overflow: "hidden",
-      borderWidth: emphasized ? BorderWidth.thin : 0,
-      borderColor: theme.colors[colors.foreground],
-    },
-    badge: {
-      width: ControlHeight.md,
-      height: ControlHeight.md,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: theme.radius.md,
-      borderCurve: "continuous",
-      backgroundColor: theme.colors[colors.background],
+      gap: theme.spacing.base,
+      padding: theme.spacing.lg,
+      ...(emphasized && { borderColor: theme.colors[colors.foreground] }),
     },
     body: {
       flex: 1,
@@ -39,8 +26,8 @@ export default function createStyles(theme: Theme, tone: Tone, emphasized: boole
       flex: 1,
     },
     unreadDot: {
-      width: theme.spacing.sm,
-      height: theme.spacing.sm,
+      width: DotSize.md,
+      height: DotSize.md,
       borderRadius: theme.radius.full,
       backgroundColor: theme.colors.notification,
     },
@@ -50,8 +37,11 @@ export default function createStyles(theme: Theme, tone: Tone, emphasized: boole
       gap: theme.spacing.sm,
       marginTop: theme.spacing.xs,
     },
-    pressed: {
-      opacity: 0.85,
+    project: {
+      flexShrink: 1,
+    },
+    time: {
+      fontVariant: ["tabular-nums"],
     },
   });
 }

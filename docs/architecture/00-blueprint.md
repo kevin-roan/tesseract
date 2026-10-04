@@ -46,6 +46,10 @@ A phone-controlled, sandboxed development machine.
   does (status, terminal, Claude, builds, VNC) goes through it.
 * **Tailscale** is the only transport. Nothing is published on host interfaces
   in the default mode.
+* Opt-in **host shell** (§4.3, §5.7): `theone-controller host serve`, run on the host
+  itself (not in the sandbox), gives the phone a PTY on the host over the host's own
+  Tailscale address. It needs the host token (paired once) and a PIN set with
+  `theone-controller host pin`; the sandbox never holds either.
 
 ## 2. Monorepo layout
 
@@ -111,15 +115,18 @@ from an automated agent MUST go through `flock /tmp/theone-bun-install.lock bun 
 | Artifacts | `/workspace/artifacts/<project>-<platform>-<profile>-<version>.<ext>` for builds, `/workspace/artifacts/<file name>` for shared files (`-2`, `-3`… before the extension on collision) |
 | Uploads | `/workspace/.theone/uploads/<uploadId>/<sanitized name>` (dirs 0700, files 0600; `POST /v1/uploads`), rows and files older than 30 days removed at startup |
 | Agent memory | `/workspace/.agent/` (§6.4, SPEC.md) |
-| Controller data | `/workspace/.agent/controller/` (`THEONE_DATA_DIR`, 0700) → `state.db`, `token`, `logs/`, `sync/`, `claude-import.json` |
+| Controller data | `/workspace/.agent/controller/` (`THEONE_DATA_DIR`, 0700) → `state.db`, `token`, `logs/`, `sync/` (baselines, `blobs/`, `backups/`, `staging/`), `claude-import.json` |
 | Claude credentials | the host's `~/.claude` bind-mounted at `/home/dev/.claude` (`CLAUDE_CONFIG_DIR`): login (`.credentials.json`), settings, CLAUDE.md; the only supported credential source (the host's Claude Max subscription login) |
+| Claude accounts | primary account `claude` = the dir above; each `THEONE_HOST_CLAUDE_ACCOUNTS` name `<n>` adds the host's `~/.claude-<n>` (what `CLAUDE_CONFIG_DIR=~/.claude-<n> claude` uses on the host) bind-mounted at `/home/dev/.claude-<n>`, account id `claude-<n>`, global config `<dir>/.claude.json`. Live bind mounts, never copies: token refreshes by either side stay valid for both. The controller never writes into these dirs; the default account and per-project picks live in `state.db` |
 | Home | `/home/dev` (volume `<prefix>-home`: wine prefix, caches; `.claude` is the host bind mount above) |
 | Wine prefix | `/home/dev/.wine` (`WINEPREFIX`), `WINEARCH=win64`, `WINEDEBUG=-all` |
 | Android SDK | `/opt/android-sdk` (`ANDROID_HOME`, `ANDROID_SDK_ROOT`, owned by `dev`) |
 | Java | `/opt/java/openjdk` (Temurin 17, `JAVA_HOME`) |
 | Controller binary | `/usr/local/bin/theone-controller` (built with `bun build --compile`) |
 | Browser pages | `/ui/terminal`, `/ui/vnc`; their bundled assets are served at root paths (`/chunk-<hash>.js`, `.css`) |
-| Mobile deep link | `theone://pair?url=<encoded base url>&token=<token>&name=<label>` |
+| Mobile deep link | `theone://pair?url=<encoded base url>&token=<token>&name=<label>`; host shell: `theone://host?url=…&token=<host token>&name=<host name>` |
+| Host shell daemon | `theone-controller host serve` on the host, `<host Tailscale IPv4>:7701` (`HOST_SHELL_PORT`, `THEONE_HOST_SHELL_PORT`); only loopback or `100.64.0.0/10` binds |
+| Host shell state | `$XDG_CONFIG_HOME/theone/host-shell/state.json` (default `~/.config/…`, `THEONE_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters |
 
 `projectId` = directory name under `/workspace/projects`, must match
 `^[a-z0-9][a-z0-9._-]{0,63}$` (case-insensitive input is lower-cased). Paths are
@@ -144,7 +151,8 @@ always resolved (`realpath`) and verified to stay under the workspace.
 | `THEONE_CHROMIUM_DEBUG_PORT` | `9222` | Chromium DevTools port on `127.0.0.1` read by `GET /v1/display/browser`; `/etc/chromium.d/theone` starts Chromium with `--remote-debugging-address=127.0.0.1 --remote-debugging-port=$THEONE_CHROMIUM_DEBUG_PORT --user-data-dir=$HOME/.config/chromium-theone` (Chromium 136+ refuses remote debugging on the default profile) |
 | `THEONE_CLAUDE_BIN` | `claude` | Claude Code executable |
 | `THEONE_CLAUDE_PERMISSION_MODE` | `bypassPermissions` | passed to headless Claude runs (the container is the boundary) |
-| `CLAUDE_CONFIG_DIR` | `$HOME/.claude` | Claude Code config dir; `GET /v1/usage` and `GET /v1/sessions` read its `projects/<encoded-cwd>/<sessionId>.jsonl` transcripts and `sessions/<pid>.json`; a missing dir means no usage. `/v1/claude/*` read and write its `.credentials.json` and `settings.json`, and the global config `$CLAUDE_CONFIG_DIR/.claude.json` when the variable is set, else `$HOME/.claude.json` (Claude Code's rule) |
+| `THEONE_CLAUDE_ACCOUNTS` | — | extra Claude accounts, names separated by commas or spaces (`work,personal`, each `[a-z0-9][a-z0-9_-]{0,31}`): `<n>` → `$HOME/.claude-<n>`, id `claude-<n>`. Set by `infra/scripts/sandbox` from the mounted `THEONE_HOST_CLAUDE_ACCOUNTS` |
+| `CLAUDE_CONFIG_DIR` | `$HOME/.claude` | Claude Code config dir of the primary account; `GET /v1/usage` and `GET /v1/sessions` read the `projects/<encoded-cwd>/<sessionId>.jsonl` transcripts and `sessions/<pid>.json` of every account's dir; a missing dir means no usage. `/v1/claude/*` read and write its `.credentials.json` and `settings.json`, and the global config `$CLAUDE_CONFIG_DIR/.claude.json` when the variable is set, else `$HOME/.claude.json` (Claude Code's rule) |
 | `CLAUDE_CODE_OAUTH_TOKEN` / `ANTHROPIC_API_KEY` | — | not configured by the stack (Claude auth is the host's Max login only); if set manually anyway, `GET /v1/claude/auth` still reports them (`sources`, `oauthTokenFromEnv`) and children inherit them as usual |
 | `THEONE_SANDBOX_ID` | container hostname | identity shown in the app |
 | `THEONE_TAILSCALE_SOCKET` | `/run/tailscale/tailscaled.sock` | tailscaled LocalAPI socket for `GET /v1/identity`; missing socket = Tailscale identity unavailable |
@@ -160,6 +168,8 @@ always resolved (`realpath`) and verified to stay under the workspace.
 | `THEONE_STT_URL` | — | OpenAI-compatible base URL (`http(s)`, no credentials/query), e.g. `https://api.openai.com/v1`, `https://api.groq.com/openai/v1`; the controller posts to `<url>/audio/transcriptions` |
 | `THEONE_STT_API_KEY` | — | bearer key for `THEONE_STT_URL`; never logged, never passed to children (optional with `THEONE_STT_ENGINE=openai-compatible`, e.g. a local server) |
 | `THEONE_STT_MODEL` | `whisper-1` | model field of the OpenAI-compatible request (e.g. `whisper-large-v3-turbo` on Groq) |
+| `GEMINI_API_KEY` | — | Google Gemini key for transcriptions requested with `provider: "gemini"`; unset = those fall back to the native engine. Never logged, never passed to children |
+| `THEONE_GEMINI_STT_MODEL` | `gemini-2.5-flash` | Gemini model used for `provider: "gemini"` |
 | `THEONE_PUSH_URL` | `https://exp.host/--/api/v2/push/send` | Expo push API used for inbox pushes (`http(s)`, no credentials/query); `off` disables pushes |
 | `THEONE_EXPO_ACCESS_TOKEN` | — | optional Expo access token, sent as `Authorization: Bearer` when Expo's enhanced push security is on |
 | `THEONE_APNS_KEY_FILE` | — | absolute path of the APNs auth key (`AuthKey_<KEYID>.p8`) used for Live Activity (Dynamic Island) pushes; with `THEONE_APNS_KEY_ID` and `THEONE_APNS_TEAM_ID` it enables them, setting only some of the three stops startup, none = tokens are stored but nothing is sent ([runbook](../runbooks/live-activities.md)) |
@@ -173,11 +183,13 @@ developer laptop too (for tests): every sandbox dependency (X display, VNC,
 claude, wine, java) is optional and reported as unavailable instead of crashing.
 
 Children (processes, build steps, terminals, agent runs, git/zip helpers) get the
-controller's environment **without** `THEONE_TOKEN`, `THEONE_VNC_PASSWORD` and `THEONE_STT_API_KEY`, plus
+controller's environment **without** `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, `THEONE_STT_API_KEY` and `GEMINI_API_KEY`, plus
 `THEONE_PROCESS_ID` / `THEONE_BUILD_ID` / `THEONE_TERMINAL_ID` / `THEONE_AGENT_RUN_ID`.
 Agent runs also drop `CLAUDECODE`. The controller does not store or inject Claude
 credentials: children use the host's Claude Max login in `/home/dev/.claude` (the host's
-`~/.claude`, bind-mounted), the only supported authentication.
+`~/.claude`, bind-mounted), the only supported authentication. Agent runs and `claude`
+terminals on another account (§5.2 `/v1/claude/accounts`) get `CLAUDE_CONFIG_DIR=/home/dev/.claude-<n>`;
+the account is the resumed session's (newest run with that session id), else the project's, else the default.
 
 ### 4.2 Stack and operator (`infra/compose/.env`, `infra/scripts/sandbox`)
 
@@ -200,9 +212,10 @@ lists. Exported shell variables win over the env file; empty counts as unset.
 | `THEONE_BIND_ADDR` | host-tailscale: `tailscale ip -4`; local: `127.0.0.1` | IPv4 the ports are published on; wildcards and non-IPv4 values are refused |
 | `THEONE_CONTROLLER_HOST_PORT` / `THEONE_VNC_HOST_PORT` | `7700` / `5901` | host side of the published ports; `THEONE_PUBLIC_URL` follows |
 | `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, `THEONE_LOG_LEVEL`, `THEONE_CLAUDE_PERMISSION_MODE`, `THEONE_CORS_ORIGINS` | as §4.1 | passed to the sandbox |
-| `THEONE_STT_ENGINE`, `THEONE_STT_PROFILE`, `THEONE_STT_URL`, `THEONE_STT_API_KEY`, `THEONE_STT_MODEL`, `THEONE_WHISPER_MODELS_DIR`, `THEONE_WHISPER_MODEL` | as §4.1 | passed to the sandbox; the entrypoint moves `THEONE_STT_API_KEY` into `/run/theone/controller.env` like `THEONE_TOKEN` |
+| `THEONE_STT_ENGINE`, `THEONE_STT_PROFILE`, `THEONE_STT_URL`, `THEONE_STT_API_KEY`, `THEONE_STT_MODEL`, `THEONE_WHISPER_MODELS_DIR`, `THEONE_WHISPER_MODEL`, `GEMINI_API_KEY`, `THEONE_GEMINI_STT_MODEL` | as §4.1 | passed to the sandbox; the entrypoint moves `THEONE_STT_API_KEY` and `GEMINI_API_KEY` into `/run/theone/controller.env` like `THEONE_TOKEN` |
 | `THEONE_DISPLAY_GEOMETRY` | `1600x900` | Xvnc geometry |
 | `THEONE_HOST_CLAUDE_DIR` | `$HOME/.claude` | host dir bind-mounted at `/home/dev/.claude`: the host's Claude Max login is the sandbox's only Claude credential (`ANTHROPIC_API_KEY`/`CLAUDE_CODE_OAUTH_TOKEN` are not passed through) |
+| `THEONE_HOST_CLAUDE_ACCOUNTS` | — | extra host Claude accounts (`work personal`, or `name=/abs/path`): `infra/scripts/sandbox` writes a compose override (`${XDG_STATE_HOME:-~/.local/state}/theone/compose.<project>.claude-accounts.yml`, added to every compose call) binding each existing `~/.claude-<n>` at `/home/dev/.claude-<n>` and passing `THEONE_CLAUDE_ACCOUNTS`; missing dirs are skipped with a warning, never created |
 | `SANDBOX_CPUS` / `SANDBOX_MEMORY` / `SANDBOX_PIDS` | `4` / `8g` / `4096` | sandbox limits |
 | `DIND_CPUS` / `DIND_MEMORY` / `DIND_PIDS` | `4` / `8g` / `4096` | dind limits (cap everything it runs) |
 | `TZ` | `UTC` | sandbox time zone |
@@ -215,6 +228,25 @@ Image-provided environment: `THEONE_IMAGE_VERSION`, `THEONE_WORKSPACE`,
 `JAVA_HOME`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `THEONE_WHISPER_BIN`, `THEONE_WHISPER_MODELS_DIR`, `THEONE_WHISPER_MODEL`. `DISPLAY` is not set globally: only
 interactive login shells get `DISPLAY=:1` (`/etc/profile.d/theone.sh`). Rootfs helper
 knob: `THEONE_WAIT_X_TIMEOUT` (s, default 60).
+
+### 4.3 Host shell daemon (`theone-controller host …`, runs on the host)
+
+| Var | Default | Meaning |
+|---|---|---|
+| `THEONE_HOST_SHELL_BIND` | first line of `tailscale ip -4` | IPv4 to listen on; `--bind` wins. Wildcards, empty values and anything but loopback or `100.64.0.0/10` stop startup |
+| `THEONE_HOST_SHELL_PORT` | `7701` | port; `--port` wins |
+| `THEONE_HOST_SHELL_DIR` | `$XDG_CONFIG_HOME/theone/host-shell` (`~/.config/theone/host-shell`) | state directory (`state.json`) |
+| `THEONE_HOST_SHELL_PUBLIC_URL` | the `tailscale serve` HTTPS URL proxying to `http://<bind>:<port>` at `/` (`tailscale serve status --json`), else `http://<bind>:<port>` | URL put into the `host pair` link. iOS blocks plain http to the Tailscale IP, so serve it over HTTPS: `tailscale serve --bg --https=8443 http://<bind>:7701` |
+| `SHELL` | `bash` | host terminals run `$SHELL -l` in `$HOME` |
+
+Host terminals get the daemon's environment without `THEONE_HOST_SHELL_*`, plus
+`TERM=xterm-256color`, `COLORTERM=truecolor`, `LANG`.
+
+The desktop app (Preferences → Host Shell, and the "This Computer" tab of Pair a Device) drives the same
+CLI: it runs `host serve` as its child process (stopped on quit; `setpriv --pdeathsig` when available),
+sets the PIN with `host pin --stdin`, rotates with `host token --rotate` and reads `host pair --json`.
+It runs `bun apps/controller/src/index.ts` from its checkout, or `MONOLITH_CONTROLLER_COMMAND`;
+"Start With Monolith" is `host_shell_autostart` in the desktop `config.json`.
 
 ## 5. Controller protocol v1
 
@@ -234,7 +266,7 @@ knob: `THEONE_WAIT_X_TIMEOUT` (s, default 60).
 * Errors: HTTP status + `{ "error": { "code": string, "message": string } }`.
   Codes → status: `bad_request` 400, `unauthorized` 401, `forbidden` 403,
   `not_found` 404, `conflict` 409, `internal` 500, `unavailable` 503. Exceptions:
-  bodies over 1 MiB (8 MiB for `POST /v1/claude/import`, 28 MiB for `POST /v1/uploads`, 1 GiB for `POST /v1/projects/:id/sync`) get **413** with code `bad_request`; a plain GET (no upgrade) on a
+  bodies over 1 MiB (8 MiB for `POST /v1/claude/import`, 28 MiB for `POST /v1/uploads`, 1 GiB for `POST /v1/projects/:id/sync` and `POST /v1/sync/requests/:id/apply`, 64 MiB for `POST /v1/sync/requests/:id/plan`) get **413** with code `bad_request`; a plain GET (no upgrade) on a
   WS-only path gets 400.
 
 ### 5.2 REST endpoints
@@ -245,31 +277,38 @@ knob: `THEONE_WAIT_X_TIMEOUT` (s, default 60).
 | POST | `/v1/auth/ticket` | — | `200 Ticket { ticket, expiresAt }` |
 | GET | `/v1/status` | — | `SandboxStatus` |
 | GET | `/v1/identity` | — | `Identity`: Tailscale viewer, owner, node and tailnet (§5.4); never fails because Tailscale is unreachable, it reports `available: false` and nulls |
+| GET | `/v1/claude/accounts` | — | `ClaudeAccountList { defaultAccountId, accounts: ClaudeAccountProfile[] }`: primary first, then `THEONE_CLAUDE_ACCOUNTS` order; login, account, plan and expiry per dir; never contains a secret |
+| PUT | `/v1/claude/accounts/default` | `SetDefaultClaudeAccount { accountId }` | `200 ClaudeAccountList`; 404 unknown, 400 not mounted. Used by runs and terminals whose project has no account of its own |
 | GET | `/v1/claude/auth` | — | `ClaudeAuthStatus` (§5.4): which credential the sandbox's Claude Code uses (`method` = first of `oauth_token`, `credentials`, `api_key`, else `none`), account from the global config's `oauthAccount`, subscription and expiry from `.credentials.json`; never contains a secret |
 | POST | `/v1/claude/import` | `ClaudeImport { credentials?, account?, files? }` (body limit 8 MiB) | `200 ClaudeImportResult { status, written, skipped }`: `credentials` replaces `claudeAiOauth` in `.credentials.json` (other keys kept); `account` merges only `CLAUDE_IMPORT_ACCOUNT_KEYS` into the global config (`projects` etc. kept); `files` must be normalized relative paths matching `CLAUDE_IMPORT_PATHS` that stay in `$CLAUDE_CONFIG_DIR` without symlinks leading out; `settings.json` must be a JSON object and loses `CLAUDE_IMPORT_DROPPED_SETTINGS` (`settings.json#<key>` in `skipped`). Files are written atomically; `settings.json`, `.credentials.json` and the global config are first copied to `<file>.theone-bak`. `written`/`skipped` paths are relative to `$CLAUDE_CONFIG_DIR`; the global config is `.claude.json` (inside it) or `~/.claude.json`. Refused parts go to `skipped`; only schema errors are 400 |
 | GET | `/v1/context` | — | `AgentContext { files: AgentContextFile[] }`: regular files `.agent/*.md` and `.agent/projects/<id>/*.md` (no symlinks, FIFOs or devices), content capped at 64 KiB each |
 | GET | `/v1/projects` | — | `Project[]` |
-| POST | `/v1/projects` | `CreateProject { name, gitUrl?, branch? }` | `201 { project, processId? }` (clone runs as a tracked process); 409 if the directory exists |
+| POST | `/v1/projects` | `CreateProject { name, gitUrl?, branch?, confidential? }` | `201 { project, processId? }` (clone runs as a tracked process); 409 if the directory exists; `confidential: true` marks the project confidential (§6.1, the client sends a pseudonym as `name`) |
 | GET | `/v1/projects/:id` | — | `Project` |
-| POST | `/v1/projects/:id/sync` | tar archive body, `Content-Type` `application/x-tar` or `application/gzip` (body limit 1 GiB) | `201 Project` when the directory was created, else `200 Project`: extracts with `tar --no-same-owner` over `/workspace/projects/<id>`; files missing from the archive are kept; a bad archive is 400 (a directory created for it is removed), another content type 400; publishes `project.updated`. Sent by `monolith --sync` (desktop), which archives the cwd (in a git checkout: tracked and unignored files, plus `.git` at the top level) |
-| GET | `/v1/projects/:id/git` | — | `GitDetails { branch, ahead, behind, files: GitFileStatus[], log: GitCommit[] }` |
+| PUT | `/v1/projects/:id/claude-account` | `SetProjectClaudeAccount { accountId: string \| null }` | `200 Project` and `project.updated`; null follows the default account; 404 unknown project or account, 400 for an account whose dir is not mounted |
+| DELETE | `/v1/projects/:id` | `?force=1` (or `true`) | `200 DeletedProject { id, trashPath }`: moves `/workspace/projects/<id>` to `<os tmpdir>/theone-deleted-projects/<id>-<ts>` (the host copy is never touched), drops the sync-back baseline and blobs (the confidential mark stays), publishes `sync.changed`, `project.deleted`; without `force`, 409 when the project has changes not synced back to the host or no baseline (never pushed from a host); 409 (even with `force`) while a process, build, terminal or agent run of the project is running or a `pending`/`claimed` sync request exists; 404 unknown project |
+| POST | `/v1/projects/:id/sync` | `?confidential=1`; tar archive body, `Content-Type` `application/x-tar` or `application/gzip` (body limit 1 GiB) | `201 Project` when the directory was created, else `200 Project`: `confidential=1` (exactly `1`) first marks the project confidential (one-way; other values or none leave the mark as is); extracts with `tar --no-same-owner` over `/workspace/projects/<id>`; files missing from the archive are kept; a bad archive is 400 (a directory created for it is removed), another content type 400; publishes `project.updated`. Sent by `monolith --sync` (desktop), which archives the cwd (in a git checkout: tracked and unignored files, plus `.git` at the top level) |
+| GET | `/v1/projects/:id/git` | — | `GitDetails { branch, ahead, behind, files: GitFileStatus[], log: GitCommit[] }`; in a confidential project every `author` is `REDACTED` |
 | GET | `/v1/projects/:id/sync/changes` | — | `SyncChanges`: current tree vs the baseline recorded by the last push ([sync-back.md](sync-back.md)); 404 unknown project |
 | POST | `/v1/projects/:id/sync/export` | `SyncExport { paths: SyncPath[] (1–5000) }`, each a current `added`/`modified` change | `200 application/gzip` tar of those files (regular files and symlinks only); 400 for a path that is not a current change |
-| POST | `/v1/projects/:id/sync/ack` | `SyncAck { changes: { path, sha256 \| null, executable? }[] }` | `200 SyncChanges`; moves the baseline entries to the acked hashes and executable bits (null removes; `executable` omitted: the sandbox file's, when its hash matches); publishes `sync.changed` |
+| POST | `/v1/projects/:id/sync/ack` | `SyncAck { changes: { path, sha256 \| null, executable? }[] }` | `200 SyncChanges`; moves the baseline entries to the acked hashes and executable bits (null removes; `executable` omitted: the sandbox file's, when its hash matches); stores the blob of each acked hash the sandbox file has; publishes `sync.changed` |
+| POST | `/v1/projects/:id/sync/discard` | `SyncDiscard { paths?: SyncPath[] (1–5000) }` (omitted: every change) | `200 SyncDiscardResult { discarded, unavailable, backupPath, changes }`: puts the sandbox files back to the baseline (`added` removed, others restored from blobs with the baseline executable bit; no blob → `unavailable`, untouched), sandbox versions copied to `sync/backups/<id>/discard-<ts>/` first, all or nothing; 400 without a baseline or for a path that is not a current change or is behind a sandbox symlink; 409 while a `pending`/`claimed` request exists; 500 when it failed and was rolled back; publishes `sync.changed`, `project.updated` |
 | GET | `/v1/projects/:id/sync/requests` | — | `SyncRequest[]` newest first (last 50) |
-| POST | `/v1/projects/:id/sync/requests` | `CreateSyncRequest { kind: "pull" \| "revert", paths?, force?, source? }` | `201 SyncRequest`; 409 while a `pending`/`claimed` request exists; 400 for `pull` without a baseline; publishes `sync.updated` |
+| POST | `/v1/projects/:id/sync/requests` | `CreateSyncRequest { kind: "pull" \| "revert" \| "get", paths?, force?, source? }` | `201 SyncRequest`; 409 while a `pending`/`claimed` request exists; 400 for `pull`/`get` without a baseline; publishes `sync.updated` |
 | GET | `/v1/sync/requests?status=` | — | `SyncRequest[]` across projects (desktop polls `status=pending`) |
 | POST | `/v1/sync/requests/:id/claim` | `ClaimSyncRequest { host }` | `200 SyncRequest` (`claimed`); 409 unless `pending`; publishes `sync.updated` |
 | POST | `/v1/sync/requests/:id/complete` | `CompleteSyncRequest { status: "applied" \| "failed", result?, error? }` | `200 SyncRequest`; 409 unless `claimed`; publishes `sync.updated` |
 | POST | `/v1/sync/requests/:id/cancel` | — | `200 SyncRequest` (`cancelled`); 409 unless `pending`; publishes `sync.updated` |
 | POST | `/v1/sync/heartbeat` | `SyncHeartbeat { host, projects: ProjectId[] }` | `204`; remembers the host per linked project for `SyncChanges.host` (online = seen in the last 60 s) |
+| POST | `/v1/sync/requests/:id/plan` | `SyncGetPlan { hostPath, changes: { path, kind, sha256 \| null, executable }[] (≤ 5000), git: { changed, deleted } \| null }` | `200 SyncGetPlanResponse { request, upload, gitUpload }`; 409 unless a `claimed` `get`; 400 for a duplicate path, a hash on a delete (or none on an add/modify) or a path behind a sandbox symlink; conflicts without `force` complete the request `failed` (sync-back.md §6) |
+| POST | `/v1/sync/requests/:id/apply` | gzip or plain tar of exactly `upload` + `.git/<gitUpload>` (body limit 1 GiB) | `200 SyncRequest` (`applied` with the `get` stats, or `failed` on conflicts); 409 unless `claimed` with a plan; 400 for a bad archive or an unplanned hash (the request stays `claimed`); 500 when applying failed and was rolled back; publishes `sync.updated`, `sync.changed`, `project.updated` |
 | GET | `/v1/processes` | `?projectId=` | `ProcessInfo[]` |
 | POST | `/v1/processes` | `StartProcess { projectId, command, name?, env?, display?, port? }` | `201 ProcessInfo`; 409 when `port` is taken (message names the tracked process or pid) |
 | GET | `/v1/processes/:id` | — | `ProcessInfo` |
 | DELETE | `/v1/processes/:id` | — | `ProcessInfo` (§6.2) |
 | GET | `/v1/processes/:id/logs` | `?tail=500` (1–2000) | `LogLine[]` |
 | GET | `/v1/terminals` | — | `TerminalInfo[]` of the current controller lifetime (newest first) |
-| POST | `/v1/terminals` | `CreateTerminal { kind: "shell"\|"claude", projectId?, cols, rows }` | `201 TerminalInfo`; 503 if `claude` or PTY support is missing |
+| POST | `/v1/terminals` | `CreateTerminal { kind: "shell"\|"claude", projectId?, cols, rows }` | `201 TerminalInfo`; 503 if `claude` or PTY support is missing. A `claude` terminal in a confidential project runs `claude --append-system-prompt <confidential prompt>` (§6.1) |
 | DELETE | `/v1/terminals/:id` | — | `TerminalInfo` |
 | GET | `/v1/builds` | `?projectId=` | `BuildJob[]` |
 | POST | `/v1/builds` | `StartBuild { projectId, target, profile? }` (`profile` default `debug`) | `201 BuildJob`; 400 if the project lacks the target; 503 if the recipe needs `wine`/`java` and it is missing |
@@ -277,14 +316,14 @@ knob: `THEONE_WAIT_X_TIMEOUT` (s, default 60).
 | DELETE | `/v1/builds/:id` | — | `BuildJob` (cancel) |
 | GET | `/v1/builds/:id/logs` | `?tail=500` | `LogLine[]` |
 | GET | `/v1/artifacts` | `?projectId=` | `Artifact[]` |
-| POST | `/v1/artifacts` | `ShareArtifact { path (absolute), projectId?, name?, note? (≤ 500), agentRunId?, sessionId? }` | `201 Artifact` (`source: "agent"`): copies a regular file inside `/workspace` (realpath; not under `artifacts/` or `THEONE_DATA_DIR` → 403) into the artifacts dir under its own name or `name`; `projectId` defaults to the project containing the path (none → 400; unknown explicit id → 404); `platform` from the extension (`.apk`/`.aab` android, `.exe`/`.msi` windows, `.deb`/`.rpm`/`.AppImage` linux, else `file`); an unknown `agentRunId` is dropped; publishes `artifact.created` and adds a `file` inbox item (never bumped) with `artifactId`. Sent by `theone-controller share` |
+| POST | `/v1/artifacts` | `ShareArtifact { path (absolute), projectId?, name?, note? (≤ 500), agentRunId?, sessionId? }` | `201 Artifact` (`source: "agent"`): copies a regular file inside `/workspace` (realpath; not under `artifacts/` or `THEONE_DATA_DIR` → 403) into the artifacts dir under its own name or `name`; `projectId` defaults to the project containing the path (none → 400; unknown explicit id → 404); `platform` from the extension (`.apk`/`.aab` android, `.exe`/`.msi` windows, `.deb`/`.rpm`/`.AppImage` linux, else `file`); an unknown `agentRunId` is dropped; publishes `artifact.created` and adds a `file` inbox item (never bumped) with `artifactId`; 403 `Project <id> is confidential; sharing artifacts is disabled` when the resolved project is confidential (build artifacts are unaffected). Sent by `theone-controller share` |
 | DELETE | `/v1/artifacts/:id` | — | `Artifact` (deleted): removes the file and row, clears `artifactId` on inbox items (their text stays), publishes `artifact.deleted` |
 | GET | `/v1/artifacts/:id/download` | bearer **or** `?ticket=` | file stream (`Content-Disposition: attachment`, `X-Content-SHA256`); 404 if the file is gone |
 | GET | `/v1/taildrop/targets` | — | `TaildropTargets { available, targets: TaildropTarget[] }` from LocalAPI `file-targets`, sorted by host name; `available: false` with no targets when the LocalAPI socket is missing or fails (never an error) |
 | POST | `/v1/artifacts/:id/taildrop` | `SendArtifact { targetId }` | `Artifact` once LocalAPI `file-put` accepted the file; 503 without the LocalAPI or when the push fails, 404 for an unknown target, 403 when tailscaled refuses |
 | GET | `/v1/ports` | — | `ListeningPorts { tailscaleIp, ports: ListeningPort[] }`: TCP ports that visible sandbox processes listen on (not the controller or VNC port), each `{ port, pid, command, processId, projectId, url, dnsUrl }`; `url` is `http://<sandbox Tailscale IPv4>:<port>`, which reaches the port over the tailnet because the userspace sidecar forwards to `127.0.0.1`; both URLs are null without Tailscale |
 | GET | `/v1/usage?days=` | — | `UsageReport { generatedAt, from, to, days, totals, daily, models, projects }` from Claude Code transcripts: `days` 1–90 (default 30) UTC days ending today, `daily` has every day oldest first (zero-filled), `models`/`projects` most tokens first; assistant messages are deduped by message id + request id (also across resumed-session files), `<synthetic>` messages are skipped, only files modified in the range are read; token counts only, no dollar cost; never fails because the directory is missing |
-| GET | `/v1/sessions?limit=&projectId=` | — | `ClaudeSession[]` (default 20, max 200), newest `lastActiveAt` first: title (first real prompt, ≤120 chars), preview (last assistant text, ≤160), model, usage (including subagent transcripts), `source` `agent-run`/`terminal`/`cli`, `agentRunId` (newest run with the session id), `terminalId` (running Claude terminal: `$CLAUDE_CONFIG_DIR/sessions/<pid>.json`, else the newest transcript with the terminal's cwd written since it started), `active` (run running or terminal attached) |
+| GET | `/v1/sessions?limit=&projectId=` | — | `ClaudeSession[]` (default 20, max 200), newest `lastActiveAt` first, across every Claude account (`claudeAccountId`): title (first real prompt, ≤120 chars), preview (last assistant text, ≤160), model, usage (including subagent transcripts), `source` `agent-run`/`terminal`/`cli`, `agentRunId` (newest run with the session id), `terminalId` (running Claude terminal: `$CLAUDE_CONFIG_DIR/sessions/<pid>.json`, else the newest transcript with the terminal's cwd written since it started), `active` (run running or terminal attached) |
 | GET | `/v1/inbox?limit=&unread=` | — | `Inbox { items: InboxItem[], unreadCount, attentionCount }`, newest `updatedAt` first (default 100, max 500; `unread=1`/`true` → unread only); `attentionCount` = unread `needs_input` + `permission` |
 | POST | `/v1/inbox/read` | `MarkInboxRead { ids: InboxId[] } \| { all: true }` | `200 InboxCounts { unreadCount, attentionCount }`; unknown ids are ignored |
 | POST | `/v1/hooks/claude` | `ClaudeHookPayload` (the Claude Code hook JSON, extra fields kept) | `202`; maps `Notification`/`Stop`/`StopFailure`/`UserPromptSubmit` to inbox items (controller.md "Inbox and Claude hooks"); other events are ignored. Sent by `theone-controller hook` |
@@ -298,11 +337,11 @@ knob: `THEONE_WAIT_X_TIMEOUT` (s, default 60).
 | GET | `/v1/display/screenshot` | — | `image/png` of the virtual display; 503 without a display |
 | GET | `/v1/display/browser` | — | `BrowserStatus { available, tabs: BrowserTab[] }`: Chromium `page` targets from the DevTools endpoint `http://127.0.0.1:$THEONE_CHROMIUM_DEBUG_PORT/json/list` (1.5 s timeout, `devtools://` pages dropped), in Chromium's order so `tabs[0]` is the current tab; `phoneUrl` rewrites an http(s) URL whose host is `localhost`, `*.localhost`, `127.0.0.0/8`, `0.0.0.0` or `[::1]` to the sandbox Tailscale IPv4 (else its MagicDNS name, as `/v1/ports`) keeping port/path/query/hash, passes other http(s) URLs through, and is null for other schemes or local URLs without Tailscale; an unreachable endpoint is `{ available: false, tabs: [] }`, never an error |
 | GET | `/v1/agent/runs` | `?projectId=&archived=` | `AgentRun[]` newest first (max 200): without `archived` (or `0`/`false`) only runs that are not archived, with `archived=1`/`true` only archived ones; running runs are never archived |
-| POST | `/v1/agent/runs` | `StartAgentRun { projectId?, prompt, mode?, attachmentIds?, resumeSessionId? }` | `201 AgentRun`; 503 without `claude`; 404 for an unknown attachment. `mode` → `--permission-mode` (else `THEONE_CLAUDE_PERMISSION_MODE`; stored as `null`). Attachments are stored on the run as full `Upload`s; for non-audio ones the run gets `--add-dir <uploads dir>` and the stdin prompt gains `\n\nAttached files (read them with the Read tool):\n- <path> (<mimeType>)` lines. Audio attachments are not listed (the transcript is the prompt); they stay on the run for replay |
+| POST | `/v1/agent/runs` | `StartAgentRun { projectId?, prompt, mode?, attachmentIds?, resumeSessionId? }` | `201 AgentRun`; 503 without `claude`; 404 for an unknown attachment. `mode` → `--permission-mode` (else `THEONE_CLAUDE_PERMISSION_MODE`; stored as `null`). Attachments are stored on the run as full `Upload`s; for non-audio ones the run gets `--add-dir <uploads dir>` and the stdin prompt gains `\n\nAttached files (read them with the Read tool):\n- <path> (<mimeType>)` lines. Audio attachments are not listed (the transcript is the prompt); they stay on the run for replay. In a confidential project (also when resuming) the run gets `--append-system-prompt <confidential prompt>` (§6.1) |
 | POST | `/v1/uploads` | `CreateUpload { name, mimeType, data /* base64 */ }` (body limit 28 MiB) | `201 Upload`; 400 for invalid base64, an empty file or more than 20 MiB decoded. `name` → last path segment without control characters or leading dots, ≤ 200 UTF-8 bytes (extension kept), fallback `upload`; `mimeType` → lower-cased essence (`application/octet-stream` when malformed); `kind` = `image` (`image/*`), `pdf` (`application/pdf`), `audio` (`audio/*`), else `file` |
 | GET | `/v1/uploads/:id/content` | bearer **or** `?ticket=` | file stream with the stored `Content-Type`, `Content-Disposition` `inline` (image/pdf/audio) or `attachment` (file), `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox`; single `Range: bytes=` requests get 206 (players that issue several range requests need bearer auth, a ticket is single-use); 404 if the file is gone |
-| POST | `/v1/transcriptions` | `CreateTranscription { uploadId, language? }` | `200 Transcription { uploadId, text, language, durationMs, engine }`; 404 unknown upload, 400 not audio, invalid `language` (ISO-639-1, region suffix dropped, `auto` = detect) or `No speech detected` (empty after dropping `[BLANK_AUDIO]`-style markers), 503 when the STT profile is `off` (`Speech-to-text is off (select a profile in the desktop app)`), when no engine is configured or it fails (message says which env vars to set). One transcription runs at a time; others wait in FIFO order (`busy`/`queued` in `GET /v1/stt`). whisper.cpp: `[ionice -c3] [nice -n <nice>]` prefix per profile (skipped when the binary is missing), ffmpeg → 16 kHz mono WAV in a temp dir, `whisper-cli -m <model> -t <threads> -l <lang\|auto> -oj`, 5 min timeout each, `durationMs` from the WAV. openai-compatible: multipart `file`, `model`, `response_format=verbose_json`, `language?` with `Authorization: Bearer`, 5 min timeout; a non-JSON reply is used as plain text |
-| GET | `/v1/stt` | — | `SttStatus`: selected profile, every profile's tuning and whether its model file exists, the engine and model a transcription would use now (`ready`/`reason`), `cpus` (`os.availableParallelism()` capped by the cgroup v2 `cpu.max` quota), `busy`, `queued` |
+| POST | `/v1/transcriptions` | `CreateTranscription { uploadId, language?, provider? }` | `200 Transcription { uploadId, text, language, durationMs, engine, fallbackReason }`; 404 unknown upload, 400 not audio, invalid `language` (ISO-639-1, region suffix dropped, `auto` = detect) or `No speech detected` (empty after dropping `[BLANK_AUDIO]`-style markers), 503 when the STT profile is `off` (`Speech-to-text is off (select a profile in the desktop app)`), when no engine is configured or it fails (message says which env vars to set). One transcription runs at a time; others wait in FIFO order (`busy`/`queued` in `GET /v1/stt`). whisper.cpp: `[ionice -c3] [nice -n <nice>]` prefix per profile (skipped when the binary is missing), ffmpeg → 16 kHz mono WAV in a temp dir, `whisper-cli -m <model> -t <threads> -l <lang\|auto> -oj`, 5 min timeout each, `durationMs` from the WAV. openai-compatible: multipart `file`, `model`, `response_format=verbose_json`, `language?` with `Authorization: Bearer`, 5 min timeout; a non-JSON reply is used as plain text. `provider: "gemini"` (default `native`): JSON `POST https://generativelanguage.googleapis.com/v1beta/models/<THEONE_GEMINI_STT_MODEL>:generateContent` with `x-goog-api-key`, the audio as `inline_data` (`audio/mp4`/`audio/x-m4a` sent as `audio/m4a`) and a verbatim-transcript instruction (language hint included), `temperature: 0`, 5 min timeout, outside the FIFO queue and regardless of the profile; empty text → 400 `No speech detected`. When `GEMINI_API_KEY` is unset or Gemini fails (network, HTTP error — 429 reported as quota/rate limit, 401/403/400 `API_KEY_INVALID` as a rejected key), the native engine (profile check included) answers and `fallbackReason` says why; if it cannot either, 503 with both reasons. `fallbackReason` is null otherwise |
+| GET | `/v1/stt` | — | `SttStatus`: selected profile, every profile's tuning and whether its model file exists, the engine and model a transcription would use now (`ready`/`reason`), `cpus` (`os.availableParallelism()` capped by the cgroup v2 `cpu.max` quota), `busy`, `queued`, `gemini { configured /* GEMINI_API_KEY set */, model }` |
 | PUT | `/v1/stt` | `UpdateStt { profile: SttProfile }` | `200 SttStatus`; stores the profile in the `settings` table (key `stt.profile`) and publishes `stt.updated` when it changed; 400 for an unknown profile |
 | POST | `/v1/agent/runs/archive` | `ArchiveAgentRuns { ids: AgentRunId[] (1–500), archived: boolean } \| { all: true, archived: boolean, projectId? }` | `200 { count }` = runs whose archived state changed; `archived: true` sets `archivedAt` to now, `false` clears it; `all` covers every finished run (of `projectId`); running runs and unknown ids are skipped; publishes `agent.updated` per changed run |
 | POST | `/v1/agent/runs/delete` | `DeleteAgentRuns { ids: AgentRunId[] (1–500) } \| { all: true, projectId?, archived?: boolean }` | `200 { count }` = runs deleted for good with their events (one transaction; inbox items keep their row with `agentRunId: null`); `all` covers every finished run, only archived ones with `archived: true`, only non-archived ones with `false`; running runs and unknown ids are skipped; publishes `agent.deleted` when `count > 0` |
@@ -385,12 +424,18 @@ type GitSummary = { branch: string | null; dirty: boolean; ahead: number; behind
                     lastCommit: { sha: string; subject: string; date: string } | null };
 type Project = { id: string; name: string; path: string; framework: Framework;
                  packageManager: PackageManager | null; scripts: string[];
-                 buildTargets: BuildTarget[]; git: GitSummary | null };
+                 buildTargets: BuildTarget[]; git: GitSummary | null;
+                 confidential: boolean;  // confidential: name is always the id, never package.json's
+                 claudeAccountId: string | null };  // null: the default Claude account
+type ClaudeAccountProfile = { id: string /* "claude" | "claude-<n>" */; primary: boolean; present: boolean /* dir mounted */;
+                              loggedIn: boolean; account: ClaudeAccount | null; subscriptionType: string | null;
+                              credentialsExpiresAt: string | null; settingsPresent: boolean; configDir: string };
 type GitFileStatus = { path: string; index: string; worktree: string };
 type GitCommit = { sha: string; subject: string; author: string; date: string };
 type CreateProject = { name: string;      // 1–128 chars; directory = projectIdFromName(name) ("My App" → "my-app")
                        gitUrl?: string;   // https|ssh|git|file URL or user@host:path, no leading "-", ≤ 2048
-                       branch?: string }; // git ref pattern: no leading "-", "/" or ".", no ".."
+                       branch?: string;   // git ref pattern: no leading "-", "/" or ".", no ".."
+                       confidential?: boolean }; // marks the project confidential; name is then a pseudonym
 
 type LogLine = { seq: number; ts: string; stream: "stdout" | "stderr" | "system"; text: string };
 
@@ -424,9 +469,11 @@ type UploadKind = "image" | "pdf" | "audio" | "file";
 type Upload = { id: string /* upl_… */; name: string; mimeType: string; kind: UploadKind; sizeBytes: number;
                 path: string /* absolute, inside the sandbox */; createdAt: string };
 type CreateUpload = { name: string /* ≤ 255 */; mimeType: string; data: string /* base64, ≤ 20 MiB decoded */ };
-type CreateTranscription = { uploadId: string; language?: string /* ISO-639-1 hint */ };
+type SttProvider = "native" | "gemini";
+type CreateTranscription = { uploadId: string; language?: string /* ISO-639-1 hint */; provider?: SttProvider /* default native */ };
 type Transcription = { uploadId: string; text: string; language: string | null; durationMs: number | null;
-                       engine: string /* "whisper.cpp" | "openai-compatible" */ };
+                       engine: string /* "whisper.cpp" | "openai-compatible" | "gemini" */;
+                       fallbackReason: string | null /* why Gemini was skipped for the native engine */ };
 type SttProfile = "off" | "eco" | "balanced" | "performance";
 // whisper.cpp tuning (cpus = SttStatus.cpus):
 //   off: no transcriptions (503) · eco: base, 2 threads, nice 19 + ionice -c3
@@ -436,13 +483,15 @@ type SttProfileInfo = { id: SttProfile; model: string | null /* ggml name, null 
 type SttStatus = { profile: SttProfile; profiles: SttProfileInfo[] /* STT_PROFILES order */;
                    engine: "whisper.cpp" | "openai-compatible" | null; ready: boolean; reason: string | null;
                    model: string | null /* after the THEONE_WHISPER_MODEL fallback; THEONE_STT_MODEL for openai-compatible */;
-                   cpus: number; busy: boolean; queued: number };
+                   cpus: number; busy: boolean; queued: number;
+                   gemini: { configured: boolean /* GEMINI_API_KEY set */; model: string } };
 type UpdateStt = { profile: SttProfile };
 type AgentRunUsage = { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number;
                        totalTokens: number /* sum of the four */ };
 type AgentRun = { id: string; projectId: string | null; prompt: string;
                   mode: AgentRunMode | null /* null = THEONE_CLAUDE_PERMISSION_MODE */; attachments: Upload[];
-                  sessionId: string | null; state: AgentRunState;
+                  sessionId: string | null; claudeAccountId: string | null /* null: before accounts (primary) */;
+                  state: AgentRunState;
                   startedAt: string; endedAt: string | null;
                   usage: AgentRunUsage | null /* from Claude's `result` message; null until it ends */;
                   result: string | null; error: string | null;
@@ -463,13 +512,21 @@ type InboxItem = { id: string /* inb_ */; kind: InboxKind; title: string; body: 
                    createdAt: string; updatedAt: string; readAt: string | null };
 
 // Sync back (sandbox → host), see sync-back.md. SyncPath: relative POSIX, no `..`/`.`/empty segments, no `\`, never `.git`.
-type SyncFileChange = { path: string; kind: "added" | "modified" | "deleted"; sha256: string | null; size: number | null };
+type SyncFileChange = { path: string; kind: "added" | "modified" | "deleted"; sha256: string | null; size: number | null;
+                        discardable?: boolean /* baseline restorable: always for added; else its blob is stored */ };
+type SyncDiscard = { paths?: string[] /* omitted = every change */ };
+type SyncDiscardResult = { discarded: string[]; unavailable: string[] /* no blob */; backupPath: string | null; changes: SyncChanges };
 type SyncHost = { name: string; lastSeenAt: string; online: boolean; linked: boolean };
 type SyncChanges = { projectId: string; baselineAt: string | null /* never pushed */; changes: SyncFileChange[];
-                     totalBytes: number; host: SyncHost | null };
+                     totalBytes: number; host: SyncHost | null; lastGetAt?: string | null /* last get since the push */ };
+type SyncFileStat = { path: string; kind: "added" | "modified" | "deleted"; insertions: number; deletions: number; binary: boolean;
+                      oldMode: "100644" | "100755" | "120000" | null; newMode: "100644" | "100755" | "120000" | null;
+                      oldSize: number | null; newSize: number | null };
 type SyncResult = { added: number; modified: number; deleted: number; conflicts: string[];
-                    snapshotId: string | null; hostPath: string | null };
-type SyncRequest = { id: string /* sync_ */; projectId: string; kind: "pull" | "revert";
+                    snapshotId: string | null; hostPath: string | null;
+                    /* get only: */ files?: SyncFileStat[]; insertions?: number; deletions?: number; gitFiles?: number;
+                    syncedAt?: string; previousSyncAt?: string | null; backupPath?: string | null };
+type SyncRequest = { id: string /* sync_ */; projectId: string; kind: "pull" | "revert" | "get" /* get: host → sandbox */;
                      status: "pending" | "claimed" | "applied" | "failed" | "cancelled";
                      paths: string[] | null /* null = all */; force: boolean; source: "mobile" | "desktop" | "cli";
                      claimedBy: string | null; result: SyncResult | null; error: string | null;
@@ -509,9 +566,10 @@ type ServerEvent =
   | { type: "agent.deleted"; ids: string[] }  // AgentRunIds removed by POST /v1/agent/runs/delete
   | { type: "inbox.updated"; item?: InboxItem; unreadCount: number; attentionCount: number }  // item: added or bumped; absent after mark-read
   | { type: "project.updated"; project: Project }
+  | { type: "project.deleted"; id: string }  // ProjectId moved out by DELETE /v1/projects/:id
   | { type: "stt.updated"; stt: SttStatus }  // PUT /v1/stt changed the profile
   | { type: "sync.updated"; request: SyncRequest }  // a sync request was created, claimed, completed, cancelled or timed out
-  | { type: "sync.changed"; projectId: string };  // the sync-back baseline moved (push or ack)
+  | { type: "sync.changed"; projectId: string };  // the sync-back baseline moved (push, ack or get)
 ```
 
 Identity resolution (controller): `viewer` comes from the Tailscale Serve headers
@@ -600,6 +658,28 @@ host), the page hides its own top bar (the app shows status) and starts the key 
 **⌨** (toggle the phone keyboard) and **URL** (posts `vnc-action`); `theone-insets` pads
 the screen below the app's header (`top`) and the key row above its bottom chrome (`bottom`).
 
+### 5.7 Host shell API (`theone-controller host serve`)
+
+Same JSON error format, `/v1` prefix and terminal protocol as the controller, so
+`/ui/terminal` and `TheOneClient` work against it unchanged. Two credentials:
+the **host token** (`Authorization: Bearer`, from `host pair`, compared in constant
+time) and a **session** (`HostSession`, issued for the PIN, in memory only, valid
+`LIMITS.hostSessionTtlMs` = 15 min, dropped when the token is rotated or the PIN
+changes). Neither is accepted where the other is expected.
+
+| Method | Path | Auth | Body | Response |
+|---|---|---|---|---|
+| GET | `/v1/health` | — | — | `HostHealth { ok, service: "host-shell", version, protocolVersion, hostId }` |
+| GET | `/v1/host/lock` | host token | — | `HostLockStatus { pinSet, attemptsLeft, lockedUntil }` |
+| POST | `/v1/host/unlock` | host token | `HostUnlock { pin }` (6–12 digits, else 400 without counting) | `200 HostSession { session, expiresAt }`; 503 `No PIN is set; run theone-controller host pin on the host`; 403 `Wrong PIN (<n> attempts left)`; after `hostPinMaxAttempts` (5) wrong PINs 403 `Too many wrong PINs; try again after <time>` for `hostLockoutBaseMs` (5 min) × 2^lockouts, capped at `hostLockoutMaxMs` (24 h). Attempts are serialized; counters persist in `state.json`; a correct PIN resets them |
+| POST | `/v1/host/lock` | host token | `HostLock { session }` | `204`; ends that session |
+| POST | `/v1/auth/ticket` | session | — | `Ticket` (one-time, 60 s) |
+| GET | `/v1/terminals` | session | — | `TerminalInfo[]` (newest first) |
+| POST | `/v1/terminals` | session | `CreateTerminal` with `kind: "shell"` and no `projectId` (else 400) | `201 TerminalInfo` (`projectId: null`, `title` `Host · <hostname>`, `cwd` `$HOME`) |
+| DELETE | `/v1/terminals/:id` | session | — | `TerminalInfo` (SIGHUP to the group) |
+| WS | `/v1/terminals/:id/stream?ticket=` | ticket | §5.3 terminal frames | scrollback replay, survives disconnects; an attached stream stays open after its session expires |
+| GET | `/ui/terminal` | — | — | the controller's xterm page |
+
 ## 6. Supervision & persistence
 
 ### 6.1 State
@@ -615,8 +695,24 @@ the screen below the app's header (`top`) and the key row above its bottom chrom
   `cache_write_tokens` (`usage` is null when `input_tokens` is null) and drops `cost_usd`.
   Migration 8 adds `settings` (`key`, `value`, `updated_at`), holding `stt.profile`.
   Migration 10 adds `live_activity_tokens` (ActivityKit tokens: `token`, `kind`, `activity_id`, timestamps).
+  Migration 11 adds `confidential_projects` (`project_id`, `marked_at`).
+* Confidential projects: a project whose id is a pseudonym (e.g. `morning-cat`, chosen by
+  the desktop client) whose real name never reaches the sandbox. It is marked by
+  `CreateProject.confidential` or `POST /v1/projects/:id/sync?confidential=1`; nothing in the
+  API unmarks it. For such a project `Project.name` is the id, `GitCommit.author` is
+  `REDACTED` (`REDACTED` in `@theone/protocol`), `POST /v1/artifacts` is refused with 403,
+  and agent runs and `claude` terminals get `--append-system-prompt` with
+  `confidentialPrompt(id)` (`apps/controller/src/services/confidential.ts`): the project is
+  known only by its pseudonym; never reveal real, client, company, product or people's
+  names, authors, emails, API/base URLs, hostnames, endpoints or keys in replies, commits,
+  comments, docs, logs, summaries or PR text, writing `REDACTED` instead; do not share files
+  as artifacts.
 * Sync back: the baseline manifest of each pushed project in
-  `$THEONE_DATA_DIR/sync/<projectId>.json` (`{ pushedAt, files: { path: sha256 }, executable: path[] }`); sync
+  `$THEONE_DATA_DIR/sync/<projectId>.json` (`{ pushedAt, files: { path: sha256 }, executable: path[], gotAt?, gitHead? }`),
+  the baseline content in `$THEONE_DATA_DIR/sync/blobs/<projectId>/<sha256>` (`<sha256>.link`: a symlink target;
+  0600, written on push, get and ack, unreferenced ones removed on push), sandbox copies of edits a `get --force`
+  or a discard overwrote in `$THEONE_DATA_DIR/sync/backups/<projectId>/<requestId | discard-<ts>>/`
+  (newest 20 per project), `get` staging in `$THEONE_DATA_DIR/sync/staging/` (removed after each apply); sync
   requests in the database (newest 500 kept; a request `claimed` for over 10 minutes is failed).
   See [sync-back.md](sync-back.md).
 * Logs: `$THEONE_DATA_DIR/logs/<id>.log` (`<ts> <stream> <seq> <text>` lines), rotated at
@@ -692,8 +788,16 @@ theone-controller token [--rotate]              # print the token, or write a ne
 theone-controller api <METHOD> <PATH> [JSON|-]  # call the local API; the agent's only way to use it
 theone-controller share <file> [--project p] [--name n] [--note t] [--json]  # POST /v1/artifacts; prints "shared <name> (<size>, <project>) as <id>"
 theone-controller hook                          # Claude Code hook: stdin JSON → POST /v1/hooks/claude; silent, always exit 0
+theone-controller monolith --get [--force] [--json]  # also /usr/local/bin/monolith; in /workspace/projects/<id>/…: queue a `get` and print a git pull style summary (sync-back.md §6); exit 0 / 1 / 2 conflicts / 130 interrupted
+theone-controller host serve [--bind <ipv4>] [--port <n>]  # ON THE HOST: host shell daemon (§5.7)
+theone-controller host pin [--stdin]            # set the 6-12 digit PIN (prompted twice without echo); ends sessions, resets lockouts
+theone-controller host pair [--json]            # theone://host link + QR with the host token; warns while no PIN is set; --json: { link, url, name, pinSet }
+theone-controller host token [--rotate]         # print, or replace, the host token (phones pair again)
 theone-controller --version | --help
 ```
+
+`host …` never reads the sandbox configuration; the repo's `bun run host <cmd>` runs it
+from a checkout on the host. Exit code 2 for bad arguments, a bad PIN or a refused bind.
 
 The CLI reads the token from `THEONE_TOKEN`/`THEONE_TOKEN_FILE` and talks to
 `http://127.0.0.1:$THEONE_PORT` (the bind address unless it is a wildcard).
@@ -804,6 +908,11 @@ limits from `.env`, explicit `environment` lists (no `env_file`), json-file logs
 * WebViews load `<baseUrl>/ui/terminal#ticket=…&session=<id>` and
   `<baseUrl>/ui/vnc#ticket=…&password=…` (web platform: `<iframe>`), bridge per §5.6.
 * A 401/403 or a protocol mismatch shows a notice with **Pair again**.
+* **Host shell** (§5.7): routes `host` (pair by scanning `theone-controller host pair` or the
+  `theone://host` deep link, then a PIN pad; lists host terminals) and `host/terminal/[id]`
+  (the same xterm WebView). The host token is kept in `expo-secure-store` like sandbox
+  tokens; the session lives in memory only and is dropped on **Lock**, and on expiry
+  (the next request gets 401 → PIN pad again).
 * The **Profile tab** reads the paired sandbox: Tailscale identity from `GET /v1/identity`
   (viewer, else owner, else the sandbox name; tailnet pill; a notice when the controller does not
   expose it), counts from `/v1/status`, and an activity feed merged from builds, Claude runs and

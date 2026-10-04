@@ -1,9 +1,10 @@
 import { memo, useMemo } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { PauseIcon, PlayIcon } from "phosphor-react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import Waveform from "@/components/waveform";
+import PressableScale from "@/components/pressable-scale";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { IconSize } from "@/theme";
 
@@ -36,20 +37,21 @@ const VoiceBubble = ({
 
   return (
     <View style={styles.bubble}>
-      <Pressable
+      <PressableScale
+        depth="control"
         accessibilityRole="button"
         accessibilityLabel={playing ? pauseLabel : playLabel}
         accessibilityState={{ busy: loading }}
         onPress={onToggle}
-        style={({ pressed }) => [styles.toggle, pressed && styles.pressed]}
+        style={styles.toggle}
       >
         {loading ? (
           <ActivityIndicator size="small" color={theme.colors.textOnAccent} />
         ) : (
-          <ToggleIcon size={IconSize.md} color={theme.colors.textOnAccent} weight="fill" />
+          <ToggleIcon size={IconSize.md} color={theme.colors.textOnAccent} weight="regular" />
         )}
-      </Pressable>
-      <Waveform levels={levels} progress={progress} activeColor="accentStrong" inactiveColor="accent" />
+      </PressableScale>
+      <Waveform levels={levels} progress={progress} activeColor="voiceActive" inactiveColor="textTertiary" />
       {durationLabel ? (
         <ThemedText variant="label" color="textSecondary" style={styles.duration}>
           {durationLabel}

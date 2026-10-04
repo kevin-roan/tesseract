@@ -14,18 +14,18 @@ export type MetricFigureProps = {
   accessibilityLabel?: string;
 };
 
-/** A big confident number with its unit set small and grey on the same baseline. */
+/** A big, light tabular number with its unit set tiny and grey on the same baseline. */
 const MetricFigure = ({ value, unit, size = "metric", accessibilityLabel }: MetricFigureProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <View style={styles.row} accessible accessibilityLabel={accessibilityLabel ?? [value, unit].filter(Boolean).join(" ")}>
-      <ThemedText variant={size} numberOfLines={1} adjustsFontSizeToFit>
+      <ThemedText variant={size} numberOfLines={1} adjustsFontSizeToFit style={styles.value}>
         {value}
       </ThemedText>
       {unit ? (
-        <ThemedText variant={size === "metric" ? "body" : "caption"} color="textTertiary" numberOfLines={1}>
+        <ThemedText variant={size === "metric" ? "label" : "caption"} color="textSecondary" numberOfLines={1} style={styles.unit}>
           {unit}
         </ThemedText>
       ) : null}

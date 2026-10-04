@@ -2,12 +2,13 @@ import { useMemo, type ReactNode } from "react";
 import { View } from "react-native";
 import { ArrowLeftIcon, XIcon, type Icon } from "phosphor-react-native";
 
-import IconButton from "@/components/icon-button";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import type { Tone } from "@/lib/tone";
 
+import HeaderButton from "./header-button";
 import createStyles from "./styles";
+import { HeaderActionSize, HeaderSubtitleVariant, HeaderTitleVariant, type HeaderSize } from "./variants";
 
 export type HeaderAction = {
   id: string;
@@ -26,7 +27,9 @@ export type ScreenHeaderProps = {
   dismissible?: boolean;
   actions?: HeaderAction[];
   accessory?: ReactNode;
-  large?: boolean;
+  /** Leads the subtitle line, e.g. a connection dot. */
+  status?: ReactNode;
+  size?: HeaderSize;
 };
 
 const ScreenHeader = ({
@@ -36,7 +39,8 @@ const ScreenHeader = ({
   dismissible = false,
   actions,
   accessory,
-  large = false,
+  status,
+  size = "regular",
 }: ScreenHeaderProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -44,7 +48,7 @@ const ScreenHeader = ({
   return (
     <View style={styles.header}>
       {onBack ? (
-        <IconButton
+        <HeaderButton
           icon={dismissible ? XIcon : ArrowLeftIcon}
           label={dismissible ? "Close" : "Go back"}
           onPress={onBack}
@@ -53,18 +57,23 @@ const ScreenHeader = ({
       ) : null}
       <View style={styles.titles}>
         <View style={styles.titleRow}>
-          <ThemedText variant={large ? "h1" : "h3"} numberOfLines={1} accessibilityRole="header" style={styles.title}>
+          <ThemedText variant={HeaderTitleVariant[size]} numberOfLines={1} accessibilityRole="header" style={styles.title}>
             {title}
           </ThemedText>
           {accessory}
         </View>
-        {subtitle ? (
-          <ThemedText variant="caption" color="textSecondary" numberOfLines={1}>
-            {subtitle}
-          </ThemedText>
+        {subtitle || status ? (
+          <View style={styles.subtitleRow}>
+            {status}
+            {subtitle ? (
+              <ThemedText variant={HeaderSubtitleVariant[size]} color="textSecondary" numberOfLines={1} style={styles.subtitle}>
+                {subtitle}
+              </ThemedText>
+            ) : null}
+          </View>
         ) : null}
       </View>
-      {actions?.map(({ id, ...action }) => <IconButton key={id} {...action} />)}
+      {actions?.map(({ id, ...action }) => <HeaderButton key={id} size={HeaderActionSize[size]} {...action} />)}
     </View>
   );
 };

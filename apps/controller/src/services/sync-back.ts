@@ -1,5 +1,5 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { lstat, readdir, readlink } from "node:fs/promises";
+import { lstat, readdir, readlink, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import {
   createId,
@@ -9,14 +9,19 @@ import {
   type CreateSyncRequest,
   type SyncAck,
   type SyncChanges,
+  type SyncDiscard,
+  type SyncDiscardResult,
   type SyncFileChange,
+  type SyncGetPlan,
+  type SyncGetPlanResponse,
   type SyncHeartbeat,
   type SyncHost,
   type SyncRequest,
   type SyncRequestStatus,
+  type SyncResult,
 } from "@theone/protocol";
 import { mapLimit } from "../core/concurrency";
-import { badRequest, conflict, notFound } from "../core/errors";
+import { badRequest, conflict, HttpError, notFound } from "../core/errors";
 import { childEnv } from "../core/exec";
 import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";
@@ -25,6 +30,23 @@ import { nowIso } from "../core/time";
 import type { Config } from "../config";
 import type { Repositories } from "../db/repositories";
 import type { GitService } from "./git";
+import type { SyncFormat } from "./projects";
+import { SyncBlobStore } from "./sync-blobs";
+import {
+  applyDiscard,
+  applyGet,
+  checkPlan,
+  checkStaged,
+  extractMembers,
+  GIT_CONFLICT,
+  GIT_DIR,
+  probeAll,
+  probeHash,
+  sha256File,
+  sha256Text,
+  type DiscardStep,
+  type Probe,
+} from "./sync-get";
 
 export const SYNC_REQUESTS_KEEP = 500;
 export const STALE_CLAIM_ERROR = "The desktop companion stopped responding";
@@ -34,8 +56,12 @@ const WALK_SKIP = new Set([".git", "node_modules"]);
 const HOST_FORGET_MS = 24 * 60 * 60_000;
 const SWEEP_INTERVAL_MS = 30_000;
 
-/** `executable`: regular files with an executable bit (absent in baselines written before it was tracked: modes are then not compared). */
-type Baseline = { pushedAt: string; files: Record<string, string>; executable?: string[] };
+/**
+ * `executable`: regular files with an executable bit (absent in baselines written before it was tracked: modes are then not compared).
+ * `gotAt`: the last get since the push. `gitHead`: the sandbox repo's `ref@sha` at the last push or get (absent: not compared).
+ */
+type Baseline = { pushedAt: string; files: Record<string, string>; executable?: string[]; gotAt?: string; gitHead?: string | null };
+type PendingGet = { plan: SyncGetPlan; upload: string[]; gitUpload: string[] };
 type ManifestEntry = { sha256: string; size: number; executable: boolean };
 type Manifest = Map<string, ManifestEntry>;
 type CachedHash = { key: string; sha256: string };
@@ -47,13 +73,7 @@ export type SyncBackOptions = {
   hostOnlineMs?: number;
 };
 
-const sha256Text = (value: string) => new Bun.CryptoHasher("sha256").update(value).digest("hex");
-
-async function sha256File(path: string): Promise<string> {
-  const hasher = new Bun.CryptoHasher("sha256");
-  for await (const chunk of Bun.file(path).stream()) hasher.update(chunk);
-  return hasher.digest("hex");
-}
+const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
 async function walk(root: string): Promise<string[]> {
   const files: string[] = [];
@@ -85,6 +105,10 @@ async function walk(root: string): Promise<string[]> {
 export class SyncBackService {
   private readonly hashCache = new Map<string, Map<string, CachedHash>>();
   private readonly hosts = new Map<string, HostSeen>();
+  private readonly pendingGets = new Map<string, PendingGet>();
+  private readonly applying = new Set<string>();
+  private readonly discarding = new Set<string>();
+  private readonly blobs: SyncBlobStore;
   private readonly claimTimeoutMs: number;
   private readonly sweepIntervalMs: number;
   private readonly hostOnlineMs: number;
@@ -101,6 +125,7 @@ export class SyncBackService {
     this.claimTimeoutMs = options.claimTimeoutMs ?? LIMITS.syncClaimTimeoutMs;
     this.sweepIntervalMs = options.sweepIntervalMs ?? SWEEP_INTERVAL_MS;
     this.hostOnlineMs = options.hostOnlineMs ?? LIMITS.syncHostOnlineMs;
+    this.blobs = new SyncBlobStore(join(config.dataDir, "sync", "blobs"));
   }
 
   start(): void {
@@ -123,7 +148,9 @@ export class SyncBackService {
       files[path] = entry.sha256;
       if (entry.executable) executable.push(path);
     }
-    this.writeBaseline(location.id, { pushedAt: nowIso(), files, executable });
+    this.writeBaseline(location.id, { pushedAt: nowIso(), files, executable, gitHead: await this.git.head(location.path) });
+    await this.capture(location, Object.entries(files));
+    await this.blobs.keepOnly(location.id, new Set(Object.values(files))).catch((error) => this.logger.warn("sync blob cleanup failed", { project: location.id, error }));
     this.hub.publish({ type: "sync.changed", projectId: location.id });
   }
 
@@ -138,14 +165,15 @@ export class SyncBackService {
     for (const [path, entry] of manifest) {
       const before = baseline.files[path];
       if (before === entry.sha256 && (executable === null || executable.has(path) === entry.executable)) continue;
-      changes.push({ path, kind: before === undefined ? "added" : "modified", sha256: entry.sha256, size: entry.size });
+      const discardable = before === undefined || before === entry.sha256 || this.blobs.find(location.id, before) !== null;
+      changes.push({ path, kind: before === undefined ? "added" : "modified", sha256: entry.sha256, size: entry.size, discardable });
     }
-    for (const path of Object.keys(baseline.files)) {
-      if (!manifest.has(path)) changes.push({ path, kind: "deleted", sha256: null, size: null });
+    for (const [path, before] of Object.entries(baseline.files)) {
+      if (!manifest.has(path)) changes.push({ path, kind: "deleted", sha256: null, size: null, discardable: this.blobs.find(location.id, before) !== null });
     }
     changes.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
     const totalBytes = changes.reduce((sum, change) => sum + (change.size ?? 0), 0);
-    return { projectId: location.id, baselineAt: baseline.pushedAt, changes, totalBytes, host };
+    return { projectId: location.id, baselineAt: baseline.pushedAt, changes, totalBytes, host, lastGetAt: baseline.gotAt ?? null };
   }
 
   /** A gzip tar of `paths`, each of which must be a current `added` or `modified` change. */
@@ -192,8 +220,74 @@ export class SyncBackService {
     }
     if (baseline.executable) baseline.executable = [...executable].sort();
     this.writeBaseline(location.id, baseline);
+    await this.capture(location, input.changes.flatMap(({ path, sha256 }) => (sha256 === null ? [] : [[path, sha256] as const])));
     this.hub.publish({ type: "sync.changed", projectId: location.id });
     return this.changes(location.id);
+  }
+
+  /** Puts sandbox files back to the baseline: `added` ones are removed, the others restored from stored blobs. */
+  async discard(id: string, input: SyncDiscard): Promise<SyncDiscardResult> {
+    const location = this.require(id);
+    const baseline = this.requireBaseline(location.id);
+    this.assertIdle(location.id);
+    this.discarding.add(location.id);
+    const work = join(this.config.dataDir, "sync", "staging", createId("sync"));
+    try {
+      const { changes } = await this.changes(location.id);
+      const byPath = new Map(changes.map((change) => [change.path, change]));
+      const selected = input.paths
+        ? [...new Set(input.paths)].map((path) => {
+            const change = byPath.get(path);
+            if (!change) throw badRequest(`${path.slice(0, 200)} is not a current change`);
+            return change;
+          })
+        : changes;
+      const executable = baseline.executable ? new Set(baseline.executable) : null;
+      const steps: DiscardStep[] = [];
+      const unavailable: string[] = [];
+      for (const change of selected) {
+        if (change.kind === "added") {
+          steps.push({ path: change.path, restore: null });
+          continue;
+        }
+        const sha256 = baseline.files[change.path]!;
+        const isExecutable = executable === null ? null : executable.has(change.path);
+        const blob = this.blobs.find(location.id, sha256);
+        if (change.sha256 === sha256 && isExecutable !== null) steps.push({ path: change.path, restore: { kind: "mode", executable: isExecutable } });
+        else if (blob) steps.push({ path: change.path, restore: { kind: blob.kind, blob: blob.path, executable: blob.kind === "file" ? isExecutable : null } });
+        else unavailable.push(change.path);
+      }
+      let backupPath: string | null = null;
+      if (steps.length > 0) {
+        const backupDir = join(this.config.dataDir, "sync", "backups", location.id, `discard-${nowIso().replace(/[-:.]/g, "")}`);
+        ({ backupPath } = await applyDiscard({ root: location.path, work, steps, backupDir }));
+        this.hub.publish({ type: "sync.changed", projectId: location.id });
+      }
+      return { discarded: steps.map((step) => step.path), unavailable, backupPath, changes: await this.changes(location.id) };
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      this.logger.warn("sync discard failed", { project: location.id, error });
+      throw new HttpError("internal", error instanceof Error ? error.message : String(error));
+    } finally {
+      this.discarding.delete(location.id);
+      await rm(work, { recursive: true, force: true }).catch(() => undefined);
+    }
+  }
+
+  /** Throws 409 while a `pending`/`claimed` request exists for the project. */
+  assertIdle(id: string): void {
+    this.sweep();
+    const active = this.repos.syncRequests.where("project_id = ? AND status IN ('pending', 'claimed')", id)[0];
+    if (active) throw conflict(`Sync request ${active.id} is already ${active.status} for project ${id}`);
+    if (this.discarding.has(id)) throw conflict(`A discard is already running for project ${id}`);
+  }
+
+  /** Drops the baseline and its blobs once the project left the sandbox. */
+  async forget(id: string): Promise<void> {
+    this.hashCache.delete(id);
+    await rm(this.baselinePath(id), { force: true });
+    await this.blobs.removeProject(id);
+    this.hub.publish({ type: "sync.changed", projectId: id });
   }
 
   heartbeat(input: SyncHeartbeat): void {
@@ -209,7 +303,7 @@ export class SyncBackService {
     this.sweep();
     const active = this.repos.syncRequests.where("project_id = ? AND status IN ('pending', 'claimed')", location.id)[0];
     if (active) throw conflict(`Sync request ${active.id} is already ${active.status} for project ${location.id}`);
-    if (input.kind === "pull" && !this.readBaseline(location.id)) {
+    if (input.kind !== "revert" && !this.readBaseline(location.id)) {
       throw badRequest(`Project ${location.id} has not been pushed yet; run monolith --sync first`);
     }
     const now = nowIso();
@@ -256,11 +350,118 @@ export class SyncBackService {
     this.sweep();
     const request = this.requireRequest(id, "claimed");
     const error = input.status === "failed" ? (input.error ?? "Sync failed") : (input.error ?? null);
+    this.pendingGets.delete(id);
     return this.update({ ...request, status: input.status, result: input.result ?? null, error });
+  }
+
+  /** A claimed `get`: checks the host's changes against the sandbox and says which files to send. */
+  async planGet(id: string, plan: SyncGetPlan): Promise<SyncGetPlanResponse> {
+    this.sweep();
+    const request = this.requireGet(id);
+    const location = this.require(request.projectId);
+    const baseline = this.requireBaseline(location.id);
+    await checkPlan(location.path, plan);
+    const current = await probeAll(location.path, plan.changes);
+    const conflicts = await this.getConflicts(location, baseline, plan, current);
+    if (conflicts.length > 0 && !request.force) {
+      this.pendingGets.delete(request.id);
+      return { request: this.failGet(request, plan, conflicts), upload: [], gitUpload: [] };
+    }
+    const upload = plan.changes.filter((change) => change.sha256 !== null && probeHash(current.get(change.path) ?? null) !== change.sha256).map((change) => change.path);
+    const gitUpload = plan.git ? [...new Set(plan.git.changed)] : [];
+    this.pendingGets.set(request.id, { plan, upload, gitUpload });
+    return { request: this.update(request), upload, gitUpload };
+  }
+
+  /** Applies a planned `get` from the archive of the files `planGet` asked for, and completes the request. */
+  async applyGet(id: string, format: SyncFormat, archive: ReadableStream<Uint8Array>): Promise<SyncRequest> {
+    this.sweep();
+    const request = this.requireGet(id);
+    const pending = this.pendingGets.get(request.id);
+    if (!pending) throw conflict(`Sync request ${request.id} has no plan (the controller restarted?); run monolith --get again`);
+    if (this.applying.has(request.id)) throw conflict(`Sync request ${request.id} is already being applied`);
+    this.applying.add(request.id);
+    const scratch = join(this.config.dataDir, "sync", "staging", request.id);
+    try {
+      const location = this.require(request.projectId);
+      const { plan, upload, gitUpload } = pending;
+      await rm(scratch, { recursive: true, force: true });
+      const staged = join(scratch, "files");
+      const expected = new Map<string, string | null>();
+      for (const change of plan.changes) if (upload.includes(change.path)) expected.set(change.path, change.sha256);
+      for (const path of gitUpload) expected.set(`${GIT_DIR}/${path}`, null);
+      await extractMembers(archive, format === "application/gzip", staged, [...expected.keys()]);
+      await checkStaged(staged, expected);
+
+      const baseline = this.requireBaseline(location.id);
+      await checkPlan(location.path, plan);
+      const current = await probeAll(location.path, plan.changes);
+      const conflicts = await this.getConflicts(location, baseline, plan, current);
+      if (conflicts.length > 0 && !request.force) {
+        this.pendingGets.delete(request.id);
+        return this.failGet(request, plan, conflicts);
+      }
+      const outcome = await applyGet({
+        root: location.path,
+        staged,
+        work: join(scratch, "rollback"),
+        plan,
+        current,
+        upload: new Set(upload),
+        gitUpload,
+        overwritten: conflicts.filter((path) => path !== GIT_CONFLICT),
+        backupDir: join(this.config.dataDir, "sync", "backups", location.id, request.id),
+      });
+
+      const syncedAt = nowIso();
+      const next = this.readBaseline(location.id) ?? baseline;
+      const executable = new Set(next.executable ?? []);
+      for (const change of plan.changes) {
+        if (change.sha256 === null) {
+          delete next.files[change.path];
+          executable.delete(change.path);
+        } else {
+          next.files[change.path] = change.sha256;
+          if (change.executable) executable.add(change.path);
+          else executable.delete(change.path);
+        }
+      }
+      if (next.executable) next.executable = [...executable].sort();
+      this.writeBaseline(location.id, { ...next, gotAt: syncedAt, gitHead: await this.git.head(location.path) });
+      await this.capture(location, plan.changes.flatMap(({ path, sha256 }) => (sha256 === null ? [] : [[path, sha256] as const])));
+      this.hub.publish({ type: "sync.changed", projectId: location.id });
+
+      const count = (kind: SyncFileChange["kind"]) => outcome.files.filter((file) => file.kind === kind).length;
+      const result: SyncResult = {
+        added: count("added"),
+        modified: count("modified"),
+        deleted: count("deleted"),
+        conflicts: request.force ? conflicts : [],
+        snapshotId: null,
+        hostPath: plan.hostPath,
+        files: outcome.files,
+        insertions: outcome.files.reduce((sum, file) => sum + file.insertions, 0),
+        deletions: outcome.files.reduce((sum, file) => sum + file.deletions, 0),
+        gitFiles: outcome.gitFiles,
+        syncedAt,
+        previousSyncAt: baseline.gotAt ?? baseline.pushedAt,
+        backupPath: outcome.backupPath,
+      };
+      this.pendingGets.delete(request.id);
+      return this.update({ ...this.requireGet(request.id), status: "applied", result, error: null });
+    } catch (error) {
+      if (error instanceof HttpError) throw error;
+      this.logger.warn("sync get failed", { request: request.id, error });
+      throw new HttpError("internal", error instanceof Error ? error.message : String(error));
+    } finally {
+      this.applying.delete(request.id);
+      await rm(scratch, { recursive: true, force: true }).catch(() => undefined);
+    }
   }
 
   cancel(id: string): SyncRequest {
     const request = this.requireRequest(id, "pending");
+    this.pendingGets.delete(id);
     return this.update({ ...request, status: "cancelled" });
   }
 
@@ -269,7 +470,46 @@ export class SyncBackService {
     const cutoff = new Date(now - this.claimTimeoutMs).toISOString();
     return this.repos.syncRequests
       .where("status = 'claimed' AND updated_at < ?", cutoff)
-      .map((request) => this.update({ ...request, status: "failed", error: STALE_CLAIM_ERROR }));
+      .filter((request) => !this.applying.has(request.id))
+      .map((request) => {
+        this.pendingGets.delete(request.id);
+        return this.update({ ...request, status: "failed", error: STALE_CLAIM_ERROR });
+      });
+  }
+
+  /** Planned paths edited in the sandbox since the last sync (and not already the host's version), plus `.git` when its HEAD moved. */
+  private async getConflicts(location: ProjectLocation, baseline: Baseline, plan: SyncGetPlan, current: Map<string, Probe>): Promise<string[]> {
+    const conflicts = plan.changes
+      .filter((change) => {
+        const now = probeHash(current.get(change.path) ?? null);
+        return now !== (baseline.files[change.path] ?? null) && now !== change.sha256;
+      })
+      .map((change) => change.path);
+    const touchesGit = plan.git !== null && plan.git.changed.length + plan.git.deleted.length > 0;
+    if (touchesGit && baseline.gitHead !== undefined && (await this.git.head(location.path)) !== baseline.gitHead) conflicts.push(GIT_CONFLICT);
+    return conflicts;
+  }
+
+  private failGet(request: SyncRequest, plan: SyncGetPlan, conflicts: string[]): SyncRequest {
+    const files = conflicts.filter((path) => path !== GIT_CONFLICT);
+    const reasons = [
+      ...(files.length > 0 ? [`${plural(files.length, "file")} changed in the sandbox since the last sync: ${files.slice(0, 5).join(", ")}${files.length > 5 ? ", …" : ""}`] : []),
+      ...(files.length < conflicts.length ? ["the sandbox repository has new commits or another branch checked out"] : []),
+    ];
+    const result: SyncResult = { added: 0, modified: 0, deleted: 0, conflicts, snapshotId: null, hostPath: plan.hostPath };
+    return this.update({ ...request, status: "failed", result, error: `Nothing was changed: ${reasons.join("; ")}` });
+  }
+
+  private requireGet(id: string): SyncRequest {
+    const request = this.requireRequest(id, "claimed");
+    if (request.kind !== "get") throw conflict(`Sync request ${id} is a ${request.kind}, not a get`);
+    return request;
+  }
+
+  private requireBaseline(projectId: string): Baseline {
+    const baseline = this.readBaseline(projectId);
+    if (!baseline) throw badRequest(`Project ${projectId} has not been pushed yet; run monolith --sync first`);
+    return baseline;
   }
 
   private update(request: SyncRequest): SyncRequest {
@@ -318,7 +558,13 @@ export class SyncBackService {
       const parsed = JSON.parse(readFileSync(this.baselinePath(projectId), "utf8")) as Partial<Baseline>;
       if (typeof parsed.pushedAt !== "string" || typeof parsed.files !== "object" || parsed.files === null) return null;
       const executable = Array.isArray(parsed.executable) ? parsed.executable.filter((path) => typeof path === "string") : undefined;
-      return { pushedAt: parsed.pushedAt, files: { ...parsed.files }, ...(executable ? { executable } : {}) };
+      return {
+        pushedAt: parsed.pushedAt,
+        files: { ...parsed.files },
+        ...(executable ? { executable } : {}),
+        ...(typeof parsed.gotAt === "string" ? { gotAt: parsed.gotAt } : {}),
+        ...(typeof parsed.gitHead === "string" || parsed.gitHead === null ? { gitHead: parsed.gitHead } : {}),
+      };
     } catch {
       return null;
     }
@@ -330,6 +576,18 @@ export class SyncBackService {
     const temp = `${path}.${process.pid}.tmp`;
     writeFileSync(temp, JSON.stringify(baseline), { mode: 0o600 });
     renameSync(temp, path);
+  }
+
+  /** Stores the baseline content of `entries` whose sandbox file still has that hash; a failure only costs discardability. */
+  private async capture(location: ProjectLocation, entries: readonly (readonly [string, string])[]): Promise<void> {
+    await mapLimit(entries, HASH_CONCURRENCY, async ([path, sha256]) => {
+      if (!this.insideProject(location.path, path)) return;
+      try {
+        await this.blobs.capture(location.id, join(location.path, path), sha256);
+      } catch (error) {
+        this.logger.warn("could not store a sync baseline blob", { project: location.id, path, error });
+      }
+    });
   }
 
   /** `path`'s parent resolves to itself under the project root (no symlinked directories on the way). */

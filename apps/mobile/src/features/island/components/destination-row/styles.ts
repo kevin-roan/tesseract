@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import type { Theme } from "@/theme";
+import { MinTouchTarget, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -8,15 +8,16 @@ export default function createStyles(theme: Theme) {
       flexDirection: "row",
       alignItems: "center",
       gap: theme.spacing.md,
+      minHeight: MinTouchTarget,
       paddingVertical: theme.spacing.md,
-      paddingHorizontal: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.base,
+    },
+    pressed: {
+      backgroundColor: theme.colors.backgroundSelected,
     },
     copy: {
       flex: 1,
       gap: theme.spacing.xxs,
-    },
-    pressed: {
-      opacity: 0.7,
     },
   });
 }

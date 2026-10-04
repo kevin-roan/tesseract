@@ -1,9 +1,10 @@
 import { useMemo } from "react";
-import { Pressable, StyleSheet, View, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
+import { StyleSheet, View, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
 import { BlurView } from "expo-blur";
 import { GlassView, isGlassEffectAPIAvailable, isLiquidGlassAvailable } from "expo-glass-effect";
 import { LinearGradient } from "expo-linear-gradient";
 
+import PressableScale from "@/components/pressable-scale";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useSurfaceTone } from "@/hooks/use-surface-tone";
 import { BlurIntensity, type BlurToken } from "@/theme";
@@ -30,15 +31,24 @@ export type GlassButtonProps = Omit<PressableProps, "style" | "children"> & {
  * Frosted panel that takes its look from the surface it sits on. Renders the
  * native liquid-glass material where the OS has it, and everywhere else a
  * blur under frosted white (light) or smoke (dark) with a hairline rim and a
- * top sheen.
+ * top sheen. Graphite has no glass: it draws a flat hairline panel instead.
  *
  *   <Glass style={styles.stats}>…</Glass>
  */
 export const Glass = ({ children, interactive = false, intensity = "light", style, testID }: GlassProps) => {
   const theme = useAppTheme();
-  const tone = useSurfaceTone() ?? "neutral";
+  const surfaceTone = useSurfaceTone();
+  const tone = surfaceTone ?? "neutral";
   const glass = theme.surfaces[tone].glass;
-  const styles = useMemo(() => createStyles(theme, glass), [theme, glass]);
+  const styles = useMemo(() => createStyles(theme, glass, surfaceTone !== undefined), [theme, glass, surfaceTone]);
+
+  if (theme.look === "graphite") {
+    return (
+      <View style={[styles.glass, styles.flat, style]} testID={testID}>
+        {children}
+      </View>
+    );
+  }
 
   if (isLiquidGlassAvailable() && isGlassEffectAPIAvailable()) {
     return (
@@ -68,14 +78,16 @@ export const Glass = ({ children, interactive = false, intensity = "light", styl
   );
 };
 
-/** Round glass control for header and nav rows: a frosted circle with a hairline rim, floating on a soft shadow. */
+/** Round glass control for header and nav rows: a frosted circle with a hairline rim, floating on a soft shadow (a flat dark tile in graphite). */
 export const GlassButton = ({ children, intensity, style, disabled, ...pressableProps }: GlassButtonProps) => {
   const theme = useAppTheme();
-  const tone = useSurfaceTone() ?? "neutral";
-  const styles = useMemo(() => createStyles(theme, theme.surfaces[tone].glass), [theme, tone]);
+  const surfaceTone = useSurfaceTone();
+  const glass = theme.surfaces[surfaceTone ?? "neutral"].glass;
+  const styles = useMemo(() => createStyles(theme, glass, surfaceTone !== undefined), [theme, glass, surfaceTone]);
 
   return (
-    <Pressable
+    <PressableScale
+      depth="control"
       accessibilityRole="button"
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
@@ -87,6 +99,6 @@ export const GlassButton = ({ children, intensity, style, disabled, ...pressable
           {children}
         </Glass>
       )}
-    </Pressable>
+    </PressableScale>
   );
 };

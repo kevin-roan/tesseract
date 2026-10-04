@@ -22,5 +22,13 @@ export default function createStyles(theme: Theme) {
     title: {
       flexShrink: 1,
     },
+    subtitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+    },
+    subtitle: {
+      flexShrink: 1,
+    },
   });
 }

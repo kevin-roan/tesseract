@@ -11,6 +11,8 @@ export default function createStyles(theme: Theme, size: number) {
       alignItems: "center",
       justifyContent: "center",
       overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElement,
     },
     image: {

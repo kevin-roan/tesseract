@@ -2,13 +2,14 @@
   "cli": {
     "version": ">= 20.2.0",
     "appVersionSource": "remote",
-    "promptToConfigurePushNotifications": true
+    "promptToConfigurePushNotifications": false
   },
   "build": {
     "development": {
       "developmentClient": true,
       "distribution": "internal",
       "environment": "development",
+      "bun": "1.4.2",
       "channel": "development",
       "env": {
         "APP_VARIANT": "development",
@@ -18,14 +19,17 @@
     "preview": {
       "distribution": "internal",
       "environment": "preview",
+      "bun": "1.4.2",
       "channel": "preview",
       "env": {
-        "APP_VARIANT": "production"
+        "APP_VARIANT": "production",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
     "production": {
       "autoIncrement": true,
       "environment": "production",
+      "bun": "1.4.2",
       "channel": "production",
       "env": {
         "APP_VARIANT": "production"

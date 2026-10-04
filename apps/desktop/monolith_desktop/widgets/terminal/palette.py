@@ -75,6 +75,17 @@ PALETTES = MappingProxyType({
             "#5f6b85", "#ff6e6e", "#c3e88d", "#ffe08a", "#a6c8ff", "#e0b0ff", "#a3f7ea", "#ffffff",
         ),
     ),
+    "graphite": TerminalPalette(
+        foreground="#EDEDED",
+        background="#0D0D0D",
+        cursor="#EDEDED",
+        cursor_text="#0D0D0D",
+        selection="#333333",
+        ansi=(
+            "#222222", "#FF6369", "#3DD68C", "#F2C55C", "#7FB8FA", "#C47BEA", "#7FD6C8", "#D4D4D4",
+            "#7A7A7A", "#FF6E6E", "#c3e88d", "#ffe08a", "#a6c8ff", "#E7AEF8", "#a3f7ea", "#ffffff",
+        ),
+    ),
     "light": TerminalPalette(
         foreground="#24292f",
         background="#fbfbfd",

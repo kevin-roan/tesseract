@@ -17,7 +17,7 @@ class ConnectionPreferences(PreferencesPage):
     order = 0
 
     def __init__(self, ctx, dialog) -> None:
-        super().__init__(ctx, dialog, title=S["connection_title"], icon_name=S["connection_icon"])
+        super().__init__(ctx, dialog, title=S["connection_title"], icon=S["connection_icon"])
         group = Adw.PreferencesGroup(title=S["sandbox_group"], description=S["sandbox_group_description"])
         self._url = Adw.EntryRow(title=S["api_url"])
         self._token = Adw.PasswordEntryRow(title=S["token"])

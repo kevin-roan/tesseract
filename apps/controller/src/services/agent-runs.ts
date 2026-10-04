@@ -22,6 +22,8 @@ import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";
 import type { Repositories } from "../db/repositories";
 import type { Config } from "../config";
+import type { ClaudeAccountResolver } from "./claude-accounts";
+import { confidentialPrompt, type ConfidentialProjects } from "./confidential";
 import { AgentStreamParser, toEvent, type AgentEventBody, type AgentStreamResult } from "./agent-stream";
 import type { UploadService } from "./uploads";
 
@@ -46,6 +48,7 @@ export type ClaudeArgsOptions = {
   resumeSessionId?: string;
   attachments?: readonly Upload[];
   uploadsDir?: string;
+  appendSystemPrompt?: string;
 };
 
 /** Audio is left out: its transcript already is the prompt, the recording is only kept for replay. */
@@ -73,6 +76,7 @@ export function claudeArgs(prompt: string, permissionMode: string, options: Clau
     "--permission-mode",
     permissionMode,
     ...(readable.length > 0 && options.uploadsDir ? ["--add-dir", options.uploadsDir] : []),
+    ...(options.appendSystemPrompt ? ["--append-system-prompt", options.appendSystemPrompt] : []),
     ...(options.resumeSessionId ? ["--resume", options.resumeSessionId] : []),
   ];
   return { argv, stdin: `${prompt}${attachmentBlock(readable)}` };
@@ -86,6 +90,8 @@ export class AgentRunService {
     private readonly repos: Repositories,
     private readonly hub: EventHub,
     private readonly uploads: UploadService,
+    private readonly projects: ConfidentialProjects,
+    private readonly accounts: ClaudeAccountResolver,
     private readonly logger: Logger,
     private readonly stopGraceMs: number = LIMITS.processStopGraceMs,
   ) {}
@@ -105,6 +111,7 @@ export class AgentRunService {
     const attachments = this.uploads.resolve(input.attachmentIds ?? []);
     const claude = resolveExecutable(this.config.claudeBin);
     if (!claude) throw unavailable(`Claude Code (${this.config.claudeBin}) is not installed in this sandbox`);
+    const account = this.accounts.resolve(projectId, input.resumeSessionId);
 
     const run: AgentRun = {
       id: createId("agentRun"),
@@ -113,6 +120,7 @@ export class AgentRunService {
       mode: input.mode ?? null,
       attachments,
       sessionId: input.resumeSessionId ?? null,
+      claudeAccountId: account.id,
       state: "running",
       startedAt: nowIso(),
       endedAt: null,
@@ -125,13 +133,14 @@ export class AgentRunService {
       resumeSessionId: input.resumeSessionId,
       attachments,
       uploadsDir: this.uploads.root,
+      appendSystemPrompt: projectId !== null && this.projects.isConfidential(projectId) ? confidentialPrompt(projectId) : undefined,
     });
     const { CLAUDECODE: _nested, ...env } = childEnv();
     let proc: LiveRun["proc"];
     try {
       proc = Bun.spawn([claude, ...argv], {
         cwd,
-        env: { ...env, THEONE_AGENT_RUN_ID: run.id },
+        env: { ...env, ...account.env, THEONE_AGENT_RUN_ID: run.id },
         stdin: "pipe",
         stdout: "pipe",
         stderr: "pipe",

@@ -106,6 +106,7 @@ export async function startTestController(
     ...options.env,
   });
   config.shell = HERMETIC_SHELL;
+  config.trashDir = join(workspace, ".trash");
   options.config?.(config);
   const controller = startController(config, {
     logger: silentLogger,

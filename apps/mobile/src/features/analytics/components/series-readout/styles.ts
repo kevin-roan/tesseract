@@ -1,8 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import type { Theme } from "@/theme";
-
-export const SWATCH_SIZE = 10;
+import { type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -15,10 +13,13 @@ export default function createStyles(theme: Theme) {
       justifyContent: "space-between",
       gap: theme.spacing.sm,
     },
+    title: {
+      flexShrink: 1,
+    },
     items: {
       flexDirection: "row",
       flexWrap: "wrap",
-      columnGap: theme.spacing.base,
+      columnGap: theme.spacing.md,
       rowGap: theme.spacing.xs,
     },
     item: {
@@ -27,9 +28,9 @@ export default function createStyles(theme: Theme) {
       gap: theme.spacing.xs,
     },
     swatch: {
-      width: SWATCH_SIZE,
-      height: SWATCH_SIZE,
-      borderRadius: 2,
+      width: theme.spacing.sm,
+      height: theme.spacing.sm,
+      borderRadius: theme.radius.xs,
     },
     value: {
       fontVariant: ["tabular-nums"],

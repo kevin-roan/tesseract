@@ -1,7 +1,7 @@
 import { useMemo } from "react";
-import { Pressable } from "react-native";
 import { CaretDownIcon } from "phosphor-react-native";
 
+import PressableScale from "@/components/pressable-scale";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { HitSlop, IconSize, MaxFontSizeMultiplier } from "@/theme";
@@ -22,7 +22,8 @@ const ModePill = ({ label, detail, onPress, disabled = false, accessibilityHint,
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <Pressable
+    <PressableScale
+      depth="control"
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityValue={detail ? { text: detail } : undefined}
@@ -31,7 +32,7 @@ const ModePill = ({ label, detail, onPress, disabled = false, accessibilityHint,
       hitSlop={HitSlop.sm}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.pill, pressed && styles.pressed, disabled && styles.disabled]}
+      style={[styles.pill, disabled && styles.disabled]}
       testID={testID}
     >
       <ThemedText variant="label" numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome} style={styles.text}>
@@ -42,8 +43,8 @@ const ModePill = ({ label, detail, onPress, disabled = false, accessibilityHint,
           </ThemedText>
         ) : null}
       </ThemedText>
-      <CaretDownIcon size={IconSize.xs} color={theme.colors.textSecondary} weight="bold" />
-    </Pressable>
+      <CaretDownIcon size={IconSize.xs} color={theme.colors.textSecondary} weight="regular" />
+    </PressableScale>
   );
 };
 

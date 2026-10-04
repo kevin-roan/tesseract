@@ -7,8 +7,10 @@ export default function createStyles(theme: Theme) {
     row: {
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.spacing.sm,
-      paddingVertical: theme.spacing.sm,
+      gap: theme.spacing.xs,
+      paddingVertical: theme.spacing.xs,
+      paddingLeft: theme.spacing.base,
+      paddingRight: theme.spacing.xs,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.colors.divider,
     },

@@ -1,10 +1,11 @@
 import { useMemo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import { CaretRightIcon } from "phosphor-react-native";
 
-import { Glass } from "@/components/glass";
+import PressableScale from "@/components/pressable-scale";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { HitSlop, MaxFontSizeMultiplier } from "@/theme";
+import { HitSlop, IconSize, MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
 
@@ -16,9 +17,8 @@ export type SectionHeaderProps = {
 };
 
 /**
- * Section title with an optional trailing glass pill link. The link only
- * renders when it has somewhere to go, so a header without a handler stays a
- * plain title.
+ * Light section title with an optional trailing soft chip link. The link only renders when it has somewhere to go, so a header
+ * without a handler stays a plain title.
  */
 const SectionHeader = ({ title, actionLabel, onPressAction }: SectionHeaderProps) => {
   const theme = useAppTheme();
@@ -26,24 +26,29 @@ const SectionHeader = ({ title, actionLabel, onPressAction }: SectionHeaderProps
 
   return (
     <View style={styles.header}>
-      <ThemedText variant="h3" style={styles.title} numberOfLines={1} accessibilityRole="header">
+      <ThemedText variant="h4" style={styles.title} numberOfLines={1} accessibilityRole="header">
         {title}
       </ThemedText>
 
       {actionLabel && onPressAction ? (
-        <Pressable
+        <PressableScale
+          depth="control"
           accessibilityRole="button"
           accessibilityLabel={`${actionLabel}, ${title}`}
           hitSlop={HitSlop.md}
           onPress={onPressAction}
-          style={({ pressed }) => pressed && styles.actionPressed}
+          style={styles.action}
         >
-          <Glass style={styles.action}>
-            <ThemedText variant="label" numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
-              {actionLabel}
-            </ThemedText>
-          </Glass>
-        </Pressable>
+          <ThemedText
+            variant="caption"
+            color="textSecondary"
+            numberOfLines={1}
+            maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+          >
+            {actionLabel}
+          </ThemedText>
+          <CaretRightIcon size={IconSize.xs} color={theme.colors.textSecondary} weight="light" />
+        </PressableScale>
       ) : null}
     </View>
   );

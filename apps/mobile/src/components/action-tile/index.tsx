@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 
 import type { ActionCardProps } from "@/components/action-card";
-import { Glass } from "@/components/glass";
+import PressableScale from "@/components/pressable-scale";
 import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -16,10 +16,10 @@ export type ActionTileProps = ActionCardProps & {
 };
 
 /**
- * Quick action: a round bubble holding the icon over a label that wraps
- * instead of truncating. Neutral tiles are frosted glass; any other tone
- * fills the bubble, so the lead action can be the solid `ink` accent. It stays
- * focusable while disabled so screen readers can still announce the hint.
+ * Quick action: a dark hairline tile holding the icon over a label that wraps
+ * instead of truncating. Any tone other than neutral fills the tile with that
+ * surface, so the lead action can be the `ink` accent. It stays focusable
+ * while disabled so screen readers can still announce the hint.
  */
 const ActionTile = ({
   icon: IconComponent,
@@ -33,21 +33,22 @@ const ActionTile = ({
   const ink = useAppTheme(tone);
   const styles = useMemo(() => createStyles(theme), [theme]);
   const inactive = disabled || !onPress;
-  const icon = <IconComponent size={IconSize.lg} color={ink.colors.text} weight="bold" />;
+  const icon = <IconComponent size={IconSize.lg} color={ink.colors.text} weight={theme.look === "graphite" ? "light" : "regular"} />;
 
   return (
-    <Pressable
+    <PressableScale
+      depth="control"
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityHint={accessibilityHint}
       accessibilityState={{ disabled: inactive }}
       disabled={inactive}
       onPress={onPress}
-      style={({ pressed }) => [styles.tile, pressed && styles.pressed, inactive && styles.disabled]}
+      style={[styles.tile, inactive && styles.disabled]}
     >
       <View style={styles.bubbleSlot}>
         {tone === "neutral" ? (
-          <Glass style={styles.bubble}>{icon}</Glass>
+          <View style={[styles.bubble, styles.plain]}>{icon}</View>
         ) : (
           <Surface tone={tone} style={styles.bubble}>
             {icon}
@@ -62,7 +63,7 @@ const ActionTile = ({
       >
         {label}
       </ThemedText>
-    </Pressable>
+    </PressableScale>
   );
 };
 

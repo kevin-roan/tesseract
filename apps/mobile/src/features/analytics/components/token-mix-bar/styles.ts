@@ -2,8 +2,6 @@ import { StyleSheet } from "react-native";
 
 import type { Theme } from "@/theme";
 
-export const MIX_BAR_HEIGHT = 16;
-
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     mix: {
@@ -11,10 +9,13 @@ export default function createStyles(theme: Theme) {
     },
     bar: {
       flexDirection: "row",
-      height: MIX_BAR_HEIGHT,
+      height: theme.spacing.base,
       gap: theme.spacing.xxs,
+      transformOrigin: "left",
+    },
+    segment: {
       borderRadius: theme.radius.xs,
-      overflow: "hidden",
+      borderCurve: "continuous",
     },
     empty: {
       flex: 1,

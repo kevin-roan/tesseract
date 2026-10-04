@@ -4,8 +4,10 @@ import { HammerIcon } from "phosphor-react-native";
 
 import EmptyState from "@/components/empty-state";
 import LogView from "@/components/log-view";
+import MotionItem from "@/components/motion-item";
 import Notice from "@/components/notice";
 import ProgressBar from "@/components/progress-bar";
+import Reveal from "@/components/reveal";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
 import StatusBadge from "@/components/status-badge";
@@ -34,7 +36,13 @@ const BuildDetailView = ({ buildId }: BuildDetailViewProps) => {
           title={detail.title}
           subtitle={detail.subtitle}
           onBack={detail.nav.back}
-          accessory={detail.badge ? <StatusBadge {...detail.badge} /> : undefined}
+          accessory={
+            detail.badge ? (
+              <Reveal key={detail.badge.label}>
+                <StatusBadge {...detail.badge} />
+              </Reveal>
+            ) : undefined
+          }
           actions={detail.headerActions}
         />
       }
@@ -59,17 +67,34 @@ const BuildDetailView = ({ buildId }: BuildDetailViewProps) => {
                 {detail.meta}
               </ThemedText>
             ) : null}
-            {detail.active ? <ProgressBar progress={build.progress} label="Build progress" /> : null}
-            {build.error ? <Notice tone="danger" title="Build failed" message={build.error} /> : null}
-            {detail.cancelError ? <Notice tone="danger" message={detail.cancelError} /> : null}
-            {detail.downloads.error ? <Notice tone="danger" message={detail.downloads.error} /> : null}
-            {build.artifacts.map((artifact) => (
-              <ArtifactCard
-                key={artifact.id}
-                artifact={artifact}
-                onDownload={() => detail.downloads.download(artifact.id)}
-                downloading={detail.downloads.pendingId === artifact.id}
-              />
+            {detail.active ? (
+              <Reveal>
+                <ProgressBar progress={build.progress} label="Build progress" />
+              </Reveal>
+            ) : null}
+            {build.error ? (
+              <Reveal>
+                <Notice tone="danger" title="Build failed" message={build.error} />
+              </Reveal>
+            ) : null}
+            {detail.cancelError ? (
+              <Reveal>
+                <Notice tone="danger" message={detail.cancelError} />
+              </Reveal>
+            ) : null}
+            {detail.downloads.error ? (
+              <Reveal>
+                <Notice tone="danger" message={detail.downloads.error} />
+              </Reveal>
+            ) : null}
+            {build.artifacts.map((artifact, index) => (
+              <MotionItem key={artifact.id} index={index}>
+                <ArtifactCard
+                  artifact={artifact}
+                  onDownload={() => detail.downloads.download(artifact.id)}
+                  downloading={detail.downloads.pendingId === artifact.id}
+                />
+              </MotionItem>
             ))}
           </View>
           <LogView

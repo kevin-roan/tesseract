@@ -8,6 +8,7 @@ export const sandboxKeys = {
   root: ["sandbox"] as const,
   all: (sandboxId: string) => ["sandbox", sandboxId] as const,
   status: (sandboxId: string) => ["sandbox", sandboxId, "status"] as const,
+  stt: (sandboxId: string) => ["sandbox", sandboxId, "stt"] as const,
   identity: (sandboxId: string) => ["sandbox", sandboxId, "identity"] as const,
   display: (sandboxId: string) => ["sandbox", sandboxId, "display"] as const,
   displayBrowser: (sandboxId: string) => ["sandbox", sandboxId, "display", "browser"] as const,

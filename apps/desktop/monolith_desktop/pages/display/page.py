@@ -11,6 +11,7 @@ from ...vnc.input import KEY_COMBOS, combo_events
 from ...vnc.session import SessionState, VncSession
 from ...vnc.view import VncView
 from ...widgets import EmptyState
+from ...widgets.motion import crossfade_stack
 from ..base import Page
 from . import model
 from .fullscreen import FullscreenHost
@@ -86,7 +87,7 @@ class DisplayPage(Page):
         )
         self._stage_holder = Gtk.Box(css_classes=["to-display-holder"])
         self._stage_holder.append(self._stage)
-        self._stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE, vexpand=True, hexpand=True)
+        self._stack = crossfade_stack(vexpand=True, hexpand=True)
         self._stack.add_named(self._empty, "empty")
         self._stack.add_named(self._preview, "preview")
         self._stack.add_named(self._stage_holder, "viewer")

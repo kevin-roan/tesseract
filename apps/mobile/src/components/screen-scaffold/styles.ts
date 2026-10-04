@@ -2,7 +2,9 @@ import { StyleSheet } from "react-native";
 
 import type { Theme } from "@/theme";
 
-export default function createStyles(theme: Theme) {
+export default function createStyles(theme: Theme, tabBarInset: number, hasFooter: boolean) {
+  const bodyInset = hasFooter ? 0 : tabBarInset;
+
   return StyleSheet.create({
     root: {
       flex: 1,
@@ -20,11 +22,15 @@ export default function createStyles(theme: Theme) {
       flexGrow: 1,
       gap: theme.sectionGap,
       paddingHorizontal: theme.gutter,
-      paddingBottom: theme.sectionGap,
+      paddingBottom: theme.sectionGap + bodyInset,
+    },
+    body: {
+      paddingBottom: bodyInset,
     },
     footer: {
       paddingHorizontal: theme.gutter,
-      paddingVertical: theme.spacing.md,
+      paddingTop: theme.spacing.md,
+      paddingBottom: theme.spacing.md + tabBarInset,
     },
   });
 }

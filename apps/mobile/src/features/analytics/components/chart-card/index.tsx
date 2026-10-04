@@ -1,9 +1,12 @@
 import { useMemo, useState, type ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 
+import PressableScale from "@/components/pressable-scale";
+import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { HitSlop } from "@/theme";
+import { Durations, HitSlop, MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
 
@@ -16,40 +19,51 @@ export type ChartCardProps = {
   testID?: string;
 };
 
+const crossfade = FadeIn.duration(Durations.normal);
+
 const ChartCard = ({ title, subtitle, children, table, testID }: ChartCardProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const [showTable, setShowTable] = useState(false);
+  const tableShown = showTable && table !== undefined;
 
   return (
-    <View style={styles.card} testID={testID}>
+    <Surface style={styles.card} testID={testID}>
       <View style={styles.head}>
-        <ThemedText variant="h4" accessibilityRole="header">
+        <ThemedText
+          variant="h4"
+          accessibilityRole="header"
+          numberOfLines={2}
+          maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+        >
           {title}
         </ThemedText>
         {subtitle ? (
-          <ThemedText variant="caption" color="textSecondary">
+          <ThemedText variant="bodySmall" color="textSecondary">
             {subtitle}
           </ThemedText>
         ) : null}
       </View>
-      {showTable && table ? table : children}
+      <Animated.View key={tableShown ? "table" : "chart"} entering={table ? crossfade : undefined}>
+        {tableShown ? table : children}
+      </Animated.View>
       {table ? (
         <View style={styles.footer}>
-          <Pressable
+          <PressableScale
+            depth="control"
             accessibilityRole="button"
             accessibilityLabel={showTable ? `Show ${title} as a chart` : `Show ${title} as a table`}
             hitSlop={HitSlop.md}
             onPress={() => setShowTable((value) => !value)}
-            style={({ pressed }) => [styles.toggle, pressed && styles.pressed]}
+            style={styles.toggle}
           >
-            <ThemedText variant="label" color="textSecondary">
+            <ThemedText variant="label" maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
               {showTable ? "Show chart" : "Show table"}
             </ThemedText>
-          </Pressable>
+          </PressableScale>
         </View>
       ) : null}
-    </View>
+    </Surface>
   );
 };
 

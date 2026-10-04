@@ -19,6 +19,7 @@ from ...widgets import (
 )
 from ...widgets.charts.legend import SeriesLegend
 from ...widgets.charts.timeseries import TimeSeriesChart
+from ...widgets.motion import crossfade_stack
 from ..base import Page
 from . import model
 from .labels import HISTORY, REFRESH, SECTIONS, TITLE
@@ -33,7 +34,7 @@ class OverviewPage(Page):
 
     def build(self) -> Gtk.Widget:
         store = self.ctx.store
-        self._stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
+        self._stack = crossfade_stack()
 
         self._empty = EmptyState("")
         self._stack.add_named(self._empty, "empty")

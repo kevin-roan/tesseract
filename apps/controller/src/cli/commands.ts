@@ -7,10 +7,12 @@ import { loadConfig, type Config } from "../config";
 import type { Env } from "../core/exec";
 import { startController } from "../server";
 import { formatBytes } from "../services/artifacts";
+import { hostCli, HOST_USAGE } from "../host/cli";
 import { VERSION } from "../version";
 import { api, API_USAGE, redactVncPasswords } from "./api";
 import { hook } from "./hook";
 import { callLocalApi, CliError, isControllerUp } from "./local-api";
+import { monolith } from "./monolith";
 import { consoleOutput, type Output } from "./output";
 
 export type { Output } from "./output";
@@ -30,9 +32,24 @@ Usage:
                                      copy a workspace file into the artifacts, announce it in the inbox and
                                      make it downloadable on paired devices (tags the Claude run/session)
   theone-controller hook             forward a Claude Code hook (JSON on stdin) to the inbox; silent, always exits 0
+  theone-controller monolith --get [--force] [--json]
+                                     (also /usr/local/bin/monolith) in a project folder: bring in the changes made
+                                     on the linked host checkout since the last monolith --sync or --get
+${HOST_USAGE}
   theone-controller --version | --help`;
 
-export type CliIo = { env?: Env; output?: Output; readStdin?: () => Promise<string>; cwd?: string };
+export type CliIo = {
+  env?: Env;
+  output?: Output;
+  readStdin?: () => Promise<string>;
+  /** `host pin`: reads the PIN without echo (default: the TTY in raw mode). */
+  readSecret?: (prompt: string) => Promise<string>;
+  cwd?: string;
+  /** `monolith --get`: interrupts the wait, and how often and how long it polls. */
+  signal?: AbortSignal;
+  syncPollMs?: number;
+  syncPendingTimeoutMs?: number;
+};
 
 const readProcessStdin = () => Bun.stdin.text();
 
@@ -158,6 +175,19 @@ function token(config: Config, args: string[], output: Output): number {
   return 0;
 }
 
+/** Runs `task` with a signal aborted by Ctrl-C (or `signal`), without letting SIGINT kill the process meanwhile. */
+async function withInterrupt<T>(signal: AbortSignal | undefined, task: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  if (signal) return task(signal);
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  process.on("SIGINT", abort);
+  try {
+    return await task(controller.signal);
+  } finally {
+    process.off("SIGINT", abort);
+  }
+}
+
 /** Returns the exit code, or null when the daemon keeps running. */
 export async function runCli(argv: string[], io: CliIo = {}): Promise<number | null> {
   const output = io.output ?? consoleOutput;
@@ -172,6 +202,7 @@ export async function runCli(argv: string[], io: CliIo = {}): Promise<number | n
   }
   if (command === "hook") return hook(io.env ?? process.env, io.readStdin ?? readProcessStdin);
   try {
+    if (command === "host") return await hostCli(rest, { env: io.env ?? process.env, output, readStdin: io.readStdin ?? readProcessStdin, readSecret: io.readSecret });
     const config = loadConfig(io.env ?? process.env);
     switch (command) {
       case "serve":
@@ -188,6 +219,16 @@ export async function runCli(argv: string[], io: CliIo = {}): Promise<number | n
         return await share(config, rest, io.env ?? process.env, io.cwd ?? process.cwd(), output);
       case "api":
         return await api(config, rest, output, io.readStdin ?? readProcessStdin);
+      case "monolith":
+        return await withInterrupt(io.signal, (signal) =>
+          monolith(config, rest, output, {
+            cwd: io.cwd ?? process.cwd(),
+            style: { width: process.stdout.columns || 80, color: Boolean(process.stdout.isTTY) && !(io.env ?? process.env).NO_COLOR },
+            signal,
+            pollMs: io.syncPollMs,
+            pendingTimeoutMs: io.syncPendingTimeoutMs,
+          }),
+        );
       default:
         output.err(`Unknown command "${command}"\n\n${USAGE}`);
         return 2;

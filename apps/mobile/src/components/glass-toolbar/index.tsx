@@ -37,7 +37,7 @@ const GlassToolbar = ({ title, subtitle, accessory, onBack, actions, onLayout, s
         {onBack ? <ToolbarButton id="back" icon={ArrowLeftIcon} label="Go back" onPress={onBack} /> : null}
         <View style={styles.titles}>
           <View style={styles.titleRow}>
-            <ThemedText variant="label" numberOfLines={1} accessibilityRole="header">
+            <ThemedText variant="label" numberOfLines={1} accessibilityRole="header" style={styles.title}>
               {title}
             </ThemedText>
             {accessory}

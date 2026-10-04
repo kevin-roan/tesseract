@@ -5,6 +5,7 @@ import { AgentStreamParser, summarizeToolInput, toEvent, truncate } from "../../
 import { claudeArgs } from "../../src/services/agent-runs";
 import { artifactExtension, artifactFileName, sanitizeVersion, sha256File } from "../../src/services/artifacts";
 import { resolveRecipe } from "../../src/services/build-recipes";
+import { confidentialPrompt } from "../../src/services/confidential";
 import { parseDimensions, x11Socket } from "../../src/services/display";
 import { filterDrivers, neutralConfig, parseStatus } from "../../src/services/git";
 import { commandArgv, describeCommand } from "../../src/services/processes";
@@ -117,6 +118,17 @@ describe("agent stream parser", () => {
       stdin: "--help",
     });
     expect(claudeArgs("x", "plan", { resumeSessionId: "abc-123" }).argv.slice(-2)).toEqual(["--resume", "abc-123"]);
+  });
+
+  test("claudeArgs appends the confidential system prompt before --resume", () => {
+    const prompt = confidentialPrompt("morning-cat");
+    expect(prompt).toContain('known only by the pseudonym "morning-cat"');
+    expect(prompt).toContain("Write REDACTED in their place");
+    expect(prompt).toContain("`theone-controller share` is disabled");
+    expect(claudeArgs("x", "plan", { appendSystemPrompt: prompt, resumeSessionId: "s1" })).toEqual({
+      argv: ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan", "--append-system-prompt", prompt, "--resume", "s1"],
+      stdin: "x",
+    });
   });
 
   test("claudeArgs adds the uploads dir and lists readable attachments, never audio", () => {

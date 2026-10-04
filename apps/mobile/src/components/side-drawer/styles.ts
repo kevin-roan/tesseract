@@ -21,6 +21,12 @@ export default function createStyles(theme: Theme, width: number) {
       left: 0,
       width,
       zIndex: ZIndex.drawer,
+      overflow: "hidden",
+      borderTopRightRadius: theme.radius.sheet,
+      borderBottomRightRadius: theme.radius.sheet,
+      borderCurve: "continuous",
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderRightColor: theme.colors.border,
       backgroundColor: theme.colors.background,
     },
     content: {

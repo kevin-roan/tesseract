@@ -1,11 +1,15 @@
 import { StyleSheet } from "react-native";
 
-import { Shadows, type SurfaceGlass, type Theme } from "@/theme";
+import { squareButtonLook } from "@/components/icon-button/styles";
+import { Opacity, Shadows, type SurfaceGlass, type Theme } from "@/theme";
 
-export default function createStyles(theme: Theme, glass: SurfaceGlass) {
+export default function createStyles(theme: Theme, glass: SurfaceGlass, nested: boolean) {
+  const graphite = theme.look === "graphite";
+  const square = squareButtonLook(theme);
+
   return StyleSheet.create({
     glass: {
-      borderRadius: theme.radius.lg,
+      borderRadius: graphite ? theme.radius.card : theme.radius.lg,
       borderCurve: "continuous",
       overflow: "hidden",
     },
@@ -14,20 +18,24 @@ export default function createStyles(theme: Theme, glass: SurfaceGlass) {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: glass.border,
     },
+    flat: {
+      backgroundColor: nested ? theme.colors.backgroundElement : theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+    },
     float: {
-      borderRadius: theme.radius.pill,
-      ...Shadows.float,
+      borderRadius: graphite ? square.frame.borderRadius : theme.radius.pill,
+      ...(graphite ? Shadows.none : Shadows.float),
     },
     button: {
       borderRadius: theme.radius.pill,
       alignItems: "center",
       justifyContent: "center",
+      ...(graphite && square.frame),
     },
-    pressed: {
-      transform: [{ scale: 0.95 }],
-    },
+    pressed: graphite ? square.pressed : {},
     disabled: {
-      opacity: 0.5,
+      opacity: Opacity.disabled,
     },
   });
 }

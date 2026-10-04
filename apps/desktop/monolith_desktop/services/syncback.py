@@ -17,6 +17,12 @@ from ..syncback.state import SyncState
 log = logging.getLogger(__name__)
 
 HEARTBEAT_INTERVAL_S = 20
+NOTIFIED_KINDS = ("pull", "revert", "get")
+
+
+def notification_kind(request: SyncRequest) -> str:
+    kind = request.get("kind")
+    return kind if kind in NOTIFIED_KINDS else "pull"
 
 
 class SyncBackService:
@@ -60,10 +66,13 @@ class SyncBackService:
         force: bool = False,
         paths: list[str] | None = None,
         on_error: Callable[[BaseException], None] | None = None,
+        on_success: Callable[[SyncRequest], None] | None = None,
     ) -> None:
         def created(request: SyncRequest) -> None:
             self._bump()
             self._enqueue(request)
+            if on_success:
+                on_success(request)
 
         run_async(
             lambda: self._client().create_sync_request(project_id, kind, paths, force, "desktop"),  # type: ignore[arg-type]
@@ -127,7 +136,7 @@ class SyncBackService:
 
     def _handled(self, handled: Handled) -> None:
         request = handled.request
-        kind = "revert" if request.get("kind") == "revert" else "pull"
+        kind = notification_kind(request)
         title = SYNC_BACK[f"{kind}_{'done' if handled.ok else 'failed'}"].format(project=request.get("projectId"))
         self._notify(request.get("projectId", ""), title, handled.message)
 
@@ -137,8 +146,7 @@ class SyncBackService:
             return
         if not isinstance(error, ApiError):
             self._seen.discard(request["id"])
-        kind = "revert" if request.get("kind") == "revert" else "pull"
-        title = SYNC_BACK[f"{kind}_failed"].format(project=request.get("projectId"))
+        title = SYNC_BACK[f"{notification_kind(request)}_failed"].format(project=request.get("projectId"))
         self._notify(request.get("projectId", ""), title, describe_error(error))
 
     def _notify(self, project_id: str, title: str, body: str) -> None:

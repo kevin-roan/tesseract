@@ -1,13 +1,13 @@
 import { useMemo } from "react";
 import { Pressable, View } from "react-native";
+import Animated from "react-native-reanimated";
 
-import { Glass } from "@/components/glass";
-import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { HitSlop, MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
+import { useSegmentIndicator } from "./use-segment-indicator";
 
 export type SegmentedOption<T> = {
   value: T;
@@ -21,20 +21,17 @@ export type SegmentedPillsProps<T> = {
   onChange: (value: T) => void;
 };
 
-/** Row of pills where the chosen one turns solid ink and the rest stay glass. */
+/** Soft strip of segments; a lit indicator springs under the chosen one. */
 const SegmentedPills = <T extends string | number>({ options, value, onChange }: SegmentedPillsProps<T>) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const indicator = useSegmentIndicator(options.findIndex((option) => option.value === value));
 
   return (
     <View style={styles.row} accessibilityRole="radiogroup">
-      {options.map((option) => {
+      {indicator.ready ? <Animated.View pointerEvents="none" style={[styles.indicator, indicator.style]} /> : null}
+      {options.map((option, index) => {
         const selected = option.value === value;
-        const label = (
-          <ThemedText variant="label" numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
-            {option.label}
-          </ThemedText>
-        );
         return (
           <Pressable
             key={String(option.value)}
@@ -43,15 +40,18 @@ const SegmentedPills = <T extends string | number>({ options, value, onChange }:
             accessibilityLabel={option.accessibilityLabel ?? option.label}
             hitSlop={HitSlop.sm}
             onPress={() => onChange(option.value)}
-            style={({ pressed }) => pressed && styles.pressed}
+            onLayout={indicator.onLayout(index)}
+            style={[styles.segment, selected && !indicator.ready && styles.selected]}
           >
-            {selected ? (
-              <Surface tone="ink" style={styles.pill}>
-                {label}
-              </Surface>
-            ) : (
-              <Glass style={styles.pill}>{label}</Glass>
-            )}
+            <ThemedText
+              variant="caption"
+              color={selected ? "text" : "textSecondary"}
+              numberOfLines={1}
+              maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+              style={selected ? styles.labelSelected : null}
+            >
+              {option.label}
+            </ThemedText>
           </Pressable>
         );
       })}

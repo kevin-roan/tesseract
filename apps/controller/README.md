@@ -31,7 +31,8 @@ THEONE_WORKSPACE=/tmp/theone-ws bun src/index.ts status
 
 CLI: `serve` (default) · `pair [--json]` · `status [--json]` ·
 `emit --status <s> --message <m> [--project p] [--stage s] [--platform p]` · `token [--rotate]` ·
-`api <METHOD> <PATH> [JSON | -]` · `share <file> [--project p] [--name n] [--note t] [--json]` · `hook`.
+`api <METHOD> <PATH> [JSON | -]` · `share <file> [--project p] [--name n] [--note t] [--json]` · `hook` ·
+`monolith --get [--force] [--json]` · `host serve|pin|pair|token` (host shell, below).
 Configuration is environment only (blueprint §4); invalid values stop startup with a clear message.
 
 ### `api`: the REST API for the in-sandbox agent
@@ -89,6 +90,39 @@ Registered for every Claude session in the sandbox by `/etc/claude-code/managed-
 `THEONE_TERMINAL_ID`/`THEONE_AGENT_RUN_ID`. It never prints anything and always exits 0 within
 1.5 s, also when the controller is down, the token is missing or stdin is not JSON.
 
+### `monolith --get`: host changes → sandbox
+
+```bash
+cd /workspace/projects/hello/src && monolith --get
+# From laptop:/home/me/hello
+#  src/app.ts | 3 ++-
+#  1 file changed, 2 insertions(+), 1 deletion(-)
+# Synced at 2026-10-01 14:03:12 · previous sync 2026-10-01 11:40:02 (2 hours ago)
+```
+
+`/usr/local/bin/monolith` runs `theone-controller monolith`. It queues a `get` sync request for
+the project containing the cwd. The desktop companion takes it only for projects it linked with
+`monolith --sync`, and sends what changed in that checkout since the last push or get. The
+controller applies it (`POST /v1/sync/requests/:id/plan` and `…/apply`) all or nothing. Sandbox
+edits to the same files, or sandbox commits when `.git` changes, are conflicts: nothing is
+written and the exit code is 2. `--force` overwrites them and keeps copies under
+`$THEONE_DATA_DIR/sync/backups/`. Exits 1 when the host is offline or the project is not linked
+there, and 130 on Ctrl-C (a pending request is cancelled). Details: `docs/architecture/sync-back.md` §6.
+
+### `host`: a PIN-protected shell on the host (runs on the host)
+
+`src/host/` is a separate, small daemon for the **host** machine, not the sandbox: it
+never reads the sandbox config. It listens on the host's Tailscale IPv4 (`:7701`),
+serves `/ui/terminal` and the controller's terminal API, and opens `$SHELL -l` PTYs
+in `$HOME` for a phone that has both the host token and the PIN
+([blueprint §5.7](../../docs/architecture/00-blueprint.md), [runbook](../../docs/runbooks/host-shell.md)).
+
+```bash
+bun run host pin      # from the repo root on the host: set the 6-12 digit PIN
+bun run host serve    # bind `tailscale ip -4`:7701 (or --bind/--port)
+bun run host pair     # QR for the app's Host shell screen
+```
+
 ## Layout
 
 ```text
@@ -113,6 +147,8 @@ src/
                         exec, net probes (TCP, RFB banner), events
   db/                   bun:sqlite schema (WAL) and repositories
   ui/                   terminal.html / vnc.html pages, shared lib/, own tsconfig (DOM)
+  host/                 host shell daemon (runs on the host): config (bind checks), state.json store,
+                        auth (host token, argon2id PIN, lockout, sessions), PTYs, server, `host` CLI
 tests/                  bun test suites; fixtures/fake-claude.sh stands in for Claude Code,
                         fake-ffmpeg.sh / fake-whisper.sh / fake-priority.sh (nice, ionice) for the whisper.cpp pipeline
   unit/                 focused module tests (fakes, local TCP servers, temp dirs)
@@ -139,7 +175,7 @@ tests/                  bun test suites; fixtures/fake-claude.sh stands in for C
   → `POST /v1/builds` answers 503 before queueing. Collection only takes files modified
   after the build started (minus 2 s).
 - Children (processes, build steps, terminals, agent runs, git/zip helpers) never get
-  `THEONE_TOKEN`, `THEONE_VNC_PASSWORD` or `THEONE_STT_API_KEY` (`childEnv()` in `core/exec.ts`); they get
+  `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, `THEONE_STT_API_KEY` or `GEMINI_API_KEY` (`childEnv()` in `core/exec.ts`); they get
   `THEONE_PROCESS_ID`/`THEONE_BUILD_ID`/`THEONE_TERMINAL_ID`/`THEONE_AGENT_RUN_ID`. A
   `THEONE_TOKEN` from the environment is mirrored into the 0600 token file so the
   in-sandbox CLI keeps working without it.
@@ -151,6 +187,10 @@ tests/                  bun test suites; fixtures/fake-claude.sh stands in for C
   whitelisted paths, merges only account keys into the global config, drops
   `settings.json` keys that run host commands, and backs up replaced files as
   `<file>.theone-bak`. Its body limit is 8 MiB (other routes 1 MiB).
+- `/v1/claude/accounts` and `/v1/projects/:id/claude-account` (`services/claude-accounts.ts`)
+  switch Claude accounts: extra host dirs `~/.claude-<n>` (`THEONE_CLAUDE_ACCOUNTS`) are
+  mounted at `/home/dev/.claude-<n>`; runs and Claude terminals get `CLAUDE_CONFIG_DIR` for
+  the session's, project's or default account. Nothing is copied or written into those dirs.
 - Project content is untrusted: `package.json` is read only if it is a regular file of at
   most 1 MiB (`core/files.ts`: `O_NONBLOCK` + `fstat` on the open descriptor), `.agent`
   files likewise with `O_NOFOLLOW`, and `git status`/`log` run with `core.fsmonitor`,
@@ -226,6 +266,11 @@ tests/                  bun test suites; fixtures/fake-claude.sh stands in for C
     The key is never logged and is redacted from provider errors.
   - `auto` uses whisper.cpp when binary, ffmpeg and model exist, else openai-compatible when URL
     and key are set, else 503 naming the variables. An empty transcript is 400 `No speech detected`.
+  - `provider: "gemini"` sends the audio inline to Gemini (`GEMINI_API_KEY`,
+    `THEONE_GEMINI_STT_MODEL`, default `gemini-2.5-flash`) outside the queue and regardless of
+    the profile. Without a key or when Gemini fails (quota, rejected key, network), the native
+    engine answers and `fallbackReason` explains why. `bun run dev` loads the repo-root `.env`
+    (`--env-file=../../.env`, ignored when missing).
 - `POST /v1/agent/runs/archive` and `POST /v1/agent/runs/delete` act on finished runs only
   (running ones are skipped). Archived runs (`archivedAt`) are hidden from `GET /v1/agent/runs`
   unless `?archived=1`; deleting removes the run and its events and unlinks inbox items.

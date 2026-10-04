@@ -27,5 +27,7 @@ export const PAGE_TERMINATE_LIMIT = 2;
 export const PAGE_RECONNECT_DELAY_MS = { minDelayMs: 1_000, maxDelayMs: 8_000 } as const;
 export const DISPLAY_STORE_NAME = "theone.display";
 export const DISPLAY_STORE_VERSION = 1;
+export const SCRIPT_BOOKMARKS_STORE_NAME = "theone.script-bookmarks";
+export const SCRIPT_BOOKMARKS_STORE_VERSION = 1;
 export const DEFAULT_INPUT_MODE = "trackpad" satisfies InputMode;
 export const UPLOAD_TIMEOUT_MS = 120_000;

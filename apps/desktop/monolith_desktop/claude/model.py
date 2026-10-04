@@ -1,5 +1,7 @@
+from dataclasses import dataclass
+
 from ..api.errors import ApiError, describe_error
-from ..api.types import ClaudeAuthStatus
+from ..api.types import ClaudeAccountList, ClaudeAccountProfile, ClaudeAuthStatus
 from ..strings import CLAUDE as S
 from ..util.format import capitalize, format_uptime, join_meta, now_s, parse_iso, pluralize
 from .host import CLAUDE_EXTENSION_DIRS, HostClaudeState
@@ -7,10 +9,18 @@ from .host import CLAUDE_EXTENSION_DIRS, HostClaudeState
 Row = tuple[str, str]
 
 
-def sandbox_error_message(error: BaseException | None) -> str:
+@dataclass(frozen=True)
+class AccountChoice:
+    id: str
+    title: str
+    subtitle: str
+    available: bool
+
+
+def sandbox_error_message(error: BaseException | None, outdated: str = "outdated") -> str:
     """A 404 on the Claude routes means the controller predates them."""
     if isinstance(error, ApiError) and error.status == 404:
-        return S["outdated"]
+        return S[outdated]
     return describe_error(error)
 
 
@@ -57,6 +67,42 @@ def host_rows(state: HostClaudeState, now: float | None = None) -> list[Row]:
     ]
 
 
+def host_account_subtitle(state: HostClaudeState) -> str:
+    return join_meta(state.email, str(state.config_dir))
+
+
+def credentials_expiry(expires_at: str | None, now: float | None = None) -> str:
+    return format_expiry(parse_iso(expires_at), now) if expires_at else S["none"]
+
+
+def profile_login_label(profile: ClaudeAccountProfile, now: float | None = None) -> str:
+    if not profile["present"]:
+        return S["account_absent"]
+    if not profile["loggedIn"]:
+        return S["not_logged_in"]
+    expiry = credentials_expiry(profile["credentialsExpiresAt"], now) if profile["credentialsExpiresAt"] else None
+    return join_meta(S["logged_in"], expiry)
+
+
+def account_title(profile: ClaudeAccountProfile) -> str:
+    return join_meta(profile["id"], S["primary"] if profile["primary"] else None)
+
+
+def account_choices(accounts: ClaudeAccountList | None, now: float | None = None) -> list[AccountChoice]:
+    if accounts is None:
+        return []
+    choices = []
+    for profile in accounts["accounts"]:
+        account = profile["account"] or {"email": None, "organization": None}
+        lines = [
+            account_label(account.get("email"), account.get("organization")),
+            join_meta(plan_label(profile["subscriptionType"]), profile_login_label(profile, now)),
+            profile["configDir"],
+        ]
+        choices.append(AccountChoice(profile["id"], account_title(profile), "\n".join(line for line in lines if line), profile["present"]))
+    return choices
+
+
 def method_label(status: ClaudeAuthStatus) -> str:
     if not status["available"]:
         return S["unavailable"]
@@ -67,9 +113,7 @@ def method_label(status: ClaudeAuthStatus) -> str:
 
 def sandbox_rows(status: ClaudeAuthStatus, now: float | None = None) -> list[Row]:
     account = status["account"] or {"email": None, "organization": None}
-    expiry = S["none"]
-    if status["method"] == "credentials" and status["credentialsExpiresAt"]:
-        expiry = format_expiry(parse_iso(status["credentialsExpiresAt"]), now)
+    expiry = credentials_expiry(status["credentialsExpiresAt"], now) if status["method"] == "credentials" else S["none"]
     return [
         (S["status"], method_label(status)),
         (S["account"], account_label(account.get("email"), account.get("organization"))),

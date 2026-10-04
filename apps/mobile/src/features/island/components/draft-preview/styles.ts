@@ -1,16 +1,13 @@
 import { StyleSheet } from "react-native";
 
-import type { Theme } from "@/theme";
-
-const THUMB = 72;
+import { AvatarSize, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     preview: {
       gap: theme.spacing.sm,
       padding: theme.spacing.base,
-      borderRadius: theme.radius.xl,
-      backgroundColor: theme.colors.surfaceSunken,
+      borderRadius: theme.radius.card,
     },
     thumbs: {
       flexDirection: "row",
@@ -18,10 +15,16 @@ export default function createStyles(theme: Theme) {
       gap: theme.spacing.sm,
     },
     thumb: {
-      width: THUMB,
-      height: THUMB,
-      borderRadius: theme.radius.md,
+      width: AvatarSize.xl,
+      height: AvatarSize.xl,
+      borderRadius: theme.radius.pill,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElement,
+    },
+    count: {
+      fontVariant: ["tabular-nums"],
     },
   });
 }

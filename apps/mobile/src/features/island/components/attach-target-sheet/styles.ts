@@ -14,8 +14,5 @@ export default function createStyles(theme: Theme) {
       paddingHorizontal: theme.gutter,
       paddingBottom: theme.spacing.base,
     },
-    group: {
-      gap: theme.spacing.xs,
-    },
   });
 }

@@ -1,7 +1,7 @@
 from ..css import css_var
 from ..gradients import css_linear_gradient, gradients_for
-from ..semantic import SchemeName
-from ..tokens import BASE_FONT_SIZE, BORDER_WIDTH, CONTROL_HEIGHT, RADIUS, SHADOWS, SPACING, WINDOW_CONTROL
+from ..semantic import COLORS, SchemeName, is_dark, look_for
+from ..tokens import BASE_FONT_SIZE, BORDER_WIDTH, CONTROL_HEIGHT, RADIUS, SHADOWS, SPACING, WINDOW_CONTROL, radius_for
 
 RuleSet = dict[str, dict[str, str]]
 
@@ -63,7 +63,7 @@ def _titlebar(scheme: SchemeName) -> RuleSet:
 def _sidebar(scheme: SchemeName) -> RuleSet:
     s, r = SPACING, RADIUS
     return {
-        "toolbarview.to-sidebar": {"background-color": css_var("surface" if scheme == "dark" else "surfaceSunken")},
+        "toolbarview.to-sidebar": {"background-color": css_var("surface" if is_dark(scheme) else "surfaceSunken")},
         ".to-sidebar-body": {"padding": f"0 0 {px(s['md'])} 0"},
         "button.to-new-conversation": {
             "margin": f"{px(s['xxs'])} {px(s['md'])} {px(s['sm'])}",
@@ -72,7 +72,7 @@ def _sidebar(scheme: SchemeName) -> RuleSet:
             "border-radius": px(r["md"]),
             "background-image": css_linear_gradient(gradients_for(scheme)["brand"]),
             "color": css_var("textOnAccent"),
-            "box-shadow": SHADOWS["level1"].css() if scheme == "light" else "none",
+            "box-shadow": "none" if is_dark(scheme) else SHADOWS["level1"].css(),
             "border": "none",
         },
         "button.to-new-conversation:hover": {"filter": "brightness(1.06)"},
@@ -93,7 +93,7 @@ def _sidebar(scheme: SchemeName) -> RuleSet:
         "list.to-nav-list > row:hover": {"background-color": css_var("backgroundElement")},
         "list.to-nav-list > row:active": {"background-color": css_var("backgroundSelected")},
         "list.to-nav-list > row:selected": {"background-color": css_var("backgroundSelected"), "color": css_var("text")},
-        "list.to-nav-list > row:selected image": {"color": css_var("accentStrong" if scheme == "light" else "accent")},
+        "list.to-nav-list > row:selected image": {"color": css_var("accent" if is_dark(scheme) else "accentStrong")},
         ".to-side-row": {
             "margin": f"0 {px(s['md'] - 2)}",
             "border-radius": px(r["sm"] + 2),
@@ -152,7 +152,7 @@ def _sidebar(scheme: SchemeName) -> RuleSet:
             "min-height": px(24),
             "background": "none",
             "box-shadow": "none",
-            "color": css_var("accentStrong" if scheme == "light" else "accent"),
+            "color": css_var("accent" if is_dark(scheme) else "accentStrong"),
             "font-weight": "600",
         },
         "button.to-side-link:hover": {"background-color": css_var("backgroundElement")},
@@ -169,9 +169,9 @@ def _composer(scheme: SchemeName) -> RuleSet:
             "border-radius": px(r["lg"]),
             "background-color": css_var("surfaceElevated"),
             "border": f"{px(BORDER_WIDTH['thin'])} solid {css_var('border')}",
-            "box-shadow": SHADOWS["level1"].css() if scheme == "light" else "none",
+            "box-shadow": "none" if is_dark(scheme) else SHADOWS["level1"].css(),
         },
-        ".to-composer:focus-within": {"border-color": css_var("accentStrong" if scheme == "light" else "accent")},
+        ".to-composer:focus-within": {"border-color": css_var("accent" if is_dark(scheme) else "accentStrong")},
         ".to-composer textview, .to-composer textview > text": {
             "background": "none",
             "color": css_var("text"),
@@ -228,7 +228,7 @@ def _banner(scheme: SchemeName) -> RuleSet:
             "box-shadow": f"inset 0 -1px {css_var('border')}",
         },
         "banner.to-banner > revealer > widget button": {
-            "border-radius": px(RADIUS["full"]),
+            "border-radius": px(radius_for(scheme)["pill"]),
             "padding": f"0 {px(SPACING['md'])}",
         },
     }
@@ -245,8 +245,8 @@ def _banner(scheme: SchemeName) -> RuleSet:
     return rules
 
 
-def _user_css_shield() -> RuleSet:
-    card_radius = px(RADIUS["md"])
+def _user_css_shield(scheme: SchemeName) -> RuleSet:
+    card_radius = px(radius_for(scheme)["card"])
     return {
         "window.background": {"background-color": "var(--window-bg-color)"},
         "window.to-main-window": {"font-size": px(BASE_FONT_SIZE)},
@@ -288,8 +288,53 @@ def _user_css_shield() -> RuleSet:
     }
 
 
+def _shape(scheme: SchemeName) -> RuleSet:
+    r = radius_for(scheme)
+    sheet, card, pill = px(r["sheet"]), px(r["card"]), px(r["pill"])
+    return {
+        "floating-sheet > sheet, dialog-host > dialog.alert sheet, window.messagedialog.csd:not(.solid-csd)": {
+            "border-radius": sheet,
+        },
+        "bottom-sheet > sheet": {"border-top-left-radius": sheet, "border-top-right-radius": sheet},
+        "popover > contents": {"border-radius": card},
+        "popover > contents modelbutton, popover > contents row": {"border-radius": px(r["sm"])},
+        "dialog.alert .response-area > button, window.messagedialog .response-area > button": {"border-radius": pill},
+        "button.pill, button.suggested-action, button.destructive-action": {"border-radius": pill},
+        "entry, spinbutton": {"border-radius": pill if look_for(scheme) == "graphite" else px(r["md"])},
+        ".card": {"border-radius": card},
+    }
+
+
+def _canvas(scheme: SchemeName) -> RuleSet:
+    if look_for(scheme) != "graphite":
+        return {}
+    step = px(SPACING["lg"])
+    dot = COLORS[scheme]["backgroundPattern"]
+    return {
+        ".to-canvas": {
+            "background-color": css_var("background"),
+            "background-image": f"radial-gradient(circle 1px at center, {dot} 0%, {dot} 60%, transparent 100%)",
+            "background-size": f"{step} {step}",
+            "background-repeat": "repeat",
+        },
+    }
+
+
+def _pairing() -> RuleSet:
+    s, r = SPACING, RADIUS
+    return {
+        ".to-pair-body": {"padding": f"{px(s['lg'])} {px(s['xl'])}"},
+        # The quiet zone around the code: scanners need light padding even on the dark theme.
+        ".to-qr": {"background-color": "#ffffff", "padding": px(s["md"]), "border-radius": px(r["md"])},
+        ".to-pair-link": {"padding": f"{px(s['xs'])} {px(s['sm'])}", "border-radius": px(r["sm"]), "background-color": css_var("backgroundElement")},
+    }
+
+
 def rules(scheme: SchemeName) -> RuleSet:
     merged: RuleSet = {}
-    for part in (_user_css_shield(), _titlebar(scheme), _sidebar(scheme), _composer(scheme), _banner(scheme)):
+    for part in (
+        _user_css_shield(scheme), _shape(scheme), _canvas(scheme), _titlebar(scheme), _sidebar(scheme),
+        _composer(scheme), _banner(scheme), _pairing(),
+    ):
         merged.update(part)
     return merged

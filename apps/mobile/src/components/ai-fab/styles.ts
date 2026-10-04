@@ -1,9 +1,10 @@
 import { StyleSheet } from "react-native";
 
-import { ControlHeight, Shadows, type Theme } from "@/theme";
+import { ControlHeight, Opacity, Shadows, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme, bottomOffset: number) {
-  const size = theme.isTablet ? ControlHeight.xl + 8 : ControlHeight.xl;
+  const size = theme.isTablet ? ControlHeight.xl + theme.spacing.sm : ControlHeight.xl;
+  const graphite = theme.look === "graphite";
 
   return StyleSheet.create({
     fab: {
@@ -12,15 +13,15 @@ export default function createStyles(theme: Theme, bottomOffset: number) {
       bottom: bottomOffset,
       width: size,
       height: size,
-      borderRadius: theme.radius.full,
+      borderRadius: graphite ? theme.radius.card : theme.radius.full,
+      borderCurve: "continuous",
       alignItems: "center",
       justifyContent: "center",
       backgroundColor: theme.colors.accent,
-      ...Shadows.level3,
+      ...(graphite ? Shadows.none : Shadows.level3),
     },
     pressed: {
-      opacity: 0.85,
-      transform: [{ scale: 0.96 }],
+      opacity: Opacity.pressedSoft,
     },
   });
 }

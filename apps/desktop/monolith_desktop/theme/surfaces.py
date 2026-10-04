@@ -49,6 +49,23 @@ ON_YELLOW = MappingProxyType({
     "highlight": P.GRAY[950],
 })
 
+GRAPHITE_BORDER = "rgba(255, 255, 255, 0.07)"
+
+
+def _on_dark_tint(highlight: str) -> MappingProxyType:
+    return MappingProxyType({
+        "surfaceElevated": "rgba(255, 255, 255, 0.06)",
+        "backgroundElement": "rgba(255, 255, 255, 0.06)",
+        "backgroundSelected": "rgba(255, 255, 255, 0.12)",
+        "highlight": highlight,
+    })
+
+
+def _graphite_tone(highlight: str) -> SurfaceStyle:
+    flat = P.GRAPHITE[900]
+    return SurfaceStyle(SurfaceFill(flat, flat, 0.5, 0, 1), GRAPHITE_BORDER, _on_dark_tint(highlight))
+
+
 _VIOLET = SurfaceStyle(SurfaceFill(P.PLUM[300], P.PLUM[700], 0.15, 0.1, 1), "rgba(255, 255, 255, 0.12)", ON_DARK)
 _INDIGO = SurfaceStyle(SurfaceFill(P.NAVY[950], P.NAVY[500], 0.5, 0.55, 0.62), "rgba(255, 255, 255, 0.1)", ON_DARK)
 _YELLOW = SurfaceStyle(SurfaceFill(P.YELLOW[300], P.YELLOW[500], 0.3, 0.2, 0.9), "rgba(20, 20, 22, 0.06)", ON_YELLOW)
@@ -65,6 +82,12 @@ SURFACES = MappingProxyType({
         "violet": _VIOLET,
         "indigo": _INDIGO,
         "yellow": _YELLOW,
+    }),
+    "graphite": MappingProxyType({
+        "neutral": SurfaceStyle(SurfaceFill(P.GRAPHITE[850], P.GRAPHITE[900], 0.2, 0, 1.2), GRAPHITE_BORDER),
+        "violet": _graphite_tone(P.GRAPHITE[100]),
+        "indigo": _graphite_tone(P.GRAPHITE[100]),
+        "yellow": _graphite_tone(P.AMBER[300]),
     }),
 })
 

@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import { MinTouchTarget, Shadows, type Theme } from "@/theme";
+import { MinTouchTarget, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -20,15 +20,17 @@ export default function createStyles(theme: Theme) {
       borderTopLeftRadius: theme.radius.sheet,
       borderTopRightRadius: theme.radius.sheet,
       borderCurve: "continuous",
-      backgroundColor: theme.colors.background,
-      ...Shadows.level3,
+      backgroundColor: theme.colors.surface,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderBottomWidth: 0,
+      borderColor: theme.colors.border,
     },
     handle: {
       alignSelf: "center",
       width: theme.spacing["2xl"],
       height: theme.spacing.xs,
       borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.borderStrong,
+      backgroundColor: theme.colors.backgroundSelected,
     },
     header: {
       flexDirection: "row",

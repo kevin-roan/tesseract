@@ -1,10 +1,8 @@
 import { StyleSheet } from "react-native";
 
-import { AvatarSize, type Theme } from "@/theme";
+import type { Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
-  const badge = AvatarSize.xl;
-
   return StyleSheet.create({
     container: {
       alignItems: "center",
@@ -12,13 +10,6 @@ export default function createStyles(theme: Theme) {
       gap: theme.spacing.lg,
       paddingVertical: theme.spacing["3xl"],
       paddingHorizontal: theme.spacing.xl,
-    },
-    iconBadge: {
-      width: badge,
-      height: badge,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: theme.radius.full,
     },
     copy: {
       gap: theme.spacing.sm,

@@ -6,6 +6,7 @@ import {
   CreateSyncRequestSchema,
   ID_PREFIXES,
   isIdOfKind,
+  isSafeSyncGitPath,
   isSafeSyncPath,
   LIMITS,
   restPaths,
@@ -15,6 +16,8 @@ import {
   SyncAckSchema,
   SyncChangesSchema,
   SyncExportSchema,
+  SyncGetPlanResponseSchema,
+  SyncGetPlanSchema,
   SyncHeartbeatSchema,
   SyncPathSchema,
   SyncRequestSchema,
@@ -37,6 +40,7 @@ describe("sync routes", () => {
     expect(restPaths.projectSyncChanges("app")).toBe("/v1/projects/app/sync/changes");
     expect(restPaths.projectSyncExport("app")).toBe("/v1/projects/app/sync/export");
     expect(restPaths.projectSyncAck("app")).toBe("/v1/projects/app/sync/ack");
+    expect(restPaths.projectSyncDiscard("app")).toBe("/v1/projects/app/sync/discard");
     expect(restPaths.projectSyncRequests("app")).toBe("/v1/projects/app/sync/requests");
     expect(restPaths.syncRequests()).toBe("/v1/sync/requests");
     expect(restPaths.syncRequests({ status: "pending" })).toBe("/v1/sync/requests?status=pending");
@@ -128,5 +132,56 @@ describe("sync schemas", () => {
     roundTrip(ServerEventSchema, { type: "sync.changed", projectId: "app" });
     rejects(ServerEventSchema, { type: "sync.changed" });
     rejects(ServerEventSchema, { type: "sync.updated", request: { id: "sync_x" } });
+  });
+});
+
+describe("get (host → sandbox)", () => {
+  const sha = "a".repeat(64);
+
+  test("routes", () => {
+    expect(restPaths.syncRequestPlan("sync_7m3k9p2q4r")).toBe("/v1/sync/requests/sync_7m3k9p2q4r/plan");
+    expect(restPaths.syncRequestApply("sync_7m3k9p2q4r")).toBe("/v1/sync/requests/sync_7m3k9p2q4r/apply");
+    expect(routePatterns.rest.syncRequestPlan).toBe("/v1/sync/requests/:id/plan");
+    expect(routePatterns.rest.syncRequestApply).toBe("/v1/sync/requests/:id/apply");
+  });
+
+  test(".git paths are relative and stay inside .git", () => {
+    for (const path of ["HEAD", "refs/heads/main", "objects/ab/cdef"]) expect(isSafeSyncGitPath(path)).toBe(true);
+    for (const path of ["", "/HEAD", "../config", "refs/../../x", "a//b", "./HEAD", "a\\b", "a\0b"]) expect(isSafeSyncGitPath(path)).toBe(false);
+  });
+
+  test("plans, responses and get results", () => {
+    roundTrip(SyncGetPlanSchema, {
+      hostPath: "/home/me/app",
+      changes: [
+        { path: "src/a.ts", kind: "modified", sha256: sha, executable: false },
+        { path: "old.ts", kind: "deleted", sha256: null, executable: false },
+      ],
+      git: { changed: ["HEAD"], deleted: ["refs/heads/topic"] },
+    });
+    expect(SyncGetPlanSchema.safeParse({ hostPath: "/x", changes: [{ path: ".git/HEAD", kind: "added", sha256: sha, executable: false }], git: null }).success).toBe(false);
+    expect(SyncGetPlanSchema.safeParse({ hostPath: "", changes: [], git: null }).success).toBe(false);
+    roundTrip(SyncGetPlanResponseSchema, { request: { ...sampleSyncRequest, kind: "get", status: "claimed" }, upload: ["src/a.ts"], gitUpload: ["HEAD"] });
+    roundTrip(SyncRequestSchema, {
+      ...sampleSyncRequest,
+      kind: "get",
+      result: {
+        added: 0,
+        modified: 1,
+        deleted: 0,
+        conflicts: [],
+        snapshotId: null,
+        hostPath: "/home/me/app",
+        files: [{ path: "src/a.ts", kind: "modified", insertions: 2, deletions: 1, binary: false, oldMode: "100644", newMode: "100755", oldSize: 10, newSize: 12 }],
+        insertions: 2,
+        deletions: 1,
+        gitFiles: 4,
+        syncedAt: "2026-10-01T12:00:00.000Z",
+        previousSyncAt: null,
+        backupPath: null,
+      },
+    });
+    roundTrip(CreateSyncRequestSchema, { kind: "get", force: true, source: "cli" });
+    roundTrip(SyncChangesSchema, { ...sampleSyncChanges, lastGetAt: "2026-10-01T12:00:00.000Z" });
   });
 });

@@ -4,8 +4,16 @@ export const UI_PREFIX = "/ui" as const;
 export const DEFAULT_PORT = 7700;
 export const PAIRING_SCHEME = "theone" as const;
 export const PAIRING_ACTION = "pair" as const;
+/** `theone://host?url=…&token=…&name=…` pairs the phone with the host shell daemon (`theone-controller host pair`). */
+export const HOST_PAIRING_ACTION = "host" as const;
+export const HOST_SHELL_PORT = 7701;
+export const HOST_SHELL_SERVICE = "host-shell" as const;
+/** Host shell PIN: 6 to 12 digits, set on the host with `theone-controller host pin`. */
+export const HOST_PIN_PATTERN = /^\d{6,12}$/;
 export const TICKET_PARAM = "ticket" as const;
 export const VNC_WS_SUBPROTOCOL = "binary" as const;
+/** Stands in for names, authors, URLs and other identifying details of a confidential project. */
+export const REDACTED = "REDACTED" as const;
 
 export const ERROR_CODES = [
   "unauthorized",
@@ -81,7 +89,9 @@ export const FINAL_AGENT_RUN_STATES = ["succeeded", "failed", "cancelled"] as co
 export const AGENT_RUN_MODES = ["plan", "acceptEdits", "bypassPermissions"] as const;
 export const UPLOAD_KINDS = ["image", "pdf", "audio", "file"] as const;
 export const STT_PROFILES = ["off", "eco", "balanced", "performance"] as const;
-export const STT_ENGINE_NAMES = ["whisper.cpp", "openai-compatible"] as const;
+export const STT_ENGINE_NAMES = ["whisper.cpp", "openai-compatible", "gemini"] as const;
+/** `native`: the controller's own engine (whisper.cpp / openai-compatible); `gemini`: Gemini first, native when it fails. */
+export const STT_PROVIDERS = ["native", "gemini"] as const;
 export const AGENT_RUN_EVENT_KINDS = ["text", "tool_use", "tool_result", "system"] as const;
 export const LOG_STREAMS = ["stdout", "stderr", "system"] as const;
 export const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
@@ -90,12 +100,17 @@ export const INBOX_KINDS = ["needs_input", "permission", "completed", "failed", 
 export const ARTIFACT_SOURCES = ["build", "agent"] as const;
 export const CLAUDE_SESSION_SOURCES = ["agent-run", "terminal", "cli"] as const;
 export const SYNC_CHANGE_KINDS = ["added", "modified", "deleted"] as const;
-export const SYNC_REQUEST_KINDS = ["pull", "revert"] as const;
+export const SYNC_REQUEST_KINDS = ["pull", "revert", "get"] as const;
 export const SYNC_REQUEST_STATUSES = ["pending", "claimed", "applied", "failed", "cancelled"] as const;
 export const SYNC_REQUEST_SOURCES = ["mobile", "desktop", "cli"] as const;
 export const IDENTITY_SOURCES = ["serve", "localapi", "none"] as const;
 
 export const CLAUDE_AUTH_METHODS = ["oauth_token", "credentials", "api_key", "none"] as const;
+
+/** Id of the primary Claude account (the host's `~/.claude`); others are `claude-<name>` for `~/.claude-<name>`. */
+export const CLAUDE_PRIMARY_ACCOUNT_ID = "claude";
+export const CLAUDE_ACCOUNT_ID_PATTERN = /^claude(-[a-z0-9][a-z0-9_-]{0,31})?$/;
+export const CLAUDE_ACCOUNT_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/;
 
 /** `~/.claude.json` keys a Claude import may set; everything else (projects, caches) stays sandbox-local. */
 export const CLAUDE_IMPORT_ACCOUNT_KEYS = [
@@ -125,6 +140,7 @@ export const SERVER_EVENT_TYPES = [
   "agent.updated",
   "agent.deleted",
   "project.updated",
+  "project.deleted",
   "inbox.updated",
   "stt.updated",
   "sync.updated",
@@ -169,10 +185,20 @@ export const LIMITS = {
   maxProjectSyncBytes: 1024 * 1024 * 1024,
   maxRunAttachments: 10,
   maxSyncPaths: 5_000,
+  /** Files under `.git` one `get` may update or delete. */
+  maxSyncGitPaths: 200_000,
+  /** Body limit of `POST /v1/sync/requests/:id/plan` (the `get` plan, which can list a whole `.git`). */
+  maxSyncPlanBytes: 64 * 1024 * 1024,
   maxSyncPathLength: 4_096,
   maxSyncHostLength: 255,
   maxSyncRequestList: 50,
   syncHostOnlineMs: 60_000,
   syncClaimTimeoutMs: 10 * 60_000,
   maxTranscriptionLanguageLength: 16,
+  /** A host shell session (from `POST /v1/host/unlock`) expires this long after the PIN was entered. */
+  hostSessionTtlMs: 15 * 60_000,
+  /** Wrong PINs allowed before the host shell locks; each further lockout doubles, capped at `hostLockoutMaxMs`. */
+  hostPinMaxAttempts: 5,
+  hostLockoutBaseMs: 5 * 60_000,
+  hostLockoutMaxMs: 24 * 60 * 60_000,
 } as const;

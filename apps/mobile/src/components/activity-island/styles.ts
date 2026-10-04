@@ -16,7 +16,7 @@ export default function createStyles(theme: Theme) {
       paddingVertical: theme.spacing.sm,
       paddingLeft: theme.spacing.sm,
       paddingRight: theme.spacing.base,
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.pill,
     },
     capsuleText: {
       flex: 1,
@@ -26,12 +26,6 @@ export default function createStyles(theme: Theme) {
       gap: theme.spacing.base,
       padding: theme.spacing.xl,
       borderRadius: theme.radius.card,
-    },
-    percentPill: {
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xxs,
-      borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.backgroundElement,
     },
     collapse: {
       position: "absolute",
@@ -45,6 +39,9 @@ export default function createStyles(theme: Theme) {
     centered: {
       textAlign: "center",
     },
+    figure: {
+      fontVariant: ["tabular-nums"],
+    },
     progress: {
       alignSelf: "stretch",
       gap: theme.spacing.xs,
@@ -56,9 +53,6 @@ export default function createStyles(theme: Theme) {
     },
     action: {
       flex: 1,
-    },
-    pressed: {
-      transform: [{ scale: 0.98 }],
     },
   });
 }

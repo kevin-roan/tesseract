@@ -12,20 +12,23 @@ from ...api.types import (
     AgentRun,
     Artifact,
     BuildJob,
+    ClaudeAccountList,
     GitFileStatus,
     GitSummary,
     ListeningPort,
     ProcessInfo,
     Project,
     SyncChanges,
+    SyncDiscardResult,
     SyncFileChange,
     SyncRequest,
     run_total_tokens,
 )
 from ...syncback.errors import SyncBackError
 from ...syncback.manifest import resolve_inside
-from ...syncback.pull import is_conflict
+from ...syncback.pull import is_conflict as file_conflicts
 from ...syncback.state import Link, Snapshot, SyncState
+from ...syncback.summary import plural
 from ...theme.tone import Tone
 from ...util.format import (
     elapsed_seconds,
@@ -42,6 +45,8 @@ from .labels import (
     BUILD_STATES,
     BUILD_TARGETS,
     BUILDS,
+    CLAUDE_ACCOUNT,
+    CONFIDENTIAL,
     CREATE,
     DEFAULT_PACKAGE_MANAGER,
     FRAMEWORKS,
@@ -52,6 +57,7 @@ from .labels import (
     PROJECTS_ROOT,
     RUN_STATES,
     SYNC,
+    SYNC_BLOCKED,
     SYNC_CODES,
     SYNC_STATES,
     VALIDATION,
@@ -69,6 +75,7 @@ MAX_COMMAND_LENGTH = 16_384
 MIN_PORT, MAX_PORT = 1, 65535
 SHELL_SAFE_WORD = re.compile(r"^[\w.:@/+=-]+$")
 GUI_FRAMEWORKS = frozenset({"electron"})
+DEFAULT_CLAUDE_ACCOUNT = ""
 
 PROCESS_TONES: dict[str, Tone] = {
     "starting": "info", "running": "success", "exited": "neutral",
@@ -97,6 +104,7 @@ class ProjectDraft:
     name: str = ""
     git_url: str = ""
     branch: str = ""
+    confidential: bool = False
 
 
 @dataclass(frozen=True)
@@ -106,6 +114,7 @@ class DraftResult:
     name: str = ""
     git_url: str | None = None
     branch: str | None = None
+    confidential: bool = False
 
     @property
     def ok(self) -> bool:
@@ -147,7 +156,39 @@ def validate_project_draft(draft: ProjectDraft, existing_ids: Iterable[str] = ()
         "branch": _branch_error(branch, git_url),
     }
     errors = {key: message for key, message in candidates.items() if message}
-    return DraftResult(errors, project_id, name, git_url or None, (branch or None) if git_url else None)
+    return DraftResult(errors, project_id, name, git_url or None, (branch or None) if git_url else None, draft.confidential)
+
+
+def is_confidential(project: Project) -> bool:
+    return bool(project.get("confidential", False))
+
+
+def confidential_badge(project: Project) -> tuple[str, Tone] | None:
+    return (CONFIDENTIAL["badge"], "warning") if is_confidential(project) else None
+
+
+def project_claude_account(project: Project) -> str | None:
+    return project.get("claudeAccountId") or None
+
+
+def effective_claude_account(project: Project, accounts: ClaudeAccountList | None) -> str | None:
+    return project_claude_account(project) or (accounts["defaultAccountId"] if accounts else None)
+
+
+def claude_account_options(project: Project, accounts: ClaudeAccountList) -> list[tuple[str, str]]:
+    options = [(DEFAULT_CLAUDE_ACCOUNT, CLAUDE_ACCOUNT["default"].format(id=accounts["defaultAccountId"]))]
+    for profile in accounts["accounts"]:
+        email = (profile["account"] or {}).get("email")
+        options.append((profile["id"], join_meta(profile["id"], email)))
+    pinned = project_claude_account(project)
+    if pinned and all(option_id != pinned for option_id, _ in options):
+        options.append((pinned, pinned))
+    return options
+
+
+def claude_account_label(project: Project, accounts: ClaudeAccountList | None) -> str | None:
+    account = effective_claude_account(project, accounts)
+    return CLAUDE_ACCOUNT["badge"].format(id=account) if account else None
 
 
 def location_hint(name: str) -> str:
@@ -456,6 +497,7 @@ def matches(project: Project, query: str) -> bool:
     haystack = " ".join(filter(None, [
         project.get("name"), project["id"], framework_label(project.get("framework")),
         git.get("branch"), project.get("packageManager"), *project.get("buildTargets", []),
+        CONFIDENTIAL["badge"] if is_confidential(project) else None,
     ])).lower()
     return all(token in haystack for token in tokens)
 
@@ -476,6 +518,7 @@ class ProjectCardModel:
     commit: str | None
     commit_when: str | None
     tags: tuple[str, ...]
+    confidential: tuple[str, Tone] | None = None
 
 
 def project_subtitle(project: Project) -> str:
@@ -502,6 +545,7 @@ def card_model(
         (commit.get("subject") or None) if commit else (GIT["no_commits"] if git else None),
         format_relative_time(commit.get("date"), now) if commit else None,
         tuple(target_label(target) for target in project.get("buildTargets", [])),
+        confidential_badge(project),
     )
 
 
@@ -614,22 +658,71 @@ class SyncView:
     def in_flight(self) -> bool:
         return any(r.get("status") in ("pending", "claimed") for r in self.requests)
 
+    @property
+    def pushed(self) -> bool:
+        return self.changes is not None and self.changes.get("baselineAt") is not None
+
+    @property
+    def discardable(self) -> list[SyncFileChange]:
+        return [change for change in self.files if change.get("discardable")]
+
+    @property
+    def get_conflicts(self) -> list[str]:
+        """Sandbox edits the newest get stopped on, so the next one should be forced."""
+        last = next((r for r in self.requests if r.get("kind") == "get"), None)
+        if last is None or last.get("status") != "failed":
+            return []
+        return list((last.get("result") or {}).get("conflicts") or [])
+
+
+SYNC_ACTIONS = ("pull", "get", "revert", "discard")
+
+
+def _first_reason(*checks: tuple[bool, str]) -> str | None:
+    return next((SYNC_BLOCKED[reason] for blocked, reason in checks if blocked), None)
+
+
+def sync_blockers(view: SyncView, busy: bool = False) -> dict[str, str | None]:
+    """Why each sync action can't run right now (`None`: it can)."""
+    linked = view.link is not None
+    loaded = (view.changes is None, "unavailable" if view.error is not None else "loading")
+    pushed = (not view.pushed, "never_pushed")
+    active = (busy or view.in_flight, "active")
+    return {
+        "pull": _first_reason((not linked, "not_linked"), loaded, pushed, active, (not view.files, "nothing_to_sync")),
+        "get": _first_reason((not linked, "not_linked"), loaded, pushed, active),
+        "revert": _first_reason((not linked, "not_linked"), active, (view.revertible is None, "no_snapshot")),
+        "discard": _first_reason(
+            loaded, pushed, active, (not view.files, "nothing_to_discard"), (not view.discardable, "not_discardable")
+        ),
+    }
+
+
+def discard_summary(result: SyncDiscardResult) -> tuple[str, Tone]:
+    discarded, unavailable = result.get("discarded") or [], result.get("unavailable") or []
+    lines = [SYNC["discarded"].format(count=plural(len(discarded), "file")) if discarded else SYNC["discarded_none"]]
+    if unavailable:
+        lines.append(SYNC["discard_unavailable"].format(count=plural(len(unavailable), "file"), files=", ".join(unavailable)))
+    if result.get("backupPath"):
+        lines.append(SYNC["discard_backup"].format(path=result["backupPath"]))
+    return "\n".join(lines), "warning" if unavailable or not discarded else "success"
+
 
 def load_sync_view(client: Any, state: SyncState, project_id: str) -> SyncView:
     link = state.link(project_id)
     snapshots = tuple(state.snapshots(project_id))
-    if link is None:
-        return SyncView(snapshots=snapshots)
     try:
         changes = client.sync_changes(project_id)
         requests = tuple(client.list_sync_requests(project_id))
     except ControllerError as error:
         return SyncView(link, snapshots=snapshots, error=error)
+    if link is None:
+        return SyncView(None, changes, requests, snapshots)
     conflicts = set()
     root = Path(link.host_path)
     for change in changes.get("changes") or []:
         try:
-            if is_conflict(resolve_inside(root, change["path"]), link.manifest.get(change["path"]), change.get("sha256")):
+            if file_conflicts(resolve_inside(root, change["path"]), link.manifest.get(change["path"]), change.get("sha256")):
                 conflicts.add(change["path"])
         except SyncBackError:
             conflicts.add(change["path"])

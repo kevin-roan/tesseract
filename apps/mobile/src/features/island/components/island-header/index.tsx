@@ -1,13 +1,14 @@
 import { useMemo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { CaretUpIcon } from "phosphor-react-native";
 
-import ConnectionDot from "@/components/connection-dot";
+import PressableScale from "@/components/pressable-scale";
+import TagChip from "@/components/tag-chip";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useHapticPress } from "@/hooks/use-haptic-press";
 import type { Tone } from "@/lib/tone";
-import { HitSlop, IconSize } from "@/theme";
+import { HitSlop, IconSize, MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
 
@@ -26,14 +27,26 @@ const IslandHeader = ({ name, status, tone, onCollapse }: IslandHeaderProps) => 
   return (
     <View style={styles.row}>
       <View style={styles.copy}>
-        <ThemedText variant="h4" numberOfLines={1}>
+        <ThemedText
+          variant="h4"
+          numberOfLines={1}
+          maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+          style={styles.name}
+        >
           {name}
         </ThemedText>
-        <ConnectionDot tone={tone} label={status} />
+        <TagChip label={status} tone={tone} dot />
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel="Collapse" hitSlop={HitSlop.md} onPress={collapse}>
-        <CaretUpIcon size={IconSize.md} color={theme.colors.textSecondary} weight="bold" />
-      </Pressable>
+      <PressableScale
+        depth="control"
+        accessibilityRole="button"
+        accessibilityLabel="Collapse"
+        hitSlop={HitSlop.md}
+        onPress={collapse}
+        style={styles.collapse}
+      >
+        <CaretUpIcon size={IconSize.sm} color={theme.colors.textSecondary} weight="regular" />
+      </PressableScale>
     </View>
   );
 };

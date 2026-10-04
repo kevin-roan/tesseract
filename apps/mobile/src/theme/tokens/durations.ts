@@ -36,26 +36,16 @@ export const Easings = {
   accelerate: [0.3, 0, 1, 1],
   /** Large, expressive moves (sheets, hero). */
   emphasized: [0.2, 0, 0, 1],
-  /** Slight overshoot for playful affordances. */
-  overshoot: [0.34, 1.56, 0.64, 1],
   linear: [0, 0, 1, 1],
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 
 export type EasingToken = keyof typeof Easings;
 
-/** `withSpring` configs (Reanimated). Prefer these over durations for gestures. */
-export const Springs = {
-  /** Crisp, no visible bounce — default for interactive drags. */
-  snappy: { damping: 22, stiffness: 260, mass: 1 },
-  /** Soft settle — sheets, cards. */
-  gentle: { damping: 26, stiffness: 140, mass: 1 },
-  /** Visible bounce — celebratory moments only. */
-  bouncy: { damping: 12, stiffness: 200, mass: 0.9 },
-  /** Near-instant, for values that follow a finger. */
-  responsive: { damping: 30, stiffness: 420, mass: 0.8 },
+/** How far a pressed element sinks (`usePressScale`): cards barely, small controls a little more. */
+export const PressScale = {
+  card: 0.98,
+  control: 0.95,
 } as const;
-
-export type SpringToken = keyof typeof Springs;
 
 /** Delay between children in a staggered list/grid entrance. */
 export const Stagger = {
@@ -63,6 +53,9 @@ export const Stagger = {
   normal: 40,
   loose: 70,
 } as const;
+
+/** Items past this position in a staggered entrance arrive with the last delayed one. */
+export const StaggerCap = 10;
 
 /** Assistant-specific timings, shared between chat UI and voice UI. */
 export const Timings = {
@@ -80,4 +73,28 @@ export const Timings = {
   searchDebounce: 300,
   /** Long-press to open a message action menu. */
   longPress: 500,
+} as const;
+
+/** Ambient chart motion on data visuals (cell matrices, bar strips). */
+export const ChartMotion = {
+  /** Bottom-up reveal when a chart becomes active. */
+  reveal: Durations.slowest * 2,
+  /** One pulse cycle of a matrix's live cells. */
+  pulse: Durations.slowest * 4,
+  /** One full scroll of a streaming bar strip. */
+  stream: Durations.slowest * 20,
+  /** Opacity a live cell dims to at the bottom of its pulse. */
+  pulseFloor: 0.35,
+} as const;
+
+/** Launch splash: one intro clock, then the hand-off into the app. */
+export const SplashMotion = {
+  /** Wordmark, edge lines and light sweep play inside this window. */
+  intro: Durations.slowest * 2.5,
+  /** Overlay fade and image push once the app is ready. */
+  exit: Durations.slower,
+  /** Delay between wordmark letters, as a fraction of the intro. */
+  letterStagger: 0.045,
+  /** How long one letter takes to settle, as a fraction of the intro. */
+  letterSettle: 0.38,
 } as const;

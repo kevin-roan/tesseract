@@ -19,11 +19,13 @@ export function useOnboardingStyles() {
           justifyContent: "space-between",
           minHeight: ControlHeight.sm,
         },
+        brand: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: theme.spacing.sm,
+        },
         footer: {
           gap: theme.spacing.lg,
-        },
-        centered: {
-          textAlign: "center",
         },
       }),
     [theme],

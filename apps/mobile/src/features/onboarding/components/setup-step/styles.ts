@@ -1,48 +1,43 @@
 import { StyleSheet } from "react-native";
 
-import { AvatarSize, type Theme } from "@/theme";
+import { AvatarSize, BorderWidth, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
-  const badge = AvatarSize.lg;
+  const tile = AvatarSize.md;
 
   return StyleSheet.create({
-    row: {
+    card: {
+      gap: theme.spacing.md,
+      padding: theme.spacing.base,
+    },
+    head: {
       flexDirection: "row",
-      gap: theme.spacing.base,
-    },
-    rail: {
       alignItems: "center",
-      width: badge,
+      gap: theme.spacing.md,
     },
-    badge: {
-      width: badge,
-      height: badge,
+    tile: {
+      width: tile,
+      height: tile,
       alignItems: "center",
       justifyContent: "center",
       borderRadius: theme.radius.full,
-      backgroundColor: theme.colors.accent,
-    },
-    line: {
-      flex: 1,
-      width: StyleSheet.hairlineWidth * 2,
-      marginVertical: theme.spacing.xs,
-      backgroundColor: theme.colors.borderStrong,
-    },
-    body: {
-      flex: 1,
-      gap: theme.spacing.xs,
-      paddingBottom: theme.spacing.xl,
-    },
-    command: {
-      alignSelf: "flex-start",
-      marginTop: theme.spacing.xs,
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.sm,
-      borderRadius: theme.radius.sm,
-      borderCurve: "continuous",
-      backgroundColor: theme.colors.codeBackground,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
+    },
+    heading: {
+      flex: 1,
+      minWidth: 0,
+    },
+    index: {
+      alignSelf: "flex-start",
+      fontVariant: ["tabular-nums"],
+    },
+    connector: {
+      width: BorderWidth.thin,
+      height: theme.spacing.md,
+      marginLeft: theme.spacing.base + tile / 2,
+      backgroundColor: theme.colors.borderStrong,
     },
   });
 }

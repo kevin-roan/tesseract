@@ -1,5 +1,5 @@
 from ..css import css_var
-from ..semantic import SchemeName
+from ..semantic import SchemeName, is_dark
 from ..tokens import BORDER_WIDTH, CONTROL_HEIGHT, RADIUS, SHADOWS, SPACING
 
 
@@ -10,7 +10,7 @@ def _px(value: float) -> str:
 def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
     s, r = SPACING, RADIUS
     thin = f"{_px(BORDER_WIDTH['thin'])} solid"
-    raised = SHADOWS["level2"].css() if scheme == "light" else "none"
+    raised = "none" if is_dark(scheme) else SHADOWS["level2"].css()
     return {
         ".to-agents-list": {
             "background-color": css_var("surfaceSunken"),

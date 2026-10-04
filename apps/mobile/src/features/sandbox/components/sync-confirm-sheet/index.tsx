@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { ScrollView } from "react-native";
-import { ArrowLineUpIcon } from "phosphor-react-native";
-import type { SyncFileChange } from "@theone/protocol";
+import type { Icon } from "phosphor-react-native";
 
 import ActionButton from "@/components/action-button";
 import BottomSheet from "@/components/bottom-sheet";
@@ -10,61 +9,72 @@ import Notice from "@/components/notice";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 
-import { pluralize } from "../../utils/format";
+import type { SyncSheetView } from "../../utils/sync";
 import SyncFileRow from "../sync-file-row";
 import createStyles from "./styles";
 
 export type SyncConfirmSheetProps = {
   visible: boolean;
-  changes: SyncFileChange[];
-  message: string;
-  showForce: boolean;
+  view: SyncSheetView & { icon: Icon };
+  selected?: ReadonlySet<string>;
+  onToggleFile?: (path: string) => void;
   force: boolean;
   onForceChange: (force: boolean) => void;
   onConfirm: () => void;
   onClose: () => void;
   submitting: boolean;
+  disabled?: boolean;
   error: string | null;
 };
 
 const SyncConfirmSheet = ({
   visible,
-  changes,
-  message,
-  showForce,
+  view,
+  selected,
+  onToggleFile,
   force,
   onForceChange,
   onConfirm,
   onClose,
   submitting,
+  disabled = false,
   error,
 }: SyncConfirmSheetProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} title="Sync to host" testID="sync-confirm-sheet">
+    <BottomSheet visible={visible} onClose={onClose} title={view.title} testID="sync-confirm-sheet">
       <ThemedText variant="bodySmall" color="textSecondary" style={styles.message}>
-        {message}
+        {view.message}
       </ThemedText>
-      <ScrollView style={styles.files}>
-        <ListGroup dividerInset="text">
-          {changes.map((change) => (
-            <SyncFileRow key={change.path} change={change} />
-          ))}
-        </ListGroup>
-      </ScrollView>
-      {showForce ? (
-        <ListGroup footnote="The last sync stopped because files changed on your computer. Turn this on to replace them.">
-          <ListSwitchRow label="Overwrite host edits" value={force} onValueChange={onForceChange} />
+      {view.files.length > 0 ? (
+        <ScrollView style={styles.files}>
+          <ListGroup dividerInset="text">
+            {view.files.map((change) => (
+              <SyncFileRow
+                key={change.path}
+                change={change}
+                selected={view.selectable ? (selected?.has(change.path) ?? false) : undefined}
+                onPress={view.selectable && onToggleFile ? () => onToggleFile(change.path) : undefined}
+              />
+            ))}
+          </ListGroup>
+        </ScrollView>
+      ) : null}
+      {view.force ? (
+        <ListGroup footnote={view.force.footnote}>
+          <ListSwitchRow label={view.force.label} value={force} onValueChange={onForceChange} />
         </ListGroup>
       ) : null}
       {error ? <Notice tone="danger" message={error} /> : null}
       <ActionButton
-        label={`Sync ${pluralize(changes.length, "file")}`}
-        icon={ArrowLineUpIcon}
+        label={view.confirmLabel}
+        icon={view.icon}
+        variant={view.destructive ? "danger" : "primary"}
         onPress={onConfirm}
         loading={submitting}
+        disabled={disabled}
         stretch
       />
     </BottomSheet>

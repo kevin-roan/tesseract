@@ -2,8 +2,7 @@ import { useCallback, useMemo } from "react";
 import { isApiError } from "@theone/client";
 
 import type { ActivityItemProps } from "@/components/activity-item";
-import { useClaudeAuth } from "@/features/claude-account/hooks/use-claude-auth";
-import { claudeAccountSummary } from "@/features/claude-account/utils/status";
+import { useClaudeAccountEntry } from "@/features/claude-account/hooks/use-claude-account-entry";
 
 import type { ActivityRef } from "../types";
 import { describeError } from "../utils/errors";
@@ -32,7 +31,7 @@ export function useProfileScreen() {
   const processes = useProcesses();
   const builds = useBuilds();
   const runs = useAgentRuns();
-  const claude = useClaudeAuth();
+  const claude = useClaudeAccountEntry();
   const problems = useSandboxProblems(status.error);
   const { refreshing, refresh } = useSandboxRefresh();
 
@@ -76,7 +75,7 @@ export function useProfileScreen() {
     sandbox,
     profile: sandbox ? profileView(identity.data, sandbox, status.data) : null,
     stats: profileStats(status.data),
-    openHub: nav.sandboxHub,
+    openSettings: nav.settings,
     tailscaleMissing: isTailscaleIdentityMissing(identity.data) || identityNotFound,
     identityError: identity.error && !identityNotFound && !problems.issue ? describeError(identity.error) : null,
     retryIdentity: () => void identity.refetch(),
@@ -85,8 +84,9 @@ export function useProfileScreen() {
     repair: problems.repair,
     statusError: problems.error,
     retryStatus: () => void status.refetch(),
-    claudeAccount: claude.error ? describeError(claude.error) : claudeAccountSummary(claude.data),
-    openClaudeAccount: nav.claudeAccount,
+    claudeAccountTitle: claude.title,
+    claudeAccount: claude.subtitle,
+    openClaudeAccount: claude.open,
     activity,
     activityLoading: builds.isLoading || runs.isLoading || processes.isLoading,
     activityError: feedError && !problems.issue && !problems.error ? describeError(feedError) : null,

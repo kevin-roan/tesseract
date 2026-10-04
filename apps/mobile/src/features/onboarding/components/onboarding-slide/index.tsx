@@ -1,12 +1,15 @@
 import { useMemo } from "react";
 import { View } from "react-native";
-import Animated, { Extrapolation, interpolate, useAnimatedStyle, type SharedValue } from "react-native-reanimated";
+import Animated, { type SharedValue } from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { MaxFontSizeMultiplier } from "@/theme";
 
-import HeroOrb from "../hero-orb";
+import { useSlideCopyLayout } from "../../hooks/use-slide-copy-layout";
+import { useSlideParallax } from "../../hooks/use-slide-parallax";
 import type { OnboardingSlide as Slide } from "../../utils/content";
+import SlidePanel from "../slide-panel";
 import createStyles from "./styles";
 
 export type OnboardingSlideProps = {
@@ -14,42 +17,42 @@ export type OnboardingSlideProps = {
   position: number;
   progress: SharedValue<number>;
   width: number;
+  active?: boolean;
 };
 
-const OnboardingSlide = ({ slide, position, progress, width }: OnboardingSlideProps) => {
+const OnboardingSlide = ({ slide, position, progress, width, active = true }: OnboardingSlideProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme, width), [theme, width]);
-  const range = [position - 1, position, position + 1];
-
-  const hero = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, range, [0, 1, 0], Extrapolation.CLAMP),
-    transform: [
-      { translateX: interpolate(progress.value, range, [width * 0.4, 0, -width * 0.4], Extrapolation.CLAMP) },
-      { scale: interpolate(progress.value, range, [0.7, 1, 0.7], Extrapolation.CLAMP) },
-    ],
-  }));
-
-  const copy = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, range, [0, 1, 0], Extrapolation.CLAMP),
-    transform: [{ translateX: interpolate(progress.value, range, [width * 0.2, 0, -width * 0.2], Extrapolation.CLAMP) }],
-  }));
+  const { hero, copy } = useSlideParallax(progress, position, width);
+  const variants = useSlideCopyLayout();
 
   return (
-    <View style={styles.page} testID={`onboarding-slide-${slide.id}`}>
-      <Animated.View style={[styles.hero, hero]}>
-        <HeroOrb icon={slide.icon} />
-      </Animated.View>
-      <Animated.View style={[styles.copy, copy]}>
-        <ThemedText variant="overline" color="textSecondary" style={styles.centered}>
-          {slide.eyebrow}
-        </ThemedText>
-        <ThemedText variant="h1" accessibilityRole="header" style={styles.centered}>
-          {slide.title}
-        </ThemedText>
-        <ThemedText variant="bodyLarge" color="textSecondary" style={styles.centered}>
-          {slide.message}
-        </ThemedText>
-      </Animated.View>
+    <View
+      style={styles.page}
+      testID={`onboarding-slide-${slide.id}`}
+      accessibilityElementsHidden={!active}
+      importantForAccessibility={active ? "auto" : "no-hide-descendants"}
+    >
+      <View style={styles.column}>
+        <Animated.View style={hero} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          <SlidePanel panel={slide.panel} icon={slide.icon} active={active} />
+        </Animated.View>
+        <Animated.View style={[styles.copy, copy]}>
+          <ThemedText variant="overline" color="textSecondary" maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
+            {slide.eyebrow}
+          </ThemedText>
+          <ThemedText
+            variant={variants.title}
+            accessibilityRole="header"
+            maxFontSizeMultiplier={MaxFontSizeMultiplier.fixed}
+          >
+            {slide.title}
+          </ThemedText>
+          <ThemedText variant={variants.message} color="textSecondary" maxFontSizeMultiplier={MaxFontSizeMultiplier.fixed}>
+            {slide.message}
+          </ThemedText>
+        </Animated.View>
+      </View>
     </View>
   );
 };

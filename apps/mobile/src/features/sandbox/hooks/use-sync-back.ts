@@ -1,87 +1,127 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { confirm } from "@/lib/confirm";
-
+import { SYNC_ACTIONS } from "../utils/actions";
 import { describeError } from "../utils/errors";
 import {
-  canRevertLastSync,
   describeSyncRequest,
-  lastPullFailedOnConflicts,
+  describeSyncSheet,
+  lastFailedOnConflicts,
   previewSyncChanges,
   SYNC_REQUEST_PREVIEW,
+  syncActionDetail,
   syncChangesSummary,
-  syncConfirmMessage,
   syncFileToggleLabel,
   syncHostLabel,
-  syncPullBody,
+  type SyncActionId,
+  type SyncSheetMode,
 } from "../utils/sync";
 import { useCancelSyncRequest } from "./use-sandbox-mutations";
-import { useSyncState } from "./use-sync-state";
+import { useSyncActions } from "./use-sync-actions";
 import { useToggle } from "./use-toggle";
 
+const SECONDARY_ACTIONS = ["get", "revert", "discard"] as const satisfies readonly SyncActionId[];
+
+/** The project screen's sync group: changed files, the four actions, and recent requests. */
 export function useSyncBack(projectId: string) {
-  const { changesQuery, requestsQuery, createRequest, changes, requests, empty, busy } = useSyncState(projectId);
+  const sync = useSyncActions(projectId);
+  const { changesQuery, requestsQuery, changes, requests, discardable, reasons, pending } = sync;
   const cancelRequest = useCancelSyncRequest();
   const [expanded, toggleExpanded] = useToggle(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [mode, setMode] = useState<SyncSheetMode>("pull");
   const [force, setForce] = useState(false);
-  const { mutate: create } = createRequest;
+  const [excluded, setExcluded] = useState<ReadonlySet<string>>(() => new Set());
 
   const preview = previewSyncChanges(changes, expanded);
 
-  const openSheet = useCallback(() => {
+  const selectedPaths = useMemo(
+    () => discardable.filter((change) => !excluded.has(change.path)).map((change) => change.path),
+    [discardable, excluded],
+  );
+  const selected = useMemo(() => new Set(selectedPaths), [selectedPaths]);
+
+  const openSheet = useCallback((next: SyncSheetMode = "pull") => {
+    setMode(next);
     setForce(false);
+    setExcluded(new Set());
     setSheetOpen(true);
   }, []);
 
   const closeSheet = useCallback(() => setSheetOpen(false), []);
 
-  const submit = useCallback(
-    () => create({ projectId, ...syncPullBody(changes, force) }, { onSuccess: () => setSheetOpen(false) }),
-    [changes, create, force, projectId],
+  const toggleFile = useCallback(
+    (path: string) =>
+      setExcluded((current) => {
+        const next = new Set(current);
+        if (!next.delete(path)) next.add(path);
+        return next;
+      }),
+    [],
   );
 
-  const revert = useCallback(async () => {
-    const confirmed = await confirm({
-      title: "Revert last sync?",
-      message: "Monolith restores the host files from the snapshot it took before the last sync.",
-      confirmLabel: "Revert",
-      cancelLabel: "Keep changes",
-      destructive: true,
-    });
-    if (confirmed) create({ projectId, kind: "revert", source: "mobile" });
-  }, [create, projectId]);
+  const { pull, get, discard } = sync;
+  const submit = useCallback(() => {
+    if (mode === "pull") pull(force, closeSheet);
+    else if (mode === "get") get(force, closeSheet);
+    else discard(selectedPaths, closeSheet);
+  }, [closeSheet, discard, force, get, mode, pull, selectedPaths]);
+
+  const sheet = useMemo(
+    () => ({
+      ...describeSyncSheet(mode, {
+        changes,
+        selected: selectedPaths.length,
+        showForce: mode !== "discard" && lastFailedOnConflicts(requests, mode),
+      }),
+      icon: SYNC_ACTIONS[mode].icon,
+    }),
+    [changes, mode, requests, selectedPaths.length],
+  );
+
+  const openers = useMemo<Record<(typeof SECONDARY_ACTIONS)[number], () => void>>(
+    () => ({ get: () => openSheet("get"), revert: sync.revert, discard: () => openSheet("discard") }),
+    [openSheet, sync.revert],
+  );
+
+  const actions = SECONDARY_ACTIONS.map((id) => ({
+    ...SYNC_ACTIONS[id],
+    detail: syncActionDetail(id, reasons[id], changes),
+    disabled: reasons[id] !== null,
+    onPress: openers[id],
+  }));
 
   const recent = useMemo(
     () => requests.slice(0, SYNC_REQUEST_PREVIEW).map((request) => ({ id: request.id, view: describeSyncRequest(request) })),
     [requests],
   );
   const loadError = changesQuery.error ?? requestsQuery.error;
-  const actionError = createRequest.error ?? cancelRequest.error;
 
   return {
     loading: changesQuery.isLoading,
     loadError: loadError ? describeError(loadError) : null,
-    actionError: actionError ? describeError(actionError) : null,
+    actionError: sync.error ?? (cancelRequest.error ? describeError(cancelRequest.error) : null),
+    notice: sync.discardNotice,
+    dismissNotice: sync.dismiss,
     host: syncHostLabel(changesQuery.data),
-    empty,
+    empty: sync.empty,
     changes,
     summary: syncChangesSummary(changes),
-    confirmMessage: syncConfirmMessage(changes),
     files: preview.visible,
     fileToggleLabel: syncFileToggleLabel(changes.length, expanded),
     toggleExpanded,
-    canSync: empty === null && !busy,
-    syncing: createRequest.isPending && createRequest.variables?.kind === "pull",
-    canRevert: !busy && canRevertLastSync(requests),
-    reverting: createRequest.isPending && createRequest.variables?.kind === "revert",
-    revert: () => void revert(),
-    showForce: lastPullFailedOnConflicts(requests),
-    force,
-    setForce,
+    canSync: reasons.pull === null,
+    syncing: pending === "pull",
+    actions,
     sheetOpen,
+    sheet,
     openSheet,
     closeSheet,
+    selected,
+    toggleFile,
+    force,
+    setForce,
+    submitting: pending === mode,
+    canSubmit: mode !== "discard" || selectedPaths.length > 0,
     submit,
     requests: recent,
     cancel: (requestId: string) => cancelRequest.mutate(requestId),

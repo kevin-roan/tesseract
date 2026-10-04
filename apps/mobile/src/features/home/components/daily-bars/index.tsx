@@ -1,15 +1,17 @@
 import { useId, useMemo } from "react";
 import { View } from "react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 import Svg, { Defs, G, Line, Pattern, Rect, Text as SvgText } from "react-native-svg";
 
-import { Glass } from "@/components/glass";
 import { ThemedText } from "@/components/themed-text";
 import { useGridSelection } from "@/features/analytics/hooks/use-grid-selection";
 import { useLayoutWidth } from "@/features/analytics/hooks/use-layout-width";
 import { formatDay } from "@/features/analytics/utils/format";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { Durations, MaxFontSizeMultiplier } from "@/theme";
 
 import { barHeight, busiestDay, dailyReadout, type DailyTokens } from "../../utils/usage";
+import DailyBar from "./daily-bar";
 import createStyles, { DailyBarsFrame, barGap } from "./styles";
 
 export type DailyBarsColors = {
@@ -26,7 +28,7 @@ export type DailyBarsProps = {
   testID?: string;
 };
 
-/** Rounded pill per day; quiet days are hatched outlines. Tap or drag across to read a single day. */
+/** Rounded bar per day over a dark track, springing up on show; quiet days are hatched tracks. Tap or drag across to read a single day. */
 const DailyBars = ({ days, colors, testID }: DailyBarsProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -36,7 +38,7 @@ const DailyBars = ({ days, colors, testID }: DailyBarsProps) => {
 
   const gap = barGap(days.length);
   const columnWidth = days.length > 0 ? Math.max(1, (width - (days.length - 1) * gap) / days.length) : 0;
-  const radius = columnWidth / 2;
+  const radius = Math.min(columnWidth / 2, DailyBarsFrame.radius);
   const max = Math.max(0, ...days.map((day) => day.tokens));
   const focusIndex = selected ? selected.column : busiestDay(days);
   const readout = dailyReadout(days, selected?.column ?? null);
@@ -46,14 +48,22 @@ const DailyBars = ({ days, colors, testID }: DailyBarsProps) => {
   return (
     <View style={styles.chart} testID={testID}>
       <View style={styles.readout} accessibilityLiveRegion={selected ? "polite" : "none"}>
-        <ThemedText variant="label" color="textSecondary" numberOfLines={1} style={styles.readoutTitle}>
+        <ThemedText
+          variant="caption"
+          color="textSecondary"
+          numberOfLines={1}
+          maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+          style={styles.readoutTitle}
+        >
           {readout.title}
         </ThemedText>
-        <Glass style={styles.readoutPill}>
-          <ThemedText variant="label" numberOfLines={1}>
-            {readout.value}
-          </ThemedText>
-        </Glass>
+        <View style={styles.readoutPill}>
+          <Animated.View key={readout.value} entering={FadeIn.duration(Durations.fast)}>
+            <ThemedText variant="caption" numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome} style={styles.readoutValue}>
+              {readout.value}
+            </ThemedText>
+          </Animated.View>
+        </View>
       </View>
       <View style={styles.frame} onLayout={onLayout}>
         {width > 0 && days.length > 0 ? (
@@ -66,7 +76,7 @@ const DailyBars = ({ days, colors, testID }: DailyBarsProps) => {
                 height={DailyBarsFrame.hatch}
                 patternTransform="rotate(45)"
               >
-                <Line x1={0} y1={0} x2={0} y2={DailyBarsFrame.hatch} stroke={colors.emptyStroke} strokeWidth={1} />
+                <Line x1={0} y1={0} x2={0} y2={DailyBarsFrame.hatch} stroke={colors.emptyStroke} strokeWidth={DailyBarsFrame.stroke} />
               </Pattern>
             </Defs>
             {days.map((day, index) => {
@@ -75,30 +85,31 @@ const DailyBars = ({ days, colors, testID }: DailyBarsProps) => {
               const focused = index === focusIndex;
               return (
                 <G key={day.date}>
+                  <Rect x={x} y={0} width={columnWidth} height={DailyBarsFrame.height} rx={radius} fill={colors.empty} />
                   {fill > 0 ? (
-                    <Rect
+                    <DailyBar
                       x={x}
-                      y={DailyBarsFrame.height - fill}
                       width={columnWidth}
-                      height={fill}
-                      rx={Math.min(radius, fill / 2)}
-                      fill={focused ? colors.focus : colors.bar}
+                      fill={fill}
+                      frameHeight={DailyBarsFrame.height}
+                      radius={radius}
+                      focused={focused}
+                      index={index}
+                      count={days.length}
+                      color={colors.bar}
+                      focusColor={colors.focus}
                     />
                   ) : (
-                    <G>
-                      <Rect x={x} y={0} width={columnWidth} height={DailyBarsFrame.height} rx={radius} fill={colors.empty} />
-                      <Rect
-                        x={x + 0.75}
-                        y={0.75}
-                        width={Math.max(0, columnWidth - 1.5)}
-                        height={DailyBarsFrame.height - 1.5}
-                        rx={radius}
-                        fill={`url(#${hatchId})`}
-                        stroke={focused ? colors.focus : colors.emptyStroke}
-                        strokeWidth={1.5}
-                        strokeDasharray={DailyBarsFrame.dash}
-                      />
-                    </G>
+                    <Rect
+                      x={x + DailyBarsFrame.stroke / 2}
+                      y={DailyBarsFrame.stroke / 2}
+                      width={Math.max(0, columnWidth - DailyBarsFrame.stroke)}
+                      height={DailyBarsFrame.height - DailyBarsFrame.stroke}
+                      rx={radius}
+                      fill={`url(#${hatchId})`}
+                      stroke={focused ? colors.focus : "none"}
+                      strokeWidth={DailyBarsFrame.stroke}
+                    />
                   )}
                 </G>
               );

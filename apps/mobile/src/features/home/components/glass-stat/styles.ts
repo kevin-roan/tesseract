@@ -6,10 +6,14 @@ export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     card: {
       flex: 1,
-      gap: theme.spacing.xxs,
-      paddingVertical: theme.spacing.md,
+      gap: theme.spacing.xs,
+      paddingVertical: theme.spacing.base,
       paddingHorizontal: theme.spacing.base,
-      borderRadius: theme.radius.xl,
+      borderRadius: theme.radius.md,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
     },
   });
 }

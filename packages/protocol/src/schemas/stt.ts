@@ -1,8 +1,11 @@
 import { z } from "zod";
-import { STT_ENGINE_NAMES, STT_PROFILES } from "../constants";
+import { STT_ENGINE_NAMES, STT_PROFILES, STT_PROVIDERS } from "../constants";
 
 export const SttProfileSchema = z.enum(STT_PROFILES);
 export type SttProfile = z.infer<typeof SttProfileSchema>;
+
+export const SttProviderSchema = z.enum(STT_PROVIDERS);
+export type SttProvider = z.infer<typeof SttProviderSchema>;
 
 export const SttEngineNameSchema = z.enum(STT_ENGINE_NAMES);
 export type SttEngineName = z.infer<typeof SttEngineNameSchema>;
@@ -33,6 +36,8 @@ export const SttStatusSchema = z.object({
   cpus: z.int().positive(),
   busy: z.boolean(),
   queued: z.int().nonnegative(),
+  /** Whether `provider: "gemini"` can be tried (GEMINI_API_KEY is set) and the model it uses. */
+  gemini: z.object({ configured: z.boolean(), model: z.string() }),
 });
 export type SttStatus = z.infer<typeof SttStatusSchema>;
 

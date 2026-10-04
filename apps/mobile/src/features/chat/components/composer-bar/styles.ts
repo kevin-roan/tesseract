@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import { ControlHeight, Shadows, type Theme } from "@/theme";
+import { ControlHeight, Opacity, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme, maxLines: number) {
   const lineHeight = theme.text.body.lineHeight ?? ControlHeight.sm;
@@ -9,18 +9,17 @@ export default function createStyles(theme: Theme, maxLines: number) {
     card: {
       gap: theme.spacing.sm,
       padding: theme.spacing.md,
-      borderRadius: theme.radius["2xl"],
+      borderRadius: theme.radius.sheet,
       borderCurve: "continuous",
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.surface,
-      ...Shadows.level1,
     },
     input: {
       minHeight: lineHeight * 2,
       maxHeight: lineHeight * maxLines,
-      paddingHorizontal: theme.spacing.xs,
-      paddingTop: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.sm,
+      paddingTop: theme.spacing.sm,
       paddingBottom: 0,
       color: theme.colors.text,
       ...theme.text.body,
@@ -38,25 +37,24 @@ export default function createStyles(theme: Theme, maxLines: number) {
       gap: theme.spacing.xs,
       overflow: "hidden",
     },
-    round: {
+    button: {
       width: ControlHeight.md,
       height: ControlHeight.md,
       alignItems: "center",
       justifyContent: "center",
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.md,
+      borderCurve: "continuous",
     },
     outlined: {
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.colors.borderStrong,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
     },
     primary: {
       backgroundColor: theme.colors.accent,
     },
-    pressed: {
-      opacity: 0.7,
-    },
     disabled: {
-      opacity: 0.45,
+      opacity: Opacity.disabled,
     },
   });
 }

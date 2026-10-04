@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { availableParallelism, tmpdir } from "node:os";
 import { basename, join } from "node:path";
 import { STT_PROFILES, type CreateTranscription, type SttEngineName, type SttProfile, type SttStatus, type Transcription } from "@theone/protocol";
-import { badRequest, errorMessage, unavailable } from "../core/errors";
+import { badRequest, errorMessage, HttpError, unavailable } from "../core/errors";
 import type { EventHub } from "../core/events";
 import { resolveExecutable, run, type RunResult } from "../core/exec";
 import { readRegularFile } from "../core/files";
@@ -192,14 +192,17 @@ function redact(text: string, secret: string | null): string {
   return secret ? text.split(secret).join("***") : text;
 }
 
-async function providerError(response: Response): Promise<string> {
-  const body = await response.text().catch(() => "");
+function providerMessage(body: string, statusText: string): string {
   try {
     const parsed = JSON.parse(body) as { error?: { message?: unknown } | string; message?: unknown };
     const message = typeof parsed.error === "string" ? parsed.error : (parsed.error?.message ?? parsed.message);
     if (typeof message === "string" && message) return message;
   } catch {}
-  return body.trim() || response.statusText;
+  return body.trim() || statusText;
+}
+
+async function providerError(response: Response): Promise<string> {
+  return providerMessage(await response.text().catch(() => ""), response.statusText);
 }
 
 export function openAiCompatibleEngine(
@@ -246,6 +249,80 @@ export function openAiCompatibleEngine(
         language: typeof body.language === "string" ? body.language : input.language,
         durationMs: typeof body.duration === "number" && body.duration >= 0 ? Math.round(body.duration * 1000) : null,
       };
+    },
+  };
+}
+
+const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+const GEMINI_MIME_TYPES: Record<string, string> = {
+  "audio/mp4": "audio/m4a",
+  "audio/x-m4a": "audio/m4a",
+  "audio/x-wav": "audio/wav",
+  "audio/wave": "audio/wav",
+};
+const GEMINI_KEY_ERRORS = /API_KEY_INVALID|API_KEY_EXPIRED/;
+export const GEMINI_KEY_MISSING = "Gemini API key is not set (GEMINI_API_KEY)";
+
+type GeminiResponse = { candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }>; promptFeedback?: { blockReason?: unknown } };
+
+function geminiInstruction(language: string | null): string {
+  const hint = language ? ` The speech is expected to be in the language with ISO-639-1 code "${language}".` : "";
+  return (
+    "Transcribe the speech in this audio verbatim. Reply with the transcript only: no commentary, labels, timestamps or quotes. " +
+    `If there is no speech, reply with nothing.${hint}`
+  );
+}
+
+async function geminiError(response: Response, apiKey: string): Promise<string> {
+  const body = redact(await response.text().catch(() => ""), apiKey);
+  const message = providerMessage(body, response.statusText).slice(0, ERROR_DETAIL_CHARS);
+  const { status } = response;
+  if (status === 429) return `Gemini quota exhausted or rate limited (HTTP 429): ${message}`;
+  if (status === 401 || status === 403 || (status === 400 && GEMINI_KEY_ERRORS.test(body))) return `Gemini rejected the API key (HTTP ${status}): ${message}`;
+  return `Gemini returned HTTP ${status}: ${message}`;
+}
+
+export function geminiEngine(
+  settings: { apiKey: string; model: string },
+  fetchImpl: NonNullable<TranscriptionOptions["fetch"]>,
+  timeoutMs: number,
+): TranscriptionEngine {
+  const endpoint = `${GEMINI_API_URL}/${settings.model}:generateContent`;
+  return {
+    name: "gemini",
+    model: settings.model,
+    transcribe: async (input) => {
+      const data = Buffer.from(await Bun.file(input.path).bytes()).toString("base64");
+      const body = {
+        contents: [{ parts: [{ inline_data: { mime_type: GEMINI_MIME_TYPES[input.mimeType] ?? input.mimeType, data } }, { text: geminiInstruction(input.language) }] }],
+        generationConfig: { temperature: 0 },
+      };
+      let response: Response;
+      try {
+        response = await fetchImpl(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-goog-api-key": settings.apiKey },
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+      } catch (error) {
+        const reason = error instanceof Error && error.name === "TimeoutError" ? "timed out" : errorMessage(error);
+        throw unavailable(`Could not reach Gemini: ${redact(reason, settings.apiKey)}`);
+      }
+      if (!response.ok) throw unavailable(await geminiError(response, settings.apiKey));
+      let parsed: GeminiResponse;
+      try {
+        parsed = (await response.json()) as GeminiResponse;
+      } catch {
+        throw unavailable("Gemini returned a response that is not JSON");
+      }
+      const candidate = parsed.candidates?.[0];
+      if (!candidate) {
+        const blocked = parsed.promptFeedback?.blockReason;
+        throw unavailable(typeof blocked === "string" ? `Gemini blocked the request (${blocked})` : "Gemini returned no transcript");
+      }
+      const text = (candidate.content?.parts ?? []).map((part) => (typeof part.text === "string" ? part.text : "")).join("");
+      return { text, language: input.language, durationMs: null };
     },
   };
 }
@@ -342,6 +419,7 @@ export class TranscriptionService {
       cpus,
       busy: this.busy,
       queued: this.queued,
+      gemini: { configured: Boolean(this.config.stt.geminiApiKey), model: this.config.stt.geminiModel },
     };
   }
 
@@ -358,20 +436,46 @@ export class TranscriptionService {
   }
 
   async transcribe(input: CreateTranscription): Promise<Transcription> {
-    if (this.profile === "off") throw unavailable(STT_OFF_MESSAGE);
     const { upload, path } = this.uploads.content(input.uploadId);
     if (upload.kind !== "audio") throw badRequest(`Upload ${upload.id} is not audio (${upload.mimeType})`);
-    const language = normalizeLanguage(input.language);
+    const audio: AudioInput = { path, name: upload.name, mimeType: upload.mimeType, language: normalizeLanguage(input.language) };
+    let fallbackReason: string | null = null;
+    if (input.provider === "gemini") {
+      const { geminiApiKey, geminiModel } = this.config.stt;
+      if (!geminiApiKey) fallbackReason = GEMINI_KEY_MISSING;
+      else {
+        const fetchImpl = this.options.fetch ?? ((url: string, init: RequestInit) => fetch(url, init));
+        const engine = geminiEngine({ apiKey: geminiApiKey, model: geminiModel }, fetchImpl, this.options.timeoutMs ?? TRANSCRIPTION_TIMEOUT_MS);
+        try {
+          return await this.run(engine, upload.id, audio, null);
+        } catch (error) {
+          if (error instanceof HttpError && error.code === "bad_request") throw error;
+          fallbackReason = errorMessage(error);
+          this.logger.warn("gemini transcription failed, using the native engine", { id: upload.id, reason: fallbackReason });
+        }
+      }
+    }
+    try {
+      return await this.native(upload.id, audio, fallbackReason);
+    } catch (error) {
+      if (fallbackReason === null || (error instanceof HttpError && error.code === "bad_request")) throw error;
+      throw unavailable(`${fallbackReason}; the native engine failed too: ${errorMessage(error)}`);
+    }
+  }
+
+  private async native(id: string, audio: AudioInput, fallbackReason: string | null): Promise<Transcription> {
+    if (this.profile === "off") throw unavailable(STT_OFF_MESSAGE);
     selectEngine(this.config, this.options, this.profile, this.cpus());
-    return this.exclusive(async () => {
-      const engine = selectEngine(this.config, this.options, this.profile, this.cpus());
-      const started = Date.now();
-      const result = await engine.transcribe({ path, name: upload.name, mimeType: upload.mimeType, language });
-      const text = cleanTranscript(result.text);
-      this.logger.info("audio transcribed", { id: upload.id, engine: engine.name, model: engine.model, profile: this.profile, ms: Date.now() - started, chars: text.length });
-      if (!text) throw badRequest("No speech detected");
-      return { uploadId: upload.id, text, language: result.language, durationMs: result.durationMs, engine: engine.name };
-    });
+    return this.exclusive(() => this.run(selectEngine(this.config, this.options, this.profile, this.cpus()), id, audio, fallbackReason));
+  }
+
+  private async run(engine: TranscriptionEngine, id: string, audio: AudioInput, fallbackReason: string | null): Promise<Transcription> {
+    const started = Date.now();
+    const result = await engine.transcribe(audio);
+    const text = cleanTranscript(result.text);
+    this.logger.info("audio transcribed", { id, engine: engine.name, model: engine.model, profile: this.profile, ms: Date.now() - started, chars: text.length });
+    if (!text) throw badRequest("No speech detected");
+    return { uploadId: id, text, language: result.language, durationMs: result.durationMs, engine: engine.name, fallbackReason };
   }
 
   private cpus(): number {

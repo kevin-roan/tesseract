@@ -128,15 +128,34 @@ check_android() {
   fi
 }
 
+has_claude_login() {
+  local creds="$1/.credentials.json"
+  [[ -s "${creds}" ]] && jq -e '.claudeAiOauth | type == "object"' "${creds}" > /dev/null 2>&1
+}
+
 check_claude_auth() {
   # The only supported login is the host's Claude Max subscription: its ~/.claude (with
-  # .credentials.json) is bind-mounted at /home/dev/.claude.
-  local creds="${HOME}/.claude/.credentials.json"
-  if [[ -s "${creds}" ]] && jq -e '.claudeAiOauth | type == "object"' "${creds}" > /dev/null 2>&1; then
-    record claude-auth PASS "logged in (${creds})"
+  # .credentials.json) is bind-mounted at /home/dev/.claude, and every extra account in
+  # THEONE_CLAUDE_ACCOUNTS at /home/dev/.claude-<account>.
+  local raw="${THEONE_CLAUDE_ACCOUNTS:-}" accounts=() account dir
+  if has_claude_login "${HOME}/.claude"; then
+    record claude-auth PASS "logged in (${HOME}/.claude/.credentials.json)"
   else
     record claude-auth WARN "not authenticated: log in with 'claude' (Claude Max) on the host (its ~/.claude is mounted here)"
   fi
+  read -r -a accounts <<< "${raw//,/ }"
+  for account in ${accounts[@]+"${accounts[@]}"}; do
+    dir="${HOME}/.claude-${account}"
+    if [[ ! "${account}" =~ ^[a-z0-9][a-z0-9_-]{0,31}$ ]]; then
+      record "claude-auth:${account}" WARN "invalid account name in THEONE_CLAUDE_ACCOUNTS"
+    elif [[ ! -d "${dir}" ]]; then
+      record "claude-auth:${account}" WARN "${dir} is not mounted (THEONE_HOST_CLAUDE_ACCOUNTS on the host)"
+    elif has_claude_login "${dir}"; then
+      record "claude-auth:${account}" PASS "logged in (${dir}/.credentials.json)"
+    else
+      record "claude-auth:${account}" WARN "not authenticated: log in with 'CLAUDE_CONFIG_DIR=~/.claude-${account} claude' (Claude Max) on the host"
+    fi
+  done
 }
 
 check_docker() {

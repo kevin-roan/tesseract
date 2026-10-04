@@ -1,10 +1,11 @@
-"""Read the host's Claude Code state for display. The sandbox links this computer's ~/.claude directly.
+"""Read the host's Claude Code state for display. The sandbox links this computer's ~/.claude and ~/.claude-<name> directly.
 
 Nothing here returns or logs a secret.
 """
 
 import json
 import os
+import re
 import sys
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -17,6 +18,8 @@ CREDENTIALS_FILE = ".credentials.json"
 CREDENTIALS_KEY = "claudeAiOauth"
 GLOBAL_CONFIG_FILE = ".claude.json"
 CONFIG_DIR_ENV = "CLAUDE_CONFIG_DIR"
+PRIMARY_ACCOUNT_ID = "claude"
+ACCOUNT_DIR_PATTERN = re.compile(r"^\.claude-([a-z0-9][a-z0-9_-]{0,31})$")
 IGNORED_DIRS = frozenset({".git", ".hg", ".svn", "node_modules", "__pycache__"})
 
 LoginIssue = Literal["missing", "invalid", "keychain"]
@@ -26,6 +29,12 @@ LoginIssue = Literal["missing", "invalid", "keychain"]
 class HostPaths:
     config_dir: Path
     global_config: Path
+
+
+@dataclass(frozen=True)
+class HostAccount:
+    id: str
+    paths: HostPaths
 
 
 @dataclass(frozen=True)
@@ -41,6 +50,7 @@ class HostClaudeState:
     settings_present: bool
     claude_md_present: bool
     extension_counts: Mapping[str, int] = field(default_factory=dict)
+    account_id: str = PRIMARY_ACCOUNT_ID
 
 
 def host_paths(env: Mapping[str, str] | None = None, home: Path | None = None) -> HostPaths:
@@ -51,6 +61,22 @@ def host_paths(env: Mapping[str, str] | None = None, home: Path | None = None) -
         config_dir = Path(custom).expanduser()
         return HostPaths(config_dir, config_dir / GLOBAL_CONFIG_FILE)
     return HostPaths(home / ".claude", home / GLOBAL_CONFIG_FILE)
+
+
+def host_accounts(env: Mapping[str, str] | None = None, home: Path | None = None) -> list[HostAccount]:
+    """The primary config dir, then every `~/.claude-<name>` holding a login (the `claude-<name>` aliases)."""
+    home = home or Path.home()
+    primary = host_paths(env, home)
+    accounts = [HostAccount(PRIMARY_ACCOUNT_ID, primary)]
+    try:
+        entries = sorted(home.iterdir())
+    except OSError:
+        return accounts
+    for entry in entries:
+        match = ACCOUNT_DIR_PATTERN.match(entry.name)
+        if match and entry != primary.config_dir and entry.is_dir() and (entry / CREDENTIALS_FILE).is_file():
+            accounts.append(HostAccount(f"{PRIMARY_ACCOUNT_ID}-{match[1]}", HostPaths(entry, entry / GLOBAL_CONFIG_FILE)))
+    return accounts
 
 
 def _read_json(path: Path) -> dict[str, Any] | None:
@@ -97,7 +123,9 @@ def _walk(root: Path) -> list[Path]:
     return found
 
 
-def read_host_state(paths: HostPaths | None = None, platform: str = sys.platform) -> HostClaudeState:
+def read_host_state(
+    paths: HostPaths | None = None, platform: str = sys.platform, account_id: str = PRIMARY_ACCOUNT_ID
+) -> HostClaudeState:
     paths = paths or host_paths()
     oauth, issue = read_login(paths, platform)
     oauth_account = read_oauth_account(paths)
@@ -117,4 +145,11 @@ def read_host_state(paths: HostPaths | None = None, platform: str = sys.platform
         settings_present=_is_regular(paths.config_dir / "settings.json"),
         claude_md_present=_is_regular(paths.config_dir / "CLAUDE.md"),
         extension_counts=counts,
+        account_id=account_id,
     )
+
+
+def read_host_states(
+    env: Mapping[str, str] | None = None, home: Path | None = None, platform: str = sys.platform
+) -> list[HostClaudeState]:
+    return [read_host_state(account.paths, platform, account.id) for account in host_accounts(env, home)]

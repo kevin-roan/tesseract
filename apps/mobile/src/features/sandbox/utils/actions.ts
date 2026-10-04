@@ -1,7 +1,11 @@
 import type { InputMode } from "@theone/protocol";
 import {
   ArrowClockwiseIcon,
-  CloudArrowDownIcon,
+  ArrowCounterClockwiseIcon,
+  ArrowLineDownIcon,
+  ArrowLineUpIcon,
+  ArrowsDownUpIcon,
+  ArrowUUpLeftIcon,
   CornersInIcon,
   CornersOutIcon,
   CursorClickIcon,
@@ -21,6 +25,8 @@ import {
 } from "phosphor-react-native";
 
 import type { HeaderAction } from "@/components/screen-header";
+
+import type { SyncActionId } from "./sync";
 
 type ActionTemplate = Omit<HeaderAction, "onPress">;
 
@@ -46,12 +52,23 @@ export const PROJECT_ACTIONS = {
   askClaude: { id: "ask-claude", icon: SparkleIcon, label: "Ask Claude to work on this project" },
 } satisfies Record<string, ActionTemplate>;
 
+export const PROJECT_MENU_ACTIONS = {
+  remove: { id: "remove", icon: TrashIcon, label: "Delete from sandbox", tone: "danger" },
+} satisfies Record<string, ActionTemplate>;
+
 export const PAGE_ACTIONS = {
   reconnect: { id: "reconnect", icon: ArrowClockwiseIcon, label: "Reconnect" },
   closeSession: { id: "close-session", icon: XCircleIcon, label: "Close session", tone: "danger" },
   cancel: { id: "cancel", icon: StopIcon, label: "Cancel", tone: "danger" },
-  syncToHost: { id: "sync-to-host", icon: CloudArrowDownIcon, label: "Sync to host" },
+  sync: { id: "sync", icon: ArrowsDownUpIcon, label: "Sync" },
 } satisfies Record<string, ActionTemplate>;
+
+export const SYNC_ACTIONS: Record<SyncActionId, ActionTemplate> = {
+  pull: { id: "pull", icon: ArrowLineUpIcon, label: "Sync to host" },
+  get: { id: "get", icon: ArrowLineDownIcon, label: "Sync from host" },
+  revert: { id: "revert", icon: ArrowCounterClockwiseIcon, label: "Revert last sync", tone: "danger" },
+  discard: { id: "discard", icon: ArrowUUpLeftIcon, label: "Discard changes", tone: "danger" },
+};
 
 export const INPUT_MODE_ACTIONS = {
   trackpad: { id: "input-mode", icon: CursorClickIcon, label: "Trackpad mode. Switch to touch mode" },

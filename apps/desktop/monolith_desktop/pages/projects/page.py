@@ -12,6 +12,7 @@ from ...widgets.feedback import EmptyState
 from ...widgets.header import HeaderAction, ScreenHeader
 from ...widgets.keyed_list import KeyedGrid
 from ...widgets.lifecycle import while_mapped
+from ...widgets.motion import crossfade_stack
 from ...widgets.page_body import PageBody
 from ...widgets.project_card import ProjectCard
 from ..base import Page
@@ -37,7 +38,7 @@ class ProjectsPage(Page):
         self._query = ""
         self._processes: list[ProcessInfo] | None = None
         self._builds: list[BuildJob] | None = None
-        self._stack = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
+        self._stack = crossfade_stack()
         self._state = EmptyState(LIST["loading"], loading=True)
         self._stack.add_named(self._state, STATE)
 

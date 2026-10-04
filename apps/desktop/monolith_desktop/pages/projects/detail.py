@@ -5,25 +5,33 @@ from gi.repository import Adw, Gtk
 
 from ...api.client import ControllerClient
 from ...api.errors import ControllerError, describe_error
-from ...api.types import AgentRun, GitDetails, Project
+from ...api.types import AgentRun, ClaudeAccountList, GitDetails, Project
 from ...services.workspace import upsert
 from ...theme.icons import resolve_icon
 from ...widgets.badges import StatusBadge
 from ...widgets.buttons import ActionButton, IconButton
+from ...widgets.choice_dropdown import ChoiceDropdown
 from ...widgets.desktop import copy_text
 from ...widgets.feedback import EmptyState, Notice
 from ...widgets.header import HeaderAction, ScreenHeader
 from ...widgets.lifecycle import while_mapped
+from ...widgets.motion import crossfade_stack, view_stack
 from ...widgets.page_body import PageBody
-from .labels import DETAIL, GIT, TABS
+from .labels import CLAUDE_ACCOUNT, DETAIL, GIT, TABS
 from .model import (
+    DEFAULT_CLAUDE_ACCOUNT,
     active_build_count,
+    claude_account_label,
+    claude_account_options,
+    confidential_badge,
     detail_subtitle,
     dirty_badge,
+    effective_claude_account,
     framework_label,
     project_activity,
     project_artifacts,
     project_builds,
+    project_claude_account,
     project_processes,
     running_count,
     sync_label,
@@ -59,8 +67,9 @@ class ProjectDetail:
         self._git_error: BaseException | None = None
         self._fetch_failed = False
         self._runs: list[AgentRun] | None = None
+        self._accounts: ClaudeAccountList | None = None
 
-        self.widget = Gtk.Stack(transition_type=Gtk.StackTransitionType.CROSSFADE)
+        self.widget = crossfade_stack()
         self._state = EmptyState(DETAIL["loading"], loading=True)
         self.widget.add_named(self._state, LOADING)
         self.widget.add_named(self._build_content(), CONTENT)
@@ -76,7 +85,11 @@ class ProjectDetail:
         self._sync = StatusBadge("", "info")
         self._dirty = StatusBadge("")
         self._activity = StatusBadge("")
-        for badge in (self._activity, self._framework, self._branch, self._sync, self._dirty):
+        self._confidential = StatusBadge("", icon="confidential")
+        self._claude_account = StatusBadge("", icon="agents")
+        for badge in (
+            self._confidential, self._activity, self._framework, self._branch, self._sync, self._dirty, self._claude_account
+        ):
             self._badges.append(badge)
         self._header = ScreenHeader(
             self.project_id,
@@ -91,6 +104,9 @@ class ProjectDetail:
         quick.append(ActionButton(DETAIL["claude_terminal"], lambda: self._terminal("claude"), "secondary", "terminal"))
         quick.append(ActionButton(DETAIL["shell"], lambda: self._terminal("shell"), "secondary", "terminal"))
         quick.append(ActionButton(DETAIL["display"], lambda: self.ctx.navigate("display"), "secondary", "display"))
+        self._account_picker = ChoiceDropdown(on_change=self._set_claude_account, tooltip=CLAUDE_ACCOUNT["tooltip"])
+        self._account_picker.set_visible(False)
+        quick.append(self._account_picker)
         body.append(quick)
 
         self._notice = Notice("", tone="danger")
@@ -98,7 +114,7 @@ class ProjectDetail:
         self._notice.set_action(DETAIL["dismiss"], lambda: self._notice.set_visible(False))
         body.append(self._notice)
 
-        self._stack = Adw.ViewStack(vhomogeneous=False)
+        self._stack = view_stack(vhomogeneous=False)
         self.git = GitTab()
         self.processes = ProcessesTab(self)
         self.builds = BuildsTab(self)
@@ -157,7 +173,12 @@ class ProjectDetail:
             "artifacts": client.list_artifacts(self.project_id),
             "git": None,
             "git_error": None,
+            "accounts": None,
         }
+        try:
+            snapshot["accounts"] = client.claude_accounts()
+        except ControllerError:
+            pass
         if project.get("git"):
             try:
                 snapshot["git"] = client.get_project_git(self.project_id)
@@ -171,6 +192,7 @@ class ProjectDetail:
             self._lists[kind] = SORTERS[kind](snapshot[kind], self.project_id)
         self._git = snapshot["git"]
         self._git_error = snapshot["git_error"]
+        self._accounts = snapshot["accounts"]
         if self._fetch_failed:
             self._fetch_failed = False
             self._notice.set_visible(False)
@@ -238,6 +260,32 @@ class ProjectDetail:
     def _terminal(self, kind: str) -> None:
         self.ctx.navigate("terminals", {"kind": kind, "projectId": self.project_id})
 
+    def _set_claude_account(self, option_id: str) -> None:
+        if self.project is None:
+            return
+        account_id = option_id if option_id != DEFAULT_CLAUDE_ACCOUNT else None
+        if account_id == project_claude_account(self.project):
+            return
+        self._account_picker.set_sensitive(False)
+        self.ctx.call(
+            lambda client: client.set_project_claude_account(self.project_id, account_id),
+            self._claude_account_changed,
+            lambda error: self.report(CLAUDE_ACCOUNT["change_failed"].format(error=describe_error(error))),
+            self._claude_account_settled,
+        )
+
+    def _claude_account_changed(self, project: Project) -> None:
+        self.project = project
+        if self.ctx.store.projects.value is not None:
+            self.ctx.store.projects.set(upsert(self.ctx.store.projects.value, project))
+        account = effective_claude_account(project, self._accounts)
+        if account:
+            self.ctx.toast(CLAUDE_ACCOUNT["changed"].format(project=project.get("name") or project["id"], account=account))
+
+    def _claude_account_settled(self) -> None:
+        self._account_picker.set_sensitive(True)
+        self._render_header()
+
     def _copy_path(self) -> None:
         if self.project:
             copy_text(self.widget, self.project["path"])
@@ -271,6 +319,10 @@ class ProjectDetail:
         self._header.set_subtitle(detail_subtitle(project))
         if self.page is not None:
             self.page.set_title(name)
+        confidential = confidential_badge(project)
+        self._confidential.set_visible(confidential is not None)
+        if confidential:
+            self._confidential.update(*confidential)
         git = project.get("git")
         self._framework.set_label(framework_label(project.get("framework")))
         self._branch.set_visible(git is not None)
@@ -282,6 +334,18 @@ class ProjectDetail:
         self._dirty.set_visible(dirty is not None)
         if dirty:
             self._dirty.update(*dirty)
+        self._render_claude_account(project)
         activity = project_activity(self.project_id, self._lists["processes"], self._lists["builds"], self._runs)
         self._activity.set_visible(activity.kind != "idle")
         self._activity.update(activity.label, activity.tone)
+
+    def _render_claude_account(self, project: Project) -> None:
+        accounts = self._accounts
+        self._account_picker.set_visible(accounts is not None)
+        if accounts is not None:
+            self._account_picker.set_options(
+                claude_account_options(project, accounts), project_claude_account(project) or DEFAULT_CLAUDE_ACCOUNT
+            )
+        label = claude_account_label(project, accounts)
+        self._claude_account.set_visible(accounts is not None and label is not None)
+        self._claude_account.set_label(label or "")

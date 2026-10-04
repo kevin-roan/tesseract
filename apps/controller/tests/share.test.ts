@@ -137,6 +137,18 @@ describe("POST /v1/artifacts", () => {
     expect((await share({ path: scratch, projectId: "nope" })).status).toBe(404);
   });
 
+  test("refuses files of a confidential project with 403", async () => {
+    writeFiles(t.workspace, { "projects/morning-cat/report.txt": "secret" });
+    t.controller.services.projects.markConfidential("morning-cat");
+    const refused = await share({ path: join(t.workspace, "projects/morning-cat/report.txt") });
+    expect(refused.status).toBe(403);
+    expect(ErrorBodySchema.parse(refused.body).error).toMatchObject({
+      code: "forbidden",
+      message: "Project morning-cat is confidential; sharing artifacts is disabled",
+    });
+    expect((await share({ path: join(t.workspace, "scratch/notes.txt"), projectId: "morning-cat" })).status).toBe(403);
+  });
+
   test("refuses paths outside the workspace, symlink escapes, directories and controller files", async () => {
     const outside = join(makeTempDir("outside"), "secret.apk");
     writeFileSync(outside, "secret");

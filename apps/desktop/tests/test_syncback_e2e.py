@@ -335,3 +335,76 @@ def test_mobile_requests_are_applied_by_the_desktop_handler(e2e):
     e2e.http("POST", "/v1/projects/requests/sync/requests", {"kind": "revert", "source": "mobile"})
     [handled] = drive(e2e)
     assert not handled.ok and handled.request["status"] == "failed" and "no sync to revert" in handled.request["error"]
+
+
+def head(root: Path) -> str:
+    return subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, check=True, capture_output=True, text=True).stdout.strip()
+
+
+def request_get(e2e: Env, project: str, force: bool = False) -> None:
+    status, created = e2e.http("POST", f"/v1/projects/{project}/sync/requests", {"kind": "get", "force": force, "source": "cli"})
+    assert status == 201, created
+    assert created["kind"] == "get" and created["status"] == "pending"
+
+
+def test_get_brings_host_commits_into_the_sandbox(e2e):
+    host = make_repo(e2e, "getting")
+    sandbox = e2e.sandbox("getting")
+    write(host, "README.md", "# demo\nmore\n")
+    write(host, "src/index.js", "console.log(2)\n")
+    write(host, "lib/added.js", "a\nb\n")
+    (host / "src/remove-me.txt").unlink()
+    os.chmod(host / "run.sh", 0o755)
+    git(host, "add", "-A")
+    git(host, "commit", "-q", "-m", "second")
+
+    request_get(e2e, "getting")
+    [handled] = drive(e2e)
+    assert handled.ok, handled.message
+    request = handled.request
+    assert request["status"] == "applied" and request["claimedBy"] == "e2e-host"
+    result = request["result"]
+    assert (result["added"], result["modified"], result["deleted"], result["conflicts"]) == (1, 3, 1, [])
+    assert (result["insertions"], result["deletions"]) == (4, 2)
+    assert result["gitFiles"] > 0 and result["snapshotId"] is None
+    files = {stat_["path"]: stat_ for stat_ in result["files"]}
+    assert set(files) == {"README.md", "src/index.js", "lib/added.js", "src/remove-me.txt", "run.sh"}
+    assert (files["run.sh"]["oldMode"], files["run.sh"]["newMode"]) == ("100644", "100755")
+    assert (files["lib/added.js"]["kind"], files["lib/added.js"]["insertions"]) == ("added", 2)
+    assert files["src/remove-me.txt"]["kind"] == "deleted" and files["src/remove-me.txt"]["newMode"] is None
+    assert tree(sandbox) == tree(host)
+    assert head(sandbox) == head(host)
+    link = e2e.state.link("getting")
+    assert link.got_at == result["syncedAt"] and link.pushed_at
+    _, changes = e2e.http("GET", "/v1/projects/getting/sync/changes")
+    assert changes["changes"] == [] and changes["lastGetAt"] == result["syncedAt"]
+
+    request_get(e2e, "getting")
+    [handled] = drive(e2e)
+    assert handled.ok, handled.message
+    assert handled.message.startswith("Sandbox already up to date")
+    assert handled.request["result"]["added"] + handled.request["result"]["modified"] + handled.request["result"]["deleted"] == 0
+
+
+def test_get_conflict_writes_nothing_until_forced(e2e):
+    host = make_repo(e2e, "getconflict")
+    sandbox = e2e.sandbox("getconflict")
+    write(sandbox, "README.md", "sandbox edit\n")
+    write(host, "README.md", "host edit\n")
+    write(host, "NEW.md", "new\n")
+
+    request_get(e2e, "getconflict")
+    [handled] = drive(e2e)
+    assert not handled.ok
+    assert handled.request["status"] == "failed" and handled.request["result"]["conflicts"] == ["README.md"]
+    assert (sandbox / "README.md").read_text() == "sandbox edit\n" and not (sandbox / "NEW.md").exists()
+    assert e2e.state.link("getconflict").got_at is None
+
+    request_get(e2e, "getconflict", force=True)
+    [handled] = drive(e2e)
+    assert handled.ok, handled.message
+    result = handled.request["result"]
+    assert (sandbox / "README.md").read_text() == "host edit\n" and (sandbox / "NEW.md").read_text() == "new\n"
+    assert result["backupPath"]
+    assert (Path(result["backupPath"]) / "README.md").read_text() == "sandbox edit\n"
+    assert e2e.state.link("getconflict").got_at == result["syncedAt"]

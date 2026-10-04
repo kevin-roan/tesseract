@@ -53,6 +53,7 @@ export default function createStyles(theme: Theme, topInset: number) {
     names: {
       flex: 1,
       minWidth: 0,
+      gap: theme.spacing.xxs,
     },
 
     teamPill: {
@@ -61,10 +62,13 @@ export default function createStyles(theme: Theme, topInset: number) {
       alignSelf: "flex-start",
       maxWidth: "100%",
       gap: theme.spacing.xs,
-      marginTop: theme.spacing.sm,
+      marginTop: theme.spacing.xs,
       paddingHorizontal: theme.spacing.sm,
       paddingVertical: theme.spacing.xxs,
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.sm,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElement,
     },
     teamLabel: {
@@ -73,9 +77,11 @@ export default function createStyles(theme: Theme, topInset: number) {
 
     stats: {
       flexDirection: "row",
-      paddingVertical: theme.spacing.md,
-      borderRadius: theme.radius.lg,
+      paddingVertical: theme.spacing.base,
+      borderRadius: theme.radius.card,
       borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElement,
     },
     /** Equal columns, each centred on its own share of the row. */
@@ -88,6 +94,9 @@ export default function createStyles(theme: Theme, topInset: number) {
     },
     statText: {
       textAlign: "center",
+    },
+    statValue: {
+      fontVariant: ["tabular-nums"],
     },
     statDivider: {
       width: StyleSheet.hairlineWidth,

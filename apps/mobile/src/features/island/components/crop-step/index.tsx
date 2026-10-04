@@ -2,18 +2,36 @@ import { useCallback, useMemo, useState } from "react";
 import { View, type LayoutChangeEvent } from "react-native";
 import { Image } from "expo-image";
 import { GestureDetector } from "react-native-gesture-handler";
-import Animated from "react-native-reanimated";
+import Animated, { FadeIn, type SharedValue } from "react-native-reanimated";
 import { ImageIcon, TextAaIcon } from "phosphor-react-native";
 
 import ActionButton from "@/components/action-button";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { Durations } from "@/theme";
 
 import type { CropRect } from "@/modules/theone-island";
 
 import { useCropBox } from "../../hooks/use-crop-box";
-import type { CaptureImage, Size } from "../../types";
-import createStyles from "./styles";
+import { useCropHandle } from "../../hooks/use-crop-handle";
+import type { CaptureImage, Corner, Size } from "../../types";
+import createStyles, { ARMS } from "./styles";
+
+type CropHandleProps = {
+  corner: Corner;
+  grabbed: SharedValue<Corner | null>;
+  styles: ReturnType<typeof createStyles>;
+};
+
+const CropHandle = ({ corner, grabbed, styles }: CropHandleProps) => {
+  const lift = useCropHandle(grabbed, corner);
+
+  return (
+    <Animated.View style={[styles.handle, styles[corner], lift]} accessibilityLabel={`Resize ${corner}`}>
+      <View style={[styles.bracket, styles[ARMS[corner]]]} pointerEvents="none" />
+    </Animated.View>
+  );
+};
 
 type CropBoxProps = {
   image: CaptureImage;
@@ -35,10 +53,15 @@ const CropBox = ({ image, container, onReady }: CropBoxProps) => {
       <Animated.View pointerEvents="none" style={[styles.dim, crop.dims.left]} />
       <Animated.View pointerEvents="none" style={[styles.dim, crop.dims.right]} />
       <GestureDetector gesture={crop.move}>
-        <Animated.View style={[styles.box, crop.boxStyle]} accessibilityLabel="Crop area" accessibilityHint="Drag to move">
+        <Animated.View
+          entering={FadeIn.duration(Durations.normal)}
+          style={[styles.box, crop.boxStyle]}
+          accessibilityLabel="Crop area"
+          accessibilityHint="Drag to move"
+        >
           {crop.corners.map(({ corner, gesture }) => (
             <GestureDetector key={corner} gesture={gesture}>
-              <View style={[styles.handle, styles[corner]]} accessibilityLabel={`Resize ${corner}`} />
+              <CropHandle corner={corner} grabbed={crop.grabbed} styles={styles} />
             </GestureDetector>
           ))}
         </Animated.View>
@@ -69,7 +92,7 @@ const CropStep = ({ image, busy, allowSkip, onUseImage, onGrabText, onSkip }: Cr
 
   return (
     <View style={styles.step}>
-      <ThemedText variant="bodySmall" color="textSecondary" style={styles.hint}>
+      <ThemedText variant="caption" color="textSecondary" style={styles.hint}>
         Drag the box or its corners to choose the part to keep.
       </ThemedText>
       <View style={styles.canvas} onLayout={onLayout} testID="crop-canvas">

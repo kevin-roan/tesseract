@@ -1,11 +1,13 @@
 import { useMemo } from "react";
-import { View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import Animated from "react-native-reanimated";
 import Svg, { G, Line, Path, Rect, Text as SvgText } from "react-native-svg";
 
 import { useAppTheme } from "@/hooks/use-app-theme";
 
 import { useChartColors } from "../../hooks/use-chart-colors";
 import { useChartSelection } from "../../hooks/use-chart-selection";
+import { useGrowIn } from "../../hooks/use-grow-in";
 import { useLayoutWidth } from "../../hooks/use-layout-width";
 import type { ChartBucket, ChartSeries } from "../../types";
 import { MARK, layoutStackedBars, roundedTopRect } from "../../utils/geometry";
@@ -41,6 +43,7 @@ const StackedBarChart = ({
   const { width, onLayout } = useLayoutWidth();
   const plotWidth = Math.max(0, width - ChartFrame.axisGutter);
   const { selected, handlers } = useChartSelection(buckets.length, plotWidth);
+  const grow = useGrowIn("y", 0, width > 0);
 
   const ticks = useMemo(() => niceTicks(Math.max(0, ...buckets.map(bucketTotal)), 3, integer), [buckets, integer]);
   const layout = useMemo(
@@ -75,6 +78,13 @@ const StackedBarChart = ({
         {width > 0 ? (
           <Svg width={width} height={ChartFrame.plotHeight + ChartFrame.topPad + ChartFrame.axisBand}>
             <G x={ChartFrame.axisGutter} y={ChartFrame.topPad}>
+              {layout.bars.map((bar) => (
+                <Path
+                  key={`track-${bar.index}`}
+                  d={roundedTopRect(bar.x, 0, bar.width, ChartFrame.plotHeight, MARK.radius)}
+                  fill={colors.empty}
+                />
+              ))}
               {layout.ticks.map((tick) => (
                 <G key={tick.value}>
                   <Line
@@ -83,7 +93,7 @@ const StackedBarChart = ({
                     y1={tick.y}
                     y2={tick.y}
                     stroke={tick.value === 0 ? colors.baseline : colors.grid}
-                    strokeWidth={1}
+                    strokeWidth={StyleSheet.hairlineWidth}
                   />
                   <SvgText
                     x={-ChartFrame.tickGap}
@@ -95,28 +105,6 @@ const StackedBarChart = ({
                   >
                     {formatTick(tick.value)}
                   </SvgText>
-                </G>
-              ))}
-              {layout.bars.map((bar) => (
-                <G key={bar.index} opacity={selected === null || selected === bar.index ? 1 : ChartFrame.dimmedOpacity}>
-                  {bar.segments.map((segment) =>
-                    segment.rounded ? (
-                      <Path
-                        key={segment.seriesIndex}
-                        d={roundedTopRect(bar.x, segment.y, bar.width, segment.height, MARK.radius)}
-                        fill={series[segment.seriesIndex]?.color}
-                      />
-                    ) : (
-                      <Rect
-                        key={segment.seriesIndex}
-                        x={bar.x}
-                        y={segment.y}
-                        width={bar.width}
-                        height={segment.height}
-                        fill={series[segment.seriesIndex]?.color}
-                      />
-                    ),
-                  )}
                 </G>
               ))}
               {labelIndexes.map((index, position) => {
@@ -139,6 +127,34 @@ const StackedBarChart = ({
               })}
             </G>
           </Svg>
+        ) : null}
+        {width > 0 ? (
+          <Animated.View style={[styles.bars, grow]} pointerEvents="none">
+            <Svg width={plotWidth} height={ChartFrame.plotHeight}>
+              {layout.bars.map((bar) => (
+                <G key={bar.index} opacity={selected === null || selected === bar.index ? 1 : ChartFrame.dimmedOpacity}>
+                  {bar.segments.map((segment) =>
+                    segment.rounded ? (
+                      <Path
+                        key={segment.seriesIndex}
+                        d={roundedTopRect(bar.x, segment.y, bar.width, segment.height, MARK.radius)}
+                        fill={series[segment.seriesIndex]?.color}
+                      />
+                    ) : (
+                      <Rect
+                        key={segment.seriesIndex}
+                        x={bar.x}
+                        y={segment.y}
+                        width={bar.width}
+                        height={segment.height}
+                        fill={series[segment.seriesIndex]?.color}
+                      />
+                    ),
+                  )}
+                </G>
+              ))}
+            </Svg>
+          </Animated.View>
         ) : null}
         <View
           style={styles.overlay}

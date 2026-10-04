@@ -1,6 +1,7 @@
 import { FolderPlusIcon } from "phosphor-react-native";
 
 import ConnectionDot from "@/components/connection-dot";
+import MenuSheet from "@/components/menu-sheet";
 import Notice from "@/components/notice";
 import ProjectCard from "@/components/project-card";
 import ScreenHeader from "@/components/screen-header";
@@ -8,6 +9,7 @@ import ScreenScaffold from "@/components/screen-scaffold";
 import Section from "@/components/section";
 import AgentRunCard from "@/features/sandbox/components/agent-run-card";
 import BuildCard from "@/features/sandbox/components/build-card";
+import MotionItem from "@/components/motion-item";
 import ProcessCard from "@/features/sandbox/components/process-card";
 import SandboxGate from "@/features/sandbox/components/sandbox-gate";
 import SandboxNotices from "@/features/sandbox/components/sandbox-notices";
@@ -30,8 +32,8 @@ export default function ProjectsScreen() {
         <ScreenHeader
           title="Projects"
           subtitle={screen.sandbox.name}
-          large
-          accessory={<ConnectionDot tone={linkTone(screen.link)} label={linkLabel(screen.link)} />}
+          size="medium"
+          status={<ConnectionDot tone={linkTone(screen.link)} label={linkLabel(screen.link)} variant="chip" />}
           actions={screen.headerActions}
         />
       }
@@ -46,59 +48,89 @@ export default function ProjectsScreen() {
       />
 
       {screen.runningCount > 0 ? (
-        <Section title="Running" testID="running-section">
-          {screen.stopError ? <Notice tone="danger" message={screen.stopError} /> : null}
-          {screen.running.processes.map((process) => (
-            <ProcessCard
-              key={process.id}
-              process={process}
-              onPress={screen.processPress(process)}
-              onStop={() => screen.stopProcess(process.id)}
-              stopping={screen.stoppingId === process.id}
-            />
-          ))}
-          {screen.running.builds.map((build) => (
-            <BuildCard key={build.id} build={build} onPress={() => screen.nav.build(build.id)} />
-          ))}
-          {screen.running.runs.map((run) => (
-            <AgentRunCard key={run.id} run={run} onPress={() => screen.nav.agentRun(run.id)} />
-          ))}
-        </Section>
+        <MotionItem index={0}>
+          <Section title="Running" testID="running-section">
+            {screen.stopError ? (
+              <MotionItem>
+                <Notice tone="danger" message={screen.stopError} />
+              </MotionItem>
+            ) : null}
+            {screen.running.processes.map((process) => (
+              <MotionItem key={process.id}>
+                <ProcessCard
+                  process={process}
+                  onPress={screen.processPress(process)}
+                  onStop={() => screen.stopProcess(process.id)}
+                  stopping={screen.stoppingId === process.id}
+                />
+              </MotionItem>
+            ))}
+            {screen.running.builds.map((build) => (
+              <MotionItem key={build.id}>
+                <BuildCard build={build} onPress={() => screen.nav.build(build.id)} />
+              </MotionItem>
+            ))}
+            {screen.running.runs.map((run) => (
+              <MotionItem key={run.id}>
+                <AgentRunCard run={run} onPress={() => screen.nav.agentRun(run.id)} />
+              </MotionItem>
+            ))}
+          </Section>
+        </MotionItem>
       ) : null}
 
       {screen.sites.length > 0 ? (
-        <Section title="Websites" testID="sites-section">
-          {screen.siteError ? <Notice tone="danger" message={screen.siteError} /> : null}
-          {screen.sites.map((site) => (
-            <WebLinkCard key={site.port} site={site} onPress={screen.sitePress(site)} onOpen={screen.openSite} />
-          ))}
-        </Section>
+        <MotionItem index={1}>
+          <Section title="Websites" testID="sites-section">
+            {screen.siteError ? (
+              <MotionItem>
+                <Notice tone="danger" message={screen.siteError} />
+              </MotionItem>
+            ) : null}
+            {screen.sites.map((site) => (
+              <MotionItem key={site.port}>
+                <WebLinkCard site={site} onPress={screen.sitePress(site)} onOpen={screen.openSite} />
+              </MotionItem>
+            ))}
+          </Section>
+        </MotionItem>
       ) : null}
 
-      <Section
-        title="All projects"
-        testID="projects-list"
-        actionLabel="Add"
-        onPressAction={screen.addProject}
-        loading={screen.projectsLoading && screen.projects.length === 0}
-        loadingLabel="Loading projects…"
-        isEmpty={!screen.projectsLoading && screen.projects.length === 0}
-        emptyLabel="No projects in /workspace/projects yet. Clone a repository or start an empty one, or ask Claude to."
-        emptyActionLabel="Add a project"
-        emptyActionIcon={FolderPlusIcon}
-        onEmptyAction={screen.addProject}
-      >
-        {screen.projects.map(({ id, ...card }) => (
-          <ProjectCard
-            key={id}
-            {...card}
-            testID={`project-card-${id}`}
-            chatLabel={`Ask Claude about ${card.title}`}
-            onPress={() => screen.openProject(id)}
-            onPressChat={() => screen.askClaude(id)}
-          />
-        ))}
-      </Section>
+      <MotionItem index={2}>
+        <Section
+          title="All projects"
+          testID="projects-list"
+          actionLabel="Add"
+          onPressAction={screen.addProject}
+          loading={screen.projectsLoading && screen.projects.length === 0}
+          loadingLabel="Loading projects…"
+          isEmpty={!screen.projectsLoading && screen.projects.length === 0}
+          emptyLabel="No projects in /workspace/projects yet. Clone a repository or start an empty one, or ask Claude to."
+          emptyActionLabel="Add a project"
+          emptyActionIcon={FolderPlusIcon}
+          onEmptyAction={screen.addProject}
+        >
+          {screen.removeError ? (
+            <MotionItem>
+              <Notice tone="danger" message={screen.removeError} />
+            </MotionItem>
+          ) : null}
+          {screen.projects.map(({ id, ...card }, index) => (
+            <MotionItem key={id} index={index}>
+              <ProjectCard
+                {...card}
+                testID={`project-card-${id}`}
+                chatLabel={`Ask Claude about ${card.title}`}
+                onPress={() => screen.openProject(id)}
+                onPressChat={() => screen.askClaude(id)}
+                onPressMenu={() => screen.projectMenu({ id, title: card.title })}
+              />
+            </MotionItem>
+          ))}
+        </Section>
+      </MotionItem>
+
+      <MenuSheet testID="project-menu" {...screen.projectMenuSheet} />
     </ScreenScaffold>
   );
 }

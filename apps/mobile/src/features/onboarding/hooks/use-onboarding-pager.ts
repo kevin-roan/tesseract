@@ -1,6 +1,13 @@
 import { useCallback, useState } from "react";
 import { useWindowDimensions, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
-import { useAnimatedRef, useAnimatedScrollHandler, useSharedValue, type SharedValue } from "react-native-reanimated";
+import {
+  useAnimatedReaction,
+  useAnimatedRef,
+  useAnimatedScrollHandler,
+  useSharedValue,
+  type SharedValue,
+} from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 import type Animated from "react-native-reanimated";
 
 export type OnboardingPager = {
@@ -25,6 +32,14 @@ export function useOnboardingPager(count: number): OnboardingPager {
       progress.value = width > 0 ? event.contentOffset.x / width : 0;
     },
     [width],
+  );
+
+  useAnimatedReaction(
+    () => Math.min(Math.max(Math.round(progress.value), 0), count - 1),
+    (current, previous) => {
+      if (previous !== null && current !== previous) scheduleOnRN(setIndex, current);
+    },
+    [count],
   );
 
   const onSettle = useCallback(

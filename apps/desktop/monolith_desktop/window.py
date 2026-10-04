@@ -25,7 +25,7 @@ from .widgets.titlebar import BrandMark, Titlebar
 
 log = logging.getLogger(__name__)
 
-BRAND_ICON = "sandbox"
+BRAND_ICON = "brand"
 
 
 class SidebarRow(Gtk.ListBoxRow):
@@ -88,7 +88,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         self._split.set_sidebar(self._build_sidebar())
         self._nav = Adw.NavigationView()
-        self._content = Adw.NavigationPage(title=APP_NAME, child=self._nav)
+        self._content = Adw.NavigationPage(title=APP_NAME, child=self._nav, css_classes=["to-canvas"])
         self._split.set_content(self._content)
 
         breakpoint = Adw.Breakpoint.new(Adw.BreakpointCondition.parse(COLLAPSE_BREAKPOINT))

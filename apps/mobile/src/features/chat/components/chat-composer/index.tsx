@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 import { View } from "react-native";
-import { FolderSimpleIcon } from "phosphor-react-native";
+import { FolderSimpleIcon, InfoIcon } from "phosphor-react-native";
 import { LIMITS } from "@theone/protocol";
 
 import Chip from "@/components/chip";
@@ -21,6 +21,7 @@ export type ChatComposerProps = {
   placeholder: string;
   noProjectLabel?: string;
   transcribingLabel?: string;
+  dismissLabel?: string;
   banner?: ReactNode;
   testID?: string;
 };
@@ -30,6 +31,7 @@ const ChatComposer = ({
   placeholder,
   noProjectLabel = "No project",
   transcribingLabel = "Transcribing…",
+  dismissLabel = "Dismiss",
   banner,
   testID,
 }: ChatComposerProps) => {
@@ -56,7 +58,16 @@ const ChatComposer = ({
   return (
     <View style={styles.container} testID={testID}>
       {composer.error ? (
-        <Notice tone="danger" message={composer.error} actionLabel="Dismiss" onAction={composer.dismissError} />
+        <Notice tone="danger" message={composer.error} actionLabel={dismissLabel} onAction={composer.dismissError} />
+      ) : null}
+      {composer.notice && !composer.error ? (
+        <Notice
+          tone="info"
+          icon={InfoIcon}
+          message={composer.notice}
+          actionLabel={dismissLabel}
+          onAction={composer.dismissNotice}
+        />
       ) : null}
       <ComposerBar
         value={composer.text}

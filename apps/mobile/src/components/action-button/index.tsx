@@ -1,14 +1,15 @@
 import { useMemo } from "react";
-import { ActivityIndicator, Pressable } from "react-native";
+import { ActivityIndicator } from "react-native";
 import type { Icon } from "phosphor-react-native";
 
+import PressableScale from "@/components/pressable-scale";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useHapticPress } from "@/hooks/use-haptic-press";
 import { HitSlop, IconSize, MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
-import { ActionButtonColors, type ActionButtonVariant } from "./variants";
+import { ActionButtonColors, ActionButtonIconWeight, type ActionButtonVariant } from "./variants";
 
 export type { ActionButtonVariant } from "./variants";
 
@@ -47,7 +48,8 @@ const ActionButton = ({
   const handlePress = useHapticPress(onPress, haptics);
 
   return (
-    <Pressable
+    <PressableScale
+      depth="control"
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: inactive, busy: loading }}
@@ -55,12 +57,16 @@ const ActionButton = ({
       hitSlop={HitSlop.sm}
       onPress={handlePress}
       testID={testID}
-      style={({ pressed }) => [styles.button, pressed && styles.pressed, disabled && styles.disabled]}
+      style={[styles.button, disabled && styles.disabled]}
     >
       {loading ? (
         <ActivityIndicator size="small" color={theme.colors[foreground]} />
       ) : IconComponent ? (
-        <IconComponent size={size === "sm" ? IconSize.sm : IconSize.md} color={theme.colors[foreground]} weight="bold" />
+        <IconComponent
+          size={size === "sm" ? IconSize.sm : IconSize.md}
+          color={theme.colors[foreground]}
+          weight={ActionButtonIconWeight[theme.look]}
+        />
       ) : null}
       <ThemedText
         variant={size === "sm" ? "label" : "button"}
@@ -70,7 +76,7 @@ const ActionButton = ({
       >
         {label}
       </ThemedText>
-    </Pressable>
+    </PressableScale>
   );
 };
 

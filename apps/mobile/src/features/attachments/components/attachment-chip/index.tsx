@@ -4,13 +4,15 @@ import { Image } from "expo-image";
 import { ArrowClockwiseIcon, XIcon } from "phosphor-react-native";
 import type { UploadKind } from "@theone/protocol";
 
+import IconTile from "@/components/icon-tile";
+import PressableScale from "@/components/pressable-scale";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { HitSlop, IconSize } from "@/theme";
+import { ControlHeight, HitSlop, IconSize } from "@/theme";
 
 import type { AttachmentStatus } from "../../types";
 import { KIND_ICONS } from "../../utils/sources";
-import createStyles from "./styles";
+import createStyles, { onMediaColor } from "./styles";
 
 export type AttachmentChipProps = {
   name: string;
@@ -41,16 +43,17 @@ const AttachmentChip = ({
 }: AttachmentChipProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme, large), [theme, large]);
+  const onMedia = onMediaColor(theme);
   const KindIcon = KIND_ICONS[kind];
   const failed = status === "error";
   const showsImage = kind === "image" && Boolean(thumbnailUri);
 
   const statusMark =
     status === "uploading" ? (
-      <ActivityIndicator size="small" color={showsImage ? theme.colors.textInverse : theme.colors.accentStrong} />
+      <ActivityIndicator size="small" color={showsImage ? onMedia : theme.colors.text} />
     ) : failed && onRetry ? (
       <Pressable accessibilityRole="button" accessibilityLabel={`Retry ${name}`} hitSlop={HitSlop.sm} onPress={onRetry}>
-        <ArrowClockwiseIcon size={IconSize.md} color={showsImage ? theme.colors.textInverse : theme.colors.danger} weight="bold" />
+        <ArrowClockwiseIcon size={IconSize.md} color={showsImage ? onMedia : theme.colors.danger} weight="regular" />
       </Pressable>
     ) : null;
 
@@ -62,13 +65,14 @@ const AttachmentChip = ({
       onPress={onRemove}
       style={showsImage ? styles.removeFloating : styles.removeInline}
     >
-      <XIcon size={IconSize.xs} color={showsImage ? theme.colors.textInverse : theme.colors.textSecondary} weight="bold" />
+      <XIcon size={IconSize.xs} color={showsImage ? onMedia : theme.colors.textSecondary} weight="regular" />
     </Pressable>
   ) : null;
 
   if (showsImage) {
     return (
-      <Pressable
+      <PressableScale
+        depth="control"
         accessibilityRole={onPress ? "imagebutton" : "image"}
         accessibilityLabel={failed && error ? `${name}. ${error}` : name}
         disabled={!onPress}
@@ -78,21 +82,20 @@ const AttachmentChip = ({
         <Image source={{ uri: thumbnailUri ?? undefined, headers: thumbnailHeaders }} style={styles.image} contentFit="cover" transition={150} />
         {statusMark ? <View style={styles.thumbOverlay}>{statusMark}</View> : null}
         {removeButton}
-      </Pressable>
+      </PressableScale>
     );
   }
 
   return (
-    <Pressable
+    <PressableScale
+      depth="control"
       accessibilityRole={onPress ? "button" : "text"}
       accessibilityLabel={failed && error ? `${name}. ${error}` : name}
       disabled={!onPress}
       onPress={onPress}
       style={[styles.pill, failed && styles.failed]}
     >
-      <View style={styles.kind}>
-        <KindIcon size={IconSize.md} color={theme.colors.accentStrong} weight="bold" />
-      </View>
+      <IconTile icon={KindIcon} size={ControlHeight.md} iconSize={IconSize.md} radius="md" />
       <View style={styles.body}>
         <ThemedText variant="label" numberOfLines={1}>
           {name}
@@ -109,7 +112,7 @@ const AttachmentChip = ({
       </View>
       {statusMark}
       {removeButton}
-    </Pressable>
+    </PressableScale>
   );
 };
 

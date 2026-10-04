@@ -2,6 +2,10 @@ import { StyleSheet } from "react-native";
 
 import { BorderWidth, ControlHeight, type Theme } from "@/theme";
 
+export function onMediaColor(theme: Theme) {
+  return theme.scheme === "light" ? theme.colors.textInverse : theme.colors.text;
+}
+
 export default function createStyles(theme: Theme, large: boolean) {
   const thumbSize = large ? ControlHeight.xl * 2 : ControlHeight.xl;
 
@@ -11,8 +15,10 @@ export default function createStyles(theme: Theme, large: boolean) {
       height: thumbSize,
       borderRadius: theme.radius.md,
       borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
       overflow: "hidden",
-      backgroundColor: theme.colors.backgroundElement,
+      backgroundColor: theme.colors.surfaceElevated,
     },
     image: {
       ...StyleSheet.absoluteFill,
@@ -28,7 +34,8 @@ export default function createStyles(theme: Theme, large: boolean) {
       top: theme.spacing.xs,
       right: theme.spacing.xs,
       padding: theme.spacing.xxs,
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.sm,
+      borderCurve: "continuous",
       backgroundColor: theme.colors.overlay,
     },
     removeInline: {
@@ -41,24 +48,16 @@ export default function createStyles(theme: Theme, large: boolean) {
       minHeight: ControlHeight.xl,
       maxWidth: theme.maxBubbleWidth,
       paddingLeft: theme.spacing.xs,
-      paddingRight: theme.spacing.sm,
-      borderRadius: theme.radius.md,
+      paddingRight: theme.spacing.md,
+      borderRadius: theme.radius.lg,
       borderCurve: "continuous",
-      borderWidth: BorderWidth.thin,
+      borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.surfaceElevated,
     },
     failed: {
       borderWidth: BorderWidth.thin,
       borderColor: theme.colors.danger,
-    },
-    kind: {
-      width: ControlHeight.md,
-      height: ControlHeight.md,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: theme.radius.sm,
-      backgroundColor: theme.colors.accentMuted,
     },
     body: {
       flexShrink: 1,

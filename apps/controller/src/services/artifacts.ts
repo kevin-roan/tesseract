@@ -9,6 +9,7 @@ import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";
 import type { Repositories } from "../db/repositories";
 import type { Config } from "../config";
+import type { ConfidentialProjects } from "./confidential";
 import type { InboxService } from "./inbox";
 import { projectForCwd } from "./ports";
 
@@ -109,6 +110,7 @@ export class ArtifactService {
     private readonly repos: Repositories,
     private readonly hub: EventHub,
     private readonly inbox: InboxService,
+    private readonly projects: ConfidentialProjects,
     private readonly logger: Logger,
   ) {}
 
@@ -146,6 +148,7 @@ export class ArtifactService {
   async share(input: ShareArtifact): Promise<Artifact> {
     const source = this.shareableFile(input.path);
     const projectId = this.shareProject(input.projectId, source);
+    if (this.projects.isConfidential(projectId)) throw forbidden(`Project ${projectId} is confidential; sharing artifacts is disabled`);
     const fileName = input.name ?? basename(source);
     if (fileName === "." || fileName === "..") throw badRequest(`Invalid file name "${fileName}"`);
     const note = input.note?.trim() || null;

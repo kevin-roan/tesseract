@@ -14,6 +14,9 @@ export const useSandboxStatus = () =>
 export const useSandboxIdentity = () =>
   useSandboxQuery(sandboxKeys.identity, (client, signal) => client.identity({ signal }));
 
+export const useSttStatus = () =>
+  useSandboxQuery(sandboxKeys.stt, (client, signal) => client.stt({ signal }));
+
 export const useDisplayStatus = () =>
   useSandboxQuery(sandboxKeys.display, (client, signal) => client.displayStatus({ signal }));
 

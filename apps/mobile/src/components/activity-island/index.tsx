@@ -1,16 +1,19 @@
 import { useMemo } from "react";
-import { Pressable, View } from "react-native";
-import Animated, { FadeIn, LinearTransition } from "react-native-reanimated";
+import { View } from "react-native";
+import Animated from "react-native-reanimated";
 import { CaretDownIcon, CaretUpIcon, type Icon } from "phosphor-react-native";
 
 import ActionButton, { type ActionButtonVariant } from "@/components/action-button";
 import DotSphere from "@/components/dot-sphere";
 import { Glass } from "@/components/glass";
+import PressableScale from "@/components/pressable-scale";
 import ProgressBar from "@/components/progress-bar";
+import TagChip from "@/components/tag-chip";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useHapticPress } from "@/hooks/use-haptic-press";
-import { HitSlop, IconSize, Springs } from "@/theme";
+import { useLayoutMotion } from "@/hooks/use-layout-motion";
+import { HitSlop, IconSize } from "@/theme";
 
 import createStyles, { SPHERE } from "./styles";
 
@@ -33,15 +36,11 @@ export type ActivityIslandProps = {
   testID?: string;
 };
 
-const layout = LinearTransition.springify()
-  .damping(Springs.gentle.damping)
-  .stiffness(Springs.gentle.stiffness);
-
 const percentLabel = (progress: number | null | undefined) =>
   progress === null || progress === undefined ? null : `${Math.round(Math.min(1, Math.max(0, progress)) * 100)}%`;
 
 /**
- * Glass capsule for a background task that opens into a card with its
+ * Hairline capsule for a background task that opens into a card with its
  * progress and actions, in the spirit of the iOS Dynamic Island.
  */
 const ActivityIsland = ({ title, message, progress = null, expanded, onToggle, actions = [], testID }: ActivityIslandProps) => {
@@ -49,21 +48,23 @@ const ActivityIsland = ({ title, message, progress = null, expanded, onToggle, a
   const styles = useMemo(() => createStyles(theme), [theme]);
   const toggle = useHapticPress(onToggle);
   const percent = percentLabel(progress);
+  const motion = useLayoutMotion();
 
   return (
-    <Animated.View layout={layout} testID={testID}>
+    <Animated.View layout={motion.layout} testID={testID}>
       {expanded ? (
         <Glass intensity="medium" style={styles.card}>
-          <Pressable
+          <PressableScale
+            depth="control"
             accessibilityRole="button"
             accessibilityLabel="Collapse"
             hitSlop={HitSlop.md}
             onPress={toggle}
             style={styles.collapse}
           >
-            <CaretUpIcon size={IconSize.md} color={theme.colors.textSecondary} weight="bold" />
-          </Pressable>
-          <Animated.View entering={FadeIn}>
+            <CaretUpIcon size={IconSize.md} color={theme.colors.textSecondary} weight="regular" />
+          </PressableScale>
+          <Animated.View entering={motion.fadeIn}>
             <DotSphere size={SPHERE.card.size} dots={SPHERE.card.dots} />
           </Animated.View>
           <View style={styles.copy}>
@@ -79,7 +80,7 @@ const ActivityIsland = ({ title, message, progress = null, expanded, onToggle, a
           <View style={styles.progress}>
             <ProgressBar progress={progress} label={title} />
             {percent ? (
-              <ThemedText variant="caption" color="textSecondary" style={styles.centered}>
+              <ThemedText variant="caption" color="textSecondary" style={[styles.centered, styles.figure]}>
                 {percent}
               </ThemedText>
             ) : null}
@@ -102,27 +103,21 @@ const ActivityIsland = ({ title, message, progress = null, expanded, onToggle, a
           ) : null}
         </Glass>
       ) : (
-        <Pressable
+        <PressableScale
           accessibilityRole="button"
           accessibilityLabel={percent ? `${title}, ${percent}` : title}
           accessibilityHint="Shows progress and controls"
           onPress={toggle}
         >
-          {({ pressed }) => (
-            <Glass intensity="medium" style={[styles.capsule, pressed && styles.pressed]}>
-              <DotSphere size={SPHERE.capsule.size} dots={SPHERE.capsule.dots} />
-              <ThemedText variant="h4" numberOfLines={1} style={styles.capsuleText}>
-                {title}
-              </ThemedText>
-              {percent ? (
-                <View style={styles.percentPill}>
-                  <ThemedText variant="label">{percent}</ThemedText>
-                </View>
-              ) : null}
-              <CaretDownIcon size={IconSize.sm} color={theme.colors.textSecondary} weight="bold" />
-            </Glass>
-          )}
-        </Pressable>
+          <Glass intensity="medium" style={styles.capsule}>
+            <DotSphere size={SPHERE.capsule.size} dots={SPHERE.capsule.dots} />
+            <ThemedText variant="h4" numberOfLines={1} style={styles.capsuleText}>
+              {title}
+            </ThemedText>
+            {percent ? <TagChip label={percent} /> : null}
+            <CaretDownIcon size={IconSize.sm} color={theme.colors.textSecondary} weight="regular" />
+          </Glass>
+        </PressableScale>
       )}
     </Animated.View>
   );

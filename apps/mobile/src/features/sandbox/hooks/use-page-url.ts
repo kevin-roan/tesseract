@@ -8,6 +8,12 @@ import { sandboxKeys } from "../api/query-keys";
 import type { PageKind } from "../types";
 import { useSandboxClient } from "./use-sandbox-client";
 
+export type PageTarget = {
+  key: readonly unknown[];
+  client: TheOneClient | null;
+  origin: string | null;
+};
+
 export type PageUrl = {
   url: string | null;
   origin: string | null;
@@ -21,12 +27,15 @@ export function usePageUrl(
   id: string | null,
   build: (client: TheOneClient) => Promise<string>,
   enabled = true,
+  target?: PageTarget,
 ): PageUrl {
-  const { sandbox, client } = useSandboxClient();
+  const active = useSandboxClient();
   const queryClient = useQueryClient();
-  const sandboxId = sandbox?.id ?? null;
+  const sandboxId = active.sandbox?.id ?? null;
+  const client = target ? target.client : active.client;
+  const pageKey = target?.key ?? (sandboxId ? sandboxKeys.page(sandboxId, page, id) : null);
   const query = useQuery({
-    queryKey: sandboxId ? sandboxKeys.page(sandboxId, page, id) : sandboxKeys.root,
+    queryKey: pageKey ?? sandboxKeys.root,
     queryFn: () => {
       if (!client) throw new Error("No sandbox is paired.");
       return build(client);
@@ -42,14 +51,15 @@ export function usePageUrl(
   const { refetch } = query;
   const refresh = useCallback(() => void refetch(), [refetch]);
 
+  const resetKey = pageKey ? JSON.stringify(pageKey) : null;
   useEffect(() => {
-    if (enabled || !sandboxId) return;
-    void queryClient.resetQueries({ queryKey: sandboxKeys.page(sandboxId, page, id), exact: true });
-  }, [enabled, queryClient, sandboxId, page, id]);
+    if (enabled || !resetKey) return;
+    void queryClient.resetQueries({ queryKey: JSON.parse(resetKey) as unknown[], exact: true });
+  }, [enabled, queryClient, resetKey]);
 
   return {
     url: enabled ? (query.data ?? null) : null,
-    origin: sandbox ? originOf(sandbox.baseUrl) : null,
+    origin: target ? target.origin : active.sandbox ? originOf(active.sandbox.baseUrl) : null,
     error: query.error,
     isLoading: query.isLoading,
     refresh,

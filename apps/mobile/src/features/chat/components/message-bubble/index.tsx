@@ -29,7 +29,7 @@ const MessageBubble = ({ role, text, author, timeLabel, showHeader = true, child
         {children}
         {text ? (
           <View style={styles.userBubble}>
-            <ThemedText variant="body" selectable>
+            <ThemedText variant="body" color="bubbleUserText" selectable>
               {text}
             </ThemedText>
           </View>
@@ -55,7 +55,7 @@ const MessageBubble = ({ role, text, author, timeLabel, showHeader = true, child
               </ThemedText>
             ) : null}
             {timeLabel ? (
-              <ThemedText variant="caption" color="textTertiary">
+              <ThemedText variant="caption" color="textTertiary" style={styles.time}>
                 {timeLabel}
               </ThemedText>
             ) : null}

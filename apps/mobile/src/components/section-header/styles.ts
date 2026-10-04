@@ -14,15 +14,16 @@ export default function createStyles(theme: Theme) {
       flexShrink: 1,
     },
     action: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.xs,
       minHeight: ControlHeight.sm,
       paddingHorizontal: theme.spacing.md,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: theme.radius.pill,
-    },
-    actionPressed: {
-      opacity: 0.7,
-      transform: [{ scale: 0.96 }],
+      borderRadius: theme.radius.sm,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
     },
   });
 }

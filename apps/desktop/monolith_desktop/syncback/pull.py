@@ -97,7 +97,7 @@ def pull(
         if outcome.conflicts and not force:
             raise SyncConflict(outcome.conflicts)
         written, executable = _apply(client, state, link, root, changes, targets, outcome)
-        state.update_manifest(project_id, written)
+        state.update_manifest(project_id, written, executable)
         try:
             client.sync_ack(project_id, [_ack(path, digest, executable.get(path)) for path, digest in written.items()])
         except Exception as error:  # noqa: BLE001

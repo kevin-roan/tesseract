@@ -15,6 +15,26 @@ export const Palette = {
   /** Warm near-white that replaces the primary pill in dark mode. */
   paper: '#FAF9F5',
 
+  /**
+   * Neutral greys for the graphite scheme: 950 is the canvas, 900–800 card
+   * and control fills, 700–500 hairlines and quiet ink, 400–100 readable ink.
+   */
+  graphite: {
+    50: '#F5F5F5',
+    100: '#EDEDED',
+    200: '#D4D4D4',
+    300: '#B3B3B3',
+    400: '#8F8F8F',
+    500: '#7A7A7A',
+    600: '#4D4D4D',
+    700: '#333333',
+    750: '#2A2A2A',
+    800: '#222222',
+    850: '#1D1D1D',
+    900: '#161616',
+    950: '#0D0D0D',
+  },
+
   /** Warm neutrals: 50–300 light fills and hairlines, 400–600 secondary ink, 700–950 dark surfaces. */
   stone: {
     50: '#FAF9F6',

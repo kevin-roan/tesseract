@@ -8,6 +8,7 @@ from ..store import ConnectionState
 from ..strings import STT as S
 from ..stt import model
 from ..widgets import PreferenceRows
+from ..theme.icons import resolve_icon
 from .base import PreferencesPage
 
 
@@ -16,14 +17,14 @@ class SttPreferences(PreferencesPage):
     order = 20
 
     def __init__(self, ctx, dialog) -> None:
-        super().__init__(ctx, dialog, title=S["title"], icon_name=S["icon"])
+        super().__init__(ctx, dialog, title=S["title"], icon=S["icon"])
         self._status: SttStatus | None = None
         self._tasks: list[Task] = []
         self._was_online = False
         self._pending = False
         self._syncing = False
 
-        refresh = Gtk.Button(icon_name="view-refresh-symbolic", tooltip_text=S["refresh"], valign=Gtk.Align.CENTER)
+        refresh = Gtk.Button(icon_name=resolve_icon("refresh"), tooltip_text=S["refresh"], valign=Gtk.Align.CENTER)
         refresh.add_css_class("flat")
         refresh.connect("clicked", lambda *_: self._load())
 

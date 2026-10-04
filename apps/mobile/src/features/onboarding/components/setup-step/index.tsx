@@ -2,11 +2,13 @@ import { useMemo } from "react";
 import { View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
+import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { Durations, IconSize, Stagger } from "@/theme";
 
-import type { SetupStep as Step } from "../../utils/content";
+import { SETUP_LABELS, commandLine, stepIndex, stepLabel, type SetupStep as Step } from "../../utils/content";
+import CommandBlock from "../command-block";
 import createStyles from "./styles";
 
 export type SetupStepProps = {
@@ -22,28 +24,40 @@ const SetupStep = ({ step, position, last = false }: SetupStepProps) => {
 
   return (
     <Animated.View
-      entering={FadeInDown.delay(Durations.normal + position * Stagger.loose * 2).duration(Durations.slow)}
-      style={styles.row}
+      entering={FadeInDown.delay(Durations.normal + (position + 1) * Stagger.loose).duration(Durations.slow)}
       testID={`setup-step-${step.id}`}
     >
-      <View style={styles.rail}>
-        <View style={styles.badge}>
-          <IconComponent size={IconSize.md} color={theme.colors.textOnAccent} weight="bold" />
+      <Surface style={styles.card}>
+        <View style={styles.head}>
+          <View style={styles.tile}>
+            <IconComponent size={IconSize.sm} color={theme.colors.text} weight="regular" />
+          </View>
+          <View style={styles.heading}>
+            <ThemedText variant="h4">
+              {step.title}
+            </ThemedText>
+            <ThemedText variant="caption" color="textTertiary">
+              {stepLabel(position)}
+            </ThemedText>
+          </View>
+          <ThemedText variant="label" color="textTertiary" style={styles.index}>
+            {stepIndex(position)}
+          </ThemedText>
         </View>
-        {last ? null : <View style={styles.line} />}
-      </View>
-      <View style={styles.body}>
-        <ThemedText variant="caption" color="textSecondary">{`Step ${position + 1}`}</ThemedText>
-        <ThemedText variant="h4">{step.title}</ThemedText>
-        <ThemedText variant="body" color="textSecondary">
+        <ThemedText variant="bodySmall" color="textSecondary">
           {step.message}
         </ThemedText>
         {step.command ? (
-          <View style={styles.command}>
-            <ThemedText variant="code" selectable>{`$ ${step.command}`}</ThemedText>
-          </View>
+          <CommandBlock
+            command={step.command}
+            line={commandLine(step.command)}
+            copyLabel={SETUP_LABELS.copy}
+            copiedLabel={SETUP_LABELS.copied}
+            testID={`setup-command-${step.id}`}
+          />
         ) : null}
-      </View>
+      </Surface>
+      {last ? null : <View style={styles.connector} />}
     </Animated.View>
   );
 };

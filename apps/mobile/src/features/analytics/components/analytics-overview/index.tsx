@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { View } from "react-native";
 import type { ClaudeSession } from "@theone/protocol";
 
+import MotionItem from "@/components/motion-item";
 import Notice from "@/components/notice";
 import Section from "@/components/section";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -52,57 +53,65 @@ const AnalyticsOverview = ({
 
   return (
     <View style={[styles.overview, stale && styles.stale]} testID="analytics-overview">
-      <View style={styles.lead}>
+      <MotionItem index={0} style={styles.lead}>
         <Headline label={`Tokens, ${title.toLowerCase()}`} headline={view.headline} testID="analytics-headline" />
         <TokensCard buckets={view.tokenBuckets} bucketSize={view.bucketSize} rangeTitle={title} />
-      </View>
+      </MotionItem>
 
       <KpiGrid items={view.kpis} testID="analytics-kpis" />
 
-      <Section
-        title="By model"
-        testID="models-section"
-        isEmpty={view.models.length === 0}
-        emptyLabel="No model replies in this range."
-      >
-        <BarList items={view.models} color={colors.categorical[0]} testID="models" />
-      </Section>
+      <MotionItem index={2}>
+        <Section
+          title="By model"
+          testID="models-section"
+          isEmpty={view.models.length === 0}
+          emptyLabel="No model replies in this range."
+        >
+          <BarList items={view.models} color={colors.single} testID="models" />
+        </Section>
+      </MotionItem>
 
-      <Section
-        title="By project"
-        testID="projects-section"
-        isEmpty={projects.length === 0}
-        emptyLabel="No project usage in this range."
-      >
-        <BarList items={projects} color={colors.categorical[0]} testID="projects" />
-      </Section>
+      <MotionItem index={3}>
+        <Section
+          title="By project"
+          testID="projects-section"
+          isEmpty={projects.length === 0}
+          emptyLabel="No project usage in this range."
+        >
+          <BarList items={projects} color={colors.single} testID="projects" />
+        </Section>
+      </MotionItem>
 
-      <Section title="Activity" testID="activity-section">
-        <ActivityCard
-          sessionBuckets={view.sessionBuckets}
-          heatmap={view.heatmap}
-          sample={view.heatmapSample}
-          rangeTitle={title}
-        />
-      </Section>
-
-      <Section
-        title="Top sessions"
-        testID="top-sessions-section"
-        isEmpty={!sessionsLoading && !sessionsError && view.topSessions.length === 0}
-        emptyLabel="No sessions were active in this range."
-      >
-        {sessionsError ? (
-          <Notice tone="danger" message={sessionsError} actionLabel="Retry" onAction={onRetrySessions} />
-        ) : (
-          <SessionList
-            sessions={view.topSessions}
-            onPress={sessionPress}
-            caption="Ranked by each session's lifetime tokens, among sessions active in this range."
-            testID="top-sessions"
+      <MotionItem index={4}>
+        <Section title="Activity" testID="activity-section">
+          <ActivityCard
+            sessionBuckets={view.sessionBuckets}
+            heatmap={view.heatmap}
+            sample={view.heatmapSample}
+            rangeTitle={title}
           />
-        )}
-      </Section>
+        </Section>
+      </MotionItem>
+
+      <MotionItem index={5}>
+        <Section
+          title="Top sessions"
+          testID="top-sessions-section"
+          isEmpty={!sessionsLoading && !sessionsError && view.topSessions.length === 0}
+          emptyLabel="No sessions were active in this range."
+        >
+          {sessionsError ? (
+            <Notice tone="danger" message={sessionsError} actionLabel="Retry" onAction={onRetrySessions} />
+          ) : (
+            <SessionList
+              sessions={view.topSessions}
+              onPress={sessionPress}
+              caption="Ranked by each session's lifetime tokens, among sessions active in this range."
+              testID="top-sessions"
+            />
+          )}
+        </Section>
+      </MotionItem>
     </View>
   );
 };

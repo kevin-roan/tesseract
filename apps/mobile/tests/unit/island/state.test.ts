@@ -144,6 +144,7 @@ describe("attachDestinations", () => {
       [
         {
           sessionId: "s1",
+          claudeAccountId: "claude",
           projectId: sampleProject.id,
           cwd: null,
           title: "Ship it",

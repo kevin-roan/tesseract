@@ -7,8 +7,105 @@ MENU = MappingProxyType({
     "new_conversation": "New Conversation",
     "preferences": "Preferences",
     "rediscover": "Rediscover Sandbox",
+    "pair": "Pair a Device…",
+    "pair_host": "Pair This Computer…",
     "about": "About Monolith",
     "quit": "Quit",
+})
+
+TRAY = MappingProxyType({
+    "open": "Open Monolith",
+    "hide": "Hide Window",
+    "refresh": "Refresh",
+    "pair": "Pair a Device…",
+    "pair_host": "Pair This Computer…",
+    "preferences": "Preferences",
+    "quit": "Quit Monolith",
+    "tooltip": "Monolith · {status}",
+})
+
+PAIR = MappingProxyType({
+    "title": "Pair a Device",
+    "instructions": "Scan with the TheOne app, or open this link on the phone.",
+    "sandbox": "Sandbox {name} · {url}",
+    "copy": "Copy Link",
+    "copied": "Pairing link copied",
+    "done": "Done",
+    "secret": "The link contains the API token: share it only with your own devices.",
+    "offline": "The sandbox is not answering right now. The phone can pair, but it will connect once the sandbox is back.",
+    "unconfigured": "Connect to a sandbox before pairing a device.",
+    "set_up": "Set Up",
+    "invalid": "Can't build a pairing link: {error}",
+    "tab_sandbox": "Sandbox",
+    "tab_host": "This Computer",
+    "host_instructions": "Scan with the TheOne app (Host shell), or open this link on the phone.",
+    "host_caption": "Host {name} · {url}",
+    "host_secret": "The link contains the host token: share it only with your own devices. Phones also need the PIN.",
+    "host_loading": "Reading the host shell settings…",
+    "host_stopped": "The host shell isn't running. Start it so the phone can reach this computer.",
+    "host_starting": "Starting the host shell…",
+    "host_external": "The host shell is running outside Monolith.",
+    "host_failed": "The host shell couldn't start: {error}",
+    "host_no_pin": "No PIN is set yet. Phones need it to unlock the shell.",
+    "start": "Start",
+    "set_pin": "Set PIN",
+    "retry": "Retry",
+})
+
+HOST_SHELL = MappingProxyType({
+    "title": "Host Shell",
+    "icon": "host",
+    "server_group": "Server",
+    "server_description": (
+        "Lets paired phones open a terminal on this computer over Tailscale. "
+        "Monolith runs it in the background and stops it when you quit."
+    ),
+    "serve": "Serve Host Shell",
+    "autostart": "Start With Monolith",
+    "autostart_subtitle": "Start serving whenever Monolith opens",
+    "status_stopped": "Stopped",
+    "status_starting": "Starting…",
+    "status_running": "Running · {url}",
+    "status_running_plain": "Running",
+    "status_stopping": "Stopping…",
+    "status_external": "Running outside Monolith · {url}",
+    "status_failed": "Failed: {error}",
+    "security_group": "Security",
+    "pin": "PIN",
+    "pin_set": "Set · phones unlock with it",
+    "pin_missing": "Not set · phones can't unlock the shell",
+    "set_pin": "Set PIN…",
+    "change_pin": "Change…",
+    "token": "Host Token",
+    "token_subtitle": "Paired phones use it to reach this computer",
+    "rotate": "Rotate…",
+    "rotate_heading": "Rotate the host token?",
+    "rotate_body": "Every paired phone stops working until you pair it again.",
+    "rotate_confirm": "Rotate",
+    "rotated": "Host token rotated; pair your phones again",
+    "rotate_failed": "Couldn't rotate the token: {error}",
+    "pair_group": "Pairing",
+    "pair": "Pair a Phone",
+    "pair_subtitle": "Show the theone://host link and QR code",
+    "pair_button": "Show QR…",
+    "log": "Log",
+    "log_empty": "No output yet",
+    "refresh": "Refresh",
+    "cancel": "Cancel",
+})
+
+HOST_PIN = MappingProxyType({
+    "title": "Host Shell PIN",
+    "subtitle": "6 to 12 digits",
+    "pin": "New PIN",
+    "repeat": "Repeat PIN",
+    "save": "Save PIN",
+    "cancel": "Cancel",
+    "description": "Saving a new PIN ends every open phone session.",
+    "invalid": "The PIN must be 6 to 12 digits",
+    "mismatch": "The PINs do not match",
+    "saved": "Host shell PIN saved",
+    "failed": "Couldn't save the PIN: {error}",
 })
 
 MAIN_MENU_TOOLTIP = "Main menu"
@@ -44,7 +141,7 @@ EVENTS_LABELS = MappingProxyType({
 
 PREFERENCES = MappingProxyType({
     "connection_title": "Connection",
-    "connection_icon": "network-server-symbolic",
+    "connection_icon": "connection",
     "sandbox_group": "Sandbox Controller",
     "sandbox_group_description": (
         "The desktop app talks to the controller REST API from this machine. "
@@ -106,6 +203,7 @@ SIDEBAR = MappingProxyType({
     "collapse": "Hide conversations",
     "untitled_run": "Untitled conversation",
     "more_runs": "All conversations",
+    "confidential": "Confidential",
 })
 
 COMPOSER = MappingProxyType({
@@ -125,11 +223,18 @@ STATUS_FOOTER = MappingProxyType({
 
 CLAUDE = MappingProxyType({
     "title": "Claude",
-    "icon": "dialog-password-symbolic",
+    "icon": "agents",
     "host_group": "This Computer",
-    "host_description": "Claude Code on this machine · {path}",
+    "host_description": "Claude Code accounts on this machine (~/.claude and ~/.claude-<name>)",
     "sandbox_group": "Sandbox",
-    "sandbox_description": "Claude Code inside the sandbox uses this computer's ~/.claude folder (linked)",
+    "sandbox_description": "Claude Code inside the sandbox uses this computer's ~/.claude folders (linked)",
+    "accounts_group": "Accounts",
+    "accounts_description": "Accounts linked into the sandbox. The default is used by projects that don't pick one.",
+    "primary": "primary",
+    "account_absent": "Not linked into the sandbox",
+    "default_changed": "Default Claude account set to {id}",
+    "default_change_failed": "Couldn't change the default Claude account: {error}",
+    "accounts_empty": "No accounts",
     "refresh": "Refresh",
     "login": "Login",
     "account": "Account",
@@ -162,12 +267,13 @@ CLAUDE = MappingProxyType({
     "settings_missing": "No settings.json",
     "loading": "Loading…",
     "disconnected": "Not connected",
+    "accounts_outdated": "This sandbox is too old for multiple Claude accounts. Rebuild and restart it: `bun run sandbox build` then `bun run sandbox up`.",
     "outdated": "This sandbox is too old for Claude sign-in. Rebuild and restart it: `bun run sandbox build` then `bun run sandbox up`.",
 })
 
 STT = MappingProxyType({
     "title": "Speech-to-text",
-    "icon": "audio-input-microphone-symbolic",
+    "icon": "microphone",
     "profiles_group": "Resource Usage",
     "profiles_description": (
         "Voice notes are transcribed locally with whisper.cpp inside the sandbox. "
@@ -210,4 +316,6 @@ SYNC_BACK = MappingProxyType({
     "pull_failed": "Couldn't sync {project} to this computer",
     "revert_done": "Reverted the last sync of {project}",
     "revert_failed": "Couldn't revert the last sync of {project}",
+    "get_done": "Sent {project} changes to the sandbox",
+    "get_failed": "Couldn't send {project} changes to the sandbox",
 })

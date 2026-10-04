@@ -42,7 +42,8 @@ class ProjectCard(Gtk.Overlay):
         self._branch = StatusBadge("", icon="branch")
         self._sync = StatusBadge("", "info")
         self._dirty = StatusBadge("")
-        for badge in (self._activity, self._branch, self._sync, self._dirty):
+        self._confidential = StatusBadge("", icon="confidential")
+        for badge in (self._confidential, self._activity, self._branch, self._sync, self._dirty):
             self._badges.append(badge)
         surface.append(self._badges)
 
@@ -76,6 +77,9 @@ class ProjectCard(Gtk.Overlay):
         self._subtitle.set_text_value(card.subtitle)
         self._pressable.set_tooltip_text(card.title)
         self._ask.set_tooltip_text(self._ask_label.format(name=card.title))
+        self._confidential.set_visible(card.confidential is not None)
+        if card.confidential:
+            self._confidential.update(*card.confidential)
         self._activity.update(card.activity.label, card.activity.tone)
         self._branch.set_label(card.branch or "")
         self._branch.set_visible(bool(card.branch))

@@ -5,8 +5,8 @@ import type { AgentRunEvent } from "@theone/protocol";
 
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { IconSize } from "@/theme";
 
+import ToolRow from "../tool-row";
 import createStyles from "./styles";
 
 export type AgentEventProps = {
@@ -25,41 +25,27 @@ const AgentEvent = ({ event }: AgentEventProps) => {
         </ThemedText>
       );
     case "tool_use":
+      return <ToolRow icon={WrenchIcon} iconColor="text" tool={event.tool} summary={event.summary} lines={3} />;
+    case "tool_result":
       return (
-        <View style={styles.tool}>
-          <WrenchIcon size={IconSize.sm} color={theme.colors.accentPressed} weight="bold" style={styles.icon} />
-          <View style={styles.toolBody}>
-            <ThemedText variant="label">{event.tool}</ThemedText>
-            <ThemedText variant="code" color="textSecondary" numberOfLines={3} selectable>
-              {event.summary}
-            </ThemedText>
-          </View>
-        </View>
+        <ToolRow
+          icon={event.isError ? XCircleIcon : CheckCircleIcon}
+          iconColor={event.isError ? "danger" : "success"}
+          tool={event.tool}
+          summary={event.summary}
+          lines={4}
+          error={event.isError}
+        />
       );
-    case "tool_result": {
-      const ResultIcon = event.isError ? XCircleIcon : CheckCircleIcon;
-      return (
-        <View style={[styles.tool, event.isError && styles.toolError]}>
-          <ResultIcon
-            size={IconSize.sm}
-            color={event.isError ? theme.colors.danger : theme.colors.success}
-            weight="fill"
-            style={styles.icon}
-          />
-          <View style={styles.toolBody}>
-            {event.tool ? <ThemedText variant="label">{event.tool}</ThemedText> : null}
-            <ThemedText variant="code" color="textSecondary" numberOfLines={4} selectable>
-              {event.summary}
-            </ThemedText>
-          </View>
-        </View>
-      );
-    }
     case "system":
       return (
-        <ThemedText variant="caption" color="textTertiary" style={styles.system}>
-          {event.text}
-        </ThemedText>
+        <View style={styles.system}>
+          <View style={styles.rule} />
+          <ThemedText variant="caption" color="textTertiary" style={styles.systemText}>
+            {event.text}
+          </ThemedText>
+          <View style={styles.rule} />
+        </View>
       );
   }
 };

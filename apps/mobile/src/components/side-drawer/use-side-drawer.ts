@@ -1,25 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useWindowDimensions } from "react-native";
 import { Gesture } from "react-native-gesture-handler";
-import {
-  Easing,
-  interpolate,
-  useAnimatedStyle,
-  useReducedMotion,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
+import { interpolate, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
-import { Durations, Easings, Springs } from "@/theme";
+import { linearTiming } from "@/lib/motion";
+import { Durations } from "@/theme";
 
 import { DRAWER_PAN_SLOP, dragProgress, drawerWidth, shouldCloseDrawer } from "./utils/geometry";
 
 export function useSideDrawer(visible: boolean, onClose: () => void, onClosed?: () => void) {
   const { width: windowWidth } = useWindowDimensions();
   const width = drawerWidth(windowWidth);
-  const reducedMotion = useReducedMotion();
   const progress = useSharedValue(0);
   const [mounted, setMounted] = useState(visible);
 
@@ -32,15 +24,12 @@ export function useSideDrawer(visible: boolean, onClose: () => void, onClosed?: 
 
   useEffect(() => {
     if (!mounted) return;
-    const duration = reducedMotion ? Durations.instant : visible ? Durations.slow : Durations.normal;
-    const [x1, y1, x2, y2] = visible ? Easings.decelerate : Easings.accelerate;
-    const easing = Easing.bezier(x1, y1, x2, y2);
     progress.set(
-      withTiming(visible ? 1 : 0, { duration, easing }, (finished) => {
+      withTiming(visible ? 1 : 0, linearTiming(visible ? Durations.slow : Durations.normal), (finished) => {
         if (finished && !visible) scheduleOnRN(unmount);
       }),
     );
-  }, [visible, mounted, reducedMotion, progress, unmount]);
+  }, [visible, mounted, progress, unmount]);
 
   const pan = useMemo(
     () =>
@@ -52,7 +41,7 @@ export function useSideDrawer(visible: boolean, onClose: () => void, onClosed?: 
         })
         .onEnd((event) => {
           if (shouldCloseDrawer(progress.get(), event.velocityX)) scheduleOnRN(onClose);
-          else progress.set(withSpring(1, Springs.snappy));
+          else progress.set(withTiming(1, linearTiming()));
         }),
     [progress, width, onClose],
   );

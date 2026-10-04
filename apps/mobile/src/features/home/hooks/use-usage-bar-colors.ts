@@ -8,12 +8,12 @@ export function useUsageBarColors(tone?: SurfaceTone): DailyBarsColors {
   const { chart, colors } = useAppTheme(tone);
   return useMemo(
     () => ({
-      bar: chart.bar,
-      focus: colors.text,
-      empty: chart.barEmpty,
+      bar: chart.sequential[chart.sequential.length - 2],
+      focus: tone && tone !== "neutral" ? colors.text : colors.brand,
+      empty: colors.backgroundSelected,
       emptyStroke: chart.barEmptyStroke,
       axis: colors.textTertiary,
     }),
-    [chart, colors],
+    [chart, colors, tone],
   );
 }

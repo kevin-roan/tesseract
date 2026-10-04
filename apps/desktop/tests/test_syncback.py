@@ -499,7 +499,7 @@ def test_run_sync_records_the_link_and_host_manifest(tmp_path, monkeypatch):
     write(root, ".git/HEAD", "ref")
 
     class Pusher:
-        def sync_project(self, project_id, archive, size):
+        def sync_project(self, project_id, archive, size, confidential=False):
             return {"path": f"/workspace/projects/{project_id}"}, True
 
     monkeypatch.setattr(sync, "connect", lambda: (Pusher(), "sandbox"))

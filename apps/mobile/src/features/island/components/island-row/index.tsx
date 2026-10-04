@@ -1,8 +1,9 @@
 import { useMemo } from "react";
-import { Pressable, View } from "react-native";
+import { View } from "react-native";
 import { StopIcon } from "phosphor-react-native";
 
 import ActionButton from "@/components/action-button";
+import PressableScale from "@/components/pressable-scale";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useHapticPress } from "@/hooks/use-haptic-press";
@@ -27,23 +28,23 @@ const IslandRow = ({ title, details, stopLabel, onStop, stopping = false, onPres
 
   return (
     <View style={styles.row} testID={testID}>
-      <Pressable
+      <PressableScale
         accessibilityRole={onPress ? "button" : undefined}
         accessibilityLabel={title}
         accessibilityHint={onPress ? "Opens the details" : undefined}
         onPress={press}
         disabled={!onPress}
-        style={({ pressed }) => [styles.body, pressed && styles.pressed]}
+        style={styles.body}
       >
-        <ThemedText variant="bodyStrong" numberOfLines={1}>
+        <ThemedText variant="label" numberOfLines={1}>
           {title}
         </ThemedText>
         {subtitle ? (
-          <ThemedText variant="caption" color="textSecondary" numberOfLines={1}>
+          <ThemedText variant="caption" color="textSecondary" numberOfLines={1} style={styles.details}>
             {subtitle}
           </ThemedText>
         ) : null}
-      </Pressable>
+      </PressableScale>
       <ActionButton
         label={stopLabel}
         icon={StopIcon}

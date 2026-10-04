@@ -1,20 +1,24 @@
 import { Fragment, useMemo } from "react";
 import { View } from "react-native";
+import Animated from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ArrowLeftIcon,
   DotsThreeVerticalIcon,
   UsersThreeIcon,
+  type Icon,
 } from "phosphor-react-native";
 
 import Avatar from "@/components/avatar";
 import { GlassButton } from "@/components/glass";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { useEntrance } from "@/hooks/use-entrance";
 import { SurfaceToneContext } from "@/hooks/use-surface-tone";
 import { AvatarSize, IconSize } from "@/theme";
 
 import createStyles from "./styles";
+import { STAT_MIN_FONT_SCALE } from "./utils/constants";
 
 export type ProfileStat = {
   id: string;
@@ -34,14 +38,15 @@ export type ProfileHeroProps = {
   nameTestID?: string;
   teamTestID?: string;
   menuLabel?: string;
+  menuIcon?: Icon;
   onPressBack?: () => void;
   onPressMenu?: () => void;
 };
 
 /**
- * Full-bleed brand header at the top of the profile: one flat brand color
- * running under the status bar, glass nav buttons, the avatar and name block,
- * and a flat row of headline counts. Pair it with a `ContentSheet` to lift the
+ * Full-bleed header at the top of the profile: one flat surface fill running
+ * under the status bar, nav buttons, the avatar and name block, and a hairline
+ * row of headline counts. Pair it with a `ContentSheet` to lift the
  * rest of the screen over its bottom edge.
  */
 const ProfileHero = ({
@@ -53,6 +58,7 @@ const ProfileHero = ({
   nameTestID,
   teamTestID,
   menuLabel = "Profile options",
+  menuIcon: MenuIcon = DotsThreeVerticalIcon,
   onPressBack,
   onPressMenu,
 }: ProfileHeroProps) => {
@@ -61,6 +67,8 @@ const ProfileHero = ({
   const size = AvatarSize.xl;
   const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
   const hasNav = Boolean(onPressBack || onPressMenu);
+  const identityEntrance = useEntrance(0);
+  const statsEntrance = useEntrance(1);
 
   return (
     <SurfaceToneContext.Provider value="brand">
@@ -71,7 +79,7 @@ const ProfileHero = ({
           <View style={styles.navRow}>
             {onPressBack ? (
               <GlassButton accessibilityLabel="Go back" onPress={onPressBack} style={styles.navButton}>
-                <ArrowLeftIcon size={IconSize.md} color={theme.colors.text} weight="bold" />
+                <ArrowLeftIcon size={IconSize.md} color={theme.colors.text} weight="regular" />
               </GlassButton>
             ) : (
               <View style={styles.navSpacer} />
@@ -79,7 +87,7 @@ const ProfileHero = ({
 
             {onPressMenu ? (
               <GlassButton accessibilityLabel={menuLabel} onPress={onPressMenu} style={styles.navButton}>
-                <DotsThreeVerticalIcon size={IconSize.md} color={theme.colors.text} weight="bold" />
+                <MenuIcon size={IconSize.md} color={theme.colors.text} weight="regular" />
               </GlassButton>
             ) : (
               <View style={styles.navSpacer} />
@@ -87,11 +95,16 @@ const ProfileHero = ({
           </View>
         ) : null}
 
-        <View style={styles.identity}>
+        <Animated.View entering={identityEntrance} style={styles.identity}>
           <Avatar name={name} photo={photo} size={size} initialsVariant="h3" style={styles.avatar} />
 
           <View style={styles.names}>
-            <ThemedText variant="h3" numberOfLines={2} testID={nameTestID} accessibilityRole="header">
+            <ThemedText
+              variant="h3"
+              numberOfLines={2}
+              testID={nameTestID}
+              accessibilityRole="header"
+            >
               {name}
             </ThemedText>
             <ThemedText variant="bodySmall" color="textSecondary" numberOfLines={1}>
@@ -99,7 +112,7 @@ const ProfileHero = ({
             </ThemedText>
             {team ? (
               <View style={styles.teamPill}>
-                <UsersThreeIcon size={IconSize.xs} color={theme.colors.highlight} weight="fill" />
+                <UsersThreeIcon size={IconSize.xs} color={theme.colors.textSecondary} weight="regular" />
                 <ThemedText
                   variant="caption"
                   color="textSecondary"
@@ -112,24 +125,30 @@ const ProfileHero = ({
               </View>
             ) : null}
           </View>
-        </View>
+        </Animated.View>
 
         {stats.length > 0 ? (
-          <View style={styles.stats}>
+          <Animated.View entering={statsEntrance} style={styles.stats}>
             {stats.map((stat, index) => (
               <Fragment key={stat.id}>
                 {index > 0 ? <View style={styles.statDivider} /> : null}
                 <View style={styles.stat}>
-                  <ThemedText variant="h4" numberOfLines={1} style={styles.statText}>
+                  <ThemedText
+                    variant="h4"
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={STAT_MIN_FONT_SCALE}
+                    style={[styles.statText, styles.statValue]}
+                  >
                     {stat.value}
                   </ThemedText>
-                  <ThemedText variant="overline" color="textTertiary" numberOfLines={1} style={styles.statText}>
+                  <ThemedText variant="caption" color="textTertiary" numberOfLines={1} style={styles.statText}>
                     {stat.label}
                   </ThemedText>
                 </View>
               </Fragment>
             ))}
-          </View>
+          </Animated.View>
         ) : null}
       </View>
     </SurfaceToneContext.Provider>

@@ -114,6 +114,17 @@ export class GitService {
     return [...new Set(result.stdout.split("\0").filter(Boolean))];
   }
 
+  /** `<symbolic ref>@<commit sha>` (either side empty when detached or unborn), or `null` when `dir` is not a git checkout. */
+  async head(dir: string): Promise<string | null> {
+    const repo = await this.git(dir, ["rev-parse", "--git-dir"]);
+    if (!repo.ok) return null;
+    const [ref, sha] = await Promise.all([
+      this.git(dir, ["symbolic-ref", "-q", "HEAD"]),
+      this.git(dir, ["rev-parse", "-q", "--verify", "HEAD^{commit}"]),
+    ]);
+    return `${ref.ok ? ref.stdout.trim() : ""}@${sha.ok ? sha.stdout.trim() : ""}`;
+  }
+
   async summary(dir: string): Promise<GitSummary | null> {
     const config = await this.safeConfig(dir);
     const [status, log] = await Promise.all([this.status(dir, config), this.log(dir, 1, config)]);

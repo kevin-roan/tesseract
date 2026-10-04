@@ -71,7 +71,7 @@ describe("project helpers", () => {
 
   it("colors changed files by status code", () => {
     expect(gitFileCode({ path: "a", index: " ", worktree: "M" })).toBe("M");
-    expect(gitFileTone({ path: "a", index: "?", worktree: "?" })).toBe("info");
+    expect(gitFileTone({ path: "a", index: "?", worktree: "?" })).toBe("neutral");
     expect(gitFileTone({ path: "a", index: "D", worktree: " " })).toBe("danger");
     expect(gitFileTone({ path: "a", index: "A", worktree: " " })).toBe("success");
     expect(gitFileTone({ path: "a", index: " ", worktree: "M" })).toBe("warning");
@@ -111,7 +111,7 @@ describe("resource gauges", () => {
 describe("descriptions", () => {
   it("describes the sandbox and processes", () => {
     expect(sandboxSubtitle(undefined)).toBeUndefined();
-    expect(sandboxSubtitle(sampleStatus)).toBe("up 1h · sandbox · v0.1.0");
+    expect(sandboxSubtitle(sampleStatus)).toBe("v0.1.0 · up 1h");
     const now = Date.parse(sampleProcess.startedAt) + 120_000;
     expect(processMeta({ ...sampleProcess, port: 5173 }, now)).toBe("port 5173 · on display · started 2m ago");
   });

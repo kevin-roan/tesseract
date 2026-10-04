@@ -4,9 +4,11 @@ import type { ClaudeSession } from "@theone/protocol";
 
 import Notice from "@/components/notice";
 import Skeleton from "@/components/skeleton";
+import { Surface } from "@/components/surface";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { formatTokens } from "@/features/home/utils/tokens";
 import { formatRelativeTime } from "@/features/sandbox/utils/format";
+import { ControlHeight } from "@/theme";
 
 import { sessionTitle } from "../../utils/sessions";
 import ChatRow from "../chat-row";
@@ -27,24 +29,33 @@ const ChatList = ({ items, loading, error, onRetry, onOpen, projectName, skeleto
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   if (error) return <Notice tone="danger" title="Chats are unavailable" message={error} actionLabel="Retry" onAction={onRetry} />;
+  if (!loading && items.length === 0) return null;
 
   return (
-    <View style={styles.list}>
-      {loading
-        ? Array.from({ length: skeletonRows }, (_, index) => <Skeleton key={index} height={112} radius="card" />)
-        : items.map((session) => (
-            <ChatRow
-              key={session.sessionId}
-              title={sessionTitle(session)}
-              preview={session.preview}
-              project={projectName(session.projectId)}
-              time={formatRelativeTime(session.lastActiveAt)}
-              tokens={formatTokens(session.usage.totalTokens)}
-              active={session.active}
-              onPress={() => onOpen(session)}
-            />
+    <Surface>
+      {loading ? (
+        <View style={styles.skeletons}>
+          {Array.from({ length: skeletonRows }, (_, index) => (
+            <Skeleton key={index} height={ControlHeight.xl} radius="md" />
           ))}
-    </View>
+        </View>
+      ) : (
+        items.map((session, index) => (
+          <ChatRow
+            key={session.sessionId}
+            title={sessionTitle(session)}
+            preview={session.preview}
+            project={projectName(session.projectId)}
+            time={formatRelativeTime(session.lastActiveAt)}
+            tokens={formatTokens(session.usage.totalTokens)}
+            active={session.active}
+            divider={index > 0}
+            entranceIndex={index}
+            onPress={() => onOpen(session)}
+          />
+        ))
+      )}
+    </Surface>
   );
 };
 

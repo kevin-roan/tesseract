@@ -1,5 +1,4 @@
-import { Platform } from "react-native";
-import type * as ExpoClipboard from "expo-clipboard";
+import { Clipboard } from "@/lib/clipboard";
 
 import type { PickedFile } from "../types";
 import { PNG_MIME_TYPE } from "../utils/constants";
@@ -7,19 +6,6 @@ import { base64FromDataUrl, decodedLength, pastedImageName } from "../utils/file
 import { writeCacheFile } from "./read-file";
 
 export class EmptyClipboardError extends Error {}
-
-/** Loaded lazily: a dev client built before expo-clipboard was added throws on import, which would break the composer. */
-function loadClipboard(): typeof ExpoClipboard | null {
-  if (Platform.OS === "web") return null;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports -- must be lazy, see above
-    return require("expo-clipboard") as typeof ExpoClipboard;
-  } catch {
-    return null;
-  }
-}
-
-const Clipboard = loadClipboard();
 
 export async function clipboardHasImage(): Promise<boolean> {
   if (!Clipboard) return false;

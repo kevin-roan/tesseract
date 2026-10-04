@@ -20,11 +20,11 @@ const AnalyticsSkeleton = ({ tiles = 4 }: AnalyticsSkeletonProps) => {
         <Skeleton height={14} width="35%" />
         <Skeleton height={48} width="55%" />
       </View>
-      <Skeleton height={240} radius="xl" />
+      <Skeleton height={240} radius="card" />
       <View style={styles.tiles}>
         {Array.from({ length: tiles }, (_, index) => (
           <View key={index} style={styles.tile}>
-            <Skeleton height={96} radius="lg" />
+            <Skeleton height={96} radius="card" />
           </View>
         ))}
       </View>

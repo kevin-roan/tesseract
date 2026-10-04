@@ -126,9 +126,10 @@ describe("<VoiceBubble /> and <Waveform />", () => {
     expect(screen.getByLabelText("Pause voice message")).toBeOnTheScreen();
   });
 
-  it("renders one bar per level", async () => {
+  it("renders one dash column per level", async () => {
     const { toJSON } = await render(<Waveform levels={[0.1, 0.2, 0.3]} progress={0.34} />);
-    expect(JSON.stringify(toJSON()).match(/"height":"\d+%"/g)).toHaveLength(3);
+    const tree = toJSON();
+    expect(Array.isArray(tree) ? null : tree?.children).toHaveLength(3);
   });
 });
 

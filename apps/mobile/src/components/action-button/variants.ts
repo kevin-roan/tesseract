@@ -1,4 +1,6 @@
-import type { ThemeColor } from "@/theme";
+import type { IconWeight } from "phosphor-react-native";
+
+import type { ThemeColor, Look } from "@/theme";
 
 export type ActionButtonVariant = "primary" | "secondary" | "danger";
 
@@ -6,4 +8,9 @@ export const ActionButtonColors: Record<ActionButtonVariant, { background: Theme
   primary: { background: "accent", foreground: "textOnAccent" },
   secondary: { background: "backgroundElement", foreground: "text" },
   danger: { background: "dangerMuted", foreground: "danger" },
+};
+
+export const ActionButtonIconWeight: Record<Look, IconWeight> = {
+  classic: "bold",
+  graphite: "light",
 };

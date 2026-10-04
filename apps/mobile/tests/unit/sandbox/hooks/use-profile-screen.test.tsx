@@ -67,8 +67,8 @@ describe("useProfileScreen", () => {
     expect(result.current.profile).toMatchObject({ team: "example.com", photo: "https://example.com/ada.png" });
     expect(result.current.tailscaleMissing).toBe(false);
     expect(result.current.identityError).toBeNull();
-    await act(async () => result.current.openHub());
-    expect(mockRouter.navigate).toHaveBeenCalledWith("/agents");
+    await act(async () => result.current.openSettings());
+    expect(mockRouter.push).toHaveBeenCalledWith("/settings");
   });
 
   it("summarises the Claude account and opens its screen", async () => {

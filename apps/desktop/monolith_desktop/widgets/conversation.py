@@ -4,6 +4,7 @@ from ..theme.tone import Tone
 from .buttons import IconButton
 from .icon import Icon
 from .markdown import MarkdownView
+from .motion import revealer
 from .text import Text
 from .tone import ToneBinding
 
@@ -75,7 +76,7 @@ class ToolCallCard(Gtk.Box):
             if isinstance(widget, Gtk.Label):
                 widget.set_focusable(False)
             details.append(widget)
-        self._revealer = Gtk.Revealer(child=details, transition_type=Gtk.RevealerTransitionType.SLIDE_DOWN)
+        self._revealer = revealer(child=details, transition_type=Gtk.RevealerTransitionType.SLIDE_DOWN)
         self.append(self._revealer)
         self.update(tool, summary, result, status)
 

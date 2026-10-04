@@ -89,6 +89,8 @@ def main_menu() -> Gio.Menu:
     top = Gio.Menu()
     top.append(MENU["new_conversation"], "app.new-conversation")
     top.append(MENU["preferences"], "app.preferences")
+    top.append(MENU["pair"], "app.pair")
+    top.append(MENU["pair_host"], "app.pair-host")
     top.append(MENU["rediscover"], "app.rediscover")
     menu.append_section(None, top)
     bottom = Gio.Menu()

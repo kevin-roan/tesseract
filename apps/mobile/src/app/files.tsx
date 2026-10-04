@@ -21,7 +21,7 @@ export default function FilesScreen() {
       header={<ScreenHeader title="Files" subtitle={screen.subtitle} onBack={screen.back} />}
     >
       {!screen.hydrated || screen.loading ? (
-        <SkeletonList count={3} height={120} radius="lg" />
+        <SkeletonList count={3} height={120} radius="card" />
       ) : !screen.paired ? (
         <EmptyState
           icon={FilesIcon}
@@ -67,9 +67,10 @@ export default function FilesScreen() {
             emptyActionLabel="Show all files"
             onEmptyAction={screen.clearFilters}
           >
-            {screen.files.map((artifact) => (
+            {screen.files.map((artifact, index) => (
               <FileCard
                 key={artifact.id}
+                index={index}
                 artifact={artifact}
                 project={screen.projectName(artifact.projectId)}
                 onDownload={() => screen.download(artifact.id)}

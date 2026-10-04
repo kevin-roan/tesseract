@@ -25,10 +25,10 @@ const BrowserTabRow = ({ tab, onOpen, onShare }: BrowserTabRowProps) => {
   return (
     <View style={styles.row}>
       <View style={styles.text}>
-        <ThemedText variant="label" numberOfLines={1}>
+        <ThemedText variant="body" numberOfLines={1}>
           {title}
         </ThemedText>
-        <ThemedText variant="caption" color="textSecondary" numberOfLines={1}>
+        <ThemedText variant="caption" color="textTertiary" numberOfLines={1}>
           {tab.phoneUrl ?? tab.url}
         </ThemedText>
       </View>

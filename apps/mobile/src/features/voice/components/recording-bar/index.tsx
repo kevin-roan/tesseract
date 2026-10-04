@@ -1,13 +1,14 @@
 import { useMemo } from "react";
-import { ActivityIndicator, Pressable, View } from "react-native";
+import { ActivityIndicator, View } from "react-native";
 import { ArrowClockwiseIcon, ArrowUpIcon, TrashIcon } from "phosphor-react-native";
 
 import { ThemedText } from "@/components/themed-text";
-import Waveform from "@/components/waveform";
+import PressableScale from "@/components/pressable-scale";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { HitSlop, IconSize } from "@/theme";
 
 import type { VoicePhase } from "../../types";
+import LiveWaveform from "../live-waveform";
 import createStyles from "./styles";
 
 export type RecordingBarProps = {
@@ -39,18 +40,19 @@ const RecordingBar = ({
   return (
     <View style={styles.container}>
       <View style={styles.row}>
-        <Pressable
+        <PressableScale
+          depth="control"
           accessibilityRole="button"
           accessibilityLabel={recording ? "Cancel recording" : "Discard recording"}
           hitSlop={HitSlop.sm}
           onPress={onCancel}
           disabled={phase === "transcribing"}
-          style={({ pressed }) => [styles.cancel, pressed && styles.pressed, phase === "transcribing" && styles.disabled]}
+          style={[styles.cancel, phase === "transcribing" && styles.disabled]}
         >
-          <TrashIcon size={IconSize.md} color={theme.colors.danger} weight="bold" />
-        </Pressable>
-        {recording ? <View style={styles.dot} /> : null}
-        <Waveform levels={levels} progress={recording ? 1 : 0} activeColor="voiceActive" inactiveColor="borderStrong" />
+          <TrashIcon size={IconSize.md} color={theme.colors.danger} weight="light" />
+        </PressableScale>
+        {recording ? <View style={styles.dot} accessibilityElementsHidden importantForAccessibility="no-hide-descendants" /> : null}
+        <LiveWaveform levels={levels} live={recording} />
         <ThemedText variant="label" color="textSecondary" style={styles.elapsed}>
           {elapsedLabel}
         </ThemedText>
@@ -59,18 +61,20 @@ const RecordingBar = ({
             <ActivityIndicator size="small" color={theme.colors.textOnAccent} />
           </View>
         ) : (
-          <Pressable
+          <PressableScale
+            depth="control"
             accessibilityRole="button"
             accessibilityLabel={failed ? "Retry voice message" : "Send voice message"}
+            hitSlop={HitSlop.sm}
             onPress={failed ? onRetry : onSend}
-            style={({ pressed }) => [styles.action, pressed && styles.actionPressed]}
+            style={styles.action}
           >
             {failed ? (
-              <ArrowClockwiseIcon size={IconSize.md} color={theme.colors.textOnAccent} weight="bold" />
+              <ArrowClockwiseIcon size={IconSize.md} color={theme.colors.textOnAccent} weight="regular" />
             ) : (
-              <ArrowUpIcon size={IconSize.md} color={theme.colors.textOnAccent} weight="bold" />
+              <ArrowUpIcon size={IconSize.md} color={theme.colors.textOnAccent} weight="regular" />
             )}
-          </Pressable>
+          </PressableScale>
         )}
       </View>
       {phase === "transcribing" && statusLabel ? (

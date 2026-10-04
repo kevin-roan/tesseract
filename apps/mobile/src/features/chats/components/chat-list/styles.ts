@@ -4,8 +4,9 @@ import type { Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
-    list: {
+    skeletons: {
       gap: theme.spacing.md,
+      padding: theme.spacing.base,
     },
   });
 }

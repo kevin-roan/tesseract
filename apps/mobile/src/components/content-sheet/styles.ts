@@ -20,6 +20,9 @@ export default function createStyles(theme: Theme) {
       borderTopRightRadius: corner,
       borderCurve: "continuous",
       overflow: "hidden",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderBottomWidth: 0,
+      borderColor: theme.colors.border,
       backgroundColor: theme.colors.background,
     },
   });

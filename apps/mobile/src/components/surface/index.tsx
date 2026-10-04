@@ -1,7 +1,8 @@
 import { memo, useId, useMemo } from "react";
-import { Pressable, StyleSheet, View, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
+import { StyleSheet, View, type PressableProps, type StyleProp, type ViewStyle } from "react-native";
 import Svg, { Defs, RadialGradient, Rect, Stop } from "react-native-svg";
 
+import PressableScale from "@/components/pressable-scale";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { SurfaceToneContext } from "@/hooks/use-surface-tone";
 import type { SurfaceFill as Fill, SurfaceTone } from "@/theme";
@@ -66,22 +67,23 @@ export const Surface = ({ children, tone = "neutral", style, testID }: SurfacePr
   );
 };
 
-/** Solid pill button. Neutral is the white secondary pill; `tone="ink"` is the black primary. */
+/** Solid pill button that springs down on press. Neutral is the secondary pill; `tone="ink"` is the primary. */
 export const SurfaceButton = ({ children, tone = "neutral", style, disabled, ...pressableProps }: SurfaceButtonProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ disabled: !!disabled }} disabled={disabled} {...pressableProps}>
-      {({ pressed }) => (
-        <Surface
-          tone={tone}
-          style={[styles.button, disabled && styles.buttonDisabled, pressed && styles.buttonPressed, style]}
-        >
-          {children}
-        </Surface>
-      )}
-    </Pressable>
+    <PressableScale
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
+      depth="control"
+      {...pressableProps}
+    >
+      <Surface tone={tone} style={[styles.button, disabled && styles.buttonDisabled, style]}>
+        {children}
+      </Surface>
+    </PressableScale>
   );
 };
 

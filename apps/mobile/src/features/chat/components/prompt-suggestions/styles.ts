@@ -12,17 +12,5 @@ export default function createStyles(theme: Theme) {
       gap: theme.spacing.sm,
       paddingHorizontal: theme.gutter,
     },
-    card: {
-      width: theme.spacing["6xl"] * 2,
-      justifyContent: "center",
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.md,
-      borderRadius: theme.radius.lg,
-      borderCurve: "continuous",
-      backgroundColor: theme.colors.backgroundElement,
-    },
-    pressed: {
-      opacity: 0.7,
-    },
   });
 }

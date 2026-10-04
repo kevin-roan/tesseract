@@ -1,14 +1,17 @@
 import { useMemo } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { ScrollView, View } from "react-native";
+import Animated from "react-native-reanimated";
 import { CaretRightIcon, ChatCircleIcon, PlusIcon } from "phosphor-react-native";
 
 import Avatar from "@/components/avatar";
-import { ListGroup, ListRow } from "@/components/list-group";
+import PressableScale from "@/components/pressable-scale";
 import SideDrawer from "@/components/side-drawer";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { useEntrance } from "@/hooks/use-entrance";
 import { AvatarSize, HitSlop, IconSize } from "@/theme";
 
+import DrawerRow from "../drawer-row";
 import {
   DRAWER_ALL_CHATS_LABEL,
   DRAWER_NEW_CHAT_LABEL,
@@ -28,18 +31,21 @@ const HomeDrawer = ({ visible, onClose }: HomeDrawerProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const drawer = useHomeDrawer(onClose);
+  const recentsStart = drawer.items.length;
+  const allChatsEntering = useEntrance(recentsStart + drawer.recents.length, "tight");
 
   return (
     <SideDrawer visible={visible} onClose={onClose} onClosed={drawer.onClosed} testID="home-drawer">
-      <ThemedText variant="h1" accessibilityRole="header" style={styles.title}>
+      <ThemedText variant="h1" numberOfLines={1} adjustsFontSizeToFit accessibilityRole="header" style={styles.title}>
         {DRAWER_TITLE}
       </ThemedText>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <ListGroup plain>
-          {drawer.items.map((item) => (
-            <ListRow
+        <View style={styles.group}>
+          {drawer.items.map((item, index) => (
+            <DrawerRow
               key={item.id}
+              index={index}
               icon={item.icon}
               label={item.label}
               badge={item.badge}
@@ -48,52 +54,64 @@ const HomeDrawer = ({ visible, onClose }: HomeDrawerProps) => {
               testID={`drawer-${item.id}`}
             />
           ))}
-        </ListGroup>
+        </View>
 
         {drawer.recents.length > 0 ? (
-          <ListGroup plain title={DRAWER_RECENTS_TITLE}>
-            {drawer.recents.map((chat) => (
-              <ListRow key={chat.id} icon={ChatCircleIcon} label={chat.title} onPress={chat.onPress} />
+          <View style={styles.group}>
+            <ThemedText variant="bodySmall" color="textSecondary" accessibilityRole="header" style={styles.groupTitle}>
+              {DRAWER_RECENTS_TITLE}
+            </ThemedText>
+            {drawer.recents.map((chat, index) => (
+              <DrawerRow
+                key={chat.id}
+                index={recentsStart + index}
+                icon={ChatCircleIcon}
+                label={chat.title}
+                onPress={chat.onPress}
+              />
             ))}
-          </ListGroup>
+          </View>
         ) : null}
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={DRAWER_ALL_CHATS_LABEL}
-          onPress={drawer.allChats}
-          style={({ pressed }) => [styles.allChats, pressed && styles.pressed]}
-        >
-          <ThemedText variant="body" color="textSecondary">
-            {DRAWER_ALL_CHATS_LABEL}
-          </ThemedText>
-          <CaretRightIcon size={IconSize.sm} color={theme.colors.textSecondary} />
-        </Pressable>
+        <Animated.View entering={allChatsEntering}>
+          <PressableScale
+            accessibilityRole="button"
+            accessibilityLabel={DRAWER_ALL_CHATS_LABEL}
+            onPress={drawer.allChats}
+            style={styles.allChats}
+          >
+            <ThemedText variant="label" color="textSecondary">
+              {DRAWER_ALL_CHATS_LABEL}
+            </ThemedText>
+            <CaretRightIcon size={IconSize.sm} color={theme.colors.textSecondary} weight="light" />
+          </PressableScale>
+        </Animated.View>
       </ScrollView>
 
       <View style={styles.footer}>
-        <Pressable
+        <PressableScale
+          depth="control"
           accessibilityRole="button"
           accessibilityLabel={DRAWER_PROFILE_LABEL}
           hitSlop={HitSlop.sm}
           onPress={drawer.openProfile}
-          style={({ pressed }) => pressed && styles.pressed}
         >
           <Avatar name={drawer.user.name} photo={drawer.user.photo} size={AvatarSize.lg} initialsVariant="bodyStrong" />
-        </Pressable>
+        </PressableScale>
 
-        <Pressable
+        <PressableScale
+          depth="control"
           accessibilityRole="button"
           accessibilityLabel={DRAWER_NEW_CHAT_LABEL}
           onPress={drawer.newChat}
-          style={({ pressed }) => [styles.newChat, pressed && styles.newChatPressed]}
+          style={styles.newChat}
           testID="drawer-new-chat"
         >
-          <PlusIcon size={IconSize.md} color={theme.colors.accentInk} weight="bold" />
+          <PlusIcon size={IconSize.sm} color={theme.colors.accentInk} weight="regular" />
           <ThemedText variant="button" color="accentInk">
             {DRAWER_NEW_CHAT_LABEL}
           </ThemedText>
-        </Pressable>
+        </PressableScale>
       </View>
     </SideDrawer>
   );

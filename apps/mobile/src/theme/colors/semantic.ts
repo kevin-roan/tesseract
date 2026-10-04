@@ -155,8 +155,63 @@ const dark: Record<keyof typeof light, string> = {
   auraCool: Palette.clay[800],
 };
 
-export const Colors = { light, dark } as const;
+/**
+ * Graphite: a near-black, monochrome terminal look — true greys, hairline
+ * cards, white primary pill, green/red reserved for deltas and status.
+ */
+const graphite: Record<keyof typeof light, string> = {
+  ...dark,
+  background: Palette.graphite[950],
+  /** The faint dot grid drawn behind every graphite screen. */
+  backgroundPattern: 'rgba(237, 237, 237, 0.07)',
+  backgroundElement: Palette.graphite[850],
+  backgroundSelected: Palette.graphite[750],
+  surface: Palette.graphite[900],
+  surfaceElevated: Palette.graphite[850],
+  surfaceSunken: Palette.graphite[950],
+  overlay: 'rgba(0, 0, 0, 0.7)',
+  shimmer: '#FFFFFF14',
+
+  text: Palette.graphite[100],
+  textSecondary: Palette.graphite[400],
+  textTertiary: Palette.graphite[500],
+  textInverse: Palette.graphite[950],
+  textOnAccent: Palette.graphite[950],
+
+  border: 'rgba(255, 255, 255, 0.07)',
+  borderStrong: 'rgba(255, 255, 255, 0.14)',
+  divider: 'rgba(255, 255, 255, 0.06)',
+
+  accent: Palette.graphite[100],
+  accentInk: Palette.graphite[950],
+  accentPressed: Palette.graphite[300],
+  accentMuted: Palette.graphite[850],
+  accentStrong: Palette.graphite[50],
+  focusRing: Palette.graphite[300],
+  highlight: Palette.graphite[100],
+
+  /** Warm copper — the one accent hue, for the highlighted card or the active mode; never body text. */
+  brand: Palette.clay[400],
+  brandMuted: Palette.clay[900],
+  selection: Palette.graphite[100],
+  badge: Palette.graphite[800],
+  badgeText: Palette.graphite[200],
+
+  bubbleUser: Palette.graphite[850],
+  bubbleUserText: Palette.graphite[100],
+  bubbleAssistant: Palette.graphite[950],
+  bubbleAssistantText: Palette.graphite[100],
+  codeBackground: Palette.graphite[900],
+  streamingCursor: Palette.graphite[100],
+  voiceActive: Palette.graphite[100],
+  auraWarm: Palette.graphite[300],
+  auraCool: Palette.graphite[800],
+};
+
+export const Colors = { light, dark, graphite } as const;
 
 export type ColorSchemeName = keyof typeof Colors;
+/** The schemes the OS knows about — what native materials (blur, glass) accept. */
+export type SystemScheme = 'light' | 'dark';
 export type ColorScheme = typeof light;
 export type ThemeColor = keyof ColorScheme;

@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import { ControlHeight, type Theme } from "@/theme";
+import { ControlHeight, Opacity, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
@@ -11,18 +11,17 @@ export default function createStyles(theme: Theme) {
       gap: theme.spacing.xs,
       height: ControlHeight.md,
       paddingHorizontal: theme.spacing.md,
-      borderRadius: theme.radius.full,
+      borderRadius: theme.radius.md,
+      borderCurve: "continuous",
       borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.colors.borderStrong,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.backgroundElement,
     },
     text: {
       flexShrink: 1,
     },
-    pressed: {
-      backgroundColor: theme.colors.backgroundElement,
-    },
     disabled: {
-      opacity: 0.45,
+      opacity: Opacity.disabled,
     },
   });
 }

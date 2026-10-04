@@ -11,6 +11,7 @@ import { useConfirmedStop } from "./use-confirmed-stop";
 import { useSandboxClient } from "./use-sandbox-client";
 import { useSandboxLink } from "./use-sandbox-events";
 import { useOpenSite } from "./use-open-site";
+import { useProjectRemoval } from "./use-project-removal";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
 import { useSandboxProblems } from "./use-sandbox-problems";
 import { useAgentRuns, useBuilds, useListeningPorts, useProcesses, useProjects } from "./use-sandbox-queries";
@@ -27,6 +28,7 @@ export function useProjectsScreen() {
   const ports = useListeningPorts();
   const openSite = useOpenSite();
   const stopProcess = useConfirmedStop();
+  const removal = useProjectRemoval();
   const problems = useSandboxProblems(projects.error);
   const { refreshing, refresh } = useSandboxRefresh();
 
@@ -83,6 +85,9 @@ export function useProjectsScreen() {
     addProject: nav.newProject,
     openProject: (id: string) => nav.project(id),
     askClaude: (id: string) => nav.newAgentRun(id),
+    projectMenu: removal.open,
+    projectMenuSheet: removal.menu,
+    removeError: removal.error,
     running,
     runningCount: activeWorkCount(running),
     processPress,

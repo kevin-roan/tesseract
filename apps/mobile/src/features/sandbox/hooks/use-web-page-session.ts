@@ -15,7 +15,7 @@ import {
   reconnectScript,
 } from "../utils/web-bridge";
 import { useSandboxClient } from "./use-sandbox-client";
-import { usePageUrl } from "./use-page-url";
+import { usePageUrl, type PageTarget } from "./use-page-url";
 
 type SessionState = { url: string | null; connection: PageConnection; exitCode: number | null | undefined };
 
@@ -29,9 +29,11 @@ export function useWebPageSession(
   build: (client: TheOneClient) => Promise<string>,
   enabled = true,
   onAction?: (action: VncAction) => void,
+  target?: PageTarget,
 ) {
-  const { client } = useSandboxClient();
-  const pageUrl = usePageUrl(page, id, build, enabled);
+  const active = useSandboxClient();
+  const client = target ? target.client : active.client;
+  const pageUrl = usePageUrl(page, id, build, enabled, target);
   const surfaceRef = useRef<WebSurfaceHandle>(null);
   const retry = useRef<RetryState>({ attempts: 0, timer: null, dropped: false, terminations: 0 });
   const actionHandler = useRef(onAction);

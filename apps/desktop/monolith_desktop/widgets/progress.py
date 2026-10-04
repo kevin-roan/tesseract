@@ -8,7 +8,7 @@ from .drawing import ThemedDrawing, rounded_rect, set_source, with_alpha
 from .text import Text, color_class
 
 TRACK_ALPHA = 0.2
-BAR_HEIGHT = 6
+BAR_HEIGHT = 4
 RING_SIZE = 40
 RING_THICKNESS = 3
 
@@ -18,16 +18,25 @@ class ProgressBar(ThemedDrawing):
         super().__init__(self._paint)
         self._progress = progress
         self._tone = tone
+        self.add_css_class("to-progress-bar")
         self.add_css_class("to-tone-fg")
         self.add_css_class(f"tone-{tone}")
         self.set_content_height(BAR_HEIGHT)
+        self._sync_indeterminate()
         self.set_hexpand(True)
         self.set_valign(Gtk.Align.CENTER)
         self.update_property([Gtk.AccessibleProperty.LABEL], [label or ""])
 
     def set_progress(self, progress: float | None) -> None:
         self._progress = progress
+        self._sync_indeterminate()
         self.queue_draw()
+
+    def _sync_indeterminate(self) -> None:
+        if self._progress is None:
+            self.add_css_class("indeterminate")
+        else:
+            self.remove_css_class("indeterminate")
 
     def set_tone(self, tone: Tone) -> None:
         self.remove_css_class(f"tone-{self._tone}")

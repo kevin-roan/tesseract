@@ -5,7 +5,14 @@ import type { Theme } from "@/theme";
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     rows: {
-      gap: theme.spacing.xs,
+      marginTop: theme.spacing.xs,
+    },
+    divider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: theme.colors.divider,
+    },
+    row: {
+      paddingVertical: theme.spacing.md,
     },
   });
 }
