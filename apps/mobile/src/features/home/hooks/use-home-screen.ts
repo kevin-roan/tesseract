@@ -15,6 +15,7 @@ import { profilePerson } from "@/features/sandbox/utils/profile";
 import { homeStatus } from "../utils/status";
 import { useActiveBuild } from "./use-active-build";
 import { useDrawerState } from "./use-drawer-state";
+import { useSandboxUnreachable } from "./use-sandbox-unreachable";
 
 export function useHomeScreen() {
   const nav = useSandboxNavigation();
@@ -23,6 +24,7 @@ export function useHomeScreen() {
   const identity = useSandboxIdentity();
   const build = useActiveBuild();
   const drawer = useDrawerState();
+  const unreachable = useSandboxUnreachable();
 
   const onStarted = useCallback((run: AgentRun) => nav.agentRun(run.id), [nav]);
   const projectOptions = useProjectOptions();
@@ -32,7 +34,8 @@ export function useHomeScreen() {
   const attention = attentionTitle(inbox.data?.attentionCount ?? 0);
   const openInbox = useCallback(() => router.push(INBOX_ROUTE as Href), []);
 
-  const status = useMemo(() => homeStatus({ attention, openInbox, build }), [attention, openInbox, build]);
+  const offline = useMemo(() => (unreachable ? { view: nav.sandboxHub } : null), [unreachable, nav.sandboxHub]);
+  const status = useMemo(() => homeStatus({ offline, attention, openInbox, build }), [offline, attention, openInbox, build]);
 
   return {
     hydrated,

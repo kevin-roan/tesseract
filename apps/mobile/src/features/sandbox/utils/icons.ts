@@ -8,6 +8,7 @@ import {
   WarningCircleIcon,
   CpuIcon,
   CubeIcon,
+  DeviceMobileIcon,
   FileJsIcon,
   FilePyIcon,
   GlobeIcon,
@@ -32,6 +33,7 @@ const FRAMEWORK_ICONS: Record<Framework, Icon> = {
   node: FileJsIcon,
   android: AndroidLogoIcon,
   python: FilePyIcon,
+  flutter: DeviceMobileIcon,
   unknown: CubeIcon,
 };
 

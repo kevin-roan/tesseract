@@ -24,7 +24,9 @@ Related: [overview → trust boundaries](overview.md#trust-boundaries),
 | Project secrets and signing keys | project `.env*.local`, `/home/dev/.secrets/<project>/` | code signing identity, cloud and API access |
 | VNC password | `THEONE_VNC_PASSWORD` or generated once into `/home/dev/.vnc/password` (0600); hash in `/home/dev/.vnc/passwd`; controller copy in `/run/theone/controller.env` | view and control of the display |
 | Speech-to-text API key (optional) | `THEONE_STT_API_KEY` in `.env`, moved into `/run/theone/controller.env`; only the controller's environment | billable transcription account; voice notes are sent to `THEONE_STT_URL` |
+| Gemini API key (optional) | `GEMINI_API_KEY` in `.env`, moved into `/run/theone/controller.env`; only the controller's environment | billable Google account; voice notes requested with `provider: "gemini"` are sent to Google |
 | Host shell token and PIN hash (opt-in) | `~/.config/theone/host-shell/state.json` on the host (0600 in a 0700 dir), host token also in the phone's secure store | together they are a shell on the host as the user running `host serve` |
+| Android link (opt-in) | `androidLink` in the host's `state.json` (0600): the sandbox URL and the **sandbox controller token** | host token + PIN therefore also means full control of the linked sandbox; anyone with the sandbox's adb access is root in the host emulator's guest |
 | Phone uploads (attachments, voice notes) | `/workspace/.theone/uploads` (0700 dirs, 0600 files), pruned after 30 days | the user's photos, documents and recordings |
 
 ## Adversaries and scenarios
@@ -52,6 +54,10 @@ Related: [overview → trust boundaries](overview.md#trust-boundaries),
   servers bound to `127.0.0.1` or `0.0.0.0`. Treat ACLs as the port filter:
   grant the phone only `:443` and, if you use native VNC, `:5901`. The
   controller requires the token on 7700 too.
+  While the Android link tunnels an emulator, the controller's adb tunnel
+  listener `127.0.0.1:15555` is reachable the same way, and it is plain,
+  unauthenticated adb: a peer allowed on that port gets the emulator's adbd
+  (shell, install, app data). The same port-restricted ACLs close it.
 - **ACLs.** Tag the node (e.g. `tag:theone`), create the auth key for that
   tag, and allow only your own devices:
 
@@ -130,6 +136,54 @@ built so that nothing in the sandbox can use it:
 - **Blast radius.** Token + PIN = a login shell as the user who runs
   `host serve`, with that user's sudo rights. Run it as an unprivileged account
   if that matters, and stop the service when you don't need it.
+
+### Android emulator (opt-in)
+
+The host daemon can run an Android emulator and link it to the sandbox, which then drives it
+with `adb` ([app-runs-and-emulator.md §2](app-runs-and-emulator.md#2-android-emulator-on-the-host)).
+This hands a compromised sandbox (A3, A4) a root shell in the guest: the emulator runs with
+`-skip-adb-auth`, and `google_apis` images allow `adb root`. The guest must therefore count
+as sandbox-controlled, and what matters is what the guest can reach on the host.
+
+- **The problem.** The emulator's user-mode network maps the guest's `10.0.2.2` to the
+  host's `127.0.0.1` and sends all guest traffic out through the host's network stack. On
+  the host network a guest could reach the user's unauthenticated adb server
+  (`127.0.0.1:5037`: USB phones, `host:connect`, port forwards), this daemon, local dev
+  servers and databases, the LAN and every tailnet peer the host may reach.
+- **Isolation (`THEONE_EMULATOR_ISOLATION=netns`, default).** The emulator runs in its own
+  unprivileged user + network namespace (`unshare --user --map-root-user --net`) holding
+  only `lo` and a dummy interface without routes. Guest TCP goes through `-http-proxy` and
+  guest DNS through `-dns-server`, both to a helper inside the namespace that relays them
+  over unix sockets in a 0700 runtime directory to the daemon. The daemon resolves names on
+  the host and refuses (`403`) any destination with a loopback, unspecified, private
+  (RFC 1918, `fc00::/7`), CGNAT/tailnet (`100.64/10`), link-local, site-local, multicast,
+  reserved, NAT64 or IPv4-mapped-private address, then dials the vetted IP itself (no DNS
+  rebinding). UDP other than DNS and ICMP have no route. adbd is reached only through the
+  runtime directory (`adbd.sock`), bridged to `127.0.0.1:<port>` on the host for the daemon's
+  own adb use and dialled directly by the link.
+- **What it guarantees.** Verified live: from the guest, `10.0.2.2:5037` (the host adb
+  server), the daemon's own port, the host's LAN IP and its Tailscale IP are refused; public
+  HTTP/HTTPS works. The emulator's own adb server, started inside the namespace, sees nothing
+  of the host's. Everything in the namespace is killed when the emulator is stopped.
+- **Allowlist caveat.** `THEONE_EMULATOR_ALLOW_NETS` re-opens chosen ranges for the guest
+  and thus for the sandbox. Allow single hosts, never the tailnet range. Host loopback
+  (`127/8`, `0/8`, `::/96`, also IPv4-mapped) stays blocked whatever the allowlist says.
+- **Not isolated.** `THEONE_EMULATOR_ISOLATION=none` (for hosts without user namespaces)
+  keeps the old behaviour and its exposure. With isolation on, an emulator started outside
+  the daemon is adopted for viewing only; the link refuses to tunnel it.
+- **Other host-side limits.** At most 32 tunnelled adb streams, 20 new ones per second, a
+  4 MiB write buffer per stream; the screen stream rejects non-H.264 video, absurd sizes and
+  packets over 8 MiB; the sandbox only learns a generic emulator error (host paths stay on
+  the host); logs omit tickets and URL userinfo.
+- **Residual risks.** The guest still has internet access (it can exfiltrate what the
+  sandbox gives it, like the sandbox itself). DNS queries go to the host's resolver
+  (e.g. Tailscale MagicDNS), so the guest can resolve, but not connect to, private and
+  tailnet names. A QEMU escape lands as the host user inside an unprivileged namespace with
+  `/dev/kvm`, and the user's files are reachable from there. The host adb server talks to a
+  guest adbd the sandbox controls (adb client parsing bugs). Any local user of the host can
+  connect to the loopback adb bridge, as before to the emulator's adbd. On the sandbox side,
+  tailnet peers can reach the controller's adb tunnel port `15555` like other loopback ports
+  in userspace networking mode (see [Exposure](#exposure-a1-a2)).
 
 ### Container hardening (A3, A4 → host)
 
@@ -255,7 +309,7 @@ console. Either step alone cuts access, and doing both is best.
 
 ### Controller hardening against its own workload
 
-- **Child environment.** `THEONE_TOKEN`, `THEONE_VNC_PASSWORD` and `THEONE_STT_API_KEY` are removed
+- **Child environment.** `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, `THEONE_STT_API_KEY` and `GEMINI_API_KEY` are removed
   from the environment of every process, build step, terminal, agent run and
   git/zip helper, and neither reaches Xvnc, openbox or GUI apps. This prevents
   accidental leaks (crash reporters, `env` in a log), nothing more.

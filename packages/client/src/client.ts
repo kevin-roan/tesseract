@@ -1,4 +1,22 @@
 import {
+  AndroidLinkInfoSchema,
+  AppRunListSchema,
+  AppRunSchema,
+  EmulatorInfoSchema,
+  HostAndroidStatusSchema,
+  RunTargetListSchema,
+  SandboxAndroidStatusSchema,
+  type AndroidLinkInfo,
+  type AppRun,
+  type AppRunAction,
+  type AppRunFilter,
+  type EmulatorInfo,
+  type HostAndroidStatus,
+  type LinkSandbox,
+  type RunTargetInfo,
+  type SandboxAndroidStatus,
+  type StartAppRun,
+  type StartEmulator,
   AgentContextSchema,
   AgentRunBatchResultSchema,
   AgentRunDetailSchema,
@@ -9,6 +27,7 @@ import {
   ArtifactListSchema,
   ArtifactSchema,
   BrowserStatusSchema,
+  DisplayWindowListSchema,
   BuildJobSchema,
   BuildListSchema,
   ClaudeAccountListSchema,
@@ -85,6 +104,8 @@ import {
   type TaildropTargets,
   type ClaudeSession,
   type BrowserStatus,
+  type CloseDisplayWindow,
+  type DisplayWindowList,
   type BuildJob,
   type CreateProject,
   type CreateProjectResponse,
@@ -517,6 +538,21 @@ export class TheOneClient {
     return this.request("GET", restPaths.displayBrowser(), { read: json(BrowserStatusSchema), options });
   }
 
+  /** Application windows on the virtual display, for switching and closing them from the phone. */
+  displayWindows(options?: RequestOptions): Promise<DisplayWindowList> {
+    return this.request("GET", restPaths.displayWindows(), { read: json(DisplayWindowListSchema), options });
+  }
+
+  /** Raises and focuses a window, restoring it when minimized. */
+  activateDisplayWindow(id: string, options?: RequestOptions): Promise<void> {
+    return this.request("POST", restPaths.displayWindowActivate(id), { read: ignoreBody, options });
+  }
+
+  /** Asks the window to close; `force` kills its client instead (for hung apps). */
+  closeDisplayWindow(id: string, body: CloseDisplayWindow = {}, options?: RequestOptions): Promise<void> {
+    return this.request("POST", restPaths.displayWindowClose(id), { read: ignoreBody, body, options });
+  }
+
   /** PNG bytes of the virtual display. */
   screenshot(options?: RequestOptions): Promise<ArrayBuffer> {
     return this.request("GET", restPaths.displayScreenshot(), { read: binary, options });
@@ -572,6 +608,58 @@ export class TheOneClient {
     return this.request("POST", restPaths.events(), { read: ignoreBody, body, options });
   }
 
+  listRunTargets(projectId: string, options?: RequestOptions): Promise<RunTargetInfo[]> {
+    return this.request("GET", restPaths.projectRunTargets(projectId), { read: json(RunTargetListSchema), options });
+  }
+
+  listAppRuns(filter?: AppRunFilter, options?: RequestOptions): Promise<AppRun[]> {
+    return this.request("GET", restPaths.appRuns(filter), { read: json(AppRunListSchema), options });
+  }
+
+  /** 400 target not offered, 503 target unavailable (message = reason), 409 port taken or the target already runs. */
+  startAppRun(projectId: string, body: StartAppRun, options?: RequestOptions): Promise<AppRun> {
+    return this.request("POST", restPaths.projectAppRuns(projectId), { read: json(AppRunSchema), body, options });
+  }
+
+  getAppRun(id: string, options?: RequestOptions): Promise<AppRun> {
+    return this.request("GET", restPaths.appRun(id), { read: json(AppRunSchema), options });
+  }
+
+  stopAppRun(id: string, options?: RequestOptions): Promise<AppRun> {
+    return this.request("DELETE", restPaths.appRun(id), { read: json(AppRunSchema), options });
+  }
+
+  /** 409 when the run is not ready or does not support the action, 502 when the action failed. */
+  appRunAction(id: string, action: AppRunAction, options?: RequestOptions): Promise<AppRun> {
+    return this.request("POST", restPaths.appRunActions(id), { read: json(AppRunSchema), body: { action }, options });
+  }
+
+  /** The sandbox side of the Android link (controller `GET /v1/android`). */
+  getAndroidStatus(options?: RequestOptions): Promise<SandboxAndroidStatus> {
+    return this.request("GET", restPaths.android(), { read: json(SandboxAndroidStatusSchema), options });
+  }
+
+  /** Host daemon (session client): emulator, AVDs and the sandbox link. */
+  hostAndroidStatus(options?: RequestOptions): Promise<HostAndroidStatus> {
+    return this.request("GET", restPaths.android(), { read: json(HostAndroidStatusSchema), options });
+  }
+
+  startEmulator(body: StartEmulator, options?: RequestOptions): Promise<EmulatorInfo> {
+    return this.request("POST", restPaths.androidEmulator(), { read: json(EmulatorInfoSchema), body, options });
+  }
+
+  stopEmulator(options?: RequestOptions): Promise<EmulatorInfo> {
+    return this.request("DELETE", restPaths.androidEmulator(), { read: json(EmulatorInfoSchema), options });
+  }
+
+  linkSandbox(body: LinkSandbox, options?: RequestOptions): Promise<AndroidLinkInfo> {
+    return this.request("POST", restPaths.androidLink(), { read: json(AndroidLinkInfoSchema), body, options });
+  }
+
+  unlinkSandbox(options?: RequestOptions): Promise<AndroidLinkInfo> {
+    return this.request("DELETE", restPaths.androidLink(), { read: json(AndroidLinkInfoSchema), options });
+  }
+
   /** Headers for requests made outside this client (e.g. an <Image> source for the screenshot endpoint). */
   authHeaders(): Record<string, string> {
     return { Authorization: `Bearer ${this.token}` };
@@ -593,6 +681,12 @@ export class TheOneClient {
   async vncPageUrl(options?: RequestOptions): Promise<string> {
     const [display, { ticket }] = await Promise.all([this.displayStatus(options), this.createTicket(options)]);
     return this.httpUrl(uiPaths.vnc({ ticket, password: display.vnc.password }));
+  }
+
+  /** Host daemon `/ui/android` with a fresh ticket (session client). */
+  async androidScreenPageUrl(maxSize?: number, options?: RequestOptions): Promise<string> {
+    const { ticket } = await this.createTicket(options);
+    return this.httpUrl(uiPaths.android({ ticket, maxSize }));
   }
 
   async artifactDownloadUrl(id: string, options?: RequestOptions): Promise<string> {

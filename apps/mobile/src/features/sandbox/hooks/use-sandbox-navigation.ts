@@ -11,6 +11,8 @@ export function useSandboxNavigation() {
       pair: () => router.push("/pair"),
       repair: (prefill: PairingPrefill) => router.push({ pathname: "/pair", params: prefill }),
       display: () => router.push("/sandbox/display"),
+      preview: (sandboxId: string, runId: string, title: string) =>
+        router.push({ pathname: "/sandbox/preview", params: { sandbox: sandboxId, run: runId, title } }),
       claudeAccount: () => router.push("/sandbox/claude"),
       settings: () => router.push("/settings"),
       files: (downloadId?: string) =>

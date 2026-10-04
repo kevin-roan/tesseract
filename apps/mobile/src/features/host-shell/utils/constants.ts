@@ -6,3 +6,7 @@ export const HOST_FALLBACK_NAME = "Host";
 export const PIN_MIN_LENGTH = 6;
 export const PIN_MAX_LENGTH = 12;
 export const COUNTDOWN_TICK_MS = 1_000;
+export const HOST_NEXT = { android: "android" } as const;
+export const ANDROID_POLL_INTERVAL_MS = 2_000;
+export const ANDROID_LINK_POLL_INTERVAL_MS = 10_000;
+export const ANDROID_SCREEN_MAX_SIZE = 1_600;

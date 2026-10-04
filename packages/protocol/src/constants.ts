@@ -12,6 +12,13 @@ export const HOST_SHELL_SERVICE = "host-shell" as const;
 export const HOST_PIN_PATTERN = /^\d{6,12}$/;
 export const TICKET_PARAM = "ticket" as const;
 export const VNC_WS_SUBPROTOCOL = "binary" as const;
+/** Sandbox loopback port the controller tunnels to the host emulator's adbd (adb serial `127.0.0.1:<port>`). */
+export const DEFAULT_ADB_TUNNEL_PORT = 15555;
+/** Host emulator console port; adbd listens on +1 and the serial is `emulator-<port>`. */
+export const DEFAULT_EMULATOR_PORT = 5554;
+export const DEFAULT_EMULATOR_GPU = "swiftshader_indirect" as const;
+/** Close code of an Android link replaced by a newer one. */
+export const ANDROID_LINK_REPLACED_CLOSE_CODE = 4000;
 /** Stands in for names, authors, URLs and other identifying details of a confidential project. */
 export const REDACTED = "REDACTED" as const;
 
@@ -45,6 +52,8 @@ export const ID_PREFIXES = {
   inbox: "inb_",
   upload: "upl_",
   sync: "sync_",
+  appRun: "app_",
+  adbStream: "adb_",
 } as const;
 export type IdKind = keyof typeof ID_PREFIXES;
 
@@ -65,6 +74,7 @@ export const FRAMEWORKS = [
   "node",
   "android",
   "python",
+  "flutter",
   "unknown",
 ] as const;
 export const PACKAGE_MANAGERS = ["bun", "pnpm", "yarn", "npm"] as const;
@@ -104,6 +114,84 @@ export const SYNC_REQUEST_KINDS = ["pull", "revert", "get"] as const;
 export const SYNC_REQUEST_STATUSES = ["pending", "claimed", "applied", "failed", "cancelled"] as const;
 export const SYNC_REQUEST_SOURCES = ["mobile", "desktop", "cli"] as const;
 export const IDENTITY_SOURCES = ["serve", "localapi", "none"] as const;
+
+export const RUN_TARGETS = [
+  "web-dev",
+  "expo-device",
+  "expo-web",
+  "expo-android",
+  "rn-android",
+  "flutter-web",
+  "flutter-linux",
+  "flutter-android",
+  "electron-dev",
+  "test",
+] as const;
+type RunTargetName = (typeof RUN_TARGETS)[number];
+export const APP_RUN_STATES = ["starting", "ready", "failed", "stopped", "exited"] as const;
+export const FINAL_APP_RUN_STATES = ["failed", "stopped", "exited"] as const;
+export const APP_RUN_ACTIONS = ["reload", "restart", "focus"] as const;
+export const APP_VIEWER_KINDS = ["url", "deeplink", "display", "android", "none"] as const;
+
+/** First port tried when `StartAppRun.port` is omitted; targets without an entry take no port. */
+export const RUN_TARGET_DEFAULT_PORTS = {
+  "web-dev": 5173,
+  "expo-device": 8081,
+  "expo-web": 8081,
+  "expo-android": 8081,
+  "rn-android": 8081,
+  "flutter-web": 8090,
+} as const satisfies Partial<Record<RunTargetName, number>>;
+
+export const RUN_TARGET_VIEWERS = {
+  "web-dev": "url",
+  "expo-device": "deeplink",
+  "expo-web": "url",
+  "expo-android": "android",
+  "rn-android": "android",
+  "flutter-web": "url",
+  "flutter-linux": "display",
+  "flutter-android": "android",
+  "electron-dev": "display",
+  test: "none",
+} as const satisfies Record<RunTargetName, (typeof APP_VIEWER_KINDS)[number]>;
+
+export const RUN_TARGET_ACTIONS = {
+  "web-dev": [],
+  "expo-device": ["reload", "restart"],
+  "expo-web": [],
+  "expo-android": ["reload", "restart"],
+  "rn-android": ["reload", "restart"],
+  "flutter-web": ["reload", "restart"],
+  "flutter-linux": ["reload", "restart", "focus"],
+  "flutter-android": ["reload", "restart"],
+  "electron-dev": ["focus"],
+  test: [],
+} as const satisfies Record<RunTargetName, readonly (typeof APP_RUN_ACTIONS)[number][]>;
+
+/** Host `THEONE_EMULATOR_ISOLATION`: `netns` runs the emulator in its own network namespace, `none` on the host network. */
+export const EMULATOR_ISOLATION_MODES = ["netns", "none"] as const;
+export const EMULATOR_STATES = ["unavailable", "stopped", "starting", "running", "stopping", "failed"] as const;
+/** Keys the screen page may send (`{ type: "key" }` on `/v1/android/screen`). */
+export const ANDROID_KEYS = [
+  "back",
+  "home",
+  "app_switch",
+  "power",
+  "volume_up",
+  "volume_down",
+  "enter",
+  "del",
+  "tab",
+  "escape",
+  "up",
+  "down",
+  "left",
+  "right",
+] as const;
+export const ANDROID_TOUCH_ACTIONS = ["down", "move", "up", "cancel"] as const;
+/** AVD names as listed by `emulator -list-avds`. */
+export const AVD_NAME_PATTERN = /^[A-Za-z0-9._-]{1,128}$/;
 
 export const CLAUDE_AUTH_METHODS = ["oauth_token", "credentials", "api_key", "none"] as const;
 
@@ -145,6 +233,7 @@ export const SERVER_EVENT_TYPES = [
   "stt.updated",
   "sync.updated",
   "sync.changed",
+  "app.updated",
 ] as const;
 
 export const LIMITS = {
@@ -201,4 +290,22 @@ export const LIMITS = {
   hostPinMaxAttempts: 5,
   hostLockoutBaseMs: 5 * 60_000,
   hostLockoutMaxMs: 24 * 60 * 60_000,
+  /** An app run not `ready` after this long is stopped and `failed`. */
+  appRunReadyTimeoutMs: 15 * 60_000,
+  appRunReadyPollMs: 500,
+  metroReloadTimeoutMs: 3_000,
+  emulatorBootTimeoutMs: 5 * 60_000,
+  emulatorBootPollMs: 2_000,
+  /** The sandbox pings the host over the Android link this often. */
+  androidLinkPingIntervalMs: 20_000,
+  androidLinkReconnectMinMs: 1_000,
+  androidLinkReconnectMaxMs: 30_000,
+  /** The host must open the data socket of an adb stream within this long. */
+  androidStreamOpenTimeoutMs: 10_000,
+  /** A screen socket buffering more than this skips frames until it drains. */
+  androidScreenBackpressureBytes: 512 * 1024,
+  maxAndroidTextLength: 300,
+  maxAndroidPointerId: 9,
+  maxAndroidScroll: 16,
+  maxAndroidScreenSize: 4_096,
 } as const;

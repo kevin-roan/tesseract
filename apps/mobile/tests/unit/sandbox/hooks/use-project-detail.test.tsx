@@ -99,7 +99,7 @@ describe("useProjectDetail", () => {
     await waitFor(() => expect(result.current.processes).toHaveLength(2));
 
     expect(result.current.subtitle).toContain("·");
-    expect(result.current.scripts).toEqual([
+    expect(result.current.scripts).toMatchObject([
       { script: "start", command: "npm run start" },
       { script: "build", command: "npm run build" },
     ]);
@@ -109,7 +109,7 @@ describe("useProjectDetail", () => {
     expect(result.current.builds[0].id).toBe(`bld_${LIST_PREVIEW_LIMIT + 1}`);
     await waitFor(() => expect(result.current.artifacts).toEqual([sampleArtifact]));
     expect(fake.listProcesses).toHaveBeenCalledWith({ projectId: sampleProject.id }, expect.anything());
-    expect(result.current.logsId).toBeNull();
+    expect(result.current.logsOpen(sampleProcess.id, "process")).toBe(false);
     expect(mockLogSources.at(-1)).toBeNull();
     expect(result.current.actionError).toBeNull();
     await waitFor(() => expect(result.current.sync.files).toHaveLength(sampleSyncChanges.changes.length));
@@ -156,9 +156,28 @@ describe("useProjectDetail", () => {
       name: "start",
       display: true,
     });
-    await waitFor(() => expect(result.current.logsId).toBe(started.id));
+    await waitFor(() => expect(result.current.logsOpen(started.id, "script")).toBe(true));
+    expect(result.current.logsOpen(started.id, "process")).toBe(false);
     expect(mockLogSources.at(-1)).toEqual({ kind: "process", id: started.id });
     await waitFor(() => expect(result.current.runningScript).toBeNull());
+  });
+
+  it("installs missing dependencies before running a script", async () => {
+    fake.getProject.mockResolvedValue({ ...sampleProject, dependenciesInstalled: false });
+    const { result } = await renderDetail();
+    await waitFor(() => expect(result.current.project).toBeDefined());
+    expect(result.current.needsInstall).toBe(true);
+
+    await act(async () => result.current.runScript("build", false));
+    expect(fake.startProcess).toHaveBeenCalledWith(expect.objectContaining({ command: "npm install && npm run build", name: "build" }));
+  });
+
+  it("attaches each script's latest run", async () => {
+    const older = { ...sampleProcess, id: "prc_old", name: "build", startedAt: "2026-01-01T00:00:00.000Z" };
+    const newer = { ...sampleProcess, id: "prc_new", name: "build", startedAt: "2026-01-02T00:00:00.000Z" };
+    fake.listProcesses.mockResolvedValue([older, newer]);
+    const { result } = await renderDetail();
+    await waitFor(() => expect(result.current.scripts.find((entry) => entry.script === "build")?.run?.id).toBe("prc_new"));
   });
 
   it("tracks the script being started", async () => {
@@ -171,14 +190,16 @@ describe("useProjectDetail", () => {
 
   it("opens the logs of the process it was linked to and toggles them", async () => {
     const { result } = await renderDetail("prc_linked");
-    expect(result.current.logsId).toBe("prc_linked");
+    expect(result.current.logsOpen("prc_linked", "process")).toBe(true);
 
-    await act(async () => result.current.toggleLogs("prc_linked"));
-    expect(result.current.logsId).toBeNull();
-    await act(async () => result.current.toggleLogs("prc_other"));
-    expect(result.current.logsId).toBe("prc_other");
-    await act(async () => result.current.toggleLogs("prc_third"));
-    expect(result.current.logsId).toBe("prc_third");
+    await act(async () => result.current.toggleLogs("prc_linked", "process"));
+    expect(result.current.logsOpen("prc_linked", "process")).toBe(false);
+    expect(mockLogSources.at(-1)).toBeNull();
+    await act(async () => result.current.toggleLogs("prc_other", "process"));
+    expect(result.current.logsOpen("prc_other", "process")).toBe(true);
+    await act(async () => result.current.toggleLogs("prc_other", "script"));
+    expect(result.current.logsOpen("prc_other", "script")).toBe(true);
+    expect(result.current.logsOpen("prc_other", "process")).toBe(false);
   });
 
   it("starts a build and navigates to it", async () => {

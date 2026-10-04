@@ -14,6 +14,7 @@ import RecordingBar from "@/features/voice/components/recording-bar";
 import type { ChatComposerState } from "../../hooks/use-chat-composer";
 import ComposerBar from "../composer-bar";
 import ModePill from "../mode-pill";
+import NewProjectSheet from "../new-project-sheet";
 import createStyles from "./styles";
 
 export type ChatComposerProps = {
@@ -145,6 +146,7 @@ const ChatComposer = ({
           onClose={composer.closeSheet}
         />
       ) : null}
+      <NewProjectSheet state={composer.newProject} />
     </View>
   );
 };

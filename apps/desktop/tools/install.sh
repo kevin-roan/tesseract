@@ -29,8 +29,9 @@ refresh_caches() {
   if command -v update-desktop-database > /dev/null; then
     update-desktop-database -q "${DATA_HOME}/applications" || true
   fi
-  if command -v gtk-update-icon-cache > /dev/null && [[ -f "${ICON_THEME}/index.theme" ]]; then
-    gtk-update-icon-cache -q -t "${ICON_THEME}" || true
+  # A stale cache hides newer icons from GTK; drop it when it cannot be rebuilt (another app's odd file names).
+  if command -v gtk-update-icon-cache > /dev/null && [[ -f "${ICON_THEME}/index.theme" || -f "${ICON_THEME}/.icon-theme.cache" ]]; then
+    gtk-update-icon-cache -q -f -t "${ICON_THEME}" 2> /dev/null || rm -f "${ICON_THEME}/.icon-theme.cache"
   fi
 }
 

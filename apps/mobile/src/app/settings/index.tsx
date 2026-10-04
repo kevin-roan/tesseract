@@ -97,6 +97,29 @@ export default function SettingsScreen() {
           </ThemedText>
         </Section>
       </MotionItem>
+
+      <MotionItem index={3}>
+        <Section title={SETTINGS_COPY.islandTitle} testID="settings-island">
+          <ChoiceGroup
+            label={SETTINGS_COPY.islandPlacementLabel}
+            options={screen.islandPlacement.options}
+            selectedId={screen.islandPlacement.selectedId}
+            onSelect={screen.islandPlacement.select}
+          />
+          <ThemedText variant="caption" color="textTertiary">
+            {SETTINGS_COPY.islandPlacementFootnote}
+          </ThemedText>
+          <ChoiceGroup
+            label={SETTINGS_COPY.liveActivityLabel}
+            options={screen.liveActivity.options}
+            selectedId={screen.liveActivity.selectedId}
+            onSelect={screen.liveActivity.select}
+          />
+          <ThemedText variant="caption" color="textTertiary">
+            {SETTINGS_COPY.liveActivityFootnote}
+          </ThemedText>
+        </Section>
+      </MotionItem>
     </ScreenScaffold>
   );
 }

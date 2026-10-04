@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { View } from "react-native";
-import { HammerIcon } from "phosphor-react-native";
+import { HammerIcon, SparkleIcon } from "phosphor-react-native";
 
+import ActionButton from "@/components/action-button";
 import EmptyState from "@/components/empty-state";
 import LogView from "@/components/log-view";
 import MotionItem from "@/components/motion-item";
@@ -75,6 +76,23 @@ const BuildDetailView = ({ buildId }: BuildDetailViewProps) => {
             {build.error ? (
               <Reveal>
                 <Notice tone="danger" title="Build failed" message={build.error} />
+              </Reveal>
+            ) : null}
+            {detail.fix ? (
+              <Reveal>
+                <ActionButton
+                  label="Fix with AI"
+                  icon={SparkleIcon}
+                  variant="secondary"
+                  size="sm"
+                  loading={detail.fix.pending}
+                  onPress={detail.fix.run}
+                />
+              </Reveal>
+            ) : null}
+            {detail.fix?.error ? (
+              <Reveal>
+                <Notice tone="danger" message={detail.fix.error} />
               </Reveal>
             ) : null}
             {detail.cancelError ? (

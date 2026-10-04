@@ -23,6 +23,9 @@ if [ -n "${ANDROID_HOME:-}" ]; then
   theone_path_append "${ANDROID_HOME}/cmdline-tools/latest/bin"
   theone_path_append "${ANDROID_HOME}/platform-tools"
 fi
+if [ -x /opt/flutter/bin/flutter ]; then
+  theone_path_prepend /opt/flutter/bin
+fi
 theone_path_prepend "${HOME}/.bun/bin"
 theone_path_prepend "${HOME}/.local/bin"
 export PATH

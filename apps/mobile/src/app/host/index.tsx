@@ -4,6 +4,7 @@ import EmptyState from "@/components/empty-state";
 import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
+import HostAndroid from "@/features/host-shell/components/host-android";
 import HostSetup from "@/features/host-shell/components/host-setup";
 import HostShells from "@/features/host-shell/components/host-shells";
 import HostUnlock from "@/features/host-shell/components/host-unlock";
@@ -63,6 +64,7 @@ export default function HostScreen() {
           onRetry={shells.refresh}
         />
       ) : null}
+      {screen.mode === "unlocked" ? <HostAndroid android={screen.android} /> : null}
     </ScreenScaffold>
   );
 }

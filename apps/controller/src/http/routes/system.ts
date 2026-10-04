@@ -2,6 +2,7 @@ import type { Context, Hono } from "hono";
 import { getConnInfo } from "hono/bun";
 import {
   ClaudeImportSchema,
+  CloseDisplayWindowSchema,
   SetDefaultClaudeAccountSchema,
   PROTOCOL_VERSION,
   routePatterns,
@@ -12,7 +13,7 @@ import {
 } from "@theone/protocol";
 import { nowIso } from "../../core/time";
 import type { Services } from "../../services";
-import { jsonBody, parseWith } from "../validation";
+import { jsonBody, optionalJsonBody, parseWith } from "../validation";
 
 function remoteAddress(c: Context): { address: string; port: number } | null {
   try {
@@ -65,6 +66,19 @@ export function registerSystemRoutes(app: Hono, services: Services): void {
   app.get(rest.display, async (c) => c.json(await services.display.status()));
 
   app.get(rest.displayBrowser, async (c) => c.json(await services.browser.status()));
+
+  app.get(rest.displayWindows, async (c) => c.json(await services.display.windows()));
+
+  app.post(rest.displayWindowActivate, async (c) => {
+    await services.display.activateWindow(c.req.param("id") ?? "");
+    return c.body(null, 204);
+  });
+
+  app.post(rest.displayWindowClose, async (c) => {
+    const body = await optionalJsonBody(c, CloseDisplayWindowSchema, {});
+    await services.display.closeWindow(c.req.param("id") ?? "", body.force ?? false);
+    return c.body(null, 204);
+  });
 
   app.get(rest.displayScreenshot, async (c) => {
     const png = await services.display.screenshot();

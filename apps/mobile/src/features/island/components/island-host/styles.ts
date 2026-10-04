@@ -2,7 +2,7 @@ import { StyleSheet } from "react-native";
 
 import { ZIndex, type Theme } from "@/theme";
 
-export default function createStyles(theme: Theme, topInset: number) {
+export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     layer: {
       position: "absolute",
@@ -24,14 +24,9 @@ export default function createStyles(theme: Theme, topInset: number) {
       flex: 1,
     },
     card: {
-      transformOrigin: "top",
-    },
-    island: {
       position: "absolute",
-      top: topInset + theme.spacing.sm,
       left: theme.spacing.base,
       right: theme.spacing.base,
-      alignItems: "stretch",
     },
   });
 }

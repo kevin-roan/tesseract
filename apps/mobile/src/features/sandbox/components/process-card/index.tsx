@@ -1,10 +1,12 @@
-import { ArrowSquareOutIcon, ScrollIcon, StopIcon, TerminalIcon } from "phosphor-react-native";
+import type { ReactNode } from "react";
+import { ArrowSquareOutIcon, CaretDownIcon, CaretUpIcon, SparkleIcon, StopIcon, TerminalIcon } from "phosphor-react-native";
 import type { ListeningPort, ProcessInfo } from "@theone/protocol";
 
 import ActionButton from "@/components/action-button";
 import ResourceCard from "@/components/resource-card";
 
 import { processMeta } from "../../utils/describe";
+import { canFixProcess } from "../../utils/fix-prompt";
 import { commandLabel, isActiveProcess } from "../../utils/projects";
 import { siteLabel, siteUrl } from "../../utils/sites";
 import { processTone, stateLabel } from "../../utils/states";
@@ -16,8 +18,13 @@ export type ProcessCardProps = {
   stopping?: boolean;
   onToggleLogs?: () => void;
   logsOpen?: boolean;
+  /** The log view, rendered inside the card while `logsOpen`. */
+  logs?: ReactNode;
   site?: ListeningPort;
   onOpenSite?: (url: string) => void;
+  /** Shown once the process has failed: hands its logs to a new chat. */
+  onFix?: () => void;
+  fixing?: boolean;
 };
 
 const ProcessCard = ({
@@ -27,10 +34,14 @@ const ProcessCard = ({
   stopping = false,
   onToggleLogs,
   logsOpen = false,
+  logs,
   site,
   onOpenSite,
+  onFix,
+  fixing = false,
 }: ProcessCardProps) => {
   const active = isActiveProcess(process);
+  const fix = onFix && canFixProcess(process) ? onFix : null;
   const url = site && onOpenSite && active ? siteUrl(site) : null;
 
   return (
@@ -43,7 +54,7 @@ const ProcessCard = ({
       badge={{ label: stateLabel(process.state), tone: processTone(process.state) }}
       onPress={onPress}
       footer={
-        url || onToggleLogs || (onStop && active) ? (
+        url || fix || onToggleLogs || (onStop && active) ? (
           <>
             {url && site && onOpenSite ? (
               <ActionButton
@@ -55,10 +66,21 @@ const ProcessCard = ({
                 accessibilityLabel={`Open ${siteLabel(site)} in browser`}
               />
             ) : null}
+            {fix ? (
+              <ActionButton
+                label="Fix with AI"
+                icon={SparkleIcon}
+                variant="secondary"
+                size="sm"
+                loading={fixing}
+                onPress={fix}
+                accessibilityLabel={`Fix ${process.name} with AI`}
+              />
+            ) : null}
             {onToggleLogs ? (
               <ActionButton
                 label={logsOpen ? "Hide logs" : "Logs"}
-                icon={ScrollIcon}
+                icon={logsOpen ? CaretUpIcon : CaretDownIcon}
                 variant="secondary"
                 size="sm"
                 onPress={onToggleLogs}
@@ -78,6 +100,7 @@ const ProcessCard = ({
           </>
         ) : undefined
       }
+      expanded={logsOpen ? logs : null}
     />
   );
 };

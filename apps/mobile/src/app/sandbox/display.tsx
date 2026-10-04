@@ -8,6 +8,7 @@ import StatusBadge from "@/components/status-badge";
 import BrowserSheet from "@/features/sandbox/components/browser-sheet";
 import DisplayStage from "@/features/sandbox/components/display-stage";
 import RemoteSurface from "@/features/sandbox/components/remote-surface";
+import WindowsSheet from "@/features/sandbox/components/windows-sheet";
 import { useDisplayScreen } from "@/features/sandbox/hooks/use-display-screen";
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
 
@@ -82,6 +83,7 @@ export default function DisplayScreen() {
         onReconnect={session.reconnect}
       />
       <BrowserSheet visible={screen.browser.visible} onClose={screen.browser.close} />
+      <WindowsSheet visible={screen.windows.visible} onClose={screen.windows.close} />
     </DisplayStage>
   );
 }

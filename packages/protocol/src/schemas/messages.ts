@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { PROTOCOL_VERSION } from "../constants";
 import { AgentRunEventSchema, AgentRunSchema, StatusEventSchema } from "./agent";
+import { AppRunSchema } from "./apps";
 import { ArtifactSchema, BuildJobSchema } from "./builds";
 import { LogLineSchema, ProcessInfoSchema, TerminalColsSchema, TerminalInfoSchema, TerminalRowsSchema } from "./processes";
 import { AgentRunIdSchema, ArtifactIdSchema, ExitCodeSchema, ProjectIdSchema } from "./primitives";
@@ -72,6 +73,7 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("sync.updated"), request: SyncRequestSchema }),
   /** The project's sync-back baseline moved (after a push or an ack). */
   z.object({ type: z.literal("sync.changed"), projectId: ProjectIdSchema }),
+  z.object({ type: z.literal("app.updated"), run: AppRunSchema }),
 ]);
 export type ServerEvent = z.infer<typeof ServerEventSchema>;
 export type ServerEventType = ServerEvent["type"];

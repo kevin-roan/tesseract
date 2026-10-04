@@ -1,4 +1,9 @@
 # shellcheck shell=sh
 xsetroot -solid '#1b1f27' -cursor_name left_ptr
-# A browser on the display for checking web projects; reopen it from the desktop's right-click menu.
+# The dock: switch windows, restore minimized ones, open a terminal or Chromium. A user's own
+# ~/.config/tint2/tint2rc wins; otherwise the image's config is read in place so image updates apply.
+tint2rc="${XDG_CONFIG_HOME:-${HOME}/.config}/tint2/tint2rc"
+[ -f "${tint2rc}" ] || tint2rc=/etc/xdg/tint2/tint2rc
+command -v tint2 > /dev/null 2>&1 && tint2 -c "${tint2rc}" > /dev/null 2>&1 &
+# A browser on the display for checking web projects; reopen it from the dock or the desktop's right-click menu.
 command -v chromium > /dev/null 2>&1 && chromium --start-maximized --no-first-run --no-default-browser-check about:blank > /dev/null 2>&1 &

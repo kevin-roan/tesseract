@@ -17,6 +17,8 @@ services:
         DEV_UID: ${DEV_UID:-1000}
         DEV_GID: ${DEV_GID:-1000}
         WITH_ANDROID: ${WITH_ANDROID:-true}
+        WITH_FLUTTER: ${WITH_FLUTTER:-true}
+        FLUTTER_VERSION: ${FLUTTER_VERSION:-3.47.5}
         WITH_MONO: ${WITH_MONO:-true}
         CLAUDE_CODE_VERSION: ${CLAUDE_CODE_VERSION:-latest}
         WITH_WHISPER: ${WITH_WHISPER:-true}

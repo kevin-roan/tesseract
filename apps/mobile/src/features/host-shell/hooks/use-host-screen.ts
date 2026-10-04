@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocalSearchParams } from "expo-router";
 
 import type { HeaderAction } from "@/components/screen-header";
@@ -10,9 +10,11 @@ import { confirm } from "@/lib/confirm";
 import { useHostSessionStore } from "../store/host-session-store";
 import { useHostStore } from "../store/host-store";
 import type { HostScreenMode } from "../types";
+import { HOST_NEXT } from "../utils/constants";
 import { HOST_ACTIONS, HOST_SCREEN, UNPAIR_CONFIRM } from "../utils/content";
 import { describeHostError, hostIssueFor } from "../utils/errors";
 import { formatCountdown, sessionRemainingMs } from "../utils/session";
+import { useHostAndroid } from "./use-host-android";
 import { useHostClient } from "./use-host-client";
 import { useHostNavigation } from "./use-host-navigation";
 import { useHostPairing } from "./use-host-pairing";
@@ -20,7 +22,7 @@ import { useHostTerminals } from "./use-host-terminals";
 import { useHostUnlock } from "./use-host-unlock";
 import { useNow } from "./use-now";
 
-type LinkParams = { url?: string; token?: string; name?: string };
+type LinkParams = { url?: string; token?: string; name?: string; next?: string };
 
 function screenMode(hydrated: boolean, paired: boolean, repairing: boolean, unlocked: boolean): HostScreenMode {
   if (!hydrated) return "loading";
@@ -44,6 +46,8 @@ export function useHostScreen() {
   const mode = screenMode(hydrated, host !== null, repairing, session !== null);
   const unlock = useHostUnlock(mode === "locked");
   const shells = useHostTerminals();
+  const android = useHostAndroid(mode === "unlocked");
+  const next = useRef(params.next === HOST_NEXT.android ? params.next : null);
   const now = useNow(mode === "unlocked");
   const issue = hostIssueFor(unlock.statusError);
 
@@ -59,6 +63,13 @@ export function useHostScreen() {
     await unpairHost();
     setRepairing(false);
   }, [lock, unpairHost]);
+
+  const { replaceWithAndroid } = nav;
+  useEffect(() => {
+    if (mode !== "unlocked" || !next.current) return;
+    next.current = null;
+    replaceWithAndroid();
+  }, [mode, replaceWithAndroid]);
 
   const { mutate: createShell } = shells.create;
   const newShell = useCallback(() => createShell(undefined, { onSuccess: (terminal) => nav.terminal(terminal.id) }), [createShell, nav]);
@@ -89,6 +100,7 @@ export function useHostScreen() {
     unlock,
     issue,
     repair: () => setRepairing(true),
+    android,
     sessionChip: HOST_SCREEN.sessionChip(formatCountdown(sessionRemainingMs(session, now))),
     shells: {
       list: shells.terminals.data ?? [],

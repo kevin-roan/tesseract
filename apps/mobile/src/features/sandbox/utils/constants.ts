@@ -2,6 +2,7 @@ import { LIMITS, type InputMode } from "@theone/protocol";
 
 export const STATUS_REFRESH_INTERVAL_MS = 10_000;
 export const PORTS_REFRESH_INTERVAL_MS = 5_000;
+export const WINDOWS_REFRESH_INTERVAL_MS = 3_000;
 export const SYNC_CHANGES_REFRESH_INTERVAL_MS = 15_000;
 export const LIST_PREVIEW_LIMIT = 5;
 export const ACTIVITY_LIMIT = 20;

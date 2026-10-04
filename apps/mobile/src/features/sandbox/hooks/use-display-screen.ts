@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BackHandler, type LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { VncAction } from "@theone/protocol";
@@ -10,6 +10,7 @@ import { useDisplayStore } from "../store/display-store";
 import { DISPLAY_ACTIONS, INPUT_MODE_ACTIONS } from "../utils/actions";
 import { displayInsets, nextInputMode } from "../utils/display";
 import { useDisplayPageSync } from "./use-display-page-sync";
+import { useDisplayPaste } from "./use-display-paste";
 import { useDisplaySession } from "./use-display-session";
 
 /**
@@ -19,6 +20,7 @@ import { useDisplaySession } from "./use-display-session";
  */
 export function useDisplayScreen() {
   const [browserOpen, setBrowserOpen] = useState(false);
+  const [windowsOpen, setWindowsOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [barBottom, setBarBottom] = useState(0);
   const safeArea = useSafeAreaInsets();
@@ -26,11 +28,18 @@ export function useDisplayScreen() {
   const inputMode = useDisplayStore((state) => state.inputMode);
   const setInputMode = useDisplayStore((state) => state.setInputMode);
 
+  const pasteRef = useRef<(() => Promise<void>) | null>(null);
+
   const handleAction = useCallback((action: VncAction) => {
     if (action === "browser") setBrowserOpen(true);
+    else if (action === "paste") void pasteRef.current?.();
   }, []);
 
   const display = useDisplaySession(handleAction);
+  const paste = useDisplayPaste(display.session.surfaceRef);
+  useEffect(() => {
+    pasteRef.current = paste;
+  }, [paste]);
   const insets = useMemo(
     () => displayInsets({ barBottom, safeBottom: safeArea.bottom, fullscreen }),
     [barBottom, safeArea.bottom, fullscreen],
@@ -54,6 +63,8 @@ export function useDisplayScreen() {
 
   const openBrowser = useCallback(() => setBrowserOpen(true), []);
   const closeBrowser = useCallback(() => setBrowserOpen(false), []);
+  const openWindows = useCallback(() => setWindowsOpen(true), []);
+  const closeWindows = useCallback(() => setWindowsOpen(false), []);
   const enterFullscreen = useCallback(() => setFullscreen(true), []);
   const exitFullscreen = useCallback(() => setFullscreen(false), []);
   const toggleInputMode = useCallback(() => setInputMode(nextInputMode(inputMode)), [inputMode, setInputMode]);
@@ -61,6 +72,7 @@ export function useDisplayScreen() {
   const barActions = useMemo<GlassToolbarAction[]>(
     () => [
       { ...INPUT_MODE_ACTIONS[inputMode], onPress: toggleInputMode },
+      { ...DISPLAY_ACTIONS.windows, onPress: openWindows },
       { ...DISPLAY_ACTIONS.browser, onPress: openBrowser },
       ...(rotation.supported
         ? [{ ...DISPLAY_ACTIONS.rotate, onPress: rotation.toggle, selected: rotation.landscape }]
@@ -68,7 +80,7 @@ export function useDisplayScreen() {
       { ...DISPLAY_ACTIONS.fullscreen, onPress: enterFullscreen },
       ...display.headerActions,
     ],
-    [inputMode, toggleInputMode, openBrowser, rotation.supported, rotation.toggle, rotation.landscape, enterFullscreen, display.headerActions],
+    [inputMode, toggleInputMode, openWindows, openBrowser, rotation.supported, rotation.toggle, rotation.landscape, enterFullscreen, display.headerActions],
   );
 
   return {
@@ -80,5 +92,6 @@ export function useDisplayScreen() {
     fullscreen,
     inputMode,
     browser: { visible: browserOpen, open: openBrowser, close: closeBrowser },
+    windows: { visible: windowsOpen, open: openWindows, close: closeWindows },
   };
 }

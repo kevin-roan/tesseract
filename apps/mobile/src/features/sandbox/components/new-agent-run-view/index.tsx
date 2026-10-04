@@ -38,7 +38,7 @@ const NewAgentRunView = ({ projectId }: NewAgentRunViewProps) => {
               <PromptSuggestions suggestions={suggestions.items} onSelect={suggestions.select} />
             </Reveal>
           ) : null}
-          <ChatComposer composer={composer} placeholder="How can I help you today?" noProjectLabel="New project" testID="new-run-composer" />
+          <ChatComposer composer={composer} placeholder="How can I help you today?" testID="new-run-composer" />
         </View>
       }
     >

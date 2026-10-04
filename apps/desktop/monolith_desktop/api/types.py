@@ -3,7 +3,7 @@ from typing import Any, Literal, NotRequired, TypedDict
 
 from .errors import ProtocolError
 
-Framework = Literal["expo", "react-native", "electron", "vite", "next", "node", "android", "python", "unknown"]
+Framework = Literal["expo", "react-native", "electron", "vite", "next", "node", "android", "python", "flutter", "unknown"]
 PackageManager = Literal["bun", "pnpm", "yarn", "npm"]
 BuildTarget = Literal["electron-linux", "electron-windows", "android-apk", "web", "script"]
 BuildProfile = Literal["debug", "release"]

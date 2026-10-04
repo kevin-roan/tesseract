@@ -37,9 +37,9 @@ export function imageToScreen(rect: Rect, fit: FitGeometry): Rect {
 }
 
 /** Keeps `rect` inside `bounds`, shrinking it first when it does not fit at all. */
-export function clampRect(rect: Rect, bounds: Rect, minSize: number = MIN_CROP_SIZE): Rect {
+export function clampRect(rect: Rect, bounds: Rect, minSize?: number): Rect {
   "worklet";
-  const min = Math.min(minSize, bounds.width, bounds.height);
+  const min = Math.min(minSize ?? MIN_CROP_SIZE, bounds.width, bounds.height);
   const width = clamp(rect.width, min, bounds.width);
   const height = clamp(rect.height, min, bounds.height);
   return {
@@ -62,9 +62,9 @@ export function moveRect(rect: Rect, dx: number, dy: number, bounds: Rect): Rect
 }
 
 /** Drags one corner; the opposite corner stays put and the box never goes below `minSize` or outside `bounds`. */
-export function resizeFromCorner(rect: Rect, corner: Corner, dx: number, dy: number, bounds: Rect, minSize: number = MIN_CROP_SIZE): Rect {
+export function resizeFromCorner(rect: Rect, corner: Corner, dx: number, dy: number, bounds: Rect, minSize?: number): Rect {
   "worklet";
-  const min = Math.min(minSize, bounds.width, bounds.height);
+  const min = Math.min(minSize ?? MIN_CROP_SIZE, bounds.width, bounds.height);
   const left = rect.x;
   const top = rect.y;
   const right = rect.x + rect.width;

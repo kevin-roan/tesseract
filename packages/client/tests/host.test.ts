@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { PROTOCOL_VERSION } from "@theone/protocol";
-import { sampleTerminal, sampleTicket } from "@theone/protocol/fixtures";
+import { sampleAndroidLink, sampleEmulator, sampleHostAndroidStatus, sampleTerminal, sampleTicket } from "@theone/protocol/fixtures";
 import { ApiError, HostShellClient, ProtocolVersionError, type FetchLike, type HttpRequestInit, type HttpResponse } from "../src/index";
 
 const BASE = "http://100.101.102.103:7701";
@@ -79,6 +79,27 @@ describe("HostShellClient", () => {
     await session.createTerminal({ kind: "shell", cols: 80, rows: 24 });
     const page = await session.terminalPageUrl(sampleTerminal.id);
     expect(page).toBe(`${BASE}/ui/terminal#ticket=${sampleTicket.ticket}&session=${sampleTerminal.id}`);
+    expect(calls.every((call) => call.init.headers.Authorization === `Bearer ${SESSION}`)).toBe(true);
+  });
+
+  test("sessionClient drives the host Android emulator and link", async () => {
+    const replies: Record<string, HttpResponse> = {
+      "GET /v1/android": respond(200, sampleHostAndroidStatus),
+      "POST /v1/android/emulator": respond(202, { ...sampleEmulator, state: "starting" }),
+      "DELETE /v1/android/emulator": respond(200, { ...sampleEmulator, state: "stopping" }),
+      "POST /v1/android/link": respond(200, sampleAndroidLink),
+      "DELETE /v1/android/link": respond(200, { configured: false, sandboxUrl: null, connected: false, lastError: null }),
+      "POST /v1/auth/ticket": respond(200, sampleTicket),
+    };
+    const { client, calls } = hostClient((call) => replies[`${call.init.method} ${new URL(call.url).pathname}`] ?? respond(404, {}));
+    const session = client.sessionClient(SESSION);
+    expect(await session.hostAndroidStatus()).toEqual(sampleHostAndroidStatus);
+    expect((await session.startEmulator({ avd: "Pixel_8_API_35", coldBoot: true })).state).toBe("starting");
+    expect((await session.stopEmulator()).state).toBe("stopping");
+    expect(await session.linkSandbox({ sandboxUrl: "http://100.64.0.2:7700", token: "t" })).toEqual(sampleAndroidLink);
+    expect((await session.unlinkSandbox()).configured).toBe(false);
+    expect(await session.androidScreenPageUrl(1280)).toBe(`${BASE}/ui/android#ticket=${sampleTicket.ticket}&maxSize=1280`);
+    expect(JSON.parse(calls[1]?.init.body ?? "{}")).toEqual({ avd: "Pixel_8_API_35", coldBoot: true });
     expect(calls.every((call) => call.init.headers.Authorization === `Bearer ${SESSION}`)).toBe(true);
   });
 });

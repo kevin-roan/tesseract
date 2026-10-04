@@ -10,6 +10,8 @@ import {
   AgentRunListSchema,
   AgentRunSchema,
   AgentStreamMessageSchema,
+  AppRunListSchema,
+  AppRunSchema,
   ArtifactListSchema,
   ArtifactSchema,
   BrowserStatusSchema,
@@ -36,6 +38,8 @@ import {
   ProjectListSchema,
   ProjectSchema,
   PushDeviceSchema,
+  RunTargetListSchema,
+  SandboxAndroidStatusSchema,
   SandboxStatusSchema,
   SERVER_EVENT_TYPES,
   ServerEventSchema,
@@ -123,7 +127,7 @@ beforeAll(async () => {
     "package.json": JSON.stringify({
       name: "site",
       version: "1.2.3",
-      scripts: { build: "mkdir -p dist && echo '<h1>ok</h1>' > dist/index.html && echo built" },
+      scripts: { build: "mkdir -p dist && echo '<h1>ok</h1>' > dist/index.html && echo built", test: "echo ok" },
     }),
     "bun.lock": "{}",
   });
@@ -189,6 +193,12 @@ describe("REST responses match @theone/protocol", () => {
     await rest(DisplayStatusSchema, "GET", "/v1/display");
     await restError("unavailable", await t.request("GET", "/v1/display/screenshot"));
     expect(await rest(BrowserStatusSchema, "GET", "/v1/display/browser")).toEqual({ available: false, tabs: [] });
+    await restError("unavailable", await t.request("GET", "/v1/display/windows"));
+    await restError("bad_request", await t.request("POST", "/v1/display/windows/not-a-window/activate"));
+    await restError("bad_request", await t.request("POST", "/v1/display/windows/0xZZ/close", { force: true }));
+    await restError("bad_request", await t.request("POST", "/v1/display/windows/0x03a00004/close", { force: "yes" }));
+    await restError("unavailable", await t.request("POST", "/v1/display/windows/0x03a00004/activate"));
+    await restError("unavailable", await t.request("POST", "/v1/display/windows/0x03a00004/close"));
 
     const published = await t.request("POST", "/v1/events", { project: "site", status: "testing", message: "conformance" });
     expect(published.status).toBe(202);
@@ -236,6 +246,30 @@ describe("REST responses match @theone/protocol", () => {
 
     await restError("not_found", await t.request("GET", "/v1/processes/prc_missing0000"));
     await restError("bad_request", await t.request("POST", "/v1/processes", { projectId: "site" }));
+  });
+
+  test("app runs and the android link", async () => {
+    const targets = await rest(RunTargetListSchema, "GET", "/v1/projects/site/run-targets");
+    expect(targets).toEqual([{ target: "test", label: "Tests", available: true, reason: null, viewer: "none", actions: [] }]);
+    const started = await rest(AppRunSchema, "POST", "/v1/projects/site/app-runs", { target: "test" });
+    expect(started).toMatchObject({ projectId: "site", target: "test", state: "starting", port: null });
+    const ended = await waitFor(async () => {
+      const run = await rest(AppRunSchema, "GET", `/v1/app-runs/${started.id}`);
+      return run.endedAt ? run : null;
+    });
+    expect(ended.state).toBe("exited");
+    expect((await rest(AppRunListSchema, "GET", "/v1/app-runs?projectId=site")).map((run) => run.id)).toContain(started.id);
+    expect((await rest(AppRunSchema, "DELETE", `/v1/app-runs/${started.id}`)).state).toBe("exited");
+    await restError("conflict", await t.request("POST", `/v1/app-runs/${started.id}/actions`, { action: "reload" }));
+    await restError("bad_request", await t.request("POST", "/v1/projects/site/app-runs", { target: "web-dev" }));
+    await restError("not_found", await t.request("GET", "/v1/app-runs/app_missing000"));
+    expect(await rest(SandboxAndroidStatusSchema, "GET", "/v1/android")).toEqual({
+      linked: false,
+      hostId: null,
+      emulator: null,
+      adbSerial: null,
+      adbConnected: false,
+    });
   });
 
   test("terminals", async () => {

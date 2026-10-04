@@ -34,7 +34,7 @@ body {
 .page {
   display: flex;
   flex-direction: column;
-  height: 100dvh;
+  height: var(--viewport-height, 100dvh);
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   overflow: hidden;
 }
@@ -250,4 +250,31 @@ body {
   font-size: 16px;
   resize: none;
   pointer-events: none;
+}
+
+.stage--android {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: var(--inset-top);
+  background: #000;
+}
+
+.screen {
+  display: block;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.keys--android {
+  justify-content: space-around;
+}
+
+.keys--android .key {
+  flex: 1 1 0;
+  max-width: 72px;
+  font-size: 18px;
 }

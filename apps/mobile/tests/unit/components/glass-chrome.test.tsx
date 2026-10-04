@@ -34,6 +34,15 @@ describe("GlassToolbar", () => {
     expect(onBack).toHaveBeenCalled();
     expect(onAdd).toHaveBeenCalled();
   });
+
+  it("puts the actions in a sideways scroller so the title keeps its width", async () => {
+    await render(
+      <GlassToolbar testID="bar" title="Display" actions={[{ id: "add", icon: PlusIcon, label: "Add", onPress: jest.fn() }]} />,
+    );
+    const scroller = screen.getByTestId("bar-actions");
+    expect(scroller.props.horizontal).toBe(true);
+    expect(scroller.props.showsHorizontalScrollIndicator).toBe(false);
+  });
 });
 
 describe("GlassSheet", () => {

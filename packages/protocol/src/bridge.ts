@@ -9,9 +9,12 @@ export const PAGE_MESSAGES = {
   vncState: "vnc-state",
   vncNeedTicket: "vnc-need-ticket",
   vncAction: "vnc-action",
+  androidState: "android-state",
+  androidNeedTicket: "android-need-ticket",
   reconnect: "theone-reconnect",
   inputMode: "theone-input-mode",
   insets: "theone-insets",
+  paste: "theone-paste",
 } as const;
 export type PageMessageType = (typeof PAGE_MESSAGES)[keyof typeof PAGE_MESSAGES];
 
@@ -27,5 +30,5 @@ export type InputMode = (typeof INPUT_MODES)[number];
 export type PageInsets = { top: number; bottom: number };
 
 /** Values of `action` in `vnc-action` messages. */
-export const VNC_ACTIONS = ["browser"] as const;
+export const VNC_ACTIONS = ["browser", "paste"] as const;
 export type VncAction = (typeof VNC_ACTIONS)[number];

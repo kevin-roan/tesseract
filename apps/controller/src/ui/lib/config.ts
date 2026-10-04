@@ -1,4 +1,5 @@
 import { PAGE_MESSAGES, type InputMode } from "@theone/protocol/bridge";
+import { LIMITS } from "@theone/protocol/constants";
 import type { ITheme } from "@xterm/xterm";
 import type { MouseButton, TrackpadOptions } from "./gestures";
 
@@ -11,11 +12,14 @@ export type KeyDefinition<K extends string = KeyId> = {
 
 export type KeyId = "esc" | "tab" | "ctrl" | "ctrl-c" | "left" | "up" | "down" | "right" | "pipe" | "tilde" | "slash";
 
-export type VncHostKeyId = "keyboard" | "browser";
+export type VncHostKeyId = "keyboard" | "browser" | "paste";
+
+export type AndroidBarKeyId = "back" | "home" | "app_switch" | "keyboard" | "rotate";
 
 export const API_PATHS = {
   terminalStream: (id: string) => `/v1/terminals/${encodeURIComponent(id)}/stream`,
   vnc: "/v1/display/vnc",
+  androidScreen: "/v1/android/screen",
 } as const;
 
 export const FRAGMENT_KEYS = {
@@ -24,6 +28,7 @@ export const FRAGMENT_KEYS = {
   password: "password",
   viewOnly: "viewOnly",
   input: "input",
+  maxSize: "maxSize",
 } as const;
 
 export const DEFAULT_INPUT_MODE: InputMode = "trackpad";
@@ -90,7 +95,35 @@ export const KEY_BAR: readonly KeyDefinition[] = [
 export const VNC_HOST_KEYS: readonly KeyDefinition<VncHostKeyId>[] = [
   { id: "keyboard", label: "⌨", title: "Keyboard" },
   { id: "browser", label: "URL", title: "Browser URL" },
+  { id: "paste", label: "Paste", title: "Paste the phone clipboard" },
 ];
+
+export const ANDROID_BAR: readonly KeyDefinition<AndroidBarKeyId>[] = [
+  { id: "back", label: "◁", title: "Back" },
+  { id: "home", label: "○", title: "Home" },
+  { id: "app_switch", label: "▢", title: "Recent apps" },
+  { id: "keyboard", label: "⌨", title: "Keyboard" },
+  { id: "rotate", label: "⟳", title: "Rotate" },
+];
+
+/** Hardware keys of the phone keyboard forwarded as Android keys. */
+export const ANDROID_HARDWARE_KEYS: Record<string, "enter" | "tab" | "escape" | "up" | "down" | "left" | "right"> = {
+  Enter: "enter",
+  Tab: "tab",
+  Escape: "escape",
+  ArrowUp: "up",
+  ArrowDown: "down",
+  ArrowLeft: "left",
+  ArrowRight: "right",
+};
+
+export const ANDROID_INPUT = {
+  maxPointers: LIMITS.maxAndroidPointerId + 1,
+  maxTextBytes: LIMITS.maxAndroidTextLength,
+  maxScroll: LIMITS.maxAndroidScroll,
+  wheelPixelsPerStep: 100,
+  wheelLinesPerStep: 3,
+} as const;
 
 export const TRACKPAD_OPTIONS: TrackpadOptions = {
   tapMs: 250,
@@ -185,4 +218,5 @@ export const MESSAGES = {
   passwordRequired: "The VNC server asked for a password, but none was provided.",
   reconnect: "Reconnect",
   keyboard: "Keyboard",
+  androidTitle: "Android emulator",
 } as const;

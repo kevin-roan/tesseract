@@ -33,10 +33,10 @@ function reportIslandError(error: unknown): void {
 }
 
 /** Mirrors the derived island state into the Live Activity (iOS) or ongoing notification (Android). */
-export function useLiveActivity(state: IslandState): void {
+export function useLiveActivity(state: IslandState, enabled = true): void {
   const { client } = useSandboxClient();
   const signature = stateSignature(state);
-  const live = hasLiveWork(state);
+  const live = enabled && hasLiveWork(state);
   const stateRef = useRef(state);
   const lastSentRef = useRef<string | null>(null);
   const lastSentAtRef = useRef(0);
@@ -83,6 +83,12 @@ export function useLiveActivity(state: IslandState): void {
     }
 
     if (currentActivityId() === null) return;
+    if (!enabled) {
+      clearTimers();
+      lastSentRef.current = null;
+      endActivity().catch(reportIslandError);
+      return;
+    }
     if (updateTimer.current) {
       clearTimeout(updateTimer.current);
       updateTimer.current = null;
@@ -99,7 +105,7 @@ export function useLiveActivity(state: IslandState): void {
       if (!live) return;
       clearTimers();
     };
-  }, [signature, live]);
+  }, [signature, live, enabled]);
 
   useEffect(() => {
     if (!client || !isIslandAvailable()) return;

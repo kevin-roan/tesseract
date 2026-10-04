@@ -123,10 +123,12 @@ from an automated agent MUST go through `flock /tmp/theone-bun-install.lock bun 
 | Android SDK | `/opt/android-sdk` (`ANDROID_HOME`, `ANDROID_SDK_ROOT`, owned by `dev`) |
 | Java | `/opt/java/openjdk` (Temurin 17, `JAVA_HOME`) |
 | Controller binary | `/usr/local/bin/theone-controller` (built with `bun build --compile`) |
-| Browser pages | `/ui/terminal`, `/ui/vnc`; their bundled assets are served at root paths (`/chunk-<hash>.js`, `.css`) |
+| Browser pages | `/ui/terminal`, `/ui/vnc` (controller), `/ui/android` (host shell daemon); their bundled assets are served at root paths (`/chunk-<hash>.js`, `.css`) |
 | Mobile deep link | `theone://pair?url=<encoded base url>&token=<token>&name=<label>`; host shell: `theone://host?url=…&token=<host token>&name=<host name>` |
 | Host shell daemon | `theone-controller host serve` on the host, `<host Tailscale IPv4>:7701` (`HOST_SHELL_PORT`, `THEONE_HOST_SHELL_PORT`); only loopback or `100.64.0.0/10` binds |
-| Host shell state | `$XDG_CONFIG_HOME/theone/host-shell/state.json` (default `~/.config/…`, `THEONE_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters |
+| ADB tunnel | `127.0.0.1:15555` in the sandbox (`DEFAULT_ADB_TUNNEL_PORT`, `THEONE_ADB_TUNNEL_PORT`), adb serial `127.0.0.1:15555`; open only while the host emulator is linked and `running` ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2.3) |
+| Host Android emulator | console `5554`, adbd `5555` (`DEFAULT_EMULATOR_PORT`, `THEONE_EMULATOR_PORT`); adb serial `127.0.0.1:<bridge port>` in `netns` isolation (`THEONE_EMULATOR_ADB_PORT`), `emulator-<port>` for a plain (`none` or adopted non-isolated) emulator |
+| Host shell state | `$XDG_CONFIG_HOME/theone/host-shell/state.json` (default `~/.config/…`, `THEONE_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters, `androidLink` (sandbox URL + token) |
 
 `projectId` = directory name under `/workspace/projects`, must match
 `^[a-z0-9][a-z0-9._-]{0,63}$` (case-insensitive input is lower-cased). Paths are
@@ -176,6 +178,9 @@ always resolved (`realpath`) and verified to stay under the workspace.
 | `THEONE_APNS_KEY_ID` | — | id of that key (1-64 letters/digits) |
 | `THEONE_APNS_TEAM_ID` | — | Apple developer team id (1-64 letters/digits) |
 | `THEONE_APNS_BUNDLE_ID` | `com.kevinbpract.theone` | bundle id of the app; the `apns-topic` is `<bundle id>.push-type.liveactivity`. The development build (`APP_VARIANT=development`, see [getting started](../runbooks/getting-started.md)) is `com.kevinbpract.theone.dev` |
+| `THEONE_ADB_TUNNEL_PORT` | `15555` | sandbox loopback port tunnelled to the host emulator's adbd over the Android link |
+| `THEONE_ADB` | `adb` | adb client used for `adb connect`/`disconnect` of the tunnel |
+| `THEONE_FLUTTER` | `flutter` | Flutter SDK entry point of the `flutter-*` and Flutter `test` run targets; they are unavailable when it is not found |
 | `THEONE_APNS_ENV` | `production` | `production` (`api.push.apple.com`) or `sandbox` (`api.sandbox.push.apple.com`, development builds) |
 
 Invalid values stop startup with a clear message. The controller must run on a
@@ -238,6 +243,16 @@ knob: `THEONE_WAIT_X_TIMEOUT` (s, default 60).
 | `THEONE_HOST_SHELL_DIR` | `$XDG_CONFIG_HOME/theone/host-shell` (`~/.config/theone/host-shell`) | state directory (`state.json`) |
 | `THEONE_HOST_SHELL_PUBLIC_URL` | the `tailscale serve` HTTPS URL proxying to `http://<bind>:<port>` at `/` (`tailscale serve status --json`), else `http://<bind>:<port>` | URL put into the `host pair` link. iOS blocks plain http to the Tailscale IP, so serve it over HTTPS: `tailscale serve --bg --https=8443 http://<bind>:7701` |
 | `SHELL` | `bash` | host terminals run `$SHELL -l` in `$HOME` |
+| `THEONE_ANDROID_SDK_ROOT` | `$HOME/.local/share/theone/android-sdk` if it has `emulator/emulator`, else `$ANDROID_SDK_ROOT`, else `$ANDROID_HOME` | SDK with `emulator/` and `system-images/` |
+| `THEONE_ADB` | `adb` | host adb client (the user's adb server on 5037) |
+| `THEONE_SCRCPY_SERVER` | `/usr/share/scrcpy/scrcpy-server`, else `/usr/local/share/scrcpy/scrcpy-server` | scrcpy server jar |
+| `THEONE_SCRCPY_VERSION` | parsed from `scrcpy --version` | must equal the jar's version |
+| `THEONE_FFMPEG` | `ffmpeg` | H.264 → MJPEG for `/v1/android/screen` |
+| `THEONE_EMULATOR_PORT` | `5554` | emulator console port; adbd = +1; serial `emulator-<port>` when not isolated |
+| `THEONE_EMULATOR_GPU` | `swiftshader_indirect` | emulator `-gpu` |
+| `THEONE_EMULATOR_ISOLATION` | `netns` | `netns`: emulator in its own user + network namespace, guest egress only to public addresses through a filtering proxy, adb via a host bridge (serial `127.0.0.1:<port>`); needs `unshare`, `ip` and unprivileged user namespaces, else `GET /v1/android` is `available: false`. `none`: emulator on the host network (the guest, and the linked sandbox, can reach host loopback, LAN, tailnet) |
+| `THEONE_EMULATOR_ALLOW_NETS` | — | comma-separated CIDRs the isolated guest may still reach (e.g. a LAN backend) |
+| `THEONE_EMULATOR_ADB_PORT` | free port, kept across daemon restarts | host loopback port of the adb bridge to the isolated emulator |
 
 Host terminals get the daemon's environment without `THEONE_HOST_SHELL_*`, plus
 `TERM=xterm-256color`, `COLORTERM=truecolor`, `LANG`.
@@ -336,6 +351,9 @@ It runs `bun apps/controller/src/index.ts` from its checkout, or `MONOLITH_CONTR
 | GET | `/v1/display` | — | `DisplayStatus` |
 | GET | `/v1/display/screenshot` | — | `image/png` of the virtual display; 503 without a display |
 | GET | `/v1/display/browser` | — | `BrowserStatus { available, tabs: BrowserTab[] }`: Chromium `page` targets from the DevTools endpoint `http://127.0.0.1:$THEONE_CHROMIUM_DEBUG_PORT/json/list` (1.5 s timeout, `devtools://` pages dropped), in Chromium's order so `tabs[0]` is the current tab; `phoneUrl` rewrites an http(s) URL whose host is `localhost`, `*.localhost`, `127.0.0.0/8`, `0.0.0.0` or `[::1]` to the sandbox Tailscale IPv4 (else its MagicDNS name, as `/v1/ports`) keeping port/path/query/hash, passes other http(s) URLs through, and is null for other schemes or local URLs without Tailscale; an unreachable endpoint is `{ available: false, tabs: [] }`, never an error |
+| GET | `/v1/display/windows` | — | `DisplayWindowList { windows: DisplayWindow[] }`, `DisplayWindow { id (hex like `0x03a00004`), title, app (WM_CLASS class or null), pid (or null), active, minimized }`: `wmctrl -lp` order (oldest first) minus docks, desktops, menus, splashes, tooltips, notifications and `_NET_WM_STATE_SKIP_TASKBAR` windows; `active` from the root's `_NET_ACTIVE_WINDOW`, `minimized` = `_NET_WM_STATE_HIDDEN`; 503 without a display |
+| POST | `/v1/display/windows/:id/activate` | — | `204`; raises and focuses the window, restoring it when minimized (`wmctrl -ia`). Id not matching `^0x[0-9a-f]+$` → 400, not in the list above → 404, no display → 503 |
+| POST | `/v1/display/windows/:id/close` | `CloseDisplayWindow { force? }` (body optional) | `204`; asks the window to close (`wmctrl -ic`, the app may still prompt or refuse); `force: true` disconnects its X client instead (`xdotool windowkill`). Errors as for `activate` |
 | GET | `/v1/agent/runs` | `?projectId=&archived=` | `AgentRun[]` newest first (max 200): without `archived` (or `0`/`false`) only runs that are not archived, with `archived=1`/`true` only archived ones; running runs are never archived |
 | POST | `/v1/agent/runs` | `StartAgentRun { projectId?, prompt, mode?, attachmentIds?, resumeSessionId? }` | `201 AgentRun`; 503 without `claude`; 404 for an unknown attachment. `mode` → `--permission-mode` (else `THEONE_CLAUDE_PERMISSION_MODE`; stored as `null`). Attachments are stored on the run as full `Upload`s; for non-audio ones the run gets `--add-dir <uploads dir>` and the stdin prompt gains `\n\nAttached files (read them with the Read tool):\n- <path> (<mimeType>)` lines. Audio attachments are not listed (the transcript is the prompt); they stay on the run for replay. In a confidential project (also when resuming) the run gets `--append-system-prompt <confidential prompt>` (§6.1) |
 | POST | `/v1/uploads` | `CreateUpload { name, mimeType, data /* base64 */ }` (body limit 28 MiB) | `201 Upload`; 400 for invalid base64, an empty file or more than 20 MiB decoded. `name` → last path segment without control characters or leading dots, ≤ 200 UTF-8 bytes (extension kept), fallback `upload`; `mimeType` → lower-cased essence (`application/octet-stream` when malformed); `kind` = `image` (`image/*`), `pdf` (`application/pdf`), `audio` (`audio/*`), else `file` |
@@ -347,10 +365,17 @@ It runs `bun apps/controller/src/index.ts` from its checkout, or `MONOLITH_CONTR
 | POST | `/v1/agent/runs/delete` | `DeleteAgentRuns { ids: AgentRunId[] (1–500) } \| { all: true, projectId?, archived?: boolean }` | `200 { count }` = runs deleted for good with their events (one transaction; inbox items keep their row with `agentRunId: null`); `all` covers every finished run, only archived ones with `archived: true`, only non-archived ones with `false`; running runs and unknown ids are skipped; publishes `agent.deleted` when `count > 0` |
 | GET | `/v1/agent/runs/:id` | — | `AgentRun & { events: AgentRunEvent[] }` |
 | DELETE | `/v1/agent/runs/:id` | — | `AgentRun` (cancel) |
+| GET | `/v1/projects/:id/run-targets` | — | `RunTargetInfo[]`: run targets offered for the project, unavailable ones with `reason` ([app-runs-and-emulator.md](app-runs-and-emulator.md) §1.1); 404 unknown project |
+| GET | `/v1/app-runs` | `?projectId=` | `AppRun[]` of the current controller lifetime, newest first |
+| POST | `/v1/projects/:id/app-runs` | `StartAppRun { target, port? }` | `201 AppRun`; 400 target not offered; 503 target unavailable (message = `reason`); 409 port taken or a `starting`/`ready` run of that target exists |
+| GET | `/v1/app-runs/:id` | — | `AppRun` |
+| DELETE | `/v1/app-runs/:id` | — | `AppRun` once its processes stopped |
+| POST | `/v1/app-runs/:id/actions` | `AppRunActionRequest { action: "reload" \| "restart" \| "focus" }` | `200 AppRun`; 409 not `ready` or action unsupported; 502 the action failed |
+| GET | `/v1/android` | — | `SandboxAndroidStatus { linked, hostId, emulator, adbSerial, adbConnected }` (the tunnel to the host emulator) |
 | POST | `/v1/events` | `StatusEvent` (without `ts`) | `202` — lets the in-sandbox agent publish SPEC §8.1 status events |
 
 `command` in `StartProcess` is `string` (run via `bash -lc` in the project dir)
-or `string[]` (exec directly). `display: true` sets `DISPLAY=$THEONE_DISPLAY`.
+or `string[]` (exec directly). `display: true` sets `DISPLAY=$THEONE_DISPLAY` and `ELECTRON_DISABLE_SANDBOX=1` (the sandbox cannot run Chromium's setuid sandbox; `spec.env` may override it).
 CORS allows `GET, POST, DELETE` with `Authorization, Content-Type` and exposes
 `Content-Disposition, X-Content-SHA256`.
 
@@ -363,6 +388,8 @@ CORS allows `GET, POST, DELETE` with `Authorization, Content-Type` and exposes
 | `/v1/processes/:id/logs/stream` | server → client `ProcessLogStreamMessage`: `{type:"log", line: LogLine}` · `{type:"exit", code}` (replays last 200 lines first) |
 | `/v1/builds/:id/logs/stream` | `LogStreamMessage`: first `{type:"build", build}`, then the replay, `log` lines, `build` on every state/stage change, `exit` |
 | `/v1/agent/runs/:id/stream` | server → client `{type:"event", event: AgentRunEvent}` · `{type:"run", run: AgentRun}` (replays prior events first) |
+| `/v1/android/link` | host daemon → controller (host dials out): JSON `AndroidLinkHostMessage` `hello` · `emulator` · `refuse` · `pong`; controller → host `AndroidLinkSandboxMessage` `open {streamId}` · `ping` (every 20 s). A newer link closes the older with 4000 |
+| `/v1/android/link/streams/:id` | **binary** raw adb bytes between the sandbox tunnel connection `:id` (`adb_…`) and the host emulator's adbd; opened by the host after `open`, within 10 s |
 | `/v1/display/vnc` | **binary** RFB bridge to `THEONE_VNC_HOST:THEONE_VNC_PORT` (echo `Sec-WebSocket-Protocol: binary` when offered; used by noVNC) |
 
 Upgrades fail with 401 (missing/used/expired ticket), 404 (unknown target) or
@@ -416,7 +443,7 @@ type AgentContextFile = { name: string /* relative to .agent, e.g. "projects/app
                           truncated: boolean; content: string };
 type AgentContext = { files: AgentContextFile[] };
 
-type Framework = "expo" | "react-native" | "electron" | "vite" | "next" | "node" | "android" | "python" | "unknown";
+type Framework = "expo" | "react-native" | "electron" | "vite" | "next" | "node" | "android" | "python" | "flutter" | "unknown";  // flutter: pubspec.yaml with `sdk: flutter`, no package.json
 type PackageManager = "bun" | "pnpm" | "yarn" | "npm";
 type BuildTarget = "electron-linux" | "electron-windows" | "android-apk" | "web" | "script";
 type BuildProfile = "debug" | "release";
@@ -424,6 +451,7 @@ type GitSummary = { branch: string | null; dirty: boolean; ahead: number; behind
                     lastCommit: { sha: string; subject: string; date: string } | null };
 type Project = { id: string; name: string; path: string; framework: Framework;
                  packageManager: PackageManager | null; scripts: string[];
+                 dependenciesInstalled: boolean | null;  // false: deps declared, node_modules missing
                  buildTargets: BuildTarget[]; git: GitSummary | null;
                  confidential: boolean;  // confidential: name is always the id, never package.json's
                  claudeAccountId: string | null };  // null: the default Claude account
@@ -569,7 +597,36 @@ type ServerEvent =
   | { type: "project.deleted"; id: string }  // ProjectId moved out by DELETE /v1/projects/:id
   | { type: "stt.updated"; stt: SttStatus }  // PUT /v1/stt changed the profile
   | { type: "sync.updated"; request: SyncRequest }  // a sync request was created, claimed, completed, cancelled or timed out
-  | { type: "sync.changed"; projectId: string };  // the sync-back baseline moved (push, ack or get)
+  | { type: "sync.changed"; projectId: string }  // the sync-back baseline moved (push, ack or get)
+  | { type: "app.updated"; run: AppRun };  // an app run changed state
+
+// App runs and the host Android emulator: full rules in app-runs-and-emulator.md
+type RunTarget = "web-dev" | "expo-device" | "expo-web" | "expo-android" | "rn-android"
+               | "flutter-web" | "flutter-linux" | "flutter-android" | "electron-dev" | "test";
+type AppRunState = "starting" | "ready" | "failed" | "stopped" | "exited";
+type AppRunAction = "reload" | "restart" | "focus";
+type AppViewer =
+  | { kind: "url"; url: string | null; localUrl: string }
+  | { kind: "deeplink"; devClientUrl: string | null; expoGoUrl: string; manifestUrl: string }
+  | { kind: "display" } | { kind: "android"; serial: string } | { kind: "none" };
+type RunTargetInfo = { target: RunTarget; label: string; available: boolean; reason: string | null;
+                       viewer: AppViewer["kind"]; actions: AppRunAction[] };
+type AppRun = { id: string /* app_ */; projectId: string; target: RunTarget; state: AppRunState; port: number | null;
+                processIds: string[]; viewer: AppViewer | null /* set once ready */; actions: AppRunAction[];
+                error: string | null; startedAt: string; readyAt: string | null; endedAt: string | null };
+type EmulatorState = "unavailable" | "stopped" | "starting" | "running" | "stopping" | "failed";
+type EmulatorInfo = { state: EmulatorState; avd: string | null; serial: string | null; managed: boolean;
+                      isolated: boolean /* in its own netns; sandbox android targets need it */;
+                      width: number | null; height: number | null; startedAt: string | null; error: string | null };
+type AndroidLinkInfo = { configured: boolean; sandboxUrl: string | null; connected: boolean; lastError: string | null };
+type EmulatorIsolationMode = "netns" | "none"; // EMULATOR_ISOLATION_MODES, THEONE_EMULATOR_ISOLATION
+type HostAndroidStatus = { available: boolean; reason: string | null; sdkRoot: string | null;
+                           isolation: EmulatorIsolationMode; avds: string[];
+                           scrcpy: boolean; ffmpeg: boolean; emulator: EmulatorInfo; link: AndroidLinkInfo };
+type SandboxAndroidStatus = { linked: boolean; hostId: string | null; emulator: EmulatorInfo | null;
+                              adbSerial: string | null; adbConnected: boolean };
+// WS frames: AndroidLinkHostMessage / AndroidLinkSandboxMessage (§5.3), AndroidScreenClientMessage /
+// AndroidScreenServerMessage (§5.7)
 ```
 
 Identity resolution (controller): `viewer` comes from the Tailscale Serve headers
@@ -582,7 +639,7 @@ TCP peer) → `source: "localapi"`. `owner`, `node` and `tailnet` come from
 Every LocalAPI call has a 1.5 s timeout. The identity is informational: the bearer token
 stays the only authentication.
 
-IDs: type prefix (`prc_`, `trm_`, `bld_`, `art_`, `run_`, `inb_`, `upl_`, `sync_`) + 10 random characters of
+IDs: type prefix (`prc_`, `trm_`, `bld_`, `art_`, `run_`, `inb_`, `upl_`, `sync_`, `app_` app runs, `adb_` adb tunnel streams) + 10 random characters of
 lowercase Crockford base32 (`0-9a-z` without `i l o u`), e.g. `bld_7f3k2q9xa1`.
 Validators accept any `<prefix>[A-Za-z0-9_-]{1,64}`. Timestamps: ISO-8601 UTC strings.
 
@@ -633,18 +690,19 @@ the pages can import it). Pages post to `window.ReactNativeWebView.postMessage`
 
 | Message | From → to | Payload |
 |---|---|---|
-| `terminal-state`, `vnc-state` | page → app | `{ type, state, code? }`, `state` ∈ `connecting\|connected\|disconnected\|exited\|error`; `code` = exit code on `exited`; `vnc-state` adds `inputMode` |
-| `terminal-need-ticket`, `vnc-need-ticket` | page → app | `{ type }` (terminal adds `session`) after the page's socket dropped |
-| `vnc-action` | page → app | `{ type, action }`, `action` ∈ `browser` (the user tapped the key row's **URL** key) |
+| `terminal-state`, `vnc-state`, `android-state` | page → app | `{ type, state, code?, reason? }`, `state` ∈ `connecting\|connected\|disconnected\|exited\|error`; `code` = exit code on `exited`; `vnc-state` adds `inputMode`; `reason` on `disconnected` (e.g. the host's `error` message such as `The emulator is not running`) |
+| `terminal-need-ticket`, `vnc-need-ticket`, `android-need-ticket` | page → app | `{ type }` (terminal adds `session`) after the page's socket dropped |
+| `vnc-action` | page → app | `{ type, action }`, `action` ∈ `browser\|paste` (the user tapped the key row's **URL** or **Paste** key) |
 | `theone-reconnect` | app → page | native: injected `window.theone.reconnect(ticket)`; web: `postMessage({ type: "theone-reconnect", ticket })` to the frame |
 | `theone-input-mode` | app → page | `window.theone.setInputMode(mode)` / `{ type, mode }`, `mode` ∈ `trackpad\|touch`; switches without reconnecting (VNC page only) |
-| `theone-insets` | app → page | `window.theone.setInsets({ top, bottom })` / `{ type, top, bottom }`, CSS px ≥ 0 covered by the app's floating chrome (VNC page only) |
+| `theone-insets` | app → page | `window.theone.setInsets({ top, bottom })` / `{ type, top, bottom }`, CSS px ≥ 0 covered by the app's floating chrome (VNC and Android pages) |
+| `theone-paste` | app → page | `window.theone.paste(text)` / `{ type, text }`, the phone clipboard's non-empty text; the VNC page sets it as the remote clipboard and types it into the focused field (VNC page only) |
 
 The app verifies the sender origin (the sandbox base URL), answers `*-need-ticket`
 with a fresh ticket (automatically, up to 4 times with backoff, and again when the app
 returns to the foreground), and never reconnects after `exited` or `error`.
 `viewOnly=1` in the VNC fragment disables input. Pages validate every app → page call and
-ignore malformed ones; `window.theone` always has all three methods (no-ops where a page
+ignore malformed ones; `window.theone` always has all four methods (no-ops where a page
 does not support them).
 
 VNC page input: `input=trackpad|touch` in the fragment (default `trackpad`), then
@@ -655,8 +713,14 @@ click, two-finger tap = right click, two-finger drag = wheel, tap then press-and
 left-button drag; noVNC gets synthetic mouse/wheel events on its canvas. **touch**:
 noVNC's own touch gestures act under the finger and no pointer is drawn. Embedded (any
 host), the page hides its own top bar (the app shows status) and starts the key row with
-**⌨** (toggle the phone keyboard) and **URL** (posts `vnc-action`); `theone-insets` pads
+**⌨** (toggle the phone keyboard), **URL** and **Paste** (post `vnc-action`; view-only keeps only **URL**); `theone-insets` pads
 the screen below the app's header (`top`) and the key row above its bottom chrome (`bottom`).
+
+Android page (`/ui/android` on the host daemon, fragment `ticket`, optional `maxSize`): pointer
+events are touches (multi-touch, pointer ids 0..9) in the last `meta`/`size` space, the wheel
+scrolls, the bottom bar is ◁ ○ ▢ ⌨ ⟳ (back, home, recents, keyboard, rotate). Embedded, it hides
+its top bar; `theone-insets` pads the screen (`top`) and the bottom bar (`bottom`). A host `error`
+message ends the socket and is reported as `disconnected` with `reason`.
 
 ### 5.7 Host shell API (`theone-controller host serve`)
 
@@ -679,6 +743,15 @@ changes). Neither is accepted where the other is expected.
 | DELETE | `/v1/terminals/:id` | session | — | `TerminalInfo` (SIGHUP to the group) |
 | WS | `/v1/terminals/:id/stream?ticket=` | ticket | §5.3 terminal frames | scrollback replay, survives disconnects; an attached stream stays open after its session expires |
 | GET | `/ui/terminal` | — | — | the controller's xterm page |
+| GET | `/v1/android` | session | — | `HostAndroidStatus`; a missing tool gives `available: false` + `reason`, never an error; `isolation` is the daemon's mode, `emulator.isolated` whether the current emulator runs in its own netns (a non-isolated one is not linked: streams get `refuse`) |
+| POST | `/v1/android/emulator` | session | `StartEmulator { avd, coldBoot?, wipeData? }` | `202 EmulatorInfo` (`starting`); 409 unless `stopped`/`failed`; 404 unknown AVD; 503 not `available` |
+| DELETE | `/v1/android/emulator` | session | — | `EmulatorInfo` (`stopping`, then `stopped`; the isolated emulator's namespace is swept and its runtime dir removed) |
+| POST | `/v1/android/link` | session | `LinkSandbox { sandboxUrl (http/https, no userinfo or fragment), token }` | `200 AndroidLinkInfo`; stored in `state.json` as `androidLink`, the daemon (re)connects to the sandbox's `/v1/android/link` |
+| DELETE | `/v1/android/link` | session | — | `AndroidLinkInfo` (cleared, link closed) |
+| WS | `/v1/android/screen?ticket=&maxSize=` | ticket | client → daemon `AndroidScreenClientMessage` `touch` · `scroll` · `key` · `text` · `rotate`; daemon → client `AndroidScreenServerMessage` `meta` · `size` · `error` + binary JPEG frames | the emulator screen via scrcpy; frames skipped while > 512 KiB is buffered; one session shared by all viewers, sized by the first viewer's `maxSize` (default 1280, at least 160) — later viewers get that size; query checked before the ticket is used; per-viewer pointer ids, lifted when a viewer leaves |
+| GET | `/ui/android` | — | — | the emulator screen page (fragment `#ticket=…&maxSize=…`, same bridge as `/ui/vnc`) |
+
+Android emulator details (scrcpy session, link protocol, adb tunnel): [app-runs-and-emulator.md](app-runs-and-emulator.md) §2.
 
 ## 6. Supervision & persistence
 
@@ -821,10 +894,11 @@ Multi-stage `infra/docker/sandbox/Dockerfile`, build context = repo root.
 | `bun`, `jdk` | helper aliases for `oven/bun:${BUN_VERSION}` and `${JDK_IMAGE}` |
 | `controller-build` | `bun install --frozen-lockfile --filter @theone/controller` → `bun build --compile` (host arch) |
 | `base` | `${DEBIAN_IMAGE}`, tini, supervisor, sudo, coreutils + util-linux (`nice`, `ionice` for the STT profiles), git, git-lfs, curl, jq, ripgrep, fd, build-essential, python3/pip/venv/pipx, Docker CLI + compose/buildx (no daemon), Node `${NODE_MAJOR}` from nodejs.org (SHASUMS256-checked) + corepack, bun, locales, fonts, `dev` user |
-| `desktop` | TigerVNC (`Xvnc`, `vncpasswd`), openbox, xterm, x11-apps (`xwd`), x11-utils, x11-xserver-utils, xdotool, imagemagick, ffmpeg, dbus-x11, chromium, Electron runtime libs |
+| `desktop` | TigerVNC (`Xvnc`, `vncpasswd`), openbox, xterm, x11-apps (`xwd`), x11-utils, x11-xserver-utils, xdotool, imagemagick, ffmpeg, dbus-x11, chromium, Electron runtime libs, Flutter Linux desktop deps (`clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-14-dev`), wmctrl |
 | `electron` | wine (`wine`, `wine64`, `wine32:i386`, `/usr/local/bin/wine64` symlink), osslsigncode, fakeroot, dpkg-dev, rpm, mono-complete if `WITH_MONO=true` |
 | `android-sdk` | side stage: JDK copy, Android cmdline-tools (sha256-pinned), platform-tools, `platforms;${ANDROID_PLATFORM}`, `build-tools;${ANDROID_BUILD_TOOLS}`; empty dirs if `WITH_ANDROID=false` |
 | `android` | JDK → `/opt/java/openjdk`, SDK → `/opt/android-sdk` (owned by `dev`), `/etc/profile.d/theone.sh` |
+| `flutter` | with `WITH_FLUTTER=true`, the Flutter SDK cloned at tag `${FLUTTER_VERSION}` into `/opt/flutter` (owned by `dev`, on `PATH`), `flutter config --no-analytics --android-sdk /opt/android-sdk`, `flutter precache --web --linux` |
 | `whisper` | side stage: with `WITH_WHISPER=true`, whisper.cpp `v${WHISPER_CPP_VERSION}` built statically (`${WHISPER_CMAKE_ARGS}`, default `-DGGML_NATIVE=ON`) → `/opt/whisper/bin/whisper-cli`, and `ggml-<m>.bin` for each `m` in `${WHISPER_MODELS}` from huggingface.co/ggerganov/whisper.cpp with the symlink `/opt/whisper/models/ggml-model.bin` to the first; empty `/opt/whisper` otherwise |
 | `sandbox` (final, default) | Claude Code (`npm i -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}`), `/opt/whisper`, rootfs, `SPEC.md` → `/etc/theone/SPEC.md`, controller binary |
 
@@ -833,6 +907,7 @@ Build args: `DEBIAN_IMAGE` (`debian:trixie-slim`), `BUN_VERSION` (`1.4.2`), `JDK
 `NODE_MAJOR` (`24`), `NODE_VERSION` (empty = newest `24.x`), `WITH_MONO` (`true`),
 `WITH_ANDROID` (`true`), `ANDROID_CMDLINE_TOOLS_BUILD`/`_SHA256`, `ANDROID_PLATFORM`
 (`android-36`), `ANDROID_BUILD_TOOLS` (`36.0.0`), `CLAUDE_CODE_VERSION` (`latest`),
+`WITH_FLUTTER` (`true`), `FLUTTER_VERSION` (`3.47.5`),
 `WITH_WHISPER` (`true`), `WHISPER_CPP_VERSION` (`1.7.6`), `WHISPER_MODELS` (`base small`),
 `WHISPER_CMAKE_ARGS` (`-DGGML_NATIVE=ON`), `THEONE_IMAGE_VERSION` (`0.1.0`).
 
@@ -913,6 +988,12 @@ limits from `.env`, explicit `environment` lists (no `env_file`), json-file logs
   (the same xterm WebView). The host token is kept in `expo-secure-store` like sandbox
   tokens; the session lives in memory only and is dropped on **Lock**, and on expiry
   (the next request gets 401 → PIN pad again).
+* **App runs** ([app-runs-and-emulator.md](app-runs-and-emulator.md) §3): the project screen's
+  **Run** lists `RunTargetInfo`s and active `AppRun`s (live via `app.updated`) with Logs, Stop,
+  actions and **Open** per viewer (`url` in-app WebView, `deeplink` → `Linking.openURL`,
+  `display` → the display screen, `android` → the host emulator screen). The host screen adds
+  **Android emulator**: AVD picker, Start/Stop, **Open screen** (`<host>/ui/android#ticket=…`)
+  and **Link sandbox** (`POST /v1/android/link` with the active sandbox's URL and token).
 * The **Profile tab** reads the paired sandbox: Tailscale identity from `GET /v1/identity`
   (viewer, else owner, else the sandbox name; tailnet pill; a notice when the controller does not
   expose it), counts from `/v1/status`, and an activity feed merged from builds, Claude runs and

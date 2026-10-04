@@ -5,6 +5,8 @@ import {
   inputModeScript,
   insetsMessage,
   insetsScript,
+  pasteMessage,
+  pasteScript,
   isDroppedPageState,
   pageConnectionFor,
   parsePageMessage,
@@ -13,6 +15,17 @@ import {
 } from "@/features/sandbox/utils/web-bridge";
 
 describe("parsePageMessage", () => {
+  it("reads the Android screen page's messages", () => {
+    expect(parsePageMessage({ type: "android-state", state: "connected" }, "android")).toEqual({
+      page: "android",
+      kind: "state",
+      state: "connected",
+    });
+    expect(parsePageMessage({ type: "android-need-ticket" }, "android")).toEqual({ page: "android", kind: "need-ticket" });
+    expect(parsePageMessage({ type: "vnc-state", state: "connected" }, "android")).toBeNull();
+    expect(parsePageMessage({ type: "android-state", state: "error" }, "android")).toEqual({ page: "android", kind: "state", state: "error" });
+  });
+
   it("parses state, ticket and exit messages from the controller pages", () => {
     expect(parsePageMessage(JSON.stringify({ type: "vnc-state", state: "connected" }))).toEqual({
       page: "vnc",
@@ -92,11 +105,19 @@ describe("page bridge calls", () => {
   });
 
   it("does nothing on a page without the bridge", () => {
-    for (const script of [insetsScript({ top: 0, bottom: 0 }), inputModeScript("trackpad")]) {
+    for (const script of [insetsScript({ top: 0, bottom: 0 }), inputModeScript("trackpad"), pasteScript("x")]) {
       expect(script.endsWith("true;")).toBe(true);
       expect(() => new Function("window", script)({})).not.toThrow();
       expect(() => new Function("window", script)({ theone: {} })).not.toThrow();
     }
+  });
+
+  it("pastes text through window.theone, quoting it safely", () => {
+    const paste = jest.fn();
+    const text = 'https://x.dev/?q="a"</script>\n';
+    new Function("window", pasteScript(text))({ theone: { paste } });
+    expect(paste).toHaveBeenCalledWith(text);
+    expect(pasteMessage(text)).toEqual({ type: PAGE_MESSAGES.paste, text });
   });
 
   it("frames the postMessage fallbacks the pages listen for", () => {

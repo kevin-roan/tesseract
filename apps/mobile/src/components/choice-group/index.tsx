@@ -41,6 +41,7 @@ const ChoiceGroup = ({ options, selectedId, onSelect, onLongPress, scrollable = 
     return (
       <ScrollView
         horizontal
+        style={styles.scroller}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.row}
         accessibilityLabel={label}

@@ -6,11 +6,13 @@ import { confirm } from "@/lib/confirm";
 
 import { PAGE_ACTIONS } from "../utils/actions";
 import { buildMeta, buildSubtitle } from "../utils/describe";
+import { canFixBuild } from "../utils/fix-prompt";
 import { describeError } from "../utils/errors";
 import { buildTargetLabel } from "../utils/labels";
 import { buildTone, stateLabel } from "../utils/states";
 import { useArtifactDownload } from "./use-artifact-download";
 import { useLogStream } from "./use-log-stream";
+import { useFixWithAi } from "./use-fix-with-ai";
 import { useCancelBuild } from "./use-sandbox-mutations";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
 import { useBuild } from "./use-sandbox-queries";
@@ -24,6 +26,8 @@ export function useBuildDetail(buildId: string) {
   const data = build.data;
   const active = data ? !isFinalBuildState(data.state) : false;
   const { mutate } = cancelBuild;
+  const fix = useFixWithAi();
+  const { fixBuild } = fix;
 
   const cancel = useCallback(async () => {
     const confirmed = await confirm({
@@ -58,6 +62,7 @@ export function useBuildDetail(buildId: string) {
     logs,
     headerActions,
     cancelError: cancelBuild.error ? describeError(cancelBuild.error) : null,
+    fix: data && canFixBuild(data) ? { run: () => void fixBuild(data), pending: fix.pendingId === data.id, error: fix.error } : null,
     downloads,
   };
 }

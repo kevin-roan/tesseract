@@ -245,6 +245,7 @@ export class ProjectService {
       framework: facts.framework,
       packageManager: facts.packageManager,
       scripts: facts.scripts,
+      dependenciesInstalled: facts.dependenciesInstalled,
       buildTargets: facts.buildTargets,
       git: await this.git.summary(location.path),
       confidential,

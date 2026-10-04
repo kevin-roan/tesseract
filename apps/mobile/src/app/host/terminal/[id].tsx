@@ -16,7 +16,6 @@ export default function HostTerminalScreen() {
   return (
     <ScreenScaffold
       scroll={false}
-      avoidKeyboard
       header={
         <ScreenHeader
           title={terminal.title}

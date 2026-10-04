@@ -22,5 +22,8 @@
   },
   "trustedDependencies": [
     "@shopify/react-native-skia"
-  ]
+  ],
+  "dependencies": {
+    "expo-updates": "~56.0.28"
+  }
 }

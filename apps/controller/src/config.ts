@@ -1,7 +1,7 @@
 import { chmodSync, mkdirSync } from "node:fs";
 import { homedir, hostname as osHostname, tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
-import { CLAUDE_ACCOUNT_NAME_PATTERN, CLAUDE_PRIMARY_ACCOUNT_ID, DEFAULT_PORT, isValidToken, parseBaseUrl, STT_PROFILES, type SttProfile } from "@theone/protocol";
+import { CLAUDE_ACCOUNT_NAME_PATTERN, CLAUDE_PRIMARY_ACCOUNT_ID, DEFAULT_ADB_TUNNEL_PORT, DEFAULT_PORT, isValidToken, parseBaseUrl, STT_PROFILES, type SttProfile } from "@theone/protocol";
 import { isLogLevel, type LogLevel } from "./core/logger";
 import type { Env } from "./core/exec";
 
@@ -41,6 +41,12 @@ export type Config = {
   corsOrigins: string[];
   shell: string[];
   ffmpegBin: string;
+  /** adb client for `adb connect`/`disconnect` of the tunnel to the host emulator. */
+  adbBin: string;
+  /** Loopback port tunnelled to the host emulator's adbd; the adb serial is `127.0.0.1:<port>`. */
+  adbTunnelPort: number;
+  /** Flutter SDK entry point used by the `flutter-*` and Flutter `test` run targets. */
+  flutterBin: string;
   stt: SttConfig;
   push: PushConfig;
   apns: ApnsConfig;
@@ -289,6 +295,9 @@ export function loadConfig(env: Env = process.env): Config {
     corsOrigins: corsOrigins.length ? corsOrigins : ["*"],
     shell: shellCommand(env),
     ffmpegBin: read(env, "THEONE_FFMPEG_BIN") ?? "ffmpeg",
+    adbBin: read(env, "THEONE_ADB") ?? "adb",
+    adbTunnelPort: parsePort(env, "THEONE_ADB_TUNNEL_PORT", DEFAULT_ADB_TUNNEL_PORT, false),
+    flutterBin: read(env, "THEONE_FLUTTER") ?? "flutter",
     stt: sttConfig(env),
     push: pushConfig(env),
     apns: apnsConfig(env),

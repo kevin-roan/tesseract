@@ -7,6 +7,7 @@ export type HostApi = {
   reconnect: (ticket: string) => void;
   setInputMode?: (mode: InputMode) => void;
   setInsets?: (insets: PageInsets) => void;
+  paste?: (text: string) => void;
 };
 
 declare global {
@@ -55,6 +56,9 @@ export function exposeHostApi(api: HostApi): void {
       const parsed = parseInsets(insets);
       if (parsed) api.setInsets?.(parsed);
     },
+    paste: (text: unknown) => {
+      if (typeof text === "string" && text) api.paste?.(text);
+    },
   };
   window.theone = theone;
   window.addEventListener("message", (event: MessageEvent<unknown>) => {
@@ -64,5 +68,6 @@ export function exposeHostApi(api: HostApi): void {
     if (message.type === HOST_MESSAGES.reconnect) theone.reconnect(message.ticket);
     else if (message.type === HOST_MESSAGES.inputMode) theone.setInputMode(message.mode);
     else if (message.type === HOST_MESSAGES.insets) theone.setInsets(message);
+    else if (message.type === HOST_MESSAGES.paste) theone.paste(message.text);
   });
 }

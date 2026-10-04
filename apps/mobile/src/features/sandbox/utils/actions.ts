@@ -1,5 +1,6 @@
 import type { InputMode } from "@theone/protocol";
 import {
+  AppWindowIcon,
   ArrowClockwiseIcon,
   ArrowCounterClockwiseIcon,
   ArrowLineDownIcon,
@@ -77,6 +78,7 @@ export const INPUT_MODE_ACTIONS = {
 
 export const DISPLAY_ACTIONS = {
   browser: { id: "browser", icon: GlobeIcon, label: "Show the browser's page" },
+  windows: { id: "windows", icon: AppWindowIcon, label: "Show open windows" },
   rotate: { id: "rotate", icon: DeviceRotateIcon, label: "Rotate screen" },
   fullscreen: { id: "fullscreen", icon: CornersOutIcon, label: "Full screen" },
   exitFullscreen: { id: "exit-fullscreen", icon: CornersInIcon, label: "Exit full screen" },

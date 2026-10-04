@@ -2,7 +2,7 @@ import { PAGE_MESSAGES, VNC_ACTIONS, type InputMode, type VncAction } from "@the
 
 import type { PageConnection, PageInsets, PageKind, PageMessage } from "../types";
 
-const TYPE_PATTERN = /^(vnc|terminal)[-:.](state|need-ticket|exit|action)$/;
+const TYPE_PATTERN = /^(vnc|terminal|android)[-:.](state|need-ticket|exit|action)$/;
 
 const DROPPED_STATES: ReadonlySet<string> = new Set(["disconnected", "closed"]);
 
@@ -81,4 +81,12 @@ export function inputModeMessage(mode: InputMode): { type: string; mode: InputMo
 
 export function reconnectMessage(ticket: string): { type: string; ticket: string } {
   return { type: PAGE_MESSAGES.reconnect, ticket };
+}
+
+export function pasteScript(text: string): string {
+  return pageCallScript("paste", text);
+}
+
+export function pasteMessage(text: string): { type: string; text: string } {
+  return { type: PAGE_MESSAGES.paste, text };
 }

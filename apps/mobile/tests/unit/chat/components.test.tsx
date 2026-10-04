@@ -71,6 +71,26 @@ describe("<ChatComposer />", () => {
     expect(composer.voice.discard).toHaveBeenCalled();
   });
 
+  it("asks whether a new chat gets a project and what to call it", async () => {
+    const composer = chatComposerState({ newProject: { visible: true, name: "my-site", hint: "Created as /workspace/projects/my-site" } });
+    await render(<ChatComposer composer={composer} placeholder="Message" />);
+    expect(screen.getByText("Created as /workspace/projects/my-site")).toBeOnTheScreen();
+    await fireEvent.changeText(screen.getByDisplayValue("my-site"), "blog");
+    expect(composer.newProject.setName).toHaveBeenCalledWith("blog");
+    await fireEvent.press(screen.getByText("Create project"));
+    expect(composer.newProject.create).toHaveBeenCalled();
+    await fireEvent.press(screen.getByText("Chat without a project"));
+    expect(composer.newProject.skip).toHaveBeenCalled();
+  });
+
+  it("shows a dismissible transcription notice", async () => {
+    const composer = chatComposerState({ notice: "Gemini unavailable — used native transcription: quota" });
+    await render(<ChatComposer composer={composer} placeholder="Message" />);
+    expect(screen.getByText("Gemini unavailable — used native transcription: quota")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByLabelText("Dismiss"));
+    expect(composer.dismissNotice).toHaveBeenCalled();
+  });
+
   it("starts voice from the mic and lists draft attachments", async () => {
     const composer = chatComposerState({
       attachments: {

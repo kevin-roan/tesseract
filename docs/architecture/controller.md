@@ -471,6 +471,12 @@ store tokens and the service only logs at `debug` ([runbook](../runbooks/live-ac
   `127.0.0.1:$THEONE_CHROMIUM_DEBUG_PORT` (1.5 s timeout) and returns the `page` tabs
   with a `phoneUrl` whose loopback host is replaced by the sandbox Tailscale address
   (blueprint §5.2). No endpoint means `{ available: false, tabs: [] }`.
+- `GET /v1/display/windows` runs `wmctrl -lp` and `xprop -root _NET_ACTIVE_WINDOW`,
+  then `xprop -id <id> WM_CLASS _NET_WM_WINDOW_TYPE _NET_WM_STATE` per window (all with
+  `DISPLAY=$THEONE_DISPLAY`, 3 s timeout each), and keeps what a taskbar would show.
+  `POST …/:id/activate` (`wmctrl -ia`) and `POST …/:id/close` (`wmctrl -ic`, or
+  `xdotool windowkill` with `force`) only act on a window in that list, so the id
+  can't name the dock or the root window.
 - `WS /v1/display/vnc` opens a TCP socket to Xvnc per WebSocket and copies
   bytes both ways (binary frames). It echoes `Sec-WebSocket-Protocol: binary`
   when offered. Either side closing closes the other.
@@ -537,7 +543,7 @@ Repositories are treated as hostile input:
   repository's config gets empty `clean`/`smudge`/`process` and
   `required=false`, so listing a project never runs commands from its
   `.git/config` or attributes.
-- Children never see `THEONE_TOKEN`, `THEONE_VNC_PASSWORD` or `THEONE_STT_API_KEY`. This prevents
+- Children never see `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, `THEONE_STT_API_KEY` or `GEMINI_API_KEY`. This prevents
   accidental leaks only: code running as `dev` can still read the token file
   and the controller's `/proc/<pid>/environ` ([security-model](security-model.md#same-user-limit)).
 

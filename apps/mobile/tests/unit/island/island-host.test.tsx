@@ -4,8 +4,9 @@ import { TheOneClient } from "@theone/client";
 
 import IslandHost from "@/features/island/components/island-host";
 import { useIslandStore } from "@/features/island/store/island-store";
+import { useSettingsStore } from "@/features/settings/store/settings-store";
 
-import { __reset as resetIsland, startActivity } from "../../mocks/theone-island";
+import { __emitAction, __reset as resetIsland, startActivity } from "../../mocks/theone-island";
 import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../sandbox/helpers";
 
 const mockNav = { agentRun: jest.fn(), sandboxHub: jest.fn(), newAgentRun: jest.fn() };
@@ -34,6 +35,7 @@ beforeEach(() => {
   seedActiveSandbox();
   resetIsland();
   useIslandStore.getState().reset();
+  useSettingsStore.setState({ islandPlacement: "bottomRight", liveActivity: true });
   for (const fn of Object.values(fake)) fn.mockReset();
   fake.listAgentRuns.mockResolvedValue([sampleAgentRun]);
   fake.listProcesses.mockResolvedValue([sampleProcess]);
@@ -60,9 +62,8 @@ describe("<IslandHost />", () => {
 
   it("collapsed capsule opens into the card with runs, commands, usage and actions", async () => {
     await renderHost();
-    const capsule = await screen.findByTestId("island-capsule");
-    expect(screen.getByText("Claude is working")).toBeOnTheScreen();
-    expect(screen.getByText("2 tasks")).toBeOnTheScreen();
+    const capsule = await screen.findByTestId("island-orb");
+    expect(screen.getByLabelText("Claude is working, 2 tasks")).toBeOnTheScreen();
 
     await fireEvent.press(capsule);
     expect(screen.getByTestId("island-card")).toBeOnTheScreen();
@@ -76,7 +77,7 @@ describe("<IslandHost />", () => {
     expect(mockNav.agentRun).toHaveBeenCalledWith(sampleAgentRun.id);
     expect(useIslandStore.getState().expanded).toBe(false);
 
-    await fireEvent.press(screen.getByTestId("island-capsule"));
+    await fireEvent.press(screen.getByTestId("island-orb"));
     await fireEvent.press(screen.getByLabelText("Cancel dev"));
     expect(fake.stopProcess).toHaveBeenCalledWith(sampleProcess.id);
     await fireEvent.press(screen.getByLabelText("Stop Build the Windows installer"));
@@ -86,19 +87,37 @@ describe("<IslandHost />", () => {
 
   it("dismisses on the backdrop and opens the capture flow from the card", async () => {
     await renderHost();
-    await fireEvent.press(await screen.findByTestId("island-capsule"));
+    await fireEvent.press(await screen.findByTestId("island-orb"));
     await fireEvent.press(screen.getByLabelText("Dismiss"));
     expect(screen.queryByTestId("island-card")).toBeNull();
 
-    await fireEvent.press(screen.getByTestId("island-capsule"));
+    await fireEvent.press(screen.getByTestId("island-orb"));
     await fireEvent.press(screen.getByLabelText("Capture"));
     expect(useIslandStore.getState().captureOpen).toBe(true);
     expect(screen.queryByTestId("island-host")).toBeNull();
   });
 
+  it("stops a command or a run from the Live Activity stop button", async () => {
+    await renderHost();
+    await screen.findByTestId("island-orb");
+    await act(async () => __emitAction({ action: "stop", runId: sampleProcess.id }));
+    await waitFor(() => expect(fake.stopProcess).toHaveBeenCalledWith(sampleProcess.id));
+    expect(fake.cancelAgentRun).not.toHaveBeenCalled();
+
+    await act(async () => __emitAction({ action: "stop", runId: sampleAgentRun.id }));
+    await waitFor(() => expect(fake.cancelAgentRun).toHaveBeenCalledWith(sampleAgentRun.id));
+  });
+
+  it("leaves running work to the system island when the orb is hidden", async () => {
+    useSettingsStore.setState({ islandPlacement: "hidden" });
+    await renderHost();
+    await waitFor(() => expect(fake.listAgentRuns).toHaveBeenCalled());
+    expect(screen.queryByTestId("island-host")).toBeNull();
+  });
+
   it("starts the live activity for running work", async () => {
     await renderHost();
-    await screen.findByTestId("island-capsule");
+    await screen.findByTestId("island-orb");
     await act(async () => {
       jest.useFakeTimers();
       jest.advanceTimersByTime(1500);

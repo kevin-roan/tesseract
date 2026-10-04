@@ -12,6 +12,9 @@ export type ForceParam = { force?: boolean };
 export type AgentRunFilter = { projectId?: string; archived?: boolean };
 export type TerminalPageParams = { ticket: string; session: string };
 export type VncPageParams = { ticket: string; password?: string | null };
+export type AppRunFilter = { projectId?: string };
+export type AndroidScreenFilter = { maxSize?: number };
+export type AndroidScreenParams = { ticket: string; maxSize?: number };
 
 const segment = (value: string) => encodeURIComponent(value);
 const api = (path: string) => `${API_PREFIX}${path}`;
@@ -69,6 +72,9 @@ export const restPaths = {
   display: () => api("/display"),
   displayScreenshot: () => api("/display/screenshot"),
   displayBrowser: () => api("/display/browser"),
+  displayWindows: () => api("/display/windows"),
+  displayWindowActivate: (id: string) => api(`/display/windows/${segment(id)}/activate`),
+  displayWindowClose: (id: string) => api(`/display/windows/${segment(id)}/close`),
   agentRuns: (query?: AgentRunFilter) => api(`/agent/runs${buildQuery(query)}`),
   agentRunsArchive: () => api("/agent/runs/archive"),
   agentRunsDelete: () => api("/agent/runs/delete"),
@@ -80,6 +86,14 @@ export const restPaths = {
   events: () => api("/events"),
   hostLock: () => api("/host/lock"),
   hostUnlock: () => api("/host/unlock"),
+  projectRunTargets: (id: string) => api(`/projects/${segment(id)}/run-targets`),
+  projectAppRuns: (id: string) => api(`/projects/${segment(id)}/app-runs`),
+  appRuns: (query?: AppRunFilter) => api(`/app-runs${buildQuery(query)}`),
+  appRun: (id: string) => api(`/app-runs/${segment(id)}`),
+  appRunActions: (id: string) => api(`/app-runs/${segment(id)}/actions`),
+  android: () => api("/android"),
+  androidEmulator: () => api("/android/emulator"),
+  androidLink: () => api("/android/link"),
 } as const;
 
 export const wsPaths = {
@@ -89,11 +103,15 @@ export const wsPaths = {
   buildLogStream: (id: string) => api(`/builds/${segment(id)}/logs/stream`),
   agentRunStream: (id: string) => api(`/agent/runs/${segment(id)}/stream`),
   vnc: () => api("/display/vnc"),
+  androidLink: () => api("/android/link"),
+  androidLinkStream: (streamId: string) => api(`/android/link/streams/${segment(streamId)}`),
+  androidScreen: (query?: AndroidScreenFilter) => api(`/android/screen${buildQuery(query)}`),
 } as const;
 
 export const uiPaths = {
   terminal: (params?: TerminalPageParams) => `${UI_PREFIX}/terminal${buildFragment(params)}`,
   vnc: (params?: VncPageParams) => `${UI_PREFIX}/vnc${buildFragment(params)}`,
+  android: (params?: AndroidScreenParams) => `${UI_PREFIX}/android${buildFragment(params)}`,
 } as const;
 
 /** Server-side route patterns (Hono/Express `:param` syntax), keyed like the builders above. */
@@ -151,6 +169,9 @@ export const routePatterns = {
     display: api("/display"),
     displayScreenshot: api("/display/screenshot"),
     displayBrowser: api("/display/browser"),
+    displayWindows: api("/display/windows"),
+    displayWindowActivate: api("/display/windows/:id/activate"),
+    displayWindowClose: api("/display/windows/:id/close"),
     agentRuns: api("/agent/runs"),
     agentRunsArchive: api("/agent/runs/archive"),
     agentRunsDelete: api("/agent/runs/delete"),
@@ -162,6 +183,14 @@ export const routePatterns = {
     events: api("/events"),
     hostLock: api("/host/lock"),
     hostUnlock: api("/host/unlock"),
+    projectRunTargets: api("/projects/:id/run-targets"),
+    projectAppRuns: api("/projects/:id/app-runs"),
+    appRuns: api("/app-runs"),
+    appRun: api("/app-runs/:id"),
+    appRunActions: api("/app-runs/:id/actions"),
+    android: api("/android"),
+    androidEmulator: api("/android/emulator"),
+    androidLink: api("/android/link"),
   },
   ws: {
     events: api("/events"),
@@ -170,9 +199,13 @@ export const routePatterns = {
     buildLogStream: api("/builds/:id/logs/stream"),
     agentRunStream: api("/agent/runs/:id/stream"),
     vnc: api("/display/vnc"),
+    androidLink: api("/android/link"),
+    androidLinkStream: api("/android/link/streams/:id"),
+    androidScreen: api("/android/screen"),
   },
   ui: {
     terminal: `${UI_PREFIX}/terminal`,
     vnc: `${UI_PREFIX}/vnc`,
+    android: `${UI_PREFIX}/android`,
   },
 } as const;

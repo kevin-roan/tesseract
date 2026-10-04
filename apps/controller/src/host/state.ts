@@ -1,6 +1,8 @@
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { generateToken } from "../auth/token";
 
+export type AndroidLinkConfig = { sandboxUrl: string; token: string };
+
 export type HostState = {
   token: string | null;
   pinHash: string | null;
@@ -8,14 +10,21 @@ export type HostState = {
   failures: number;
   lockedUntil: string | null;
   lockouts: number;
+  androidLink: AndroidLinkConfig | null;
 };
 
 const DIR_MODE = 0o700;
 const FILE_MODE = 0o600;
 
-const EMPTY: HostState = { token: null, pinHash: null, pinSetAt: null, failures: 0, lockedUntil: null, lockouts: 0 };
+const EMPTY: HostState = { token: null, pinHash: null, pinSetAt: null, failures: 0, lockedUntil: null, lockouts: 0, androidLink: null };
 
 const text = (value: unknown) => (typeof value === "string" && value ? value : null);
+function androidLink(value: unknown): AndroidLinkConfig | null {
+  if (typeof value !== "object" || value === null) return null;
+  const sandboxUrl = text((value as Record<string, unknown>).sandboxUrl);
+  const token = text((value as Record<string, unknown>).token);
+  return sandboxUrl && token ? { sandboxUrl, token } : null;
+}
 const count = (value: unknown) => (typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0);
 
 /** state.json (0600) in a 0700 directory; every change rewrites it atomically. */
@@ -41,6 +50,7 @@ export class HostStateStore {
       failures: count(parsed.failures),
       lockedUntil: text(parsed.lockedUntil),
       lockouts: count(parsed.lockouts),
+      androidLink: androidLink(parsed.androidLink),
     };
   }
 
@@ -67,6 +77,10 @@ export class HostStateStore {
 
   rotateToken(): string {
     return this.update((current) => ({ ...current, token: generateToken() })).token ?? "";
+  }
+
+  setAndroidLink(link: AndroidLinkConfig | null): void {
+    this.update((current) => ({ ...current, androidLink: link }));
   }
 
   async setPin(pin: string, now: Date = new Date()): Promise<void> {

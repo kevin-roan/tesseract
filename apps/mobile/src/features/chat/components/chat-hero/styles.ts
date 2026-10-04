@@ -19,10 +19,5 @@ export default function createStyles(theme: Theme) {
     subtitle: {
       textAlign: "center",
     },
-    mark: {
-      flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-    },
   });
 }

@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { useBuilds } from "@/features/sandbox/hooks/use-sandbox-queries";
 import { useCancelAgentRun, useCancelBuild, useStopProcess } from "@/features/sandbox/hooks/use-sandbox-mutations";
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
+import { useSettingsStore } from "@/features/settings/store/settings-store";
 
 import { useIslandStore } from "../store/island-store";
 import { capsuleTitle } from "../utils/format";
@@ -17,7 +18,11 @@ export type IslandHostState = ReturnType<typeof useIslandHost>;
 
 export function useIslandHost() {
   const state = useIslandState();
-  useLiveActivity(state);
+  const placement = useSettingsStore((store) => store.islandPlacement);
+  const dock = useSettingsStore((store) => store.islandDock);
+  const setDock = useSettingsStore((store) => store.setIslandDock);
+  const liveActivity = useSettingsStore((store) => store.liveActivity);
+  useLiveActivity(state, liveActivity);
   useIslandActions();
   const { attachQueuedShared } = useIslandDispatch();
   const nav = useSandboxNavigation();
@@ -36,7 +41,7 @@ export function useIslandHost() {
   const attachOpen = useIslandStore((store) => store.attachOpen);
 
   const live = hasLiveWork(state);
-  const visible = live || sharedCount > 0 || hasDraft;
+  const visible = (live && placement !== "hidden") || sharedCount > 0 || hasDraft;
   const now = useNow(visible && expanded);
 
   const collapse = useCallback(() => setExpanded(false), [setExpanded]);
@@ -73,6 +78,8 @@ export function useIslandHost() {
     visible: visible && !captureOpen && !attachOpen,
     expanded,
     title,
+    dock,
+    moveTo: setDock,
     count: liveCount(state),
     sharedCount,
     stoppingRunId: cancelRun.isPending ? cancelRun.variables ?? null : null,

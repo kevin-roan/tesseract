@@ -7,6 +7,7 @@ import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
 import Section from "@/components/section";
+import AppRunsSection from "@/features/app-runs/components/app-runs-section";
 import ProjectClaudeAccount from "@/features/claude-account/components/project-claude-account";
 import ArtifactCard from "@/features/sandbox/components/artifact-card";
 import BuildCard from "@/features/sandbox/components/build-card";
@@ -19,6 +20,7 @@ import SyncSection from "@/features/sandbox/components/sync-section";
 import WebLinkCard from "@/features/sandbox/components/web-link-card";
 import { useProjectDetail } from "@/features/sandbox/hooks/use-project-detail";
 import { GIT_PREVIEW } from "@/features/sandbox/utils/constants";
+import { PROJECT_COPY } from "@/features/sandbox/utils/project-content";
 import { firstParam } from "@/features/sandbox/utils/routes";
 
 export default function ProjectScreen() {
@@ -28,21 +30,23 @@ export default function ProjectScreen() {
 
   if (!project) {
     return (
-      <ScreenScaffold header={<ScreenHeader title="Project" onBack={detail.nav.back} />}>
+      <ScreenScaffold header={<ScreenHeader title={PROJECT_COPY.title} onBack={detail.nav.back} />}>
         {detail.error ? (
           <EmptyState
             icon={FolderSimpleIcon}
-            title="Couldn't load this project"
+            title={PROJECT_COPY.failedTitle}
             message={detail.error}
-            actionLabel="Try again"
+            actionLabel={PROJECT_COPY.retry}
             onAction={detail.retry}
           />
         ) : (
-          <EmptyState loading title="Loading project…" />
+          <EmptyState loading title={PROJECT_COPY.loading} />
         )}
       </ScreenScaffold>
     );
   }
+
+  const logView = <LogView lines={detail.logs.lines} emptyLabel={detail.logs.error ?? PROJECT_COPY.waitingForOutput} inline />;
 
   return (
     <ScreenScaffold
@@ -65,7 +69,7 @@ export default function ProjectScreen() {
 
       {project.git ? (
         <MotionItem index={0}>
-          <Section title="Git">
+          <Section title={PROJECT_COPY.sections.git}>
             <GitCard
               summary={project.git}
               details={detail.git}
@@ -88,7 +92,7 @@ export default function ProjectScreen() {
 
       {detail.sites.length > 0 ? (
         <MotionItem index={2}>
-          <Section title="Websites" testID="project-sites">
+          <Section title={PROJECT_COPY.sections.sites} testID="project-sites">
             {detail.siteError ? (
               <MotionItem>
                 <Notice tone="danger" message={detail.siteError} />
@@ -104,24 +108,45 @@ export default function ProjectScreen() {
       ) : null}
 
       <MotionItem index={3}>
-        <Section title="Scripts" isEmpty={detail.scripts.length === 0} emptyLabel="No package scripts found.">
-          {detail.scripts.map(({ script, command, bookmarked }) => (
+        <AppRunsSection
+          runs={detail.appRuns}
+          logsOpen={(id) => detail.logsOpen(id, "app")}
+          onToggleLogs={(id) => detail.toggleLogs(id, "app")}
+          logs={logView}
+        />
+      </MotionItem>
+
+      <MotionItem index={3}>
+        <Section title={PROJECT_COPY.sections.scripts} isEmpty={detail.scripts.length === 0} emptyLabel={PROJECT_COPY.empty.scripts}>
+          {detail.needsInstall ? (
+            <Notice message={PROJECT_COPY.needsInstall} />
+          ) : null}
+          {detail.scripts.map(({ script, command, bookmarked, run }) => (
             <ScriptCard
               key={script}
               script={script}
               command={command}
               preferDisplay={detail.preferDisplay}
               onRun={(display) => detail.runScript(script, display)}
+              onShowDisplay={detail.nav.display}
               running={detail.runningScript === script}
               bookmarked={bookmarked}
               onToggleBookmark={() => detail.toggleBookmark(script)}
+              run={run}
+              logsOpen={detail.logsOpen(run?.id, "script")}
+              onToggleLogs={run ? () => detail.toggleLogs(run.id, "script") : undefined}
+              logs={logView}
+              onStop={run ? () => detail.stopProcess(run.id) : undefined}
+              stopping={run !== undefined && detail.stoppingId === run.id}
+              onFix={run ? () => void detail.fixProcess(run) : undefined}
+              fixing={run !== undefined && detail.fixingId === run.id}
             />
           ))}
         </Section>
       </MotionItem>
 
       <MotionItem index={4}>
-        <Section title="Build" isEmpty={detail.targets.length === 0} emptyLabel="No build targets detected.">
+        <Section title={PROJECT_COPY.sections.build} isEmpty={detail.targets.length === 0} emptyLabel={PROJECT_COPY.empty.build}>
           {detail.targets.map((option) => (
             <BuildTargetCard
               key={option.target}
@@ -134,35 +159,29 @@ export default function ProjectScreen() {
       </MotionItem>
 
       <MotionItem index={5}>
-        <Section title="Processes" isEmpty={detail.processes.length === 0} emptyLabel="Nothing has run here yet.">
+        <Section title={PROJECT_COPY.sections.processes} isEmpty={detail.processes.length === 0} emptyLabel={PROJECT_COPY.empty.processes}>
           {detail.processes.map((process) => (
             <MotionItem key={process.id}>
               <ProcessCard
                 process={process}
                 onStop={() => detail.stopProcess(process.id)}
                 stopping={detail.stoppingId === process.id}
-                onToggleLogs={() => detail.toggleLogs(process.id)}
-                logsOpen={detail.logsId === process.id}
+                onToggleLogs={() => detail.toggleLogs(process.id, "process")}
+                logsOpen={detail.logsOpen(process.id, "process")}
+                logs={logView}
                 site={detail.siteFor(process.id)}
                 onOpenSite={detail.openSite}
+                onFix={() => void detail.fixProcess(process)}
+                fixing={detail.fixingId === process.id}
               />
             </MotionItem>
           ))}
-          {detail.logsId ? (
-            <MotionItem key={`logs-${detail.logsId}`}>
-              <LogView
-                lines={detail.logs.lines}
-                emptyLabel={detail.logs.error ?? "Waiting for output…"}
-                inline
-              />
-            </MotionItem>
-          ) : null}
         </Section>
       </MotionItem>
 
       {detail.builds.length > 0 ? (
         <MotionItem index={6}>
-          <Section title="Recent builds">
+          <Section title={PROJECT_COPY.sections.builds}>
             {detail.builds.map((build) => (
               <MotionItem key={build.id}>
                 <BuildCard build={build} onPress={() => detail.nav.build(build.id)} />
@@ -173,7 +192,7 @@ export default function ProjectScreen() {
       ) : null}
 
       <MotionItem index={7}>
-        <Section title="Artifacts" isEmpty={detail.artifacts.length === 0} emptyLabel="No artifacts yet.">
+        <Section title={PROJECT_COPY.sections.artifacts} isEmpty={detail.artifacts.length === 0} emptyLabel={PROJECT_COPY.empty.artifacts}>
           {detail.downloads.error ? (
             <MotionItem>
               <Notice tone="danger" message={detail.downloads.error} />

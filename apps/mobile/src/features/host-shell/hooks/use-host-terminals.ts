@@ -6,6 +6,7 @@ import { TERMINAL_DEFAULT_SIZE } from "@/features/sandbox/utils/constants";
 
 import { hostKeys } from "../api/query-keys";
 import { useHostSessionStore } from "../store/host-session-store";
+import { HOST_LOCKED } from "../utils/content";
 import { isSessionLost } from "../utils/errors";
 import { useHostClient } from "./use-host-client";
 
@@ -18,7 +19,7 @@ export function useHostTerminals() {
   const terminals = useQuery({
     queryKey: key,
     queryFn: () => {
-      if (!sessionClient) throw new Error("The host shell is locked.");
+      if (!sessionClient) throw new Error(HOST_LOCKED);
       return sessionClient.listTerminals();
     },
     enabled: sessionClient !== null,
@@ -41,7 +42,7 @@ export function useHostTerminals() {
 
   const create = useMutation({
     mutationFn: () => {
-      if (!sessionClient) throw new Error("The host shell is locked.");
+      if (!sessionClient) throw new Error(HOST_LOCKED);
       return sessionClient.createTerminal({ kind: "shell", ...TERMINAL_DEFAULT_SIZE });
     },
     onSuccess: replace,
@@ -50,7 +51,7 @@ export function useHostTerminals() {
 
   const close = useMutation({
     mutationFn: (id: string) => {
-      if (!sessionClient) throw new Error("The host shell is locked.");
+      if (!sessionClient) throw new Error(HOST_LOCKED);
       return sessionClient.closeTerminal(id);
     },
     onSuccess: replace,

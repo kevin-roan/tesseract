@@ -119,6 +119,16 @@ replay history, so after a reconnect the app refetches.
 
 Details: [display-vnc.md](display-vnc.md).
 
+### App runs and the Android emulator
+
+`POST /v1/projects/:id/app-runs` starts a project's app as tracked processes and
+reports how the phone opens it once ready: a URL (web, Expo web, Flutter web), an
+Expo deep link, the sandbox display (Flutter Linux, Electron) or the Android
+emulator. The emulator runs on the host (KVM) under the host shell daemon, which
+dials the sandbox (`/v1/android/link`) so the sandbox's adb reaches it as
+`127.0.0.1:15555`, and streams its screen to the phone (`/ui/android`).
+Details: [app-runs-and-emulator.md](app-runs-and-emulator.md).
+
 ### Build
 
 ```mermaid

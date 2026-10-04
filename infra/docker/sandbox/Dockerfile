@@ -2,7 +2,8 @@
 
 # TheOne sandbox image. Build context = repository root:
 #   docker build -f infra/docker/sandbox/Dockerfile --target sandbox -t theone/sandbox:dev .
-# Stages: controller-build, base, desktop, electron, android-sdk, android, whisper, sandbox (default).
+# Stages: controller-build, base, desktop, electron, android-sdk, android, flutter-sdk, flutter,
+# whisper, sandbox (default).
 
 ARG DEBIAN_IMAGE=debian:trixie-slim
 ARG BUN_VERSION=1.4.2
@@ -110,10 +111,11 @@ RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked 
     --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
  && apt-get install -y --no-install-recommends \
-      chromium dbus-x11 ffmpeg imagemagick libasound2t64 libatk-bridge2.0-0t64 libcups2t64 libdrm2 \
-      libgbm1 libgtk-3-0t64 libnotify4 libnss3 libsecret-1-0 libxkbcommon0 libxrandr2 libxss1 \
-      libxtst6 openbox python3-xdg tigervnc-standalone-server tigervnc-tools x11-apps \
-      x11-utils x11-xserver-utils xauth xdg-utils xdotool xterm \
+      chromium clang cmake dbus-x11 ffmpeg imagemagick libasound2t64 libatk-bridge2.0-0t64 \
+      libcups2t64 libdrm2 libgbm1 libgtk-3-0t64 libgtk-3-dev liblzma-dev libnotify4 libnss3 \
+      libsecret-1-0 libstdc++-14-dev libxkbcommon0 libxrandr2 libxss1 libxtst6 ninja-build \
+      openbox pkg-config python3-xdg tigervnc-standalone-server tigervnc-tools tint2 wmctrl \
+      x11-apps x11-utils x11-xserver-utils xauth xdg-utils xdotool xterm \
  && install -d -m 1777 /tmp/.X11-unix \
  && sed -i -e '/debian-menu.xml/d' -e '0,/<number>4<\/number>/s//<number>1<\/number>/' /etc/xdg/openbox/rc.xml
 ENV THEONE_DISPLAY=:1 \
@@ -176,6 +178,22 @@ RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked 
     "$sdkmanager" --sdk_root="${ANDROID_HOME}" --list_installed; \
     rm -rf /tmp/cmdline-tools /tmp/cmdline-tools.zip
 
+# Flutter SDK, shallow-cloned at a release tag. WITH_FLUTTER=false still yields an empty
+# /opt/flutter so the COPY of the flutter stage stays valid.
+FROM ${DEBIAN_IMAGE} AS flutter-sdk
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+ARG DEBIAN_FRONTEND=noninteractive
+ARG WITH_FLUTTER=true
+ARG FLUTTER_VERSION=3.47.5
+RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+    if [ "${WITH_FLUTTER}" != "true" ]; then mkdir -p /opt/flutter; exit 0; fi; \
+    set -eux; \
+    rm -f /etc/apt/apt.conf.d/docker-clean; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends ca-certificates git; \
+    git clone --depth 1 --branch "${FLUTTER_VERSION}" https://github.com/flutter/flutter.git /opt/flutter
+
 # whisper.cpp for local speech-to-text of voice notes (POST /v1/transcriptions). On by
 # default; WITH_WHISPER=false still yields an empty /opt/whisper so the COPY below stays valid.
 # WHISPER_MODELS lists the ggml models to download (space-separated): the STT profiles use
@@ -220,10 +238,28 @@ ENV JAVA_HOME=/opt/java/openjdk \
     ANDROID_HOME=/opt/android-sdk \
     ANDROID_SDK_ROOT=/opt/android-sdk
 ENV PATH=${JAVA_HOME}/bin:${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools
-# Copied late on purpose: an edit must not invalidate the heavy base/desktop/electron layers.
+
+FROM android AS flutter
+ARG DEV_UID
+ARG DEV_GID
+COPY --from=flutter-sdk --chown=${DEV_UID}:${DEV_GID} /opt/flutter /opt/flutter
+ENV PATH=/opt/flutter/bin:${PATH}
+# The Dart SDK and the web/linux artifacts land in /opt/flutter/bin/cache (image), the
+# settings in /home/dev (seeded into a new home volume only).
+RUN git config --system --add safe.directory /opt/flutter
+USER dev
+RUN if [ ! -x /opt/flutter/bin/flutter ]; then exit 0; fi; \
+    set -eux; \
+    flutter config --no-analytics --no-cli-animations; \
+    if [ -n "$(ls -A /opt/android-sdk)" ]; then flutter config --android-sdk /opt/android-sdk; fi; \
+    flutter precache --web --linux; \
+    dart --disable-analytics; \
+    flutter --version
+USER root
+# Copied late on purpose: an edit must not invalidate the heavy toolchain layers.
 COPY infra/docker/sandbox/rootfs/etc/profile.d/theone.sh /etc/profile.d/theone.sh
 
-FROM android AS sandbox
+FROM flutter AS sandbox
 # Claude Code is updated by rebuilding with a new CLAUDE_CODE_VERSION (its auto-updater is
 # disabled), so it is installed after the toolchain stages: a bump rebuilds only this layer.
 ARG CLAUDE_CODE_VERSION=latest
@@ -254,7 +290,8 @@ ENV THEONE_IMAGE_VERSION=${THEONE_IMAGE_VERSION} \
     THEONE_HOST=0.0.0.0 \
     THEONE_PORT=7700 \
     THEONE_DATA_DIR=/workspace/.agent/controller \
-    THEONE_VNC_HOST=127.0.0.1
+    THEONE_VNC_HOST=127.0.0.1 \
+    THEONE_ADB_TUNNEL_PORT=15555
 EXPOSE 7700 5901
 WORKDIR /workspace
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \

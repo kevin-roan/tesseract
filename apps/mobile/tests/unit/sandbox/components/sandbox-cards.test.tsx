@@ -130,9 +130,19 @@ describe("resource cards", () => {
     await render(<ScriptCard script="start" command="npm run start" preferDisplay={false} onRun={onRun} />);
 
     await fireEvent.press(screen.getByLabelText("Run start"));
-    await fireEvent.press(screen.getByLabelText("Show on display"));
+    await fireEvent.press(screen.getByLabelText("Run on display"));
     await fireEvent.press(screen.getByLabelText("Run start"));
     expect(onRun.mock.calls).toEqual([[false], [true]]);
+  });
+
+  it("jumps to the display while a script runs on it", async () => {
+    const onShowDisplay = jest.fn();
+    const run = { ...sampleProcess, display: true, state: "running" as const, exitCode: null };
+    await render(<ScriptCard script="start" command="npm run start" preferDisplay run={run} onRun={jest.fn()} onShowDisplay={onShowDisplay} />);
+
+    expect(screen.queryByLabelText("Run on display")).toBeNull();
+    await fireEvent.press(screen.getByLabelText("Show start on the display"));
+    expect(onShowDisplay).toHaveBeenCalled();
   });
 
   it("renders shell and Claude terminals and closes only running ones", async () => {

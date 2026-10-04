@@ -9,6 +9,10 @@ export default function createStyles(theme: Theme) {
       alignItems: "center",
       gap: theme.spacing.sm,
     },
+    // ScrollView defaults to flexGrow: 1, which stretches the row down a growing parent.
+    scroller: {
+      flexGrow: 0,
+    },
     wrap: {
       flexWrap: "wrap",
     },

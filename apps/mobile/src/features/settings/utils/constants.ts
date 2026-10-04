@@ -1,13 +1,22 @@
+import { Platform } from "react-native";
 import type { InputMode, SttProfile, SttProvider } from "@theone/protocol";
 import {
+  ArrowDownLeftIcon,
+  ArrowDownRightIcon,
+  ArrowUpLeftIcon,
+  ArrowUpRightIcon,
+  BellRingingIcon,
+  BellSlashIcon,
   CloudIcon,
   CpuIcon,
   CursorClickIcon,
+  EyeSlashIcon,
   HandPointingIcon,
   type Icon,
 } from "phosphor-react-native";
 
 import type { ChoiceOption } from "@/components/choice-group";
+import type { IslandPlacement } from "@/features/island/types";
 
 export const SETTINGS_STORE_NAME = "theone.settings";
 export const SETTINGS_STORE_VERSION = 1;
@@ -26,6 +35,21 @@ export const INPUT_MODE_OPTIONS: ChoiceOption[] = [
   { id: "trackpad", label: "Trackpad", icon: CursorClickIcon },
   { id: "touch", label: "Touch", icon: HandPointingIcon },
 ] satisfies (ChoiceOption & { id: InputMode })[];
+
+const SYSTEM_ACTIVITY = Platform.OS === "ios" ? "Dynamic Island" : "notification";
+
+export const ISLAND_PLACEMENT_OPTIONS: ChoiceOption[] = [
+  { id: "topLeft", label: "Top left", icon: ArrowUpLeftIcon },
+  { id: "topRight", label: "Top right", icon: ArrowUpRightIcon },
+  { id: "bottomLeft", label: "Bottom left", icon: ArrowDownLeftIcon },
+  { id: "bottomRight", label: "Bottom right", icon: ArrowDownRightIcon },
+  { id: "hidden", label: `${Platform.OS === "ios" ? "Dynamic Island" : "Notification"} only`, icon: EyeSlashIcon },
+] satisfies (ChoiceOption & { id: IslandPlacement })[];
+
+export const LIVE_ACTIVITY_OPTIONS: ChoiceOption[] = [
+  { id: "on", label: "On", icon: BellRingingIcon },
+  { id: "off", label: "Off", icon: BellSlashIcon },
+];
 
 export const SETTINGS_COPY = {
   title: "Settings",
@@ -54,4 +78,9 @@ export const SETTINGS_COPY = {
   displayTitle: "Remote display",
   inputModeLabel: "Input mode",
   inputModeFootnote: "How touches drive the sandbox desktop.",
+  islandTitle: "Live work indicator",
+  islandPlacementLabel: "In-app position",
+  islandPlacementFootnote: "Where the running-work orb starts in the app. Drag it anywhere and it docks to the nearest edge.",
+  liveActivityLabel: Platform.OS === "ios" ? "Live Activity" : "Ongoing notification",
+  liveActivityFootnote: `Shows runs and commands in the ${SYSTEM_ACTIVITY} and on the lock screen.`,
 } as const;

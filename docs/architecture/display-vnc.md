@@ -28,9 +28,10 @@ flowchart LR
 | Piece | Details |
 |---|---|
 | Xvnc (TigerVNC) | X server and VNC server in one process. Display `:1` (`THEONE_DISPLAY`), geometry `1600x900` (`THEONE_DISPLAY_GEOMETRY`), depth 24, RFB on 5901, `-SecurityTypes VncAuth -AlwaysShared -UseBlacklist=0 -nolisten tcp` (every client connects from 127.0.0.1, so the per-host blacklist would lock everyone out after a few pre-auth hang-ups). The entrypoint writes the password hash to `/home/dev/.vnc/passwd`, from `THEONE_VNC_PASSWORD` or else a random 8-character password generated once and kept in `/home/dev/.vnc/password` |
-| openbox | a lightweight window manager, so windows get decorations, focus and move/resize. Its autostart opens Chromium maximized on `about:blank` so web projects can be checked on the display. Right-clicking the desktop opens a menu with Terminal (xterm) and Chromium (to reopen it after closing) |
-| supervisord | runs `xvnc` and `openbox` as `dev`, restarts either if it dies |
-| Controller | `GET /v1/display` (status and password; `vnc.available` means an RFB banner was read within 1 s), `GET /v1/display/screenshot` (PNG), `GET /v1/display/browser` (Chromium tabs via DevTools on `127.0.0.1:9222`, see `/etc/chromium.d/theone`), `WS /v1/display/vnc` (binary bridge), and static `/ui/vnc` (noVNC) |
+| openbox | a lightweight window manager, so windows get decorations, focus and move/resize. Its autostart starts the dock and opens Chromium maximized on `about:blank` so web projects can be checked on the display. Right-clicking the desktop opens a menu with Terminal (xterm) and Chromium (to reopen it after closing) |
+| tint2 (dock) | a 44 px panel along the bottom (`/etc/xdg/tint2/tint2rc`, or the user's `~/.config/tint2/tint2rc` when present): **+ Terminal** and **+ Chromium** buttons, a taskbar with every window (click to focus, click the focused one to minimize, click a minimized one to restore, middle or right click to close) and a clock. It reserves its strip, so maximized windows stop above it |
+| supervisord | runs `xvnc` and `openbox` (which starts tint2) as `dev`, restarts either if it dies |
+| Controller | `GET /v1/display` (status and password; `vnc.available` means an RFB banner was read within 1 s), `GET /v1/display/screenshot` (PNG), `GET /v1/display/browser` (Chromium tabs via DevTools on `127.0.0.1:9222`, see `/etc/chromium.d/theone`), `GET /v1/display/windows` and `POST /v1/display/windows/:id/activate` / `close` (list, focus/restore and close application windows with wmctrl/xprop/xdotool), `WS /v1/display/vnc` (binary bridge), and static `/ui/vnc` (noVNC) |
 
 ## The phone path (noVNC through the controller)
 
@@ -133,7 +134,10 @@ black, since there is no GPU.
 - No GPU. Rendering is software (llvmpipe/SwiftShader), fine for UI checks and slow for 3D.
 - One display for everything. Two GUI apps share the screen, and openbox
   stacks their windows.
-- Clipboard: the phone viewer has no clipboard integration, and there is no file transfer.
+- Clipboard: phone to sandbox only. The key bar's **Paste** key reads the phone's
+  clipboard, sets it as the sandbox clipboard, and types it into the focused field
+  (`theone-paste` / `window.theone.paste`). Sandbox to phone is not synced, and
+  there is no file transfer.
 
 Troubleshooting (black screen, `display.available: false`, authentication
 failures): [runbooks/troubleshooting.md](../runbooks/troubleshooting.md#display-and-vnc).

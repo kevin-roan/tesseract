@@ -71,13 +71,11 @@ beforeEach(() => {
 describe("HomeScreen", () => {
   afterEach(() => jest.useRealTimers());
 
-  it("greets by time of day and opens the drawer and inbox", async () => {
-    jest.useFakeTimers();
-    jest.setSystemTime(new Date(2026, 0, 15, 19, 0));
+  it("shows the headline and opens the drawer and inbox", async () => {
     mockHome.mockReturnValue(home());
     await render(<HomeScreen />);
 
-    expect(screen.getByText("Good evening, Ada Lovelace")).toBeOnTheScreen();
+    expect(screen.getByRole("header", { name: "Get things done." })).toBeOnTheScreen();
     await fireEvent.press(screen.getByLabelText("Open menu"));
     expect(drawerOpen).toHaveBeenCalled();
     await fireEvent.press(screen.getByLabelText("Open inbox, 2 unread"));

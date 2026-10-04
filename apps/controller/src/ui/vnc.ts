@@ -143,8 +143,8 @@ function pressKey(key: KeyId | VncHostKeyId): void {
     toggleKeyboard();
     return;
   }
-  if (key === "browser") {
-    postToHost({ type: HOST_MESSAGES.vncAction, action: "browser" });
+  if (key === "browser" || key === "paste") {
+    postToHost({ type: HOST_MESSAGES.vncAction, action: key });
     return;
   }
   if (key === "ctrl-c") {
@@ -158,8 +158,18 @@ function pressKey(key: KeyId | VncHostKeyId): void {
   sendKeysym(keysym, code);
 }
 
-const hostKeys = embedded ? VNC_HOST_KEYS.filter((key) => !viewOnly || key.id !== "keyboard") : [];
+const hostKeys = embedded ? VNC_HOST_KEYS.filter((key) => !viewOnly || key.id === "browser") : [];
 const keyBar = new KeyBar<KeyId | VncHostKeyId>(requireElement("[data-keys]"), [...hostKeys, ...KEY_BAR], pressKey);
+
+/**
+ * Text from the phone's clipboard: becomes the sandbox clipboard (for a later Ctrl+V)
+ * and is typed into the focused field, which works even where X selections don't.
+ */
+function paste(text: string): void {
+  if (!rfb || viewOnly) return;
+  rfb.clipboardPasteFrom(text);
+  for (const char of text.replace(/\r\n?/g, "\n")) rfb.sendKey(keysymForChar(char), null);
+}
 
 function resetTextInput(): void {
   textInput.value = TEXT_INPUT_SENTINEL;
@@ -192,7 +202,7 @@ keyboardButton.textContent = MESSAGES.keyboard;
 keyboardButton.hidden = viewOnly;
 keyboardButton.addEventListener("click", toggleKeyboard);
 
-exposeHostApi({ reconnect: connect, setInputMode, setInsets: applyInsets });
+exposeHostApi({ reconnect: connect, setInputMode, setInsets: applyInsets, paste });
 setInputMode(inputMode);
 resetTextInput();
 

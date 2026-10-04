@@ -53,7 +53,6 @@ function TerminalSession({ id }: { id: string }) {
   return (
     <ScreenScaffold
       scroll={false}
-      avoidKeyboard
       header={
         <ScreenHeader
           title={terminal.title}

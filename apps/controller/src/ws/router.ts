@@ -17,6 +17,8 @@ const ROUTES = (
     ["buildLogs", routePatterns.ws.buildLogStream, "build"],
     ["agentRun", routePatterns.ws.agentRunStream, "agentRun"],
     ["vnc", routePatterns.ws.vnc, null],
+    ["androidLink", routePatterns.ws.androidLink, null],
+    ["androidLinkStream", routePatterns.ws.androidLinkStream, "adbStream"],
   ] as const
 ).map(([kind, pattern, idKind]) => ({
   kind,
@@ -68,6 +70,9 @@ function assertTarget(services: Services, match: RouteMatch): void {
     case "agentRun":
       services.agentRuns.get(id);
       return;
+    case "androidLinkStream":
+      if (!services.android.hasPendingStream(id)) throw new HttpError("not_found", `ADB stream ${id} not found`);
+      return;
     default:
       return;
   }
@@ -98,6 +103,8 @@ export async function upgradeWebSocket(
       if (offersSubprotocol(request, VNC_WS_SUBPROTOCOL)) headers["Sec-WebSocket-Protocol"] = VNC_WS_SUBPROTOCOL;
     } else if (match.kind === "events") {
       data = { kind: "events", cleanup: null };
+    } else if (match.kind === "androidLink") {
+      data = { kind: "androidLink", session: null, cleanup: null };
     } else {
       data = { kind: match.kind, id: match.id ?? "", cleanup: null };
     }

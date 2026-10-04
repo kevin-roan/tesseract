@@ -1,5 +1,15 @@
 import { HOST_PAIRING_ACTION, PAIRING_SCHEME } from "@theone/protocol";
-import { LockSimpleIcon, PlusIcon, TrashIcon } from "phosphor-react-native";
+import {
+  AndroidLogoIcon,
+  ArrowSquareOutIcon,
+  LinkBreakIcon,
+  LinkIcon,
+  LockSimpleIcon,
+  PlayIcon,
+  PlusIcon,
+  StopIcon,
+  TrashIcon,
+} from "phosphor-react-native";
 
 import type { HeaderAction } from "@/components/screen-header";
 import type { PairingFieldsContent } from "@/features/sandbox/utils/pair-content";
@@ -76,8 +86,55 @@ export const CLOSE_CONFIRM = {
   destructive: true,
 } as const;
 
+export const LINK_CONFIRM = {
+  title: "Link this sandbox?",
+  message: "The host keeps this sandbox's access token so the emulator can stay connected to it until you unlink.",
+  confirmLabel: "Link sandbox",
+} as const;
+
+export const HOST_LOCKED = "The host shell is locked.";
+
 export const PROFILE_ENTRY = {
   title: "Host shell",
   unpaired: "Not paired · PIN protected",
   paired: (name: string) => `${name} · PIN protected`,
+} as const;
+
+export const ANDROID_COPY = {
+  title: "Android emulator",
+  screenTitle: "Android",
+  emulator: "Emulator",
+  noAvd: "No AVD",
+  avdSheetTitle: "Virtual device",
+  avdFootnote: "AVDs from `emulator -list-avds` on the host.",
+  start: "Start",
+  stop: "Stop",
+  openScreen: "Open screen",
+  link: "Link sandbox",
+  unlink: "Unlink",
+  linkTitle: "Sandbox link",
+  linkMessage: "Lets the sandbox's adb, Expo, React Native and Flutter runs install on this emulator.",
+  noSandbox: "Pair a sandbox first, then link it to the emulator.",
+  notLinked: "Not linked to a sandbox",
+  adopted: "adopted",
+  isolation: { isolated: "isolated", notIsolated: "not isolated" },
+  notIsolatedTitle: "Emulator not isolated",
+  notIsolated:
+    "This emulator was started outside the app, so it shares the host's network. Stop it and start it here to link a sandbox.",
+  isolationOffTitle: "Network isolation is off",
+  isolationOff:
+    "The host runs the emulator with THEONE_EMULATOR_ISOLATION=none, so the guest can reach the host's loopback services, LAN and tailnet. Sandbox runs will not use it.",
+  linkBlocked: "Linking is disabled while the emulator is not isolated; start it from the app.",
+  unavailable: "The Android emulator is not available on this host.",
+  linkStates: { none: "Not linked", connected: "Connected", connecting: "Connecting", failed: "Disconnected" },
+  retry: "Retry",
+} as const;
+
+export const ANDROID_ICONS = {
+  emulator: AndroidLogoIcon,
+  start: PlayIcon,
+  stop: StopIcon,
+  open: ArrowSquareOutIcon,
+  link: LinkIcon,
+  unlink: LinkBreakIcon,
 } as const;

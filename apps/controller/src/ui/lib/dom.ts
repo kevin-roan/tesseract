@@ -16,3 +16,20 @@ export function applyInsets(insets: { top: number; bottom: number }): void {
   style.setProperty("--inset-top", `${insets.top}px`);
   style.setProperty("--inset-bottom", `${insets.bottom}px`);
 }
+
+/**
+ * Sizes the page to the visible area (`--viewport-height`) and pins it to the top, so a phone
+ * keyboard shrinks the page instead of covering it or scrolling it out of view.
+ */
+export function trackVisualViewport(onChange: () => void): void {
+  const viewport = window.visualViewport;
+  if (!viewport) return;
+  const sync = () => {
+    document.documentElement.style.setProperty("--viewport-height", `${viewport.height}px`);
+    if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0);
+    onChange();
+  };
+  viewport.addEventListener("resize", sync);
+  viewport.addEventListener("scroll", sync);
+  sync();
+}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, type ReactNode } from "react";
-import { Modal, Platform, Pressable, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -18,12 +18,23 @@ export type BottomSheetProps = {
   onDismissed?: () => void;
   title?: string;
   closeLabel?: string;
+  /** Lift the sheet above the keyboard, for sheets with text fields. */
+  avoidKeyboard?: boolean;
   children: ReactNode;
   testID?: string;
 };
 
 /** Modal sheet on the paper: a round close button, the title centered, and the content below. */
-const BottomSheet = ({ visible, onClose, onDismissed, title, closeLabel = "Close", children, testID }: BottomSheetProps) => {
+const BottomSheet = ({
+  visible,
+  onClose,
+  onDismissed,
+  title,
+  closeLabel = "Close",
+  avoidKeyboard = false,
+  children,
+  testID,
+}: BottomSheetProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const wasVisible = useRef(visible);
@@ -44,7 +55,7 @@ const BottomSheet = ({ visible, onClose, onDismissed, title, closeLabel = "Close
       statusBarTranslucent
       navigationBarTranslucent
     >
-      <View style={styles.root} testID={testID}>
+      <KeyboardAvoidingView style={styles.root} behavior="padding" enabled={avoidKeyboard} testID={testID}>
         <Pressable style={styles.scrim} onPress={onClose} accessibilityRole="button" accessibilityLabel={closeLabel} />
         <Animated.View entering={entering}>
           <SafeAreaView edges={["bottom"]} style={styles.sheet} accessibilityViewIsModal>
@@ -53,7 +64,7 @@ const BottomSheet = ({ visible, onClose, onDismissed, title, closeLabel = "Close
             {children}
           </SafeAreaView>
         </Animated.View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };

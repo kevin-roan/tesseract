@@ -1,0 +1,56 @@
+import { useMemo } from "react";
+import type { AppRunAction, RunTarget } from "@theone/protocol";
+
+import { describeError } from "@/features/sandbox/utils/errors";
+import { confirm } from "@/lib/confirm";
+import { resetSettled } from "@/lib/mutations";
+
+import { STOP_RUN_CONFIRM } from "../utils/content";
+import { RUN_TARGETS_REFRESH_INTERVAL_MS } from "../utils/constants";
+import { appRunEntries } from "../utils/runs";
+import { useAppRunAction, useStartAppRun, useStopAppRun } from "./use-app-run-mutations";
+import { useAppRunList, useRunTargets } from "./use-app-run-queries";
+import { useOpenAppRun } from "./use-open-app-run";
+
+export function useAppRuns(projectId: string) {
+  const targets = useRunTargets(projectId, RUN_TARGETS_REFRESH_INTERVAL_MS);
+  const runs = useAppRunList(projectId);
+  const start = useStartAppRun();
+  const stop = useStopAppRun();
+  const action = useAppRunAction();
+  const opener = useOpenAppRun();
+
+  const entries = useMemo(() => appRunEntries(targets.data ?? [], runs.data ?? []), [targets.data, runs.data]);
+
+  const clearOutcomes = () => resetSettled([start, stop, action]);
+  const confirmStop = async (runId: string) => {
+    if (!(await confirm(STOP_RUN_CONFIRM))) return;
+    clearOutcomes();
+    stop.mutate(runId);
+  };
+
+  const failure = start.error ?? stop.error ?? action.error ?? targets.error ?? runs.error;
+
+  return {
+    entries,
+    loading: targets.isLoading,
+    error: failure ? describeError(failure) : null,
+    start: (target: RunTarget) => {
+      clearOutcomes();
+      start.mutate({ projectId, target });
+    },
+    startingTarget: start.isPending ? (start.variables?.target ?? null) : null,
+    stop: (runId: string) => void confirmStop(runId),
+    stoppingId: stop.isPending ? (stop.variables ?? null) : null,
+    runAction: (runId: string, kind: AppRunAction) => {
+      clearOutcomes();
+      action.mutate({ runId, action: kind });
+    },
+    pendingAction: action.isPending ? (action.variables ?? null) : null,
+    open: opener.open,
+    deeplinkFailureFor: opener.failureFor,
+    copyManifest: opener.copy,
+  };
+}
+
+export type AppRunsState = ReturnType<typeof useAppRuns>;

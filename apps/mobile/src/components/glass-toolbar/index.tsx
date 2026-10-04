@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from "react";
-import { View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from "react-native";
+import { ScrollView, View, type LayoutChangeEvent, type StyleProp, type ViewStyle } from "react-native";
 import { ArrowLeftIcon } from "phosphor-react-native";
 
 import { Glass } from "@/components/glass";
@@ -25,7 +25,8 @@ export type GlassToolbarProps = {
 
 /**
  * Compact floating pill for full-bleed screens: back, a two-line title and a
- * row of icon actions on one liquid-glass surface. Position it yourself.
+ * row of icon actions on one liquid-glass surface. The actions scroll sideways
+ * when they don't fit, so the title keeps its width. Position it yourself.
  */
 const GlassToolbar = ({ title, subtitle, accessory, onBack, actions, onLayout, style, testID }: GlassToolbarProps) => {
   const theme = useAppTheme();
@@ -48,7 +49,19 @@ const GlassToolbar = ({ title, subtitle, accessory, onBack, actions, onLayout, s
             </ThemedText>
           ) : null}
         </View>
-        {actions?.map((action) => <ToolbarButton key={action.id} {...action} />)}
+        {actions?.length ? (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.actions}
+            testID={testID ? `${testID}-actions` : undefined}
+            contentContainerStyle={styles.actionsContent}
+          >
+            {actions.map((action) => (
+              <ToolbarButton key={action.id} {...action} />
+            ))}
+          </ScrollView>
+        ) : null}
       </Glass>
     </View>
   );

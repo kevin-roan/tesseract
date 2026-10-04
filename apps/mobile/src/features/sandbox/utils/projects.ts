@@ -25,6 +25,12 @@ export function scriptCommand(packageManager: PackageManager | null, script: str
   return `${packageManager ?? DEFAULT_PACKAGE_MANAGER} run ${shellWord(script)}`;
 }
 
+/** The command the Run button starts: installs dependencies first when `node_modules` is missing. */
+export function runScriptCommand(project: Pick<Project, "packageManager" | "dependenciesInstalled">, script: string): string {
+  const run = scriptCommand(project.packageManager, script);
+  return project.dependenciesInstalled === false ? `${project.packageManager ?? DEFAULT_PACKAGE_MANAGER} install && ${run}` : run;
+}
+
 export function commandLabel(command: ProcessCommand): string {
   return typeof command === "string" ? command : command.join(" ");
 }

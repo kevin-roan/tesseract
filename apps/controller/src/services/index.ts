@@ -12,6 +12,8 @@ import { openDatabase } from "../db/database";
 import { Repositories } from "../db/repositories";
 import { VERSION } from "../version";
 import { AgentRunService } from "./agent-runs";
+import { AndroidLinkService, type AndroidLinkOptions } from "./android-link";
+import { AppRunService, type AppRunOptions } from "./app-runs";
 import { ArtifactService } from "./artifacts";
 import { BrowserService } from "./browser";
 import { BuildService } from "./builds";
@@ -50,6 +52,8 @@ export type ServiceOptions = {
   push?: PushOptions;
   liveActivity?: LiveActivityOptions;
   syncBack?: SyncBackOptions;
+  appRuns?: AppRunOptions;
+  androidLink?: AndroidLinkOptions;
 };
 
 export type Services = {
@@ -83,6 +87,8 @@ export type Services = {
   liveActivity: LiveActivityService;
   claudeHooks: ClaudeHookService;
   ports: PortService;
+  android: AndroidLinkService;
+  appRuns: AppRunService;
   usage: UsageService;
   uploads: UploadService;
   transcriptions: TranscriptionService;
@@ -152,6 +158,8 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
   const claudeHooks = new ClaudeHookService(config, inbox, agentRuns, terminals, logger.child("hooks"));
   const ports = new PortService(config, processes, identity);
   const browser = new BrowserService(config, identity);
+  const android = new AndroidLinkService(config, logger.child("android"), options.androidLink);
+  const appRuns = new AppRunService(config, hub, processes, projects, display, android, identity, logger.child("app-runs"), options.appRuns);
   const usage = new UsageService(config, { runs: () => [...agentRuns.list(), ...agentRuns.list({ archived: true })], terminals: () => terminals.list() });
   const liveActivity = new LiveActivityService(
     config,
@@ -180,7 +188,8 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
   const close = () => {
     closing ??= (async () => {
       syncBack.stop();
-      await Promise.allSettled([builds.shutdown(), processes.shutdown(), terminals.shutdown(), agentRuns.shutdown()]);
+      await appRuns.shutdown();
+      await Promise.allSettled([android.shutdown(), builds.shutdown(), processes.shutdown(), terminals.shutdown(), agentRuns.shutdown()]);
       await runtime.stop();
       await liveActivity.stop();
       logs.flushAll();
@@ -220,6 +229,8 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
     liveActivity,
     claudeHooks,
     ports,
+    android,
+    appRuns,
     usage,
     uploads,
     transcriptions,

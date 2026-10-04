@@ -1,7 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
-import type { BuildProfile, BuildTarget } from "@theone/protocol";
+import type { BuildProfile, BuildTarget, ProcessInfo } from "@theone/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
+import { useAppRuns } from "@/features/app-runs/hooks/use-app-runs";
 import { useProjectClaudeAccount } from "@/features/claude-account/hooks/use-project-claude-account";
 
 import { PROJECT_ACTIONS } from "../utils/actions";
@@ -9,18 +10,21 @@ import { newestFirst } from "../utils/collections";
 import { LIST_PREVIEW_LIMIT } from "../utils/constants";
 import { describeError } from "../utils/errors";
 import { buildTargetOptions, frameworkLabel } from "../utils/labels";
-import { gitSummaryLabel, prefersDisplay, scriptCommand } from "../utils/projects";
+import { gitSummaryLabel, prefersDisplay, runScriptCommand, scriptCommand } from "../utils/projects";
 import { processSite, projectSites } from "../utils/sites";
 import { useArtifactDownload } from "./use-artifact-download";
 import { useLogStream } from "./use-log-stream";
 import { useOpenSite } from "./use-open-site";
 import { useConfirmedStop } from "./use-confirmed-stop";
+import { useFixWithAi } from "./use-fix-with-ai";
 import { useStartBuild, useStartProcess } from "./use-sandbox-mutations";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
 import { useArtifacts, useBuilds, useListeningPorts, useProcesses, useProject, useProjectGit } from "./use-sandbox-queries";
 import { useSandboxRefresh } from "./use-sandbox-refresh";
 import { useScriptBookmarks } from "./use-script-bookmarks";
 import { useSyncBack } from "./use-sync-back";
+
+type LogsHost = "script" | "process" | "app";
 
 export function useProjectDetail(projectId: string, initialProcessId: string | null) {
   const nav = useSandboxNavigation();
@@ -37,8 +41,21 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
   const downloads = useArtifactDownload();
   const sync = useSyncBack(projectId);
   const bookmarks = useScriptBookmarks(projectId);
-  const [logsId, setLogsId] = useState<string | null>(initialProcessId);
-  const logs = useLogStream(logsId ? { kind: "process", id: logsId } : null);
+  const appRuns = useAppRuns(projectId);
+  const fix = useFixWithAi();
+  const [openLogs, setOpenLogs] = useState<{ id: string; in: LogsHost } | null>(
+    initialProcessId ? { id: initialProcessId, in: "process" } : null,
+  );
+  const logs = useLogStream(openLogs ? { kind: "process", id: openLogs.id } : null);
+  const toggleLogs = useCallback(
+    (id: string, host: LogsHost) =>
+      setOpenLogs((current) => (current?.id === id && current.in === host ? null : { id, in: host })),
+    [],
+  );
+  const logsOpen = useCallback(
+    (id: string | undefined, host: LogsHost) => id !== undefined && openLogs?.id === id && openLogs.in === host,
+    [openLogs],
+  );
   const { refreshing, refresh } = useSandboxRefresh();
   const data = project.data;
   const claudeAccount = useProjectClaudeAccount(data);
@@ -47,8 +64,8 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     (script: string, display: boolean) => {
       if (!data) return;
       startProcess.mutate(
-        { projectId, command: scriptCommand(data.packageManager, script), name: script, display },
-        { onSuccess: (process) => setLogsId(process.id) },
+        { projectId, command: runScriptCommand(data, script), name: script, display },
+        { onSuccess: (process) => setOpenLogs({ id: process.id, in: "script" }) },
       );
     },
     [data, projectId, startProcess],
@@ -69,20 +86,26 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     [nav, projectId],
   );
 
+  const sortedProcesses = useMemo(() => newestFirst(processes.data ?? [], (process) => process.startedAt), [processes.data]);
+
   const scripts = useMemo(() => {
+    const latest = new Map<string, ProcessInfo>();
+    for (const process of sortedProcesses) if (!latest.has(process.name)) latest.set(process.name, process);
     const all = (data?.scripts ?? []).map((script) => ({
       script,
       command: scriptCommand(data?.packageManager ?? null, script),
       bookmarked: bookmarks.isBookmarked(script),
+      run: latest.get(script),
     }));
     return [...all.filter((entry) => entry.bookmarked), ...all.filter((entry) => !entry.bookmarked)];
-  }, [data, bookmarks]);
+  }, [data, bookmarks, sortedProcesses]);
 
   const sites = useMemo(() => projectSites(ports.data?.ports, projectId), [ports.data, projectId]);
 
   const siteFor = useCallback((processId: string) => processSite(ports.data?.ports, processId), [ports.data]);
 
-  const actionError = startProcess.error ?? startBuild.error ?? stopProcess.error;
+  const requestError = startProcess.error ?? startBuild.error ?? stopProcess.error;
+  const actionError = requestError ? describeError(requestError) : fix.error;
 
   return {
     nav,
@@ -105,18 +128,22 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     siteFor,
     openSite: openSite.open,
     siteError: openSite.error,
-    processes: newestFirst(processes.data ?? [], (process) => process.startedAt),
+    needsInstall: data?.dependenciesInstalled === false,
+    processes: sortedProcesses,
     stopProcess: stopProcess.stop,
     stoppingId: stopProcess.stoppingId,
-    logsId,
-    toggleLogs: (id: string) => setLogsId((current) => (current === id ? null : id)),
+    logsOpen,
+    toggleLogs,
     logs,
     builds: newestFirst(builds.data ?? [], (job) => job.createdAt, LIST_PREVIEW_LIMIT),
     artifacts: newestFirst(artifacts.data ?? [], (artifact) => artifact.createdAt),
     downloads,
     sync,
     claudeAccount,
-    actionError: actionError ? describeError(actionError) : null,
+    appRuns,
+    fixProcess: fix.fixProcess,
+    fixingId: fix.pendingId,
+    actionError,
     refreshing,
     refresh,
   };

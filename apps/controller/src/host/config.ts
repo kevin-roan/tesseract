@@ -2,6 +2,7 @@ import { hostname, homedir } from "node:os";
 import { join } from "node:path";
 import { HOST_SHELL_PORT } from "@theone/protocol";
 import type { Env } from "../core/exec";
+import { loadAndroidConfig, type AndroidConfig } from "./android/config";
 
 export type HostConfig = {
   bind: string;
@@ -12,6 +13,7 @@ export type HostConfig = {
   hostId: string;
   home: string;
   shell: string[];
+  android: AndroidConfig;
 };
 
 export type HostOverrides = { bind?: string; port?: string };
@@ -117,5 +119,6 @@ export function loadHostConfig(env: Env, overrides: HostOverrides = {}, resolveB
     hostId: hostname(),
     home,
     shell: [env.SHELL || "bash", "-l"],
+    android: loadAndroidConfig(env),
   };
 }

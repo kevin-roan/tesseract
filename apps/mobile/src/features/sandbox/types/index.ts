@@ -44,7 +44,7 @@ export type PairingStatus = "idle" | "validating" | "error" | "paired";
 
 export type LogSource = { kind: "process" | "build"; id: string };
 
-export type PageKind = "vnc" | "terminal";
+export type PageKind = "vnc" | "terminal" | "android";
 
 export type PageMessage =
   | { page: PageKind; kind: "state"; state: string }

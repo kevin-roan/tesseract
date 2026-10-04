@@ -97,6 +97,8 @@ export async function startTestController(
     THEONE_VNC_PORT: "1",
     THEONE_CHROMIUM_DEBUG_PORT: "1",
     THEONE_CLAUDE_BIN: "/nonexistent/claude",
+    THEONE_ADB: "/nonexistent/adb",
+    THEONE_FLUTTER: "/nonexistent/flutter",
     THEONE_TAILSCALE_SOCKET: "/nonexistent/tailscaled.sock",
     CLAUDE_CONFIG_DIR: join(workspace, ".claude"),
     THEONE_SANDBOX_ID: "test-sandbox",

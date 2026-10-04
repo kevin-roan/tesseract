@@ -7,6 +7,7 @@ import * as ImagePicker from "expo-image-picker";
 import { useChatComposer } from "@/features/chat/hooks/use-chat-composer";
 import { useAgentRunScreen } from "@/features/sandbox/hooks/use-agent-run-screen";
 import { useNewAgentRun } from "@/features/sandbox/hooks/use-new-agent-run";
+import { useSettingsStore } from "@/features/settings/store/settings-store";
 import type { AgentRunStream } from "@/features/sandbox/hooks/use-agent-run-stream";
 import { confirm } from "@/lib/confirm";
 import {
@@ -51,6 +52,7 @@ const wrapper = () => createWrapper(createTestQueryClient());
 beforeEach(() => {
   resetSandboxState();
   seedActiveSandbox();
+  useSettingsStore.setState({ sttProvider: "gemini" });
   Object.values(mockRouter).forEach((fn) => fn.mockClear());
   mockConfirm.mockReset().mockResolvedValue(true);
   fake.startAgentRun.mockReset().mockResolvedValue(started);
@@ -98,6 +100,7 @@ describe("useChatComposer", () => {
     expect(result.current.primary).toBe("send");
     expect(result.current.canSend).toBe(true);
     await act(async () => result.current.send());
+    await act(async () => result.current.newProject.create());
 
     await waitFor(() => expect(onStarted).toHaveBeenCalledWith(started));
     expect(fake.createProject).toHaveBeenCalledWith({ name: "fix-the-build" });
@@ -147,7 +150,7 @@ describe("useChatComposer", () => {
   it("keeps the prompt and describes the error when starting fails", async () => {
     fake.startAgentRun.mockRejectedValue(new ApiError(409, "conflict", "Claude is already running"));
     const onStarted = jest.fn();
-    const { result } = await render({ onStarted });
+    const { result } = await render({ defaultProjectId: "electron-hello", onStarted });
 
     await act(async () => result.current.setText("go"));
     await act(async () => result.current.send());
@@ -163,7 +166,7 @@ describe("useChatComposer", () => {
   it("refuses to send while a run is starting", async () => {
     let resolve: (run: AgentRun) => void = () => undefined;
     fake.startAgentRun.mockImplementation(() => new Promise<AgentRun>((next) => (resolve = next)));
-    const { result } = await render();
+    const { result } = await render({ defaultProjectId: "electron-hello" });
 
     await act(async () => result.current.setText("go"));
     await act(async () => result.current.send());
@@ -192,20 +195,68 @@ describe("useChatComposer", () => {
     expect(fake.startAgentRun).toHaveBeenCalledTimes(1);
   });
 
-  it("creates a project named after the prompt for a new chat, skipping taken names", async () => {
-    fake.createProject
-      .mockRejectedValueOnce(new ApiError(409, "conflict", "Project where-is-it-running already exists"))
-      .mockImplementation(async ({ name }: { name: string }) => ({ project: { ...sampleProject, id: name, name } }));
+  it("asks before creating a project for a new chat, suggesting a free name from the prompt", async () => {
     const onStarted = jest.fn();
-    const { result } = await render({ onStarted });
+    const { result } = await render({ onStarted, projectOptions: [{ id: "where-is-it-running", label: "Taken" }] });
 
     await act(async () => result.current.setText("Where is it running?"));
     await act(async () => result.current.send());
 
+    expect(result.current.newProject.visible).toBe(true);
+    expect(result.current.newProject.name).toBe("where-is-it-running-2");
+    expect(fake.createProject).not.toHaveBeenCalled();
+    expect(fake.startAgentRun).not.toHaveBeenCalled();
+
+    await act(async () => result.current.newProject.setName("My Site"));
+    await act(async () => result.current.newProject.create());
+
     await waitFor(() => expect(onStarted).toHaveBeenCalled());
-    expect(fake.createProject.mock.calls).toEqual([[{ name: "where-is-it-running" }], [{ name: "where-is-it-running-2" }]]);
-    expect(fake.startAgentRun).toHaveBeenCalledWith(expect.objectContaining({ projectId: "where-is-it-running-2" }));
-    expect(result.current.projectId).toBe("where-is-it-running-2");
+    expect(fake.createProject).toHaveBeenCalledWith({ name: "My Site" });
+    expect(fake.startAgentRun).toHaveBeenCalledWith({ prompt: "Where is it running?", mode: "bypassPermissions", projectId: "My Site" });
+    expect(result.current.newProject.visible).toBe(false);
+  });
+
+  it("starts a new chat without a project when the user declines", async () => {
+    const onStarted = jest.fn();
+    const { result } = await render({ onStarted });
+
+    await act(async () => result.current.setText("hello"));
+    await act(async () => result.current.send());
+    await act(async () => result.current.newProject.skip());
+
+    await waitFor(() => expect(onStarted).toHaveBeenCalled());
+    expect(fake.createProject).not.toHaveBeenCalled();
+    expect(fake.startAgentRun).toHaveBeenCalledWith({ prompt: "hello", mode: "bypassPermissions" });
+  });
+
+  it("keeps the draft when the project question is dismissed", async () => {
+    const { result } = await render();
+
+    await act(async () => result.current.setText("hello"));
+    await act(async () => result.current.send());
+    await act(async () => result.current.newProject.close());
+
+    expect(result.current.newProject.visible).toBe(false);
+    expect(result.current.text).toBe("hello");
+    expect(fake.startAgentRun).not.toHaveBeenCalled();
+  });
+
+  it("rejects empty and taken project names in the sheet", async () => {
+    fake.createProject.mockRejectedValueOnce(new ApiError(409, "conflict", "exists"));
+    const { result } = await render();
+
+    await act(async () => result.current.setText("go"));
+    await act(async () => result.current.send());
+    await act(async () => result.current.newProject.setName("  "));
+    await act(async () => result.current.newProject.create());
+    expect(result.current.newProject.error).toBe("Enter a project name.");
+
+    await act(async () => result.current.newProject.setName("site"));
+    await act(async () => result.current.newProject.create());
+    await waitFor(() => expect(result.current.newProject.error).toBe("/workspace/projects/site already exists."));
+    expect(result.current.newProject.visible).toBe(true);
+    expect(result.current.error).toBeNull();
+    expect(fake.startAgentRun).not.toHaveBeenCalled();
   });
 
   it("keeps a resumed session without a project where it is", async () => {
@@ -217,18 +268,6 @@ describe("useChatComposer", () => {
     await waitFor(() => expect(fake.startAgentRun).toHaveBeenCalled());
     expect(fake.createProject).not.toHaveBeenCalled();
     expect(fake.startAgentRun).toHaveBeenCalledWith({ prompt: "continue", mode: "bypassPermissions", resumeSessionId: "sess-1" });
-  });
-
-  it("does not start a run when the project cannot be created", async () => {
-    fake.createProject.mockRejectedValue(new ApiError(507, "internal", "Disk full"));
-    const { result } = await render();
-
-    await act(async () => result.current.setText("go"));
-    await act(async () => result.current.send());
-
-    await waitFor(() => expect(result.current.error).toBe("Disk full"));
-    expect(fake.startAgentRun).not.toHaveBeenCalled();
-    expect(result.current.text).toBe("go");
   });
 
   it("uploads picked photos after the attach sheet closes and sends them with a default prompt", async () => {
@@ -254,6 +293,7 @@ describe("useChatComposer", () => {
     expect(result.current.canSend).toBe(true);
 
     await act(async () => result.current.send());
+    await act(async () => result.current.newProject.create());
     await waitFor(() => expect(onStarted).toHaveBeenCalled());
     expect(fake.startAgentRun).toHaveBeenCalledWith(
       { prompt: "Take a look at this image.", mode: "bypassPermissions", attachmentIds: [sampleUpload.id], projectId: "take-a-look-at-this-image" }
@@ -302,6 +342,8 @@ describe("useChatComposer", () => {
     __setRecorderStatus({ durationMillis: 2_400 });
     await act(async () => result.current.voice.stop());
 
+    await waitFor(() => expect(result.current.newProject.visible).toBe(true));
+    await act(async () => result.current.newProject.create());
     await waitFor(() => expect(onStarted).toHaveBeenCalledWith(started));
     expect(fake.createUpload).toHaveBeenCalledWith(
       expect.objectContaining({ mimeType: "audio/mp4", data: "AAAA" }),
@@ -312,6 +354,30 @@ describe("useChatComposer", () => {
       { prompt: sampleTranscription.text, mode: "bypassPermissions", attachmentIds: [sampleUpload.id], projectId: "build-the-windows-installer" }
     );
     await waitFor(() => expect(result.current.voice.phase).toBe("idle"));
+  });
+
+  it("uses the chosen provider and surfaces a Gemini fallback until dismissed", async () => {
+    __setFile("file:///cache/recording.m4a", "AAAA");
+    useSettingsStore.setState({ sttProvider: "native" });
+    fake.transcribe.mockResolvedValueOnce({ ...sampleTranscription, fallbackReason: "quota exhausted" });
+    const onStarted = jest.fn();
+    const { result } = await render({ onStarted });
+
+    await act(async () => result.current.startVoice());
+    await waitFor(() => expect(result.current.voice.phase).toBe("recording"));
+    __setRecorderStatus({ durationMillis: 2_400 });
+    await act(async () => result.current.voice.stop());
+
+    await waitFor(() => expect(result.current.newProject.visible).toBe(true));
+    await act(async () => result.current.newProject.create());
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(started));
+    expect(fake.transcribe).toHaveBeenCalledWith({ uploadId: sampleUpload.id, provider: "native" }, expect.anything());
+    await waitFor(() => expect(result.current.voice.phase).toBe("idle"));
+    expect(result.current.notice).toBe("Gemini unavailable — used native transcription: quota exhausted");
+    expect(result.current.error).toBeNull();
+
+    await act(async () => result.current.dismissNotice());
+    expect(result.current.notice).toBeNull();
   });
 
   it("ignores taps shorter than the minimum recording length", async () => {
@@ -329,7 +395,7 @@ describe("useChatComposer", () => {
   it("keeps a recording whose transcription failed so it can be retried or discarded", async () => {
     __setFile("file:///cache/recording.m4a", "AAAA");
     fake.transcribe.mockRejectedValueOnce(new ApiError(503, "unavailable", "Speech-to-text is not configured"));
-    const { result } = await render();
+    const { result } = await render({ defaultProjectId: "electron-hello" });
 
     await act(async () => result.current.startVoice());
     await waitFor(() => expect(result.current.voice.phase).toBe("recording"));

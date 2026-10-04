@@ -1,0 +1,109 @@
+# TheOne dock: a bottom panel on the virtual display (started from openbox's autostart).
+# Text buttons open a terminal or Chromium; the taskbar switches windows and restores
+# minimized ones; the clock sits on the right. Sized for a phone viewing 1600x900 scaled down.
+# Reference: https://gitlab.com/o9000/tint2/-/blob/master/doc/tint2.md
+
+# Backgrounds: 1 = panel, 2 = button and inactive task, 3 = active task, 4 = minimized task
+rounded = 0
+border_width = 0
+background_color = #12151b 100
+border_color = #000000 0
+
+rounded = 6
+border_width = 0
+background_color = #262b35 100
+border_color = #000000 0
+background_color_hover = #313744 100
+background_color_pressed = #3b4252 100
+
+rounded = 6
+border_width = 1
+background_color = #2f4a6e 100
+border_color = #5b8ad6 100
+background_color_hover = #36547c 100
+
+rounded = 6
+border_width = 1
+background_color = #12151b 100
+border_color = #313744 100
+
+# Panel
+panel_items = BBTC
+panel_size = 100% 44
+panel_margin = 0 0
+panel_padding = 8 6 8
+panel_background_id = 1
+panel_position = bottom center horizontal
+panel_layer = top
+panel_monitor = all
+wm_menu = 1
+panel_dock = 0
+strut_policy = follow_size
+autohide = 0
+font_shadow = 0
+mouse_effects = 1
+
+# Taskbar: every window on the current desktop; left click focuses or minimizes, middle or right click closes
+taskbar_mode = single_desktop
+taskbar_hide_if_empty = 0
+taskbar_padding = 0 0 6
+taskbar_background_id = 0
+taskbar_active_background_id = 0
+taskbar_name = 0
+taskbar_distribute_size = 0
+taskbar_sort_order = none
+
+task_text = 1
+task_icon = 1
+task_centered = 0
+task_maximum_size = 240 32
+task_padding = 8 4 6
+task_tooltip = 1
+task_font = DejaVu Sans 11
+task_font_color = #c9ced8 100
+task_background_id = 2
+task_active_font_color = #ffffff 100
+task_active_background_id = 3
+task_iconified_font_color = #7d8594 100
+task_iconified_background_id = 4
+task_urgent_background_id = 3
+mouse_left = toggle_iconify
+mouse_middle = close
+mouse_right = close
+mouse_scroll_up = prev_task
+mouse_scroll_down = next_task
+
+# Buttons
+button = new
+button_text = + Terminal
+button_tooltip = Open a terminal
+button_font = DejaVu Sans Bold 11
+button_font_color = #c9ced8 100
+button_padding = 10 4
+button_background_id = 2
+button_lclick_command = xterm -ls -fa "DejaVu Sans Mono" -fs 11 -bg "#1b1f27" -fg "#e6e6e6" -title Terminal
+
+button = new
+button_text = + Chromium
+button_tooltip = Open Chromium
+button_font = DejaVu Sans Bold 11
+button_font_color = #c9ced8 100
+button_padding = 10 4
+button_background_id = 2
+button_lclick_command = chromium --start-maximized --no-first-run --no-default-browser-check
+
+# Clock
+time1_format = %H:%M
+time1_font = DejaVu Sans Bold 11
+clock_font_color = #c9ced8 100
+clock_padding = 8 0
+clock_background_id = 0
+clock_tooltip = %A %d %B %Y
+
+# Tooltips
+tooltip_show_timeout = 0.5
+tooltip_hide_timeout = 0.1
+tooltip_padding = 6 4
+tooltip_background_id = 2
+tooltip_font = DejaVu Sans 10
+tooltip_font_color = #e6e6e6 100

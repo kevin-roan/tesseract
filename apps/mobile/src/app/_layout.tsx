@@ -37,6 +37,7 @@ function RootNavigator() {
             <Stack.Protected guard={paired}>
               <Stack.Screen name="(tabs)" options={{ animation: 'fade', title: 'Monolith' }} />
               <Stack.Screen name="sandbox/display" options={{ gestureEnabled: false, title: 'Display' }} />
+              <Stack.Screen name="sandbox/preview" options={{ title: 'Preview' }} />
               <Stack.Screen name="sandbox/terminal/[id]" options={{ gestureEnabled: false, title: 'Terminal' }} />
               <Stack.Screen name="sandbox/projects/new" options={{ title: 'New project' }} />
               <Stack.Screen name="sandbox/projects/[id]" options={{ title: 'Project' }} />
@@ -59,6 +60,7 @@ function RootNavigator() {
             <Stack.Screen name="pair" options={{ presentation: 'modal', title: 'Pair a sandbox' }} />
             <Stack.Screen name="host/index" options={{ title: 'Host shell' }} />
             <Stack.Screen name="host/terminal/[id]" options={{ gestureEnabled: false, title: 'Host shell' }} />
+            <Stack.Screen name="host/android" options={{ gestureEnabled: false, title: 'Android emulator' }} />
           </Stack>
           {paired ? <InboxNotifier /> : null}
           {paired ? <IslandHost /> : null}

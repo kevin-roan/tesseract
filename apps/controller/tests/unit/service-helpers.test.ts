@@ -7,6 +7,14 @@ import { artifactExtension, artifactFileName, sanitizeVersion, sha256File } from
 import { resolveRecipe } from "../../src/services/build-recipes";
 import { confidentialPrompt } from "../../src/services/confidential";
 import { parseDimensions, x11Socket } from "../../src/services/display";
+import {
+  isTaskWindow,
+  parseActiveWindow,
+  parseWindowProps,
+  parseWmctrlList,
+  sameWindowId,
+  toDisplayWindow,
+} from "../../src/services/display-windows";
 import { filterDrivers, neutralConfig, parseStatus } from "../../src/services/git";
 import { commandArgv, describeCommand } from "../../src/services/processes";
 import { detectProject, PACKAGE_JSON_MAX_BYTES, type ProjectFacts } from "../../src/services/project-detect";
@@ -243,6 +251,14 @@ describe("project detection", () => {
     expect(detectProject(other).pkg).toEqual({});
   });
 
+  test("whether dependencies are installed", () => {
+    const deps = JSON.stringify({ devDependencies: { "ts-node": "1" } });
+    expect(detect({ "package.json": deps }).dependenciesInstalled).toBe(false);
+    expect(detect({ "package.json": deps, "node_modules/.package-lock.json": "{}" }).dependenciesInstalled).toBe(true);
+    expect(detect({ "package.json": JSON.stringify({ scripts: { start: "node ." } }) }).dependenciesInstalled).toBeNull();
+    expect(detect({ "requirements.txt": "" }).dependenciesInstalled).toBeNull();
+  });
+
   test("build targets", () => {
     const expo = detect({ "package.json": JSON.stringify({ dependencies: { expo: "1" } }) });
     expect(expo.buildTargets).toEqual([]);
@@ -267,9 +283,11 @@ describe("build recipes", () => {
       framework: "node",
       packageManager: null,
       scripts: [],
+      dependenciesInstalled: null,
       buildTargets: [],
       electronTool: null,
       hasAndroidDir: false,
+      runTargets: [],
       ...overrides,
     };
   }
@@ -447,5 +465,71 @@ describe("display parsing", () => {
     expect(x11Socket(":0")).toBe("/tmp/.X11-unix/X0");
     expect(x11Socket(":12.1")).toBe("/tmp/.X11-unix/X12");
     expect(x11Socket("remote:1")).toBeNull();
+  });
+
+  test("parseWmctrlList keeps ids, pids and titles with spaces", () => {
+    const stdout = [
+      "0x00c00003 -1 812    sandbox tint2",
+      "0x03a00004  0 1234   sandbox Hybrid POS — Login  ",
+      "0x03c00001  0 0      N/A ",
+      "garbage",
+    ].join("\n");
+    expect(parseWmctrlList(stdout)).toEqual([
+      { id: "0x00c00003", pid: 812, title: "tint2" },
+      { id: "0x03a00004", pid: 1234, title: "Hybrid POS — Login" },
+      { id: "0x03c00001", pid: null, title: "" },
+    ]);
+  });
+
+  test("parseActiveWindow and sameWindowId tolerate xprop's unpadded ids", () => {
+    expect(parseActiveWindow("_NET_ACTIVE_WINDOW(WINDOW): window id # 0x3A00004")).toBe("0x3a00004");
+    expect(parseActiveWindow("_NET_ACTIVE_WINDOW(WINDOW): window id # 0x0")).toBeNull();
+    expect(parseActiveWindow("_NET_ACTIVE_WINDOW:  not found.")).toBeNull();
+    expect(sameWindowId("0x3a00004", "0x03a00004")).toBe(true);
+    expect(sameWindowId("0x3a00004", "0x03a00005")).toBe(false);
+  });
+
+  test("parseWindowProps reads the class, types and states", () => {
+    const props = parseWindowProps(
+      [
+        'WM_CLASS(STRING) = "hybrid-pos", "Hybrid POS"',
+        "_NET_WM_WINDOW_TYPE(ATOM) = _NET_WM_WINDOW_TYPE_NORMAL",
+        "_NET_WM_STATE(ATOM) = _NET_WM_STATE_HIDDEN, _NET_WM_STATE_MAXIMIZED_VERT",
+      ].join("\n"),
+    );
+    expect(props).toEqual({
+      app: "Hybrid POS",
+      types: ["_NET_WM_WINDOW_TYPE_NORMAL"],
+      states: ["_NET_WM_STATE_HIDDEN", "_NET_WM_STATE_MAXIMIZED_VERT"],
+    });
+    expect(parseWindowProps("WM_CLASS:  not found.\n_NET_WM_WINDOW_TYPE:  not found.\n_NET_WM_STATE:  not found.")).toEqual({
+      app: null,
+      types: [],
+      states: [],
+    });
+  });
+
+  test("isTaskWindow drops docks, desktops, menus and skip-taskbar windows", () => {
+    const props = (types: string[], states: string[] = []) => ({ app: null, types, states });
+    expect(isTaskWindow(props([]))).toBe(true);
+    expect(isTaskWindow(props(["_NET_WM_WINDOW_TYPE_NORMAL"]))).toBe(true);
+    expect(isTaskWindow(props(["_NET_WM_WINDOW_TYPE_DIALOG"]))).toBe(true);
+    expect(isTaskWindow(props(["_NET_WM_WINDOW_TYPE_DOCK"]))).toBe(false);
+    expect(isTaskWindow(props(["_NET_WM_WINDOW_TYPE_DESKTOP"]))).toBe(false);
+    expect(isTaskWindow(props(["_NET_WM_WINDOW_TYPE_NORMAL"], ["_NET_WM_STATE_SKIP_TASKBAR"]))).toBe(false);
+  });
+
+  test("toDisplayWindow marks the active and minimized window", () => {
+    const row = { id: "0x03a00004", pid: 1234, title: "Hybrid POS" };
+    const props = { app: "Hybrid POS", types: [], states: ["_NET_WM_STATE_HIDDEN"] };
+    expect(toDisplayWindow(row, props, "0x3a00004")).toEqual({
+      id: "0x03a00004",
+      title: "Hybrid POS",
+      app: "Hybrid POS",
+      pid: 1234,
+      active: true,
+      minimized: true,
+    });
+    expect(toDisplayWindow(row, { ...props, states: [] }, null)).toMatchObject({ active: false, minimized: false });
   });
 });

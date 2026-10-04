@@ -2,11 +2,26 @@ import Foundation
 import SwiftUI
 
 enum IslandTheme {
-  static let background = Color(red: 0.07, green: 0.07, blue: 0.08)
-  static let card = Color(red: 0.13, green: 0.13, blue: 0.15)
-  static let accent = Color(red: 0.78, green: 0.96, blue: 0.23)
-  static let muted = Color.white.opacity(0.6)
-  static let glyph = "sparkles"
+  static let background = Color(hex: 0x0D0D0D)
+  static let card = Color(hex: 0x161616)
+  static let element = Color(hex: 0x1D1D1D)
+  static let button = Color(hex: 0x222222)
+  static let text = Color(hex: 0xEDEDED)
+  static let secondary = Color(hex: 0x8F8F8F)
+  static let hairline = Color.white.opacity(0.14)
+  static let live = Color(hex: 0x3DD68C)
+  static let keyline = Color(hex: 0x6B6B6B)
+  static let appIcon = "appIcon"
+}
+
+private extension Color {
+  init(hex: UInt32) {
+    self.init(
+      red: Double((hex >> 16) & 0xFF) / 255,
+      green: Double((hex >> 8) & 0xFF) / 255,
+      blue: Double(hex & 0xFF) / 255
+    )
+  }
 }
 
 enum IslandLinks {

@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ProjectFilter, StatusEvent } from "@theone/protocol";
 
 import { sandboxKeys } from "../api/query-keys";
-import { PORTS_REFRESH_INTERVAL_MS, STATUS_REFRESH_INTERVAL_MS } from "../utils/constants";
+import { PORTS_REFRESH_INTERVAL_MS, STATUS_REFRESH_INTERVAL_MS, WINDOWS_REFRESH_INTERVAL_MS } from "../utils/constants";
 import { useActiveSandbox } from "./use-sandbox-client";
 import { useSandboxQuery } from "./use-sandbox-query";
 
@@ -22,6 +22,12 @@ export const useDisplayStatus = () =>
 
 export const useDisplayBrowser = (enabled = true) =>
   useSandboxQuery(sandboxKeys.displayBrowser, (client, signal) => client.displayBrowser({ signal }), { enabled });
+
+export const useDisplayWindows = (enabled = true) =>
+  useSandboxQuery(sandboxKeys.displayWindows, (client, signal) => client.displayWindows({ signal }), {
+    enabled,
+    refetchInterval: WINDOWS_REFRESH_INTERVAL_MS,
+  });
 
 export const useProjects = () =>
   useSandboxQuery(sandboxKeys.projects, (client, signal) => client.listProjects({ signal }));

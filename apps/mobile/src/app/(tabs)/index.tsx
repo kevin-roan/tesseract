@@ -35,12 +35,12 @@ export default function HomeScreen() {
     <ScreenScaffold
       scroll={false}
       avoidKeyboard
+      dotGrid={false}
       header={<HomeHeader onOpenMenu={home.drawer.open} onOpenInbox={home.inbox.open} inboxCount={home.inbox.unreadCount} />}
       footer={
         <ChatComposer
           composer={home.composer}
           placeholder="Chat with Claude"
-          noProjectLabel="New project"
           testID="home-composer"
           banner={
             status ? (
@@ -57,7 +57,7 @@ export default function HomeScreen() {
         />
       }
     >
-      <HomeHero name={home.name} />
+      <HomeHero />
       <HomeDrawer visible={home.drawer.visible} onClose={home.drawer.close} />
     </ScreenScaffold>
   );

@@ -12,6 +12,7 @@ export const sandboxKeys = {
   identity: (sandboxId: string) => ["sandbox", sandboxId, "identity"] as const,
   display: (sandboxId: string) => ["sandbox", sandboxId, "display"] as const,
   displayBrowser: (sandboxId: string) => ["sandbox", sandboxId, "display", "browser"] as const,
+  displayWindows: (sandboxId: string) => ["sandbox", sandboxId, "display", "windows"] as const,
   activity: (sandboxId: string) => ["sandbox", sandboxId, "activity"] as const,
   projects: (sandboxId: string) => ["sandbox", sandboxId, "projects"] as const,
   project: (sandboxId: string, projectId: string) => ["sandbox", sandboxId, "projects", projectId] as const,

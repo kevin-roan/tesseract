@@ -35,6 +35,8 @@ export const ProjectSchema = z.object({
   framework: FrameworkSchema,
   packageManager: PackageManagerSchema.nullable(),
   scripts: z.array(z.string()),
+  /** False when package.json declares dependencies but `node_modules` is missing; null when there is nothing to install. Older controllers omit it. */
+  dependenciesInstalled: z.boolean().nullable().default(null),
   buildTargets: z.array(BuildTargetSchema),
   git: GitSummarySchema.nullable(),
   /** Controllers older than confidential projects omit it. */

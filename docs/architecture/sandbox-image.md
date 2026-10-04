@@ -20,10 +20,14 @@ docker build -f infra/docker/sandbox/Dockerfile --target sandbox -t theone/sandb
 flowchart LR
   bunimg["oven/bun:${BUN_VERSION}"] --> bun["bun"] --> cb["controller-build"]
   jdkimg["${JDK_IMAGE}"] --> jdk["jdk"] --> asdk["android-sdk"]
-  deb["${DEBIAN_IMAGE}"] --> base --> desktop --> electron --> android --> sandbox
+  deb["${DEBIAN_IMAGE}"] --> base --> desktop --> electron --> android --> flutter --> sandbox
   deb --> asdk
+  deb --> fsdk["flutter-sdk"]
+  deb --> whisper
   bun -. "bun binary" .-> base
   asdk --> android
+  fsdk --> flutter
+  whisper --> sandbox
   cb --> sandbox
 ```
 
@@ -32,12 +36,14 @@ flowchart LR
 | `bun`, `jdk` | aliases of `oven/bun:${BUN_VERSION}` and `${JDK_IMAGE}`, so later stages can `COPY --from` them |
 | `controller-build` | from `bun`: filtered `bun install --frozen-lockfile --filter @theone/controller`, then `bun build --compile` (for the build platform) to `apps/controller/dist/theone-controller` |
 | `base` | Debian trixie, tini, supervisor, sudo, coreutils and util-linux (`nice`, `ionice` for the speech-to-text profiles), git and git-lfs, curl, jq, ripgrep, fd, build-essential, python3/pip/venv/pipx, sqlite3, tmux, zip/unzip, Docker CLI with compose and buildx plugins (no daemon), Node `${NODE_MAJOR}` from nodejs.org (checked against `SHASUMS256.txt`) with corepack (pnpm, yarn), the bun binary, locales, fonts, and the `dev` user with `/run/user/<uid>` |
-| `desktop` | TigerVNC (`Xvnc`, `vncpasswd`), openbox, xterm, x11-apps (`xwd`, the screenshot fallback), x11-utils (`xdpyinfo`), x11-xserver-utils (`xrandr`), xdotool, ImageMagick, ffmpeg (voice-note conversion for speech-to-text), dbus-x11, Chromium, and the Electron runtime libraries (gtk3, nss, gbm, asound, xss, xtst, secret, notify) |
+| `desktop` | TigerVNC (`Xvnc`, `vncpasswd`), openbox, tint2 (the dock), xterm, x11-apps (`xwd`, the screenshot fallback), x11-utils (`xdpyinfo`), x11-xserver-utils (`xrandr`), xdotool, wmctrl, ImageMagick, ffmpeg (voice-note conversion for speech-to-text), dbus-x11, Chromium, and the Electron runtime libraries (gtk3, nss, gbm, asound, xss, xtst, secret, notify), and the Flutter Linux desktop toolchain (clang, cmake, ninja-build, pkg-config, libgtk-3-dev, liblzma-dev, libstdc++-14-dev) |
 | `electron` | wine (`wine`, `wine64`, `wine32:i386`; `/usr/local/bin/wine64` points at `/usr/lib/wine/wine64` because electron-winstaller calls `wine64`), `osslsigncode`, `fakeroot`, `dpkg-dev`, `rpm`, and `mono-complete` when `WITH_MONO=true` |
 | `android-sdk` | (side stage from `${DEBIAN_IMAGE}`) the JDK from `jdk`, Android cmdline-tools `${ANDROID_CMDLINE_TOOLS_BUILD}` (sha256-verified), `platform-tools`, `platforms;${ANDROID_PLATFORM}`, `build-tools;${ANDROID_BUILD_TOOLS}`, licenses accepted. With `WITH_ANDROID=false` it produces empty directories |
 | `whisper` | (side stage from `${DEBIAN_IMAGE}`) with `WITH_WHISPER=true`: whisper.cpp `v${WHISPER_CPP_VERSION}` built with cmake (static, no OpenMP, `${WHISPER_CMAKE_ARGS}`) → `/opt/whisper/bin/whisper-cli`, `ggml-<m>.bin` for each `m` in `${WHISPER_MODELS}` from `huggingface.co/ggerganov/whisper.cpp` and the symlink `/opt/whisper/models/ggml-model.bin` to the first. Otherwise an empty `/opt/whisper` |
-| `android` | copies the JDK to `/opt/java/openjdk` and the SDK to `/opt/android-sdk` (owned by `dev`), plus `/etc/profile.d/theone.sh` |
-| `sandbox` (default) | Claude Code (`npm i -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}`, installed last so a version bump rebuilds one layer), `/opt/whisper` from `whisper` (`THEONE_WHISPER_BIN`, `THEONE_WHISPER_MODELS_DIR`, `THEONE_WHISPER_MODEL` point into it), the rootfs overlay (supervisord confs, entrypoint, helpers, openbox config, chromium flags, agent templates), `SPEC.md` → `/etc/theone/SPEC.md` and, followed by the rootfs `etc/claude-code/CLAUDE.md`, → `/etc/claude-code/CLAUDE.md` (Claude Code's managed memory), and the controller binary → `/usr/local/bin/theone-controller` |
+| `flutter-sdk` | (side stage from `${DEBIAN_IMAGE}`) with `WITH_FLUTTER=true`: `git clone --depth 1 --branch ${FLUTTER_VERSION}` of `github.com/flutter/flutter` → `/opt/flutter`. Otherwise an empty `/opt/flutter` |
+| `android` | copies the JDK to `/opt/java/openjdk` and the SDK to `/opt/android-sdk` (owned by `dev`); `platform-tools` (`adb`) is on `PATH` |
+| `flutter` | copies `/opt/flutter` (owned by `dev`, a git `safe.directory` in the system config) with `/opt/flutter/bin` on `PATH`; unless it is empty, runs as `dev`: `flutter config --no-analytics --no-cli-animations`, `flutter config --android-sdk /opt/android-sdk` (when the SDK is present), `flutter precache --web --linux` and `dart --disable-analytics`. Then `/etc/profile.d/theone.sh` |
+| `sandbox` (default) | Claude Code (`npm i -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}`, installed last so a version bump rebuilds one layer), `/opt/whisper` from `whisper` (`THEONE_WHISPER_BIN`, `THEONE_WHISPER_MODELS_DIR`, `THEONE_WHISPER_MODEL` point into it), the rootfs overlay (supervisord confs, entrypoint, helpers, openbox and tint2 config, chromium flags, agent templates), `SPEC.md` → `/etc/theone/SPEC.md` and, followed by the rootfs `etc/claude-code/CLAUDE.md`, → `/etc/claude-code/CLAUDE.md` (Claude Code's managed memory), and the controller binary → `/usr/local/bin/theone-controller` |
 
 apt downloads go to BuildKit cache mounts (`theone-apt-cache`,
 `theone-apt-lists`), and npm and bun caches likewise, so rebuilds after small
@@ -57,12 +63,14 @@ changes are fast.
 | `WITH_MONO` | `true` | Squirrel.Windows support (large) |
 | `WITH_ANDROID` | `true` | JDK 17 and Android SDK (about 750 MB, per `.env.example`). `false` for faster, smaller images |
 | `ANDROID_PLATFORM` / `ANDROID_BUILD_TOOLS` | `android-36` / `36.0.0` | preinstalled SDK packages |
+| `WITH_FLUTTER` | `true` | Flutter SDK in `/opt/flutter` with the web and Linux desktop artifacts precached. `false` leaves `/opt/flutter` empty |
+| `FLUTTER_VERSION` | `3.47.5` | Flutter release tag to clone |
 | `WITH_WHISPER` | `true` | local speech-to-text: build whisper.cpp and download the models (see below) |
 | `WHISPER_CPP_VERSION` / `WHISPER_MODELS` | `1.7.6` / `base small` | whisper.cpp tag and space-separated ggml models (`tiny`, `base`, `small`, `medium`, `large-v3`, `*.en` …). The STT profiles use `base` (eco, balanced) and `small` (performance) |
 | `WHISPER_CMAKE_ARGS` | `-DGGML_NATIVE=ON` | extra cmake flags; native tuning targets the build machine's CPU, use `-DGGML_NATIVE=OFF` for a portable image |
 | `THEONE_IMAGE_VERSION` | `0.1.0` | label and `THEONE_IMAGE_VERSION` env |
 
-Compose passes `DEV_UID`, `DEV_GID`, `WITH_ANDROID`, `WITH_MONO`,
+Compose passes `DEV_UID`, `DEV_GID`, `WITH_ANDROID`, `WITH_FLUTTER`, `FLUTTER_VERSION`, `WITH_MONO`,
 `CLAUDE_CODE_VERSION`, `WITH_WHISPER` and `WHISPER_MODELS` from the env file and tags the result `THEONE_IMAGE`.
 `bun run sandbox build --target <stage>` builds another stage with `docker build`
 and tags it `theone/sandbox:<stage>`.
@@ -72,6 +80,8 @@ Image environment: `THEONE_IMAGE_VERSION`, `THEONE_WORKSPACE=/workspace`,
 `THEONE_DISPLAY=:1`, `THEONE_DISPLAY_GEOMETRY`, `THEONE_VNC_PORT=5901`,
 `XDG_RUNTIME_DIR=/run/user/<uid>`, `WINEPREFIX`, `WINEARCH=win64`, `WINEDEBUG=-all`,
 `APPIMAGE_EXTRACT_AND_RUN=1`, `JAVA_HOME`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`,
+`PATH` (adds `JAVA_HOME/bin`, `/opt/flutter/bin` and the Android `cmdline-tools` and `platform-tools`),
+`THEONE_ADB_TUNNEL_PORT=15555`,
 `THEONE_WHISPER_BIN=/opt/whisper/bin/whisper-cli`, `THEONE_WHISPER_MODELS_DIR=/opt/whisper/models`,
 `THEONE_WHISPER_MODEL=/opt/whisper/models/ggml-model.bin`, `DISABLE_AUTOUPDATER=1`, `LANG=en_US.UTF-8`, `TZ=UTC` and quiet npm/pip/corepack
 settings. `DISPLAY` is deliberately not set image-wide.
@@ -113,6 +123,7 @@ settings. `DISPLAY` is deliberately not set image-wide.
 | `/home/dev/.claude` | bind mount of the host's `THEONE_HOST_CLAUDE_DIR` (default `$HOME/.claude`), listed after the home volume so it overlays it | the host user's Claude Code login (`.credentials.json`), settings and session history, shared read-write with the host. Compose refuses to start if the directory does not exist (`create_host_path: false`); the image and entrypoint never write to it |
 | `/home/dev/.claude-<name>` | bind mount of each existing host dir in `THEONE_HOST_CLAUDE_ACCOUNTS` (default `$HOME/.claude-<name>`), through the override `infra/scripts/sandbox` generates | extra Claude Code accounts, shared read-write with the host like `.claude` (never copied, so OAuth token refreshes stay in sync); the entrypoint skips them when fixing ownership |
 | `/opt/android-sdk`, `/opt/java/openjdk` | image | SDK, owned by `dev`; runtime additions (NDK, CMake that Gradle installs) are lost on recreate |
+| `/opt/flutter` | image | Flutter SDK, owned by `dev`; artifacts `flutter` downloads at runtime (other platforms) are lost on recreate. Its `flutter config` settings live in `/home/dev`, so an existing home volume keeps its own |
 | `/etc/theone/` | image | `SPEC.md`, `agent-templates/` |
 | `/etc/claude-code/` | image | `CLAUDE.md` (managed memory: `SPEC.md` followed by the rootfs notes), `managed-settings.json` (hooks → `theone-controller hook`) |
 | `/run/theone/` | container layer, rewritten on every start | `controller.env` with the VNC password (and `THEONE_TOKEN` if set), readable by `dev` only |
@@ -155,7 +166,7 @@ is idempotent, and then execs supervisord. In order:
 | Program | Command | Notes |
 |---|---|---|
 | `xvnc` (priority 10) | `theone-xvnc` → `Xvnc :1 -geometry $THEONE_DISPLAY_GEOMETRY -depth 24 -rfbport 5901 -rfbauth ~/.vnc/passwd -SecurityTypes VncAuth -AlwaysShared -desktop "TheOne <id>" -nolisten tcp` | removes a lock left by a crashed server (only a live `Xvnc` may keep it) before starting |
-| `openbox` (20) | `theone-wait-x dbus-run-session -- openbox-session` | waits for the display (`THEONE_WAIT_X_TIMEOUT`, 60 s). `dbus-run-session` ends the session bus with openbox. The desktop menu (right-click) has Terminal and Chromium |
+| `openbox` (20) | `theone-wait-x dbus-run-session -- openbox-session` | waits for the display (`THEONE_WAIT_X_TIMEOUT`, 60 s). `dbus-run-session` ends the session bus with openbox. Its autostart starts the tint2 dock along the bottom. The desktop menu (right-click) has Terminal and Chromium |
 | `controller` (30) | `theone-controller-run` → `theone-controller serve` | loads `/run/theone/controller.env` first; `stopwaitsecs=15`, `stopasgroup`/`killasgroup` |
 | `wine-init` (40) | `theone-wait-x theone-wine-init` | oneshot: `WINEDLLOVERRIDES="mscoree,mshtml=" wineboot -u` if `~/.wine/system.reg` is missing |
 
@@ -178,7 +189,7 @@ warning, not a failure.
 | `theone-doctor` | in-sandbox self-check: display, window manager, VNC (RFB banner), controller, supervisor programs, wine prefix, node, bun, claude, Claude auth, java/adb, Docker, disk, writable workspace and home. Exits 1 on any FAIL; WARN/SKIP do not fail |
 | `theone-xvnc`, `theone-controller-run`, `theone-wine-init` | supervisord program launchers |
 
-`/etc/profile.d/theone.sh` restores `JAVA_HOME/bin`, the Android tools,
+`/etc/profile.d/theone.sh` restores `JAVA_HOME/bin`, the Android tools, `/opt/flutter/bin`,
 `~/.bun/bin` and `~/.local/bin` on `PATH` for login shells (the controller runs
 jobs with `bash -lc`). Interactive login shells (terminals) also get
 `DISPLAY=:1`; `bash -lc` jobs do not, so processes that need the display use
@@ -195,9 +206,9 @@ need `--no-sandbox` for the same reason.
   list (keep lists alphabetical), then run `bun run sandbox build` and
   `bun run sandbox up`.
 - **More Android packages:** extend the `sdkmanager --install` line in `android-sdk`.
-- **Another toolchain** (Rust, Go, Flutter): add a stage after `android`, or
+- **Another toolchain** (Rust, Go): add a stage after `flutter`, or
   install into `/home/dev` at runtime (persistent, but not reproducible).
-- **Smaller image:** `--build-arg WITH_ANDROID=false --build-arg WITH_MONO=false`.
+- **Smaller image:** `--build-arg WITH_ANDROID=false --build-arg WITH_FLUTTER=false --build-arg WITH_MONO=false`.
 - **Speech-to-text for voice notes:** the image builds whisper.cpp with the `base` and
   `small` models by default and the controller transcribes locally with `/opt/whisper` and
   ffmpeg under the resource profile picked in the desktop app (`GET`/`PUT /v1/stt`; `eco`

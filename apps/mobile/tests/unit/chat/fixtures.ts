@@ -4,12 +4,13 @@ import type { ChatComposerState } from "@/features/chat/hooks/use-chat-composer"
 import { AGENT_MODE_OPTIONS, AGENT_MODE_SHEET } from "@/features/chat/utils/modes";
 import { ATTACH_OPTIONS } from "@/features/attachments/utils/sources";
 
-type Overrides = Partial<Omit<ChatComposerState, "voice" | "attachments">> & {
+type Overrides = Partial<Omit<ChatComposerState, "voice" | "attachments" | "newProject">> & {
+  newProject?: Partial<ChatComposerState["newProject"]>;
   voice?: Partial<ChatComposerState["voice"]>;
   attachments?: Partial<ChatComposerState["attachments"]>;
 };
 
-export function chatComposerState({ voice, attachments, ...overrides }: Overrides = {}): ChatComposerState {
+export function chatComposerState({ voice, attachments, newProject, ...overrides }: Overrides = {}): ChatComposerState {
   return {
     text: "",
     setText: jest.fn(),
@@ -28,6 +29,18 @@ export function chatComposerState({ voice, attachments, ...overrides }: Override
     project: null,
     attach: { options: ATTACH_OPTIONS, select: jest.fn(), enabled: true },
     clipboard: { canPaste: false, paste: jest.fn(), onFocus: jest.fn(), onBlur: jest.fn() },
+    newProject: {
+      visible: false,
+      name: "",
+      setName: jest.fn(),
+      error: null,
+      hint: "",
+      creating: false,
+      create: jest.fn(),
+      skip: jest.fn(),
+      close: jest.fn(),
+      ...newProject,
+    },
     sheet: null,
     openSheet: jest.fn(),
     closeSheet: jest.fn(),

@@ -7,36 +7,73 @@ struct IslandLiveActivity: Widget {
     ActivityConfiguration(for: IslandAttributes.self) { context in
       IslandCardView(state: context.state)
         .activityBackgroundTint(IslandTheme.background)
-        .activitySystemActionForegroundColor(.white)
+        .activitySystemActionForegroundColor(IslandTheme.text)
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
-          IslandExpandedLeading(state: context.state)
+          IslandAppIcon(size: 34)
+            .padding(.leading, 4)
         }
         DynamicIslandExpandedRegion(.trailing) {
-          IslandExpandedTrailing(state: context.state)
+          IslandTokens(value: context.state.usage.todayTokens)
+            .padding(.trailing, 4)
+        }
+        DynamicIslandExpandedRegion(.center) {
+          IslandTitleBlock(state: context.state)
         }
         DynamicIslandExpandedRegion(.bottom) {
-          IslandExpandedBottom(state: context.state)
+          IslandLiveRow(state: context.state)
+            .padding(.horizontal, 4)
+            .padding(.top, 6)
         }
       } compactLeading: {
-        IslandGlyph()
+        IslandAppIcon(size: 22)
       } compactTrailing: {
         IslandCompactTrailing(state: context.state)
       } minimal: {
-        IslandGlyph()
+        IslandAppIcon(size: 22)
       }
       .widgetURL(IslandLinks.open)
-      .keylineTint(IslandTheme.accent)
+      .keylineTint(IslandTheme.keyline)
     }
   }
 }
 
-struct IslandGlyph: View {
+struct IslandLiveItem: Identifiable {
+  let id: String
+  let title: String
+  let project: String?
+  let startedAt: String?
+}
+
+extension IslandAttributes.ContentState {
+  var liveItems: [IslandLiveItem] {
+    let runs = runningRuns.map { IslandLiveItem(id: $0.id, title: $0.title, project: $0.project, startedAt: $0.startedAt) }
+    let running = commands
+      .filter { $0.state == "running" }
+      .map { IslandLiveItem(id: $0.id, title: $0.label, project: $0.project, startedAt: nil) }
+    return runs + running
+  }
+
+  var openURL: URL {
+    if let run = runningRuns.first {
+      return IslandLinks.run(run.id)
+    }
+    return IslandLinks.open
+  }
+}
+
+struct IslandAppIcon: View {
+  let size: CGFloat
+
   var body: some View {
-    Image(systemName: IslandTheme.glyph)
-      .font(.system(size: 14, weight: .semibold))
-      .foregroundStyle(IslandTheme.accent)
+    let shape = RoundedRectangle(cornerRadius: size * 0.24, style: .continuous)
+    Image(IslandTheme.appIcon)
+      .resizable()
+      .scaledToFill()
+      .frame(width: size, height: size)
+      .clipShape(shape)
+      .overlay(shape.strokeBorder(IslandTheme.hairline, lineWidth: 0.5))
   }
 }
 
@@ -45,8 +82,57 @@ struct IslandStatusDot: View {
 
   var body: some View {
     Circle()
-      .fill(active ? IslandTheme.accent : IslandTheme.muted)
-      .frame(width: 8, height: 8)
+      .fill(active ? IslandTheme.live : IslandTheme.secondary)
+      .frame(width: 6, height: 6)
+  }
+}
+
+struct IslandStatusLine: View {
+  let state: IslandAttributes.ContentState
+
+  var body: some View {
+    let count = state.liveItems.count
+    HStack(spacing: 5) {
+      IslandStatusDot(active: count > 0)
+      Text(count > 0 ? "\(count) running" : "Idle")
+        .font(.caption2.weight(.medium))
+        .foregroundStyle(IslandTheme.secondary)
+        .lineLimit(1)
+    }
+  }
+}
+
+struct IslandTitleBlock: View {
+  let state: IslandAttributes.ContentState
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 2) {
+      Text(state.sandboxName)
+        .font(.footnote.weight(.semibold))
+        .foregroundStyle(IslandTheme.text)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
+      IslandStatusLine(state: state)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+}
+
+struct IslandTokens: View {
+  let value: Int
+
+  var body: some View {
+    VStack(alignment: .trailing, spacing: 2) {
+      Text(IslandFormat.compact(value))
+        .font(.footnote.weight(.semibold))
+        .monospacedDigit()
+        .foregroundStyle(IslandTheme.text)
+      Text("today")
+        .font(.caption2)
+        .foregroundStyle(IslandTheme.secondary)
+    }
+    .lineLimit(1)
+    .fixedSize()
   }
 }
 
@@ -63,123 +149,109 @@ struct IslandCompactTrailing: View {
   let state: IslandAttributes.ContentState
 
   var body: some View {
-    let running = state.runningRuns
-    if running.count == 1, let run = running.first {
-      IslandElapsed(startedAt: run.startedAt)
+    let items = state.liveItems
+    if items.count == 1, let startedAt = items.first?.startedAt {
+      IslandElapsed(startedAt: startedAt)
         .font(.caption2.weight(.semibold))
+        .foregroundStyle(IslandTheme.text)
         .multilineTextAlignment(.trailing)
-        .frame(minWidth: 40)
+        .frame(width: 42, alignment: .trailing)
     } else {
-      Text("\(running.count)")
-        .font(.caption2.weight(.semibold))
-    }
-  }
-}
-
-struct IslandRunHeadline: View {
-  let run: IslandAttributes.IslandRun
-  var showsTimer = true
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 2) {
-      Text(run.title)
-        .font(.subheadline.weight(.bold))
-        .lineLimit(1)
-      HStack(spacing: 6) {
-        if let project = run.project {
-          Text(project)
-            .lineLimit(1)
-        }
-        if showsTimer {
-          IslandElapsed(startedAt: run.startedAt)
-        }
+      HStack(spacing: 4) {
+        IslandStatusDot(active: !items.isEmpty)
+        Text("\(items.count)")
+          .font(.caption2.weight(.semibold))
+          .monospacedDigit()
+          .foregroundStyle(IslandTheme.text)
       }
-      .font(.caption)
-      .foregroundStyle(IslandTheme.muted)
     }
   }
 }
 
-struct IslandUsageFigure: View {
-  let label: String
-  let value: Int
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 0) {
-      Text(IslandFormat.compact(value))
-        .font(.footnote.weight(.semibold))
-        .monospacedDigit()
-      Text(label)
-        .font(.caption2)
-        .foregroundStyle(IslandTheme.muted)
-    }
-  }
-}
-
-struct IslandUsageRow: View {
-  let usage: IslandAttributes.IslandUsage
-
-  var body: some View {
-    HStack(spacing: 16) {
-      IslandUsageFigure(label: "today", value: usage.todayTokens)
-      IslandUsageFigure(label: "week", value: usage.weekTokens)
-      IslandUsageFigure(label: "runs", value: usage.runsToday)
-    }
-  }
-}
-
-struct IslandStopButton: View {
-  let runId: String
-
-  var body: some View {
-    Button(intent: StopRunIntent(runId: runId)) {
-      Image(systemName: "stop.fill")
-        .font(.caption.weight(.bold))
-        .padding(6)
-    }
-    .buttonStyle(.plain)
-    .foregroundStyle(.white)
-    .background(Color.white.opacity(0.15), in: Circle())
-  }
-}
-
-struct IslandLinkButton: View {
-  let title: String
+struct IslandIconButton: View {
   let symbol: String
   let destination: URL
 
   var body: some View {
     Link(destination: destination) {
-      Label(title, systemImage: symbol)
-        .font(.caption.weight(.semibold))
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.white.opacity(0.15), in: Capsule())
+      Image(systemName: symbol)
+        .font(.system(size: 12, weight: .semibold))
+        .foregroundStyle(IslandTheme.text)
+        .frame(width: 30, height: 30)
+        .background(IslandTheme.button, in: Circle())
+        .overlay(Circle().strokeBorder(IslandTheme.hairline, lineWidth: 0.5))
     }
-    .foregroundStyle(.white)
   }
 }
 
-struct IslandActionRow: View {
-  let state: IslandAttributes.ContentState
-  var showsStop = true
+struct IslandStopButton: View {
+  let id: String
 
   var body: some View {
+    Button(intent: StopRunIntent(runId: id)) {
+      Image(systemName: "stop.fill")
+        .font(.system(size: 11, weight: .bold))
+        .foregroundStyle(IslandTheme.background)
+        .frame(width: 30, height: 30)
+        .background(IslandTheme.text, in: Circle())
+    }
+    .buttonStyle(.plain)
+  }
+}
+
+struct IslandItemLabel: View {
+  let item: IslandLiveItem
+  let extra: Int
+
+  var body: some View {
+    VStack(alignment: .leading, spacing: 1) {
+      Text(item.title)
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(IslandTheme.text)
+        .lineLimit(1)
+      HStack(spacing: 4) {
+        if let project = item.project {
+          Text(project)
+            .lineLimit(1)
+        }
+        if let startedAt = item.startedAt {
+          IslandElapsed(startedAt: startedAt)
+            .fixedSize()
+        }
+        if extra > 0 {
+          Text("+\(extra) more")
+            .lineLimit(1)
+            .fixedSize()
+        }
+      }
+      .font(.caption2)
+      .foregroundStyle(IslandTheme.secondary)
+    }
+    .frame(maxWidth: .infinity, alignment: .leading)
+  }
+}
+
+struct IslandLiveRow: View {
+  let state: IslandAttributes.ContentState
+
+  var body: some View {
+    let items = state.liveItems
     HStack(spacing: 8) {
-      IslandLinkButton(title: "Capture", symbol: "camera.viewfinder", destination: IslandLinks.capture)
-      IslandLinkButton(title: "Open", symbol: "arrow.up.right", destination: openDestination)
-      Spacer()
-      if showsStop, let run = state.runningRuns.first {
-        IslandStopButton(runId: run.id)
+      if let item = items.first {
+        IslandItemLabel(item: item, extra: items.count - 1)
+      } else {
+        Text("Nothing running")
+          .font(.caption.weight(.medium))
+          .foregroundStyle(IslandTheme.secondary)
+          .frame(maxWidth: .infinity, alignment: .leading)
+      }
+      IslandIconButton(symbol: "camera.viewfinder", destination: IslandLinks.capture)
+      IslandIconButton(symbol: "arrow.up.right", destination: state.openURL)
+      if let item = items.first {
+        IslandStopButton(id: item.id)
       }
     }
-  }
-
-  private var openDestination: URL {
-    if let run = state.runningRuns.first {
-      return IslandLinks.run(run.id)
-    }
-    return IslandLinks.open
+    .frame(height: 34)
   }
 }
 
@@ -187,109 +259,15 @@ struct IslandCardView: View {
   let state: IslandAttributes.ContentState
 
   var body: some View {
-    let running = state.runningRuns
-    VStack(alignment: .leading, spacing: 10) {
-      HStack(spacing: 8) {
-        IslandGlyph()
-        Text(state.sandboxName)
-          .font(.footnote.weight(.semibold))
-          .lineLimit(1)
-        Spacer()
-        IslandStatusDot(active: !running.isEmpty)
+    VStack(alignment: .leading, spacing: 12) {
+      HStack(spacing: 10) {
+        IslandAppIcon(size: 32)
+        IslandTitleBlock(state: state)
+        IslandTokens(value: state.usage.todayTokens)
       }
-      if let run = running.first {
-        IslandRunHeadline(run: run)
-      } else {
-        Text("Idle")
-          .font(.subheadline.weight(.bold))
-          .foregroundStyle(IslandTheme.muted)
-      }
-      IslandUsageRow(usage: state.usage)
-      IslandActionRow(state: state)
+      IslandLiveRow(state: state)
     }
-    .padding(14)
-    .foregroundStyle(.white)
-  }
-}
-
-struct IslandExpandedLeading: View {
-  let state: IslandAttributes.ContentState
-
-  var body: some View {
-    if let run = state.runningRuns.first {
-      IslandRunHeadline(run: run, showsTimer: false)
-    } else {
-      VStack(alignment: .leading, spacing: 2) {
-        Text(state.sandboxName)
-          .font(.subheadline.weight(.bold))
-          .lineLimit(1)
-        Text("Idle")
-          .font(.caption)
-          .foregroundStyle(IslandTheme.muted)
-      }
-    }
-  }
-}
-
-struct IslandExpandedTrailing: View {
-  let state: IslandAttributes.ContentState
-
-  var body: some View {
-    VStack(alignment: .trailing, spacing: 2) {
-      Text(IslandFormat.compact(state.usage.todayTokens))
-        .font(.subheadline.weight(.bold))
-        .monospacedDigit()
-      Text("tokens today")
-        .font(.caption2)
-        .foregroundStyle(IslandTheme.muted)
-    }
-  }
-}
-
-struct IslandExpandedBottom: View {
-  let state: IslandAttributes.ContentState
-
-  var body: some View {
-    VStack(alignment: .leading, spacing: 6) {
-      ForEach(rows.prefix(3), id: \.id) { row in
-        HStack(spacing: 8) {
-          VStack(alignment: .leading, spacing: 0) {
-            Text(row.title)
-              .font(.caption.weight(.semibold))
-              .lineLimit(1)
-            if let project = row.project {
-              Text(project)
-                .font(.caption2)
-                .foregroundStyle(IslandTheme.muted)
-                .lineLimit(1)
-            }
-          }
-          Spacer()
-          if let startedAt = row.startedAt {
-            IslandElapsed(startedAt: startedAt)
-              .font(.caption2)
-              .foregroundStyle(IslandTheme.muted)
-          }
-          IslandStopButton(runId: row.id)
-        }
-      }
-      IslandActionRow(state: state, showsStop: false)
-    }
-    .foregroundStyle(.white)
-  }
-
-  private struct Row: Identifiable {
-    let id: String
-    let title: String
-    let project: String?
-    let startedAt: String?
-  }
-
-  private var rows: [Row] {
-    let runs = state.runningRuns.map { Row(id: $0.id, title: $0.title, project: $0.project, startedAt: $0.startedAt) }
-    let commands = state.commands
-      .filter { $0.state == "running" }
-      .map { Row(id: $0.id, title: $0.label, project: $0.project, startedAt: nil) }
-    return runs + commands
+    .padding(.horizontal, 16)
+    .padding(.vertical, 14)
   }
 }

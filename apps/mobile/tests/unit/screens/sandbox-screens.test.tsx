@@ -50,6 +50,7 @@ const mockHooks: Record<string, jest.Mock> = {
   launcher: jest.fn(),
   terminal: jest.fn(),
   browser: jest.fn(),
+  windows: jest.fn(),
 };
 
 jest.mock("expo-router", () => ({
@@ -64,6 +65,9 @@ jest.mock("expo-screen-orientation", () => ({
 }));
 jest.mock("@/features/sandbox/hooks/use-browser-sheet", () => ({
   useBrowserSheet: (visible: boolean) => mockHooks.browser(visible),
+}));
+jest.mock("@/features/sandbox/hooks/use-windows-sheet", () => ({
+  useWindowsSheet: (visible: boolean, onClose: () => void) => mockHooks.windows(visible, onClose),
 }));
 jest.mock("@/features/sandbox/hooks/use-sandbox-navigation", () => ({ useSandboxNavigation: () => mockNav }));
 jest.mock("@/features/sandbox/hooks/use-pair-screen", () => ({ usePairScreen: () => mockHooks.pair() }));
@@ -412,10 +416,27 @@ describe("DisplayScreen", () => {
     ...overrides,
   });
 
+  const EDITOR = { id: "0x1", title: "Hybrid POS", app: "electron", pid: 42, active: true, minimized: false };
+  const TERM = { id: "0x2", title: "", app: "XTerm", pid: 43, active: false, minimized: true };
+  const windows = (overrides: object = {}) => ({
+    windows: [EDITOR, TERM],
+    loading: false,
+    refreshing: false,
+    error: null,
+    actionError: null,
+    busyId: null,
+    refresh: jest.fn(),
+    activate: jest.fn(),
+    close: jest.fn(),
+    forceQuit: jest.fn(),
+    ...overrides,
+  });
+
   beforeEach(() => {
     injectJavaScript.mockClear();
     useDisplayStore.setState({ inputMode: "trackpad" });
     mockHooks.browser.mockReturnValue(browser());
+    mockHooks.windows.mockReturnValue(windows());
   });
 
   it("hosts the VNC page under a floating bar", async () => {
@@ -424,7 +445,7 @@ describe("DisplayScreen", () => {
     expect(screen.getByTestId("webview")).toBeOnTheScreen();
     expect(screen.getByText(":1 · 1600×900")).toBeOnTheScreen();
     expect(screen.getByText("Connected")).toBeOnTheScreen();
-    for (const label of ["Go back", "Trackpad mode. Switch to touch mode", "Show the browser's page", "Rotate screen", "Full screen"]) {
+    for (const label of ["Go back", "Trackpad mode. Switch to touch mode", "Show open windows", "Show the browser's page", "Rotate screen", "Full screen"]) {
       expect(screen.getByLabelText(label)).toBeOnTheScreen();
     }
     await fireEvent.press(screen.getByLabelText("Go back"));
@@ -478,6 +499,44 @@ describe("DisplayScreen", () => {
     expect(sheet.share).toHaveBeenCalledWith(CURRENT_TAB);
     await fireEvent.press(screen.getByLabelText("Share Docs"));
     expect(sheet.share).toHaveBeenCalledWith(OTHER_TAB);
+  });
+
+  it("lists the sandbox's windows and brings one forward, closes or force quits it", async () => {
+    const sheet = windows();
+    mockHooks.windows.mockReturnValue(sheet);
+    mockHooks.display.mockReturnValue(display());
+    await render(<DisplayScreen />);
+    expect(mockHooks.windows).toHaveBeenLastCalledWith(false, expect.any(Function));
+
+    await fireEvent.press(screen.getByLabelText("Show open windows"));
+    expect(mockHooks.windows).toHaveBeenLastCalledWith(true, expect.any(Function));
+    expect(screen.getByText("Hybrid POS")).toBeOnTheScreen();
+    expect(screen.getByText("electron · Active")).toBeOnTheScreen();
+    expect(screen.getByText("XTerm")).toBeOnTheScreen();
+    expect(screen.getByText("XTerm · Minimized")).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByLabelText("Bring XTerm to the front"));
+    expect(sheet.activate).toHaveBeenCalledWith(TERM);
+    await fireEvent.press(screen.getByLabelText("Close Hybrid POS"));
+    expect(sheet.close).toHaveBeenCalledWith(EDITOR);
+    await fireEvent.press(screen.getByLabelText("Force quit Hybrid POS"));
+    expect(sheet.forceQuit).toHaveBeenCalledWith(EDITOR);
+  });
+
+  it("shows the windows sheet's empty and error states", async () => {
+    mockHooks.display.mockReturnValue(display());
+    mockHooks.windows.mockReturnValue(windows({ windows: [] }));
+    await render(<DisplayScreen />);
+    await fireEvent.press(screen.getByLabelText("Show open windows"));
+    expect(screen.getByText("No windows open")).toBeOnTheScreen();
+
+    const refresh = jest.fn();
+    mockHooks.windows.mockReturnValue(windows({ windows: null, error: "Display :1 is not available", refresh }));
+    await render(<DisplayScreen />);
+    await fireEvent.press(screen.getByLabelText("Show open windows"));
+    expect(screen.getByText("Couldn't list the windows")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByLabelText("Try again"));
+    expect(refresh).toHaveBeenCalled();
   });
 
   it("explains a localhost page without a Tailscale address and a browser without debugging", async () => {
@@ -585,7 +644,7 @@ describe("ProjectScreen", () => {
     processes: [sampleProcess],
     stopProcess: jest.fn(),
     stoppingId: null,
-    logsId: null,
+    logsOpen: jest.fn(() => false),
     toggleLogs: jest.fn(),
     logs: { lines: [], state: "idle", exitCode: undefined, error: null, reconnect: jest.fn() },
     builds: [sampleBuild],
@@ -593,8 +652,23 @@ describe("ProjectScreen", () => {
     downloads: { download: jest.fn(), pendingId: null, error: null },
     sync: syncState(),
     claudeAccount: claudeAccountState(),
+    appRuns: appRunsState(),
     actionError: null,
     ...overrides,
+  });
+  const appRunsState = () => ({
+    entries: [],
+    loading: false,
+    error: null,
+    start: jest.fn(),
+    startingTarget: null,
+    stop: jest.fn(),
+    stoppingId: null,
+    runAction: jest.fn(),
+    pendingAction: null,
+    open: jest.fn(),
+    deeplinkFailureFor: () => null,
+    copyManifest: { copied: false, copy: jest.fn(), canCopy: true },
   });
   const claudeAccountState = (overrides: object = {}) => ({
     visible: true,
@@ -626,7 +700,7 @@ describe("ProjectScreen", () => {
     await fireEvent.press(screen.getByLabelText(`Stop ${sampleProcess.name}`));
     expect(state.stopProcess).toHaveBeenCalledWith(sampleProcess.id);
     await fireEvent.press(screen.getByLabelText("Logs"));
-    expect(state.toggleLogs).toHaveBeenCalledWith(sampleProcess.id);
+    expect(state.toggleLogs).toHaveBeenCalledWith(sampleProcess.id, "process");
     await fireEvent.press(screen.getByLabelText(/^Windows installer, electron-hello/));
     expect(mockNav.build).toHaveBeenCalledWith(sampleBuild.id);
     await fireEvent.press(screen.getByLabelText(`Download ${sampleArtifact.fileName}`));
@@ -656,7 +730,7 @@ describe("ProjectScreen", () => {
         scripts: [],
         targets: [],
         processes: [sampleProcess],
-        logsId: sampleProcess.id,
+        logsOpen: jest.fn((id: string | undefined, host: string) => id === sampleProcess.id && host === "process"),
         logs: { lines: [], state: "open", exitCode: undefined, error: "Log stream closed", reconnect: jest.fn() },
         builds: [],
         artifacts: [],

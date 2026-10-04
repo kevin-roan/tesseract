@@ -2,11 +2,13 @@ import {
   ERROR_CODES,
   ERROR_STATUS,
   FINAL_AGENT_RUN_STATES,
+  FINAL_APP_RUN_STATES,
   FINAL_BUILD_STATES,
   FINAL_PROCESS_STATES,
   type ErrorCode,
 } from "./constants";
 import type { AgentRunState } from "./schemas/agent";
+import type { AppRunState } from "./schemas/apps";
 import type { ErrorBody } from "./schemas/system";
 import type { BuildState } from "./schemas/builds";
 import type { ProcessState } from "./schemas/processes";
@@ -24,6 +26,10 @@ export function isFinalBuildState(state: BuildState): boolean {
 
 export function isFinalAgentRunState(state: AgentRunState): boolean {
   return includes(FINAL_AGENT_RUN_STATES, state);
+}
+
+export function isFinalAppRunState(state: AppRunState): boolean {
+  return includes(FINAL_APP_RUN_STATES, state);
 }
 
 export function isErrorCode(value: string): value is ErrorCode {

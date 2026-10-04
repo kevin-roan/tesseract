@@ -4,6 +4,7 @@ import { buildPairingLink, HOST_PAIRING_ACTION, HOST_PIN_PATTERN } from "@theone
 import { CliError } from "../cli/local-api";
 import type { Output } from "../cli/output";
 import type { Env } from "../core/exec";
+import { HELPER_COMMAND, runEmulatorHelper } from "./android/netns-helper";
 import { HostConfigError, loadHostConfig, tailscaleServeUrl } from "./config";
 import { startHostShell } from "./server";
 import { HostStateStore } from "./state";
@@ -11,6 +12,10 @@ import { HostStateStore } from "./state";
 export const HOST_USAGE = `  theone-controller host serve [--bind <ipv4>] [--port <n>]
                                      run the host shell daemon (on the host, not in the sandbox) on the
                                      host's Tailscale IPv4 (or loopback); phones need the host token and the PIN
+                                     also drives the host Android emulator (THEONE_ANDROID_SDK_ROOT, THEONE_ADB,
+                                     THEONE_SCRCPY_SERVER, THEONE_SCRCPY_VERSION, THEONE_FFMPEG,
+                                     THEONE_EMULATOR_PORT, THEONE_EMULATOR_GPU, THEONE_EMULATOR_ISOLATION,
+                                     THEONE_EMULATOR_ALLOW_NETS, THEONE_EMULATOR_ADB_PORT)
   theone-controller host pin [--stdin]
                                      set the host shell PIN (6-12 digits); ends every open session
   theone-controller host pair [--json]
@@ -142,6 +147,12 @@ export async function hostCli(args: string[], io: HostCliIo): Promise<number | n
       return pair(rest, io);
     case "token":
       return token(rest, io);
+    case HELPER_COMMAND:
+      try {
+        return await runEmulatorHelper(rest);
+      } catch (error) {
+        throw new CliError(error instanceof Error ? error.message : String(error), 2);
+      }
     default:
       throw new CliError(`Unknown host command "${command ?? ""}"; expected serve, pin, pair or token`, 2);
   }

@@ -169,7 +169,8 @@ The `sync` routes copy sandbox changes back to the host checkout; the contract i
 ref (no leading `-`, `/` or `.`, no `..`), so neither can smuggle options into
 `git clone`. With `gitUrl`, the clone (`git clone --progress [--branch b] -- <url> .`)
 runs as a tracked process whose id comes back as `processId`: follow it on
-`/v1/processes/:id/logs/stream`. On failure the directory stays in place. The controller re-detects `framework`,
+`/v1/processes/:id/logs/stream`. On failure the directory stays in place. The controller re-detects `framework`
+(`expo`, `react-native`, `electron`, `vite`, `next`, `node`, `android`, `python`, `flutter`, `unknown`),
 `packageManager`, `scripts` and `buildTargets` from the files on disk.
 
 `confidential: true` (or `POST /v1/projects/:id/sync?confidential=1`) marks the project
@@ -275,6 +276,36 @@ fraction in `[0, 1]` or `null`. Recipes are described in
 | GET | `/v1/display` | `DisplayStatus` (includes the VNC password, for noVNC) |
 | GET | `/v1/display/screenshot` | `image/png` of display `:1`; `503 unavailable` without a display |
 | GET | `/v1/display/browser` | `BrowserStatus { available, tabs: BrowserTab[] }`: Chromium tabs, current first, `phoneUrl` reachable over Tailscale or null; `available: false` when DevTools is unreachable |
+| GET | `/v1/display/windows` | `DisplayWindowList { windows: DisplayWindow[] }`: application windows (no docks or menus), oldest first, with `active` and `minimized`; `503 unavailable` without a display |
+| POST | `/v1/display/windows/:id/activate` | `204`; raise, focus and restore the window. `400` malformed id, `404` unknown window |
+| POST | `/v1/display/windows/:id/close` | body `{ force? }` (optional) → `204`; graceful close, or kill the window's X client with `force: true`. `400`/`404` as above |
+
+### App runs and Android
+
+Run a project's app for the phone: `web-dev`, `expo-device`, `expo-web`, `expo-android`,
+`rn-android`, `flutter-web`, `flutter-linux`, `flutter-android`, `electron-dev`, `test`.
+Rules (detection, commands, readiness, viewers, the host emulator link):
+[app-runs-and-emulator.md](app-runs-and-emulator.md).
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| GET | `/v1/projects/:id/run-targets` | none | `RunTargetInfo[]` (unavailable targets carry `reason`) |
+| GET | `/v1/app-runs` | `?projectId=` | `AppRun[]`, newest first |
+| POST | `/v1/projects/:id/app-runs` | `StartAppRun { target, port? }` | `201 AppRun`; `400` not offered, `503` unavailable, `409` port taken or already running |
+| GET | `/v1/app-runs/:id` | none | `AppRun` |
+| DELETE | `/v1/app-runs/:id` | none | `AppRun` (its processes stopped) |
+| POST | `/v1/app-runs/:id/actions` | `AppRunActionRequest { action: "reload" \| "restart" \| "focus" }` | `AppRun`; `409` not ready or unsupported, `502` failed |
+| GET | `/v1/android` | none | `SandboxAndroidStatus` (link to the host emulator, adb tunnel `127.0.0.1:15555`) |
+
+```jsonc
+// POST /v1/projects/flutter-hello/app-runs  { "target": "flutter-web" }
+// 201, then app.updated events until ready:
+{ "id": "app_4n8c2v6x1z", "projectId": "flutter-hello", "target": "flutter-web", "state": "ready",
+  "port": 8090, "processIds": ["prc_9d2f6h1k3m"],
+  "viewer": { "kind": "url", "url": "http://100.64.0.2:8090", "localUrl": "http://127.0.0.1:8090" },
+  "actions": ["reload", "restart"], "error": null,
+  "startedAt": "2026-09-23T10:00:00.000Z", "readyAt": "2026-09-23T10:05:00.000Z", "endedAt": null }
+```
 
 ### Agent runs (headless Claude)
 
@@ -356,6 +387,7 @@ Client frames are limited to 1 MiB.
 { "type": "stt.updated", "stt": { /* SttStatus */ } }                          // the STT profile changed
 { "type": "sync.updated", "request": { /* SyncRequest */ } }                  // sync request created or changed state
 { "type": "sync.changed", "projectId": "electron-hello" }                     // sync-back baseline moved (push or ack)
+{ "type": "app.updated", "run": { /* AppRun */ } }                            // an app run changed state
 ```
 
 Events carry full objects so that clients can patch caches without refetching.
@@ -407,6 +439,17 @@ A raw TCP ↔ WebSocket bridge to `THEONE_VNC_HOST:THEONE_VNC_PORT`
 (`127.0.0.1:5901`). When the client offers `Sec-WebSocket-Protocol: binary`,
 the server echoes it, as noVNC expects. RFB authentication (VncAuth) happens
 inside the stream, using the password from `DisplayStatus.vnc.password`.
+
+### `/v1/android/link` and `/v1/android/link/streams/:id`
+
+Opened by the host shell daemon (it dials the sandbox with a ticket from the sandbox
+token given to `POST /v1/android/link` on the host). The link carries JSON
+`AndroidLinkHostMessage` (`hello`, `emulator`, `refuse`, `pong`) and
+`AndroidLinkSandboxMessage` (`open { streamId }`, `ping` every 20 s); a newer link
+closes the older with `4000`. Each stream socket is binary: raw adb bytes between one
+connection to the sandbox's `127.0.0.1:15555` and the host emulator's adbd.
+The host's own `WS /v1/android/screen` (emulator video and input) is in
+[app-runs-and-emulator.md](app-runs-and-emulator.md) §2.4.
 
 ## WebView bridge
 

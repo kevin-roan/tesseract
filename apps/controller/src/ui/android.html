@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Monolith · Android</title>
+    <link rel="stylesheet" href="./ui.css" />
+  </head>
+  <body class="page">
+    <header class="bar" data-bar>
+      <span class="status" data-status data-state="connecting">Connecting…</span>
+      <span class="title" data-title>Android emulator</span>
+    </header>
+    <main class="stage stage--android" data-stage>
+      <canvas class="screen" data-screen aria-label="Android emulator screen"></canvas>
+    </main>
+    <textarea
+      class="text-input"
+      data-text-input
+      autocapitalize="off"
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+      aria-label="Type into the emulator"
+    ></textarea>
+    <div class="overlay" data-overlay hidden>
+      <p class="overlay__text" data-overlay-text></p>
+      <button class="overlay__action" type="button" data-overlay-action hidden></button>
+    </div>
+    <nav class="keys keys--android" data-keys aria-label="Android keys"></nav>
+    <script type="module" src="./android.ts"></script>
+  </body>
+</html>

@@ -13,6 +13,7 @@ import type {
   TerminalInfo,
 } from "@theone/protocol";
 
+import { storeAppRun } from "@/features/app-runs/api/cache";
 import { storeInboxEvent } from "@/features/inbox/api/cache";
 
 import { ACTIVITY_LIMIT } from "../utils/constants";
@@ -156,6 +157,8 @@ export function applyServerEvent(queryClient: QueryClient, sandboxId: string, ev
       return refreshSyncState(queryClient, sandboxId, event.projectId);
     case "inbox.updated":
       return storeInboxEvent(queryClient, sandboxId, event);
+    case "app.updated":
+      return storeAppRun(queryClient, sandboxId, event.run);
     case "hello":
     case "ping":
       return;

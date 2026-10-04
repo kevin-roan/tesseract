@@ -10,7 +10,10 @@ module.exports = {
     "com.apple.security.application-groups": ["group.com.kevinbpract.theone"],
   },
   colors: {
-    $accent: "#C6F53B",
-    $widgetBackground: "#111111",
+    $accent: "#EDEDED",
+    $widgetBackground: "#0D0D0D",
+  },
+  images: {
+    appIcon: "./assets/app-icon.png",
   },
 };

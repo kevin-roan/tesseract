@@ -29,12 +29,18 @@ export type SpawnSpec = {
   env?: Record<string, string>;
   display?: boolean;
   port?: number | null;
+  /** Keep stdin open as a pipe (see `ProcessService.write`); the default is no stdin. */
+  stdin?: "pipe";
+  /** Rewrites each output line before it is logged; null drops the line. */
+  transformLine?: LineTransform;
   onExit?: (info: ProcessInfo) => void;
 };
 
+export type LineTransform = (stream: "stdout" | "stderr", line: string) => string | null;
+
 type LiveProcess = {
   info: ProcessInfo;
-  proc: Bun.Subprocess<"ignore", "pipe", "pipe">;
+  proc: Bun.Subprocess<"ignore" | "pipe", "pipe", "pipe">;
   channel: LogChannel;
   stopRequested: boolean;
   stopping: Promise<void> | null;
@@ -44,6 +50,11 @@ type LiveProcess = {
 const READER_GRACE_MS = 500;
 const PORT_PROBE_TIMEOUT_MS = 500;
 const NAME_LENGTH = 60;
+/**
+ * Extra env for processes on the sandbox display. The sandbox can't run Chromium's setuid sandbox (synced
+ * `chrome-sandbox` isn't root-owned 4755), so Electron aborts at startup unless its sandbox is disabled.
+ */
+const DISPLAY_ENV: Record<string, string> = { ELECTRON_DISABLE_SANDBOX: "1" };
 
 export function commandArgv(command: ProcessCommand): string[] {
   return typeof command === "string" ? ["bash", "-lc", command] : command;
@@ -58,13 +69,19 @@ function defaultName(command: ProcessCommand): string {
   return text.length > NAME_LENGTH ? `${text.slice(0, NAME_LENGTH - 1)}…` : text;
 }
 
-export async function pumpLines(stream: ReadableStream<Uint8Array>, channel: LogChannel, name: LogStream): Promise<void> {
+export async function pumpLines(
+  stream: ReadableStream<Uint8Array>,
+  channel: LogChannel,
+  name: "stdout" | "stderr",
+  transform?: LineTransform,
+): Promise<void> {
   const reader = stream.getReader();
   const splitter = new LineSplitter();
   const emit = (lines: string[]) => {
     for (const line of lines) {
       if (channel.ended) return;
-      channel.append(name, line);
+      const text = transform ? transform(name, line) : line;
+      if (text !== null) channel.append(name, text);
     }
   };
   try {
@@ -134,11 +151,12 @@ export class ProcessService {
         cwd: spec.cwd,
         env: {
           ...childEnv(),
+          ...(spec.display ? DISPLAY_ENV : {}),
           ...spec.env,
           ...(spec.display ? { DISPLAY: this.config.display } : {}),
           THEONE_PROCESS_ID: info.id,
         },
-        stdin: "ignore",
+        stdin: spec.stdin ?? "ignore",
         stdout: "pipe",
         stderr: "pipe",
         detached: true,
@@ -158,7 +176,10 @@ export class ProcessService {
     this.commit(info);
     this.logger.info("process started", { id: info.id, project: info.projectId ?? undefined, pid: proc.pid });
 
-    const readers = Promise.all([pumpLines(proc.stdout, channel, "stdout"), pumpLines(proc.stderr, channel, "stderr")]);
+    const readers = Promise.all([
+      pumpLines(proc.stdout, channel, "stdout", spec.transformLine),
+      pumpLines(proc.stderr, channel, "stderr", spec.transformLine),
+    ]);
     const entry: LiveProcess = { info, proc, channel, stopRequested: false, stopping: null, finished: Promise.resolve(info) };
     entry.finished = this.watch(entry, readers, spec.onExit);
     this.live.set(info.id, entry);
@@ -167,6 +188,8 @@ export class ProcessService {
 
   private async watch(entry: LiveProcess, readers: Promise<unknown>, onExit?: SpawnSpec["onExit"]): Promise<ProcessInfo> {
     await entry.proc.exited;
+    const stdin = entry.proc.stdin;
+    if (stdin && typeof stdin !== "number") void Promise.resolve().then(() => stdin.end()).catch(() => {});
     if (entry.stopping) await entry.stopping;
     else await reapGroup(entry.proc.pid, this.stopGraceMs, (leftovers) => entry.channel.append("system", describeLeftovers(leftovers)));
     await Promise.race([readers, Bun.sleep(READER_GRACE_MS)]);
@@ -197,6 +220,19 @@ export class ProcessService {
     if (!entry.stopRequested) entry.channel.append("system", "Stopping: SIGTERM to the process group");
     await this.terminate(entry, this.stopGraceMs);
     return entry.finished;
+  }
+
+  /** Writes to the stdin pipe of a live process spawned with `stdin: "pipe"`; false when that is not possible. */
+  write(id: string, data: string): boolean {
+    const stdin = this.live.get(id)?.proc.stdin;
+    if (!stdin || typeof stdin === "number") return false;
+    try {
+      stdin.write(data);
+      void Promise.resolve(stdin.flush()).catch(() => {});
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   private terminate(entry: LiveProcess, graceMs: number): Promise<void> {
@@ -247,7 +283,8 @@ export class ProcessService {
     );
   }
 
-  private async assertPortFree(port: number): Promise<void> {
+  /** Throws 409 when a live process claims the port or something accepts connections on it. */
+  async assertPortFree(port: number): Promise<void> {
     const owner = [...this.live.values()].find((entry) => entry.info.port === port);
     if (owner) throw conflict(`Port ${port} is already used by process ${owner.info.id} (${owner.info.name})`);
     const [v4, v6] = await Promise.all([

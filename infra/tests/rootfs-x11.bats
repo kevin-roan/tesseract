@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-# theone-wait-x, theone-xvnc and theone-screenshot with stubbed X11 tools.
+# theone-wait-x, theone-xvnc, theone-screenshot and the openbox autostart with stubbed X11 tools.
 
 load lib/common
 
@@ -204,4 +204,36 @@ stale_lock_is_removed() {
   run "${ROOTFS_BIN}/theone-screenshot" "${BATS_TEST_TMPDIR}/x.png"
   assert_failure 1
   assert_output ""
+}
+
+# --- /etc/xdg/openbox/autostart (desktop, dock and browser) -------------------
+
+@test "autostart: starts the dock with the image's config and Chromium" {
+  stub xsetroot
+  stub tint2
+  stub chromium
+  run sh -c '. "$1"; wait' autostart "${ROOTFS}/etc/xdg/openbox/autostart"
+  assert_success
+  assert_equal "$(calls_of tint2)" "-c /etc/xdg/tint2/tint2rc"
+  assert_equal "$(calls_of chromium)" "--start-maximized --no-first-run --no-default-browser-check about:blank"
+}
+
+@test "autostart: a user's own tint2rc wins" {
+  stub xsetroot
+  stub tint2
+  stub chromium
+  mkdir -p "${HOME}/.config/tint2"
+  : > "${HOME}/.config/tint2/tint2rc"
+  run sh -c '. "$1"; wait' autostart "${ROOTFS}/etc/xdg/openbox/autostart"
+  assert_success
+  assert_equal "$(calls_of tint2)" "-c ${HOME}/.config/tint2/tint2rc"
+}
+
+@test "tint2rc: a bottom panel that reserves its space, with a taskbar and launchers" {
+  local rc="${ROOTFS}/etc/xdg/tint2/tint2rc"
+  assert_file_contains "${rc}" '^panel_items = BBTC$'
+  assert_file_contains "${rc}" '^panel_position = bottom center horizontal$'
+  assert_file_contains "${rc}" '^strut_policy = follow_size$'
+  assert_file_contains "${rc}" '^button_lclick_command = xterm '
+  assert_file_contains "${rc}" '^button_lclick_command = chromium '
 }

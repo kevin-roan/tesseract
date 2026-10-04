@@ -33,6 +33,15 @@ describe("homeStatus", () => {
   const openInbox = jest.fn();
   const build = { title: "Building APK", message: "Compile", progress: 0.5, view: jest.fn() };
 
+  it("puts an unreachable sandbox first", () => {
+    const view = jest.fn();
+    expect(homeStatus({ offline: { view }, attention: "1 request needs you", openInbox, build })).toMatchObject({
+      id: "offline",
+      title: "Sandbox unreachable",
+      onAction: view,
+    });
+  });
+
   it("prefers the inbox, then a build, else nothing", () => {
     expect(homeStatus({ attention: "1 request needs you", openInbox, build })).toMatchObject({
       id: "inbox",

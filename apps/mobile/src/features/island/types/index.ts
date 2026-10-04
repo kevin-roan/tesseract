@@ -48,5 +48,15 @@ export type Rect = { x: number; y: number; width: number; height: number };
 
 export type Corner = "topLeft" | "topRight" | "bottomLeft" | "bottomRight";
 
+/** Where the in-app island orb sits, or `hidden` to leave live work to the Dynamic Island / notification. */
+export type IslandPlacement = Corner | "hidden";
+
+export type Point = { x: number; y: number };
+
+export type Edge = "left" | "right" | "top" | "bottom";
+
+/** Where the orb rests: an edge of the screen and how far along it (0 = start, 1 = end). */
+export type OrbDock = { edge: Edge; offset: number };
+
 /** How an image is letterboxed inside its container, in screen points. */
 export type FitGeometry = Rect & { scale: number };

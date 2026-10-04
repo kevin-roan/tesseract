@@ -30,6 +30,7 @@ const FRAMEWORKS: Record<Framework, string> = {
   node: "Node",
   android: "Android",
   python: "Python",
+  flutter: "Flutter",
   unknown: "Project",
 };
 

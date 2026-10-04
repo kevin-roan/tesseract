@@ -15,7 +15,7 @@ import {
   TERMINAL_THEME,
   type KeyId,
 } from "./lib/config";
-import { requireElement } from "./lib/dom";
+import { requireElement, trackVisualViewport } from "./lib/dom";
 import { takeFragment } from "./lib/fragment";
 import { exposeHostApi, hasHost, postToHost } from "./lib/host";
 import { withCtrl } from "./lib/keys";
@@ -116,10 +116,10 @@ term.onTitleChange((text) => {
 
 new ResizeObserver(refit).observe(stage);
 window.addEventListener("orientationchange", () => setTimeout(refit, 150));
-window.visualViewport?.addEventListener("resize", refit);
 stage.addEventListener("click", () => term.focus());
 
 exposeHostApi({ reconnect: connect });
+trackVisualViewport(refit);
 refit();
 
 if (!sessionId) {

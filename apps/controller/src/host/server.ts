@@ -1,19 +1,25 @@
 import type { Server, ServerWebSocket } from "bun";
 import {
+  AndroidScreenClientMessageSchema,
+  AndroidScreenQuerySchema,
   CreateTerminalSchema,
   errorBody,
   HOST_SHELL_SERVICE,
   HostLockSchema,
   HostUnlockSchema,
   isIdOfKind,
+  LinkSandboxSchema,
   parseJson,
   parseJsonWith,
   PROTOCOL_VERSION,
   restPaths,
   routePatterns,
+  StartEmulatorSchema,
   TerminalClientMessageSchema,
   TICKET_PARAM,
   validate,
+  wsPaths,
+  type AndroidScreenServerMessage,
   type HostHealth,
   type Schema,
   type TerminalServerMessage,
@@ -21,22 +27,28 @@ import {
 import { TicketStore } from "../auth/tickets";
 import { badRequest, errorMessage, HttpError, notFound } from "../core/errors";
 import { createLogger, type Logger } from "../core/logger";
+import androidPage from "../ui/android.html";
 import terminalPage from "../ui/terminal.html";
 import { VERSION } from "../version";
+import { HostAndroid, type HostAndroidOptions } from "./android";
+import type { ScreenClient } from "./android/screen";
 import { HostAuth, type HostAuthOptions } from "./auth";
 import type { HostConfig } from "./config";
 import { HostStateStore } from "./state";
 import { HostTerminals } from "./terminals";
 
-type WsData = { id: string; cleanup: (() => void) | null };
+type WsData = { kind: "terminal" | "screen"; id: string; maxSize: number | undefined; screen: ScreenClient | null; cleanup: (() => void) | null };
 
-export type HostShellOptions = HostAuthOptions & { logger?: Logger; stopGraceMs?: number };
+export type HostShellOptions = HostAuthOptions & { logger?: Logger; stopGraceMs?: number; android?: HostAndroidOptions };
 
 export type HostShell = {
   server: Server<WsData>;
   url: URL;
   auth: HostAuth;
   terminals: HostTerminals;
+  android: HostAndroid;
+  /** Settles once a running emulator was adopted and the stored sandbox link dialled. */
+  ready: Promise<void>;
   stop: () => Promise<void>;
 };
 
@@ -92,6 +104,8 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
   const auth = new HostAuth(store, logger, options);
   const tickets = new TicketStore();
   const terminals = new HostTerminals(config.shell, config.home, logger, undefined, options.stopGraceMs);
+  const android = new HostAndroid(config.android, store, { hostId: config.hostId, version: VERSION }, logger, options.android);
+  const ready = android.init().catch((error: unknown) => logger.error("android init failed", { error: errorMessage(error) }));
   const health: HostHealth = { ok: true, service: HOST_SHELL_SERVICE, version: VERSION, protocolVersion: PROTOCOL_VERSION, hostId: config.hostId };
 
   async function route(request: Request, server: Server<WsData>): Promise<Response | undefined> {
@@ -108,7 +122,19 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") throw badRequest("WebSocket upgrade required");
       if (!tickets.consume(url.searchParams.get(TICKET_PARAM))) throw new HttpError("unauthorized", "Missing, expired or already used ticket");
       if (!isIdOfKind("terminal", streamId) || !terminals.has(streamId)) throw notFound(`Terminal ${streamId.slice(0, 80)} not found`);
-      if (server.upgrade(request, { data: { id: streamId, cleanup: null } })) return undefined;
+      if (server.upgrade(request, { data: { kind: "terminal", id: streamId, maxSize: undefined, screen: null, cleanup: null } })) return undefined;
+      throw badRequest("WebSocket upgrade failed");
+    }
+
+    if (path === wsPaths.androidScreen()) {
+      if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") throw badRequest("WebSocket upgrade required");
+      const query = validate(AndroidScreenQuerySchema, {
+        ticket: url.searchParams.get(TICKET_PARAM),
+        maxSize: url.searchParams.get("maxSize") ?? undefined,
+      });
+      if (!query.ok) throw badRequest(`Invalid query: ${query.error.message}`);
+      if (!tickets.consume(query.value.ticket)) throw new HttpError("unauthorized", "Missing, expired or already used ticket");
+      if (server.upgrade(request, { data: { kind: "screen", id: "screen", maxSize: query.value.maxSize, screen: null, cleanup: null } })) return undefined;
       throw badRequest("WebSocket upgrade failed");
     }
 
@@ -126,7 +152,8 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     }
 
     const terminalId = decodeId(TERMINAL_PATH.exec(path));
-    const known = path === restPaths.authTicket() || path === restPaths.terminals() || terminalId !== null;
+    const androidPath = path === restPaths.android() || path === restPaths.androidEmulator() || path === restPaths.androidLink();
+    const known = path === restPaths.authTicket() || path === restPaths.terminals() || terminalId !== null || androidPath;
     if (!known) throw notFound(`No route for ${method} ${path}`);
     auth.requireSession(authorization);
 
@@ -137,17 +164,33 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       if (!isIdOfKind("terminal", terminalId)) throw notFound(`Terminal ${terminalId.slice(0, 80)} not found`);
       return respond(await terminals.close(terminalId));
     }
+    if (path === restPaths.android() && method === "GET") return respond(await android.status());
+    if (path === restPaths.androidEmulator() && method === "POST") return respond(await android.start(await readBody(request, StartEmulatorSchema)), 202);
+    if (path === restPaths.androidEmulator() && method === "DELETE") return respond(android.stop());
+    if (path === restPaths.androidLink() && method === "POST") return respond(android.linkSandbox(await readBody(request, LinkSandboxSchema)));
+    if (path === restPaths.androidLink() && method === "DELETE") return respond(android.unlinkSandbox());
     throw new HttpError("bad_request", `${method} is not supported on ${path}`, 405);
   }
 
-  const send = (ws: ServerWebSocket<WsData>, message: TerminalServerMessage) => ws.send(JSON.stringify(message));
+  const send = (ws: ServerWebSocket<WsData>, message: TerminalServerMessage | AndroidScreenServerMessage) => ws.send(JSON.stringify(message));
+
+  function openScreen(ws: ServerWebSocket<WsData>): void {
+    const client: ScreenClient = {
+      send: (message) => send(ws, message),
+      sendFrame: (frame) => ws.send(frame),
+      bufferedAmount: () => ws.getBufferedAmount(),
+      close: (code, reason) => ws.close(code, reason),
+    };
+    ws.data.screen = client;
+    ws.data.cleanup = android.screens.attach(client, ws.data.maxSize);
+  }
 
   const server: Server<WsData> = Bun.serve<WsData>({
     hostname: config.bind,
     port: config.port,
     development: false,
     idleTimeout: HTTP_IDLE_TIMEOUT_SEC,
-    routes: { [routePatterns.ui.terminal]: terminalPage },
+    routes: { [routePatterns.ui.terminal]: terminalPage, [routePatterns.ui.android]: androidPage },
     async fetch(request, bunServer) {
       try {
         return await route(request, bunServer);
@@ -164,6 +207,10 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       perMessageDeflate: false,
       sendPings: true,
       open(ws) {
+        if (ws.data.kind === "screen") {
+          openScreen(ws);
+          return;
+        }
         try {
           ws.data.cleanup = terminals.attach(ws.data.id, {
             send: (message) => send(ws, message),
@@ -175,6 +222,11 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       },
       message(ws, message) {
         if (typeof message !== "string") return;
+        if (ws.data.kind === "screen") {
+          const parsed = parseJsonWith(AndroidScreenClientMessageSchema, message);
+          if (parsed.ok && ws.data.screen) android.screens.handle(ws.data.screen, parsed.value);
+          return;
+        }
         const parsed = parseJsonWith(TerminalClientMessageSchema, message);
         if (!parsed.ok) return;
         if (parsed.value.type === "input") terminals.write(ws.data.id, parsed.value.data);
@@ -191,7 +243,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
   const stop = () => {
     stopping ??= (async () => {
       void server.stop(false);
-      await terminals.shutdown();
+      await Promise.all([terminals.shutdown(), android.shutdown()]);
       await server.stop(true);
     })();
     return stopping;
@@ -199,5 +251,5 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
 
   const url = new URL(server.url.href);
   logger.info("host shell listening", { url: url.href, host: config.hostId, state: config.stateFile });
-  return { server, url, auth, terminals, stop };
+  return { server, url, auth, terminals, android, ready, stop };
 }

@@ -61,6 +61,33 @@ export const BrowserStatusSchema = z.object({
 });
 export type BrowserStatus = z.infer<typeof BrowserStatusSchema>;
 
+/** X window id as wmctrl prints it, e.g. `0x03a00004`. */
+export const DisplayWindowIdSchema = z.string().regex(/^0x[0-9a-f]+$/);
+
+/** A top-level application window on the virtual display (docks, panels and the desktop are left out). */
+export const DisplayWindowSchema = z.object({
+  id: DisplayWindowIdSchema,
+  title: z.string(),
+  /** WM_CLASS class name, e.g. `Chromium`. */
+  app: z.string().nullable(),
+  pid: z.int().positive().nullable(),
+  active: z.boolean(),
+  minimized: z.boolean(),
+});
+export type DisplayWindow = z.infer<typeof DisplayWindowSchema>;
+
+/** Windows in stacking-list order (oldest first). */
+export const DisplayWindowListSchema = z.object({
+  windows: z.array(DisplayWindowSchema),
+});
+export type DisplayWindowList = z.infer<typeof DisplayWindowListSchema>;
+
+/** `force` kills the window's client instead of asking it to close. */
+export const CloseDisplayWindowSchema = z.object({
+  force: z.boolean().optional(),
+});
+export type CloseDisplayWindow = z.infer<typeof CloseDisplayWindowSchema>;
+
 const CountSchema = z.int().nonnegative();
 
 export const SandboxResourcesSchema = z.object({

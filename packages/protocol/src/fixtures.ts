@@ -1,4 +1,10 @@
 import type {
+  AndroidLinkInfo,
+  AppRun,
+  EmulatorInfo,
+  HostAndroidStatus,
+  RunTargetInfo,
+  SandboxAndroidStatus,
   AgentContext,
   AgentRun,
   AgentRunDetail,
@@ -187,6 +193,7 @@ export const sampleProject: Project = {
   framework: "electron",
   packageManager: "npm",
   scripts: ["start", "build"],
+  dependenciesInstalled: true,
   buildTargets: ["electron-linux", "electron-windows"],
   git: {
     branch: "main",
@@ -465,4 +472,87 @@ export const sampleSyncRequest: SyncRequest = {
   error: null,
   createdAt: TS,
   updatedAt: LATER,
+};
+
+export const sampleRunTargets: RunTargetInfo[] = [
+  { target: "flutter-web", label: "Web", available: true, reason: null, viewer: "url", actions: ["reload", "restart"] },
+  { target: "flutter-linux", label: "Linux desktop", available: true, reason: null, viewer: "display", actions: ["reload", "restart", "focus"] },
+  {
+    target: "flutter-android",
+    label: "Android emulator",
+    available: false,
+    reason: "Link the host Android emulator first",
+    viewer: "android",
+    actions: ["reload", "restart"],
+  },
+  { target: "test", label: "Tests", available: true, reason: null, viewer: "none", actions: [] },
+];
+
+export const sampleAppRun: AppRun = {
+  id: "app_4n8c2v6x1z",
+  projectId: "flutter-hello",
+  target: "flutter-web",
+  state: "ready",
+  port: 8090,
+  processIds: ["prc_9d2f6h1k3m"],
+  viewer: { kind: "url", url: "http://100.64.0.2:8090", localUrl: "http://127.0.0.1:8090" },
+  actions: ["reload", "restart"],
+  error: null,
+  startedAt: TS,
+  readyAt: LATER,
+  endedAt: null,
+};
+
+export const sampleExpoAppRun: AppRun = {
+  ...sampleAppRun,
+  id: "app_7q1w5e9r3t",
+  projectId: "expo-hello",
+  target: "expo-device",
+  port: 8081,
+  processIds: ["prc_2b4n6m8p0q"],
+  viewer: {
+    kind: "deeplink",
+    devClientUrl: "exp+expo-hello://expo-development-client/?url=http%3A%2F%2F100.64.0.2%3A8081",
+    expoGoUrl: "exp://100.64.0.2:8081",
+    manifestUrl: "http://100.64.0.2:8081",
+  },
+};
+
+export const sampleEmulator: EmulatorInfo = {
+  state: "running",
+  avd: "Pixel_8_API_35",
+  serial: "127.0.0.1:41555",
+  managed: true,
+  isolated: true,
+  width: 1080,
+  height: 2400,
+  startedAt: TS,
+  error: null,
+};
+
+export const sampleAndroidLink: AndroidLinkInfo = {
+  configured: true,
+  sandboxUrl: "http://100.64.0.2:7700",
+  connected: true,
+  lastError: null,
+};
+
+export const sampleHostAndroidStatus: HostAndroidStatus = {
+  available: true,
+  reason: null,
+  sdkRoot: "/home/me/.local/share/theone/android-sdk",
+  isolation: "netns",
+  avds: ["Pixel_8_API_35"],
+  scrcpy: true,
+  ffmpeg: true,
+  emulator: sampleEmulator,
+  link: sampleAndroidLink,
+};
+
+export const sampleSandboxAndroidStatus: SandboxAndroidStatus = {
+  linked: true,
+  hostId: "workstation",
+  emulator: sampleEmulator,
+  adbSerial: "127.0.0.1:15555",
+  adbConnected: true,
 };

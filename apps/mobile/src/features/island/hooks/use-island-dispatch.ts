@@ -1,6 +1,7 @@
 import { useCallback } from "react";
+import { BuildIdSchema, ProcessIdSchema } from "@theone/protocol";
 
-import { useCancelAgentRun } from "@/features/sandbox/hooks/use-sandbox-mutations";
+import { useCancelAgentRun, useCancelBuild, useStopProcess } from "@/features/sandbox/hooks/use-sandbox-mutations";
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
 
 import { takeSharedItems, type IslandAction, type SharedItem } from "@/modules/theone-island";
@@ -12,6 +13,8 @@ export function useIslandDispatch() {
   const nav = useSandboxNavigation();
   const cancelRun = useCancelAgentRun();
   const { mutate: cancel } = cancelRun;
+  const { mutate: cancelBuild } = useCancelBuild();
+  const { mutate: stopProcess } = useStopProcess();
   const openCapture = useIslandStore((state) => state.openCapture);
   const openAttach = useIslandStore((state) => state.openAttach);
   const queueSharedItems = useIslandStore((state) => state.queueSharedItems);
@@ -39,7 +42,10 @@ export function useIslandDispatch() {
     async (action: IslandAction) => {
       switch (action.action) {
         case "stop":
-          if (action.runId) cancel(action.runId);
+          if (!action.runId) return;
+          if (ProcessIdSchema.safeParse(action.runId).success) stopProcess(action.runId);
+          else if (BuildIdSchema.safeParse(action.runId).success) cancelBuild(action.runId);
+          else cancel(action.runId);
           return;
         case "open":
           if (action.runId) nav.agentRun(action.runId);
@@ -54,7 +60,7 @@ export function useIslandDispatch() {
           return;
       }
     },
-    [cancel, nav, openCapture, collectShared, attachQueuedShared],
+    [cancel, cancelBuild, stopProcess, nav, openCapture, collectShared, attachQueuedShared],
   );
 
   return { dispatch, collectShared, attachQueuedShared };

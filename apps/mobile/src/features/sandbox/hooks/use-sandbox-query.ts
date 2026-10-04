@@ -13,7 +13,7 @@ export type SandboxQueryOptions = {
 export function useSandboxQuery<T>(
   key: (sandboxId: string) => QueryKey,
   fetcher: (client: TheOneClient, signal: AbortSignal) => Promise<T>,
-  options: SandboxQueryOptions = {},
+  options: SandboxQueryOptions & { initialData?: (sandboxId: string) => T | undefined } = {},
 ): UseQueryResult<T, Error> {
   const { sandbox, client } = useSandboxClient();
   const focused = useIsFocused();
@@ -26,6 +26,7 @@ export function useSandboxQuery<T>(
       return fetcher(client, signal);
     },
     enabled,
+    initialData: sandbox && options.initialData ? () => options.initialData?.(sandbox.id) : undefined,
     subscribed: focused,
     refetchInterval: focused && options.refetchInterval ? options.refetchInterval : false,
   });

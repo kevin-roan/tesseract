@@ -17,6 +17,7 @@ note builds on.
 | [sandbox-image.md](architecture/sandbox-image.md) | Dockerfile stages, build args, users, volumes, entrypoint, supervisord programs, extending |
 | [networking-tailscale.md](architecture/networking-tailscale.md) | userspace sidecar, serve config, MagicDNS/HTTPS, ACLs, host-tailscale and local modes, what is never exposed |
 | [display-vnc.md](architecture/display-vnc.md) | Xvnc + openbox, noVNC through the controller bridge, native VNC clients, screenshots, geometry, phone UX |
+| [app-runs-and-emulator.md](architecture/app-runs-and-emulator.md) | run targets (web, Expo, React Native, Flutter, Electron, tests), app runs and viewers, the host Android emulator, its sandbox adb link and screen stream |
 | [electron-windows-wine.md](architecture/electron-windows-wine.md) | how Windows builds work on Linux, builder vs forge, targets, signing, wine smoke tests, limits |
 | [mobile-app.md](architecture/mobile-app.md) | the sandbox feature module, stores, react-query + events socket, reconnect and re-pair, screens (incl. add project), WebView pages, web build, dev builds |
 | [security-model.md](architecture/security-model.md) | threat model, controls, dind risk, Claude `bypassPermissions`, secrets, prompt injection, token blast radius, same-user limit, audit results |

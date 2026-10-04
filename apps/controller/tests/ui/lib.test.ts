@@ -140,7 +140,7 @@ describe("host bridge", () => {
     const reconnect = mock((_ticket: string) => {});
     exposeHostApi({ reconnect });
     const theone = (dom as unknown as globalThis.Window).theone;
-    expect(Object.keys(theone ?? {}).sort()).toEqual(["reconnect", "setInputMode", "setInsets"]);
+    expect(Object.keys(theone ?? {}).sort()).toEqual(["paste", "reconnect", "setInputMode", "setInsets"]);
     theone?.setInputMode("touch");
     theone?.setInsets({ top: 1, bottom: 2 });
     theone?.reconnect("");
@@ -186,6 +186,20 @@ describe("host bridge", () => {
     theone?.setInsets({ top: 10, bottom: 0 });
     expect(setInputMode.mock.calls).toEqual([["touch"], ["trackpad"]]);
     expect(setInsets.mock.calls).toEqual([[{ top: 88, bottom: 34 }], [{ top: 10, bottom: 0 }]]);
+  });
+
+  test("paste accepts only non-empty text on both paths", () => {
+    const paste = mock((_text: string) => {});
+    exposeHostApi({ reconnect: () => {}, paste });
+    const theone = (dom as unknown as globalThis.Window).theone;
+    const send = (data: unknown) => dom.dispatchEvent(new dom.MessageEvent("message", { data }));
+    send({ type: HOST_MESSAGES.paste, text: "" });
+    send({ type: HOST_MESSAGES.paste, text: 42 });
+    theone?.paste(null as never);
+    expect(paste).not.toHaveBeenCalled();
+    send({ type: HOST_MESSAGES.paste, text: "https://api.example.com" });
+    theone?.paste("hello");
+    expect(paste.mock.calls).toEqual([["https://api.example.com"], ["hello"]]);
   });
 
   test("applyInsets exposes CSS variables", () => {
@@ -280,12 +294,14 @@ describe("dom helpers and components", () => {
     const pressed: string[] = [];
     const bar = new KeyBar(container as never, [...VNC_HOST_KEYS, ...KEY_BAR], (key) => pressed.push(key));
     const buttons = [...container.querySelectorAll("button")];
-    expect(buttons.slice(0, 2).map((button) => [button.textContent, button.getAttribute("aria-label")])).toEqual([
+    expect(buttons.slice(0, 3).map((button) => [button.textContent, button.getAttribute("aria-label")])).toEqual([
       ["⌨", "Keyboard"],
       ["URL", "Browser URL"],
+      ["Paste", "Paste the phone clipboard"],
     ]);
     buttons[1]?.click();
-    expect(pressed).toEqual(["browser"]);
+    buttons[2]?.click();
+    expect(pressed).toEqual(["browser", "paste"]);
     bar.setActive("keyboard", true);
     expect(buttons[0]?.getAttribute("aria-pressed")).toBe("true");
     bar.setActive("keyboard", false);

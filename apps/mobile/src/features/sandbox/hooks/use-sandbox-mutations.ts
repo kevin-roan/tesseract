@@ -177,6 +177,21 @@ export const useDiscardSyncChanges = () =>
     (queryClient, sandboxId, result) => storeSyncChanges(queryClient, sandboxId, result.changes),
   );
 
+const refreshWindows = (queryClient: QueryClient, sandboxId: string) =>
+  queryClient.invalidateQueries({ queryKey: sandboxKeys.displayWindows(sandboxId), exact: true });
+
+export const useActivateDisplayWindow = () =>
+  useSandboxMutation(
+    (client, id: string) => client.activateDisplayWindow(id),
+    (queryClient, sandboxId) => refreshWindows(queryClient, sandboxId),
+  );
+
+export const useCloseDisplayWindow = () =>
+  useSandboxMutation(
+    (client, { id, force }: { id: string; force: boolean }) => client.closeDisplayWindow(id, force ? { force } : {}),
+    (queryClient, sandboxId) => refreshWindows(queryClient, sandboxId),
+  );
+
 export function usePairSandbox() {
   const addSandbox = useSandboxStore((state) => state.addSandbox);
   return useMutation({

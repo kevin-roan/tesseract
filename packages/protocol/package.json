@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./bridge": "./src/bridge.ts",
+    "./constants": "./src/constants.ts",
     "./fixtures": "./src/fixtures.ts"
   },
   "scripts": {

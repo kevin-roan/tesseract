@@ -11,6 +11,8 @@ const ID_LABELS: Record<IdKind, string> = {
   inbox: "Inbox item",
   upload: "Upload",
   sync: "Sync request",
+  appRun: "App run",
+  adbStream: "ADB stream",
 };
 
 export function parseWith<T>(schema: Schema<T>, data: unknown, what: string): T {
@@ -20,7 +22,16 @@ export function parseWith<T>(schema: Schema<T>, data: unknown, what: string): T 
 }
 
 export async function jsonBody<T>(c: Context, schema: Schema<T>): Promise<T> {
+  return parseBody(await c.req.text(), schema);
+}
+
+/** Like `jsonBody`, but an empty body means `fallback`. */
+export async function optionalJsonBody<T>(c: Context, schema: Schema<T>, fallback: T): Promise<T> {
   const text = await c.req.text();
+  return text.trim() ? parseBody(text, schema) : fallback;
+}
+
+function parseBody<T>(text: string, schema: Schema<T>): T {
   const parsed = parseJson(text);
   if (!parsed.ok) throw badRequest(`Request body must be JSON: ${parsed.error.message}`);
   return parseWith(schema, parsed.value, "request body");

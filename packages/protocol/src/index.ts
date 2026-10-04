@@ -25,4 +25,6 @@ export * from "./schemas/messages";
 export * from "./schemas/queries";
 export * from "./schemas/lists";
 export * from "./schemas/host";
+export * from "./schemas/apps";
+export * from "./schemas/android";
 export * from "./validate";

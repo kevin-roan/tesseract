@@ -23,6 +23,8 @@ export type ResourceCardProps = {
   footer?: ReactNode;
   accessory?: ReactNode;
   children?: ReactNode;
+  /** Rendered below the footer, e.g. an expanded log view. */
+  expanded?: ReactNode;
 };
 
 const ResourceCard = ({
@@ -36,6 +38,7 @@ const ResourceCard = ({
   footer,
   accessory,
   children,
+  expanded,
 }: ResourceCardProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -90,6 +93,7 @@ const ResourceCard = ({
           <View style={styles.summary}>{summary}</View>
         )}
         {footer ? <View style={styles.footer}>{footer}</View> : null}
+        {expanded}
       </Surface>
     </Animated.View>
   );

@@ -127,6 +127,12 @@ export function createWebSocketHandler(
             return openBuildLogs(ws, services, data.id);
           case "agentRun":
             return openAgentRun(ws, services, data.id);
+          case "androidLink":
+            data.session = services.android.openLink({ send: (text) => ws.send(text), close: (code, reason) => ws.close(code, reason) });
+            return;
+          case "androidLinkStream":
+            data.peer = { send: (chunk) => ws.send(chunk), close: (code, reason) => ws.close(code, reason) };
+            return services.android.attachStream(data.id, data.peer);
           case "vnc":
             return data.bridge.attach({
               send: (chunk) => ws.send(chunk),
@@ -144,6 +150,14 @@ export function createWebSocketHandler(
         data.bridge.fromClient(message);
         return;
       }
+      if (data.kind === "androidLinkStream") {
+        if (data.peer) services.android.streamMessage(data.id, data.peer, message);
+        return;
+      }
+      if (data.kind === "androidLink") {
+        if (data.session && typeof message === "string") services.android.linkMessage(data.session, message);
+        return;
+      }
       if (data.kind !== "terminal" || typeof message !== "string") return;
       const parsed = parseJsonWith(TerminalClientMessageSchema, message);
       if (!parsed.ok) {
@@ -155,12 +169,15 @@ export function createWebSocketHandler(
     },
     drain(ws) {
       if (ws.data.kind === "vnc") ws.data.bridge.clientDrained();
+      else if (ws.data.kind === "androidLinkStream" && ws.data.peer) services.android.streamDrained(ws.data.id, ws.data.peer);
     },
     close(ws) {
       const data = ws.data;
       data.cleanup?.();
       data.cleanup = null;
       if (data.kind === "vnc") data.bridge.clientClosed();
+      else if (data.kind === "androidLinkStream" && data.peer) services.android.streamClosed(data.id, data.peer);
+      else if (data.kind === "androidLink" && data.session) services.android.linkClosed(data.session);
     },
   };
 }

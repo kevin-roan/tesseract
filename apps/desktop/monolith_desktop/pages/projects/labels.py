@@ -68,6 +68,7 @@ FRAMEWORKS = MappingProxyType({
     "node": "Node",
     "android": "Android",
     "python": "Python",
+    "flutter": "Flutter",
     "unknown": "Project",
 })
 

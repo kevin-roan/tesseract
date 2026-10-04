@@ -9,6 +9,7 @@ import type { Services } from "../services";
 import { requireAuth } from "./middleware/auth";
 import { redactUrl, requestLog } from "./middleware/request-log";
 import { registerAgentRoutes } from "./routes/agent";
+import { registerAppRoutes } from "./routes/apps";
 import { registerArtifactRoutes } from "./routes/artifacts";
 import { registerBuildRoutes } from "./routes/builds";
 import { registerInboxRoutes } from "./routes/inbox";
@@ -84,6 +85,7 @@ export function createApp(services: Services): Hono {
   registerInboxRoutes(app, services);
   registerPushRoutes(app, services);
   registerUploadRoutes(app, services);
+  registerAppRoutes(app, services);
 
   app.notFound((c) => c.json(errorBody("not_found", `No route for ${c.req.method} ${c.req.path}`), 404));
 
