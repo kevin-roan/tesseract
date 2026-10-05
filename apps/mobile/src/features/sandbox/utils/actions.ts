@@ -16,6 +16,7 @@ import {
   GearSixIcon,
   GlobeIcon,
   HandPointingIcon,
+  PencilSimpleIcon,
   PlusIcon,
   RobotIcon,
   SparkleIcon,
@@ -51,9 +52,11 @@ export const PROJECT_ACTIONS = {
   shell: { id: "shell", icon: TerminalWindowIcon, label: "Open a shell in this project" },
   claudeSession: { id: "claude-session", icon: RobotIcon, label: "Open an interactive Claude Code session" },
   askClaude: { id: "ask-claude", icon: SparkleIcon, label: "Ask Claude to work on this project" },
+  rename: { id: "rename", icon: PencilSimpleIcon, label: "Rename this project" },
 } satisfies Record<string, ActionTemplate>;
 
 export const PROJECT_MENU_ACTIONS = {
+  rename: { id: "rename", icon: PencilSimpleIcon, label: "Rename" },
   remove: { id: "remove", icon: TrashIcon, label: "Delete from sandbox", tone: "danger" },
 } satisfies Record<string, ActionTemplate>;
 

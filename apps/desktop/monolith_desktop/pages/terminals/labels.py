@@ -8,7 +8,7 @@ WORKSPACE = "Workspace"
 
 SIDEBAR = MappingProxyType({
     "title": "Sessions",
-    "empty": "No sessions yet. Start a shell or a Claude Code session.",
+    "empty": "No sessions",
 })
 
 LAUNCH = MappingProxyType({
@@ -81,10 +81,10 @@ CONFIRM = MappingProxyType({
 })
 
 PLACEHOLDER = MappingProxyType({
-    "title": "Start a terminal",
-    "message": "Open a shell or a Claude Code session inside the sandbox, or pick a session on the left.",
-    "shell": "New Shell",
-    "claude": "New Claude Session",
+    "title": "No session selected",
+    "message": "Start a shell or a Claude Code session in the sandbox, or pick one from the list.",
+    "shell": "New shell",
+    "claude": "New Claude session",
 })
 
 EMPTY = MappingProxyType({

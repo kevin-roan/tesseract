@@ -3,15 +3,15 @@ from collections.abc import Callable
 from gi.repository import Gtk
 
 from ..theme.surfaces import SurfaceTone
+from ..theme.tokens import SPACING
+from ..util.format import clamp_fraction
 from ..viewmodels import StatItem
-from .icon import IconBadge
-from .progress import ProgressRing
-from .surface import Pressable, Surface
+from .icon import Icon
+from .progress import ProgressBar
+from .surface import Pressable
 from .text import Text
 
-MIN_HEIGHT = 148
-RING_COLOR = "highlight"
-RING_TRACK_LABEL = "textSecondary"
+CAPTION_CHARS = 10
 
 
 class StatCard(Gtk.Box):
@@ -27,44 +27,50 @@ class StatCard(Gtk.Box):
         on_activate: Callable[[], None] | None = None,
     ) -> None:
         super().__init__(hexpand=True)
-        self.surface = Surface(tone, spacing=20)
-        self.surface.set_size_request(-1, MIN_HEIGHT)
-        self.surface.set_hexpand(True)
-        self.surface.add_css_class("to-stat-card")
+        self._tone = tone
+        self.tile = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=SPACING["sm"], hexpand=True)
+        self.tile.add_css_class("to-metric-tile")
+        self.tile.add_css_class(f"metric-{tone}")
 
-        top = Gtk.Box(hexpand=True)
-        self._badge = IconBadge(icon)
-        top.append(self._badge)
-        spacer = Gtk.Box(hexpand=True)
-        top.append(spacer)
-        self._ring = ProgressRing(progress or 0.0, color=RING_COLOR, label_color=RING_TRACK_LABEL)
-        self._ring.set_visible(progress is not None)
-        top.append(self._ring)
-
-        bottom = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, vexpand=True, valign=Gtk.Align.END)
+        top = Gtk.Box(spacing=SPACING["sm"] - 2)
+        self._icon = Icon(icon, "xs", "textTertiary")
         self._label = Text(label, "bodySmall", "textSecondary")
-        value_row = Gtk.Box(spacing=4, valign=Gtk.Align.BASELINE_FILL)
-        self._value = Text(value, "h2")
+        self._label.set_hexpand(True)
+        self._percent = Text("", "caption", "textTertiary", xalign=1.0)
+        self._percent.add_css_class("to-tabular")
+        top.append(self._icon)
+        top.append(self._label)
+        top.append(self._percent)
+
+        values = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=SPACING["xxs"], vexpand=True)
+        value_row = Gtk.Box(spacing=SPACING["xs"], valign=Gtk.Align.BASELINE_FILL)
+        self._value = Text(value, "metricSmall")
         self._value.set_valign(Gtk.Align.BASELINE_FILL)
-        self._unit = Text(unit or "", "caption", "textTertiary")
+        self._unit = Text(unit or "", "bodySmall", "textSecondary")
         self._unit.set_valign(Gtk.Align.BASELINE_FILL)
-        self._unit.set_visible(bool(unit))
         value_row.append(self._value)
         value_row.append(self._unit)
         self._caption = Text(caption or "", "caption", "textTertiary")
-        self._caption.set_visible(bool(caption))
-        bottom.append(self._label)
-        bottom.append(value_row)
-        bottom.append(self._caption)
+        self._caption.set_max_width_chars(CAPTION_CHARS)
+        values.append(value_row)
+        values.append(self._caption)
 
-        self.surface.append(top)
-        self.surface.append(bottom)
+        self._bar = ProgressBar(0.0, "neutral", label)
+        self._bar.set_valign(Gtk.Align.END)
+        self._bar.add_css_class("to-metric-bar")
+
+        self.tile.append(top)
+        self.tile.append(values)
+        self.tile.append(self._bar)
         if on_activate:
-            button = Pressable(self.surface, on_activate, label)
+            button = Pressable(self.tile, on_activate, label)
             button.set_hexpand(True)
             self.append(button)
         else:
-            self.append(self.surface)
+            self.append(self.tile)
+        self.set_value(value, unit)
+        self.set_caption(caption)
+        self.set_progress(progress)
 
     def set_value(self, value: str, unit: str | None = None) -> None:
         self._value.set_label(value)
@@ -77,15 +83,19 @@ class StatCard(Gtk.Box):
         self._caption.set_text_value(caption)
 
     def set_progress(self, progress: float | None) -> None:
-        self._ring.set_visible(progress is not None)
+        self._bar.set_visible(progress is not None)
+        self._percent.set_visible(progress is not None)
         if progress is not None:
-            self._ring.set_progress(progress)
+            self._bar.set_progress(progress)
+            self._percent.set_label(f"{round(clamp_fraction(progress) * 100)}%")
 
     def set_icon(self, icon: str) -> None:
-        self._badge.set_icon(icon)
+        self._icon.set_icon(icon)
 
     def set_tone(self, tone: SurfaceTone) -> None:
-        self.surface.set_tone(tone)
+        self.tile.remove_css_class(f"metric-{self._tone}")
+        self._tone = tone
+        self.tile.add_css_class(f"metric-{tone}")
 
     def update(self, item: StatItem) -> None:
         self.set_label(item.label)
@@ -101,8 +111,8 @@ class StatGrid(Gtk.FlowBox):
         super().__init__(
             selection_mode=Gtk.SelectionMode.NONE,
             homogeneous=True,
-            column_spacing=12,
-            row_spacing=12,
+            column_spacing=SPACING["sm"],
+            row_spacing=SPACING["sm"],
             min_children_per_line=min_columns,
             max_children_per_line=max_columns,
         )

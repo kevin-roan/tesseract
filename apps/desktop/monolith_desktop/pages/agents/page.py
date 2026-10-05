@@ -8,14 +8,14 @@ from ...api.errors import describe_error
 from ...api.types import AgentRun, CountResult, Inbox, InboxItem
 from ...services.workspace import apply_run, remove_ids
 from ...store import Observable
-from ...widgets.buttons import IconButton
 from ...widgets.confirm_dialog import confirm
+from ...widgets.conversation import Placeholder
 from ...widgets.icon import Icon
 from ...widgets.motion import crossfade_stack
 from ..base import Page
 from . import model
 from .conversation import ConversationPane
-from .labels import ATTENTION, FILTERS, LIST, MANAGE, NEW, TITLE
+from .labels import ATTENTION, DETAIL, FILTERS, LIST, MANAGE, NEW, TITLE
 from .new_view import NewConversationView
 from .sidebar import ConversationList
 
@@ -26,7 +26,8 @@ if TYPE_CHECKING:
 log = logging.getLogger(__name__)
 
 COLLAPSE_CONDITION = "max-width: 640px"
-SIDEBAR_WIDTH = (280, 360)
+COMPACT_CONDITION = "max-width: 1180px"
+SIDEBAR_WIDTH = (280, 400)
 DETAILS_INTERVAL_S = 30.0
 TIME_REFRESH_S = 30
 INBOX_LIMIT = 100
@@ -73,11 +74,12 @@ class AgentsPage(Page):
             self._filter_changed,
             self._manage,
         )
-        self._new = NewConversationView(self._start_new)
+        self._new = NewConversationView(self.ctx, self._start_new, self._show_empty)
         self._conversation = ConversationPane(
             self.ctx, self._follow_up, self.select_run, self._mark_read, self._open_attention, self._run_changed, self._manage
         )
-        self._content = crossfade_stack(hexpand=True, vexpand=True)
+        self._content = crossfade_stack(hexpand=True, vexpand=True, css_classes=["to-agents-detail"])
+        self._content.add_named(Placeholder(DETAIL["empty"], "inbox"), "empty")
         self._content.add_named(self._new, "new")
         self._content.add_named(self._conversation, "conversation")
 
@@ -86,12 +88,17 @@ class AgentsPage(Page):
             content=self._content,
             min_sidebar_width=SIDEBAR_WIDTH[0],
             max_sidebar_width=SIDEBAR_WIDTH[1],
-            sidebar_width_fraction=0.3,
+            sidebar_width_fraction=0.36,
+            css_classes=["to-agents-split"],
         )
         root = Adw.BreakpointBin(child=self._split, width_request=320, height_request=320)
+        compact = Adw.Breakpoint.new(Adw.BreakpointCondition.parse(COMPACT_CONDITION))
+        self._conversation.compact_setters(compact)
+        root.add_breakpoint(compact)
         breakpoint = Adw.Breakpoint.new(Adw.BreakpointCondition.parse(COLLAPSE_CONDITION))
         breakpoint.add_setter(self._split, "collapsed", True)
         breakpoint.add_setter(self._split, "show-sidebar", False)
+        self._conversation.compact_setters(breakpoint)
         root.add_breakpoint(breakpoint)
 
         self._poller = self.ctx.poll(self._fetch_details, DETAILS_INTERVAL_S, self._details_loaded, self._details_failed)
@@ -105,15 +112,14 @@ class AgentsPage(Page):
 
         store.projects.bind(root, lambda _p: self._projects_changed())
         store.agent_runs.bind(root, lambda _r: self._runs_changed())
-        self._show_new()
+        self._show_empty()
         return root
 
     def header_widgets(self) -> list[Gtk.Widget]:
         toggle = Gtk.ToggleButton(child=Icon("sidebar", "sm"), tooltip_text=LIST["toggle"], css_classes=["flat"])
         toggle.update_property([Gtk.AccessibleProperty.LABEL], [LIST["toggle"]])
         self._split.bind_property("show-sidebar", toggle, "active", GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
-        new = IconButton("compose", LIST["new"], self.new_conversation)
-        return [toggle, new]
+        return [*self._list.header_buttons, toggle]
 
     def on_shown(self) -> None:
         self.ctx.workspace.refresh()
@@ -126,10 +132,13 @@ class AgentsPage(Page):
         prompt = params.get("prompt")
         if prompt and params.get("send"):
             self._show_new(project_id)
-            self._start(str(prompt), project_id)
+            self._start(str(prompt), project_id, attachment_ids=list(params.get("attachmentIds") or []))
             return
         if params.get("new") or prompt or project_id:
             self.new_conversation(project_id, prompt)
+        if params.get("search"):
+            self._split.set_show_sidebar(True)
+            self._list.focus_search()
         if params.get("filter") in FILTERS:
             self._list.show_filter(params["filter"])
             self._split.set_show_sidebar(True)
@@ -154,10 +163,17 @@ class AgentsPage(Page):
     def _select_from_list(self, run_id: str) -> None:
         self.select_run(run_id)
 
-    def _show_new(self, project_id: str | None = None) -> None:
+    def _show_empty(self) -> None:
+        self._deselect()
+        self._content.set_visible_child_name("empty")
+
+    def _deselect(self) -> None:
         self._selected = None
         self._list.set_selected(None)
         self._conversation.pause()
+
+    def _show_new(self, project_id: str | None = None) -> None:
+        self._deselect()
         self._new.set_projects(model.project_options(self.ctx.store.projects.value))
         if project_id is not None:
             self._new.select_project(project_id)
@@ -189,10 +205,16 @@ class AgentsPage(Page):
             self._names, self.ctx.store.agent_runs.value or [], model.notice_items(self._inbox), self._sessions
         )
 
-    def _start_new(self, prompt: str, project_id: str | None) -> None:
-        self._start(prompt, project_id)
+    def _start_new(self, prompt: str, project_id: str | None, attachment_ids: list[str]) -> None:
+        self._start(prompt, project_id, attachment_ids=attachment_ids)
 
-    def _start(self, prompt: str, project_id: str | None, resume_session_id: str | None = None) -> None:
+    def _start(
+        self,
+        prompt: str,
+        project_id: str | None,
+        resume_session_id: str | None = None,
+        attachment_ids: list[str] | None = None,
+    ) -> None:
         if self._starting:
             return
         self._starting = True
@@ -223,11 +245,14 @@ class AgentsPage(Page):
             self._new.set_busy(False)
 
         self.ctx.call(
-            lambda client: client.start_agent_run(prompt, project_id or None, resume_session_id), ok, failed, done
+            lambda client: client.start_agent_run(prompt, project_id or None, resume_session_id, attachment_ids),
+            ok,
+            failed,
+            done,
         )
 
-    def _follow_up(self, prompt: str, run: AgentRun) -> None:
-        self._start(prompt, run.get("projectId"), run.get("sessionId"))
+    def _follow_up(self, prompt: str, run: AgentRun, attachment_ids: list[str]) -> None:
+        self._start(prompt, run.get("projectId"), run.get("sessionId"), attachment_ids)
 
     def _run_changed(self, run: AgentRun) -> None:
         if model.is_archived(run):
@@ -337,7 +362,7 @@ class AgentsPage(Page):
             self._archived = remove_ids(self._archived, drop)
             self._render_list()
         if not keep_selection and self._selected in drop:
-            self._show_new()
+            self._show_empty()
 
     def _manage_failed(self, error: BaseException) -> None:
         self.ctx.toast(MANAGE["failed"].format(error=describe_error(error)))

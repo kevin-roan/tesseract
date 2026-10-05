@@ -4,6 +4,7 @@ import { buildFragment, buildQuery } from "./url";
 export type ProjectFilter = { projectId?: string };
 export type LogTail = { tail?: number };
 export type TicketParam = { ticket?: string };
+export type BuildOutputParams = { path: string; ticket?: string };
 export type UsageFilter = { days?: number };
 export type SessionsFilter = { limit?: number; projectId?: string };
 export type InboxFilter = { limit?: number; unread?: boolean };
@@ -33,6 +34,7 @@ export const restPaths = {
   project: (id: string, query?: ForceParam) => api(`/projects/${segment(id)}${buildQuery(query)}`),
   projectGit: (id: string) => api(`/projects/${segment(id)}/git`),
   projectClaudeAccount: (id: string) => api(`/projects/${segment(id)}/claude-account`),
+  projectName: (id: string) => api(`/projects/${segment(id)}/name`),
   projectSync: (id: string) => api(`/projects/${segment(id)}/sync`),
   projectSyncChanges: (id: string) => api(`/projects/${segment(id)}/sync/changes`),
   projectSyncExport: (id: string) => api(`/projects/${segment(id)}/sync/export`),
@@ -59,6 +61,9 @@ export const restPaths = {
   artifactDownload: (id: string, query?: TicketParam) => api(`/artifacts/${segment(id)}/download${buildQuery(query)}`),
   artifactTaildrop: (id: string) => api(`/artifacts/${segment(id)}/taildrop`),
   taildropTargets: () => api("/taildrop/targets"),
+  buildOutputs: (query?: ProjectFilter) => api(`/outputs${buildQuery(query)}`),
+  buildOutputDownload: (projectId: string, query: BuildOutputParams) =>
+    api(`/projects/${segment(projectId)}/outputs/download${buildQuery(query)}`),
   ports: () => api("/ports"),
   usage: (query?: UsageFilter) => api(`/usage${buildQuery(query)}`),
   sessions: (query?: SessionsFilter) => api(`/sessions${buildQuery(query)}`),
@@ -130,6 +135,7 @@ export const routePatterns = {
     project: api("/projects/:id"),
     projectGit: api("/projects/:id/git"),
     projectClaudeAccount: api("/projects/:id/claude-account"),
+    projectName: api("/projects/:id/name"),
     projectSync: api("/projects/:id/sync"),
     projectSyncChanges: api("/projects/:id/sync/changes"),
     projectSyncExport: api("/projects/:id/sync/export"),
@@ -156,6 +162,8 @@ export const routePatterns = {
     artifactDownload: api("/artifacts/:id/download"),
     artifactTaildrop: api("/artifacts/:id/taildrop"),
     taildropTargets: api("/taildrop/targets"),
+    buildOutputs: api("/outputs"),
+    buildOutputDownload: api("/projects/:id/outputs/download"),
     ports: api("/ports"),
     usage: api("/usage"),
     sessions: api("/sessions"),

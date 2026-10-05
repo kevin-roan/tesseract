@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { useResourceRecorder } from "../hooks/use-resource-recorder";
 import { useSandboxEvents } from "../hooks/use-sandbox-events";
 import { useSandboxStore } from "../store/sandbox-store";
 
@@ -11,5 +12,6 @@ export default function SandboxEventsBridge() {
   }, [hydrate]);
 
   useSandboxEvents();
+  useResourceRecorder();
   return null;
 }

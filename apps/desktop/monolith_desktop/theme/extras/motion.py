@@ -13,7 +13,7 @@ INTERACTIVE = (
 )
 CARD_PRESSES = (
     f"button.{PREFIX}-pressable:active", f"button.{PREFIX}-side-row-main:active", f"button.{PREFIX}-side-run:active",
-    f"button.{PREFIX}-sidebar-status:active", f"button.{PREFIX}-new-conversation:active",
+    f"button.{PREFIX}-sidebar-status:active",
 )
 LIVE_DOTS = (
     f".{PREFIX}-status-badge.live .{PREFIX}-tone-dot",

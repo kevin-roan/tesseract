@@ -10,8 +10,7 @@ from .services.connection_view import (
     status_title,
 )
 from .store import ConnectionState
-from .strings import MAIN_MENU_TOOLTIP, MENU, STATUS_FOOTER
-from .theme.icons import resolve_icon
+from .strings import MENU, STATUS_FOOTER
 from .widgets.badges import ConnectionDot
 from .widgets.icon import Icon
 from .widgets.text import Text
@@ -58,15 +57,12 @@ class ConnectionStatusRow(Gtk.Button):
         super().__init__(css_classes=["to-sidebar-status"], tooltip_text=STATUS_FOOTER["tooltip"])
         self._ctx = ctx
         self._connection = ConnectionDot()
-        self._title = Text("", "label", "text")
+        self._title = Text("", "label", "textSecondary")
         self._detail = Text("", "caption", "textTertiary")
-        labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True, valign=Gtk.Align.CENTER)
-        labels.append(self._title)
-        labels.append(self._detail)
-        box = Gtk.Box(spacing=10)
-        box.append(self._connection)
-        box.append(labels)
-        box.append(Icon("settings", "sm", "textTertiary"))
+        self._detail.set_hexpand(True)
+        box = Gtk.Box(spacing=8)
+        for widget in (self._connection, self._title, self._detail, Icon("settings", "sm", "textTertiary")):
+            box.append(widget)
         self.set_child(box)
         self.connect("clicked", lambda *_: ctx.open_preferences())
         ctx.store.connection.bind(self, lambda _state: self._render())
@@ -100,16 +96,6 @@ def main_menu() -> Gio.Menu:
     return menu
 
 
-def menu_button() -> Gtk.MenuButton:
-    return Gtk.MenuButton(
-        icon_name=resolve_icon("menu"),
-        menu_model=main_menu(),
-        tooltip_text=MAIN_MENU_TOOLTIP,
-        primary=True,
-        valign=Gtk.Align.CENTER,
-    )
-
-
 def toolbar_page(
     ctx: AppContext,
     title: str,
@@ -120,8 +106,6 @@ def toolbar_page(
     subtitle: str | None = None,
 ) -> Adw.NavigationPage:
     heading = HeaderTitle(title, subtitle)
-    if subtitle is None:
-        ctx.store.connection.bind(heading, lambda state: heading.set_subtitle(state.sandbox_name))
     header = Titlebar(start=[*(start_widgets or []), heading], end=header_widgets)
     view = Adw.ToolbarView(content=content, css_classes=["to-content-view"])
     view.add_top_bar(header)

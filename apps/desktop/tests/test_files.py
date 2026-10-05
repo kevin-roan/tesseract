@@ -10,7 +10,7 @@ from monolith_desktop.api.errors import ApiError
 from monolith_desktop.api.paths import rest
 from monolith_desktop.api.types import SERVER_EVENT_TYPES
 from monolith_desktop.pages.files import model
-from monolith_desktop.pages.files.download import ChecksumMismatch, checksum_matches, download_artifact
+from monolith_desktop.pages.files.download import ChecksumMismatch, checksum_matches, download_artifact, download_file
 from monolith_desktop.pages.files.labels import FILES, SOURCES
 from monolith_desktop.paths import ICONS_DIR
 from monolith_desktop.theme.icons import icon_candidates
@@ -115,6 +115,47 @@ def test_paths_and_events():
     assert "artifact.deleted" in SERVER_EVENT_TYPES
 
 
+def output(path: str, project_id: str = "app", modified: str = "2026-09-28T11:00:00Z", platform: str = "android") -> dict:
+    return {"projectId": project_id, "path": path, "fileName": path.rsplit("/", 1)[-1], "sizeBytes": 2048,
+            "platform": platform, "modifiedAt": modified}
+
+
+def test_build_outputs_model():
+    apk = output("android/app/build/outputs/apk/release/app-release.apk")
+    exe = output("release/build/Desk Setup.exe", "desk", "2026-09-28T11:30:00Z", "windows")
+    zipped = output("app.zip", "desk", platform="file")
+    assert model.output_key(apk) == "app/android/app/build/outputs/apk/release/app-release.apk"
+    assert model.output_folder(apk) == "android/app/build/outputs/apk/release"
+    assert model.output_folder(zipped) == "."
+    assert model.output_meta(apk, NOW, project="App") == "App · 2 KB · android · 1h ago"
+    assert "file" not in model.output_meta(zipped, NOW)
+    assert model.filter_outputs([apk, exe]) == [exe, apk]
+    assert model.filter_outputs([apk, exe], "app") == [apk]
+    assert model.outputs_subtitle([apk, exe]) == "2 builds across 2 projects"
+    assert [option[0] for option in model.project_options([apk, exe], {})] == [model.ALL, "app", "desk"]
+    assert [option[0] for option in model.view_options()] == [model.SHARED, model.BUILDS]
+
+
+def test_build_output_paths():
+    assert rest.build_outputs() == "/v1/outputs"
+    assert rest.build_outputs("app") == "/v1/outputs?projectId=app"
+    assert rest.build_output_download("app", "release/A B.exe", "t") == "/v1/projects/app/outputs/download?path=release%2FA%20B.exe&ticket=t"
+
+
+def test_file_icon_and_project_groups():
+    assert model.file_icon("app-release.APK") == "smartphone"
+    assert model.file_icon("index.html") == "file-code"
+    assert model.file_icon("Setup.AppImage") == "app-window"
+    assert model.file_icon("README") == "file"
+    items = [artifact("a", "web"), artifact("b", "app"), artifact("c", "web"), artifact("d", "")]
+    groups = model.by_project(items, {"web": "Website"})
+    assert [(key, title, [i["id"] for i in members]) for key, title, members in groups] == [
+        ("web", "Website", ["a", "c"]), ("app", "app", ["b"]), ("", FILES["no_project"], ["d"]),
+    ]
+    for key in ("smartphone", "file-code", "app-window", "file-archive"):
+        assert (ICONS_DIR / "hicolor" / "scalable" / "actions" / f"{icon_candidates(key)[0]}.svg").is_file()
+
+
 def test_files_icon_is_bundled():
     name = icon_candidates("files")[0]
     assert (ICONS_DIR / "hicolor" / "scalable" / "actions" / f"{name}.svg").is_file()
@@ -213,6 +254,14 @@ def test_download_artifact_maps_http_errors(server, tmp_path):
     with pytest.raises(ApiError) as denied:
         download_artifact(ControllerClient(server, "wrong"), "art_1", str(tmp_path / "x"))
     assert denied.value.status == 401
+
+
+def test_download_file_streams_build_outputs(server, tmp_path):
+    client = ControllerClient(server, "secret")
+    target = tmp_path / "app-release.apk"
+    download_file(client, rest.build_output_download("app", "dist/app.apk"), str(target))
+    assert target.read_bytes() == PAYLOAD
+    assert _Handler.requests[-1][1] == "/v1/projects/app/outputs/download?path=dist%2Fapp.apk"
 
 
 def test_checksum_matches():

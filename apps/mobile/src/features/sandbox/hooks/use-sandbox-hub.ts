@@ -14,6 +14,7 @@ import { newestFirst } from "../utils/collections";
 import { LIST_PREVIEW_LIMIT } from "../utils/constants";
 import { sandboxSubtitle } from "../utils/describe";
 import { describeError } from "../utils/errors";
+import { formatRelativeTime, formatUptime } from "../utils/format";
 import { HUB_ACTIONS, ResourceIcons } from "../utils/icons";
 import { buildShortcutProject, isActiveProcess } from "../utils/projects";
 import { cpuGauge, storageGauge } from "../utils/resources";
@@ -73,14 +74,15 @@ export function useSandboxHub() {
 
   const stats = useMemo<StatItem[]>(() => {
     if (!status.data) return [];
-    const { resources, display } = status.data;
+    const { resources, display, uptimeSec, startedAt } = status.data;
     const cpu = cpuGauge(resources.cpu);
     const memory = storageGauge(resources.memory);
     const disk = storageGauge(resources.disk);
     return [
-      { id: "cpu", icon: ResourceIcons.cpu, label: "CPU load", value: cpu.value, unit: cpu.unit, progress: cpu.fraction, tone: "violet" },
-      { id: "memory", icon: ResourceIcons.memory, label: "Memory", value: memory.value, unit: memory.unit, progress: memory.fraction, tone: "indigo" },
-      { id: "disk", icon: ResourceIcons.disk, label: "Workspace disk", value: disk.value, unit: disk.unit, progress: disk.fraction },
+      { id: "cpu", icon: ResourceIcons.cpu, label: "CPU load", value: cpu.value, unit: cpu.unit, caption: cpu.caption, progress: cpu.fraction, tone: "violet" },
+      { id: "memory", icon: ResourceIcons.memory, label: "Memory", value: memory.value, unit: memory.unit, caption: memory.caption, progress: memory.fraction, tone: "indigo" },
+      { id: "disk", icon: ResourceIcons.disk, label: "Disk", value: disk.value, unit: disk.unit, caption: disk.caption, progress: disk.fraction },
+      { id: "uptime", icon: ResourceIcons.uptime, label: "Uptime", value: formatUptime(uptimeSec), caption: `since ${formatRelativeTime(startedAt)}` },
       {
         id: "display",
         icon: ResourceIcons.display,

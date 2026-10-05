@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 import { ActivityIndicator, TextInput, View } from "react-native";
 import Animated, { LayoutAnimationConfig } from "react-native-reanimated";
-import { ArrowUpIcon, MicrophoneIcon, PlusIcon, WaveformIcon } from "phosphor-react-native";
+import { ArrowUpIcon, MicrophoneIcon, PaperclipIcon, WaveformIcon } from "phosphor-react-native";
 
 import PressableScale from "@/components/pressable-scale";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -108,9 +108,9 @@ const ComposerBar = ({
                 hitSlop={HitSlop.sm}
                 disabled={attachDisabled}
                 onPress={onAttach}
-                style={[styles.button, styles.outlined, attachDisabled && styles.disabled]}
+                style={[styles.button, attachDisabled && styles.disabled]}
               >
-                <PlusIcon size={IconSize.md} color={theme.colors.text} weight="light" />
+                <PaperclipIcon size={IconSize.md} color={theme.colors.textSecondary} weight="regular" />
               </PressableScale>
             ) : null}
             <View style={styles.tools}>
@@ -128,7 +128,7 @@ const ComposerBar = ({
                 onPress={handleMic}
                 style={[styles.button, micDisabled && styles.disabled]}
               >
-                <MicrophoneIcon size={IconSize.md} color={theme.colors.textSecondary} weight="light" />
+                <MicrophoneIcon size={IconSize.md} color={theme.colors.textSecondary} weight="regular" />
               </PressableScale>
             ) : null}
             <Animated.View style={primaryMotion.style}>
@@ -147,7 +147,7 @@ const ComposerBar = ({
                     {busy ? (
                       <ActivityIndicator size="small" color={theme.colors.accentInk} />
                     ) : (
-                      <PrimaryIcon size={IconSize.md} color={theme.colors.accentInk} weight="regular" />
+                      <PrimaryIcon size={IconSize.sm} color={theme.colors.accentInk} weight="bold" />
                     )}
                   </Animated.View>
                 </LayoutAnimationConfig>

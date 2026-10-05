@@ -102,7 +102,7 @@ export function islandState({ sandbox, runs, processes, builds, projects, usage,
 
 export const hasLiveWork = (state: IslandState): boolean => state.runs.length > 0 || state.commands.length > 0;
 
-export const liveCount = (state: IslandState): number => state.runs.length + state.commands.length;
+export const liveCount = (state: Pick<IslandState, "runs" | "commands">): number => state.runs.length + state.commands.length;
 
 /** Everything but the timestamp, so a state is only "changed" when the activity would show something new. */
 export function stateSignature(state: IslandState): string {

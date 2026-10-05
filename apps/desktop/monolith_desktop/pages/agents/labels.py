@@ -21,6 +21,9 @@ STATES = MappingProxyType({
 
 LIST = MappingProxyType({
     "search": "Search conversations",
+    "search_toggle": "Search",
+    "filter": "Filter",
+    "clear_filter": "Clear filter",
     "new": "New conversation",
     "loading": "Loading conversations…",
     "empty_title": "No conversations yet",
@@ -67,12 +70,15 @@ ATTENTION = MappingProxyType({
     "failed": "Couldn't mark as read: {error}",
 })
 
+DETAIL = MappingProxyType({
+    "empty": "No conversation selected",
+})
+
 NEW = MappingProxyType({
-    "title": "What should Claude do?",
-    "subtitle": "Runs headless inside the sandbox. Pick a project so Claude works in its folder.",
-    "placeholder": "Ask Claude to build, fix or explain…",
-    "send": "Send",
-    "hint": "Enter to send · Shift+Enter for a new line",
+    "title": "New conversation",
+    "placeholder": "What should Claude do?",
+    "send": "Start conversation",
+    "close": "Close",
     "project": "Project",
     "failed": "Couldn't start Claude: {error}",
 })
@@ -87,7 +93,10 @@ SUGGESTIONS = (
 
 CONVERSATION = MappingProxyType({
     "session": "Session {id}",
+    "you": "You",
+    "claude": "Claude",
     "copy_session": "Copy session id",
+    "more": "More actions",
     "copied": "Session id copied",
     "cancel": "Stop",
     "cancel_tooltip": "Stop this run",

@@ -14,6 +14,10 @@ import { NotoSans_400Regular } from "@expo-google-fonts/noto-sans/400Regular";
 import { NotoSans_500Medium } from "@expo-google-fonts/noto-sans/500Medium";
 import { NotoSans_600SemiBold } from "@expo-google-fonts/noto-sans/600SemiBold";
 import { NotoSans_700Bold } from "@expo-google-fonts/noto-sans/700Bold";
+import { Poppins_400Regular } from "@expo-google-fonts/poppins/400Regular";
+import { Poppins_500Medium } from "@expo-google-fonts/poppins/500Medium";
+import { Poppins_600SemiBold } from "@expo-google-fonts/poppins/600SemiBold";
+import { Poppins_700Bold } from "@expo-google-fonts/poppins/700Bold";
 
 import { usePairingState } from "@/features/sandbox/hooks/use-pairing-state";
 
@@ -32,6 +36,10 @@ export function useAppReady() {
     GeistMono_500Medium,
     GeistMono_600SemiBold,
     GeistMono_700Bold,
+    Poppins_400Regular,
+    Poppins_500Medium,
+    Poppins_600SemiBold,
+    Poppins_700Bold,
   });
   const { hydrated, paired } = usePairingState();
   // A font failure is not worth a permanent splash — show the UI regardless.

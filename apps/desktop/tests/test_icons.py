@@ -10,13 +10,13 @@ from monolith_desktop.theme.icons import ICONS, icon_candidates
 
 DESKTOP_DIR = Path(__file__).resolve().parents[1]
 ACTIONS_DIR = ICONS_DIR / "hicolor" / "scalable" / "actions"
-BUNDLED_PREFIXES = ("ph-", "monolith-")
+BUNDLED_PREFIXES = ("lc-", "monolith-")
 CUSTOM_DRAWN = frozenset({"window-minimize", "window-maximize", "window-restore", "window-close"})
 SVG_NS = "{http://www.w3.org/2000/svg}"
 
 
 def _generator():
-    spec = importlib.util.spec_from_file_location("phosphor_icons", DESKTOP_DIR / "tools" / "phosphor_icons.py")
+    spec = importlib.util.spec_from_file_location("lucide_icons", DESKTOP_DIR / "tools" / "lucide_icons.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -42,29 +42,35 @@ def test_every_key_keeps_a_theme_fallback():
         assert any(not name.startswith(BUNDLED_PREFIXES) for name in candidates), key
 
 
-def test_generator_covers_every_mapped_phosphor_icon():
+def test_generator_covers_every_mapped_lucide_icon():
     gen = _generator()
-    generated = {gen.icon_file(name)[: -len(".svg")] for name in gen.ICONS}
-    mapped = {name for candidates in ICONS.values() for name in candidates if name.startswith("ph-")}
-    assert mapped <= generated
-    assert generated == {path.stem for path in ACTIONS_DIR.glob("ph-*.svg")}
+    generated = {gen.icon_file(name)[: -len(".svg")] for name in gen.lucide_names()}
+    mapped = {name for candidates in ICONS.values() for name in candidates if name.startswith("lc-")}
+    assert mapped == generated
+    assert generated == {path.stem for path in ACTIONS_DIR.glob("lc-*.svg")}
 
 
-def test_generator_kebab_names():
+def test_generator_file_names():
     gen = _generator()
-    assert gen.icon_file("ArrowClockwise") == "ph-arrow-clockwise-symbolic.svg"
-    assert gen.icon_file("QrCode") == "ph-qr-code-symbolic.svg"
-    assert gen.icon_file("X") == "ph-x-symbolic.svg"
+    assert gen.icon_file("refresh-cw") == "lc-refresh-cw-symbolic.svg"
+    assert gen.icon_file("x") == "lc-x-symbolic.svg"
 
 
-@pytest.mark.parametrize("path", sorted(ACTIONS_DIR.glob("ph-*.svg")), ids=lambda path: path.stem)
-def test_phosphor_svgs_are_symbolic(path):
+def test_generator_marks_strokes_symbolic():
+    gen = _generator()
+    out = gen.symbolic('<svg><path d="M1 1h2"/><circle cx="1" cy="1" r="1" fill="currentColor"/></svg>')
+    assert '<path class="foreground-stroke transparent-fill" fill="none" d="M1 1h2"/>' in out
+    assert 'class="foreground-fill" fill="#2e3436"' in out
+
+
+@pytest.mark.parametrize("path", sorted(ACTIONS_DIR.glob("lc-*.svg")), ids=lambda path: path.stem)
+def test_lucide_svgs_are_symbolic(path):
     root = ET.parse(path).getroot()
     assert root.tag == f"{SVG_NS}svg"
-    assert root.get("viewBox") == "0 0 256 256"
+    assert root.get("viewBox") == "0 0 24 24"
     assert (root.get("width"), root.get("height")) == ("16", "16")
-    paths = root.findall(f"{SVG_NS}path")
-    assert paths and all(node.get("fill") == "#2e3436" and node.get("d") for node in paths)
+    shapes = list(root)
+    assert shapes and all("foreground-" in (node.get("class") or "") for node in shapes)
 
 
 def test_ui_code_uses_semantic_icon_keys():

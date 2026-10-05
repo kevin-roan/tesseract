@@ -144,6 +144,17 @@ describe("REST", () => {
     expect((await t.json("GET", "/v1/projects/plain-node/git")).status).toBe(404);
   });
 
+  test("renames a project's display name and restores the detected one", async () => {
+    const renamed = await t.json("PUT", "/v1/projects/plain-node/name", { name: "  Plain Tool  " });
+    expect(renamed.status).toBe(200);
+    expect(ProjectSchema.parse(renamed.body)).toMatchObject({ id: "plain-node", name: "Plain Tool" });
+    expect(ProjectSchema.parse((await t.json("GET", "/v1/projects/plain-node")).body).name).toBe("Plain Tool");
+    expect((await t.json("PUT", "/v1/projects/plain-node/name", { name: " " })).status).toBe(400);
+    expect((await t.json("PUT", "/v1/projects/missing/name", { name: "x" })).status).toBe(404);
+    const restored = await t.json("PUT", "/v1/projects/plain-node/name", { name: null });
+    expect(ProjectSchema.parse(restored.body).name).toBe("plain");
+  });
+
   test("creates an empty git project and rejects duplicates", async () => {
     const created = await t.json("POST", "/v1/projects", { name: "My New App" });
     expect(created.status).toBe(201);

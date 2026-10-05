@@ -7,8 +7,8 @@ MENU = MappingProxyType({
     "new_conversation": "New Conversation",
     "preferences": "Preferences",
     "rediscover": "Rediscover Sandbox",
-    "pair": "Pair a Device…",
-    "pair_host": "Pair This Computer…",
+    "pair": "Pair a device…",
+    "pair_host": "Pair this computer…",
     "about": "About Monolith",
     "quit": "Quit",
 })
@@ -17,27 +17,33 @@ TRAY = MappingProxyType({
     "open": "Open Monolith",
     "hide": "Hide Window",
     "refresh": "Refresh",
-    "pair": "Pair a Device…",
-    "pair_host": "Pair This Computer…",
+    "pair": "Pair a device…",
+    "pair_host": "Pair this computer…",
     "preferences": "Preferences",
     "quit": "Quit Monolith",
     "tooltip": "Monolith · {status}",
 })
 
+DIALOG = MappingProxyType({
+    "close": "Close",
+    "expand": "Expand",
+    "copy": "Copy",
+})
+
 PAIR = MappingProxyType({
-    "title": "Pair a Device",
+    "title": "Pair a device",
     "instructions": "Scan with the TheOne app, or open this link on the phone.",
     "sandbox": "Sandbox {name} · {url}",
-    "copy": "Copy Link",
+    "copy": "Copy link",
     "copied": "Pairing link copied",
     "done": "Done",
     "secret": "The link contains the API token: share it only with your own devices.",
     "offline": "The sandbox is not answering right now. The phone can pair, but it will connect once the sandbox is back.",
     "unconfigured": "Connect to a sandbox before pairing a device.",
-    "set_up": "Set Up",
+    "set_up": "Set up",
     "invalid": "Can't build a pairing link: {error}",
     "tab_sandbox": "Sandbox",
-    "tab_host": "This Computer",
+    "tab_host": "This computer",
     "host_instructions": "Scan with the TheOne app (Host shell), or open this link on the phone.",
     "host_caption": "Host {name} · {url}",
     "host_secret": "The link contains the host token: share it only with your own devices. Phones also need the PIN.",
@@ -53,15 +59,15 @@ PAIR = MappingProxyType({
 })
 
 HOST_SHELL = MappingProxyType({
-    "title": "Host Shell",
+    "title": "Host shell",
     "icon": "host",
     "server_group": "Server",
     "server_description": (
         "Lets paired phones open a terminal on this computer over Tailscale. "
         "Monolith runs it in the background and stops it when you quit."
     ),
-    "serve": "Serve Host Shell",
-    "autostart": "Start With Monolith",
+    "serve": "Serve host shell",
+    "autostart": "Start with Monolith",
     "autostart_subtitle": "Start serving whenever Monolith opens",
     "status_stopped": "Stopped",
     "status_starting": "Starting…",
@@ -76,7 +82,7 @@ HOST_SHELL = MappingProxyType({
     "pin_missing": "Not set · phones can't unlock the shell",
     "set_pin": "Set PIN…",
     "change_pin": "Change…",
-    "token": "Host Token",
+    "token": "Host token",
     "token_subtitle": "Paired phones use it to reach this computer",
     "rotate": "Rotate…",
     "rotate_heading": "Rotate the host token?",
@@ -85,7 +91,7 @@ HOST_SHELL = MappingProxyType({
     "rotated": "Host token rotated; pair your phones again",
     "rotate_failed": "Couldn't rotate the token: {error}",
     "pair_group": "Pairing",
-    "pair": "Pair a Phone",
+    "pair": "Pair a phone",
     "pair_subtitle": "Show the theone://host link and QR code",
     "pair_button": "Show QR…",
     "log": "Log",
@@ -95,7 +101,8 @@ HOST_SHELL = MappingProxyType({
 })
 
 HOST_PIN = MappingProxyType({
-    "title": "Host Shell PIN",
+    "title": "Host shell PIN",
+    "context": "This computer",
     "subtitle": "6 to 12 digits",
     "pin": "New PIN",
     "repeat": "Repeat PIN",
@@ -140,25 +147,28 @@ EVENTS_LABELS = MappingProxyType({
 })
 
 PREFERENCES = MappingProxyType({
+    "dialog_title": "Settings",
     "connection_title": "Connection",
     "connection_icon": "connection",
-    "sandbox_group": "Sandbox Controller",
+    "sandbox_group": "Sandbox controller",
     "sandbox_group_description": (
         "The desktop app talks to the controller REST API from this machine. "
         "Discovery asks Docker for the running sandbox and picks the first address that answers."
     ),
     "api_url": "API URL",
     "token": "Token",
-    "name": "Display Name",
-    "pairing_group": "Phone Pairing",
+    "name": "Display name",
+    "pairing_group": "Phone pairing",
     "pairing_group_description": "The URL phones use. Leave empty to reuse the API URL.",
     "pairing_url": "Pairing URL",
-    "status_group": "Connection Status",
+    "status_group": "Connection status",
     "status": "Status",
     "source": "Source",
-    "save": "Save & Connect",
+    "save": "Save & connect",
     "rediscover": "Rediscover",
-    "forget": "Forget Saved Connection",
+    "forget": "Forget saved connection",
+    "forget_subtitle": "Removes the saved URL and token from this computer",
+    "forget_button": "Forget",
     "saved": "Connection saved",
     "discovered": "{message}",
     "discovery_failed": "Discovery failed: {error}",
@@ -186,8 +196,8 @@ WINDOW_CONTROLS = MappingProxyType({
 })
 
 SIDEBAR = MappingProxyType({
-    "new_conversation": "New conversation",
-    "new_conversation_shortcut": "Ctrl+N",
+    "new_conversation_tooltip": "New conversation (Ctrl+N)",
+    "search": "Search conversations",
     "projects": "Projects",
     "new_project": "New project",
     "loading": "Loading projects…",
@@ -215,6 +225,27 @@ COMPOSER = MappingProxyType({
     "unavailable": "Conversations aren't available yet",
 })
 
+ATTACHMENTS = MappingProxyType({
+    "attach": "Attach",
+    "files": "Files…",
+    "images": "Images…",
+    "paste": "Paste image",
+    "files_title": "Attach files",
+    "images_title": "Attach images",
+    "images_filter": "Images",
+    "remove": "Remove {name}",
+    "retry": "Retry {name}",
+    "too_large": "{name} is larger than {limit}.",
+    "too_many": "You can attach up to {limit} files to one message.",
+    "no_path": "{name} isn't a local file, so it can't be attached.",
+    "unreadable": "Couldn't read {name}: {error}",
+    "empty_clipboard": "There's no image on the clipboard to paste.",
+    "prompt_image": "Take a look at this image.",
+    "prompt_images": "Take a look at these images.",
+    "prompt_file": "Take a look at the attached file.",
+    "prompt_files": "Take a look at the attached files.",
+})
+
 STATUS_FOOTER = MappingProxyType({
     "tooltip": "Connection settings",
     "fallback_title": "Sandbox",
@@ -224,7 +255,7 @@ STATUS_FOOTER = MappingProxyType({
 CLAUDE = MappingProxyType({
     "title": "Claude",
     "icon": "agents",
-    "host_group": "This Computer",
+    "host_group": "This computer",
     "host_description": "Claude Code accounts on this machine (~/.claude and ~/.claude-<name>)",
     "sandbox_group": "Sandbox",
     "sandbox_description": "Claude Code inside the sandbox uses this computer's ~/.claude folders (linked)",
@@ -274,7 +305,7 @@ CLAUDE = MappingProxyType({
 STT = MappingProxyType({
     "title": "Speech-to-text",
     "icon": "microphone",
-    "profiles_group": "Resource Usage",
+    "profiles_group": "Resource usage",
     "profiles_description": (
         "Voice notes are transcribed locally with whisper.cpp inside the sandbox. "
         "Pick how much of this computer it may use."

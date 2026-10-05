@@ -8,7 +8,7 @@ from ...widgets.confirm_dialog import confirm
 from ...widgets.keyed_list import KeyedList
 from ...widgets.log_panel import LogPanel
 from ...widgets.record_row import RecordRow, RowAction
-from ...widgets.section import Section
+from ...widgets.list_view import ListGroup
 from .labels import BUILD_PROFILES, BUILDS, LOGS
 from .model import (
     build_meta,
@@ -24,7 +24,7 @@ from .streams import LogFollower
 if TYPE_CHECKING:
     from .detail import ProjectDetail
 
-TAB_SPACING = 28
+TAB_SPACING = 16
 DEFAULT_PROFILE = "debug"
 
 
@@ -38,8 +38,10 @@ class BuildsTab:
         self.widget = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=TAB_SPACING)
 
         self._targets = KeyedList(lambda: RecordRow("builds"), self._update_target)
-        self._targets_section = Section(
-            BUILDS["targets"], self._targets, empty_label=BUILDS["targets_empty"], subtitle=BUILDS["targets_subtitle"]
+        self._targets.add_css_class("divided")
+        self._targets_section = ListGroup(
+            BUILDS["targets"], self._targets, empty_label=BUILDS["targets_empty"], subtitle=BUILDS["targets_subtitle"],
+            icon="builds",
         )
         self._profiles = ChipGroup(list(BUILD_PROFILES.items()), DEFAULT_PROFILE, self._set_profile)
         self._profiles.set_valign(Gtk.Align.CENTER)
@@ -48,7 +50,8 @@ class BuildsTab:
         self.widget.append(self._targets_section)
 
         self._jobs = KeyedList(lambda: RecordRow("builds"), self._update_job)
-        self._jobs_section = Section(BUILDS["jobs"], self._jobs, empty_label=BUILDS["jobs_empty"])
+        self._jobs.add_css_class("divided")
+        self._jobs_section = ListGroup(BUILDS["jobs"], self._jobs, empty_label=BUILDS["jobs_empty"], icon="sessions")
         self.widget.append(self._jobs_section)
 
         self._panel = LogPanel(LOGS["close"], self._hide_logs, LOGS["empty"], LOGS["jump"])
@@ -77,6 +80,7 @@ class BuildsTab:
     def _rerender(self) -> None:
         self._jobs.sync((build["id"], build) for build in self._builds)
         self._jobs_section.set_empty(not self._builds)
+        self._jobs_section.set_count(len(self._builds))
         if self._project:
             self._targets.sync((target, target) for target in self._project.get("buildTargets", []))
 
@@ -90,7 +94,7 @@ class BuildsTab:
     def _update_job(self, row: RecordRow, build: BuildJob) -> None:
         label, tone = build_state(build)
         row.set_content(target_label(build["target"]), build.get("error"), build_meta(build))
-        row.set_status(label, tone)
+        row.set_status(label, tone, glyph=True)
         row.set_progress(build_progress(build), not is_final_build(build))
         open_logs = self._panel.get_visible() and self._follower.target == ("build", build["id"])
         actions = [RowAction(

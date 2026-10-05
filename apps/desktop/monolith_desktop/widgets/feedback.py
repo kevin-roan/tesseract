@@ -4,7 +4,7 @@ from gi.repository import Adw, Gtk
 
 from ..theme.tone import TONE_COLORS, Tone
 from .buttons import ActionButton
-from .icon import Icon, IconBadge
+from .icon import Icon
 from .text import Text
 from .tone import ToneBinding
 
@@ -25,7 +25,7 @@ class EmptyState(Gtk.Box):
     ) -> None:
         super().__init__(
             orientation=Gtk.Orientation.VERTICAL,
-            spacing=20,
+            spacing=8,
             halign=Gtk.Align.CENTER,
             valign=Gtk.Align.CENTER,
             margin_top=40,
@@ -34,14 +34,15 @@ class EmptyState(Gtk.Box):
             margin_end=24,
         )
         self.add_css_class("to-empty-state")
-        self._spinner = Adw.Spinner(width_request=32, height_request=32, halign=Gtk.Align.CENTER)
-        self._badge = IconBadge(icon or "empty", "xl", css_class="to-empty-badge")
-        self._badge.set_halign(Gtk.Align.CENTER)
-        self._title = Text(title, "h3", wrap=True, lines=None, center=True)
-        self._message = Text(message or "", "body", "textSecondary", wrap=True, lines=None, center=True)
+        self._spinner = Adw.Spinner(width_request=24, height_request=24, halign=Gtk.Align.CENTER)
+        self._glyph = Icon(icon or "empty", "2xl", "textTertiary")
+        self._glyph.add_css_class("to-empty-glyph")
+        self._glyph.set_halign(Gtk.Align.CENTER)
+        self._title = Text(title, "h4", "textSecondary", wrap=True, lines=None, center=True)
+        self._message = Text(message or "", "bodySmall", "textTertiary", wrap=True, lines=None, center=True)
         self._message.set_max_width_chars(56)
-        self._actions = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, halign=Gtk.Align.CENTER)
-        for widget in (self._spinner, self._badge, self._title, self._message, self._actions):
+        self._actions = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER, css_classes=["to-empty-actions"])
+        for widget in (self._spinner, self._glyph, self._title, self._message, self._actions):
             self.append(widget)
         self.set_size_request(-1, -1)
         self._action_callbacks: list[Callable[[], None]] = []
@@ -61,9 +62,9 @@ class EmptyState(Gtk.Box):
         self._title.set_label(title)
         self._message.set_text_value(message)
         self._spinner.set_visible(loading)
-        self._badge.set_visible(not loading and icon is not None)
+        self._glyph.set_visible(not loading and icon is not None)
         if icon:
-            self._badge.set_icon(icon)
+            self._glyph.set_icon(icon)
         while (child := self._actions.get_first_child()) is not None:
             self._actions.remove(child)
         if action_label and on_action:
@@ -83,19 +84,18 @@ class Notice(Gtk.Box):
         action_label: str | None = None,
         on_action: Callable[[], None] | None = None,
     ) -> None:
-        super().__init__(spacing=12, css_classes=["to-notice", "to-tone-bg"])
+        super().__init__(spacing=10, css_classes=["to-notice", "to-tone-bg"])
         self._fixed_icon = icon
-        self._icon = Icon(icon or tone_icon(tone), "md")
+        self._icon = Icon(icon or tone_icon(tone), "sm")
         self._icon.add_css_class("to-tone-fg")
         self._icon.set_valign(Gtk.Align.CENTER)
         body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True, valign=Gtk.Align.CENTER)
         self._title = Text(title or "", "bodyStrong")
-        self._title.add_css_class("to-tone-fg")
         self._title.set_visible(bool(title))
-        self._message = Text(message, "bodySmall", wrap=True, lines=None)
+        self._message = Text(message, "bodySmall", "textSecondary", wrap=True, lines=None)
         body.append(self._title)
         body.append(self._message)
-        self._action = Gtk.Button(css_classes=["flat", "to-tone-fg"], valign=Gtk.Align.CENTER)
+        self._action = Gtk.Button(css_classes=["flat", "to-tone-fg", "to-notice-action"], valign=Gtk.Align.CENTER)
         self._action.set_visible(False)
         self._action_handler: int | None = None
         self._tone = ToneBinding(tone, self, self._icon, self._title, self._action)

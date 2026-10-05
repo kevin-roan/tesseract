@@ -17,3 +17,8 @@ export const TicketQuerySchema = z.object({
   ticket: z.string().min(1),
 });
 export type TicketQuery = z.infer<typeof TicketQuerySchema>;
+
+export const BuildOutputQuerySchema = z.object({
+  path: z.string().min(1).max(4096),
+});
+export type BuildOutputQuery = z.infer<typeof BuildOutputQuerySchema>;

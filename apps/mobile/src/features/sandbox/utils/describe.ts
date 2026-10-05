@@ -54,7 +54,7 @@ export function artifactMeta(artifact: Artifact, now: number = Date.now()): stri
 
 export function sandboxSubtitle(status: SandboxStatus | undefined): string | undefined {
   if (!status) return undefined;
-  return join([`v${status.version}`, `up ${formatUptime(status.uptimeSec)}`]);
+  return join([`up ${formatUptime(status.uptimeSec)}`, status.hostname, `v${status.version}`]);
 }
 
 export function activityTitle(event: StatusEvent): string {

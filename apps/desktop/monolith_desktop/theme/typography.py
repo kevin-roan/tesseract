@@ -6,8 +6,8 @@ LETTER_SPACING = MappingProxyType({
     "tightest": -1.2, "tighter": -0.8, "tight": -0.4, "snug": -0.2, "normal": 0, "wide": 0.4, "wider": 1.0,
 })
 
-SANS_STACK = ("Noto Sans", "Inter", "Adwaita Sans", "Cantarell", "sans-serif")
-DISPLAY_STACK = ("Exo 2", "Noto Sans", "Inter", "Adwaita Sans", "Cantarell", "sans-serif")
+SANS_STACK = ("Inter", "Inter Variable", "Adwaita Sans", "Cantarell", "sans-serif")
+DISPLAY_STACK = ("Inter Display", "Inter", "Inter Variable", "Adwaita Sans", "Cantarell", "sans-serif")
 MONO_STACK = ("Geist Mono", "JetBrains Mono", "Adwaita Mono", "Source Code Pro", "DejaVu Sans Mono", "monospace")
 SERIF_STACK = ("serif",)
 
@@ -29,27 +29,27 @@ def _display(size: int, line_height: int, weight: str, spacing: str = "normal", 
 
 
 TEXT_VARIANTS = MappingProxyType({
-    "display": _display(48, 54, "semibold", "tightest"),
-    "title": _display(34, 40, "medium", "tighter"),
-    "greeting": _display(30, 36, "regular", "tight"),
-    "h1": _display(32, 38, "semibold", "tighter"),
-    "h2": _display(24, 30, "semibold", "tight"),
-    "h3": _display(20, 26, "semibold", "snug"),
-    "h4": _display(17, 22, "semibold", "snug"),
-    "metric": _display(44, 48, "bold", "tightest", tabular=True),
-    "metricSmall": _display(28, 32, "semibold", "tighter", tabular=True),
-    "bodyLarge": TextVariant(18, 26, FONT_WEIGHTS["regular"]),
-    "body": TextVariant(16, 24, FONT_WEIGHTS["regular"]),
-    "bodyStrong": TextVariant(16, 24, FONT_WEIGHTS["semibold"]),
-    "bodySmall": TextVariant(14, 20, FONT_WEIGHTS["regular"]),
-    "label": TextVariant(14, 20, FONT_WEIGHTS["medium"]),
-    "button": _display(16, 20, "semibold"),
+    "display": _display(32, 38, "semibold", "tighter"),
+    "title": _display(24, 30, "semibold", "tight"),
+    "greeting": _display(20, 28, "medium", "tight"),
+    "h1": _display(24, 30, "semibold", "tight"),
+    "h2": _display(18, 24, "semibold", "snug"),
+    "h3": _display(15, 20, "semibold", "snug"),
+    "h4": TextVariant(14, 20, FONT_WEIGHTS["medium"]),
+    "metric": _display(28, 32, "semibold", "tight", tabular=True),
+    "metricSmall": _display(20, 24, "semibold", "snug", tabular=True),
+    "bodyLarge": TextVariant(15, 22, FONT_WEIGHTS["regular"]),
+    "body": TextVariant(13, 20, FONT_WEIGHTS["regular"]),
+    "bodyStrong": TextVariant(13, 20, FONT_WEIGHTS["medium"]),
+    "bodySmall": TextVariant(12, 18, FONT_WEIGHTS["regular"]),
+    "label": TextVariant(13, 18, FONT_WEIGHTS["medium"]),
+    "button": TextVariant(13, 18, FONT_WEIGHTS["medium"]),
     "caption": TextVariant(12, 16, FONT_WEIGHTS["regular"]),
-    "overline": _display(11, 16, "semibold", "wider", uppercase=True),
-    "code": TextVariant(13, 20, FONT_WEIGHTS["regular"], mono=True),
+    "overline": TextVariant(12, 16, FONT_WEIGHTS["medium"]),
+    "code": TextVariant(12, 18, FONT_WEIGHTS["regular"], mono=True),
 })
 
-DESKTOP_FONT_SCALE = 0.9
+DESKTOP_FONT_SCALE = 1.0
 
 
 def font_stack(families: tuple[str, ...]) -> str:

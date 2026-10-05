@@ -1,33 +1,11 @@
 import { StyleSheet } from "react-native";
 
-import { ControlHeight, displayFor, FontWeights, sansFor, MinTouchTarget, type Theme } from "@/theme";
+import { FontWeights, sansFor, MinTouchTarget, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme) {
   const graphite = theme.look === "graphite";
 
   return StyleSheet.create({
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: theme.spacing.sm,
-      paddingBottom: theme.spacing.sm,
-    },
-    close: {
-      width: ControlHeight.sm,
-      height: ControlHeight.sm,
-      alignItems: "center",
-      justifyContent: "center",
-      borderRadius: graphite ? theme.radius.md : theme.radius.full,
-      borderCurve: "continuous",
-      borderWidth: graphite ? StyleSheet.hairlineWidth : 0,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.backgroundElement,
-    },
-    title: {
-      flex: 1,
-      textAlign: "center",
-      ...(graphite ? null : { fontFamily: displayFor(FontWeights.bold) }),
-    },
     group: {
       borderRadius: theme.radius.card,
       borderCurve: "continuous",

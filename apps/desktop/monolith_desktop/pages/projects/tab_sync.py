@@ -13,8 +13,7 @@ from ...widgets.feedback import Notice
 from ...widgets.keyed_list import KeyedList
 from ...widgets.record_row import RecordRow, RowAction
 from ...widgets.rows import KeyValueList
-from ...widgets.section import Section
-from ...widgets.surface import Surface
+from ...widgets.list_view import ListGroup
 from .labels import SYNC, SYNC_KINDS
 from .model import SyncView, sync_change_code, sync_request_state
 from .sync_actions import SyncActions
@@ -22,7 +21,7 @@ from .sync_actions import SyncActions
 if TYPE_CHECKING:
     from .detail import ProjectDetail
 
-TAB_SPACING = 28
+TAB_SPACING = 16
 
 
 class SyncTab:
@@ -41,28 +40,32 @@ class SyncTab:
         self.widget.append(self._result)
 
         self._summary = KeyValueList()
-        self._summary_card = Surface(compact=True)
+        self._summary_card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=["to-props-list"])
         self._summary_card.append(self._summary)
         self.widget.append(self._summary_card)
 
         self._changes = KeyedList(lambda: RecordRow(None, monospace_title=True), self._update_change)
-        self._changes_section = Section(SYNC["changes"], self._changes, empty_label=SYNC["changes_empty"])
+        self._changes.add_css_class("divided")
+        self._changes_section = ListGroup(SYNC["changes"], self._changes, empty_label=SYNC["changes_empty"], icon="sync")
         self._actions = SyncActions(
             host.ctx, host.widget, host.project_id, on_view=self._loaded, on_report=self._show_result, on_error=host.report
         )
         actions = Adw.WrapBox(child_spacing=8, line_spacing=8)
         for button in self._actions.buttons.values():
             actions.append(button)
-        self._changes_section.header.add_trailing(actions)
+        self.widget.append(actions)
         self.widget.append(self._changes_section)
 
         self._requests = KeyedList(lambda: RecordRow("host"), self._update_request)
-        self._requests_section = Section(SYNC["requests"], self._requests, empty_label=SYNC["requests_empty"])
+        self._requests.add_css_class("divided")
+        self._requests_section = ListGroup(SYNC["requests"], self._requests, empty_label=SYNC["requests_empty"], icon="host")
         self.widget.append(self._requests_section)
 
         self._snapshots = KeyedList(lambda: RecordRow("sessions", monospace_title=True), self._update_snapshot)
-        self._snapshots_section = Section(
-            SYNC["snapshots"], self._snapshots, empty_label=SYNC["snapshots_empty"], subtitle=SYNC["snapshots_subtitle"]
+        self._snapshots.add_css_class("divided")
+        self._snapshots_section = ListGroup(
+            SYNC["snapshots"], self._snapshots, empty_label=SYNC["snapshots_empty"], subtitle=SYNC["snapshots_subtitle"],
+            icon="sessions",
         )
         self.widget.append(self._snapshots_section)
 
@@ -148,7 +151,7 @@ class SyncTab:
             detail,
             SYNC["request_meta"].format(source=request.get("source", ""), when=format_relative_time(request["createdAt"])),
         )
-        row.set_status(label, tone)
+        row.set_status(label, tone, glyph=True)
         actions = []
         if request["status"] == "pending":
             actions.append(RowAction("cancel", "stop", SYNC["cancel"], lambda: self._cancel(request), destructive=True))

@@ -1,13 +1,12 @@
 from gi.repository import Gtk
 
 from ..theme.icons import resolve_icon
-from ..theme.tokens import ICON_SIZE
 from .text import color_class
 
 
 class Icon(Gtk.Image):
     def __init__(self, name: str, size: str = "md", color: str | None = None) -> None:
-        super().__init__(icon_name=resolve_icon(name), pixel_size=ICON_SIZE[size])
+        super().__init__(icon_name=resolve_icon(name), css_classes=[f"to-icon-{size}"])
         self._color = color
         if color:
             self.add_css_class(color_class(color))

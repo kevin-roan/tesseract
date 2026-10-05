@@ -1,13 +1,15 @@
 from collections.abc import Callable, Mapping
 
-from gi.repository import Gtk
+from gi.repository import Gio, GLib, Gtk
 
 from ...api.types import AgentRun, InboxItem
 from ...theme.icons import resolve_icon
 from ...util.format import format_relative_time, join_meta
 from ...widgets.action_menu import ActionMenu
-from ...widgets.buttons import ActionButton, ChipGroup
-from ...widgets.feedback import EmptyState
+from ...widgets.buttons import IconButton
+from ...widgets.conversation import Placeholder
+from ...widgets.icon import Icon
+from ...widgets.motion import revealer
 from ...widgets.text import Text
 from . import model
 from .labels import ATTENTION, FILTERS, LIST, MANAGE
@@ -42,16 +44,56 @@ class ConversationList(Gtk.Box):
         self._selected: str | None = None
         self._rendered: tuple = ()
         self._rows: dict[str, ConversationRow] = {}
-        self._group_titles: dict[str, str] = {}
 
-        top = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, css_classes=["to-agents-list-top"])
-        new_button = ActionButton(LIST["new"], on_new, "primary", "compose")
-        new_button.set_hexpand(True)
-        top.append(new_button)
+        self.header_buttons = self._build_header_buttons(on_new)
         self._search = Gtk.SearchEntry(placeholder_text=LIST["search"], hexpand=True)
         self._search.connect("search-changed", lambda entry: self._set_query(entry.get_text()))
-        search_row = Gtk.Box(spacing=6)
+        self._search.connect("stop-search", lambda *_: self._search_toggle.set_active(False))
+        search_row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, css_classes=["to-agents-search"])
         search_row.append(self._search)
+        self._search_revealer = revealer(child=search_row, transition_type=Gtk.RevealerTransitionType.SLIDE_DOWN)
+        self.append(self._search_revealer)
+
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, css_classes=["to-agents-list-content"])
+        content.append(self._build_filter_chip())
+        self._attention_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        content.append(self._attention_box)
+        self._list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, css_classes=["to-convo-list"])
+        self._list.connect("row-activated", lambda _list, row: self._activate(row))
+        content.append(self._list)
+        self._empty = Placeholder("")
+        self._empty.set_margin_top(48)
+        content.append(self._empty)
+        self._terminals_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        content.append(self._terminals_box)
+        self._scroller = Gtk.ScrolledWindow(child=content, hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True)
+        self.append(self._scroller)
+        self._row_menu = ActionMenu()
+        self._row_menu.set_parent(self)
+        self._sync_filter()
+        self._render()
+
+    def _build_header_buttons(self, on_new: Callable[[], None]) -> list[Gtk.Widget]:
+        self._search_toggle = Gtk.ToggleButton(child=Icon("search", "sm"), tooltip_text=LIST["search_toggle"], css_classes=["flat"])
+        self._search_toggle.update_property([Gtk.AccessibleProperty.LABEL], [LIST["search_toggle"]])
+        self._search_toggle.connect("toggled", self._search_toggled)
+
+        actions = Gio.SimpleActionGroup()
+        self._filter_action = Gio.SimpleAction.new_stateful(
+            "filter", GLib.VariantType.new("s"), GLib.Variant.new_string(self._filter)
+        )
+        self._filter_action.connect("activate", lambda _action, value: self.show_filter(value.get_string()))
+        actions.add_action(self._filter_action)
+        menu = Gio.Menu()
+        for filter_id, label in FILTERS.items():
+            menu.append(label, f"agents-list.filter::{filter_id}")
+        self._filter_button = Gtk.MenuButton(
+            icon_name=resolve_icon("filter"), tooltip_text=LIST["filter"], menu_model=menu,
+            valign=Gtk.Align.CENTER, css_classes=["flat"],
+        )
+        self._filter_button.insert_action_group("agents-list", actions)
+        self._filter_button.update_property([Gtk.AccessibleProperty.LABEL], [LIST["filter"]])
+
         self._bulk_menu = ActionMenu()
         self._more = Gtk.MenuButton(
             icon_name=resolve_icon("more"), tooltip_text=MANAGE["more"], popover=self._bulk_menu,
@@ -59,29 +101,19 @@ class ConversationList(Gtk.Box):
         )
         self._more.update_property([Gtk.AccessibleProperty.LABEL], [MANAGE["more"]])
         self._more.set_create_popup_func(lambda _button: self._bulk_menu.set_entries(self._entries(self._bulk_actions(), None)))
-        search_row.append(self._more)
-        top.append(search_row)
-        self._chips = ChipGroup(list(FILTERS.items()), "all", self._set_filter)
-        top.append(self._chips)
-        self.append(top)
+        return [self._search_toggle, self._filter_button, self._more, IconButton("compose", LIST["new"], on_new)]
 
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, css_classes=["to-agents-list-content"])
-        self._attention_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        content.append(self._attention_box)
-        self._list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, css_classes=["to-convo-list"])
-        self._list.set_header_func(self._header)
-        self._list.connect("row-activated", lambda _list, row: self._activate(row))
-        content.append(self._list)
-        self._empty = EmptyState("", None, "agents")
-        self._empty.set_margin_top(24)
-        content.append(self._empty)
-        self._terminals_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-        content.append(self._terminals_box)
-        self._scroller = Gtk.ScrolledWindow(child=content, hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True)
-        self.append(self._scroller)
-        self._row_menu = ActionMenu()
-        self._row_menu.set_parent(self)
-        self._render()
+    def _build_filter_chip(self) -> Gtk.Widget:
+        self._filter_chip = Gtk.Button(css_classes=["to-chip", "to-filter-chip"], halign=Gtk.Align.START)
+        content = Gtk.Box(spacing=6)
+        content.append(Icon("filter", "xs", "textSecondary"))
+        self._filter_label = Text("", "caption")
+        content.append(self._filter_label)
+        content.append(Icon("close", "xs", "textTertiary"))
+        self._filter_chip.set_child(content)
+        self._filter_chip.set_tooltip_text(LIST["clear_filter"])
+        self._filter_chip.connect("clicked", lambda *_: self.show_filter("all"))
+        return self._filter_chip
 
     def set_data(
         self,
@@ -113,11 +145,24 @@ class ConversationList(Gtk.Box):
             self._list.select_row(row)
 
     def show_filter(self, filter_id: str) -> None:
-        self._chips.select(filter_id)
-        self._set_filter(filter_id)
+        if filter_id in FILTERS and filter_id != self._filter:
+            self._set_filter(filter_id)
 
     def focus_search(self) -> None:
+        self._search_toggle.set_active(True)
+        GLib.idle_add(self._focus_entry)
+
+    def _focus_entry(self) -> bool:
         self._search.grab_focus()
+        return GLib.SOURCE_REMOVE
+
+    def _search_toggled(self, button: Gtk.ToggleButton) -> None:
+        active = button.get_active()
+        self._search_revealer.set_reveal_child(active)
+        if active:
+            GLib.idle_add(self._focus_entry)
+        elif self._search.get_text():
+            self._search.set_text("")
 
     def refresh_times(self) -> None:
         for row in self._rows.values():
@@ -129,8 +174,15 @@ class ConversationList(Gtk.Box):
 
     def _set_filter(self, filter_id: str) -> None:
         self._filter = filter_id
+        self._sync_filter()
         self._on_filter(filter_id)
         self._render()
+
+    def _sync_filter(self) -> None:
+        self._filter_action.set_state(GLib.Variant.new_string(self._filter))
+        filtered = self._filter != "all"
+        self._filter_label.set_label(FILTERS[self._filter])
+        self._filter_chip.set_visible(filtered)
 
     def _bulk_actions(self) -> tuple[str, ...]:
         return model.bulk_actions(self._runs, self._archived, self.archived_view)
@@ -156,26 +208,15 @@ class ConversationList(Gtk.Box):
         runs = source or []
         needs = model.attention_items(self._attention)
         visible = model.filter_runs(runs, self._filter, self._query, self._names, needs)
-        groups = model.group_runs(visible, self._names)
-        rows: list[tuple[str, RowModel]] = [
-            (
-                group.key,
-                row_model(
-                    run,
-                    self._names,
-                    model.is_follow_up(run, runs),
-                    bool(model.attention_for_run(run, needs)),
-                ),
-            )
-            for group in groups
-            for run in group.runs
+        rows: list[RowModel] = [
+            row_model(run, self._names, model.is_follow_up(run, runs), bool(model.attention_for_run(run, needs)))
+            for run in model.sort_recent(visible)
         ]
         attention = self._attention if self._filter not in ("running", model.ARCHIVED_FILTER) else []
         terminals = model.terminal_sessions(self._sessions) if self._filter == "all" else []
         signature = (tuple(rows), tuple(item["id"] for item in attention), tuple(s.get("sessionId") for s in terminals), source is None)
         if signature != self._rendered:
             self._rendered = signature
-            self._group_titles = {group.key: group.title for group in groups}
             self._render_rows(rows)
             self._render_attention(attention)
             self._render_terminals(terminals)
@@ -183,11 +224,11 @@ class ConversationList(Gtk.Box):
         self._more.set_sensitive(bool(self._bulk_actions()))
         self.set_selected(self._selected)
 
-    def _render_rows(self, rows: list[tuple[str, RowModel]]) -> None:
+    def _render_rows(self, rows: list[RowModel]) -> None:
         self._list.remove_all()
         self._rows = {}
-        for key, data in rows:
-            row = ConversationRow(data, key, self._open_row_menu)
+        for data in rows:
+            row = ConversationRow(data, on_context=self._open_row_menu)
             self._rows[data.run_id] = row
             self._list.append(row)
         self._list.set_visible(bool(rows))
@@ -233,32 +274,23 @@ class ConversationList(Gtk.Box):
 
     def _render_empty(self, runs: list[AgentRun] | None, visible: list[AgentRun], attention: list, terminals: list) -> None:
         if runs is None:
-            self._empty.set_content(LIST["loading"], None, None, True)
+            self._empty.set_content(LIST["loading"], loading=True)
             self._empty.set_visible(True)
         elif not runs and self.archived_view:
-            self._empty.set_content(LIST["archived_empty_title"], LIST["archived_empty_message"], "archive")
+            self._empty.set_content(LIST["archived_empty_title"])
             self._empty.set_visible(True)
         elif not runs:
-            self._empty.set_content(LIST["empty_title"], LIST["empty_message"], "agents")
+            self._empty.set_content(LIST["empty_title"])
             self._empty.set_visible(not attention and not terminals)
         elif not visible:
-            self._empty.set_content(LIST["no_match_title"], LIST["no_match_message"], "search")
+            self._empty.set_content(LIST["no_match_title"])
             self._empty.set_visible(not attention)
         else:
             self._empty.set_visible(False)
 
-    def _header(self, row: Gtk.ListBoxRow, before: Gtk.ListBoxRow | None) -> None:
-        key = row.group_key if isinstance(row, ConversationRow) else ""
-        if isinstance(before, ConversationRow) and before.group_key == key:
-            row.set_header(None)
-            return
-        label = _section_title(self._group_titles.get(key, ""))
-        label.set_margin_top(4 if before is None else 14)
-        row.set_header(label)
-
 
 def _section_title(title: str) -> Gtk.Widget:
-    label = Text(title, "overline", "textTertiary")
+    label = Text(title, "overline", "textSecondary")
     label.add_css_class("to-agents-group-title")
     return label
 
@@ -266,4 +298,3 @@ def _section_title(title: str) -> Gtk.Widget:
 def _clear(box: Gtk.Box) -> None:
     while (child := box.get_first_child()) is not None:
         box.remove(child)
-

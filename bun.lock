@@ -44,6 +44,7 @@
         "@expo-google-fonts/exo-2": "^0.4.2",
         "@expo-google-fonts/geist-mono": "^0.4.3",
         "@expo-google-fonts/noto-sans": "^0.4.2",
+        "@expo-google-fonts/poppins": "^0.4.1",
         "@expo-google-fonts/saira": "^0.4.2",
         "@expo/vector-icons": "^15.0.2",
         "@react-navigation/bottom-tabs": "^7.18.18",
@@ -357,6 +358,8 @@
     "@expo-google-fonts/material-symbols": ["@expo-google-fonts/material-symbols@0.4.45", "", {}, "sha512-D5gd/uFa7KfMJX9S11hvej4GpQnBl27oKiUgyIq3cLTPtyDOWBwRgmeePIdV6+PGcedlDkaCND2BnRgAkxzNaA=="],
 
     "@expo-google-fonts/noto-sans": ["@expo-google-fonts/noto-sans@0.4.2", "", {}, "sha512-zYD8G2ijWLxqmquoQgghNh/x9p0yxWwArD0oxO1oXY1qx5vOd4t0Kbhnu/Cx8RTy08OgA8RtxuULZFaXwVPnPw=="],
+
+    "@expo-google-fonts/poppins": ["@expo-google-fonts/poppins@0.4.1", "", {}, "sha512-LiX5oEryJqDt3UmWwr4oqf11hGMz/JEffkkNcZ3UtGwyoMFzXmBmTwcrAWrEttxypxmLNmPykDg+CY2VjKve9A=="],
 
     "@expo-google-fonts/saira": ["@expo-google-fonts/saira@0.4.2", "", {}, "sha512-yYKphi89qnqq9Hsl0fYgLhd95HlhQMKA5IOp6QDcWv9sfpcFIrNbLyEYcg9qpECl3xMW1UuA5GVK77i/F1wASg=="],
 

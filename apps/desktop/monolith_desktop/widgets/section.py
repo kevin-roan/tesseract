@@ -14,9 +14,9 @@ class SectionHeader(Gtk.Box):
         on_action: Callable[[], None] | None = None,
         subtitle: str | None = None,
     ) -> None:
-        super().__init__(spacing=12)
+        super().__init__(spacing=8, css_classes=["to-section-header"])
         titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
-        self._title = Text(title, "h4")
+        self._title = Text(title, "label")
         self._title.add_css_class("to-section-title")
         self._subtitle = Text(subtitle or "", "caption", "textSecondary")
         self._subtitle.set_visible(bool(subtitle))
@@ -50,11 +50,11 @@ class Section(Gtk.Box):
         empty_label: str | None = None,
         subtitle: str | None = None,
     ) -> None:
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
         self.header = SectionHeader(title, action_label, on_action, subtitle)
         self.append(self.header)
         self._stack = crossfade_stack(vhomogeneous=False, hhomogeneous=False)
-        self._stack.add_named(Adw.Spinner(halign=Gtk.Align.START, width_request=24, height_request=24), "loading")
+        self._stack.add_named(Adw.Spinner(halign=Gtk.Align.START, width_request=16, height_request=16), "loading")
         self._empty = Text(empty_label or "", "bodySmall", "textSecondary", wrap=True, lines=None)
         self._stack.add_named(self._empty, "empty")
         self._content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)

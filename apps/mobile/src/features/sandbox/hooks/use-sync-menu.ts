@@ -66,6 +66,7 @@ export function useSyncMenu(projectId: string | null, active = false) {
   return {
     action,
     menu: { visible: open, options, onSelect: select, onClose: close, onDismissed },
+    changes,
     notice: sync.notice,
     dismiss: sync.dismiss,
   };

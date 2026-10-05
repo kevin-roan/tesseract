@@ -5,8 +5,12 @@ from gi.repository import Adw, GLib, Gtk
 
 from ...api.errors import describe_error
 from ...api.types import AgentRun, InboxItem, run_total_tokens
+from ...attachments.controller import ComposerAttachments
+from ...attachments.widgets import upload_chip
 from ...theme.tone import Tone
-from ...util.format import format_tokens, join_meta
+from ...util.format import format_relative_time, format_tokens, join_meta
+from ...theme.icons import resolve_icon
+from ...widgets.action_menu import ActionMenu
 from ...widgets.badges import StatusBadge
 from ...widgets.buttons import ActionButton, IconButton
 from ...widgets.code_block import copy_to_clipboard
@@ -14,6 +18,7 @@ from ...widgets.composer import Composer
 from ...widgets.conversation import (
     AssistantMessage,
     OutcomeCard,
+    PaneBar,
     SystemLine,
     ThinkingRow,
     TimelineView,
@@ -24,31 +29,33 @@ from ...widgets.feedback import EmptyState, Notice
 from ...widgets.icon import Icon
 from ...widgets.motion import crossfade_stack
 from ...widgets.text import Text
-from ..projects.labels import SYNC
+from ..projects.labels import SYNC, SYNC_KINDS
 from ..projects.sync_actions import SyncActions
 from . import model
 from .feed import LinkState, RunFeed
 from .labels import ATTENTION, CONVERSATION, MANAGE
+from .rows import StateGlyph
 from .timeline import TimelineItem, build_timeline, same_prefix
 
 if TYPE_CHECKING:
     from ...context import AppContext
 
 TICK_MS = 1000
-COMPOSER_WIDTH = 820
+COMPOSER_WIDTH = 760
 TOOL_LABELS = {"input": CONVERSATION["tool_input"], "output": CONVERSATION["tool_output"]}
 OUTCOMES = {
-    "succeeded": (CONVERSATION["result_done"], "success", "success"),
-    "failed": (CONVERSATION["result_failed"], "danger", "close"),
-    "cancelled": (CONVERSATION["result_cancelled"], "neutral", "stop"),
+    "succeeded": (CONVERSATION["result_done"], "success", "status-done"),
+    "failed": (CONVERSATION["result_failed"], "danger", "failed"),
+    "cancelled": (CONVERSATION["result_cancelled"], "neutral", "status-canceled"),
 }
+SYNC_HEADER_ORDER = ("get", "pull", "revert")
 
 
 class ConversationPane(Gtk.Box):
     def __init__(
         self,
         ctx: "AppContext",
-        on_follow_up: Callable[[str, AgentRun], None],
+        on_follow_up: Callable[[str, AgentRun, list[str]], None],
         on_select_run: Callable[[str], None],
         on_mark_read: Callable[[InboxItem], None],
         on_open_notice: Callable[[InboxItem], None],
@@ -76,6 +83,8 @@ class ConversationPane(Gtk.Box):
         self._notice_error: str | None = None
         self._sync_notice: tuple[str, Tone] | None = None
         self._sync_running = False
+        self._prompt_widget: UserBubble | None = None
+        self._first_text: str | None = None
         self._feed = RunFeed(ctx, self._run_updated, self._render_timeline, self._link_changed, self._load_failed)
 
         self.append(self._build_header())
@@ -87,6 +96,7 @@ class ConversationPane(Gtk.Box):
         self._error = EmptyState(CONVERSATION["load_failed_title"], icon="warning", action_label=CONVERSATION["retry"], on_action=self._feed.reload)
         self._stack.add_named(self._error, "error")
         self._timeline = TimelineView(CONVERSATION["jump"])
+        self._timeline.set_header(self._build_intro())
         self._thinking = ThinkingRow(CONVERSATION["waiting"])
         self._timeline.set_footer([self._thinking])
         self._stack.add_named(self._timeline, "timeline")
@@ -95,6 +105,9 @@ class ConversationPane(Gtk.Box):
         self._composer = Composer(
             CONVERSATION["follow_up_placeholder"], CONVERSATION["follow_up_send"], self._follow_up, max_height=200
         )
+        self._attachments = ComposerAttachments(ctx, self._composer, self._composer.input, self._attachments_changed)
+        self._composer.prepend_accessory(self._attachments.button)
+        self._composer.set_tray(self._attachments.tray)
         clamp = Adw.Clamp(maximum_size=COMPOSER_WIDTH, tightening_threshold=COMPOSER_WIDTH, child=self._composer)
         footer = Gtk.Box(css_classes=["to-convo-footer"])
         clamp.set_hexpand(True)
@@ -122,9 +135,11 @@ class ConversationPane(Gtk.Box):
         self._timeline.clear()
         self._keys = []
         self._widgets = {}
+        self._prompt_widget = None
         self._load_error = None
         self._composer.clear()
         self._composer.set_busy(False)
+        self._attachments.clear()
         self._notice_error = None
         self._feed.select(run_id, run)
         if self.get_mapped():
@@ -164,55 +179,85 @@ class ConversationPane(Gtk.Box):
         self._composer.set_busy(False)
         if error is None:
             self._composer.clear()
+            self._attachments.clear()
         self._show_error_notice(error)
 
     def _build_header(self) -> Gtk.Widget:
-        header = Gtk.Box(spacing=12, css_classes=["to-convo-header"])
-        titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, hexpand=True)
-        self._title = Text("", "h4", wrap=True, lines=2)
-        titles.append(self._title)
-        meta = Gtk.Box(spacing=8)
-        self._badge = StatusBadge("")
-        meta.append(self._badge)
-        self._meta = Text("", "caption", "textSecondary", wrap=True, lines=2)
-        self._meta.set_hexpand(True)
-        meta.append(self._meta)
-        titles.append(meta)
-        header.append(titles)
-        actions = Gtk.Box(spacing=4, valign=Gtk.Align.CENTER)
-        self._terminal_button = ActionButton(CONVERSATION["open_terminal"], self._open_terminal, "secondary", "terminal")
+        bar = PaneBar()
+        bar.add_css_class("to-convo-header")
+        self._glyph = StateGlyph("running")
+        self._glyph.set_valign(Gtk.Align.CENTER)
+        bar.start.append(self._glyph)
+        self._project = Text("", "label", "textSecondary")
+        bar.start.append(self._project)
+        bar.start.append(Icon("caret-right", "xs", "textTertiary"))
+        self._title = Text("", "label")
+        self._title.set_hexpand(True)
+        bar.start.append(self._title)
+        actions = bar.end
+        self._cancel_button = ActionButton(CONVERSATION["cancel"], self._confirm_cancel, "secondary", "stop", CONVERSATION["cancel_tooltip"])
+        actions.append(self._cancel_button)
+        self._terminal_button = IconButton("terminal", CONVERSATION["open_terminal"], self._open_terminal)
         actions.append(self._terminal_button)
-        actions.append(self._build_sync_menu())
-        self._copy_button = IconButton("copy", CONVERSATION["copy_session"], self._copy_session)
-        actions.append(self._copy_button)
-        self._reload_button = IconButton("refresh", CONVERSATION["reload"], lambda: self._feed.reload())
-        actions.append(self._reload_button)
+        actions.append(self._build_sync_actions())
         self._archive_button = IconButton("archive", MANAGE["archive"], lambda: self._manage("archive"))
         actions.append(self._archive_button)
         self._unarchive_button = IconButton("unarchive", MANAGE["unarchive"], lambda: self._manage("unarchive"))
         actions.append(self._unarchive_button)
-        self._delete_button = IconButton("delete", MANAGE["delete_tooltip"], lambda: self._manage("delete"))
-        actions.append(self._delete_button)
-        self._cancel_button = ActionButton(CONVERSATION["cancel"], self._confirm_cancel, "destructive", "stop", CONVERSATION["cancel_tooltip"])
-        actions.append(self._cancel_button)
-        header.append(actions)
-        return header
+        self._menu = ActionMenu()
+        more = Gtk.MenuButton(
+            icon_name=resolve_icon("more"), tooltip_text=CONVERSATION["more"], popover=self._menu,
+            valign=Gtk.Align.CENTER, css_classes=["flat"],
+        )
+        more.update_property([Gtk.AccessibleProperty.LABEL], [CONVERSATION["more"]])
+        more.set_create_popup_func(lambda _button: self._menu.set_entries(self._menu_entries()))
+        actions.append(more)
+        return bar
 
-    def _build_sync_menu(self) -> Gtk.Widget:
-        items = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6, margin_top=6, margin_bottom=6, margin_start=6, margin_end=6)
-        popover = Gtk.Popover(child=items, has_arrow=False)
-        self._sync = SyncActions(self._ctx, self, on_report=self._show_sync_notice, on_activate=popover.popdown)
-        for button in self._sync.buttons.values():
-            button.set_halign(Gtk.Align.FILL)
-            items.append(button)
-        self._sync_button = ActionButton(SYNC["menu"], lambda: self._open_sync_menu(popover), "secondary", "sync")
-        popover.set_parent(self._sync_button)
-        return self._sync_button
+    def _menu_entries(self) -> list[list[tuple[str, Callable[[], None]]]]:
+        run = self._feed.run
+        if run is None:
+            return []
+        general = []
+        if run.get("sessionId"):
+            general.append((CONVERSATION["copy_session"], self._copy_session))
+        if run["state"] != "running":
+            general.append((CONVERSATION["reload"], self._feed.reload))
+        destructive = []
+        if run.get("projectId") and self._sync.can_run("discard"):
+            destructive.append((SYNC["discard"], self._sync.discard))
+        if model.can_manage(run):
+            destructive.append((MANAGE["delete"], lambda: self._manage("delete")))
+        return [general, destructive]
 
-    def _open_sync_menu(self, popover: Gtk.Popover) -> None:
-        self._sync.render()
-        self._sync.refresh()
-        popover.popup()
+    def _build_intro(self) -> Gtk.Widget:
+        intro = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=8, css_classes=["to-convo-intro"])
+        meta = Gtk.Box(spacing=8)
+        self._badge = StatusBadge("")
+        meta.append(self._badge)
+        self._meta = Text("", "caption", "textTertiary", wrap=True, lines=2)
+        self._meta.set_hexpand(True)
+        meta.append(self._meta)
+        intro.append(meta)
+        self._previous_slot = Gtk.Box()
+        self._previous_slot.set_visible(False)
+        intro.append(self._previous_slot)
+        return intro
+
+    def _build_sync_actions(self) -> Gtk.Widget:
+        self._sync = SyncActions(self._ctx, self, on_report=self._show_sync_notice)
+        self._sync_box = Gtk.Box(spacing=6, margin_start=4, margin_end=4, valign=Gtk.Align.CENTER)
+        for kind in SYNC_HEADER_ORDER:
+            button = self._sync.buttons[kind]
+            button.remove_css_class("to-primary")
+            button.add_css_class("to-secondary")
+            self._sync_box.append(button)
+        self._sync.buttons["revert"].set_label_text(SYNC_KINDS["revert"])
+        return self._sync_box
+
+    def compact_setters(self, breakpoint: Adw.Breakpoint) -> None:
+        for kind in SYNC_HEADER_ORDER:
+            breakpoint.add_setter(self._sync.buttons[kind].label, "visible", False)
 
     def _show_sync_notice(self, message: str, tone: Tone) -> None:
         self._sync_notice = (message, tone)
@@ -240,24 +285,23 @@ class ConversationPane(Gtk.Box):
         run = self._feed.run
         running = run is not None and run["state"] == "running"
         self._title.set_label(model.run_title(run.get("prompt")) if run else "")
+        self._project.set_label(model.project_name(run.get("projectId"), self._names) if run else "")
         if run:
+            self._glyph.set_state(run["state"])
             self._badge.update(model.state_label(run["state"]), model.state_tone(run["state"]), running)
             self._badge.set_visible(True)
             session = run.get("sessionId")
             session_label = CONVERSATION["session"].format(id=model.short_id(session)) if session else None
             self._meta.set_label(join_meta(model.header_meta(run, self._names), session_label))
+            if self._prompt_widget is not None:
+                self._prompt_widget.set_time(format_relative_time(run.get("startedAt")))
         else:
             self._badge.set_visible(False)
             self._meta.set_label("")
         self._cancel_button.set_visible(running)
-        self._copy_button.set_visible(bool(run and run.get("sessionId")))
-        if run and run.get("sessionId"):
-            self._copy_button.set_tooltip_text(f"{CONVERSATION['copy_session']} · {run['sessionId']}")
-        self._reload_button.set_visible(run is not None and not running)
         manageable = model.can_manage(run)
         self._archive_button.set_visible(manageable and not model.is_archived(run))
         self._unarchive_button.set_visible(manageable and model.is_archived(run))
-        self._delete_button.set_visible(manageable)
         self._terminal_button.set_visible(model.terminal_for_run(run, self._sessions) is not None)
         project_id = run.get("projectId") if run else None
         if project_id != self._sync.project_id:
@@ -266,7 +310,7 @@ class ConversationPane(Gtk.Box):
         elif self._sync_running and not running:
             self._sync.refresh()
         self._sync_running = running
-        self._sync_button.set_visible(project_id is not None)
+        self._sync_box.set_visible(project_id is not None)
 
     def _render_notices(self) -> None:
         while (child := self._notices.get_first_child()) is not None:
@@ -307,16 +351,18 @@ class ConversationPane(Gtk.Box):
         if previous_id == self._previous_id:
             return
         self._previous_id = previous_id
+        while (child := self._previous_slot.get_first_child()) is not None:
+            self._previous_slot.remove(child)
+        self._previous_slot.set_visible(previous is not None)
         if previous is None:
-            self._timeline.set_header(None)
             return
-        button = Gtk.Button(css_classes=["flat", "to-previous-turn"], halign=Gtk.Align.CENTER)
+        button = Gtk.Button(css_classes=["flat", "to-previous-turn"], halign=Gtk.Align.START)
         content = Gtk.Box(spacing=6)
         content.append(Icon("back", "xs", "textTertiary"))
         content.append(Text(CONVERSATION["continues"].format(title=model.run_title(previous.get("prompt"), 60)), "caption", "textSecondary"))
         button.set_child(content)
         button.connect("clicked", lambda *_, rid=previous["id"]: self._on_select_run(rid))
-        self._timeline.set_header(button)
+        self._previous_slot.append(button)
 
     def _render_timeline(self) -> None:
         run = self._feed.run
@@ -329,6 +375,8 @@ class ConversationPane(Gtk.Box):
         if not same_prefix(self._keys, keys):
             self._timeline.clear()
             self._widgets = {}
+            self._prompt_widget = None
+        self._first_text = next((item.key for item in items if item.kind == "text"), None)
         for item in items:
             entry = self._widgets.get(item.key)
             if entry is None:
@@ -343,9 +391,14 @@ class ConversationPane(Gtk.Box):
 
     def _create(self, item: TimelineItem) -> Gtk.Widget:
         if item.kind == "prompt":
-            return UserBubble(item.text)
+            run = self._feed.run or {}
+            self._prompt_widget = UserBubble(
+                item.text, self._attachment_chips(item), CONVERSATION["you"], format_relative_time(run.get("startedAt"))
+            )
+            return self._prompt_widget
         if item.kind == "text":
-            return AssistantMessage(item.text, copy_label=CONVERSATION["copy_code"], copied_label=CONVERSATION["code_copied"])
+            author = CONVERSATION["claude"] if item.key == self._first_text else None
+            return AssistantMessage(item.text, author, copy_label=CONVERSATION["copy_code"], copied_label=CONVERSATION["code_copied"])
         if item.kind == "tool":
             return ToolCallCard(item.tool, item.text, item.result, item.status, TOOL_LABELS)
         if item.kind == "system":
@@ -367,6 +420,12 @@ class ConversationPane(Gtk.Box):
         error = item.error if item.state == "failed" else None
         return title, meta, tone, icon, item.text or None, error
 
+    def _attachment_chips(self, item: TimelineItem) -> list[Gtk.Widget]:
+        def fetch(upload_id: str) -> bytes:
+            return self._ctx.connection.require_client().upload_content(upload_id)
+
+        return [upload_chip(upload, fetch, large=upload.get("kind") == "image") for upload in item.attachments]
+
     def _render_composer(self) -> None:
         state = model.follow_up_state(self._feed.run)
         if state == "running":
@@ -375,6 +434,10 @@ class ConversationPane(Gtk.Box):
             self._composer.set_locked(CONVERSATION["follow_up_no_session"])
         else:
             self._composer.set_locked(None)
+        self._attachments.set_enabled(state == "ready")
+
+    def _attachments_changed(self) -> None:
+        self._composer.set_attachments(self._attachments.has_items, self._attachments.blocked)
 
     def _link_changed(self, link: LinkState) -> None:
         if link == self._link:
@@ -394,7 +457,7 @@ class ConversationPane(Gtk.Box):
         if run is None or model.follow_up_state(run) != "ready":
             return
         self._composer.set_busy(True)
-        self._on_follow_up(prompt, run)
+        self._on_follow_up(self._attachments.prompt(prompt), run, self._attachments.upload_ids)
 
     def _confirm_cancel(self) -> None:
         run = self._feed.run

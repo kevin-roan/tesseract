@@ -1,3 +1,4 @@
+import base64
 import json
 import socket
 import urllib.error
@@ -17,6 +18,7 @@ from .paths import TICKET_PARAM, rest, ui
 
 DEFAULT_TIMEOUT_S = 15.0
 TAILDROP_TIMEOUT_S = 120.0
+UPLOAD_TIMEOUT_S = 120.0
 SYNC_TIMEOUT_S = 600.0
 USER_AGENT = "monolith-desktop/0.1"
 
@@ -178,6 +180,12 @@ class ControllerClient:
     def set_project_claude_account(self, id: str, account_id: str | None) -> T.Project:
         return self.put(rest.project_claude_account(id), {"accountId": account_id})
 
+    def delete_project(self, id: str, force: bool = False) -> T.DeletedProject:
+        return self.delete(rest.project(id, 1 if force else None))
+
+    def rename_project(self, id: str, name: str | None) -> T.Project:
+        return self.put(rest.project_name(id), {"name": name})
+
     def get_project_git(self, id: str) -> T.GitDetails:
         return self.get(rest.project_git(id))
 
@@ -297,6 +305,9 @@ class ControllerClient:
     def list_artifacts(self, project_id: str | None = None) -> list[T.Artifact]:
         return self.get(rest.artifacts(project_id))
 
+    def list_build_outputs(self, project_id: str | None = None) -> list[T.BuildOutput]:
+        return self.get(rest.build_outputs(project_id))
+
     def delete_artifact(self, id: str) -> T.Artifact:
         return self.delete(rest.artifact(id))
 
@@ -306,11 +317,35 @@ class ControllerClient:
     def send_artifact_taildrop(self, id: str, target_id: str) -> T.Artifact:
         return self.post(rest.artifact_taildrop(id), {"targetId": target_id}, timeout=TAILDROP_TIMEOUT_S)
 
+    def list_run_targets(self, project_id: str) -> list[T.RunTargetInfo]:
+        return self.get(rest.project_run_targets(project_id))
+
+    def list_app_runs(self, project_id: str | None = None) -> list[T.AppRun]:
+        return self.get(rest.app_runs(project_id))
+
+    def start_app_run(self, project_id: str, target: str) -> T.AppRun:
+        return self.post(rest.project_app_runs(project_id), {"target": target})
+
+    def stop_app_run(self, id: str) -> T.AppRun:
+        return self.delete(rest.app_run(id))
+
+    def android_status(self) -> T.SandboxAndroidStatus:
+        return self.get(rest.android())
+
     def display_status(self) -> T.DisplayStatus:
         return self.get(rest.display())
 
     def screenshot(self) -> bytes:
         return self.request_raw("GET", rest.display_screenshot())[2]
+
+    def display_windows(self) -> T.DisplayWindowList:
+        return self.get(rest.display_windows())
+
+    def activate_display_window(self, id: str) -> None:
+        self.post(rest.display_window_activate(id))
+
+    def close_display_window(self, id: str, force: bool = False) -> None:
+        self.post(rest.display_window_close(id), {"force": True} if force else {})
 
     def list_agent_runs(self, project_id: str | None = None, archived: bool = False) -> list[T.AgentRun]:
         return self.get(rest.agent_runs(project_id, "1" if archived else None))
@@ -338,13 +373,29 @@ class ControllerClient:
             body["archived"] = archived
         return self.post(rest.agent_runs_delete(), body)
 
-    def start_agent_run(self, prompt: str, project_id: str | None = None, resume_session_id: str | None = None) -> T.AgentRun:
+    def start_agent_run(
+        self,
+        prompt: str,
+        project_id: str | None = None,
+        resume_session_id: str | None = None,
+        attachment_ids: list[str] | None = None,
+    ) -> T.AgentRun:
         body: dict[str, Any] = {"prompt": prompt}
         if project_id:
             body["projectId"] = project_id
         if resume_session_id:
             body["resumeSessionId"] = resume_session_id
+        if attachment_ids:
+            body["attachmentIds"] = attachment_ids
         return self.post(rest.agent_runs(), body)
+
+    def create_upload(self, name: str, mime_type: str, data: bytes) -> T.Upload:
+        body = {"name": name, "mimeType": mime_type, "data": base64.b64encode(data).decode("ascii")}
+        return self.post(rest.uploads(), body, timeout=UPLOAD_TIMEOUT_S)
+
+    def upload_content(self, id: str) -> bytes:
+        _status, _headers, payload = self.request_raw("GET", rest.upload_content(id), timeout=UPLOAD_TIMEOUT_S)
+        return payload
 
     def get_agent_run(self, id: str) -> T.AgentRunDetail:
         return self.get(rest.agent_run(id))
@@ -364,6 +415,9 @@ class ControllerClient:
 
     def artifact_download_url(self, id: str) -> str:
         return self.http_url(rest.artifact_download(id, self.create_ticket()["ticket"]))
+
+    def build_output_download_url(self, project_id: str, path: str) -> str:
+        return self.http_url(rest.build_output_download(project_id, path, self.create_ticket()["ticket"]))
 
 
 def _run_selection(ids: list[str] | None, all_runs: bool, project_id: str | None) -> dict[str, Any]:

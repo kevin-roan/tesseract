@@ -2,8 +2,10 @@ from gi.repository import Adw, Gtk
 
 from ..hostshell import HostShellState
 from ..strings import HOST_SHELL as S
-from ..theme.icons import resolve_icon
+from ..widgets.buttons import ActionButton
 from ..widgets.confirm_dialog import confirm
+from ..widgets.preference_rows import button_row
+from ..widgets.buttons import IconButton
 from .base import PreferencesPage
 
 LOG_LINES = 40
@@ -20,13 +22,6 @@ def status_label(state: HostShellState) -> str:
     return S[f"status_{state.status}"]
 
 
-def _row_button(label: str, on_click, destructive: bool = False) -> Gtk.Button:
-    button = Gtk.Button(label=label, valign=Gtk.Align.CENTER)
-    button.add_css_class("destructive-action" if destructive else "flat")
-    button.connect("clicked", lambda *_: on_click())
-    return button
-
-
 class HostShellPreferences(PreferencesPage):
     id = "host-shell"
     order = 15
@@ -36,9 +31,7 @@ class HostShellPreferences(PreferencesPage):
         self._service = ctx.host_shell
         self._syncing = False
 
-        refresh = Gtk.Button(icon_name=resolve_icon("refresh"), tooltip_text=S["refresh"], valign=Gtk.Align.CENTER)
-        refresh.add_css_class("flat")
-        refresh.connect("clicked", lambda *_: self._service.refresh())
+        refresh = IconButton("refresh", S["refresh"], lambda: self._service.refresh())
 
         server = Adw.PreferencesGroup(title=S["server_group"], description=S["server_description"], header_suffix=refresh)
         self._serve = Adw.SwitchRow(title=S["serve"], use_markup=False)
@@ -51,17 +44,15 @@ class HostShellPreferences(PreferencesPage):
 
         security = Adw.PreferencesGroup(title=S["security_group"])
         self._pin = Adw.ActionRow(title=S["pin"], use_markup=False)
-        self._pin_button = _row_button(S["set_pin"], self._set_pin)
+        self._pin_button = ActionButton(S["set_pin"], self._set_pin, "secondary")
         self._pin.add_suffix(self._pin_button)
-        token = Adw.ActionRow(title=S["token"], subtitle=S["token_subtitle"])
-        token.add_suffix(_row_button(S["rotate"], self._rotate, destructive=True))
+        token, _rotate = button_row(S["token"], S["token_subtitle"], S["rotate"], self._rotate)
         security.add(self._pin)
         security.add(token)
         self.add(security)
 
         pairing = Adw.PreferencesGroup(title=S["pair_group"])
-        pair = Adw.ActionRow(title=S["pair"], subtitle=S["pair_subtitle"])
-        pair.add_suffix(_row_button(S["pair_button"], self._pair))
+        pair, _show = button_row(S["pair"], S["pair_subtitle"], S["pair_button"], self._pair)
         pairing.add(pair)
         self._log_row = Adw.ExpanderRow(title=S["log"])
         self._log = Gtk.Label(xalign=0, wrap=True, selectable=True, css_classes=["monospace", "caption"])
@@ -85,7 +76,7 @@ class HostShellPreferences(PreferencesPage):
         self._syncing = False
         pin_set = state.pairing is not None and state.pairing.pin_set
         self._pin.set_subtitle(S["pin_set"] if pin_set else S["pin_missing"])
-        self._pin_button.set_label(S["change_pin"] if pin_set else S["set_pin"])
+        self._pin_button.set_label_text(S["change_pin"] if pin_set else S["set_pin"])
         self._log.set_label("\n".join(state.log[-LOG_LINES:]) or S["log_empty"])
 
     def _on_serve(self, row: Adw.SwitchRow, _param) -> None:

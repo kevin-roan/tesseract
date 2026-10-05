@@ -1,7 +1,7 @@
 """Render the desktop app to PNG files, headless, for visual checks.
 
     tools/snapshot.sh out.png [--page ID] [--params JSON] [--width W] [--height H] [--delay S]
-                              [--prefs [ID]] [--dark|--light] [--collapsed-sidebar]
+                              [--prefs [ID]] [--dark|--light] [--collapsed-sidebar] [--zoom Z] [--action NAME]
 
 Runs the real app (real controller connection) on a private broadway display,
 navigates to --page, waits --delay seconds for data, then snapshots the main
@@ -19,6 +19,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from monolith_desktop.app import MonolithApplication  # noqa: E402
+from monolith_desktop.theme.manager import theme  # noqa: E402
 
 from gi.repository import Adw, GLib, Graphene, Gtk  # noqa: E402
 
@@ -60,6 +61,8 @@ def main() -> None:
     parser.add_argument("--dark", action="store_true")
     parser.add_argument("--light", action="store_true")
     parser.add_argument("--collapsed-sidebar", action="store_true", help="show the sidebar page when collapsed")
+    parser.add_argument("--zoom", type=float, default=None, help="render at this zoom instead of the saved one")
+    parser.add_argument("--action", default=None, help="activate this app action (e.g. pair) before rendering")
     args = parser.parse_args()
     params = json.loads(args.params) if args.params else None
 
@@ -85,6 +88,10 @@ def main() -> None:
         app.ctx.open_preferences(args.prefs or None)
         return GLib.SOURCE_REMOVE
 
+    def activate_action() -> bool:
+        app.activate_action(args.action, None)
+        return GLib.SOURCE_REMOVE
+
     def show_sidebar() -> bool:
         app.window.show_sidebar()
         return GLib.SOURCE_REMOVE
@@ -95,6 +102,8 @@ def main() -> None:
             Adw.StyleManager.get_default().set_color_scheme(
                 Adw.ColorScheme.FORCE_DARK if args.dark else Adw.ColorScheme.FORCE_LIGHT
             )
+        if args.zoom:
+            theme().set_zoom(args.zoom)
         window = app.ensure_window()
         window.set_default_size(args.width, args.height)
         window.present()
@@ -104,6 +113,8 @@ def main() -> None:
             GLib.timeout_add(int(args.delay * 1000) - 400, show_sidebar)
         if args.prefs is not None:
             GLib.timeout_add(600, open_prefs)
+        if args.action:
+            GLib.timeout_add(700, activate_action)
         GLib.timeout_add(int(args.delay * 1000), lambda: GLib.timeout_add(RETRY_MS, ready) and False)
 
     app.connect("startup", lambda *_: GLib.idle_add(started))

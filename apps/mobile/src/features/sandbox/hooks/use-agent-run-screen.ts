@@ -1,9 +1,10 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { isFinalAgentRunState, type AgentRun } from "@theone/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
 import { useChatComposer } from "@/features/chat/hooks/use-chat-composer";
-import { lastText, toChatEvents } from "@/features/chat/utils/messages";
+import { lastText } from "@/features/chat/utils/messages";
+import { modelLabel, toTranscript } from "@/features/chat/utils/transcript";
 import { confirm } from "@/lib/confirm";
 
 import { PAGE_ACTIONS } from "../utils/actions";
@@ -22,6 +23,8 @@ export function runBrief(run: AgentRun): string {
   return [outcome, formatUsageTokens(run.usage), formatUsageBreakdown(run.usage)].filter(Boolean).join(" · ");
 }
 
+export type AgentRunTab = "agent" | "changes";
+
 export function useAgentRunScreen(runId: string) {
   const nav = useSandboxNavigation();
   const stream = useAgentRunStream(runId);
@@ -37,9 +40,15 @@ export function useAgentRunScreen(runId: string) {
     defaultProjectId: run?.projectId ?? null,
     resumeSessionId: run?.sessionId ?? null,
     defaultMode: run?.mode ?? null,
+    locked: running || !run?.sessionId,
     onStarted,
   });
-  const messages = useMemo(() => toChatEvents(stream.events), [stream.events]);
+  const [tab, setTab] = useState<AgentRunTab>("agent");
+  const transcript = useMemo(
+    () => (run ? toTranscript(stream.events, { startedAt: run.startedAt, endedAt: run.endedAt, running }) : []),
+    [stream.events, run, running],
+  );
+  const model = useMemo(() => modelLabel(stream.events), [stream.events]);
   const replyText = useMemo(() => lastText(stream.events)?.trim() ?? null, [stream.events]);
   /** The result usually is Claude's last reply, already in the list; only show it when it adds something. */
   const result = run?.result && run.result.trim() !== replyText ? run.result : null;
@@ -66,12 +75,20 @@ export function useAgentRunScreen(runId: string) {
     nav,
     run,
     events: stream.events,
-    messages,
+    transcript,
+    model,
+    tab: run?.projectId ? tab : "agent",
+    setTab,
+    changes: sync.changes,
     running,
     badge: run ? { label: stateLabel(run.state), tone: agentRunTone(run.state) } : undefined,
     result,
     brief: run && !running ? runBrief(run) : null,
     canContinue: Boolean(run && !running && run.sessionId),
+    /** Shown while Claude works too, so the next message can be drafted; sending waits for the run to end. */
+    showComposer: Boolean(run && (running || run.sessionId)),
+    /** Shown while Claude works too, so the next message can be drafted; sending waits for the run to end. */
+    showComposer: Boolean(run && (running || run.sessionId)),
     composer,
     headerActions,
     isLoading: stream.isLoading,

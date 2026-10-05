@@ -56,6 +56,7 @@ class WorkspaceService:
         events.subscribe("project.updated", lambda m: self._apply(store.projects, m.get("project")))
         events.subscribe("agent.updated", self._run_updated)
         events.subscribe("agent.deleted", self._runs_deleted)
+        events.subscribe("project.deleted", self._project_deleted)
         events.subscribe("terminal.updated", lambda m: self._apply(store.terminals, m.get("terminal")))
         store.connection.subscribe(self._connection_changed)
         store.window_visible.subscribe(self._visibility_changed, immediate=False)
@@ -106,6 +107,11 @@ class WorkspaceService:
         run = message.get("run")
         if isinstance(run, dict) and run.get("id") and self.store.agent_runs.value is not None:
             self.store.agent_runs.set(apply_run(self.store.agent_runs.value, run))
+
+    def _project_deleted(self, message: dict) -> None:
+        project_id = message.get("id")
+        if isinstance(project_id, str) and self.store.projects.value is not None:
+            self.store.projects.set(remove_ids(self.store.projects.value, [project_id]))
 
     def _runs_deleted(self, message: dict) -> None:
         ids = message.get("ids")

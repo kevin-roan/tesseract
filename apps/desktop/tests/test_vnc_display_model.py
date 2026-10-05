@@ -66,3 +66,30 @@ def test_empty_model():
     assert model.empty_model("no_display", ONLINE, NO_DISPLAY, None).message.startswith("Xvnc on :1")
     assert model.empty_model("loading", ONLINE, None, None).loading
     assert model.empty_model("viewer", ONLINE, READY, None) is None
+
+
+def _window(**overrides):
+    return {"id": "0x03a00004", "title": "Chromium", "app": "Chromium", "pid": 42, "active": False, "minimized": False, **overrides}
+
+
+def test_window_title_falls_back_to_app_then_untitled():
+    assert model.window_title(_window(title="  Docs - Chromium ")) == "Docs - Chromium"
+    assert model.window_title(_window(title=" ")) == "Chromium"
+    assert model.window_title(_window(title="", app=None)) == "Untitled window"
+
+
+def test_window_state():
+    assert model.window_state(_window(active=True)) == "Active"
+    assert model.window_state(_window(minimized=True)) == "Minimized"
+    assert model.window_state(_window()) is None
+
+
+def test_windows_newest_first():
+    assert [w["id"] for w in model.windows_in_order([_window(id="0x1"), _window(id="0x2")])] == ["0x2", "0x1"]
+
+
+def test_windows_enabled_with_display():
+    idle = SessionState()
+    assert "windows" in model.enabled_actions("viewer", idle)
+    assert "windows" in model.enabled_actions("preview", idle)
+    assert "windows" not in model.enabled_actions("no_display", idle)

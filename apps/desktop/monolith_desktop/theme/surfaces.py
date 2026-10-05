@@ -49,7 +49,7 @@ ON_YELLOW = MappingProxyType({
     "highlight": P.GRAY[950],
 })
 
-GRAPHITE_BORDER = "rgba(255, 255, 255, 0.07)"
+GRAPHITE_BORDER = "rgba(255, 255, 255, 0.08)"
 
 
 def _on_dark_tint(highlight: str) -> MappingProxyType:
@@ -84,10 +84,10 @@ SURFACES = MappingProxyType({
         "yellow": _YELLOW,
     }),
     "graphite": MappingProxyType({
-        "neutral": SurfaceStyle(SurfaceFill(P.GRAPHITE[850], P.GRAPHITE[900], 0.2, 0, 1.2), GRAPHITE_BORDER),
-        "violet": _graphite_tone(P.GRAPHITE[100]),
-        "indigo": _graphite_tone(P.GRAPHITE[100]),
-        "yellow": _graphite_tone(P.AMBER[300]),
+        "neutral": _graphite_tone(P.GRAPHITE[100]),
+        "violet": _graphite_tone(P.LINEAR["purple"]),
+        "indigo": _graphite_tone(P.LINEAR["indigoInk"]),
+        "yellow": _graphite_tone(P.LINEAR["yellow"]),
     }),
 })
 

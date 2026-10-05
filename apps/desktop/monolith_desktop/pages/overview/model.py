@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from ...api.types import InboxCounts, SandboxStatus
 from ...services.metrics import Sample, series_points, series_stats
 from ...store import ConnectionState
+from ...theme.surfaces import SurfaceTone
 from ...util.format import (
     format_bytes,
     format_load,
@@ -59,7 +60,7 @@ EMPTY_ACTIONS = {
 LOAD_WARNING = 0.85
 HISTORY_RANGE_S = {"5m": 300.0, "15m": 900.0, "1h": 3600.0}
 DEFAULT_RANGE = "15m"
-CHART_HEIGHT = 240
+CHART_HEIGHT = 200
 
 
 @dataclass(frozen=True)
@@ -98,6 +99,10 @@ def load_fraction(status: SandboxStatus) -> float:
     return ratio(cpu["load1"], max(1, cpu["cores"])) or 0.0
 
 
+def usage_tone(fraction: float | None) -> SurfaceTone:
+    return "violet" if (fraction or 0.0) >= LOAD_WARNING else "neutral"
+
+
 def resource_items(status: SandboxStatus) -> list[StatItem]:
     cpu = status["resources"]["cpu"]
     memory = status["resources"]["memory"]
@@ -107,19 +112,21 @@ def resource_items(status: SandboxStatus) -> list[StatItem]:
     return [
         StatItem(
             "cpu", "cpu", RESOURCE["cpu"], format_load(cpu["load1"]), RESOURCE["cpu_unit"], load_fraction(status),
-            "indigo" if load_fraction(status) < LOAD_WARNING else "violet",
+            usage_tone(load_fraction(status)),
             RESOURCE["cpu_caption"].format(cores=cpu["cores"], load5=format_load(cpu["load5"]), load15=format_load(cpu["load15"])),
         ),
         StatItem(
             "memory", "memory", RESOURCE["memory"], mem_value, mem_unit, ratio(memory["usedBytes"], memory["totalBytes"]),
+            usage_tone(ratio(memory["usedBytes"], memory["totalBytes"])),
             caption=RESOURCE["memory_caption"].format(total=format_bytes(memory["totalBytes"])),
         ),
         StatItem(
             "disk", "disk", RESOURCE["disk"], disk_value, disk_unit, ratio(disk["usedBytes"], disk["totalBytes"]),
+            usage_tone(ratio(disk["usedBytes"], disk["totalBytes"])),
             caption=RESOURCE["disk_caption"].format(total=format_bytes(disk["totalBytes"]), path=disk["path"]),
         ),
         StatItem(
-            "uptime", "uptime", RESOURCE["uptime"], format_uptime(status["uptimeSec"]), tone="yellow",
+            "uptime", "uptime", RESOURCE["uptime"], format_uptime(status["uptimeSec"]),
             caption=RESOURCE["uptime_caption"].format(started=format_relative_time(status["startedAt"])),
         ),
     ]

@@ -7,9 +7,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { useLayoutMotion } from "@/hooks/use-layout-motion";
 
 import { useCaptureFlow } from "../../hooks/use-capture-flow";
-import { useIslandMotion } from "../../hooks/use-island-motion";
 import type { CaptureStep } from "../../types";
 import CaptureSourceStep from "../capture-source-step";
 import CropStep from "../crop-step";
@@ -28,7 +28,7 @@ const CaptureSheet = () => {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const flow = useCaptureFlow();
   const { step } = flow;
-  const motion = useIslandMotion();
+  const motion = useLayoutMotion();
 
   return (
     <Modal visible={flow.visible && !flow.hidden} animationType="slide" onRequestClose={flow.back} statusBarTranslucent>

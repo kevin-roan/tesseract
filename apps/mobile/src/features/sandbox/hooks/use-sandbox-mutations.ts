@@ -6,6 +6,7 @@ import type {
   CreateTerminal,
   CreateTranscription,
   CreateUpload,
+  RenameProject,
   SendArtifact,
   StartAgentRun,
   StartBuild,
@@ -68,6 +69,15 @@ export const useDeleteProject = () =>
   useSandboxMutation(
     (client, { id, force }: { id: string; force: boolean }) => client.deleteProject(id, force ? { force } : undefined),
     (queryClient, sandboxId, { id }) => removeProject(queryClient, sandboxId, id),
+  );
+
+export const useRenameProject = () =>
+  useSandboxMutation(
+    (client, { id, ...body }: RenameProject & { id: string }) => client.renameProject(id, body),
+    (queryClient, sandboxId, project) => {
+      storeProject(queryClient, sandboxId, project);
+      return queryClient.invalidateQueries({ queryKey: sandboxKeys.projects(sandboxId), exact: true });
+    },
   );
 
 export const useStartProcess = () =>

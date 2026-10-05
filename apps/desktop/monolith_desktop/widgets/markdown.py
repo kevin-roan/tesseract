@@ -20,7 +20,7 @@ class MarkdownView(Gtk.Box):
         copy_label: str = "Copy",
         copied_label: str = "Copied",
     ) -> None:
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=10, css_classes=["to-markdown"])
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8, css_classes=["to-markdown"])
         self._variant = variant
         self._color = color
         self._selectable = selectable
@@ -93,10 +93,10 @@ class MarkdownView(Gtk.Box):
         return box
 
     def _table(self, block: Block) -> Gtk.Widget:
-        grid = Gtk.Grid(column_spacing=20, row_spacing=6, css_classes=["to-md-table"])
+        grid = Gtk.Grid(column_spacing=16, row_spacing=6, css_classes=["to-md-table"])
         for row_index, row in enumerate(block.rows):
             for column, cell in enumerate(row):
-                label = Text("", "bodyStrong" if row_index == 0 else "bodySmall", selectable=self._selectable)
+                label = Text("", "bodyStrong" if row_index == 0 else self._variant, selectable=self._selectable)
                 label.set_markup(self._markup(cell))
                 label.set_ellipsize(Pango.EllipsizeMode.NONE)
                 if self._selectable:

@@ -1,11 +1,12 @@
 import { Linking } from "react-native";
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { TheOneClient } from "@theone/client";
-import type { Artifact } from "@theone/protocol";
+import type { Artifact, BuildOutput } from "@theone/protocol";
 
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
 import { useSandboxClient } from "@/features/sandbox/hooks/use-sandbox-client";
 
+import { buildOutputKey } from "../utils/build-outputs";
 import { describeFileError, MissingFileError } from "../utils/errors";
 
 async function fileExists(queryClient: QueryClient, client: TheOneClient, sandboxId: string, id: string): Promise<boolean> {
@@ -35,5 +36,21 @@ export function useFileDownload() {
     pendingId: mutation.isPending ? mutation.variables : null,
     error: mutation.error ? describeFileError(mutation.error) : null,
     reset: mutation.reset,
+  };
+}
+
+export function useBuildOutputDownload() {
+  const { client } = useSandboxClient();
+  const mutation = useMutation({
+    mutationFn: async (output: BuildOutput) => {
+      if (!client) throw new Error("No sandbox is paired.");
+      await Linking.openURL(await client.buildOutputDownloadUrl(output));
+    },
+  });
+
+  return {
+    download: mutation.mutate,
+    pendingKey: mutation.isPending ? buildOutputKey(mutation.variables) : null,
+    error: mutation.error ? describeFileError(mutation.error) : null,
   };
 }

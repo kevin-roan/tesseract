@@ -3,7 +3,7 @@ import { TrayIcon } from "phosphor-react-native";
 
 import DailyBars from "@/features/home/components/daily-bars";
 import DrawerRow from "@/features/home/components/drawer-row";
-import SegmentedPills from "@/features/home/components/segmented-pills";
+import SegmentedPills from "@/components/segmented-pills";
 import TokenSplit from "@/features/home/components/token-split";
 
 const colors = { bar: "#444444", focus: "#ffffff", empty: "#222222", emptyStroke: "#333333", axis: "#777777" };

@@ -3,16 +3,15 @@ import logging
 import pkgutil
 from typing import TYPE_CHECKING
 
-from gi.repository import Adw
-
 from .base import PreferencesPage
+from .window import SettingsDialog
 
 if TYPE_CHECKING:
     from ..context import AppContext
 
 log = logging.getLogger(__name__)
 
-SKIP_MODULES = {"base"}
+SKIP_MODULES = {"base", "window"}
 
 
 def discover_preference_pages() -> list[type[PreferencesPage]]:
@@ -31,8 +30,8 @@ def discover_preference_pages() -> list[type[PreferencesPage]]:
     return sorted(found, key=lambda page: (page.order, page.id))
 
 
-def open_preferences(ctx: "AppContext", page_id: str | None = None) -> Adw.PreferencesDialog:
-    dialog = Adw.PreferencesDialog(search_enabled=False)
+def open_preferences(ctx: "AppContext", page_id: str | None = None) -> SettingsDialog:
+    dialog = SettingsDialog()
     for page_cls in discover_preference_pages():
         dialog.add(page_cls(ctx, dialog))
     if page_id:

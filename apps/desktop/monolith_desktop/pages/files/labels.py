@@ -6,7 +6,7 @@ FILES = MappingProxyType({
     "subtitle": "{count} across {projects}",
     "refresh": "Refresh",
     "list": "All files",
-    "empty": "No files yet. Build outputs and files Claude shares with theone-controller share show up here.",
+    "empty": "Build outputs and files Claude shares with theone-controller share show up here.",
     "no_match": "No files match these filters.",
     "loading": "Loading files…",
     "error_title": "Couldn't load files",
@@ -16,6 +16,25 @@ FILES = MappingProxyType({
     "source_filter": "Filter by source",
     "all_projects": "All projects",
     "all_sources": "All sources",
+    "view": "Files view",
+    "no_project": "No project",
+    "empty_title": "No files yet",
+})
+
+VIEWS = MappingProxyType({
+    "shared": "Shared files",
+    "builds": "Project builds",
+})
+
+OUTPUTS = MappingProxyType({
+    "list": "Project builds",
+    "empty_title": "No builds found",
+    "error_title": "Couldn't look for builds",
+    "subtitle": "{count} across {projects}",
+    "empty": "APKs, AABs, installers and AppImages in your projects' build, dist, release and out folders show up here.",
+    "no_match": "No builds match this project.",
+    "loading": "Looking for builds…",
+    "missing": "{name} is no longer in the project. Rebuild it or refresh the list.",
 })
 
 SOURCES = MappingProxyType({

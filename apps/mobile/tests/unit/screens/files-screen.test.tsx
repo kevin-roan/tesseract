@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import type { Artifact } from "@theone/protocol";
+import type { Artifact, BuildOutput } from "@theone/protocol";
 import { sampleArtifact } from "@theone/protocol/fixtures";
 
 import FilesScreen from "@/app/files";
-import { SOURCE_FILTERS } from "@/features/files/utils/filters";
+import { FILES_VIEWS, SOURCE_FILTERS } from "@/features/files/utils/filters";
 
 const mockFiles = jest.fn();
 
@@ -12,6 +12,34 @@ jest.mock("react-native-safe-area-context", () => require("react-native-safe-are
 jest.mock("@/features/files/hooks/use-files-screen", () => ({ useFilesScreen: () => mockFiles() }));
 
 const shared: Artifact = { ...sampleArtifact, id: "art_apk", fileName: "notes.apk", source: "agent", buildId: null, note: "Try the new sync screen" };
+
+const APK: BuildOutput = {
+  projectId: "notes",
+  path: "android/app/build/outputs/apk/release/app-release.apk",
+  fileName: "app-release.apk",
+  sizeBytes: 1024,
+  platform: "android",
+  modifiedAt: "2026-09-23T12:00:00.000Z",
+};
+
+function builds(overrides: object = {}) {
+  return {
+    outputs: [APK],
+    total: 1,
+    subtitle: "1 build",
+    loading: false,
+    error: null,
+    retry: jest.fn(),
+    projectOptions: [],
+    projectId: "all",
+    selectProject: jest.fn(),
+    clearFilters: jest.fn(),
+    download: jest.fn(),
+    downloadingKey: null,
+    downloadError: null,
+    ...overrides,
+  };
+}
 
 function files(overrides: object = {}) {
   return {
@@ -22,6 +50,10 @@ function files(overrides: object = {}) {
     files: [shared, sampleArtifact],
     total: 2,
     subtitle: "2 files",
+    viewOptions: FILES_VIEWS,
+    view: "shared",
+    selectView: jest.fn(),
+    builds: builds(),
     projectName: () => "Electron hello",
     loading: false,
     error: null,
@@ -75,6 +107,27 @@ describe("FilesScreen", () => {
     expect(state.remove).toHaveBeenCalledWith(shared);
     await fireEvent.press(screen.getByLabelText("Shared by Claude"));
     expect(state.selectSource).toHaveBeenCalledWith("agent");
+  });
+
+  it("switches to project builds and downloads one", async () => {
+    const state = files();
+    mockFiles.mockReturnValue(state);
+    const { rerender } = await render(<FilesScreen />);
+    await fireEvent.press(screen.getByLabelText("Project builds"));
+    expect(state.selectView).toHaveBeenCalledWith("builds");
+
+    const viewing = files({ view: "builds" });
+    mockFiles.mockReturnValue(viewing);
+    await rerender(<FilesScreen />);
+    expect(screen.queryByText("notes.apk")).toBeNull();
+    expect(screen.getByText("app-release.apk")).toBeOnTheScreen();
+    expect(screen.getByText("android/app/build/outputs/apk/release")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByLabelText("Download app-release.apk"));
+    expect(viewing.builds.download).toHaveBeenCalledWith(APK);
+
+    mockFiles.mockReturnValue(files({ view: "builds", builds: builds({ outputs: [], total: 0 }) }));
+    await rerender(<FilesScreen />);
+    expect(screen.getByText("No builds found")).toBeOnTheScreen();
   });
 
   it("hides Taildrop when the sandbox has no tailnet access", async () => {

@@ -2,10 +2,9 @@ import { sampleAgentRun, sampleBuild, sampleProcess, sampleProject, sampleUsageR
 
 import { actionFromRoute } from "@/features/island/utils/actions";
 import { attachDestinations } from "@/features/island/utils/destinations";
-import { capsuleTitle, elapsedLabel, tokensLabel } from "@/features/island/utils/format";
+import { capsuleTitle, clockLabel, islandSummary, tokensTodayLabel } from "@/features/island/utils/format";
 import { mergeDraftText, seedFromSharedItems, splitSharedItems } from "@/features/island/utils/shared";
 import { hasLiveWork, islandState, islandUsage, liveCount, runTitle, stateSignature } from "@/features/island/utils/state";
-import { islandStats } from "@/features/island/utils/stats";
 
 import type { SharedItem } from "@/modules/theone-island";
 
@@ -81,15 +80,10 @@ describe("islandState", () => {
 });
 
 describe("labels", () => {
-  it("formats elapsed time, tokens, stats and the capsule title", () => {
-    expect(elapsedLabel("2026-09-23T10:00:00.000Z", NOW)).toBe("5m");
-    expect(tokensLabel(12500)).toBe("12.5k tok");
-    expect(tokensLabel(null)).toBeNull();
-    expect(islandStats({ todayTokens: 1200, weekTokens: 68400, runsToday: 3, messagesToday: 9 }).map((stat) => stat.value)).toEqual([
-      "1.2k",
-      "68.4k",
-      "3",
-    ]);
+  it("formats the clock, tokens and the capsule title", () => {
+    expect(clockLabel("2026-09-23T10:00:00.000Z", NOW)).toBe("05:00");
+    expect(clockLabel("2026-09-23T08:58:57.000Z", NOW)).toBe("1:06:03");
+    expect(tokensTodayLabel(68400)).toBe("68.4k today");
     expect(capsuleTitle(1, 0, 0, false)).toBe("Claude is working");
     expect(capsuleTitle(2, 1, 0, false)).toBe("2 Claude runs");
     expect(capsuleTitle(0, 1, 0, false)).toBe("Command running");
@@ -164,5 +158,29 @@ describe("attachDestinations", () => {
     );
     expect(projects).toEqual([{ kind: "project", id: sampleProject.id, label: sampleProject.name, detail: expect.any(String) }]);
     expect(chats).toEqual([{ kind: "chat", id: "s1", label: "Ship it", detail: `${sampleProject.name} · 5m ago` }]);
+  });
+});
+
+describe("islandSummary", () => {
+  const run = { id: "run_1", title: "Fix login", project: "web", state: "running" as const, startedAt: "2026-09-23T10:00:00.000Z", tokens: null };
+  const command = { id: "prc_1", label: "dev", project: "web", state: "running" };
+
+  it("leads with the first run's clock and counts the rest", () => {
+    expect(islandSummary({ runs: [run], commands: [] }, 0, false, NOW)).toEqual({
+      value: "05:00",
+      headline: "05:00",
+      caption: "Fix login",
+      more: 0,
+      primary: "Fix login",
+      live: true,
+    });
+    expect(islandSummary({ runs: [run], commands: [command] }, 2, false, NOW)).toMatchObject({ value: "2 tasks", headline: "05:00", more: 1 });
+  });
+
+  it("falls back to commands, shared items, a draft and idle", () => {
+    expect(islandSummary({ runs: [], commands: [command] }, 0, false, NOW)).toMatchObject({ value: "dev", headline: "dev", caption: "web", primary: "dev" });
+    expect(islandSummary({ runs: [], commands: [] }, 2, false, NOW)).toMatchObject({ value: "2 shared", headline: "2", primary: null, live: false });
+    expect(islandSummary({ runs: [], commands: [] }, 0, true, NOW).headline).toBe("Draft");
+    expect(islandSummary({ runs: [], commands: [] }, 0, false, NOW)).toMatchObject({ headline: "Idle", caption: "Nothing running" });
   });
 });

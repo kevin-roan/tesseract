@@ -30,9 +30,11 @@ export const AppViewerSchema = z.discriminatedUnion("kind", [
 ]);
 export type AppViewer = z.infer<typeof AppViewerSchema>;
 
+/** `dir`: project-relative folder the target runs in (a workspace package of a monorepo), null for the project root. */
 export const RunTargetInfoSchema = z.object({
   target: RunTargetSchema,
   label: z.string(),
+  dir: z.string().nullable(),
   available: z.boolean(),
   reason: z.string().nullable(),
   viewer: AppViewerKindSchema,
@@ -45,6 +47,7 @@ export const AppRunSchema = z.object({
   id: AppRunIdSchema,
   projectId: ProjectIdSchema,
   target: RunTargetSchema,
+  dir: z.string().nullable(),
   state: AppRunStateSchema,
   port: PortSchema.nullable(),
   processIds: z.array(ProcessIdSchema),

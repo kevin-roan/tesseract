@@ -1,7 +1,7 @@
 import { Linking } from "react-native";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { ApiError, TheOneClient } from "@theone/client";
-import type { Artifact, TaildropTargets } from "@theone/protocol";
+import type { Artifact, BuildOutput, TaildropTargets } from "@theone/protocol";
 import { sampleArtifact, sampleProject } from "@theone/protocol/fixtures";
 
 import { useFileDownload } from "@/features/files/hooks/use-file-download";
@@ -48,8 +48,27 @@ const TARGETS: TaildropTargets = {
   ],
 };
 
+const APK: BuildOutput = {
+  projectId: "notes",
+  path: "android/app/build/outputs/apk/release/app-release.apk",
+  fileName: "app-release.apk",
+  sizeBytes: 1024,
+  platform: "android",
+  modifiedAt: "2026-09-23T12:00:00.000Z",
+};
+const SETUP: BuildOutput = {
+  projectId: sampleProject.id,
+  path: "release/build/Hello Setup 1.0.0.exe",
+  fileName: "Hello Setup 1.0.0.exe",
+  sizeBytes: 2048,
+  platform: "windows",
+  modifiedAt: "2026-09-23T11:00:00.000Z",
+};
+
 const fake = {
   listArtifacts: jest.fn(),
+  listBuildOutputs: jest.fn(),
+  buildOutputDownloadUrl: jest.fn(),
   listProjects: jest.fn(),
   artifactDownloadUrl: jest.fn(),
   deleteArtifact: jest.fn(),
@@ -67,6 +86,8 @@ beforeEach(() => {
   mockConfirm.mockReset().mockResolvedValue(true);
   fake.listArtifacts.mockReset().mockResolvedValue([sampleArtifact, shared]);
   fake.listProjects.mockReset().mockResolvedValue([sampleProject]);
+  fake.listBuildOutputs.mockReset().mockResolvedValue([APK, SETUP]);
+  fake.buildOutputDownloadUrl.mockReset().mockImplementation(async (output: BuildOutput) => `http://sandbox/v1/projects/${output.projectId}/outputs/download?ticket=t`);
   fake.artifactDownloadUrl.mockReset().mockImplementation(async (id: string) => `http://sandbox/v1/artifacts/${id}/download?ticket=t`);
   fake.deleteArtifact.mockReset().mockImplementation(async (id: string) => ({ ...shared, id }));
   fake.taildropTargets.mockReset().mockResolvedValue(TARGETS);
@@ -137,6 +158,24 @@ describe("useFilesScreen", () => {
     await act(async () => result.current.clearFilters());
     expect(result.current.files).toHaveLength(2);
     expect(result.current.projectId).toBe("all");
+  });
+
+  it("loads project builds only once that view is open, then filters and downloads them", async () => {
+    const { result } = await renderScreen();
+    expect(fake.listBuildOutputs).not.toHaveBeenCalled();
+
+    await act(async () => result.current.selectView("builds"));
+    await waitFor(() => expect(result.current.builds.total).toBe(2));
+    expect(result.current.subtitle).toBe("2 builds");
+    expect(result.current.builds.projectOptions.map((option) => option.id)).toEqual(["all", sampleProject.id, "notes"]);
+
+    await act(async () => result.current.builds.selectProject("notes"));
+    expect(result.current.builds.outputs).toEqual([APK]);
+    expect(result.current.subtitle).toBe("1 of 2 builds");
+
+    await act(async () => result.current.builds.download(APK));
+    await waitFor(() => expect(openURL).toHaveBeenCalledWith("http://sandbox/v1/projects/notes/outputs/download?ticket=t"));
+    expect(fake.buildOutputDownloadUrl).toHaveBeenCalledWith(APK);
   });
 
   it("deletes a file only after confirmation", async () => {

@@ -47,6 +47,10 @@ class StateGlyph(Gtk.Stack):
         self.set_visible_child_name(state if state in ("running", *model.STATE_ICONS) else "cancelled")
 
 
+def _unread_dot() -> Gtk.Widget:
+    return Gtk.Box(valign=Gtk.Align.CENTER, css_classes=["to-unread-dot"])
+
+
 class ConversationRow(Gtk.ListBoxRow):
     def __init__(
         self,
@@ -68,12 +72,12 @@ class ConversationRow(Gtk.ListBoxRow):
         self._time = Text(format_relative_time(data.started_at), "caption", "textTertiary", xalign=1.0)
         top.append(self._time)
         column.append(top)
-        bottom = Gtk.Box(spacing=6)
+        bottom = Gtk.Box(spacing=8)
         meta = Text(data.meta, "caption", "textSecondary")
         meta.set_hexpand(True)
         bottom.append(meta)
         if data.attention:
-            bottom.append(Icon("warning", "xs", "warning"))
+            bottom.append(_unread_dot())
         column.append(bottom)
         box.append(column)
         self.set_child(box)
@@ -96,17 +100,21 @@ class AttentionCard(Gtk.Box):
     ) -> None:
         super().__init__(spacing=10, css_classes=["to-attention-card"])
         glyph, tone = model.notice_style(item)
-        icon = Icon(glyph, "sm", tone)
+        icon = Icon(glyph, "xs", tone)
         icon.set_valign(Gtk.Align.START)
+        icon.add_css_class("to-state-glyph")
         self.append(icon)
         column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
-        column.append(Text(item["title"], "label"))
-        body = Text(item.get("body") or "", "caption", "textSecondary", wrap=True, lines=2)
-        body.set_visible(bool(item.get("body")))
-        column.append(body)
-        meta = Text(join_meta(project, format_relative_time(item.get("updatedAt"))), "caption", "textTertiary")
+        top = Gtk.Box(spacing=8)
+        title = Text(item["title"], "label")
+        title.set_hexpand(True)
+        top.append(title)
+        top.append(Text(format_relative_time(item.get("updatedAt")), "caption", "textTertiary", xalign=1.0))
+        column.append(top)
+        meta = Text(join_meta(project, item.get("body") or None), "caption", "textSecondary", wrap=True, lines=2)
+        meta.set_visible(bool(meta.get_label()))
         column.append(meta)
-        actions = Gtk.Box(spacing=4, margin_top=4)
+        actions = Gtk.Box(spacing=2, margin_top=4)
         if on_open is not None:
             open_button = Gtk.Button(label=open_label, css_classes=["flat", "to-attention-action"])
             open_button.connect("clicked", lambda *_: on_open(item))
@@ -116,19 +124,24 @@ class AttentionCard(Gtk.Box):
         actions.append(mark)
         column.append(actions)
         self.append(column)
+        dot = _unread_dot()
+        dot.set_valign(Gtk.Align.START)
+        dot.add_css_class("top")
+        self.append(dot)
 
 
 class TerminalSessionRow(Gtk.Button):
     def __init__(self, title: str, meta: str, on_activate: Callable[[], None]) -> None:
         super().__init__(css_classes=["flat", "to-terminal-session"])
         box = Gtk.Box(spacing=10)
-        box.append(Icon("terminal", "sm", "textSecondary"))
+        glyph = Icon("terminal", "xs", "textSecondary")
+        glyph.set_valign(Gtk.Align.START)
+        glyph.add_css_class("to-state-glyph")
+        box.append(glyph)
         column = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True)
         column.append(Text(title, "label"))
-        column.append(Text(meta, "caption", "textTertiary"))
+        column.append(Text(meta, "caption", "textSecondary"))
         box.append(column)
-        box.append(Icon("forward", "xs", "textTertiary"))
         self.set_child(box)
         self.set_tooltip_text(title)
         self.connect("clicked", lambda *_: on_activate())
-

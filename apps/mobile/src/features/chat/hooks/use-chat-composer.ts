@@ -29,6 +29,8 @@ type ChatComposerOptions = {
   projectOptions?: ChoiceOption[];
   resumeSessionId?: string | null;
   defaultMode?: AgentRunMode | null;
+  /** The user can draft but not send, e.g. while the run being continued is still working. */
+  locked?: boolean;
   onStarted: (run: AgentRun) => void;
 };
 
@@ -39,6 +41,7 @@ export function useChatComposer({
   projectOptions,
   resumeSessionId = null,
   defaultMode = null,
+  locked = false,
   onStarted,
 }: ChatComposerOptions) {
   const [text, setText] = useState("");
@@ -160,6 +163,7 @@ export function useChatComposer({
   const trimmed = text.trim();
   const hasDraft = trimmed.length > 0 || attachments.items.length > 0;
   const canSend =
+    !locked &&
     hasDraft &&
     trimmed.length <= LIMITS.maxPromptLength &&
     !attachments.isUploading &&
@@ -177,10 +181,10 @@ export function useChatComposer({
   const { start: startRecording, clearError: clearVoiceError } = voice;
   const sending = start.isPending || createProject.isPending;
   const startVoice = useCallback(() => {
-    if (sending) return;
+    if (sending || locked) return;
     clearVoiceError();
     void startRecording();
-  }, [sending, clearVoiceError, startRecording]);
+  }, [sending, locked, clearVoiceError, startRecording]);
 
   const { refresh: refreshClipboard, consume: consumeClipboard } = clipboard;
   const openSheet = useCallback(
@@ -282,6 +286,7 @@ export function useChatComposer({
     voice,
     primary: hasDraft ? ("send" as const) : ("mic" as const),
     canSend,
+    locked,
     send,
     startVoice,
     sending,

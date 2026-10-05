@@ -250,9 +250,9 @@ describe("REST responses match @theone/protocol", () => {
 
   test("app runs and the android link", async () => {
     const targets = await rest(RunTargetListSchema, "GET", "/v1/projects/site/run-targets");
-    expect(targets).toEqual([{ target: "test", label: "Tests", available: true, reason: null, viewer: "none", actions: [] }]);
+    expect(targets).toEqual([{ target: "test", label: "Tests", dir: null, available: true, reason: null, viewer: "none", actions: [] }]);
     const started = await rest(AppRunSchema, "POST", "/v1/projects/site/app-runs", { target: "test" });
-    expect(started).toMatchObject({ projectId: "site", target: "test", state: "starting", port: null });
+    expect(started).toMatchObject({ projectId: "site", target: "test", dir: null, state: "starting", port: null });
     const ended = await waitFor(async () => {
       const run = await rest(AppRunSchema, "GET", `/v1/app-runs/${started.id}`);
       return run.endedAt ? run : null;

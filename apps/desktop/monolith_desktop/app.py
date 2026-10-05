@@ -30,6 +30,7 @@ from .services.connection import ConnectionService  # noqa: E402
 from .store import AppStore  # noqa: E402
 from .strings import ABOUT, ZOOM_TOAST  # noqa: E402
 from .theme.manager import theme  # noqa: E402
+from .widgets.sidebar_model import stored_sidebar_width  # noqa: E402
 
 log = logging.getLogger("monolith_desktop")
 
@@ -44,6 +45,7 @@ ACCELERATORS = {
     "app.zoom-reset": ["<Control>0", "<Control>KP_0"],
 }
 ZOOM_SETTING = "zoom"
+SIDEBAR_WIDTH_SETTING = "sidebarWidth"
 
 
 class MonolithApplication(Adw.Application):
@@ -237,14 +239,27 @@ class MonolithApplication(Adw.Application):
         for action, accels in ACCELERATORS.items():
             self.set_accels_for_action(action, accels)
 
-    def _zoom(self, direction: int) -> None:
-        zoom = theme().step_zoom(direction)
+    def sidebar_width(self) -> int:
+        return stored_sidebar_width(read_settings().get(SIDEBAR_WIDTH_SETTING))
+
+    def save_sidebar_width(self, width: int) -> None:
+        self._save_setting(SIDEBAR_WIDTH_SETTING, width)
+
+    def _save_setting(self, key: str, value: Any) -> None:
         settings = read_settings()
-        settings[ZOOM_SETTING] = zoom
+        if settings.get(key) == value:
+            return
+        settings[key] = value
         try:
             write_settings(settings)
         except OSError:
-            log.warning("could not save zoom level", exc_info=True)
+            log.warning("could not save setting %s", key, exc_info=True)
+
+    def _zoom(self, direction: int) -> None:
+        zoom = theme().step_zoom(direction)
+        self._save_setting(ZOOM_SETTING, zoom)
+        if self.window is not None:
+            self.window.sync_sidebar_width()
         if self.ctx:
             self.ctx.toast(ZOOM_TOAST.format(percent=round(zoom * 100)))
 

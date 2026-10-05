@@ -31,6 +31,7 @@ export const sandboxKeys = {
   build: (sandboxId: string, buildId: string) => ["sandbox", sandboxId, "builds", "detail", buildId] as const,
   artifactLists: (sandboxId: string) => ["sandbox", sandboxId, "artifacts"] as const,
   artifacts: (sandboxId: string, filter?: ProjectFilter) => ["sandbox", sandboxId, "artifacts", filterKey(filter)] as const,
+  buildOutputs: (sandboxId: string) => ["sandbox", sandboxId, "build-outputs"] as const,
   taildropTargets: (sandboxId: string) => ["sandbox", sandboxId, "taildrop"] as const,
   agentRunLists: (sandboxId: string) => ["sandbox", sandboxId, "agent-runs", "list"] as const,
   agentRuns: (sandboxId: string, filter?: ProjectFilter) =>

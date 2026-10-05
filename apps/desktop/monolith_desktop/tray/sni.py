@@ -123,7 +123,8 @@ def entry_properties(entry: MenuEntry) -> dict[str, GLib.Variant]:
 
 
 def menu_layout(entries: list[MenuEntry], revision: int) -> GLib.Variant:
-    children = [GLib.Variant("v", GLib.Variant("(ia{sv}av)", (index, entry_properties(entry), []))) for index, entry in enumerate(entries, 1)]
+    # PyGObject boxes each av element itself: wrapping it in Variant("v", …) again sends v(v(…)), which Qt hosts can't read.
+    children = [GLib.Variant("(ia{sv}av)", (index, entry_properties(entry), [])) for index, entry in enumerate(entries, 1)]
     root = (0, {"children-display": GLib.Variant("s", "submenu")}, children)
     return GLib.Variant("(u(ia{sv}av))", (revision, root))
 

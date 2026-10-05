@@ -47,9 +47,9 @@ class SyncActions:
         self.view = SyncView()
         self.loaded = False
         self.buttons = {
-            "pull": ActionButton(SYNC["sync"], lambda: self._activate(self._confirm_pull), "primary", "sync"),
-            "get": ActionButton(SYNC["get"], lambda: self._activate(self._confirm_get), "secondary", "send"),
-            "revert": ActionButton(SYNC["revert"], lambda: self._activate(self._confirm_revert), "secondary", "back"),
+            "pull": ActionButton(SYNC["sync"], lambda: self._activate(self._confirm_pull), "primary", "sync-to-host"),
+            "get": ActionButton(SYNC["get"], lambda: self._activate(self._confirm_get), "secondary", "sync-from-host"),
+            "revert": ActionButton(SYNC["revert"], lambda: self._activate(self._confirm_revert), "secondary", "revert"),
             "discard": ActionButton(SYNC["discard"], lambda: self._activate(self._confirm_discard), "destructive", "delete"),
         }
         self._poller = ctx.poll(self._fetch, interval_s, self._loaded, self._failed).bind(anchor)
@@ -73,6 +73,12 @@ class SyncActions:
 
     def refresh(self) -> None:
         self._poller.refresh()
+
+    def can_run(self, kind: str) -> bool:
+        return self.buttons[kind].get_sensitive()
+
+    def discard(self) -> None:
+        self._activate(self._confirm_discard)
 
     def render(self) -> None:
         project_id = self._project_id

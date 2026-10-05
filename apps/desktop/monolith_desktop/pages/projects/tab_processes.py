@@ -8,7 +8,7 @@ from ...widgets.desktop import copy_text, open_uri
 from ...widgets.keyed_list import KeyedList
 from ...widgets.log_panel import LogPanel
 from ...widgets.record_row import RecordRow, RowAction
-from ...widgets.section import Section
+from ...widgets.list_view import ListGroup
 from .labels import DEFAULT_PACKAGE_MANAGER, LOGS, PROCESSES
 from .model import (
     command_label,
@@ -27,7 +27,7 @@ from .streams import LogFollower
 if TYPE_CHECKING:
     from .detail import ProjectDetail
 
-TAB_SPACING = 28
+TAB_SPACING = 16
 PORTS_INTERVAL_S = 10.0
 
 
@@ -41,24 +41,27 @@ class ProcessesTab:
         self.widget = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=TAB_SPACING)
 
         self._sites = KeyedList(lambda: RecordRow("ports"), self._update_site)
-        self._sites_section = Section(PROCESSES["sites"], self._sites, subtitle=PROCESSES["sites_subtitle"])
+        self._sites.add_css_class("divided")
+        self._sites_section = ListGroup(PROCESSES["sites"], self._sites, subtitle=PROCESSES["sites_subtitle"], icon="ports")
         self._sites_section.set_visible(False)
         self.widget.append(self._sites_section)
 
-        self._scripts = KeyedList(lambda: RecordRow("terminal", monospace_title=True, monospace_subtitle=True), self._update_script)
-        self._scripts_section = Section(PROCESSES["scripts"], self._scripts)
-        self._scripts_section.set_visible(False)
-        self.widget.append(self._scripts_section)
 
         self._list = KeyedList(lambda: RecordRow("processes", monospace_subtitle=True), self._update_process)
-        self._list_section = Section(
-            PROCESSES["list"], self._list, PROCESSES["new"], self._new_command, PROCESSES["list_empty"]
+        self._list.add_css_class("divided")
+        self._list_section = ListGroup(
+            PROCESSES["list"], self._list, PROCESSES["new"], self._new_command, PROCESSES["list_empty"], icon="processes"
         )
         self.widget.append(self._list_section)
 
         self._panel = LogPanel(LOGS["close"], self._hide_logs, LOGS["empty"], LOGS["jump"])
         self._panel.set_visible(False)
         self.widget.append(self._panel)
+        self._scripts = KeyedList(lambda: RecordRow("terminal", monospace_title=True, monospace_subtitle=True), self._update_script)
+        self._scripts.add_css_class("divided")
+        self._scripts_section = ListGroup(PROCESSES["scripts"], self._scripts, icon="terminal")
+        self._scripts_section.set_visible(False)
+        self.widget.append(self._scripts_section)
         self._follower = LogFollower(host.ctx, self._panel, on_update=lambda item: host.upsert("processes", item)).bind(self._panel)
         host.ctx.poll(lambda client: client.ports(), PORTS_INTERVAL_S, self._ports_loaded).bind(self.widget)
 
@@ -72,6 +75,7 @@ class ProcessesTab:
             scripts = project.get("scripts", [])
             self._scripts.sync((script, script) for script in scripts)
             self._scripts_section.set_visible(bool(scripts))
+            self._scripts_section.set_count(len(scripts))
             self._scripts_section.header.set_subtitle(
                 PROCESSES["scripts_subtitle"].format(pm=project.get("packageManager") or DEFAULT_PACKAGE_MANAGER)
             )
@@ -82,6 +86,7 @@ class ProcessesTab:
         self._list_section.set_loading(False)
         self._list.sync((process["id"], process) for process in processes)
         self._list_section.set_empty(not processes)
+        self._list_section.set_count(len(processes))
         target = self._follower.target
         if target and self._panel.get_visible():
             current = next((p for p in processes if p["id"] == target[1]), None)
@@ -92,6 +97,7 @@ class ProcessesTab:
         self._ports = project_ports(ports.get("ports"), self._host.project_id)
         self._sites.sync((str(port["port"]), port) for port in self._ports)
         self._sites_section.set_visible(bool(self._ports))
+        self._sites_section.set_count(len(self._ports))
 
     def _fallback_host(self) -> str | None:
         client = self._host.ctx.client
@@ -121,7 +127,7 @@ class ProcessesTab:
     def _update_process(self, row: RecordRow, process: ProcessInfo) -> None:
         label, tone = process_state(process)
         row.set_content(process.get("name") or process["id"], command_label(process.get("command", "")), process_meta(process))
-        row.set_status(label, tone)
+        row.set_status(label, tone, glyph=True)
         open_logs = self._panel.get_visible() and self._follower.target == ("process", process["id"])
         actions = [
             RowAction(

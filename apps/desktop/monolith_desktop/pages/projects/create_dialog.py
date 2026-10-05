@@ -7,8 +7,9 @@ from ...api.errors import describe_error
 from ...api.types import CreateProjectResponse
 from ...pseudonym import pseudonym
 from ...services.workspace import upsert
+from ...strings import SIDEBAR
+from ...theme.icons import resolve_icon
 from ...widgets.badges import StatusBadge
-from ...widgets.buttons import IconButton
 from ...widgets.form_dialog import FormDialog
 from ...widgets.log_panel import LogPanel
 from ...widgets.text import Text
@@ -30,27 +31,27 @@ class CreateProjectDialog:
         self._project_id: str | None = None
         self._cloning = False
         self._typed_name = ""
-        dialog = FormDialog(CREATE["title"], CREATE["subtitle"], CREATE["create"], self._submit, CREATE["cancel"])
+        dialog = FormDialog(
+            CREATE["title"], None, CREATE["create"], self._submit, CREATE["cancel"], context=SIDEBAR["projects"], icon="projects"
+        )
         self.dialog = dialog
-        self._details = dialog.add_group(CREATE["details"], location_hint(""))
-        self._name = dialog.add_entry(self._details, "name", CREATE["name"])
+        self._details = dialog.add_group(description=location_hint(""))
+        self._name = dialog.add_title(self._details, "name", CREATE["name"])
         self._name.connect("changed", lambda row: self._details.set_description(location_hint(row.get_text())))
-        self._reroll = IconButton("shuffle", CREATE["reroll"], self._roll_pseudonym)
-        self._reroll.set_visible(False)
-        self._name.add_suffix(self._reroll)
-        self._confidential = dialog.add_switch(self._details, CREATE["confidential"], CREATE["confidential_hint"])
-        self._confidential.connect("notify::active", lambda row, _param: self._set_confidential(row.get_active()))
+        self._name.connect("icon-press", lambda *_: self._roll_pseudonym())
         self._source = source = dialog.add_group(CREATE["source"], CREATE["source_hint"])
         self._git_url = dialog.add_entry(source, "git_url", CREATE["git_url"])
         self._branch = dialog.add_entry(source, "branch", CREATE["branch"])
         self._git_url.connect("changed", lambda row: dialog.set_primary(create_label(row.get_text()), self._submit))
+        self._confidential = dialog.add_chip(CREATE["confidential"], "confidential", CREATE["confidential_hint"])
+        self._confidential.connect("notify::active", lambda row, _param: self._set_confidential(row.get_active()))
         dialog.add_page(PROGRESS_PAGE, self._build_progress())
         dialog.connect("closed", lambda *_: self._closed())
 
     def _build_progress(self) -> Gtk.Widget:
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, css_classes=["to-form-body"])
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12, css_classes=["to-dialog-body"])
         header = Gtk.Box(spacing=8)
-        self._progress_title = Text("", "h4")
+        self._progress_title = Text("", "bodyStrong")
         self._progress_title.set_hexpand(True)
         self._badge = StatusBadge(CREATE["cloning"], "info")
         header.append(self._progress_title)
@@ -79,7 +80,9 @@ class CreateProjectDialog:
         else:
             self._name.set_text(self._typed_name)
         self._name.set_editable(not confidential)
-        self._reroll.set_visible(confidential)
+        self._name.set_icon_from_icon_name(Gtk.EntryIconPosition.SECONDARY, resolve_icon("shuffle") if confidential else None)
+        if confidential:
+            self._name.set_icon_tooltip_text(Gtk.EntryIconPosition.SECONDARY, CREATE["reroll"])
         self._source.set_description(CREATE["source_hint_confidential" if confidential else "source_hint"])
 
     def _roll_pseudonym(self) -> None:

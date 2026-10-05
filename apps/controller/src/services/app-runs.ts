@@ -29,7 +29,7 @@ import { isLocalHost } from "./browser";
 import type { DisplayService } from "./display";
 import type { IdentityService } from "./identity";
 import type { LineTransform, ProcessService } from "./processes";
-import { detectProject, devScript, type ProjectFacts } from "./project-detect";
+import { detectRunTargetSources, devScript, type ProjectFacts } from "./project-detect";
 import type { ProjectService } from "./projects";
 
 export const RUN_TARGET_LABELS: Record<RunTarget, string> = {
@@ -207,13 +207,14 @@ export class AppRunService {
   }
 
   async targets(projectId: string): Promise<RunTargetInfo[]> {
-    const facts = detectProject(this.projects.require(projectId).path);
+    const sources = detectRunTargetSources(this.projects.require(projectId).path);
     return Promise.all(
-      facts.runTargets.map(async (target): Promise<RunTargetInfo> => {
+      sources.map(async ({ target, dir, facts }): Promise<RunTargetInfo> => {
         const reason = await this.unavailableReason(target, facts);
         return {
           target,
-          label: RUN_TARGET_LABELS[target],
+          label: dir ? `${RUN_TARGET_LABELS[target]} · ${dir}` : RUN_TARGET_LABELS[target],
+          dir,
           available: reason === null,
           reason,
           viewer: RUN_TARGET_VIEWERS[target],
@@ -236,9 +237,10 @@ export class AppRunService {
 
   async start(projectId: string, input: StartAppRun): Promise<AppRun> {
     const location = this.projects.require(projectId);
-    const facts = detectProject(location.path);
     const { target } = input;
-    if (!facts.runTargets.includes(target)) throw badRequest(`Run target ${target} is not offered for project ${location.id}`);
+    const source = detectRunTargetSources(location.path).find((entry) => entry.target === target);
+    if (!source) throw badRequest(`Run target ${target} is not offered for project ${location.id}`);
+    const { facts, dir } = source;
     const reason = await this.unavailableReason(target, facts);
     if (reason) throw unavailable(reason);
     if (ANDROID_TARGETS.has(target)) await this.android.ensureConnected();
@@ -256,6 +258,7 @@ export class AppRunService {
         id: createId("appRun"),
         projectId: location.id,
         target,
+        dir,
         state: "starting",
         port: null,
         processIds: [],
@@ -266,7 +269,7 @@ export class AppRunService {
         readyAt: null,
         endedAt: null,
       },
-      cwd: location.path,
+      cwd: dir ? join(location.path, dir) : location.path,
       facts,
       pids: [],
       stopRequested: false,
@@ -292,7 +295,7 @@ export class AppRunService {
     }
     if (isFinalAppRunState(live.run.state)) return this.snapshot(live);
     this.publish(live);
-    this.logger.info("app run started", { id: live.run.id, project: location.id, target, port: live.run.port ?? undefined });
+    this.logger.info("app run started", { id: live.run.id, project: location.id, target, dir: dir ?? undefined, port: live.run.port ?? undefined });
 
     plans.forEach((plan, index) => {
       if (isFinalAppRunState(live.run.state)) return;
@@ -300,7 +303,7 @@ export class AppRunService {
         projectId: location.id,
         name: plan.name,
         command: plan.command,
-        cwd: location.path,
+        cwd: live.cwd,
         env: plan.env,
         display: plan.display,
         port: plan.port,

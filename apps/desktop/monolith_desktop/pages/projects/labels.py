@@ -11,9 +11,27 @@ LIST = MappingProxyType({
     "refresh": "Refresh",
     "no_match_title": "No matching projects",
     "no_match": "Nothing matches “{query}”.",
+    "no_tab": "No {tab} projects",
     "clear_search": "Clear search",
     "ask": "Ask Claude about {name}",
     "loading": "Loading projects…",
+    "tabs": "Project filter",
+    "search_toggle": "Search projects",
+    "group_toggle": "Group by status",
+})
+
+LIST_TABS = MappingProxyType({
+    "all": "All projects",
+    "active": "Active",
+    "idle": "Idle",
+})
+
+GROUPS = MappingProxyType({
+    "agent": "Claude working",
+    "building": "Building",
+    "running": "Running",
+    "idle": "Idle",
+    "all": "Projects",
 })
 
 EMPTY = MappingProxyType({
@@ -115,9 +133,26 @@ DETAIL = MappingProxyType({
     "claude_terminal": "Claude terminal",
     "shell": "Shell",
     "display": "Display",
+    "rename": "Rename",
+    "delete": "Delete from sandbox",
     "copy_path": "Copy path",
     "copied": "Path copied",
     "dismiss": "Dismiss",
+    "tabs": "Project sections",
+})
+
+EMULATOR = MappingProxyType({
+    "run": "Run on emulator",
+    "show": "Show emulator",
+    "tooltip": "Build the app and install it on the host Android emulator",
+    "tooltip_dir": "Build the app in {dir} and install it on the host Android emulator",
+    "unavailable": "Can't run on the emulator: {reason}",
+    "started": "Building for the emulator; the app opens there when the build finishes",
+    "failed": "Couldn't run on the emulator: {error}",
+    "no_serial": "The emulator is not reachable from this machine",
+    "no_scrcpy": "The app runs on the emulator; install scrcpy to see its screen here",
+    "viewer_failed": "Couldn't show the emulator: {error}",
+    "title": "{name} · Android emulator",
 })
 
 CLAUDE_ACCOUNT = MappingProxyType({
@@ -192,7 +227,8 @@ BUILDS = MappingProxyType({
 
 ARTIFACTS = MappingProxyType({
     "list": "Artifacts",
-    "list_empty": "No artifacts yet. Successful builds and files Claude shares put their outputs here.",
+    "list_empty": "Successful builds and files Claude shares put their outputs here.",
+    "empty_title": "No artifacts yet",
 })
 
 CONVERSATIONS = MappingProxyType({
@@ -248,6 +284,35 @@ CREATE = MappingProxyType({
     "reroll": "New pseudonym",
 })
 
+RENAME = MappingProxyType({
+    "title": "Rename project",
+    "subtitle": "{root}/{id}",
+    "name": "Name",
+    "group": "Display name",
+    "hint": "Only the name shown in the apps changes, not the folder. Leave it empty to use the detected name.",
+    "save": "Save",
+    "cancel": "Cancel",
+    "renamed": "Renamed to {name}",
+    "reset": "{id} uses its detected name again",
+})
+
+REMOVE = MappingProxyType({
+    "title": "Delete {name}?",
+    "body": "It moves to /tmp in the sandbox. The project on {host} is not touched.",
+    "only_copy_title": "Only copy of this project",
+    "only_copy_body": "{name} was never synced from a computer, so the sandbox has its only copy. Deleting moves it to /tmp in the sandbox.",
+    "unsynced_title": "Unsynced changes",
+    "unsynced_body": "{files} in {name} changed in the sandbox and {verb} not synced back to {host}: {paths}.\n\n"
+                     "Sync to host first to keep them there, or force delete: the sandbox copy moves to /tmp and the project on {host} stays as it was.",
+    "more": "{paths} and {extra} more",
+    "host": "your computer",
+    "delete": "Delete",
+    "force": "Force delete",
+    "cancel": "Cancel",
+    "deleted": "Deleted {name} from the sandbox",
+    "failed": "Couldn't delete {name}: {error}",
+})
+
 CONFIDENTIAL = MappingProxyType({
     "badge": "Confidential",
 })
@@ -296,7 +361,6 @@ SYNC = MappingProxyType({
     "get": "Sync from host",
     "revert": "Revert last sync",
     "discard": "Discard changes",
-    "menu": "Sync",
     "snapshots": "Snapshots",
     "snapshots_subtitle": "Taken before every sync to host; the newest 20 are kept",
     "snapshots_empty": "No syncs yet.",

@@ -79,10 +79,10 @@ const ChatComposer = ({
         maxLength={LIMITS.maxPromptLength}
         primary={composer.primary}
         onPrimary={composer.primary === "send" ? composer.send : composer.startVoice}
-        primaryDisabled={composer.primary === "send" && !composer.canSend}
+        primaryDisabled={composer.locked || (composer.primary === "send" && !composer.canSend)}
         busy={composer.sending}
         onMic={composer.startVoice}
-        micDisabled={composer.sending}
+        micDisabled={composer.sending || composer.locked}
         banner={idle ? banner : null}
         onAttach={() => composer.openSheet("attach")}
         attachDisabled={!composer.attach.enabled || composer.sending}

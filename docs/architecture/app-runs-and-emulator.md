@@ -56,6 +56,15 @@ flowchart LR
 | `electron-dev` | framework `electron` with a `dev` (preferred) or `start` script | `<pm> run dev\|start` with `DISPLAY` | `display` |
 | `test` | `flutter` → `flutter test`; package.json with a `test` script → `<pm> run test` (`CI=1`) | — | `none` |
 
+**Monorepos.** Workspace packages (package.json `workspaces`, array or `{packages}`, and
+`packages:` of `pnpm-workspace.yaml`; entries `dir` or `dir/*`, no negations or other globs,
+nothing outside the project, at most 64 packages) whose framework is `expo`, `react-native`,
+`flutter`, `electron`, `vite` or `next` add their targets except `test`. Each target is offered
+once: the project root wins, then the first package in path order. Such a target has
+`dir` = the package folder (project-relative, e.g. `apps/mobile`), runs with that folder as
+cwd and the root's package manager when the package has no lockfile, and its label gets
+` · <dir>` (`Android emulator · apps/mobile`). Root targets have `dir: null`.
+
 `<phone host>` is the sandbox Tailscale IPv4 (same source as `GET /v1/ports`), else the
 host part of `THEONE_PUBLIC_URL`. `$P` is `StartAppRun.port` or, when omitted, the first
 free port from the target's default (`web-dev` 5173, `expo-*`/`rn-android` 8081,
@@ -89,9 +98,9 @@ AppViewer =
   | { kind: "android", serial: string }                             // the sandbox adb serial
   | { kind: "none" }
 
-RunTargetInfo { target, label, available, reason: string | null, viewer: AppViewer["kind"], actions: AppRunAction[] }
+RunTargetInfo { target, label, dir: string | null, available, reason: string | null, viewer: AppViewer["kind"], actions: AppRunAction[] }
 AppRun {
-  id, projectId, target, state, port: number | null,
+  id, projectId, target, dir: string | null, state, port: number | null,
   processIds: ProcessId[],          // [main] or [metro, gradle] for rn-android
   viewer: AppViewer | null,         // set once ready
   actions: AppRunAction[],          // supported by this target
@@ -399,6 +408,11 @@ drawn, so it works in iOS WKWebView over plain http.
   `deeplink` → `Linking.openURL(devClientUrl ?? expoGoUrl)`; `display` → the display
   screen; `android` → the host emulator screen (pair/unlock the host first if needed).
   Live updates from `app.updated`.
+- **Desktop (project detail)**: when the project offers a target with viewer `android`, the
+  **Display** button becomes **Run on emulator** (**Show emulator** while a run of it is
+  `starting`/`ready`; an unavailable target shows its `reason`). It starts the run unless one
+  is live, then opens `scrcpy --serial <GET /v1/android emulator.serial>` on the host (one
+  window; the desktop runs on the host whose adb server the daemon connected the emulator to).
 - **Host → Android emulator**: `HostAndroidStatus`, AVD picker, Start/Stop, **Open screen**
   (WebView of `/ui/android` with a ticket), **Link sandbox** (posts the active sandbox's
   base URL and token to `POST /v1/android/link`), link state. The emulator card shows

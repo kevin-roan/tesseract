@@ -15,6 +15,7 @@ import { AgentRunService } from "./agent-runs";
 import { AndroidLinkService, type AndroidLinkOptions } from "./android-link";
 import { AppRunService, type AppRunOptions } from "./app-runs";
 import { ArtifactService } from "./artifacts";
+import { BuildOutputService } from "./build-outputs";
 import { BrowserService } from "./browser";
 import { BuildService } from "./builds";
 import { ClaudeAccountService } from "./claude-accounts";
@@ -73,6 +74,7 @@ export type Services = {
   syncBack: SyncBackService;
   terminals: TerminalService;
   artifacts: ArtifactService;
+  buildOutputs: BuildOutputService;
   builds: BuildService;
   display: DisplayService;
   browser: BrowserService;
@@ -139,6 +141,7 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
   const push = new PushService(config, repos, logger.child("push"), options.push);
   push.follow(hub);
   const artifacts = new ArtifactService(config, repos, hub, inbox, projects, logger.child("artifacts"));
+  const buildOutputs = new BuildOutputService(projects);
   const builds = new BuildService(config, repos, logs, hub, projects, artifacts, tools, logger.child("builds"), stopGraceMs);
   const display = new DisplayService(config);
   const uploads = new UploadService(config, repos, logger.child("uploads"));
@@ -215,6 +218,7 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
     syncBack,
     terminals,
     artifacts,
+    buildOutputs,
     builds,
     display,
     browser,

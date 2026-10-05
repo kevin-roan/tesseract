@@ -7,6 +7,7 @@ from ...api.types import Project, TerminalInfo
 from ...services.workspace import upsert
 from ...store import ConnectionState
 from ...theme.icons import resolve_icon
+from ...theme.tokens import SPACING
 from ...widgets.badges import StatusBadge
 from ...widgets.buttons import IconButton
 from ...widgets.feedback import EmptyState, Notice
@@ -21,8 +22,8 @@ from .labels import ACTIONS, CONFIRM, EMPTY, ERRORS, LAUNCH, MENU, PLACEHOLDER, 
 from .session import TerminalSession
 
 MAX_ATTACHED = 6
-SIDEBAR_WIDTH = 300
-SIDEBAR_MIN_WIDTH = 220
+SIDEBAR_WIDTH = 320
+SIDEBAR_MIN_WIDTH = 240
 MIN_WIDTH = 280
 MIN_HEIGHT = 240
 COLLAPSE_CONDITION = "max-width: 560sp"
@@ -60,7 +61,7 @@ class TerminalsPage(Page):
             content=self._build_content(),
             min_sidebar_width=SIDEBAR_MIN_WIDTH,
             max_sidebar_width=SIDEBAR_WIDTH,
-            sidebar_width_fraction=0.3,
+            sidebar_width_fraction=0.34,
             css_classes=["to-terminal-split"],
         )
         self._split.connect("notify::collapsed", lambda *_: self._render_current())
@@ -99,7 +100,13 @@ class TerminalsPage(Page):
 
     def _build_sidebar(self) -> Gtk.Widget:
         sidebar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=["to-terminal-sidebar"])
-        launchers = Gtk.Box(spacing=8, homogeneous=True, css_classes=["to-terminal-launchers"])
+        heading = Gtk.Box(spacing=SPACING["sm"], css_classes=["to-terminal-sidebar-heading"])
+        heading.append(Text(SIDEBAR["title"], "label"))
+        self._count = Text("", "label", "textTertiary")
+        self._count.add_css_class("to-tabular")
+        heading.append(self._count)
+        sidebar.append(heading)
+        launchers = Gtk.Box(spacing=SPACING["xs"] + 2, css_classes=["to-terminal-launchers"])
         shell = LaunchButton(LAUNCH["shell"], "terminal", LAUNCH["shell_tooltip"], lambda pid: self._launch("shell", pid))
         claude = LaunchButton(LAUNCH["claude"], "agents", LAUNCH["claude_tooltip"], lambda pid: self._launch("claude", pid))
         self._launchers = [shell, claude]
@@ -107,38 +114,31 @@ class TerminalsPage(Page):
             self.ctx.store.projects.bind(launcher, launcher.set_projects)
             launchers.append(launcher)
         sidebar.append(launchers)
-        heading = Gtk.Box(spacing=8, css_classes=["to-terminal-sidebar-heading"])
-        title = Text(SIDEBAR["title"], "overline", "textTertiary")
-        title.set_hexpand(True)
-        heading.append(title)
-        self._count = Text("", "caption", "textTertiary")
-        heading.append(self._count)
-        sidebar.append(heading)
         self._list = Gtk.ListBox(selection_mode=Gtk.SelectionMode.SINGLE, css_classes=["to-terminal-list"])
         self._list.connect("row-selected", self._row_selected)
-        scroller = Gtk.ScrolledWindow(child=self._list, vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
-        sidebar.append(scroller)
-        self._sidebar_empty = Text(SIDEBAR["empty"], "caption", "textSecondary", wrap=True, lines=None)
+        self._scroller = Gtk.ScrolledWindow(child=self._list, vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
+        sidebar.append(self._scroller)
+        self._sidebar_empty = Text(SIDEBAR["empty"], "body", "textSecondary", center=True)
+        self._sidebar_empty.set_vexpand(True)
         self._sidebar_empty.add_css_class("to-terminal-sidebar-empty")
         sidebar.append(self._sidebar_empty)
         return sidebar
 
     def _build_content(self) -> Gtk.Widget:
         content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True, css_classes=["to-terminal-content"])
-        self._toolbar = Gtk.Box(spacing=10, css_classes=["to-terminal-toolbar"])
+        self._toolbar = Gtk.Box(spacing=SPACING["sm"], css_classes=["to-terminal-toolbar"])
         self._sidebar_toggle = IconButton("sidebar", ACTIONS["sessions"], lambda: self._split.set_show_sidebar(True))
         self._toolbar.append(self._sidebar_toggle)
-        self._kind_icon = Icon("terminal", "md")
-        titles = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True, valign=Gtk.Align.CENTER)
+        self._kind_icon = Icon("terminal", "sm", "textSecondary")
+        titles = Gtk.Box(spacing=SPACING["sm"], hexpand=True, valign=Gtk.Align.CENTER)
         self._titles = titles
-        self._title = Text("", "bodyStrong")
-        meta = Gtk.Box(spacing=8)
+        self._title = Text("", "label")
         self._badge = StatusBadge("")
-        self._subtitle = Text("", "caption", "textSecondary")
-        meta.append(self._badge)
-        meta.append(self._subtitle)
+        self._subtitle = Text("", "caption", "textTertiary")
+        self._subtitle.set_hexpand(True)
         titles.append(self._title)
-        titles.append(meta)
+        titles.append(self._badge)
+        titles.append(self._subtitle)
         self._toolbar.append(self._kind_icon)
         self._toolbar.append(titles)
         self._restart = IconButton("refresh", ACTIONS["restart"], self._restart_current)
@@ -189,7 +189,7 @@ class TerminalsPage(Page):
             for name in section:
                 items.append(MENU[name], f"session.{name}")
             menu.append_section(None, items)
-        button = Gtk.MenuButton(menu_model=menu, icon_name=resolve_icon("menu"), tooltip_text=ACTIONS["more"], valign=Gtk.Align.CENTER)
+        button = Gtk.MenuButton(menu_model=menu, icon_name=resolve_icon("more"), tooltip_text=ACTIONS["more"], valign=Gtk.Align.CENTER)
         button.add_css_class("flat")
         return button
 
@@ -244,6 +244,7 @@ class TerminalsPage(Page):
         running = sum(1 for t in terminals if t.get("state") == "running")
         self._count.set_label(str(running) if running else "")
         self._sidebar_empty.set_visible(not terminals)
+        self._scroller.set_visible(bool(terminals))
         self._render_current()
 
     def _row_model(self, info: TerminalInfo, projects: list[Project] | None) -> model.RowModel:

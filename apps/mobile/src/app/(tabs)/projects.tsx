@@ -11,6 +11,7 @@ import AgentRunCard from "@/features/sandbox/components/agent-run-card";
 import BuildCard from "@/features/sandbox/components/build-card";
 import MotionItem from "@/components/motion-item";
 import ProcessCard from "@/features/sandbox/components/process-card";
+import RenameProjectSheet from "@/features/sandbox/components/rename-project-sheet";
 import SandboxGate from "@/features/sandbox/components/sandbox-gate";
 import SandboxNotices from "@/features/sandbox/components/sandbox-notices";
 import WebLinkCard from "@/features/sandbox/components/web-link-card";
@@ -131,6 +132,7 @@ export default function ProjectsScreen() {
       </MotionItem>
 
       <MenuSheet testID="project-menu" {...screen.projectMenuSheet} />
+      <RenameProjectSheet state={screen.renameSheet} />
     </ScreenScaffold>
   );
 }

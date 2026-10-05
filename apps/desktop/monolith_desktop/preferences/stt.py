@@ -8,7 +8,7 @@ from ..store import ConnectionState
 from ..strings import STT as S
 from ..stt import model
 from ..widgets import PreferenceRows
-from ..theme.icons import resolve_icon
+from ..widgets.buttons import IconButton
 from .base import PreferencesPage
 
 
@@ -24,9 +24,7 @@ class SttPreferences(PreferencesPage):
         self._pending = False
         self._syncing = False
 
-        refresh = Gtk.Button(icon_name=resolve_icon("refresh"), tooltip_text=S["refresh"], valign=Gtk.Align.CENTER)
-        refresh.add_css_class("flat")
-        refresh.connect("clicked", lambda *_: self._load())
+        refresh = IconButton("refresh", S["refresh"], lambda: self._load())
 
         profiles_group = Adw.PreferencesGroup(title=S["profiles_group"], description=S["profiles_description"])
         self._rows: dict[str, Adw.ActionRow] = {}

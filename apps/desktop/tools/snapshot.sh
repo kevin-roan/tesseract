@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Headless screenshot of the desktop app: tools/snapshot.sh out.png [--page ID] [--params JSON] [--prefs] [--light] [--width W --height H] [--delay S] [--collapsed-sidebar]
+# Headless screenshot of the desktop app: tools/snapshot.sh out.png [--page ID] [--params JSON] [--prefs] [--light] [--width W --height H] [--delay S] [--collapsed-sidebar] [--zoom Z]
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 

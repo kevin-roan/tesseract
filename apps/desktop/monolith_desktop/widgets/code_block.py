@@ -45,16 +45,12 @@ class CopyButton(Gtk.Button):
 
 
 class CodeBlock(Gtk.Box):
+    """Monospace code on the sunken background; the language and copy button appear on hover."""
+
     def __init__(self, code: str, language: str = "", copy_label: str = "Copy", copied_label: str = "Copied") -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, css_classes=["to-code-block"])
         self.set_overflow(Gtk.Overflow.HIDDEN)
         self._code = code
-        header = Gtk.Box(spacing=8, css_classes=["to-code-block-header"])
-        self._language = Text(language, "caption", "textTertiary")
-        self._language.set_hexpand(True)
-        header.append(self._language)
-        header.append(CopyButton(lambda: self._code, copy_label, copied_label))
-        self.append(header)
         self._label = Gtk.Label(
             label=code, xalign=0.0, yalign=0.0, selectable=True, css_classes=["to-text-code", "to-code-block-body"]
         )
@@ -65,11 +61,17 @@ class CodeBlock(Gtk.Box):
             vscrollbar_policy=Gtk.PolicyType.NEVER,
             propagate_natural_height=True,
         )
-        self.append(scroller)
+        actions = Gtk.Box(spacing=4, halign=Gtk.Align.END, valign=Gtk.Align.START, css_classes=["to-code-block-actions"])
+        self._language = Text(language, "caption", "textTertiary")
+        self._language.set_visible(bool(language))
+        actions.append(self._language)
+        actions.append(CopyButton(lambda: self._code, copy_label, copied_label))
+        overlay = Gtk.Overlay(child=scroller)
+        overlay.add_overlay(actions)
+        self.append(overlay)
 
     def set_code(self, code: str, language: str | None = None) -> None:
         self._code = code
         self._label.set_label(code)
         if language is not None:
-            self._language.set_label(language)
-
+            self._language.set_text_value(language)

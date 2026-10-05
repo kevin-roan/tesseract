@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { CreateProjectSchema, routePatterns, SetProjectClaudeAccountSchema } from "@theone/protocol";
+import { CreateProjectSchema, RenameProjectSchema, routePatterns, SetProjectClaudeAccountSchema } from "@theone/protocol";
 import type { Services } from "../../services";
 import { badRequest } from "../../core/errors";
 import { isSyncFormat } from "../../services/projects";
@@ -39,6 +39,11 @@ export function registerProjectRoutes(app: Hono, services: Services): void {
     const { accountId } = await jsonBody(c, SetProjectClaudeAccountSchema);
     if (accountId !== null) services.claudeAccounts.requireUsable(accountId);
     return c.json(await services.projects.setClaudeAccount(c.req.param("id") ?? "", accountId));
+  });
+
+  app.put(rest.projectName, async (c) => {
+    const { name } = await jsonBody(c, RenameProjectSchema);
+    return c.json(await services.projects.rename(c.req.param("id") ?? "", name));
   });
 
   app.get(rest.projectGit, async (c) => c.json(await services.projects.gitDetails(c.req.param("id") ?? "")));

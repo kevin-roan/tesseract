@@ -93,6 +93,9 @@ export const useArtifacts = (filter?: ProjectFilter) =>
     (client, signal) => client.listArtifacts(filter, { signal }),
   );
 
+export const useBuildOutputs = (enabled = true) =>
+  useSandboxQuery(sandboxKeys.buildOutputs, (client, signal) => client.listBuildOutputs(undefined, { signal }), { enabled });
+
 export const useTaildropTargets = (enabled = true) =>
   useSandboxQuery(sandboxKeys.taildropTargets, (client, signal) => client.taildropTargets({ signal }), { enabled });
 

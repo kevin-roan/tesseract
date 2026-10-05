@@ -12,31 +12,24 @@ from .model import ProcessDraft, is_conflict, prefers_display, validate_process_
 if TYPE_CHECKING:
     from ...context import AppContext
 
-RUN_DIALOG_HEIGHT = 520
-
-
 class RunCommandDialog:
     def __init__(self, ctx: "AppContext", project: Project, on_started: Callable[[ProcessInfo], None]) -> None:
         self._ctx = ctx
         self._project = project
         self._on_started = on_started
         dialog = FormDialog(
-            RUN_DIALOG["title"],
-            RUN_DIALOG["subtitle"].format(path=project.get("path", "")),
-            RUN_DIALOG["start"],
-            self._submit,
-            RUN_DIALOG["cancel"],
-            height=RUN_DIALOG_HEIGHT,
+            RUN_DIALOG["title"], None, RUN_DIALOG["start"], self._submit, RUN_DIALOG["cancel"],
+            context=project.get("name") or project["id"], icon="project",
         )
         self.dialog = dialog
-        group = dialog.add_group()
-        self._command = dialog.add_entry(group, "command", RUN_DIALOG["command"])
-        self._name = dialog.add_entry(group, "name", RUN_DIALOG["name"])
+        group = dialog.add_group(description=RUN_DIALOG["subtitle"].format(path=project.get("path", "")))
+        self._command = dialog.add_title(group, "command", RUN_DIALOG["command"], monospace=True)
         options = dialog.add_group()
+        self._name = dialog.add_entry(options, "name", RUN_DIALOG["name"])
         self._port = dialog.add_entry(options, "port", RUN_DIALOG["port"])
         self._port.set_input_purpose(Gtk.InputPurpose.DIGITS)
-        self._display = dialog.add_switch(
-            options, RUN_DIALOG["display"], RUN_DIALOG["display_subtitle"], prefers_display(project.get("framework", ""))
+        self._display = dialog.add_chip(
+            RUN_DIALOG["display"], "display", RUN_DIALOG["display_subtitle"], prefers_display(project.get("framework", ""))
         )
 
     def present(self) -> None:

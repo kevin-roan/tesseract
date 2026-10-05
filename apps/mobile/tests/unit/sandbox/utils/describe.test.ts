@@ -71,7 +71,7 @@ describe("describe helpers", () => {
 
   it("describes the sandbox only once its status is known", () => {
     expect(sandboxSubtitle(undefined)).toBeUndefined();
-    expect(sandboxSubtitle(sampleStatus)).toBe("v0.1.0 · up 1h");
+    expect(sandboxSubtitle(sampleStatus)).toBe("up 1h · sandbox · v0.1.0");
   });
 
   it("titles activity events, falling back to the sandbox", () => {
@@ -136,6 +136,6 @@ describe("resource gauges", () => {
   it("guards against zero cores and zero-sized disks", () => {
     expect(cpuGauge({ cores: 0, load1: 3, load5: 0, load15: 0 }).fraction).toBe(0);
     expect(cpuGauge({ cores: 2, load1: 5, load5: 0, load15: 0 }).fraction).toBe(1);
-    expect(storageGauge({ usedBytes: 10, totalBytes: 0 })).toEqual({ fraction: 0, value: "10", unit: "B / 0 B" });
+    expect(storageGauge({ usedBytes: 10, totalBytes: 0 })).toEqual({ fraction: 0, value: "10", unit: "B", caption: "of 0 B" });
   });
 });

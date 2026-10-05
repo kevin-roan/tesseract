@@ -2,6 +2,7 @@ import { FolderPlusIcon, LightningIcon, SparkleIcon } from "phosphor-react-nativ
 
 import ActionTileRow from "@/components/action-tile-row";
 import ChoiceGroup from "@/components/choice-group";
+import ConnectionDot from "@/components/connection-dot";
 import ListCard from "@/components/list-card";
 import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
@@ -11,6 +12,7 @@ import StatGrid from "@/components/stat-grid";
 import AgentRunCard from "@/features/sandbox/components/agent-run-card";
 import BuildCard from "@/features/sandbox/components/build-card";
 import ProcessCard from "@/features/sandbox/components/process-card";
+import ResourceHistory from "@/features/sandbox/components/resource-history";
 import Reveal from "@/components/reveal";
 import SandboxGate from "@/features/sandbox/components/sandbox-gate";
 import SandboxNotices from "@/features/sandbox/components/sandbox-notices";
@@ -20,6 +22,7 @@ import { useSandboxHub } from "@/features/sandbox/hooks/use-sandbox-hub";
 import { activityTitle } from "@/features/sandbox/utils/describe";
 import { frameworkIcon } from "@/features/sandbox/utils/icons";
 import { projectSubtitle } from "@/features/sandbox/utils/projects";
+import { linkLabel, linkTone } from "@/features/sandbox/utils/states";
 
 export default function AgentsScreen() {
   const hub = useSandboxHub();
@@ -37,6 +40,7 @@ export default function AgentsScreen() {
           title={hub.sandbox.name}
           subtitle={hub.subtitle}
           size="medium"
+          status={<ConnectionDot tone={linkTone(hub.link)} label={linkLabel(hub.link)} variant="chip" />}
           actions={hub.headerActions}
         />
       }
@@ -88,13 +92,19 @@ export default function AgentsScreen() {
         </MotionItem>
       ) : null}
 
-      <MotionItem index={2}>
+      {hub.stats.length > 0 ? (
+        <MotionItem index={2}>
+          <ResourceHistory />
+        </MotionItem>
+      ) : null}
+
+      <MotionItem index={3}>
         <Section title="Quick actions">
           <ActionTileRow items={hub.actions} />
         </Section>
       </MotionItem>
 
-      <MotionItem index={3}>
+      <MotionItem index={4}>
         <Section
           title="Projects"
           actionLabel="Add"
@@ -118,7 +128,7 @@ export default function AgentsScreen() {
       </MotionItem>
 
       {hub.runningProcesses.length > 0 ? (
-        <MotionItem index={4}>
+        <MotionItem index={5}>
           <Section title="Running">
             {hub.runningProcesses.map((process) => (
               <ProcessCard
@@ -134,7 +144,7 @@ export default function AgentsScreen() {
       ) : null}
 
       {hub.sessions.length > 0 ? (
-        <MotionItem index={5}>
+        <MotionItem index={6}>
           <Section title="Sessions">
             {hub.sessions.map((terminal) => (
               <TerminalCard
@@ -149,7 +159,7 @@ export default function AgentsScreen() {
         </MotionItem>
       ) : null}
 
-      <MotionItem index={6}>
+      <MotionItem index={7}>
         <Section
           title="Recent builds"
           isEmpty={!hub.buildsLoading && hub.recentBuilds.length === 0}
@@ -161,7 +171,7 @@ export default function AgentsScreen() {
         </Section>
       </MotionItem>
 
-      <MotionItem index={7}>
+      <MotionItem index={8}>
         <Section
           title="Claude runs"
           actionLabel="New run"

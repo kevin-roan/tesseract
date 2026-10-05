@@ -57,6 +57,20 @@ export const TaildropTargetsSchema = z.object({
 });
 export type TaildropTargets = z.infer<typeof TaildropTargetsSchema>;
 
+/**
+ * A deliverable a plain build left in a project's output folders (`android/app/build/outputs`, `release/`,
+ * `dist/`, `out/make`…), found by scanning rather than indexed. `path` is relative to the project.
+ */
+export const BuildOutputSchema = z.object({
+  projectId: ProjectIdSchema,
+  path: z.string().min(1),
+  fileName: z.string().min(1),
+  sizeBytes: ByteCountSchema,
+  platform: z.string(),
+  modifiedAt: TimestampSchema,
+});
+export type BuildOutput = z.infer<typeof BuildOutputSchema>;
+
 export const SendArtifactSchema = z.object({ targetId: z.string().min(1).max(256) });
 export type SendArtifact = z.infer<typeof SendArtifactSchema>;
 

@@ -14,7 +14,8 @@ class ArtifactsTab:
     def __init__(self, host: "ProjectDetail") -> None:
         self.widget = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self._list = ArtifactList(
-            host.ctx, ARTIFACTS["list"], ARTIFACTS["list_empty"], host.report, lambda artifact_id: host.remove("artifacts", artifact_id)
+            host.ctx, ARTIFACTS["list"], ARTIFACTS["list_empty"], host.report, lambda artifact_id: host.remove("artifacts", artifact_id),
+            empty_title=ARTIFACTS["empty_title"],
         )
         self.widget.append(self._list)
 

@@ -52,6 +52,28 @@ def test_validate_project_draft_rejects_existing_and_symbol_only_names():
     assert "128" in too_long
 
 
+def test_rename_trims_and_blank_restores_the_detected_name():
+    assert model.rename_value("  My App ") == "My App"
+    assert model.rename_value("   ") is None
+    assert model.rename_error("x" * 128) is None
+    assert "128" in model.rename_error("x" * 129)
+
+
+def test_removal_prompt_forces_only_copies_and_unsynced_changes():
+    only_copy = model.removal_prompt("pos", {"projectId": "pos", "baselineAt": None, "changes": [], "totalBytes": 0, "host": None})
+    assert (only_copy.heading, only_copy.force) == ("Only copy of this project", True)
+
+    changes = [{"path": f"src/{n}.ts"} for n in range(5)]
+    sync = {"projectId": "pos", "baselineAt": "2026-10-01T00:00:00Z", "changes": changes, "totalBytes": 0, "host": {"name": "laptop"}}
+    unsynced = model.removal_prompt("pos", sync)
+    assert unsynced.force and unsynced.confirm_label == "Force delete"
+    assert "5 files in pos" in unsynced.body and "src/2.ts and 2 more" in unsynced.body and "laptop" in unsynced.body
+
+    clean = model.removal_prompt("pos", {**sync, "changes": [], "host": None})
+    assert (clean.heading, clean.confirm_label, clean.force) == ("Delete pos?", "Delete", False)
+    assert "your computer" in clean.body
+
+
 def test_validate_project_draft_branch_needs_url():
     result = model.validate_project_draft(model.ProjectDraft("demo", "", "main"))
     assert result.errors == {"branch": "A branch only applies when cloning. Add a git URL or clear it."}
@@ -188,6 +210,17 @@ def test_card_model_with_and_without_git():
     assert card.activity.kind == "running"
     bare = model.card_model(project("bare"), now=NOW)
     assert bare.branch == "Not a git repository" and bare.dirty is None and bare.commit is None and bare.sync is None
+
+
+def test_list_tabs_and_activity_groups():
+    procs = [process("p1", "run")]
+    runs = [{"id": "r1", "projectId": "ai", "state": "running", "startedAt": "2026-09-28T10:00:00Z"}]
+    cards = [model.card_model(project(pid), procs, [], runs, NOW) for pid in ("idle", "run", "ai", "idle2")]
+    assert [c.id for c in cards if model.in_tab(c.activity, "active")] == ["run", "ai"]
+    assert [c.id for c in cards if model.in_tab(c.activity, "idle")] == ["idle", "idle2"]
+    assert len([c for c in cards if model.in_tab(c.activity, "all")]) == 4
+    groups = [(kind, [c.id for c in items]) for kind, items in model.group_by_activity(cards)]
+    assert groups == [("agent", ["ai"]), ("running", ["run"]), ("idle", ["idle", "idle2"])]
 
 
 @pytest.mark.parametrize(("index", "worktree", "code", "tone", "kind"), [

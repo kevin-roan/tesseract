@@ -80,7 +80,7 @@ class ListCard(Gtk.Box):
         body.append(self._title)
         body.append(self._subtitle)
         self._trailing = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, valign=Gtk.Align.CENTER)
-        self._value = Text(value or "", "h4", xalign=1.0)
+        self._value = Text(value or "", "bodyStrong", xalign=1.0)
         self._value_label = Text(value_label or "", "caption", "textTertiary", xalign=1.0)
         self._value.set_visible(bool(value))
         self._value_label.set_visible(bool(value and value_label))

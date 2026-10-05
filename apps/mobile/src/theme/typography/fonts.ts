@@ -78,6 +78,15 @@ export const MonoFaces: Record<string, string> = {
   '800': 'GeistMono_700Bold',
 };
 
+/** Poppins faces for the island, which keeps its own geometric face regardless of scheme. */
+export const PoppinsFaces: Record<string, string> = {
+  '400': 'Poppins_400Regular',
+  '500': 'Poppins_500Medium',
+  '600': 'Poppins_600SemiBold',
+  '700': 'Poppins_700Bold',
+  '800': 'Poppins_700Bold',
+};
+
 /**
  * The face set a scheme draws its text in. `classic` pairs Exo 2 headings with
  * Noto Sans copy; `mono` sets every variant, code included, in Geist Mono.
@@ -97,6 +106,11 @@ export function displayFor(weight: TextStyle['fontWeight']): string {
 /** Geist Mono face for a numeric weight, falling back to regular. */
 export function monoFor(weight: TextStyle['fontWeight']): string {
   return MonoFaces[String(weight)] ?? MonoFaces['400'];
+}
+
+/** Poppins face for a numeric weight, falling back to regular. */
+export function poppinsFor(weight: TextStyle['fontWeight']): string {
+  return PoppinsFaces[String(weight)] ?? PoppinsFaces['400'];
 }
 
 /**

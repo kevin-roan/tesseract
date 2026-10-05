@@ -3,38 +3,28 @@ import { Pressable, View } from "react-native";
 import Animated from "react-native-reanimated";
 
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { SchemeOverrideContext } from "@/hooks/use-scheme-override";
 
 import { useBackdropFade } from "../../hooks/use-backdrop-fade";
+import { useIslandDrag } from "../../hooks/use-island-drag";
 import { useIslandHost } from "../../hooks/use-island-host";
-import { useIslandMotion } from "../../hooks/use-island-motion";
-import { useOrbDrag } from "../../hooks/use-orb-drag";
-import { elapsedLabel, liveCountLabel } from "../../utils/format";
+import { useIslandMorph } from "../../hooks/use-island-morph";
+import { ISLAND_SCHEMES } from "../../utils/constants";
 import AttachTargetSheet from "../attach-target-sheet";
 import CaptureSheet from "../capture-sheet";
-import IslandCard from "../island-card";
-import IslandOrb from "../island-orb";
+import IslandCapsule from "../island-capsule";
+import IslandPanel from "../island-panel";
+import IslandShell from "../island-shell";
 import createStyles from "./styles";
 
-/** Floating in-app island: a chrome orb docked to any screen edge that opens into the live-work card. Mounted once, paired only. */
+/** Floating in-app Dynamic Island: a draggable capsule docked to a screen edge that springs open into the live-work panel. Mounted once, paired only. */
 const IslandHost = () => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const island = useIslandHost();
-  const motion = useIslandMotion();
   const backdrop = useBackdropFade(island.expanded);
-  const orb = useOrbDrag(island.dock, island.moveTo);
-  const label = useMemo(() => {
-    const [run] = island.state.runs;
-    const badge =
-      island.count > 1
-        ? liveCountLabel(island.count)
-        : run
-          ? elapsedLabel(run.startedAt, island.now)
-          : island.sharedCount > 0
-            ? String(island.sharedCount)
-            : "";
-    return badge ? `${island.title}, ${badge}` : island.title;
-  }, [island.count, island.state.runs, island.now, island.sharedCount, island.title]);
+  const drag = useIslandDrag(island.dock, island.moveTo, !island.expanded);
+  const morph = useIslandMorph(island.expanded, drag.x, drag.y, drag.lift);
 
   return (
     <>
@@ -45,43 +35,37 @@ const IslandHost = () => {
               <Pressable style={styles.fill} onPress={island.collapse} accessibilityRole="button" accessibilityLabel="Dismiss" />
             ) : null}
           </Animated.View>
-          {island.expanded ? (
-            <Animated.View
-              key="card"
-              entering={motion.open}
-              exiting={motion.fadeOut}
-              style={[styles.card, orb.card]}
-              pointerEvents="box-none"
-            >
-              <IslandCard
+          <SchemeOverrideContext.Provider value={ISLAND_SCHEMES[theme.scheme]}>
+            <IslandShell frame={morph.frame} clip={morph.clip}>
+              <IslandCapsule
                 state={island.state}
-                now={island.now}
                 sharedCount={island.sharedCount}
-                stoppingRunId={island.stoppingRunId}
-                stoppingCommandId={island.stoppingCommandId}
-                onCollapse={island.collapse}
-                onOpenRun={island.openRun}
-                onStopRun={island.stopRun}
-                onStopCommand={island.stopCommand}
-                onCapture={island.capture}
-                onOpen={island.openHub}
-                onAttachShared={island.attachShared}
-                testID="island-card"
+                hasDraft={island.hasDraft}
+                title={island.title}
+                expanded={island.expanded}
+                onPress={island.toggle}
+                gesture={drag.pan}
+                style={morph.capsule}
+                testID="island-capsule"
               />
-            </Animated.View>
-          ) : null}
-          <IslandOrb
-            label={label}
-            count={island.count > 1 ? island.count : island.count === 0 ? island.sharedCount : 0}
-            live={island.count > 0}
-            expanded={island.expanded}
-            onPress={island.toggle}
-            gesture={orb.pan}
-            lift={orb.lift}
-            sheen={orb.sheenTransform}
-            style={orb.style}
-            testID="island-orb"
-          />
+              {island.expanded ? (
+                <IslandPanel
+                  state={island.state}
+                  sharedCount={island.sharedCount}
+                  hasDraft={island.hasDraft}
+                  stopping={island.stopping}
+                  width={morph.panelWidth}
+                  onOpen={island.openChat}
+                  onStop={island.stop}
+                  onCapture={island.capture}
+                  onAttach={island.attachShared}
+                  onCollapse={island.collapse}
+                  style={morph.panel}
+                  testID="island-panel"
+                />
+              ) : null}
+            </IslandShell>
+          </SchemeOverrideContext.Provider>
         </View>
       ) : null}
       <CaptureSheet />

@@ -40,6 +40,13 @@ def test_layout_lists_entries_and_separators():
     ]
 
 
+def test_layout_children_are_boxed_once():
+    layout = menu_layout([MenuEntry("Open"), MenuEntry("Quit")], 1)
+    children = layout.get_child_value(1).get_child_value(2)
+    for index in range(children.n_children()):
+        assert children.get_child_value(index).get_variant().get_type_string() == "(ia{sv}av)"
+
+
 def test_icon_pixmaps_are_argb_in_network_order(tmp_path):
     svg = tmp_path / "dot.svg"
     svg.write_text('<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><rect width="4" height="4" fill="#ff0000"/></svg>')

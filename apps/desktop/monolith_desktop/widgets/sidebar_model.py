@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from ..api.types import AgentRun, Project
+from ..theme.tokens import SIDEBAR_WIDTH, SIDEBAR_WIDTH_RANGE
 from ..theme.tone import Tone
 from ..util.format import parse_iso
 
@@ -44,6 +45,20 @@ class ProjectItem:
     @property
     def active(self) -> bool:
         return self.running > 0
+
+
+def clamp_sidebar_width(width: float, bounds: tuple[int, int] = SIDEBAR_WIDTH_RANGE) -> int:
+    return round(min(max(width, bounds[0]), bounds[1]))
+
+
+def stored_sidebar_width(value: object, default: int = SIDEBAR_WIDTH) -> int:
+    if isinstance(value, bool) or not isinstance(value, (int, float)) or value != value:
+        return clamp_sidebar_width(default)
+    return clamp_sidebar_width(value)
+
+
+def dragged_sidebar_width(start: int, offset_px: float, zoom: float) -> int:
+    return clamp_sidebar_width(start + offset_px / (zoom or 1.0))
 
 
 def run_title(prompt: str | None, max_chars: int = RUN_TITLE_MAX_CHARS) -> str:

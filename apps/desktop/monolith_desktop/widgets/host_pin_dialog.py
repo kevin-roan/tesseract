@@ -1,32 +1,23 @@
-from gi.repository import Adw, Gtk
+from gi.repository import Adw
 
 from ..context import AppContext
 from ..hostshell.model import pin_error
 from ..strings import HOST_PIN as S
 from .form_dialog import FormDialog
 
-DIALOG_WIDTH = 440
-DIALOG_HEIGHT = 360
+DIALOG_WIDTH = 400
 
 
 class HostPinDialog(FormDialog):
     """Sets the host shell PIN through `host pin --stdin`; the PIN never touches argv or disk in clear."""
 
-    def __init__(self, ctx: AppContext, toast_target: Adw.PreferencesDialog | None = None) -> None:
-        super().__init__(S["title"], S["subtitle"], S["save"], self._save, S["cancel"], DIALOG_WIDTH, DIALOG_HEIGHT)
+    def __init__(self, ctx: AppContext, toast_target: Adw.Dialog | None = None) -> None:
+        super().__init__(S["title"], S["subtitle"], S["save"], self._save, S["cancel"], DIALOG_WIDTH, context=S["context"], icon="host")
         self._ctx = ctx
         self._toast_target = toast_target
         group = self.add_group(description=S["description"])
-        self._pin = self._password_row(group, "pin", S["pin"])
-        self._repeat = self._password_row(group, "repeat", S["repeat"])
-
-    def _password_row(self, group: Adw.PreferencesGroup, key: str, title: str) -> Adw.PasswordEntryRow:
-        row = Adw.PasswordEntryRow(title=title, input_purpose=Gtk.InputPurpose.PIN)
-        row.connect("entry-activated", lambda *_: self.submit())
-        row.connect("changed", lambda *_: self.set_field_error(key, None))
-        group.add(row)
-        self._fields[key] = (row, self._group_labels[group])
-        return row
+        self._pin = self.add_entry(group, "pin", S["pin"], password=True)
+        self._repeat = self.add_entry(group, "repeat", S["repeat"], password=True)
 
     def _save(self) -> None:
         pin, repeat = self._pin.get_text(), self._repeat.get_text()

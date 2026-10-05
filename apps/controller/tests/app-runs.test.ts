@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node
 import { join } from "node:path";
 import { AppRunListSchema, AppRunSchema, RunTargetListSchema, type AppRun, type LogLine, type RunTargetInfo } from "@theone/protocol";
 import { packageExecCommand, packageScriptCommand } from "../src/services/app-runs";
-import { detectProject } from "../src/services/project-detect";
+import { detectProject, detectRunTargetSources, pnpmWorkspacePackages } from "../src/services/project-detect";
 import { installFixture, makeTempDir, removeTempDirs, startTestController, waitFor, writeFiles, type TestController } from "./helpers";
 
 const PUBSPEC = "name: hello\nenvironment:\n  sdk: ^3.5.0\ndependencies:\n  flutter:\n    sdk: flutter\n";
@@ -48,9 +48,15 @@ beforeAll(async () => {
     "flutter_app/android/build.gradle": "",
     "expo/package.json": JSON.stringify({ name: "expo", dependencies: { expo: "1" } }),
     "expo/bun.lock": "{}",
+    "mono/package.json": JSON.stringify({ name: "mono", private: true, workspaces: ["apps/*"] }),
+    "mono/bun.lock": "{}",
+    "mono/apps/api/package.json": JSON.stringify({ name: "api", scripts: { dev: "bun server.js" } }),
+    "mono/apps/mobile/package.json": JSON.stringify({ name: "mobile", dependencies: { expo: "1" } }),
   });
-  mkdirSync(join(projects, "expo", "node_modules", ".bin"), { recursive: true });
-  installFixture(join(projects, "expo", "node_modules", ".bin"), "fake-expo.ts", "expo");
+  for (const app of ["expo", "mono/apps/mobile"]) {
+    mkdirSync(join(projects, app, "node_modules", ".bin"), { recursive: true });
+    installFixture(join(projects, app, "node_modules", ".bin"), "fake-expo.ts", "expo");
+  }
   t = await startTestController({
     workspace,
     env: { THEONE_FLUTTER: installFixture(bin, "fake-flutter.sh", "flutter") },
@@ -82,6 +88,35 @@ describe("run target detection", () => {
     expect(detect(pkg({ dependencies: { "react-native": "1" } })).runTargets).toEqual([]);
     expect(detect({ ...pkg({ dependencies: { "react-native": "1" } }), "android/gradlew": "" }).runTargets).toEqual(["rn-android"]);
     expect(detect(pkg({ devDependencies: { electron: "1" }, scripts: { start: "electron ." } })).runTargets).toEqual(["electron-dev"]);
+  });
+
+  test("app packages of a monorepo", () => {
+    expect(pnpmWorkspacePackages("catalog:\n  zod: ^4\npackages:\n  - 'apps/*'\n  # docs\n  - \"packages/*\" # libs\n  - tools\nonlyBuiltDependencies:\n  - esbuild\n")).toEqual([
+      "apps/*",
+      "packages/*",
+      "tools",
+    ]);
+    const dir = makeTempDir("detect");
+    writeFiles(dir, {
+      "package.json": JSON.stringify({ name: "mono", scripts: { dev: "turbo dev", test: "turbo test" } }),
+      "pnpm-lock.yaml": "",
+      "pnpm-workspace.yaml": "packages:\n  - 'apps/*'\n  - '../outside'\n  - '!apps/ignored'\n",
+      "apps/api/package.json": JSON.stringify({ name: "api", scripts: { dev: "node ." } }),
+      "apps/mobile/package.json": JSON.stringify({ name: "mobile", dependencies: { expo: "1" }, scripts: { test: "vitest" } }),
+      "apps/web/package.json": JSON.stringify({ name: "web", dependencies: { vite: "1" }, scripts: { dev: "vite" } }),
+      "apps/z-native/package.json": JSON.stringify({ name: "native", dependencies: { "react-native": "1" } }),
+      "apps/z-native/android/gradlew": "",
+    });
+    const sources = detectRunTargetSources(dir);
+    expect(sources.map((source) => [source.target, source.dir])).toEqual([
+      ["web-dev", null],
+      ["expo-device", "apps/mobile"],
+      ["expo-android", "apps/mobile"],
+      ["rn-android", "apps/z-native"],
+      ["test", null],
+    ]);
+    expect(sources[1]!.facts.packageManager).toBe("pnpm");
+    expect(detectRunTargetSources(join(dir, "apps", "mobile")).map((source) => source.dir)).toEqual([null, null, null]);
   });
 
   test("package manager commands", () => {
@@ -239,6 +274,21 @@ describe("app runs", () => {
     writeFileSync(join(projects, "expo", "no-metro-socket"), "");
     const failed = await t.json("POST", `/v1/app-runs/${run.id}/actions`, { action: "restart" });
     expect(failed.status).toBe(502);
+    expect((await t.json<AppRun>("DELETE", `/v1/app-runs/${run.id}`)).body.state).toBe("stopped");
+  });
+
+  test("a monorepo runs its app package in the package folder", async () => {
+    const targets = RunTargetListSchema.parse((await t.json("GET", "/v1/projects/mono/run-targets")).body);
+    expect(targets.map((target) => [target.target, target.dir, target.label])).toEqual([
+      ["expo-device", "apps/mobile", "Expo on the phone · apps/mobile"],
+      ["expo-android", "apps/mobile", "Android emulator · apps/mobile"],
+    ]);
+    const run = AppRunSchema.parse((await start("mono", { target: "expo-device" })).body);
+    expect(run.dir).toBe("apps/mobile");
+    const ready = await runState(run.id, (current) => current.state === "ready");
+    expect(ready.dir).toBe("apps/mobile");
+    const process = (await t.json<{ cwd: string }>("GET", `/v1/processes/${run.processIds[0]}`)).body;
+    expect(process.cwd).toBe(join(projects, "mono", "apps", "mobile"));
     expect((await t.json<AppRun>("DELETE", `/v1/app-runs/${run.id}`)).body.state).toBe("stopped");
   });
 

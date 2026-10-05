@@ -18,6 +18,7 @@ export const Circle = Passthrough;
 export const Oval = Passthrough;
 export const Path = Passthrough;
 export const Line = () => null;
+export const Points = () => null;
 export const Blur = () => null;
 export const BlurMask = () => null;
 export const LinearGradient = () => null;

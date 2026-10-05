@@ -25,6 +25,7 @@ import {
   AgentStreamMessageSchema,
   appendQuery,
   ArtifactListSchema,
+  BuildOutputListSchema,
   ArtifactSchema,
   BrowserStatusSchema,
   DisplayWindowListSchema,
@@ -99,6 +100,7 @@ import {
   type ArchiveAgentRuns,
   type AgentStreamMessage,
   type Artifact,
+  type BuildOutput,
   type SendArtifact,
   type ShareArtifact,
   type TaildropTargets,
@@ -121,6 +123,7 @@ import {
   type ClaudeAuthStatus,
   type SetDefaultClaudeAccount,
   type SetProjectClaudeAccount,
+  type RenameProject,
   type ClaudeImport,
   type ClaudeImportResult,
   type Identity,
@@ -350,6 +353,10 @@ export class TheOneClient {
     return this.request("PUT", restPaths.projectClaudeAccount(id), { read: json(ProjectSchema), body, options });
   }
 
+  renameProject(id: string, body: RenameProject, options?: RequestOptions): Promise<Project> {
+    return this.request("PUT", restPaths.projectName(id), { read: json(ProjectSchema), body, options });
+  }
+
   importClaude(body: ClaudeImport, options?: RequestOptions): Promise<ClaudeImportResult> {
     return this.request("POST", restPaths.claudeImport(), { read: json(ClaudeImportResultSchema), body, options });
   }
@@ -514,6 +521,10 @@ export class TheOneClient {
 
   shareArtifact(body: ShareArtifact, options?: RequestOptions): Promise<Artifact> {
     return this.request("POST", restPaths.artifacts(), { read: json(ArtifactSchema), body, options });
+  }
+
+  listBuildOutputs(filter?: ProjectFilter, options?: RequestOptions): Promise<BuildOutput[]> {
+    return this.request("GET", restPaths.buildOutputs(filter), { read: json(BuildOutputListSchema), options });
   }
 
   deleteArtifact(id: string, options?: RequestOptions): Promise<Artifact> {
@@ -692,6 +703,11 @@ export class TheOneClient {
   async artifactDownloadUrl(id: string, options?: RequestOptions): Promise<string> {
     const { ticket } = await this.createTicket(options);
     return this.httpUrl(restPaths.artifactDownload(id, { ticket }));
+  }
+
+  async buildOutputDownloadUrl(output: Pick<BuildOutput, "projectId" | "path">, options?: RequestOptions): Promise<string> {
+    const { ticket } = await this.createTicket(options);
+    return this.httpUrl(restPaths.buildOutputDownload(output.projectId, { path: output.path, ticket }));
   }
 
   /**

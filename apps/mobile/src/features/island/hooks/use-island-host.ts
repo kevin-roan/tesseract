@@ -7,12 +7,11 @@ import { useSettingsStore } from "@/features/settings/store/settings-store";
 
 import { useIslandStore } from "../store/island-store";
 import { capsuleTitle } from "../utils/format";
-import { hasLiveWork, isBuildCommand, liveCount } from "../utils/state";
+import { hasLiveWork, isBuildCommand } from "../utils/state";
 import { useIslandActions } from "./use-island-actions";
 import { useIslandDispatch } from "./use-island-dispatch";
 import { useIslandState } from "./use-island-state";
 import { useLiveActivity } from "./use-live-activity";
-import { useNow } from "./use-now";
 
 export type IslandHostState = ReturnType<typeof useIslandHost>;
 
@@ -42,30 +41,28 @@ export function useIslandHost() {
 
   const live = hasLiveWork(state);
   const visible = (live && placement !== "hidden") || sharedCount > 0 || hasDraft;
-  const now = useNow(visible && expanded);
+  const runId = state.runs[0]?.id ?? null;
+  const commandId = runId ? null : (state.commands[0]?.id ?? null);
 
   const collapse = useCallback(() => setExpanded(false), [setExpanded]);
-  const openRun = useCallback(
-    (id: string) => {
-      setExpanded(false);
-      nav.agentRun(id);
-    },
-    [nav, setExpanded],
-  );
-  const openHub = useCallback(() => {
+  const openChat = useCallback(() => {
     setExpanded(false);
-    nav.sandboxHub();
-  }, [nav, setExpanded]);
+    if (runId) nav.agentRun(runId);
+    else nav.newAgentRun();
+  }, [runId, nav, setExpanded]);
   const capture = useCallback(() => openCapture(), [openCapture]);
 
   const { mutate: cancelRunMutate } = cancelRun;
   const { mutate: cancelBuildMutate } = cancelBuild;
   const { mutate: stopProcessMutate } = stopProcess;
-  const stopRun = useCallback((id: string) => cancelRunMutate(id), [cancelRunMutate]);
-  const stopCommand = useCallback(
-    (id: string) => (isBuildCommand(id, builds.data) ? cancelBuildMutate(id) : stopProcessMutate(id)),
-    [builds.data, cancelBuildMutate, stopProcessMutate],
-  );
+  const stop = useCallback(() => {
+    if (runId) cancelRunMutate(runId);
+    else if (commandId) (isBuildCommand(commandId, builds.data) ? cancelBuildMutate : stopProcessMutate)(commandId);
+  }, [runId, commandId, builds.data, cancelRunMutate, cancelBuildMutate, stopProcessMutate]);
+
+  const stoppingRunId = cancelRun.isPending ? (cancelRun.variables ?? null) : null;
+  const stoppingCommandId = cancelBuild.isPending ? (cancelBuild.variables ?? null) : stopProcess.isPending ? (stopProcess.variables ?? null) : null;
+  const stopping = runId ? stoppingRunId === runId : commandId !== null && stoppingCommandId === commandId;
 
   const title = useMemo(
     () => capsuleTitle(state.runs.length, state.commands.length, sharedCount, hasDraft),
@@ -74,22 +71,18 @@ export function useIslandHost() {
 
   return {
     state,
-    now,
     visible: visible && !captureOpen && !attachOpen,
     expanded,
     title,
     dock,
     moveTo: setDock,
-    count: liveCount(state),
     sharedCount,
-    stoppingRunId: cancelRun.isPending ? cancelRun.variables ?? null : null,
-    stoppingCommandId: cancelBuild.isPending ? cancelBuild.variables ?? null : stopProcess.isPending ? stopProcess.variables ?? null : null,
+    hasDraft,
+    stopping,
     toggle: toggleExpanded,
     collapse,
-    openRun,
-    openHub,
-    stopRun,
-    stopCommand,
+    openChat,
+    stop,
     capture,
     attachShared: attachQueuedShared,
   };

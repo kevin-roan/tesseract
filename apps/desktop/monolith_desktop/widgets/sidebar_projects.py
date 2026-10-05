@@ -4,12 +4,14 @@ from typing import TYPE_CHECKING
 from gi.repository import Adw, Gtk
 
 from ..strings import SIDEBAR
+from ..theme.icons import resolve_icon
 from ..theme.tokens import SIDEBAR_RUN_INDENT
 from ..util.format import format_relative_time
 from .icon import Icon
 from .motion import revealer
 from .sidebar_model import ProjectItem, RunItem, WorkspaceState, project_items, workspace_state
 from .text import Text
+from .titlebar import caret
 from .tone import ToneBinding
 
 if TYPE_CHECKING:
@@ -34,6 +36,35 @@ class ActivityIndicator(Gtk.Stack):
     def update(self, running: bool, tone: str = "neutral") -> None:
         self.set_visible_child_name("running" if running else "idle")
         self._tone.set(tone)
+
+
+class SidebarSection(Gtk.Box):
+    """A Linear sidebar group: a small "Title ▾" toggle that folds its content, with optional trailing actions."""
+
+    def __init__(self, title: str, content: Gtk.Widget, actions: list[Gtk.Widget] | None = None) -> None:
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, css_classes=["to-side-group"])
+        label = Gtk.Box(spacing=6)
+        label.append(Text(title, "overline", "textSecondary"))
+        self._caret = caret()
+        label.append(self._caret)
+        self._toggle = Gtk.Button(child=label, css_classes=["to-side-section-toggle"], halign=Gtk.Align.START, hexpand=True)
+        self._toggle.connect("clicked", lambda *_: self.set_expanded(not self.expanded))
+        header = Gtk.Box(css_classes=["to-side-section"])
+        header.append(self._toggle)
+        for action in actions or []:
+            action.add_css_class("to-side-section-action")
+            header.append(action)
+        self.append(header)
+        self._revealer = revealer(child=content, reveal_child=True)
+        self.append(self._revealer)
+
+    @property
+    def expanded(self) -> bool:
+        return self._revealer.get_reveal_child()
+
+    def set_expanded(self, expanded: bool) -> None:
+        self._revealer.set_reveal_child(expanded)
+        self._caret.set_from_icon_name(resolve_icon("caret-down" if expanded else "caret-right"))
 
 
 class RunButton(Gtk.Button):
@@ -79,26 +110,24 @@ class ProjectEntry(Gtk.Box):
         self._name = ""
 
         self._indicator = ActivityIndicator("project" if key else "agents", 16)
-        self._label = Text("", "label", "text")
-        self._label.set_hexpand(True)
+        self._label = Text("", "label")
         self._lock = Icon("confidential", "xs", "textTertiary")
         self._lock.set_valign(Gtk.Align.CENTER)
         self._lock.set_tooltip_text(SIDEBAR["confidential"])
         self._lock.set_visible(False)
-        self._running = Text("", "caption")
-        self._running.add_css_class("to-side-running")
+        self._running = Text("", "caption", "textSecondary")
+        self._running.add_css_class("to-side-count")
         self._running.set_valign(Gtk.Align.CENTER)
-        self._running.set_xalign(0.5)
-        main_box = Gtk.Box(spacing=10)
-        for widget in (self._indicator, self._label, self._lock, self._running):
+        main_box = Gtk.Box(spacing=8)
+        for widget in (self._indicator, self._label, self._lock, Gtk.Box(hexpand=True), self._running):
             main_box.append(widget)
         self._main = Gtk.Button(child=main_box, hexpand=True, css_classes=["to-side-row-main"])
         self._main.connect("clicked", lambda *_: on_project(key) if key else self._toggle())
 
-        self._add = Gtk.Button(child=Icon("add", "xs"), css_classes=["to-side-row-action", "to-side-add"], valign=Gtk.Align.CENTER)
+        self._add = Gtk.Button(child=Icon("add", "xs"), css_classes=["to-side-row-action", "to-side-hover"], valign=Gtk.Align.CENTER)
         self._add.connect("clicked", lambda *_: on_new(key))
-        self._chevron_icon = Icon("collapse", "xs")
-        self._chevron = Gtk.Button(child=self._chevron_icon, css_classes=["to-side-row-action"], valign=Gtk.Align.CENTER)
+        self._caret = caret("caret-right")
+        self._chevron = Gtk.Button(child=self._caret, css_classes=["to-side-row-action", "to-side-hover"], valign=Gtk.Align.CENTER)
         self._chevron.connect("clicked", lambda *_: self._toggle())
 
         row = Gtk.Box(css_classes=["to-side-row"])
@@ -121,7 +150,7 @@ class ProjectEntry(Gtk.Box):
 
     def set_expanded(self, expanded: bool) -> None:
         self._revealer.set_reveal_child(expanded)
-        self._chevron_icon.set_icon("expand" if expanded else "collapse")
+        self._caret.set_from_icon_name(resolve_icon("caret-down" if expanded else "caret-right"))
         tooltip = SIDEBAR["collapse" if expanded else "expand"]
         self._chevron.set_tooltip_text(tooltip)
         self._chevron.update_property([Gtk.AccessibleProperty.LABEL], [tooltip])
@@ -130,8 +159,9 @@ class ProjectEntry(Gtk.Box):
         if item.name != self._name:
             self._name = item.name
             self._label.set_label(item.name)
-            open_label = SIDEBAR["open_project"].format(name=item.name) if item.id else item.name
+            open_label = SIDEBAR["open_project"].format(name=item.name) if item.id else None
             self._main.set_tooltip_text(open_label)
+            self._main.update_property([Gtk.AccessibleProperty.LABEL], [open_label or item.name])
             self._add.set_tooltip_text(SIDEBAR["new_in_project"].format(name=item.name))
             self._add.update_property([Gtk.AccessibleProperty.LABEL], [SIDEBAR["new_in_project"].format(name=item.name)])
         self._lock.set_visible(item.confidential)
@@ -157,26 +187,20 @@ class ProjectEntry(Gtk.Box):
         self._on_toggle(self.key, self.expanded)
 
 
-class SidebarProjects(Gtk.Box):
+class SidebarProjects(SidebarSection):
     def __init__(self, ctx: "AppContext", on_project_selected: Callable[[str | None], None] | None = None) -> None:
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=2, css_classes=["to-side-projects"])
         self._ctx = ctx
         self._on_project_selected = on_project_selected
         self._entries: dict[ProjectKey, ProjectEntry] = {}
         self._expanded: dict[ProjectKey, bool] = {}
 
-        header = Gtk.Box(spacing=4, css_classes=["to-side-section"])
-        title = Text(SIDEBAR["projects"], "overline", "textTertiary")
-        title.set_hexpand(True)
-        header.append(title)
         create = Gtk.Button(child=Icon("add", "xs"), css_classes=["to-side-row-action"], tooltip_text=SIDEBAR["new_project"])
         create.update_property([Gtk.AccessibleProperty.LABEL], [SIDEBAR["new_project"]])
         create.connect("clicked", lambda *_: ctx.navigate("projects", {"create": True}))
-        header.append(create)
         self._create = create
-        self.append(header)
 
-        self._status = Gtk.Box(spacing=10, css_classes=["to-side-status"])
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1, css_classes=["to-side-projects"])
+        self._status = Gtk.Box(spacing=8, css_classes=["to-side-status"])
         self._spinner = Adw.Spinner(width_request=14, height_request=14)
         self._message = Text("", "caption", "textTertiary", wrap=True, lines=3)
         self._message.set_hexpand(True)
@@ -184,11 +208,12 @@ class SidebarProjects(Gtk.Box):
         self._status.append(self._message)
         self._status_action = Gtk.Button(label=SIDEBAR["create_project"], css_classes=["to-side-link"], halign=Gtk.Align.START)
         self._status_action.connect("clicked", lambda *_: ctx.navigate("projects", {"create": True}))
-        self.append(self._status)
-        self.append(self._status_action)
+        content.append(self._status)
+        content.append(self._status_action)
 
         self._list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1)
-        self.append(self._list)
+        content.append(self._list)
+        super().__init__(SIDEBAR["projects"], content, [create])
 
         ctx.store.projects.bind(self, lambda _value: self._render())
         ctx.store.agent_runs.bind(self, lambda _value: self._render())

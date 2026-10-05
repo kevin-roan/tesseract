@@ -2,17 +2,15 @@ from gi.repository import Gtk
 
 from ...api.errors import describe_error
 from ...api.types import GitCommit, GitDetails, GitFileStatus, Project
-from ...util.format import short_sha
+from ...util.format import join_meta, short_sha
 from ...widgets.feedback import Notice
 from ...widgets.keyed_list import KeyedList
 from ...widgets.record_row import RecordRow
-from ...widgets.rows import KeyValueList
-from ...widgets.section import Section
-from ...widgets.surface import Surface
+from ...widgets.list_view import ListGroup
 from .labels import GIT
-from .model import commit_meta, dirty_badge, git_file_code, git_file_kind, git_file_tone, sync_label
+from .model import commit_meta, git_file_code, git_file_kind, git_file_tone, sync_label
 
-TAB_SPACING = 28
+TAB_SPACING = 16
 
 
 class GitTab:
@@ -21,22 +19,18 @@ class GitTab:
         self._notice = Notice("", tone="warning")
         self._notice.set_visible(False)
         self.widget.append(self._notice)
-        self._summary = KeyValueList()
-        card = Surface(compact=True)
-        card.append(self._summary)
-        self._summary_card = card
-        self.widget.append(card)
         self._files = KeyedList(lambda: RecordRow(None, monospace_title=True), self._update_file)
-        self._files_section = Section(GIT["files"], self._files, empty_label=GIT["files_empty"])
+        self._files.add_css_class("divided")
+        self._files_section = ListGroup(GIT["files"], self._files, empty_label=GIT["files_empty"], icon="branch")
         self.widget.append(self._files_section)
         self._commits = KeyedList(lambda: RecordRow("commit"), self._update_commit)
-        self._commits_section = Section(GIT["log"], self._commits, empty_label=GIT["log_empty"])
+        self._commits.add_css_class("divided")
+        self._commits_section = ListGroup(GIT["log"], self._commits, empty_label=GIT["log_empty"], icon="commit")
         self.widget.append(self._commits_section)
 
     def render(self, project: Project | None, details: GitDetails | None, error: BaseException | None) -> None:
         summary = (project or {}).get("git")
         has_git = summary is not None
-        self._summary_card.set_visible(has_git)
         self._files_section.set_visible(has_git)
         self._commits_section.set_visible(has_git)
         self._notice.set_visible(error is not None or not has_git)
@@ -49,12 +43,9 @@ class GitTab:
         ahead = (details or summary).get("ahead", 0)
         behind = (details or summary).get("behind", 0)
         files = (details or {}).get("files", [])
-        badge = dirty_badge(summary, len(files) or None)
-        self._summary.set_rows([
-            (GIT["branch"], branch),
-            (GIT["upstream"], sync_label(ahead, behind) or GIT["in_sync"]),
-            (GIT["status"], badge[0] if badge else GIT["clean"]),
-        ])
+        self._files_section.header.set_subtitle(
+            join_meta(branch, sync_label(ahead, behind) or GIT["in_sync"], None if files else GIT["clean"])
+        )
         if details is None:
             self._files_section.set_loading(error is None)
             self._commits_section.set_loading(error is None)
@@ -63,9 +54,11 @@ class GitTab:
         self._commits_section.set_loading(False)
         self._files.sync((file["path"], file) for file in files)
         self._files_section.set_empty(not files)
+        self._files_section.set_count(len(files))
         commits = details.get("log", [])
         self._commits.sync((commit["sha"], commit) for commit in commits)
         self._commits_section.set_empty(not commits)
+        self._commits_section.set_count(len(commits))
 
     def _update_file(self, row: RecordRow, file: GitFileStatus) -> None:
         row.set_code(git_file_code(file), git_file_tone(file))

@@ -19,6 +19,7 @@ jest.mock("@/lib/query-client", () => ({
   bindQueryManagers: jest.fn(),
 }));
 jest.mock("@/features/sandbox/hooks/use-sandbox-events", () => ({ useSandboxEvents: () => mockEvents() }));
+jest.mock("@/features/sandbox/hooks/use-resource-recorder", () => ({ useResourceRecorder: jest.fn() }));
 jest.mock("expo-font", () => ({ useFonts: jest.fn() }));
 jest.mock("expo-splash-screen", () => ({ preventAutoHideAsync: jest.fn(), hideAsync: jest.fn() }));
 jest.mock("expo-router", () => {

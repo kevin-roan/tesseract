@@ -1,11 +1,19 @@
 import type { Artifact, ArtifactSource } from "@theone/protocol";
 
 import type { ChoiceOption } from "@/components/choice-group";
+import type { SegmentedOption } from "@/components/segmented-pills";
 import { newestFirst } from "@/features/sandbox/utils/collections";
 
 import { ALL_PROJECTS } from "./constants";
 
 export type SourceFilter = "all" | ArtifactSource;
+
+export type FilesView = "shared" | "builds";
+
+export const FILES_VIEWS: readonly SegmentedOption<FilesView>[] = [
+  { value: "shared", label: "Shared files" },
+  { value: "builds", label: "Project builds" },
+];
 
 export type FileFilters = { projectId: string | null; source: SourceFilter };
 
@@ -30,10 +38,10 @@ export function filterFiles(artifacts: readonly Artifact[], { projectId, source 
 }
 
 export function projectFilterOptions(
-  artifacts: readonly Artifact[],
+  files: readonly { projectId: string }[],
   names: ReadonlyMap<string, string>,
 ): ChoiceOption[] {
-  const ids = [...new Set(artifacts.map((artifact) => artifact.projectId))];
+  const ids = [...new Set(files.map((file) => file.projectId))];
   if (ids.length < 2) return [];
   const options = ids
     .map((id) => ({ id, label: names.get(id) ?? id }))

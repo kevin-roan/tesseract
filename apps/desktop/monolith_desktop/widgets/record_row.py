@@ -3,13 +3,28 @@ from dataclasses import dataclass
 
 from gi.repository import Gtk
 
-from ..theme.tone import Tone
+from ..theme.tone import TONE_COLORS, Tone
 from .badges import StatusBadge
 from .buttons import ActionButton, IconButton
-from .icon import IconBadge
+from .icon import Icon
+from .list_view import HoverRow
 from .progress import ProgressBar
 from .text import Text
 from .tone import ToneBinding
+
+TITLE_CHARS = 56
+STATUS_GLYPHS: dict[Tone, str] = {
+    "neutral": "status-todo",
+    "info": "status-progress",
+    "success": "status-done",
+    "warning": "status-progress",
+    "danger": "status-canceled",
+}
+
+
+def status_glyph(tone: Tone) -> tuple[str, str]:
+    """The Linear status circle and its color for a tone."""
+    return STATUS_GLYPHS[tone], TONE_COLORS[tone].foreground if tone != "neutral" else "textTertiary"
 
 
 @dataclass(frozen=True)
@@ -24,43 +39,57 @@ class RowAction:
     labeled: bool = False
 
 
-class RecordRow(Gtk.Box):
+class RecordRow(HoverRow):
+    """A single-line Linear list row: glyph, code, title, tertiary detail, right-aligned meta and actions.
+
+    Icon-only actions float in on hover; rows with a labeled action keep all of them visible.
+    """
+
     def __init__(self, icon: str | None = None, monospace_title: bool = False, monospace_subtitle: bool = False) -> None:
-        super().__init__(spacing=12, css_classes=["to-record-row"])
+        self._row = Gtk.Box(spacing=10, css_classes=["to-record-row"])
+        super().__init__(self._row)
         self._on_activate: Callable[[], None] | None = None
-        self._badge = IconBadge(icon or "info", "sm")
-        self._badge.set_valign(Gtk.Align.CENTER)
-        self._badge.set_hexpand(False)
-        self._badge.set_visible(icon is not None)
+        self._icon_name = icon
+        self._icon = Icon(icon or "info", "sm", "textSecondary")
+        self._icon.set_valign(Gtk.Align.CENTER)
+        self._icon.set_visible(icon is not None)
         self._code = Text("", "code", xalign=0.5)
         self._code.add_css_class("to-record-code")
-        self._code.add_css_class("to-tone-bg")
         self._code.add_css_class("to-tone-fg")
         self._code.set_valign(Gtk.Align.CENTER)
         self._code.set_visible(False)
         self._code_tone = ToneBinding("neutral", self._code)
-        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, hexpand=True, valign=Gtk.Align.CENTER)
+        body = Gtk.Box(spacing=10, hexpand=True, valign=Gtk.Align.CENTER)
         self._title = Text("", "code" if monospace_title else "label")
-        self._subtitle = Text("", "code" if monospace_subtitle else "bodySmall", "textSecondary")
-        self._meta = Text("", "caption", "textTertiary")
+        self._title.add_css_class("to-record-title")
+        self._subtitle = Text("", "code" if monospace_subtitle else "body", "textTertiary")
+        self._subtitle.set_hexpand(True)
+        self._subtitle.set_max_width_chars(1)
+        body.append(self._title)
+        body.append(self._subtitle)
         self._progress = ProgressBar(None, "info")
         self._progress.set_visible(False)
-        self._progress.set_margin_top(6)
-        for widget in (self._title, self._subtitle, self._meta, self._progress):
-            body.append(widget)
+        self._progress.set_valign(Gtk.Align.CENTER)
+        self._progress.set_hexpand(False)
+        self._progress.add_css_class("to-record-progress")
+        self._meta = Text("", "caption", "textTertiary", xalign=1.0)
+        self._meta.set_max_width_chars(48)
+        self._meta.set_valign(Gtk.Align.CENTER)
         self._status = StatusBadge("")
         self._status.set_visible(False)
         self._status.set_valign(Gtk.Align.CENTER)
-        self._actions = Gtk.Box(spacing=2, valign=Gtk.Align.CENTER)
+        self._actions = Gtk.Box(spacing=2, valign=Gtk.Align.CENTER, css_classes=["to-row-actions"])
         self._action_ids: list[str] = []
         self._handlers: list[tuple[Gtk.Button, int]] = []
-        for widget in (self._badge, self._code, body, self._status, self._actions):
-            self.append(widget)
+        for widget in (self._icon, self._code, body, self._progress, self._meta, self._status, self._actions):
+            self._row.append(widget)
 
-    def set_icon(self, icon: str | None) -> None:
-        self._badge.set_visible(icon is not None)
+    def set_icon(self, icon: str | None, color: str = "textSecondary") -> None:
+        self._icon_name = icon
+        self._icon.set_visible(icon is not None)
         if icon:
-            self._badge.set_icon(icon)
+            self._icon.set_icon(icon)
+            self._icon.set_color(color)
 
     def set_code(self, code: str | None, tone: Tone = "neutral") -> None:
         self._code.set_text_value(code)
@@ -70,9 +99,20 @@ class RecordRow(Gtk.Box):
         self._title.set_label(title)
         self._title.set_tooltip_text(title if len(title) > 48 else None)
         self._subtitle.set_text_value(subtitle)
+        self._subtitle.set_tooltip_text(subtitle if subtitle and len(subtitle) > 48 else None)
         self._meta.set_text_value(meta)
+        self._meta.set_tooltip_text(meta if meta and len(meta) > 48 else None)
+        self._title.set_hexpand(not subtitle)
+        self._title.set_max_width_chars(TITLE_CHARS if subtitle else 1)
 
-    def set_status(self, label: str | None, tone: Tone = "neutral") -> None:
+    def set_status(self, label: str | None, tone: Tone = "neutral", glyph: bool = False) -> None:
+        """Show the status as a hairline pill, or (`glyph`) as Linear's colored status circle in front of the title."""
+        if glyph:
+            self._status.set_visible(False)
+            icon, color = status_glyph(tone)
+            self.set_icon(icon, color)
+            self._icon.set_tooltip_text(label)
+            return
         self._status.set_visible(bool(label))
         if label:
             self._status.update(label, tone)
@@ -87,18 +127,24 @@ class RecordRow(Gtk.Box):
             self._rebind(actions)
             return
         self._action_ids = ids
-        while (child := self._actions.get_first_child()) is not None:
-            self._actions.remove(child)
+        for box in (self._actions, self.hover_actions):
+            while (child := box.get_first_child()) is not None:
+                box.remove(child)
         self._handlers = []
+        target = self._actions if any(a.labeled for a in actions) else self.hover_actions
         for action in actions:
             button = ActionButton(action.label, None, "secondary", action.icon) if action.labeled else IconButton(action.icon, action.label)
             button.set_sensitive(action.sensitive)
+            button.add_css_class("to-row-action")
+            if action.labeled:
+                button.add_css_class("labeled")
             if action.destructive:
                 button.add_css_class("to-danger-button")
             if action.active:
                 button.add_css_class("to-active-button")
             self._handlers.append((button, button.connect("clicked", lambda *_, cb=action.on_activate: cb())))
-            self._actions.append(button)
+            target.append(button)
+        self.sync_hover_actions()
 
     def _rebind(self, actions: list[RowAction]) -> None:
         rebound = []

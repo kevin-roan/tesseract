@@ -20,11 +20,19 @@ SyncRequestKind = Literal["pull", "revert", "get"]
 SyncFileMode = Literal["100644", "100755", "120000"]
 SyncRequestStatus = Literal["pending", "claimed", "applied", "failed", "cancelled"]
 SyncSource = Literal["mobile", "desktop", "cli"]
+RunTarget = Literal[
+    "web-dev", "expo-device", "expo-web", "expo-android", "rn-android",
+    "flutter-web", "flutter-linux", "flutter-android", "electron-dev", "test",
+]
+AppRunState = Literal["starting", "ready", "failed", "stopped", "exited"]
+AppViewerKind = Literal["url", "deeplink", "display", "android", "none"]
+EmulatorState = Literal["unavailable", "stopped", "starting", "running", "stopping", "failed"]
 
 BUILD_TARGETS: tuple[str, ...] = ("electron-linux", "electron-windows", "android-apk", "web", "script")
 BUILD_PROFILES: tuple[str, ...] = ("debug", "release")
 FINAL_BUILD_STATES: tuple[str, ...] = ("succeeded", "failed", "cancelled")
 LIVE_PROCESS_STATES: tuple[str, ...] = ("starting", "running")
+LIVE_APP_RUN_STATES: tuple[str, ...] = ("starting", "ready")
 ATTENTION_KINDS: tuple[str, ...] = ("needs_input", "permission")
 ARTIFACT_SOURCES: tuple[str, ...] = ("build", "agent")
 
@@ -59,6 +67,19 @@ class DisplayStatus(TypedDict):
     height: int | None
     vnc: VncStatus
     webPath: str
+
+
+class DisplayWindow(TypedDict):
+    id: str
+    title: str
+    app: str | None
+    pid: int | None
+    active: bool
+    minimized: bool
+
+
+class DisplayWindowList(TypedDict):
+    windows: list[DisplayWindow]
 
 
 class CpuResources(TypedDict):
@@ -299,11 +320,62 @@ class CreateProjectResponse(TypedDict):
     processId: NotRequired[str]
 
 
+class DeletedProject(TypedDict):
+    id: str
+    trashPath: str
+
+
 class LogLine(TypedDict):
     seq: int
     ts: str
     stream: LogStream
     text: str
+
+
+class RunTargetInfo(TypedDict):
+    target: RunTarget
+    label: str
+    dir: str | None
+    available: bool
+    reason: str | None
+    viewer: AppViewerKind
+    actions: list[str]
+
+
+class AppRun(TypedDict):
+    id: str
+    projectId: str
+    target: RunTarget
+    dir: str | None
+    state: AppRunState
+    port: int | None
+    processIds: list[str]
+    viewer: dict[str, Any] | None
+    actions: list[str]
+    error: str | None
+    startedAt: str
+    readyAt: str | None
+    endedAt: str | None
+
+
+class EmulatorInfo(TypedDict):
+    state: EmulatorState
+    avd: str | None
+    serial: str | None
+    managed: bool
+    isolated: bool
+    width: int | None
+    height: int | None
+    startedAt: str | None
+    error: str | None
+
+
+class SandboxAndroidStatus(TypedDict):
+    linked: bool
+    hostId: str | None
+    emulator: EmulatorInfo | None
+    adbSerial: str | None
+    adbConnected: bool
 
 
 class ProcessInfo(TypedDict):
@@ -348,6 +420,15 @@ class Artifact(TypedDict):
     agentRunId: str | None
     note: str | None
     createdAt: str
+
+
+class BuildOutput(TypedDict):
+    projectId: str
+    path: str
+    fileName: str
+    sizeBytes: int
+    platform: str
+    modifiedAt: str
 
 
 class TaildropTarget(TypedDict):
@@ -401,10 +482,24 @@ class AgentUsage(TypedDict):
     totalTokens: int
 
 
+UploadKind = Literal["image", "pdf", "audio", "file"]
+
+
+class Upload(TypedDict):
+    id: str
+    name: str
+    mimeType: str
+    kind: UploadKind
+    sizeBytes: int
+    path: str
+    createdAt: str
+
+
 class AgentRun(TypedDict):
     id: str
     projectId: str | None
     prompt: str
+    attachments: NotRequired[list[Upload]]
     sessionId: str | None
     state: AgentRunState
     startedAt: str
@@ -689,4 +784,5 @@ SERVER_EVENT_TYPES: tuple[str, ...] = (
     "agent.deleted",
     "inbox.updated",
     "project.updated",
+    "project.deleted",
 )

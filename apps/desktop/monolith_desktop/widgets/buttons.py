@@ -26,7 +26,7 @@ class ActionButton(Gtk.Button):
         tooltip: str | None = None,
     ) -> None:
         super().__init__(css_classes=list(_VARIANT_CLASSES[variant]), valign=Gtk.Align.CENTER)
-        content = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER)
+        content = Gtk.Box(spacing=6, halign=Gtk.Align.CENTER)
         self._icon = Icon(icon or "add", "sm")
         self._icon.set_visible(icon is not None)
         self._label = Text(label, "label", lines=1)
@@ -39,8 +39,16 @@ class ActionButton(Gtk.Button):
         if on_activate:
             self.connect("clicked", lambda *_: on_activate())
 
+    @property
+    def label(self) -> Gtk.Label:
+        return self._label
+
     def set_label_text(self, label: str) -> None:
         self._label.set_label(label)
+
+    def set_icon(self, icon: str) -> None:
+        self._icon.set_icon(icon)
+        self._icon.set_visible(True)
 
 
 class IconButton(Gtk.Button):
@@ -62,9 +70,9 @@ class Chip(Gtk.ToggleButton):
         on_toggled: Callable[[bool], None] | None = None,
     ) -> None:
         super().__init__(active=selected, css_classes=["to-chip"], valign=Gtk.Align.CENTER)
-        content = Gtk.Box(spacing=4)
+        content = Gtk.Box(spacing=6)
         if icon:
-            content.append(Icon(icon, "sm"))
+            content.append(Icon(icon, "xs"))
         text = Text(label, "label")
         text.remove_css_class("to-fg-text")
         content.append(text)

@@ -28,6 +28,7 @@ from .toolbar import (
     menu_button,
     target_menu,
 )
+from .windows import WindowsPopover, windows_button
 
 
 class _ViewEvents(RfbEvents):
@@ -137,7 +138,10 @@ class DisplayPage(Page):
         )
         keys = target_menu(self._action("keys"), KEY_LABELS.items())
         self._keys_button = menu_button("keyboard", ACTIONS["keys"], keys)
+        self._windows = WindowsPopover(self.ctx, self.view.grab_focus)
+        self._windows_button = windows_button(self._windows)
         toolbar.add(self._scale)
+        toolbar.add(self._windows_button)
         toolbar.add(action_toggle(self._action("view_only"), model.VIEW_ONLY_ICON, ACTIONS["view_only"]), secondary=True)
         toolbar.add(action_toggle(self._action("clipboard"), model.CLIPBOARD_ICON, ACTIONS["clipboard"]), secondary=True)
         toolbar.add(self._keys_button, secondary=True)
@@ -195,6 +199,9 @@ class DisplayPage(Page):
                 action.set_enabled(action_id in enabled)
         self._scale.set_sensitive("scale" in enabled)
         self._keys_button.set_sensitive("keys" in enabled)
+        self._windows_button.set_sensitive("windows" in enabled)
+        if "windows" not in enabled:
+            self._windows.popdown()
 
     def on_shown(self) -> None:
         self._shown = True

@@ -5,6 +5,7 @@ from gi.repository import Gtk
 from ..theme.tone import Tone
 from .badges import StatusBadge
 from .buttons import IconButton
+from .icon import Icon
 from .log_view import LogView
 from .text import Text
 
@@ -20,8 +21,9 @@ class LogPanel(Gtk.Box):
         jump_label: str = "Jump to latest output",
         min_height: int = PANEL_LOG_HEIGHT,
     ) -> None:
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8, css_classes=["to-log-panel"])
-        header = Gtk.Box(spacing=8)
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6, css_classes=["to-log-panel"])
+        header = Gtk.Box(spacing=8, css_classes=["to-log-panel-header"])
+        header.append(Icon("terminal", "xs", "textTertiary"))
         self._title = Text("", "label")
         self._title.set_hexpand(True)
         self._status = StatusBadge("")
@@ -29,7 +31,9 @@ class LogPanel(Gtk.Box):
         header.append(self._title)
         header.append(self._status)
         if on_close:
-            header.append(IconButton("close", close_label, on_close))
+            close = IconButton("close", close_label, on_close)
+            close.add_css_class("to-row-action")
+            header.append(close)
         self.append(header)
         self._notice = Text("", "caption", "textTertiary", wrap=True, lines=None)
         self._notice.set_visible(False)

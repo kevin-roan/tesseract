@@ -8,8 +8,8 @@ export default function createStyles(theme: Theme, maxLines: number) {
   return StyleSheet.create({
     card: {
       gap: theme.spacing.sm,
-      padding: theme.spacing.md,
-      borderRadius: theme.radius.sheet,
+      padding: theme.spacing.sm,
+      borderRadius: theme.radius["2xl"],
       borderCurve: "continuous",
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
@@ -45,12 +45,10 @@ export default function createStyles(theme: Theme, maxLines: number) {
       borderRadius: theme.radius.md,
       borderCurve: "continuous",
     },
-    outlined: {
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: theme.colors.border,
-      backgroundColor: theme.colors.backgroundElement,
-    },
     primary: {
+      width: ControlHeight.sm,
+      height: ControlHeight.sm,
+      borderRadius: theme.radius.pill,
       backgroundColor: theme.colors.accent,
     },
     disabled: {

@@ -189,6 +189,13 @@ const MIGRATIONS: readonly string[] = [
   );
   ALTER TABLE agent_runs ADD COLUMN claude_account_id TEXT;
   `,
+  `
+  CREATE TABLE project_names (
+    project_id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

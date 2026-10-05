@@ -11,6 +11,7 @@ import {
   uploadKindOf,
 } from "@/features/attachments/utils/files";
 import { formatClock, lastText, partitionAttachments, toChatEvents } from "@/features/chat/utils/messages";
+import { activityLine, formatTimer, modelLabel, toTranscript } from "@/features/chat/utils/transcript";
 import { AGENT_MODE_OPTIONS, isAgentMode } from "@/features/chat/utils/modes";
 import {
   formatDuration,
@@ -83,6 +84,34 @@ describe("chat utils", () => {
       { kind: "text", seq: 4, ts: TS, text: "c" },
     ];
     expect(toChatEvents(events).map((item) => item.showHeader)).toEqual([true, false, false, true]);
+  });
+
+  it("folds tool calls between replies into activity blocks", () => {
+    const at = (second: number) => new Date(Date.parse(TS) + second * 1000).toISOString();
+    const events: AgentRunEvent[] = [
+      { kind: "system", seq: 1, ts: at(1), text: "Session started (model claude-opus-5-5, cwd /workspace)" },
+      { kind: "tool_use", seq: 2, ts: at(2), tool: "Bash", summary: "ls" },
+      { kind: "text", seq: 3, ts: at(10), text: "Done." },
+      { kind: "tool_use", seq: 4, ts: at(12), tool: "Read", summary: "a.ts" },
+      { kind: "system", seq: 5, ts: at(20), text: "Run finished in 20 s" },
+    ];
+    const done = toTranscript(events, { startedAt: TS, endedAt: at(20), running: false });
+    expect(done.map((block) => [block.kind, block.key])).toEqual([
+      ["activity", "activity-0"],
+      ["text", "text-3"],
+      ["activity", "activity-3"],
+    ]);
+    expect(done[0]).toMatchObject({ startedAt: TS, endedAt: at(10) });
+    expect(done[2]).toMatchObject({ startedAt: at(10), endedAt: at(20) });
+
+    const live = toTranscript(events.slice(0, 3), { startedAt: TS, endedAt: null, running: true });
+    expect(live.at(-1)).toMatchObject({ kind: "activity", key: "activity-3", events: [], endedAt: null });
+    expect(activityLine(events.slice(0, 2))).toBe("Bash · ls");
+    expect(activityLine([])).toBeNull();
+    expect(modelLabel(events)).toBe("Opus 5.5");
+    expect(modelLabel([{ kind: "system", seq: 1, ts: TS, text: "model claude-haiku-4-5-20251001" }])).toBe("Haiku 4.5");
+    expect(modelLabel([])).toBeNull();
+    expect([formatTimer(4), formatTimer(750), formatTimer(3723)]).toEqual(["00:04", "12:30", "1:02:03"]);
   });
 
   it("leaves the closing run summary to the brief and finds the last reply", () => {

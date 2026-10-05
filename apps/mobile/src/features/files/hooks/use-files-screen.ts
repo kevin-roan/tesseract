@@ -18,13 +18,16 @@ import { filesSubtitle, sortTaildropTargets } from "../utils/describe";
 import { describeFileError } from "../utils/errors";
 import {
   DEFAULT_FILE_FILTERS,
+  FILES_VIEWS,
   SOURCE_FILTERS,
   filterFiles,
   isSourceFilter,
   projectFilterId,
   projectFilterOptions,
   type FileFilters,
+  type FilesView,
 } from "../utils/filters";
+import { useBuildOutputs } from "./use-build-outputs";
 import { useFileDownload } from "./use-file-download";
 
 const SOURCE_OPTIONS: ChoiceOption[] = SOURCE_FILTERS.map(({ id, label }) => ({ id, label }));
@@ -40,6 +43,7 @@ export function useFilesScreen() {
   const deletion = useDeleteArtifact();
   const sending = useSendArtifactToTaildrop();
   const { refreshing, refresh } = useSandboxRefresh();
+  const [view, setView] = useState<FilesView>("shared");
   const [filters, setFilters] = useState<FileFilters>(DEFAULT_FILE_FILTERS);
   const [sharing, setSharing] = useState<Artifact | null>(null);
   const requested = firstParam(params[FILE_DOWNLOAD_PARAM]);
@@ -56,6 +60,7 @@ export function useFilesScreen() {
 
   const all = artifacts.data;
   const names = useMemo(() => projectNames(projects.data), [projects.data]);
+  const builds = useBuildOutputs(view === "builds", names);
   const files = useMemo(() => filterFiles(all ?? [], filters), [all, filters]);
   const projectOptions = useMemo(() => projectFilterOptions(all ?? [], names), [all, names]);
   const targets = useMemo(() => sortTaildropTargets(taildrop.data?.targets ?? []), [taildrop.data]);
@@ -108,7 +113,11 @@ export function useFilesScreen() {
     pair: nav.pair,
     files,
     total: all?.length ?? 0,
-    subtitle: filesSubtitle(files.length, all?.length ?? 0),
+    subtitle: view === "builds" ? builds.subtitle : filesSubtitle(files.length, all?.length ?? 0),
+    viewOptions: FILES_VIEWS,
+    view,
+    selectView: setView,
+    builds,
     projectName: (projectId: string) => projectLabel(projectId, names),
     loading: artifacts.isLoading,
     error: artifacts.error ? describeError(artifacts.error) : null,

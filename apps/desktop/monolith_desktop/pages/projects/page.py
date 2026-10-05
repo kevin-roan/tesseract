@@ -7,24 +7,24 @@ from ...api.client import ControllerClient
 from ...api.types import AgentRun, BuildJob, ProcessInfo, Project
 from ...services.workspace import upsert
 from ...store import ConnectionState
-from ...util.format import pluralize
+from ...widgets.buttons import IconButton
 from ...widgets.feedback import EmptyState
-from ...widgets.header import HeaderAction, ScreenHeader
-from ...widgets.keyed_list import KeyedGrid
 from ...widgets.lifecycle import while_mapped
+from ...widgets.list_view import ListToolbar, PillTabs, ToolbarToggle
 from ...widgets.motion import crossfade_stack
-from ...widgets.page_body import PageBody
-from ...widgets.project_card import ProjectCard
+from ...widgets.project_card import ProjectCard, ProjectGrid
+from ...widgets.text import Text
 from ..base import Page
 from .create_dialog import CreateProjectDialog
 from .detail import ProjectDetail
-from .labels import CONNECTION, EMPTY, LIST, PROJECTS_ROOT, TITLE
-from .model import card_model, filter_projects, sort_projects
+from .labels import CONNECTION, EMPTY, GROUPS, LIST, LIST_TABS, TITLE
+from .model import ACTIVITY_KINDS, card_model, filter_projects, group_by_activity, in_tab, sort_projects
 
 ACTIVITY_INTERVAL_S = 15.0
 STATE, CONTENT = "state", "content"
 SEARCH_SHORTCUT = "<Control>f"
 DETAIL_TAG = "project:{id}"
+ALL_GROUP = "all"
 
 
 class ProjectsPage(Page):
@@ -36,45 +36,62 @@ class ProjectsPage(Page):
 
     def build(self) -> Gtk.Widget:
         self._query = ""
+        self._tab = "all"
+        self._grouped = False
         self._processes: list[ProcessInfo] | None = None
         self._builds: list[BuildJob] | None = None
         self._stack = crossfade_stack()
         self._state = EmptyState(LIST["loading"], loading=True)
         self._stack.add_named(self._state, STATE)
 
-        body = PageBody(spacing=24)
-        self._header = ScreenHeader(
-            TITLE,
-            actions=[
-                HeaderAction("refresh", "refresh", LIST["refresh"], self.refresh),
-                HeaderAction("add", "add", LIST["new"], self.create),
-            ],
-        )
-        body.append(self._header)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self._tabs = PillTabs(list(LIST_TABS.items()), self._tab, self._set_tab, LIST["tabs"])
+        toolbar = ListToolbar(self._tabs)
+        self._search_toggle = ToolbarToggle("filter", LIST["search_toggle"], False, self._toggle_search)
+        toolbar.add_end(self._search_toggle)
+        toolbar.add_end(ToolbarToggle("display-options", LIST["group_toggle"], self._grouped, self._set_grouped))
+        content.append(toolbar)
 
         self._search = Gtk.SearchEntry(placeholder_text=LIST["search"], hexpand=True, valign=Gtk.Align.CENTER)
-        self._search.add_css_class("to-project-search")
+        self._search.add_css_class("to-list-search")
         self._search.connect("search-changed", lambda entry: self._set_query(entry.get_text()))
-        body.append(self._search)
+        self._search.connect("stop-search", lambda *_: self._search_toggle.set_active(False))
+        self._search_revealer = Gtk.Revealer(child=self._search, reveal_child=False)
+        content.append(self._search_revealer)
 
+        groups = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=24, css_classes=["to-project-groups"])
+        self._groups: dict[str, tuple[Gtk.Box, Gtk.Box, Text, ProjectGrid]] = {}
+        for kind in (*ACTIVITY_KINDS, ALL_GROUP):
+            section = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, visible=False)
+            heading = Gtk.Box(spacing=8, css_classes=["to-project-section"])
+            heading.append(Text(GROUPS[kind], "label"))
+            count = Text("", "label", "textTertiary")
+            heading.append(count)
+            grid = ProjectGrid(lambda: ProjectCard(self.open_project, self._ask, LIST["ask"]))
+            section.append(heading)
+            section.append(grid)
+            self._groups[kind] = (section, heading, count, grid)
+            groups.append(section)
         self._no_match = EmptyState("", icon="search")
         self._no_match.set_visible(False)
-        body.append(self._no_match)
-        self._grid = KeyedGrid(lambda: ProjectCard(self.open_project, self._ask, LIST["ask"]), ProjectCard.update)
-        body.append(self._grid)
-        self._stack.add_named(body, CONTENT)
+        groups.append(self._no_match)
+        content.append(Gtk.ScrolledWindow(child=groups, hscrollbar_policy=Gtk.PolicyType.NEVER, vexpand=True))
+        self._stack.add_named(content, CONTENT)
 
         shortcuts = Gtk.ShortcutController(scope=Gtk.ShortcutScope.MANAGED)
         shortcuts.add_shortcut(Gtk.Shortcut(
             trigger=Gtk.ShortcutTrigger.parse_string(SEARCH_SHORTCUT),
-            action=Gtk.CallbackAction.new(lambda *_: self._search.grab_focus() or True),
+            action=Gtk.CallbackAction.new(lambda *_: self._search_toggle.set_active(True) or True),
         ))
-        body.add_controller(shortcuts)
+        content.add_controller(shortcuts)
 
         self._poller = self.ctx.poll(self._fetch_activity, ACTIVITY_INTERVAL_S, self._activity_loaded).bind(self._stack)
         while_mapped(self._stack, self._attach)
         self._render()
         return self._stack
+
+    def header_widgets(self) -> list[Gtk.Widget]:
+        return [IconButton("refresh", LIST["refresh"], self.refresh), IconButton("add", LIST["new"], self.create)]
 
     def open(self, params: dict[str, Any]) -> None:
         if params.get("create"):
@@ -132,6 +149,21 @@ class ProjectsPage(Page):
         self._query = query
         self._render()
 
+    def _set_tab(self, tab: str) -> None:
+        self._tab = tab
+        self._render()
+
+    def _set_grouped(self, grouped: bool) -> None:
+        self._grouped = grouped
+        self._render()
+
+    def _toggle_search(self, active: bool) -> None:
+        self._search_revealer.set_reveal_child(active)
+        if active:
+            self._search.grab_focus()
+        elif self._search.get_text():
+            self._search.set_text("")
+
     def _render(self) -> None:
         store = self.ctx.store
         projects = store.projects.value
@@ -143,17 +175,29 @@ class ProjectsPage(Page):
                              EMPTY["secondary"], lambda: self.ctx.navigate("agents", {"new": True}))
             return
         self._stack.set_visible_child_name(CONTENT)
-        self._header.set_subtitle(LIST["subtitle"].format(count=pluralize(len(projects), "project"), root=PROJECTS_ROOT))
         runs: list[AgentRun] | None = store.agent_runs.value
-        visible: list[Project] = sort_projects(filter_projects(projects, self._query), self._processes, self._builds, runs)
-        self._grid.sync((p["id"], card_model(p, self._processes, self._builds, runs)) for p in visible)
-        self._grid.set_visible(bool(visible))
+        ordered: list[Project] = sort_projects(filter_projects(projects, self._query), self._processes, self._builds, runs)
+        cards = [card_model(p, self._processes, self._builds, runs) for p in ordered]
+        for tab in LIST_TABS:
+            self._tabs.set_count(tab, sum(1 for card in cards if in_tab(card.activity, tab)) if tab != "all" else len(cards))
+        visible = [card for card in cards if in_tab(card.activity, self._tab)]
+        buckets = dict(group_by_activity(visible)) if self._grouped else {ALL_GROUP: visible} if visible else {}
+        for kind, (section, heading, count, grid) in self._groups.items():
+            items = buckets.get(kind, [])
+            grid.sync(items)
+            count.set_label(str(len(items)))
+            heading.set_visible(self._grouped)
+            section.set_visible(bool(items))
         self._no_match.set_visible(not visible)
-        if not visible:
+        if visible:
+            return
+        if self._query.strip():
             self._no_match.set_content(
                 LIST["no_match_title"], LIST["no_match"].format(query=self._query.strip()), "search",
                 action_label=LIST["clear_search"], on_action=lambda: self._search.set_text(""),
             )
+        else:
+            self._no_match.set_content(LIST["no_tab"].format(tab=LIST_TABS[self._tab].lower()), None, "projects")
 
     def _render_connection(self, state: ConnectionState) -> None:
         if state.online:

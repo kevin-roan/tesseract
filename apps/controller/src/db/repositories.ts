@@ -540,6 +540,23 @@ export class Repositories {
       .run(projectId, accountId, at);
   }
 
+  projectName(projectId: string): string | null {
+    const row = this.db.query<Row, [string]>("SELECT name FROM project_names WHERE project_id = ?").get(projectId);
+    return row ? text(row, "name") : null;
+  }
+
+  setProjectName(projectId: string, name: string | null, at: string): void {
+    if (name === null) {
+      this.db.query("DELETE FROM project_names WHERE project_id = ?").run(projectId);
+      return;
+    }
+    this.db
+      .query(
+        "INSERT INTO project_names (project_id, name, updated_at) VALUES (?, ?, ?) ON CONFLICT(project_id) DO UPDATE SET name = excluded.name, updated_at = excluded.updated_at",
+      )
+      .run(projectId, name, at);
+  }
+
   /** Account of the newest agent run with this Claude session id. */
   sessionClaudeAccount(sessionId: string): string | null {
     const row = this.db

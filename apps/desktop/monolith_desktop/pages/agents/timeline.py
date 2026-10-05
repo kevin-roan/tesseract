@@ -2,7 +2,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Literal
 
-from ...api.types import AgentRun, AgentRunEvent
+from ...api.types import AgentRun, AgentRunEvent, Upload
 
 ItemKind = Literal["prompt", "text", "tool", "system", "outcome"]
 ToolStatus = Literal["pending", "ok", "error", "unknown"]
@@ -18,6 +18,7 @@ class TimelineItem:
     status: ToolStatus = "unknown"
     state: str = ""
     error: str | None = None
+    attachments: tuple[Upload, ...] = ()
 
 
 class EventLog:
@@ -56,7 +57,8 @@ def _tool_name(event: Mapping) -> str:
 def build_timeline(run: AgentRun | None, events: Iterable[AgentRunEvent]) -> list[TimelineItem]:
     items: list[TimelineItem] = []
     if run is not None:
-        items.append(TimelineItem("prompt", "prompt", run.get("prompt") or ""))
+        attachments = tuple(run.get("attachments") or ())
+        items.append(TimelineItem("prompt", "prompt", run.get("prompt") or "", attachments=attachments))
     running = run is not None and run["state"] == "running"
     open_tools: list[int] = []
     for event in events:

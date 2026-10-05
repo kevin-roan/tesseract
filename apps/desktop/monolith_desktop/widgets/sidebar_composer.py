@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, Any
 from gi.repository import Gdk, Gtk, Pango
 
 from ..api.types import Project
+from ..attachments.controller import ComposerAttachments
 from ..store import ConnectionState
 from ..strings import COMPOSER
 from ..theme.tokens import COMPOSER_MAX_HEIGHT
@@ -19,13 +20,15 @@ SEND_ICON = "send"
 SEND_KEYS = (Gdk.KEY_Return, Gdk.KEY_KP_Enter, Gdk.KEY_ISO_Enter)
 
 
-def composer_params(text: str, project_id: str | None) -> dict[str, Any] | None:
+def composer_params(text: str, project_id: str | None, attachment_ids: list[str] | None = None) -> dict[str, Any] | None:
     prompt = text.strip()
     if not prompt:
         return None
     params: dict[str, Any] = {"prompt": prompt, "send": True}
     if project_id:
         params["projectId"] = project_id
+    if attachment_ids:
+        params["attachmentIds"] = list(attachment_ids)
     return params
 
 
@@ -76,7 +79,7 @@ class ProjectPicker(Gtk.DropDown):
 
 class SidebarComposer(Gtk.Box):
     def __init__(self, ctx: "AppContext") -> None:
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6, css_classes=["to-composer"])
+        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=4, css_classes=["to-composer", "to-side-composer"])
         self._ctx = ctx
         self._online = False
 
@@ -91,7 +94,7 @@ class SidebarComposer(Gtk.Box):
         )
         self._view.add_css_class("to-composer-input")
         self._buffer = self._view.get_buffer()
-        self._placeholder = Text(COMPOSER["placeholder"], "bodySmall", "textTertiary")
+        self._placeholder = Text(COMPOSER["placeholder"], "body", "textTertiary")
         self._placeholder.set_can_target(False)
         self._placeholder.set_valign(Gtk.Align.START)
         self._placeholder.set_halign(Gtk.Align.START)
@@ -105,16 +108,17 @@ class SidebarComposer(Gtk.Box):
         )
         overlay = Gtk.Overlay(child=scroller)
         overlay.add_overlay(self._placeholder)
+        self._attachments = ComposerAttachments(ctx, self, self._view, self._sync)
+        self.append(self._attachments.tray)
         self.append(overlay)
 
         self._picker = ProjectPicker()
         self._send = Gtk.Button(
-            child=Icon(SEND_ICON, "sm"), css_classes=["to-composer-send"], valign=Gtk.Align.CENTER, tooltip_text=COMPOSER["send"]
+            child=Icon(SEND_ICON, "xs"), css_classes=["to-composer-send"], valign=Gtk.Align.CENTER, tooltip_text=COMPOSER["send"]
         )
         self._send.update_property([Gtk.AccessibleProperty.LABEL], [COMPOSER["send"]])
-        footer = Gtk.Box(spacing=6)
-        folder = Icon("project", "xs", "textTertiary")
-        footer.append(folder)
+        footer = Gtk.Box(spacing=2)
+        footer.append(self._attachments.button)
         footer.append(self._picker)
         footer.append(Gtk.Box(hexpand=True))
         footer.append(self._send)
@@ -140,13 +144,17 @@ class SidebarComposer(Gtk.Box):
         self._view.grab_focus()
 
     def send(self) -> bool:
-        params = composer_params(self.text, self._picker.project_id)
+        if self._attachments.blocked:
+            return False
+        prompt = self._attachments.prompt(self.text) if self._attachments.has_items else self.text
+        params = composer_params(prompt, self._picker.project_id, self._attachments.upload_ids)
         if params is None or not self._online:
             return False
         if not self._ctx.navigate("agents", params):
             self._ctx.toast(COMPOSER["unavailable"])
             return False
         self._buffer.set_text("")
+        self._attachments.clear()
         return True
 
     def _on_connection(self, state: ConnectionState) -> None:
@@ -154,9 +162,9 @@ class SidebarComposer(Gtk.Box):
         self._sync()
 
     def _sync(self) -> None:
-        has_text = bool(self.text.strip())
+        has_draft = bool(self.text.strip()) or self._attachments.has_items
         self._placeholder.set_visible(not self.text)
-        self._send.set_sensitive(has_text and self._online)
+        self._send.set_sensitive(has_draft and self._online and not self._attachments.blocked)
         self._send.set_tooltip_text(COMPOSER["send"] if self._online else COMPOSER["offline"])
 
     def _on_key(self, _controller, keyval: int, _keycode: int, state: Gdk.ModifierType) -> bool:

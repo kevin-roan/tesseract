@@ -8,8 +8,14 @@ INK = "#1F1E1D"
 PAPER = "#FAF9F5"
 
 GRAPHITE = MappingProxyType({
-    50: "#F5F5F5", 100: "#EDEDED", 200: "#D4D4D4", 300: "#B3B3B3", 400: "#8F8F8F", 500: "#7A7A7A", 600: "#4D4D4D",
-    700: "#333333", 750: "#2A2A2A", 800: "#222222", 850: "#1D1D1D", 900: "#161616", 950: "#0D0D0D",
+    50: "#F7F8F8", 100: "#E3E3E4", 200: "#D0D0D2", 300: "#B4B4B7", 400: "#929294", 500: "#6B6B6F", 600: "#4A4A4E",
+    700: "#2B2B2F", 750: "#232325", 800: "#1E1E20", 850: "#1A1A1B", 900: "#121213", 950: "#09090A",
+})
+LINEAR = MappingProxyType({
+    "indigo": "#5E6AD2", "indigoHover": "#6C78E6", "indigoPressed": "#4F5BC4", "indigoMuted": "#1E2036",
+    "indigoInk": "#9EA6F0", "green": "#4CB782", "greenMuted": "#14261C", "yellow": "#F2C94C", "yellowMuted": "#2B2410",
+    "orange": "#F2994A", "red": "#EB5757", "redMuted": "#2C1517", "blue": "#4EA7FC", "blueMuted": "#122233",
+    "purple": "#BB87FC",
 })
 STONE = MappingProxyType({
     50: "#FAF9F6", 100: "#F0EEE6", 200: "#E8E6DC", 300: "#DEDBCF", 400: "#A6A39A", 500: "#908D85", 600: "#65645E",

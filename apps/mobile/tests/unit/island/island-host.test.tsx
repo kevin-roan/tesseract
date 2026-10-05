@@ -60,46 +60,71 @@ describe("<IslandHost />", () => {
     expect(screen.queryByTestId("island-host")).toBeNull();
   });
 
-  it("collapsed capsule opens into the card with runs, commands, usage and actions", async () => {
+  it("collapsed capsule opens into the panel with the primary run, usage and controls", async () => {
     await renderHost();
-    const capsule = await screen.findByTestId("island-orb");
+    const capsule = await screen.findByTestId("island-capsule");
     expect(screen.getByLabelText("Claude is working, 2 tasks")).toBeOnTheScreen();
+    expect(screen.getByText("2 tasks")).toBeOnTheScreen();
 
     await fireEvent.press(capsule);
-    expect(screen.getByTestId("island-card")).toBeOnTheScreen();
+    expect(screen.getByTestId("island-panel")).toBeOnTheScreen();
     expect(screen.getByText("Test box")).toBeOnTheScreen();
+    expect(screen.getByText("68.4k today")).toBeOnTheScreen();
     expect(screen.getByText("Build the Windows installer")).toBeOnTheScreen();
-    expect(screen.getByText("dev")).toBeOnTheScreen();
-    expect(screen.getByText("Today")).toBeOnTheScreen();
-    expect(screen.getByLabelText("68.4k Today")).toBeOnTheScreen();
+    expect(screen.getByText("+1")).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByLabelText("Build the Windows installer"));
     expect(mockNav.agentRun).toHaveBeenCalledWith(sampleAgentRun.id);
     expect(useIslandStore.getState().expanded).toBe(false);
 
-    await fireEvent.press(screen.getByTestId("island-orb"));
-    await fireEvent.press(screen.getByLabelText("Cancel dev"));
-    expect(fake.stopProcess).toHaveBeenCalledWith(sampleProcess.id);
+    await fireEvent.press(screen.getByTestId("island-capsule"));
     await fireEvent.press(screen.getByLabelText("Stop Build the Windows installer"));
     expect(fake.cancelAgentRun).toHaveBeenCalledWith(sampleAgentRun.id);
+    expect(fake.stopProcess).not.toHaveBeenCalled();
+  });
+
+  it("stops the running command when no run is live", async () => {
+    fake.listAgentRuns.mockResolvedValue([]);
+    await renderHost();
+    await fireEvent.press(await screen.findByTestId("island-capsule"));
+    await fireEvent.press(screen.getByLabelText("Stop dev"));
+    expect(fake.stopProcess).toHaveBeenCalledWith(sampleProcess.id);
     await waitFor(() => expect(screen.queryByTestId("island-host")).toBeNull());
   });
 
-  it("dismisses on the backdrop and opens the capture flow from the card", async () => {
+  it("dismisses on the backdrop and opens the capture flow from the panel", async () => {
     await renderHost();
-    await fireEvent.press(await screen.findByTestId("island-orb"));
+    await fireEvent.press(await screen.findByTestId("island-capsule"));
     await fireEvent.press(screen.getByLabelText("Dismiss"));
-    expect(screen.queryByTestId("island-card")).toBeNull();
+    expect(screen.queryByTestId("island-panel")).toBeNull();
 
-    await fireEvent.press(screen.getByTestId("island-orb"));
+    await fireEvent.press(screen.getByTestId("island-capsule"));
     await fireEvent.press(screen.getByLabelText("Capture"));
     expect(useIslandStore.getState().captureOpen).toBe(true);
     expect(screen.queryByTestId("island-host")).toBeNull();
   });
 
+  it("opens the latest run's chat from the panel", async () => {
+    await renderHost();
+    await fireEvent.press(await screen.findByTestId("island-capsule"));
+    await fireEvent.press(screen.getByLabelText("Open chat"));
+    expect(mockNav.agentRun).toHaveBeenCalledWith(sampleAgentRun.id);
+    expect(mockNav.sandboxHub).not.toHaveBeenCalled();
+    expect(useIslandStore.getState().expanded).toBe(false);
+  });
+
+  it("opens a new chat when only commands are running", async () => {
+    fake.listAgentRuns.mockResolvedValue([]);
+    await renderHost();
+    await fireEvent.press(await screen.findByTestId("island-capsule"));
+    expect(screen.getAllByText("dev").length).toBeGreaterThan(0);
+    await fireEvent.press(screen.getByLabelText("Open chat"));
+    expect(mockNav.newAgentRun).toHaveBeenCalled();
+  });
+
   it("stops a command or a run from the Live Activity stop button", async () => {
     await renderHost();
-    await screen.findByTestId("island-orb");
+    await screen.findByTestId("island-capsule");
     await act(async () => __emitAction({ action: "stop", runId: sampleProcess.id }));
     await waitFor(() => expect(fake.stopProcess).toHaveBeenCalledWith(sampleProcess.id));
     expect(fake.cancelAgentRun).not.toHaveBeenCalled();
@@ -117,7 +142,7 @@ describe("<IslandHost />", () => {
 
   it("starts the live activity for running work", async () => {
     await renderHost();
-    await screen.findByTestId("island-orb");
+    await screen.findByTestId("island-capsule");
     await act(async () => {
       jest.useFakeTimers();
       jest.advanceTimersByTime(1500);

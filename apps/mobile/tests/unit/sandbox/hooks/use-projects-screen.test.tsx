@@ -29,6 +29,7 @@ const fake = {
   listAgentRuns: jest.fn(),
   stopProcess: jest.fn(),
   ports: jest.fn(),
+  renameProject: jest.fn(),
 };
 
 const renderScreen = () => renderHook(() => useProjectsScreen(), { wrapper: createWrapper(createTestQueryClient()) });
@@ -44,6 +45,7 @@ beforeEach(() => {
   fake.listAgentRuns.mockReset().mockResolvedValue([sampleAgentRun]);
   fake.stopProcess.mockReset().mockResolvedValue({ ...sampleProcess, state: "stopped" });
   fake.ports.mockReset().mockResolvedValue({ tailscaleIp: null, ports: [{ ...TEST_SITE, port: 9000, projectId: null, processId: null, url: null }, TEST_SITE] });
+  fake.renameProject.mockReset().mockImplementation(async (_id: string, { name }: { name: string | null }) => ({ ...sampleProject, name: name ?? sampleProject.id }));
   MockClient.mockReset().mockImplementation(() => fake);
 });
 
@@ -91,6 +93,35 @@ describe("useProjectsScreen", () => {
 
     await act(async () => result.current.stopProcess(sampleProcess.id));
     await waitFor(() => expect(fake.stopProcess).toHaveBeenCalledWith(sampleProcess.id));
+  });
+
+  it("renames a project from the card menu, and a blank name restores the detected one", async () => {
+    const { result } = await renderScreen();
+    await waitFor(() => expect(result.current.projects).toHaveLength(1));
+    const target = { id: sampleProject.id, title: sampleProject.name };
+
+    await act(async () => result.current.projectMenu(target));
+    expect(result.current.projectMenuSheet.options.map((option) => option.id)).toEqual(["rename", "remove"]);
+    await act(async () => result.current.projectMenuSheet.onSelect("rename"));
+    await act(async () => result.current.projectMenuSheet.onDismissed());
+    expect(result.current.renameSheet).toMatchObject({ visible: true, name: sampleProject.name });
+
+    await act(async () => result.current.renameSheet.setName("x".repeat(129)));
+    await act(async () => result.current.renameSheet.save());
+    expect(result.current.renameSheet.error).toBe("Keep the name under 128 characters.");
+    expect(fake.renameProject).not.toHaveBeenCalled();
+
+    await act(async () => result.current.renameSheet.setName("  Shiny App "));
+    await act(async () => result.current.renameSheet.save());
+    await waitFor(() => expect(result.current.renameSheet.visible).toBe(false));
+    expect(fake.renameProject).toHaveBeenCalledWith(sampleProject.id, { name: "Shiny App" });
+
+    await act(async () => result.current.projectMenu(target));
+    await act(async () => result.current.projectMenuSheet.onSelect("rename"));
+    await act(async () => result.current.projectMenuSheet.onDismissed());
+    await act(async () => result.current.renameSheet.setName(" "));
+    await act(async () => result.current.renameSheet.save());
+    await waitFor(() => expect(fake.renameProject).toHaveBeenLastCalledWith(sampleProject.id, { name: null }));
   });
 
   it("reports a failed project list and a rejected token", async () => {

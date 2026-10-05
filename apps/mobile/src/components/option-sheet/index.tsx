@@ -1,13 +1,10 @@
 import { useMemo } from "react";
 import { View } from "react-native";
-import { XIcon } from "phosphor-react-native";
 
 import BottomSheet from "@/components/bottom-sheet";
 import type { MenuOption } from "@/components/menu-sheet/types";
-import PressableScale from "@/components/pressable-scale";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { HitSlop, IconSize } from "@/theme";
 
 import OptionRow from "./option-row";
 import createStyles from "./styles";
@@ -41,23 +38,7 @@ const OptionSheet = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} onDismissed={onDismissed} closeLabel={closeLabel} testID={testID}>
-      <View style={styles.header}>
-        <PressableScale
-          depth="control"
-          accessibilityRole="button"
-          accessibilityLabel={closeLabel}
-          hitSlop={HitSlop.sm}
-          onPress={onClose}
-          style={styles.close}
-        >
-          <XIcon size={IconSize.sm} color={theme.colors.text} weight="light" />
-        </PressableScale>
-        <ThemedText variant="h4" accessibilityRole="header" numberOfLines={1} style={styles.title}>
-          {title}
-        </ThemedText>
-        <View style={styles.close} />
-      </View>
+    <BottomSheet visible={visible} title={title} onClose={onClose} onDismissed={onDismissed} closeLabel={closeLabel} testID={testID}>
       <View accessibilityRole="menu" style={styles.group}>
         {options.map((option, index) => (
           <OptionRow

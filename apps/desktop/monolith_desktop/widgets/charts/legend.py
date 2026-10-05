@@ -7,9 +7,9 @@ from gi.repository import Gtk
 from ..drawing import ThemedDrawing, set_source
 from ..text import Text
 
-KEY_WIDTH = 18
-KEY_HEIGHT = 10
-KEY_LINE_WIDTH = 2.5
+KEY_WIDTH = 12
+KEY_HEIGHT = 8
+KEY_LINE_WIDTH = 2.0
 
 
 @dataclass(frozen=True)
@@ -43,23 +43,17 @@ class LineKey(ThemedDrawing):
 
 class SeriesToggle(Gtk.ToggleButton):
     def __init__(self, item: LegendItem, on_toggled: Callable[[str, bool], None]) -> None:
-        super().__init__(active=item.active, css_classes=["to-series-toggle"], hexpand=not item.compact)
+        super().__init__(active=item.active, css_classes=["to-series-toggle"], valign=Gtk.Align.CENTER)
         self.key = item.key
         self._label = item.label
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        header = Gtk.Box(spacing=8)
-        header.append(LineKey(item.color, item.dash))
-        header.append(Text(item.label, "caption", "textSecondary"))
-        content.append(header)
-        self._value = Text("", "h4")
-        self._caption = Text("", "caption", "textTertiary")
+        content = Gtk.Box(spacing=6)
+        content.append(LineKey(item.color, item.dash))
+        content.append(Text(item.label, "caption", "textSecondary"))
+        self._value = Text("", "caption")
+        self._value.add_css_class("to-series-value")
+        content.append(self._value)
         if item.compact:
             self.add_css_class("compact")
-            self._value.set_variant("caption")
-            header.append(self._value)
-        else:
-            content.append(self._value)
-            content.append(self._caption)
         self.set_child(content)
         self.set_tooltip_text(item.label)
         self.update_property([Gtk.AccessibleProperty.LABEL], [item.label])
@@ -67,38 +61,26 @@ class SeriesToggle(Gtk.ToggleButton):
 
     def update(self, value: str, caption: str) -> None:
         self._value.set_label(value)
-        self._caption.set_label(caption)
         self.set_tooltip_text(f"{self._label} · {caption}" if caption else self._label)
 
 
-class SeriesLegend(Gtk.Box):
+class SeriesLegend(Gtk.FlowBox):
     def __init__(self, items: Sequence[LegendItem], on_change: Callable[[set[str]], None] | None = None) -> None:
-        super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8)
-        tiles = [item for item in items if not item.compact]
-        extras = [item for item in items if item.compact]
-        self._tiles = Gtk.FlowBox(
+        super().__init__(
             selection_mode=Gtk.SelectionMode.NONE,
-            column_spacing=8,
-            row_spacing=8,
-            homogeneous=True,
-            min_children_per_line=min(2, max(1, len(tiles))),
-            max_children_per_line=max(1, len(tiles)),
+            column_spacing=6,
+            row_spacing=6,
+            max_children_per_line=len(items) or 1,
+            halign=Gtk.Align.START,
+            css_classes=["to-series-legend"],
         )
-        self._extras = Gtk.Box(spacing=8)
         self._on_change = on_change
         self._toggles: dict[str, SeriesToggle] = {}
         self._syncing = False
         for item in items:
             toggle = SeriesToggle(item, self._toggled)
             self._toggles[item.key] = toggle
-            if item.compact:
-                self._extras.append(toggle)
-            else:
-                self._tiles.append(Gtk.FlowBoxChild(child=toggle, focusable=False))
-        self._tiles.set_visible(bool(tiles))
-        self._extras.set_visible(bool(extras))
-        self.append(self._tiles)
-        self.append(self._extras)
+            self.append(Gtk.FlowBoxChild(child=toggle, focusable=False, halign=Gtk.Align.START))
 
     @property
     def hidden(self) -> set[str]:

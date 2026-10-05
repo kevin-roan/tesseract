@@ -1,40 +1,42 @@
 import logging
 from collections.abc import Callable
+from itertools import groupby
 from typing import Any
 
 from gi.repository import Adw, Gtk
 
-from . import APP_NAME
+from . import APP_ID, APP_NAME
 from .context import AppContext
 from .pages import Page, discover_pages
-from .shell import ConnectionStatusRow, menu_button, toolbar_page
-from .strings import SECTION_TITLES, SIDEBAR
+from .shell import ConnectionStatusRow, main_menu, toolbar_page
+from .strings import MAIN_MENU_TOOLTIP, SECTION_TITLES, SIDEBAR
 from .theme.tokens import (
     COLLAPSE_BREAKPOINT,
     DEFAULT_WINDOW_SIZE,
     MIN_WINDOW_SIZE,
-    SIDEBAR_WIDTH_FRACTION,
-    SIDEBAR_WIDTH_RANGE,
+    SIDEBAR_WIDTH,
 )
 from .widgets.badges import CountBadge
+from .widgets.buttons import IconButton
 from .widgets.icon import Icon
+from .widgets.resize_handle import ResizeHandle
 from .widgets.sidebar_composer import SidebarComposer
-from .widgets.sidebar_projects import SidebarProjects
+from .widgets.sidebar_model import clamp_sidebar_width, dragged_sidebar_width
+from .widgets.sidebar_projects import SidebarProjects, SidebarSection
 from .widgets.text import Text
 from .widgets.titlebar import BrandMark, Titlebar
 
 log = logging.getLogger(__name__)
-
-BRAND_ICON = "brand"
 
 
 class SidebarRow(Gtk.ListBoxRow):
     def __init__(self, page_cls: type[Page], ctx: AppContext) -> None:
         super().__init__(css_classes=["to-nav-row"])
         self.page_cls = page_cls
-        box = Gtk.Box(spacing=12)
-        box.append(Icon(page_cls.icon, "sm"))
+        box = Gtk.Box(spacing=8)
+        box.append(Icon(page_cls.icon, "sm", "textSecondary"))
         label = Text(page_cls.title, "label")
+        label.remove_css_class("to-fg-text")
         label.set_hexpand(True)
         box.append(label)
         self.badge = CountBadge()
@@ -45,21 +47,10 @@ class SidebarRow(Gtk.ListBoxRow):
             observable.bind(self, self.badge.set_count)
 
 
-class NewConversationButton(Gtk.Button):
-    def __init__(self, on_activate) -> None:
-        super().__init__(css_classes=["to-new-conversation"])
-        box = Gtk.Box(spacing=10)
-        box.append(Icon("compose", "sm"))
-        label = Text(SIDEBAR["new_conversation"], "label")
-        label.remove_css_class("to-fg-text")
-        label.set_hexpand(True)
-        box.append(label)
-        hint = Text(SIDEBAR["new_conversation_shortcut"], "caption")
-        hint.remove_css_class("to-fg-text")
-        hint.add_css_class("to-shortcut-hint")
-        box.append(hint)
-        self.set_child(box)
-        self.connect("clicked", lambda *_: on_activate())
+def sidebar_icon_button(icon: str, tooltip: str, on_activate, css_class: str) -> IconButton:
+    button = IconButton(icon, tooltip, on_activate)
+    button.add_css_class(css_class)
+    return button
 
 
 class MainWindow(Adw.ApplicationWindow):
@@ -78,17 +69,16 @@ class MainWindow(Adw.ApplicationWindow):
         self._page_classes = discover_pages()
 
         self._toasts = Adw.ToastOverlay()
-        self._split = Adw.NavigationSplitView(
-            min_sidebar_width=SIDEBAR_WIDTH_RANGE[0],
-            max_sidebar_width=SIDEBAR_WIDTH_RANGE[1],
-            sidebar_width_fraction=SIDEBAR_WIDTH_FRACTION,
-        )
+        self._split = Adw.NavigationSplitView(sidebar_width_unit=Adw.LengthUnit.PX, css_classes=["to-shell"])
+        self._sidebar_width = app.sidebar_width()
+        self._drag_start = self._sidebar_width
+        self.sync_sidebar_width()
         self._toasts.set_child(self._split)
         self.set_content(self._toasts)
 
         self._split.set_sidebar(self._build_sidebar())
-        self._nav = Adw.NavigationView()
-        self._content = Adw.NavigationPage(title=APP_NAME, child=self._nav, css_classes=["to-canvas"])
+        self._nav = Adw.NavigationView(css_classes=["to-panel"], overflow=Gtk.Overflow.HIDDEN)
+        self._content = Adw.NavigationPage(title=APP_NAME, child=self._nav, css_classes=["to-panel-frame"])
         self._split.set_content(self._content)
 
         breakpoint = Adw.Breakpoint.new(Adw.BreakpointCondition.parse(COLLAPSE_BREAKPOINT))
@@ -104,23 +94,33 @@ class MainWindow(Adw.ApplicationWindow):
             self.navigate(self._page_classes[0].id)
 
     def _build_sidebar(self) -> Adw.NavigationPage:
-        self._list = Gtk.ListBox(css_classes=["to-nav-list"], selection_mode=Gtk.SelectionMode.SINGLE)
-        self._list.set_header_func(self._header_func)
-        for page_cls in self._page_classes:
-            row = SidebarRow(page_cls, self.ctx)
-            self._rows[page_cls.id] = row
-            self._list.append(row)
-        self._list.connect("row-activated", lambda _list, row: self.navigate(row.page_cls.id))
+        self._lists: list[Gtk.ListBox] = []
+        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=["to-sidebar-body"])
+        for section, page_classes in groupby(self._page_classes, key=lambda page_cls: page_cls.section):
+            nav = Gtk.ListBox(css_classes=["to-nav-list"], selection_mode=Gtk.SelectionMode.SINGLE)
+            for page_cls in page_classes:
+                row = SidebarRow(page_cls, self.ctx)
+                self._rows[page_cls.id] = row
+                nav.append(row)
+            nav.connect("row-activated", lambda _list, row: self.navigate(row.page_cls.id))
+            self._lists.append(nav)
+            body.append(SidebarSection(SECTION_TITLES.get(section, section.title()), nav))
 
         self._composer = SidebarComposer(self.ctx)
-        projects = SidebarProjects(self.ctx, self._composer.select_project)
-        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=["to-sidebar-body"])
-        body.append(NewConversationButton(self.new_conversation))
-        body.append(self._list)
-        body.append(projects)
+        body.append(SidebarProjects(self.ctx, self._composer.select_project))
         scroller = Gtk.ScrolledWindow(child=body, vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER)
 
-        self._sidebar_header = Titlebar(start=[BrandMark(APP_NAME, BRAND_ICON)], end=[menu_button()])
+        switcher = Gtk.MenuButton(
+            child=BrandMark(APP_NAME, APP_ID),
+            menu_model=main_menu(),
+            tooltip_text=MAIN_MENU_TOOLTIP,
+            primary=True,
+            valign=Gtk.Align.CENTER,
+            css_classes=["to-workspace-switcher"],
+        )
+        search = sidebar_icon_button("search", SIDEBAR["search"], self.search_conversations, "to-sidebar-search")
+        compose = sidebar_icon_button("compose", SIDEBAR["new_conversation_tooltip"], self.new_conversation, "to-sidebar-compose")
+        self._sidebar_header = Titlebar(start=[switcher], end=[search, compose], css_class="to-sidebar-header")
         footer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=["to-sidebar-bottom"])
         footer.append(self._composer)
         footer.append(ConnectionStatusRow(self.ctx))
@@ -128,19 +128,48 @@ class MainWindow(Adw.ApplicationWindow):
         view = Adw.ToolbarView(content=scroller, css_classes=["to-sidebar"])
         view.add_top_bar(self._sidebar_header)
         view.add_bottom_bar(footer)
-        return Adw.NavigationPage(title=APP_NAME, child=view)
+        self._resize_handle = ResizeHandle(
+            self._begin_sidebar_resize, self._drag_sidebar, self._save_sidebar_width, self._reset_sidebar_width,
+        )
+        overlay = Gtk.Overlay(child=view)
+        overlay.add_overlay(self._resize_handle)
+        return Adw.NavigationPage(title=APP_NAME, child=overlay, css_classes=["to-sidebar-pane"])
 
-    def _header_func(self, row: SidebarRow, before: SidebarRow | None) -> None:
-        section = row.page_cls.section
-        if before is not None and before.page_cls.section == section:
-            row.set_header(None)
-            return
-        label = Text(SECTION_TITLES.get(section, section.title()), "overline", "textTertiary")
-        label.add_css_class("to-side-section")
-        row.set_header(label)
+    def sync_sidebar_width(self) -> None:
+        width = self._sidebar_width * self.ctx.theme.zoom
+        if width >= self._split.get_max_sidebar_width():
+            self._split.set_max_sidebar_width(width)
+            self._split.set_min_sidebar_width(width)
+        else:
+            self._split.set_min_sidebar_width(width)
+            self._split.set_max_sidebar_width(width)
+
+    def _set_sidebar_width(self, width: int) -> None:
+        if width != self._sidebar_width:
+            self._sidebar_width = width
+            self.sync_sidebar_width()
+
+    def _begin_sidebar_resize(self) -> None:
+        self._drag_start = self._sidebar_width
+
+    def _drag_sidebar(self, offset: float) -> None:
+        self._set_sidebar_width(dragged_sidebar_width(self._drag_start, offset, self.ctx.theme.zoom))
+
+    def _reset_sidebar_width(self) -> None:
+        self._set_sidebar_width(clamp_sidebar_width(SIDEBAR_WIDTH))
+        self._save_sidebar_width()
+
+    def _save_sidebar_width(self) -> None:
+        self.get_application().save_sidebar_width(self._sidebar_width)
 
     def _sync_collapsed(self) -> None:
-        self._sidebar_header.set_controls_visible(self._split.get_collapsed())
+        collapsed = self._split.get_collapsed()
+        self._sidebar_header.set_controls_visible(collapsed)
+        self._resize_handle.set_visible(not collapsed)
+        if collapsed:
+            self._split.add_css_class("collapsed")
+        else:
+            self._split.remove_css_class("collapsed")
 
     def page(self, page_id: str) -> Page | None:
         if page_id in self._pages:
@@ -172,9 +201,7 @@ class MainWindow(Adw.ApplicationWindow):
             self._nav.replace([root])
             self._content.set_title(root.get_title())
             self.ctx.store.current_page.set(page_id)
-            row = self._rows.get(page_id)
-            if row is not None and self._list.get_selected_row() is not row:
-                self._list.select_row(row)
+            self._select_row(page_id)
             page.on_shown()
         else:
             self._nav.pop_to_tag(page_id)
@@ -182,6 +209,18 @@ class MainWindow(Adw.ApplicationWindow):
         if params:
             page.open(params)
         return True
+
+    def _select_row(self, page_id: str) -> None:
+        row = self._rows.get(page_id)
+        for nav in self._lists:
+            if row is not None and row.get_parent() is nav:
+                if nav.get_selected_row() is not row:
+                    nav.select_row(row)
+            else:
+                nav.unselect_all()
+
+    def search_conversations(self) -> bool:
+        return self.navigate("agents", {"search": True})
 
     def new_conversation(self) -> bool:
         return self.navigate("agents", {"new": True})

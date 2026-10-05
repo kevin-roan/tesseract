@@ -7,9 +7,7 @@ export default function createStyles(theme: Theme) {
     attachments: {
       flexDirection: "row",
       flexWrap: "wrap",
-      justifyContent: "flex-end",
       gap: theme.spacing.sm,
-      maxWidth: theme.maxBubbleWidth,
     },
   });
 }

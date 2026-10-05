@@ -24,6 +24,7 @@ jest.mock("@/features/sandbox/hooks/use-sandbox-hub", () => ({ useSandboxHub: ()
 jest.mock("@/features/sandbox/hooks/use-profile-screen", () => ({ useProfileScreen: () => mockProfile() }));
 jest.mock("@/features/sandbox/hooks/use-projects-screen", () => ({ useProjectsScreen: () => mockProjects() }));
 jest.mock("@/features/sandbox/hooks/use-tasks-screen", () => ({ useTasksScreen: () => mockTasks() }));
+jest.mock("@/features/sandbox/components/resource-history", () => () => null);
 jest.mock("@/hooks/use-status-bar-style", () => ({ useStatusBarStyle: jest.fn() }));
 jest.mock("react-native-safe-area-context", () => require("react-native-safe-area-context/jest/mock").default);
 
@@ -98,7 +99,7 @@ describe("AgentsScreen", () => {
     await render(<AgentsScreen />);
 
     expect(screen.getByText(TEST_SANDBOX.name)).toBeOnTheScreen();
-    expect(screen.queryByText("Online")).toBeNull();
+    expect(screen.getByText("Online")).toBeOnTheScreen();
     expect(screen.queryByLabelText("Paired sandboxes")).toBeNull();
     expect(screen.getByText(/^No builds yet/)).toBeOnTheScreen();
     expect(screen.getByText("No Claude runs yet.")).toBeOnTheScreen();
@@ -339,6 +340,7 @@ describe("ProjectsScreen", () => {
       askClaude: jest.fn(),
       projectMenu: jest.fn(),
       projectMenuSheet: { visible: false, title: "", options: [], onSelect: jest.fn(), onClose: jest.fn(), onDismissed: jest.fn() },
+      renameSheet: { visible: false, name: "", setName: jest.fn(), hint: "", error: null, saving: false, save: jest.fn(), close: jest.fn() },
       removeError: null,
       running: { processes: [], builds: [], runs: [] },
       runningCount: 0,

@@ -3,54 +3,62 @@ import { FlatList, View, type ListRenderItem } from "react-native";
 import Animated from "react-native-reanimated";
 import { SparkleIcon } from "phosphor-react-native";
 
-import BarStrip from "@/components/bar-strip";
 import EmptyState from "@/components/empty-state";
 import MenuSheet from "@/components/menu-sheet";
 import Notice from "@/components/notice";
 import Reveal from "@/components/reveal";
-import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
-import StatusBadge from "@/components/status-badge";
+import TabPills from "@/components/tab-pills";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useFreshEntrance } from "@/hooks/use-fresh-entrance";
 import { useStickToBottom } from "@/hooks/use-stick-to-bottom";
 import ChatComposer from "@/features/chat/components/chat-composer";
-import MessageBubble from "@/features/chat/components/message-bubble";
+import ChatHeader from "@/features/chat/components/chat-header";
 import RunMessage from "@/features/chat/components/run-message";
-import { formatClock, type ChatEventItem } from "@/features/chat/utils/messages";
+import type { TranscriptBlock } from "@/features/chat/utils/transcript";
 
-import { useAgentRunScreen } from "../../hooks/use-agent-run-screen";
-import { RUN_ACTIVITY_LEVELS } from "../../utils/run-activity";
+import { useAgentRunScreen, type AgentRunTab } from "../../hooks/use-agent-run-screen";
+import ActivityGroup from "../activity-group";
 import AgentEvent from "../agent-event";
+import RunChanges from "../run-changes";
 import createStyles from "./styles";
 
 export type AgentRunViewProps = {
   runId: string;
 };
 
-const keyOf = (item: ChatEventItem) => String(item.event.seq);
-const seqOf = (item: ChatEventItem) => item.event.seq;
+const keyOf = (block: TranscriptBlock) => block.key;
+const orderOf = (block: TranscriptBlock) => block.order;
 
 const AgentRunView = ({ runId }: AgentRunViewProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const screen = useAgentRunScreen(runId);
   const { run, composer } = screen;
-  const listRef = useRef<FlatList<ChatEventItem>>(null);
+  const listRef = useRef<FlatList<TranscriptBlock>>(null);
   const getScrollable = useCallback(() => listRef.current, []);
   const { onScroll, onContentSizeChange } = useStickToBottom(getScrollable);
-  const seqs = useMemo(() => screen.messages.map(seqOf), [screen.messages]);
-  const entranceFor = useFreshEntrance(seqs, Boolean(run));
-  const renderItem: ListRenderItem<ChatEventItem> = useCallback(
+  const orders = useMemo(() => screen.transcript.map(orderOf), [screen.transcript]);
+  const entranceFor = useFreshEntrance(orders, Boolean(run));
+  const tabs = useMemo(
+    () => [
+      { value: "agent" as AgentRunTab, label: "Agent" },
+      {
+        value: "changes" as AgentRunTab,
+        label: "Changes",
+        badge: screen.changes.length > 0 ? String(screen.changes.length) : undefined,
+      },
+    ],
+    [screen.changes.length],
+  );
+  const renderItem: ListRenderItem<TranscriptBlock> = useCallback(
     ({ item }) => (
-      <Animated.View entering={entranceFor(item.event.seq)} style={item.showHeader && styles.turn}>
-        <MessageBubble role="assistant" author="Claude" timeLabel={formatClock(item.event.ts)} showHeader={item.showHeader}>
-          <AgentEvent event={item.event} />
-        </MessageBubble>
+      <Animated.View entering={entranceFor(item.order)}>
+        {item.kind === "text" ? <AgentEvent event={item.event} /> : <ActivityGroup activity={item} />}
       </Animated.View>
     ),
-    [styles, entranceFor],
+    [entranceFor],
   );
 
   return (
@@ -58,23 +66,22 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
       scroll={false}
       avoidKeyboard
       header={
-        <ScreenHeader
-          title="Claude"
-          subtitle={run?.projectId ?? undefined}
+        <ChatHeader
+          title={run?.projectId ?? "Claude"}
+          detail={screen.model ?? screen.badge?.label}
+          tone={screen.badge?.tone}
           onBack={screen.nav.back}
-          accessory={
-            screen.badge ? (
-              <Reveal key={screen.badge.label}>
-                <StatusBadge {...screen.badge} />
-              </Reveal>
-            ) : undefined
-          }
           actions={screen.headerActions}
+          tabs={run?.projectId ? <TabPills options={tabs} value={screen.tab} onChange={screen.setTab} /> : null}
         />
       }
       footer={
-        run && screen.canContinue ? (
-          <ChatComposer composer={composer} placeholder="Reply to Claude…" testID="run-composer" />
+        screen.showComposer && screen.tab === "agent" ? (
+          <ChatComposer
+            composer={composer}
+            placeholder={screen.running ? "Claude is working… draft your next message" : "Ask Claude…"}
+            testID="run-composer"
+          />
         ) : undefined
       }
     >
@@ -90,10 +97,12 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
         ) : (
           <EmptyState loading title="Loading run…" />
         )
+      ) : screen.tab === "changes" ? (
+        <RunChanges changes={screen.changes} />
       ) : (
         <FlatList
           ref={listRef}
-          data={screen.messages}
+          data={screen.transcript}
           keyExtractor={keyOf}
           renderItem={renderItem}
           onScroll={onScroll}
@@ -105,11 +114,6 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
           ListHeaderComponent={<RunMessage run={run} />}
           ListFooterComponent={
             <View style={styles.footer}>
-              {screen.running ? (
-                <Reveal>
-                  <BarStrip values={RUN_ACTIVITY_LEVELS} stream height={theme.spacing.xl} style={styles.activity} />
-                </Reveal>
-              ) : null}
               {screen.result ? (
                 <Reveal>
                   <Notice tone="success" title="Result" message={screen.result} />
@@ -121,8 +125,8 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
                 </Reveal>
               ) : null}
               {screen.brief ? (
-                <Reveal style={styles.brief}>
-                  <ThemedText variant="caption" color="textSecondary" style={styles.briefText} testID="run-brief">
+                <Reveal>
+                  <ThemedText variant="caption" color="textTertiary" style={styles.brief} testID="run-brief">
                     {screen.brief}
                   </ThemedText>
                 </Reveal>

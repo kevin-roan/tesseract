@@ -1,6 +1,10 @@
 from ..css import css_var
-from ..semantic import SchemeName, is_dark
-from ..tokens import BORDER_WIDTH, CONTROL_HEIGHT, RADIUS, SHADOWS, SPACING
+from ..semantic import SchemeName
+from ..tokens import AVATAR_SIZE, BORDER_WIDTH, CONTROL_HEIGHT, RADIUS, SPACING, transition
+
+PANE_BAR_HEIGHT = 44
+MESSAGE_INSET = 13
+BODY_INDENT = AVATAR_SIZE["sm"] + SPACING["sm"]
 
 
 def _px(value: float) -> str:
@@ -10,67 +14,105 @@ def _px(value: float) -> str:
 def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
     s, r = SPACING, RADIUS
     thin = f"{_px(BORDER_WIDTH['thin'])} solid"
-    raised = "none" if is_dark(scheme) else SHADOWS["level2"].css()
+    hairline = f"{thin} {css_var('border')}"
+    inset = _px(MESSAGE_INSET)
     return {
-        ".to-agents-list": {
-            "background-color": css_var("surfaceSunken"),
-            "border-right": f"{thin} {css_var('border')}",
+        ".to-agents-split > .sidebar-pane, .to-agents-split > widget > .sidebar-pane": {
+            "background": "none",
+            "box-shadow": "none",
         },
-        ".to-agents-list-top": {"padding": f"{_px(s['base'])} {_px(s['md'])} {_px(s['md'])} {_px(s['md'])}"},
-        ".to-agents-list-content": {"padding": f"0 {_px(s['sm'])} {_px(s['xl'])} {_px(s['sm'])}"},
-        ".to-agents-list-top entry": {"font-size": _px(14), "min-height": _px(CONTROL_HEIGHT["sm"])},
-        ".to-agents-group-title": {"margin": f"{_px(s['xs'])} {_px(s['sm'])}"},
+        ".to-agents-list": {"background": "none", "border-right": hairline},
+        ".to-agents-detail": {"background": "none"},
+        ".to-pane-bar": {
+            "min-height": _px(PANE_BAR_HEIGHT),
+            "padding": f"0 {_px(s['sm'])} 0 {_px(s['base'])}",
+            "border-bottom": hairline,
+        },
+        ".to-pane-bar menubutton > button.toggle.image-button:not(.flat)": {
+            "background": "none",
+            "border-color": "transparent",
+            "box-shadow": "none",
+        },
+        ".to-pane-bar menubutton > button.toggle.image-button:not(.flat):hover": {"background": css_var("backgroundElement")},
+        ".to-pane-bar menubutton > button.toggle.image-button:not(.flat):checked": {"background": css_var("backgroundSelected")},
+        ".to-agents-search": {"padding": f"{_px(s['sm'])} {_px(s['md'])} 0 {_px(s['md'])}"},
+        "button.to-chip.to-filter-chip": {"min-height": _px(CONTROL_HEIGHT["xs"]), "padding": f"0 {_px(s['sm'])}", "margin": f"{_px(s['xs'])} {_px(s['xs'])} 0 {_px(s['xs'])}"},
+        ".to-agents-search entry": {"min-height": _px(CONTROL_HEIGHT["sm"])},
+        ".to-agents-list-content": {"padding": f"{_px(s['xs'])} {_px(s['sm'])} {_px(s['xl'])} {_px(s['sm'])}"},
+        ".to-agents-group-title": {"padding": f"{_px(s['sm'])} {_px(10)} {_px(s['xs'])} {_px(10)}"},
         "list.to-convo-list": {"background": "none"},
         "list.to-convo-list > row.to-convo-row": {
-            "padding": f"{_px(s['sm'])} {_px(s['sm'])}",
-            "border-radius": _px(r["md"]),
+            "padding": f"{_px(s['sm'])} {_px(10)}",
+            "border-radius": _px(r["sm"]),
             "margin": "1px 0",
         },
         "list.to-convo-list > row.to-convo-row:hover": {"background-color": css_var("backgroundElement")},
         "list.to-convo-list > row.to-convo-row:selected": {
-            "background-color": css_var("accentMuted"),
+            "background-color": css_var("backgroundSelected"),
             "color": css_var("text"),
         },
-        ".to-state-glyph": {"min-width": _px(16), "min-height": _px(16), "margin-top": _px(2)},
-        ".to-state-succeeded": {"color": css_var("success")},
+        ".to-state-glyph": {"min-width": _px(16), "min-height": _px(16), "margin-top": _px(1)},
+        ".to-state-succeeded": {"color": css_var("accent")},
         ".to-state-failed": {"color": css_var("danger")},
         ".to-state-cancelled": {"color": css_var("textTertiary")},
-        ".to-attention-card": {
-            "padding": _px(s["md"]),
-            "border-radius": _px(r["lg"]),
-            "background-color": css_var("warningMuted"),
-            "border": f"{thin} {css_var('border')}",
+        ".to-unread-dot": {
+            "min-width": _px(s["sm"] - 1),
+            "min-height": _px(s["sm"] - 1),
+            "border-radius": _px(r["full"]),
+            "background-color": css_var("accent"),
         },
+        ".to-unread-dot.top": {"margin-top": _px(6)},
+        ".to-attention-card": {"padding": f"{_px(s['sm'])} {_px(10)}", "border-radius": _px(r["sm"])},
+        ".to-attention-card:hover": {"background-color": css_var("backgroundElement")},
         "button.to-attention-action": {
-            "min-height": _px(26),
+            "min-height": _px(CONTROL_HEIGHT["xs"]),
             "padding": f"0 {_px(s['sm'])}",
             "font-size": _px(12),
-            "font-weight": "600",
-            "color": css_var("warning"),
+            "font-weight": "500",
+            "color": css_var("textSecondary"),
+            "border": hairline,
         },
-        "button.to-terminal-session": {"padding": _px(s["sm"]), "border-radius": _px(r["md"])},
-        ".to-new-convo": {"padding": f"{_px(s['3xl'])} {_px(s['base'])}"},
-        ".to-agents-hero": {
-            "min-width": _px(72),
-            "min-height": _px(72),
-            "border-radius": _px(r["2xl"]),
-            "background-color": css_var("accentMuted"),
-            "color": css_var("accentStrong"),
-        },
-        ".to-composer": {
-            "padding": f"{_px(s['md'])} {_px(s['md'])} {_px(s['sm'])} {_px(s['md'])}",
+        "button.to-attention-action:hover": {"color": css_var("text")},
+        "button.to-terminal-session": {"padding": f"{_px(s['sm'])} {_px(10)}", "border-radius": _px(r["sm"])},
+        ".to-placeholder": {"padding": _px(s["xl"])},
+        ".to-placeholder-glyph": {"opacity": "0.8"},
+        ".to-new-convo": {"padding": f"{_px(s['4xl'])} {_px(s['xl'])} {_px(s['xl'])} {_px(s['xl'])}"},
+        ".to-new-convo-card": {
             "border-radius": _px(r["xl"]),
+            "border": hairline,
+            "background-color": css_var("surfaceElevated"),
+        },
+        ".to-new-convo-card .to-pane-bar": {"border-bottom": "none", "padding": f"0 {_px(s['sm'])} 0 {_px(s['md'])}"},
+        ".to-breadcrumb-chip": {
+            "min-height": _px(CONTROL_HEIGHT["xs"]),
+            "padding": f"0 {_px(s['sm'])}",
+            "border-radius": _px(r["sm"]),
+            "background-color": css_var("backgroundSelected"),
+        },
+        ".to-suggestions": {"padding": f"0 {_px(s['xs'])}"},
+        "button.to-chip.to-suggestion": {"min-height": _px(CONTROL_HEIGHT["xs"]), "padding": f"0 {_px(10)}"},
+        ".to-composer": {
+            "padding": f"{_px(10)} {_px(s['md'])} {_px(s['sm'])} {_px(s['md'])}",
+            "border-radius": _px(r["lg"]),
             "border": f"{thin} {css_var('borderStrong')}",
             "background-color": css_var("surfaceElevated"),
-            "box-shadow": raised,
+            "box-shadow": "none",
+            "transition": transition("border-color"),
         },
-        ".to-composer:focus-within": {"border-color": css_var("accentStrong")},
-        ".to-composer.large": {"padding": f"{_px(s['base'])} {_px(s['base'])} {_px(s['sm'])} {_px(s['base'])}"},
-        ".to-composer.locked": {"background-color": css_var("backgroundElement")},
+        ".to-composer:focus-within": {"border-color": "rgba(255, 255, 255, 0.2)"},
+        ".to-composer.large": {
+            "padding": f"{_px(s['xs'])} {_px(s['md'])} {_px(s['md'])} {_px(s['md'])}",
+            "border": "none",
+            "border-radius": _px(r["xl"]),
+            "background": "none",
+        },
+        ".to-composer.large > overlay": {"margin": f"0 {_px(s['xs'])}"},
+        ".to-composer.locked textview.to-composer-input": {"opacity": "0.6"},
         ".to-composer textview.to-composer-input, .to-composer textview.to-composer-input > text": {
             "background": "none",
             "color": css_var("text"),
         },
+        ".to-composer-properties": {"padding": f"{_px(s['md'])} 0 {_px(s['sm'])} 0"},
         "button.to-composer-send": {
             "min-width": _px(CONTROL_HEIGHT["sm"]),
             "min-height": _px(CONTROL_HEIGHT["sm"]),
@@ -78,81 +120,133 @@ def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
             "border-radius": _px(r["full"]),
             "background": css_var("accent"),
             "color": css_var("textOnAccent"),
+            "box-shadow": "none",
+        },
+        "button.to-composer-send:active": {"background": css_var("accentPressed")},
+        "button.to-composer-send.pill": {
+            "min-height": _px(CONTROL_HEIGHT["md"]),
+            "padding": f"0 {_px(14)}",
         },
         "button.to-composer-send:disabled": {
             "background": css_var("backgroundSelected"),
             "color": css_var("textTertiary"),
         },
-        ".to-project-picker": {
-            "padding": f"0 0 0 {_px(s['sm'])}",
+        ".to-composer.drop-target": {"border-color": css_var("accent"), "background-color": css_var("accentMuted")},
+        "button.to-composer-attach, menubutton.to-composer-attach > button": {
+            "min-width": _px(CONTROL_HEIGHT["sm"]),
+            "min-height": _px(CONTROL_HEIGHT["sm"]),
+            "padding": "0",
             "border-radius": _px(r["full"]),
+            "color": css_var("textSecondary"),
+        },
+        ".to-composer.large menubutton.to-composer-attach > button": {
+            "min-width": _px(CONTROL_HEIGHT["md"]),
+            "min-height": _px(CONTROL_HEIGHT["md"]),
+            "border": hairline,
             "background-color": css_var("backgroundElement"),
         },
-        ".to-project-picker dropdown > button, .to-project-picker .to-choice-dropdown > button": {
-            "min-height": _px(28),
-            "padding": f"0 {_px(s['sm'])}",
-            "background": "none",
+        ".to-attachment-tray": {"padding-bottom": _px(s["sm"])},
+        ".to-attachment.pill": {
+            "padding": _px(s["xs"]),
+            "border-radius": _px(r["md"]),
+            "border": hairline,
+            "background-color": css_var("surface"),
         },
-        ".to-project-picker label": {"font-size": _px(13), "font-weight": "500", "color": css_var("textSecondary")},
-        "button.to-suggestion": {"padding": f"0 {_px(s['md'])}"},
-        ".to-convo-header": {
-            "padding": f"{_px(s['md'])} {_px(s['xl'])}",
-            "border-bottom": f"{thin} {css_var('divider')}",
+        ".to-attachment.thumb": {"border-radius": _px(r["md"]), "border": hairline},
+        ".to-attachment.thumb.large": {"border-radius": _px(r["md"])},
+        ".to-attachment.failed": {"border-color": css_var("danger")},
+        ".to-attachment-icon": {
+            "min-width": _px(CONTROL_HEIGHT["sm"]),
+            "min-height": _px(CONTROL_HEIGHT["sm"]),
+            "border-radius": _px(r["sm"]),
+            "background-color": css_var("backgroundElement"),
         },
-        ".to-convo-notices": {"padding": f"{_px(s['md'])} {_px(s['xl'])} 0 {_px(s['xl'])}"},
-        ".to-convo-footer": {
-            "padding": f"{_px(s['sm'])} {_px(s['xl'])} {_px(s['base'])} {_px(s['xl'])}",
+        "button.to-attachment-remove, button.to-attachment-action": {
+            "min-width": _px(20),
+            "min-height": _px(20),
+            "padding": "0",
         },
-        ".to-timeline-content": {"padding": f"{_px(s['xl'])} {_px(s['xl'])} {_px(s['4xl'])} {_px(s['xl'])}"},
-        ".to-bubble-user": {
-            "padding": f"{_px(s['sm'])} {_px(s['base'])}",
-            "border-radius": f"{_px(r['lg'])} {_px(r['lg'])} {_px(r['xs'])} {_px(r['lg'])}",
-            "background-color": css_var("bubbleUser"),
-            "color": css_var("bubbleUserText"),
+        "button.to-attachment-remove.floating": {
+            "margin": _px(s["xxs"]),
+            "background-color": "rgba(0, 0, 0, 0.55)",
+            "color": "white",
         },
-        ".to-assistant-avatar": {
-            "min-width": _px(28),
-            "min-height": _px(28),
+        ".to-project-picker": {
+            "min-height": _px(CONTROL_HEIGHT["sm"]),
+            "padding": f"0 {_px(s['xxs'])} 0 {_px(10)}",
             "border-radius": _px(r["full"]),
-            "background-color": css_var("accentMuted"),
-            "color": css_var("accentStrong"),
+            "border": hairline,
         },
-        ".to-tool-card": {
+        ".to-project-picker:hover": {"background-color": css_var("backgroundElement")},
+        ".to-project-picker dropdown > button, .to-project-picker .to-choice-dropdown > button": {
+            "min-height": _px(CONTROL_HEIGHT["sm"] - 2),
+            "padding": f"0 {_px(s['sm'])} 0 {_px(s['xxs'])}",
+            "background": "none",
+            "border": "none",
+            "box-shadow": "none",
+        },
+        ".to-project-picker dropdown > button arrow": {"min-width": "0", "min-height": "0", "-gtk-icon-size": "0", "margin": "0"},
+        ".to-project-picker label": {"font-size": _px(13), "font-weight": "500", "color": css_var("textSecondary")},
+        ".to-convo-intro": {"padding": f"0 {inset} {_px(s['xs'])} {inset}"},
+        ".to-convo-notices": {"padding": f"{_px(s['md'])} {_px(s['xl'])} 0 {_px(s['xl'])}"},
+        ".to-convo-footer": {"padding": f"{_px(s['sm'])} {_px(s['xl'])} {_px(s['base'])} {_px(s['xl'])}"},
+        ".to-timeline-content": {"padding": f"{_px(s['lg'])} {_px(s['xl'])} {_px(s['4xl'])} {_px(s['xl'])}"},
+        ".to-user-message": {
+            "padding": f"{_px(s['md'])} {_px(s['md'])}",
             "border-radius": _px(r["md"]),
-            "border": f"{thin} {css_var('border')}",
-            "background-color": css_var("codeBackground"),
-            "margin-left": _px(40),
+            "border": hairline,
+            "background-color": css_var("surfaceElevated"),
         },
-        ".to-tool-card.error": {"border-color": css_var("danger")},
+        ".to-assistant-message, .to-outcome, .to-activity.to-system, .to-thinking": {"padding": f"0 {inset}"},
+        ".to-assistant-message": {"margin-top": _px(s["xs"])},
+        ".to-author-line": {"min-height": _px(AVATAR_SIZE["sm"])},
+        ".to-message-body": {"margin-left": _px(BODY_INDENT)},
+        ".to-agent-avatar": {
+            "min-width": _px(AVATAR_SIZE["sm"]),
+            "min-height": _px(AVATAR_SIZE["sm"]),
+            "border-radius": _px(r["full"]),
+            "background-color": css_var("accent"),
+            "color": css_var("textOnAccent"),
+        },
         "button.to-tool-header": {
-            "padding": f"{_px(s['xs'])} {_px(s['sm'])}",
-            "border-radius": _px(r["md"]),
-            "min-height": _px(30),
+            "min-height": _px(CONTROL_HEIGHT["xs"]),
+            "padding": f"{_px(s['xxs'])} {inset}",
+            "border-radius": _px(r["sm"]),
         },
-        ".to-tool-details": {"padding": f"{_px(s['xs'])} {_px(s['md'])} {_px(s['md'])} {_px(s['md'])}"},
-        ".to-system-line": {"padding": f"0 {_px(s['xl'])}"},
-        ".to-outcome": {"padding": _px(s["md"]), "border-radius": _px(r["lg"])},
-        ".to-thinking": {"margin-left": _px(40)},
-        "button.to-previous-turn": {"border-radius": _px(r["full"]), "padding": f"{_px(s['xxs'])} {_px(s['md'])}"},
+        ".to-tool-chevron": {"opacity": "0"},
+        "button.to-tool-header:hover .to-tool-chevron": {"opacity": "1"},
+        ".to-tool-details": {
+            "margin": f"{_px(s['xs'])} {inset} {_px(s['xs'])} {_px(MESSAGE_INSET + BODY_INDENT)}",
+            "padding": f"{_px(s['sm'])} {_px(s['md'])}",
+            "border-radius": _px(r["md"]),
+            "border": hairline,
+            "background-color": css_var("codeBackground"),
+        },
+        ".to-outcome": {"margin-top": _px(s["xs"])},
+        "button.to-previous-turn": {"border-radius": _px(r["sm"]), "padding": f"{_px(s['xxs'])} {_px(s['sm'])}"},
         ".to-code-block": {
             "border-radius": _px(r["md"]),
-            "border": f"{thin} {css_var('border')}",
+            "border": hairline,
             "background-color": css_var("codeBackground"),
         },
-        ".to-code-block-header": {
-            "padding": f"{_px(s['xxs'])} {_px(s['xs'])} {_px(s['xxs'])} {_px(s['md'])}",
-            "border-bottom": f"{thin} {css_var('divider')}",
+        ".to-code-block-body": {"padding": f"{_px(10)} {_px(s['md'])}"},
+        ".to-code-block-actions": {
+            "margin": _px(s["xs"]),
+            "opacity": "0",
+            "transition": transition("opacity"),
         },
-        ".to-code-block-body": {"padding": f"{_px(s['sm'])} {_px(s['md'])}"},
-        "button.to-copy-button": {"min-height": _px(24), "min-width": _px(24), "padding": _px(s["xxs"])},
+        ".to-code-block:hover .to-code-block-actions": {"opacity": "1"},
+        "button.to-copy-button": {
+            "min-height": _px(CONTROL_HEIGHT["xs"]),
+            "min-width": _px(CONTROL_HEIGHT["xs"]),
+            "padding": "0",
+            "background-color": css_var("surfaceElevated"),
+        },
         ".to-md-quote": {
             "border-left": f"{_px(BORDER_WIDTH['focus'])} solid {css_var('borderStrong')}",
             "padding-left": _px(s["md"]),
         },
-        ".to-md-table-scroller": {
-            "border-radius": _px(r["md"]),
-            "border": f"{thin} {css_var('border')}",
-        },
+        ".to-md-table-scroller": {"border-radius": _px(r["md"]), "border": hairline},
         ".to-md-table": {"padding": f"{_px(s['sm'])} {_px(s['md'])}"},
         ".to-markdown label link": {"color": css_var("accentStrong")},
     }

@@ -66,6 +66,7 @@ ACTIONS = MappingProxyType({
     "screenshot": "Save a screenshot",
     "browser": "Open in browser (noVNC)",
     "reconnect": "Reconnect",
+    "windows": "Open windows",
     "fullscreen": "Fullscreen (F11)",
     "exit_fullscreen": "Exit fullscreen (F11)",
 })
@@ -89,11 +90,29 @@ KEY_COMBOS = MappingProxyType({
     "print": "Print Screen",
 })
 
+WINDOWS = MappingProxyType({
+    "title": "Open windows",
+    "refresh": "Refresh",
+    "loading": "Reading the sandbox's windows…",
+    "empty_title": "No windows open",
+    "empty_message": "Nothing is showing on the sandbox display.",
+    "error_title": "Couldn't list the windows",
+    "untitled": "Untitled window",
+    "active": "Active",
+    "minimized": "Minimized",
+    "close": "Close window",
+    "force": "Force quit",
+    "force_title": "Force quit this app?",
+    "force_message": "Its process is killed without a chance to save. Use this when the window doesn't respond to Close.",
+    "cancel": "Cancel",
+})
+
 TOASTS = MappingProxyType({
     "screenshot_saved": "Screenshot saved to {name}",
     "screenshot_failed": "Screenshot failed: {error}",
     "browser_failed": "Couldn't open the browser: {error}",
     "clipboard_received": "Clipboard received from the sandbox",
+    "window_failed": "Window action failed: {error}",
 })
 
 SCREENSHOT_FILE = "monolith-display-{stamp}.png"

@@ -7,21 +7,22 @@ import UploadAttachment from "@/features/attachments/components/upload-attachmen
 import VoiceMessage from "@/features/voice/components/voice-message";
 
 import { formatClock, partitionAttachments } from "../../utils/messages";
-import MessageBubble from "../message-bubble";
+import PromptCard from "../prompt-card";
 import createStyles from "./styles";
 
 export type RunMessageProps = {
   run: Pick<AgentRun, "prompt" | "attachments" | "startedAt">;
+  author?: string;
 };
 
-const RunMessage = ({ run }: RunMessageProps) => {
+const RunMessage = ({ run, author = "You" }: RunMessageProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { audio, images, files } = useMemo(() => partitionAttachments(run.attachments), [run.attachments]);
   const uploads = [...images, ...files];
 
   return (
-    <MessageBubble role="user" text={audio ? undefined : run.prompt} timeLabel={formatClock(run.startedAt)}>
+    <PromptCard author={author} text={audio ? undefined : run.prompt} timeLabel={formatClock(run.startedAt)}>
       {uploads.length > 0 ? (
         <View style={styles.attachments}>
           {uploads.map((upload) => (
@@ -30,7 +31,7 @@ const RunMessage = ({ run }: RunMessageProps) => {
         </View>
       ) : null}
       {audio ? <VoiceMessage upload={audio} transcript={run.prompt} /> : null}
-    </MessageBubble>
+    </PromptCard>
   );
 };
 

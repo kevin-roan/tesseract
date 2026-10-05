@@ -1,8 +1,8 @@
 import type { Hono } from "hono";
-import { routePatterns, SendArtifactSchema, ShareArtifactSchema } from "@theone/protocol";
+import { BuildOutputQuerySchema, routePatterns, SendArtifactSchema, ShareArtifactSchema } from "@theone/protocol";
 import type { Services } from "../../services";
 import { fileResponse } from "../file-response";
-import { idParam, jsonBody, projectFilter } from "../validation";
+import { idParam, jsonBody, parseWith, projectFilter } from "../validation";
 
 const MIME_TYPES: Record<string, string> = {
   ".apk": "application/vnd.android.package-archive",
@@ -23,7 +23,7 @@ function contentType(fileName: string): string {
 
 export function registerArtifactRoutes(app: Hono, services: Services): void {
   const { rest } = routePatterns;
-  const { artifacts, taildrop } = services;
+  const { artifacts, buildOutputs, taildrop } = services;
 
   app.get(rest.artifacts, (c) => c.json(artifacts.list(projectFilter(c))));
 
@@ -37,6 +37,14 @@ export function registerArtifactRoutes(app: Hono, services: Services): void {
     const id = idParam(c, "artifact");
     const { targetId } = await jsonBody(c, SendArtifactSchema);
     return c.json(await taildrop.send(id, targetId));
+  });
+
+  app.get(rest.buildOutputs, async (c) => c.json(await buildOutputs.list(projectFilter(c))));
+
+  app.get(rest.buildOutputDownload, async (c) => {
+    const query = parseWith(BuildOutputQuerySchema, c.req.query(), "query");
+    const { output, path } = await buildOutputs.resolve(c.req.param("id") ?? "", query.path);
+    return fileResponse(path, { fileName: output.fileName, contentType: contentType(output.fileName), range: c.req.header("range") });
   });
 
   app.get(rest.artifactDownload, (c) => {

@@ -1,7 +1,6 @@
 from ..css import css_var
-from ..gradients import css_linear_gradient, gradients_for
-from ..semantic import COLORS, SchemeName, is_dark, look_for
-from ..tokens import BASE_FONT_SIZE, BORDER_WIDTH, CONTROL_HEIGHT, RADIUS, SHADOWS, SPACING, WINDOW_CONTROL, radius_for
+from ..semantic import SchemeName
+from ..tokens import BASE_FONT_SIZE, BORDER_WIDTH, CONTROL_HEIGHT, RADIUS, SPACING, WINDOW_CONTROL, radius_for
 
 RuleSet = dict[str, dict[str, str]]
 
@@ -13,207 +12,88 @@ def px(value: float) -> str:
 def _titlebar(scheme: SchemeName) -> RuleSet:
     s, r = SPACING, RADIUS
     size = px(WINDOW_CONTROL["size"])
+    control = px(CONTROL_HEIGHT["sm"])
     return {
         "headerbar.to-titlebar": {
-            "min-height": px(52),
+            "min-height": px(CONTROL_HEIGHT["xl"]),
             "background": "none",
             "box-shadow": "none",
             "color": css_var("text"),
         },
-        "headerbar.to-titlebar > windowhandle > box": {"padding": f"{px(s['sm'])} {px(s['md'])}"},
-        "headerbar.to-titlebar button": {"border-radius": px(r["sm"])},
-        "headerbar.to-titlebar button.back": {"margin-top": px(s["xs"]), "margin-bottom": px(s["xs"]), "min-height": "0"},
+        "headerbar.to-titlebar > windowhandle > box": {
+            "padding": f"{px((CONTROL_HEIGHT['xl'] - CONTROL_HEIGHT['sm']) / 2)} {px(s['sm'])} {px((CONTROL_HEIGHT['xl'] - CONTROL_HEIGHT['sm']) / 2)} {px(s['md'])}",
+        },
+        "headerbar.to-titlebar > windowhandle > box > box.start, headerbar.to-titlebar > windowhandle > box > box.end": {
+            "border-spacing": px(s["xxs"]),
+        },
+        "headerbar.to-page-header": {"box-shadow": f"inset 0 -{px(BORDER_WIDTH['thin'])} {css_var('divider')}"},
+        "headerbar.to-titlebar button, headerbar.to-titlebar menubutton > button": {
+            "min-width": control,
+            "min-height": control,
+            "padding": "0",
+            "border-radius": px(r["sm"]),
+            "background": "none",
+            "box-shadow": "none",
+            "border": "none",
+            "color": css_var("textSecondary"),
+        },
+        "headerbar.to-titlebar button:hover, headerbar.to-titlebar menubutton > button:hover": {
+            "background-color": css_var("backgroundElement"),
+            "color": css_var("text"),
+        },
+        "headerbar.to-titlebar button:checked, headerbar.to-titlebar menubutton > button:checked": {
+            "background-color": css_var("backgroundSelected"),
+            "color": css_var("text"),
+        },
+        "headerbar.to-titlebar button.back": {"margin": "0"},
+        "headerbar.to-titlebar button.image-button:not(.flat):not(.suggested-action):not(.destructive-action)": {
+            "background": "none",
+            "border": "none",
+            "color": css_var("textSecondary"),
+        },
         "headerbar.to-titlebar:backdrop > windowhandle": {"filter": "none"},
         "headerbar.to-titlebar:backdrop .to-header-title, headerbar.to-titlebar:backdrop .to-brand": {"opacity": "0.7"},
-        ".to-header-title": {"margin-left": px(s["xs"])},
+        ".to-caret": {"-gtk-icon-size": px(10), "color": css_var("textSecondary")},
+        ".to-crumb-separator": {"color": css_var("textTertiary")},
         ".to-titlebar-divider": {
             "min-width": px(BORDER_WIDTH["thin"]),
-            "margin": f"{px(s['md'])} {px(s['xs'])}",
-            "background-color": css_var("border"),
+            "margin": f"{px(s['xs'] + 2)} {px(s['xs'])}",
+            "background-color": css_var("divider"),
         },
-        ".to-window-controls": {"margin-left": px(s["xs"])},
         "headerbar.to-titlebar button.to-window-control": {
             "min-width": size,
             "min-height": size,
             "padding": "0",
-            "border-radius": px(r["full"]),
-            "background": css_var("backgroundElement"),
+            "border-radius": px(r["sm"]),
+            "background": "none",
             "color": css_var("textSecondary"),
             "box-shadow": "none",
             "border": "none",
             "outline-offset": "-2px",
         },
-        "headerbar.to-titlebar button.to-window-control:hover": {"background": css_var("backgroundSelected"), "color": css_var("text")},
-        "headerbar.to-titlebar button.to-window-control:active": {"background": css_var("borderStrong"), "color": css_var("text")},
+        "headerbar.to-titlebar button.to-window-control:hover": {"background": css_var("backgroundElement"), "color": css_var("text")},
+        "headerbar.to-titlebar button.to-window-control:active": {"background": css_var("backgroundSelected"), "color": css_var("text")},
         "headerbar.to-titlebar button.to-window-control.close:hover": {"background": css_var("dangerSolid"), "color": "#ffffff"},
         "headerbar.to-titlebar button.to-window-control.close:active": {"background": css_var("danger"), "color": "#ffffff"},
-        "window:backdrop headerbar.to-titlebar button.to-window-control": {"background": "none", "color": css_var("textTertiary")},
-        "window:backdrop headerbar.to-titlebar button.to-window-control:hover": {"background": css_var("backgroundElement")},
-        ".to-brand-tile": {
-            "min-width": px(26),
-            "min-height": px(26),
-            "border-radius": px(r["sm"]),
-            "background-image": css_linear_gradient(gradients_for(scheme)["brand"]),
-            "color": css_var("textOnAccent"),
-        },
-        ".to-brand": {"margin-left": px(s["xs"])},
+        "window:backdrop headerbar.to-titlebar button.to-window-control": {"color": css_var("textTertiary")},
     }
 
 
-def _sidebar(scheme: SchemeName) -> RuleSet:
-    s, r = SPACING, RADIUS
+def _panel(scheme: SchemeName) -> RuleSet:
+    s = SPACING
+    gap = px(s["sm"])
+    window_bg = css_var("background")
     return {
-        "toolbarview.to-sidebar": {"background-color": css_var("surface" if is_dark(scheme) else "surfaceSunken")},
-        ".to-sidebar-body": {"padding": f"0 0 {px(s['md'])} 0"},
-        "button.to-new-conversation": {
-            "margin": f"{px(s['xxs'])} {px(s['md'])} {px(s['sm'])}",
-            "padding": f"0 {px(s['md'])}",
-            "min-height": px(CONTROL_HEIGHT["md"] - 2),
-            "border-radius": px(r["md"]),
-            "background-image": css_linear_gradient(gradients_for(scheme)["brand"]),
-            "color": css_var("textOnAccent"),
-            "box-shadow": "none" if is_dark(scheme) else SHADOWS["level1"].css(),
-            "border": "none",
-        },
-        "button.to-new-conversation:hover": {"filter": "brightness(1.06)"},
-        "button.to-new-conversation:active": {"filter": "brightness(0.94)"},
-        ".to-shortcut-hint": {"opacity": "0.7"},
-        ".to-side-section": {
-            "margin": f"{px(s['base'])} {px(s['md'])} {px(s['xs'])} {px(s['lg'])}",
-        },
-        "list.to-nav-list": {"background": "none"},
-        "list.to-nav-list > row": {
-            "min-height": px(34),
-            "padding": f"0 {px(s['sm'])}",
-            "margin": f"{px(1)} {px(s['md'] - 2)}",
-            "border-radius": px(r["sm"] + 2),
-            "background": "none",
-            "color": css_var("textSecondary"),
-        },
-        "list.to-nav-list > row:hover": {"background-color": css_var("backgroundElement")},
-        "list.to-nav-list > row:active": {"background-color": css_var("backgroundSelected")},
-        "list.to-nav-list > row:selected": {"background-color": css_var("backgroundSelected"), "color": css_var("text")},
-        "list.to-nav-list > row:selected image": {"color": css_var("accent" if is_dark(scheme) else "accentStrong")},
-        ".to-side-row": {
-            "margin": f"0 {px(s['md'] - 2)}",
-            "border-radius": px(r["sm"] + 2),
-        },
-        ".to-side-row:hover": {"background-color": css_var("backgroundElement")},
-        "button.to-side-row-main": {
-            "min-height": px(34),
-            "padding": f"0 {px(s['sm'])}",
-            "border-radius": px(r["sm"] + 2),
-            "background": "none",
-            "box-shadow": "none",
-            "border": "none",
-        },
-        "button.to-side-row-main:active": {"background-color": css_var("backgroundSelected")},
-        "button.to-side-row-action": {
-            "min-width": px(24),
-            "min-height": px(24),
-            "margin-right": px(s["xs"]),
-            "padding": "0",
-            "border-radius": px(r["xs"] + 2),
-            "background": "none",
-            "box-shadow": "none",
-            "border": "none",
-            "color": css_var("textTertiary"),
-        },
-        "button.to-side-row-action:hover": {"background-color": css_var("backgroundSelected"), "color": css_var("text")},
-        "button.to-side-add": {"opacity": "0"},
-        ".to-side-row:hover button.to-side-add, button.to-side-add:focus-visible": {"opacity": "1"},
-        ".to-side-running": {
-            "min-width": px(18),
-            "padding": f"0 {px(s['xs'] + 2)}",
-            "border-radius": px(r["full"]),
-            "background-color": css_var("infoMuted"),
-            "color": css_var("info"),
-            "font-weight": "600",
-        },
-        ".to-side-runs": {"padding": f"{px(s['xxs'])} 0 {px(s['xs'])}"},
-        "button.to-side-run": {
-            "min-height": px(28),
-            "margin-right": px(s["md"] - 2),
-            "padding": f"0 {px(s['sm'])}",
-            "border-radius": px(r["sm"]),
-            "background": "none",
-            "box-shadow": "none",
-            "border": "none",
-        },
-        "button.to-side-run:hover": {"background-color": css_var("backgroundElement")},
-        "button.to-side-run:hover .to-text-body-small, button.to-side-run.running .to-text-body-small": {
-            "color": css_var("text"),
-        },
-        ".to-side-empty-runs": {"margin-top": px(s["xxs"]), "margin-bottom": px(s["xs"])},
-        ".to-side-status": {"margin": f"{px(s['xs'])} {px(s['lg'])}"},
-        "button.to-side-link": {
-            "margin": f"0 {px(s['md'])}",
-            "padding": f"{px(s['xxs'])} {px(s['sm'])}",
-            "min-height": px(24),
-            "background": "none",
-            "box-shadow": "none",
-            "color": css_var("accent" if is_dark(scheme) else "accentStrong"),
-            "font-weight": "600",
-        },
-        "button.to-side-link:hover": {"background-color": css_var("backgroundElement")},
-    }
-
-
-def _composer(scheme: SchemeName) -> RuleSet:
-    s, r = SPACING, RADIUS
-    return {
-        ".to-sidebar-bottom": {"padding": f"{px(s['xs'])} 0 0"},
-        ".to-composer": {
-            "margin": f"0 {px(s['md'])} {px(s['xs'])}",
-            "padding": f"{px(s['sm'])} {px(s['sm'])} {px(s['sm'] - 2)} {px(s['md'] - 2)}",
-            "border-radius": px(r["lg"]),
-            "background-color": css_var("surfaceElevated"),
+        ".sidebar-pane.to-sidebar-pane": {"background-color": window_bg, "box-shadow": "none"},
+        ".content-pane.to-panel-frame": {"background-color": window_bg, "box-shadow": "none"},
+        "navigation-view.to-panel": {
+            "margin": f"{gap} {gap} {gap} 0",
+            "border-radius": px(radius_for(scheme)["md"]),
             "border": f"{px(BORDER_WIDTH['thin'])} solid {css_var('border')}",
-            "box-shadow": "none" if is_dark(scheme) else SHADOWS["level1"].css(),
+            "background-color": css_var("surface"),
         },
-        ".to-composer:focus-within": {"border-color": css_var("accent" if is_dark(scheme) else "accentStrong")},
-        ".to-composer textview, .to-composer textview > text": {
-            "background": "none",
-            "color": css_var("text"),
-            "font-size": px(13),
-        },
-        ".to-composer scrolledwindow": {"min-height": px(40)},
-        "button.to-composer-send": {
-            "min-width": px(30),
-            "min-height": px(30),
-            "padding": "0",
-            "border-radius": px(r["full"]),
-            "background-image": css_linear_gradient(gradients_for(scheme)["brand"]),
-            "color": css_var("textOnAccent"),
-            "box-shadow": "none",
-            "border": "none",
-        },
-        "button.to-composer-send:disabled": {
-            "background-image": "none",
-            "background-color": css_var("backgroundSelected"),
-            "color": css_var("textTertiary"),
-            "filter": "none",
-        },
-        "dropdown.to-composer-project > button": {
-            "min-height": px(26),
-            "padding": f"0 {px(s['xs'] + 2)}",
-            "border-radius": px(r["sm"]),
-            "background": "none",
-            "box-shadow": "none",
-            "border": "none",
-            "color": css_var("textSecondary"),
-        },
-        "dropdown.to-composer-project > button:hover": {"background-color": css_var("backgroundElement")},
-        "dropdown.to-composer-project > button label": {"font-size": px(12)},
-        "button.to-sidebar-status": {
-            "margin": f"0 {px(s['sm'])} {px(s['sm'])}",
-            "padding": f"{px(s['sm'])} {px(s['sm'] + 2)}",
-            "border-radius": px(r["md"]),
-            "background": "none",
-            "box-shadow": "none",
-            "border": "none",
-        },
-        "button.to-sidebar-status:hover": {"background-color": css_var("backgroundElement")},
+        "navigation-split-view.collapsed navigation-view.to-panel": {"margin-left": gap},
+        "navigation-view.to-panel > *": {"background-color": css_var("surface")},
     }
 
 
@@ -300,41 +180,37 @@ def _shape(scheme: SchemeName) -> RuleSet:
         "popover > contents modelbutton, popover > contents row": {"border-radius": px(r["sm"])},
         "dialog.alert .response-area > button, window.messagedialog .response-area > button": {"border-radius": pill},
         "button.pill, button.suggested-action, button.destructive-action": {"border-radius": pill},
-        "entry, spinbutton": {"border-radius": pill if look_for(scheme) == "graphite" else px(r["md"])},
+        "entry, spinbutton": {"border-radius": px(r["sm"])},
         ".card": {"border-radius": card},
-    }
-
-
-def _canvas(scheme: SchemeName) -> RuleSet:
-    if look_for(scheme) != "graphite":
-        return {}
-    step = px(SPACING["lg"])
-    dot = COLORS[scheme]["backgroundPattern"]
-    return {
-        ".to-canvas": {
-            "background-color": css_var("background"),
-            "background-image": f"radial-gradient(circle 1px at center, {dot} 0%, {dot} 60%, transparent 100%)",
-            "background-size": f"{step} {step}",
-            "background-repeat": "repeat",
-        },
     }
 
 
 def _pairing() -> RuleSet:
     s, r = SPACING, RADIUS
     return {
-        ".to-pair-body": {"padding": f"{px(s['lg'])} {px(s['xl'])}"},
         # The quiet zone around the code: scanners need light padding even on the dark theme.
         ".to-qr": {"background-color": "#ffffff", "padding": px(s["md"]), "border-radius": px(r["md"])},
-        ".to-pair-link": {"padding": f"{px(s['xs'])} {px(s['sm'])}", "border-radius": px(r["sm"]), "background-color": css_var("backgroundElement")},
+    }
+
+
+def _scrollbars() -> RuleSet:
+    thickness = px(5)
+    slider = "scrollbar slider, scrollbar.overlay-indicator:not(.dragging):not(.hovering) slider"
+    return {
+        slider: {"margin": px(SPACING["xxs"]), "border": "none"},
+        "scrollbar.vertical slider, scrollbar.vertical.overlay-indicator:not(.dragging):not(.hovering) slider": {
+            "min-width": thickness,
+        },
+        "scrollbar.horizontal slider, scrollbar.horizontal.overlay-indicator:not(.dragging):not(.hovering) slider": {
+            "min-height": thickness,
+        },
     }
 
 
 def rules(scheme: SchemeName) -> RuleSet:
     merged: RuleSet = {}
     for part in (
-        _user_css_shield(scheme), _shape(scheme), _canvas(scheme), _titlebar(scheme), _sidebar(scheme),
-        _composer(scheme), _banner(scheme), _pairing(),
+        _user_css_shield(scheme), _shape(scheme), _titlebar(scheme), _panel(scheme), _banner(scheme), _pairing(), _scrollbars(),
     ):
         merged.update(part)
     return merged

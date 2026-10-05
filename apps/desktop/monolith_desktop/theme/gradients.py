@@ -26,9 +26,9 @@ GRADIENTS = MappingProxyType({
         "scrim": Gradient(("rgba(0, 0, 0, 0)", "rgba(0, 0, 0, 0.85)", P.BLACK), (0, 0.6, 1), *VERTICAL),
     }),
     "graphite": MappingProxyType({
-        "brand": Gradient((P.GRAPHITE[100], P.GRAPHITE[100]), (0, 1), *HORIZONTAL),
-        "scrim": Gradient(("rgba(13, 13, 13, 0)", "rgba(13, 13, 13, 0.85)", P.GRAPHITE[950]), (0, 0.6, 1), *VERTICAL),
-        "wash": Gradient((P.CLAY[900], P.GRAPHITE[950], P.GRAPHITE[950]), (0, 0.45, 1), *VERTICAL),
+        "brand": Gradient((P.LINEAR["indigo"], P.LINEAR["indigo"]), (0, 1), *HORIZONTAL),
+        "scrim": Gradient(("rgba(9, 9, 10, 0)", "rgba(9, 9, 10, 0.85)", P.GRAPHITE[950]), (0, 0.6, 1), *VERTICAL),
+        "wash": Gradient((P.GRAPHITE[950], P.GRAPHITE[950], P.GRAPHITE[950]), (0, 0.45, 1), *VERTICAL),
     }),
 })
 

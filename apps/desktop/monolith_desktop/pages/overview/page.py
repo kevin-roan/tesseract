@@ -4,24 +4,14 @@ from ...api.types import InboxCounts, SandboxStatus
 from ...store import ConnectionState
 from ...viewmodels import EmptyModel
 from ...services.connection_view import connection_label, connection_tone
-from ...widgets import (
-    ChipGroup,
-    EmptyState,
-    HeaderAction,
-    KeyValueList,
-    Notice,
-    PageBody,
-    ScreenHeader,
-    Section,
-    StatGrid,
-    StatusBadge,
-    Surface,
-)
+from ...theme.tokens import SPACING
+from ...widgets import ChipGroup, EmptyState, Notice, PageBody, Section, StatGrid
 from ...widgets.charts.legend import SeriesLegend
 from ...widgets.charts.timeseries import TimeSeriesChart
 from ...widgets.motion import crossfade_stack
 from ..base import Page
 from . import model
+from .components import ActivityList, FlatList, OverviewHeader
 from .labels import HISTORY, REFRESH, SECTIONS, TITLE
 
 
@@ -39,13 +29,9 @@ class OverviewPage(Page):
         self._empty = EmptyState("")
         self._stack.add_named(self._empty, "empty")
 
-        body = PageBody()
-        self._badge = StatusBadge("")
-        self._header = ScreenHeader(
-            TITLE,
-            accessory=self._badge,
-            actions=[HeaderAction("refresh", "refresh", REFRESH, self.ctx.connection.refresh)],
-        )
+        body = PageBody(spacing=SPACING["xl"])
+        body.box.add_css_class("to-overview")
+        self._header = OverviewHeader(TITLE, REFRESH, self.ctx.connection.refresh)
         body.append(self._header)
 
         self._notice = Notice("")
@@ -57,20 +43,15 @@ class OverviewPage(Page):
 
         body.append(self._build_history())
 
-        self._counts = StatGrid(min_columns=2, max_columns=5)
-        body.append(Section(SECTIONS["activity"], self._counts))
-
-        columns = Gtk.Box(spacing=24, homogeneous=True)
-        self._display = KeyValueList()
-        display_card = Surface()
-        display_card.append(self._display)
-        columns.append(Section(SECTIONS["display"], display_card))
-        self._tools = KeyValueList(monospace=True)
-        tools_card = Surface()
-        tools_card.append(self._tools)
-        self._tools_section = Section(SECTIONS["tools"], tools_card, empty_label=SECTIONS["tools_empty"])
-        columns.append(self._tools_section)
+        columns = Gtk.Box(spacing=SPACING["2xl"], homogeneous=True)
+        self._counts = ActivityList()
+        columns.append(Section(SECTIONS["activity"], self._counts))
+        self._display = FlatList()
+        columns.append(Section(SECTIONS["display"], self._display))
+        self._tools = FlatList(monospace=True)
+        self._tools_section = Section(SECTIONS["tools"], self._tools, empty_label=SECTIONS["tools_empty"])
         body.append(columns)
+        body.append(self._tools_section)
 
         self._stack.add_named(body, "content")
 
@@ -93,12 +74,14 @@ class OverviewPage(Page):
         )
         self._chart.set_hidden(model.default_hidden())
         self._chart.set_threshold(model.load_threshold())
-        card = Surface()
-        card.add_css_class("to-resource-history")
+        card = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, css_classes=["to-resource-history"])
         card.append(self._legend)
         card.append(self._chart)
         section = Section(HISTORY["title"], card, subtitle=HISTORY["subtitle"])
-        section.header.add_trailing(ChipGroup(model.range_options(), self._range, self._set_range))
+        ranges = ChipGroup(model.range_options(), self._range, self._set_range)
+        ranges.set_max_children_per_line(len(model.range_options()))
+        ranges.set_column_spacing(SPACING["xs"] + 2)
+        section.header.add_trailing(ranges)
         return section
 
     def _set_range(self, range_id: str) -> None:
@@ -120,7 +103,7 @@ class OverviewPage(Page):
             self._legend.update(key, value, caption)
 
     def _render_connection(self, state: ConnectionState) -> None:
-        self._badge.update(connection_label(state), connection_tone(state))
+        self._header.set_status(connection_label(state, with_name=False), connection_tone(state))
         self._sync_view(self.ctx.store.status.value, state)
 
     def _sync_view(self, status: SandboxStatus | None, state: ConnectionState) -> None:
@@ -159,7 +142,7 @@ class OverviewPage(Page):
         self._sync_view(status, self.ctx.store.connection.value)
         if status is None:
             return
-        self._header.set_subtitle(model.subtitle(status))
+        self._header.set_meta(model.subtitle(status))
         self._resources.set_items(model.resource_items(status))
         self._counts.set_items(model.count_items(status, self.ctx.navigate))
         self._display.set_rows(model.display_rows(status))

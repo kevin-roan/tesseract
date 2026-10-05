@@ -19,7 +19,7 @@ import CardTitle from "../card-title";
 import DailyBars from "../daily-bars";
 import GlassStat from "../glass-stat";
 import MetricFigure from "../metric-figure";
-import SegmentedPills from "../segmented-pills";
+import SegmentedPills from "@/components/segmented-pills";
 import TokenSplit from "../token-split";
 import createStyles, { CHART_HEIGHT } from "./styles";
 

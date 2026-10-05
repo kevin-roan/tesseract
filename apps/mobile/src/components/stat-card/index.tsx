@@ -20,6 +20,8 @@ export type StatCardProps = {
   value: string;
   /** Trailing qualifier rendered small next to the value, e.g. "/ 1 000". */
   unit?: string;
+  /** Supporting line under the figure, e.g. "of 8 GB". */
+  caption?: string;
   /** Completion in the 0–1 range, shown as a percentage pill. Omit to hide it. */
   progress?: number;
   /** Card fill. Defaults to `neutral`. */
@@ -31,7 +33,7 @@ export type StatCardProps = {
  * Stat tile: a dark icon tile and optional percentage chip on top, a grey
  * label and a large, light tabular figure with its grey qualifier below.
  */
-const StatCard = ({ icon: IconComponent, label, value, unit, progress, tone = "neutral", onPress }: StatCardProps) => {
+const StatCard = ({ icon: IconComponent, label, value, unit, caption, progress, tone = "neutral", onPress }: StatCardProps) => {
   const theme = useAppTheme(tone);
   const styles = useMemo(() => createStyles(theme), [theme]);
 
@@ -61,6 +63,11 @@ const StatCard = ({ icon: IconComponent, label, value, unit, progress, tone = "n
             </ThemedText>
           ) : null}
         </View>
+        {caption ? (
+          <ThemedText variant="caption" color="textTertiary" numberOfLines={1}>
+            {caption}
+          </ThemedText>
+        ) : null}
       </View>
     </Surface>
   );

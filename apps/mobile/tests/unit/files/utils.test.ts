@@ -1,7 +1,15 @@
 import { ApiError } from "@theone/client";
-import type { Artifact, TaildropTarget } from "@theone/protocol";
+import type { Artifact, BuildOutput, TaildropTarget } from "@theone/protocol";
 import { sampleArtifact } from "@theone/protocol/fixtures";
 
+import {
+  buildOutputFolder,
+  buildOutputKey,
+  buildOutputMeta,
+  buildOutputSubtitle,
+  buildOutputsSubtitle,
+  filterBuildOutputs,
+} from "@/features/files/utils/build-outputs";
 import { MISSING_FILE_MESSAGE } from "@/features/files/utils/constants";
 import {
   fileMeta,
@@ -109,5 +117,33 @@ describe("describeFileError", () => {
     expect(describeFileError(new MissingFileError())).toBe(MISSING_FILE_MESSAGE);
     expect(describeFileError(new ApiError(404, "not_found", "artifact not found"))).toBe(MISSING_FILE_MESSAGE);
     expect(describeFileError(new ApiError(502, "internal", "Taildrop failed"))).toBe("Taildrop failed");
+  });
+});
+
+describe("build outputs", () => {
+  const output: BuildOutput = {
+    projectId: "notes",
+    path: "android/app/build/outputs/apk/release/app-release.apk",
+    fileName: "app-release.apk",
+    sizeBytes: 2048,
+    platform: "android",
+    modifiedAt: "2026-09-23T11:00:00.000Z",
+  };
+
+  it("describes where a build came from", () => {
+    expect(buildOutputKey(output)).toBe("notes/android/app/build/outputs/apk/release/app-release.apk");
+    expect(buildOutputFolder(output)).toBe("android/app/build/outputs/apk/release");
+    expect(buildOutputFolder({ ...output, path: output.fileName })).toBe(".");
+    expect(buildOutputSubtitle(output, "Notes")).toBe("Notes · 2 KB");
+    expect(buildOutputMeta(output, NOW)).toBe("Android · 1h ago");
+    expect(buildOutputMeta({ ...output, platform: "file" }, NOW)).toBe("1h ago");
+    expect(buildOutputsSubtitle(1, 2)).toBe("1 of 2 builds");
+    expect(buildOutputsSubtitle(0, 0)).toBeUndefined();
+  });
+
+  it("filters by project", () => {
+    const other = { ...output, projectId: "desk" };
+    expect(filterBuildOutputs([output, other], "desk")).toEqual([other]);
+    expect(filterBuildOutputs([output, other], null)).toEqual([output, other]);
   });
 });

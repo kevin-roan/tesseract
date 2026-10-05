@@ -15,6 +15,7 @@ import { processSite, projectSites } from "../utils/sites";
 import { useArtifactDownload } from "./use-artifact-download";
 import { useLogStream } from "./use-log-stream";
 import { useOpenSite } from "./use-open-site";
+import { useProjectRename } from "./use-project-rename";
 import { useConfirmedStop } from "./use-confirmed-stop";
 import { useFixWithAi } from "./use-fix-with-ai";
 import { useStartBuild, useStartProcess } from "./use-sandbox-mutations";
@@ -59,6 +60,8 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
   const { refreshing, refresh } = useSandboxRefresh();
   const data = project.data;
   const claudeAccount = useProjectClaudeAccount(data);
+  const rename = useProjectRename();
+  const openRename = rename.open;
 
   const runScript = useCallback(
     (script: string, display: boolean) => {
@@ -82,8 +85,9 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
       { ...PROJECT_ACTIONS.shell, onPress: () => nav.newTerminal({ kind: "shell", projectId }) },
       { ...PROJECT_ACTIONS.claudeSession, onPress: () => nav.newTerminal({ kind: "claude", projectId }) },
       { ...PROJECT_ACTIONS.askClaude, onPress: () => nav.newAgentRun(projectId) },
+      { ...PROJECT_ACTIONS.rename, onPress: () => openRename({ id: projectId, title: data?.name ?? projectId }) },
     ],
-    [nav, projectId],
+    [nav, projectId, openRename, data?.name],
   );
 
   const sortedProcesses = useMemo(() => newestFirst(processes.data ?? [], (process) => process.startedAt), [processes.data]);
@@ -140,6 +144,7 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     downloads,
     sync,
     claudeAccount,
+    renameSheet: rename.sheet,
     appRuns,
     fixProcess: fix.fixProcess,
     fixingId: fix.pendingId,

@@ -475,23 +475,25 @@ export const sampleSyncRequest: SyncRequest = {
 };
 
 export const sampleRunTargets: RunTargetInfo[] = [
-  { target: "flutter-web", label: "Web", available: true, reason: null, viewer: "url", actions: ["reload", "restart"] },
-  { target: "flutter-linux", label: "Linux desktop", available: true, reason: null, viewer: "display", actions: ["reload", "restart", "focus"] },
+  { target: "flutter-web", label: "Web", dir: null, available: true, reason: null, viewer: "url", actions: ["reload", "restart"] },
+  { target: "flutter-linux", label: "Linux desktop", dir: null, available: true, reason: null, viewer: "display", actions: ["reload", "restart", "focus"] },
   {
     target: "flutter-android",
     label: "Android emulator",
+    dir: null,
     available: false,
     reason: "Link the host Android emulator first",
     viewer: "android",
     actions: ["reload", "restart"],
   },
-  { target: "test", label: "Tests", available: true, reason: null, viewer: "none", actions: [] },
+  { target: "test", label: "Tests", dir: null, available: true, reason: null, viewer: "none", actions: [] },
 ];
 
 export const sampleAppRun: AppRun = {
   id: "app_4n8c2v6x1z",
   projectId: "flutter-hello",
   target: "flutter-web",
+  dir: null,
   state: "ready",
   port: 8090,
   processIds: ["prc_9d2f6h1k3m"],

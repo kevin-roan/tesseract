@@ -71,6 +71,7 @@ export type ResourceGauge = {
   fraction: number;
   value: string;
   unit: string;
+  caption: string;
 };
 
 export type TerminalLaunch = {

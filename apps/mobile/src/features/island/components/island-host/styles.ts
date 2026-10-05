@@ -23,10 +23,5 @@ export default function createStyles(theme: Theme) {
     fill: {
       flex: 1,
     },
-    card: {
-      position: "absolute",
-      left: theme.spacing.base,
-      right: theme.spacing.base,
-    },
   });
 }

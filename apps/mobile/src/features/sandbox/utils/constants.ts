@@ -32,3 +32,5 @@ export const SCRIPT_BOOKMARKS_STORE_NAME = "theone.script-bookmarks";
 export const SCRIPT_BOOKMARKS_STORE_VERSION = 1;
 export const DEFAULT_INPUT_MODE = "trackpad" satisfies InputMode;
 export const UPLOAD_TIMEOUT_MS = 120_000;
+export const RESOURCE_HISTORY_STORE_NAME = "theone.resource-history";
+export const RESOURCE_HISTORY_STORE_VERSION = 1;

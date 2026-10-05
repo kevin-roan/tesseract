@@ -79,6 +79,10 @@ export const CreateProjectSchema = z.object({
 });
 export type CreateProject = z.infer<typeof CreateProjectSchema>;
 
+/** `name: null` drops the custom name, so the project falls back to its package.json name or id. */
+export const RenameProjectSchema = z.object({ name: NameSchema.nullable() });
+export type RenameProject = z.infer<typeof RenameProjectSchema>;
+
 export const CreateProjectResponseSchema = z.object({
   project: ProjectSchema,
   processId: ProcessIdSchema.optional(),

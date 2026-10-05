@@ -99,19 +99,25 @@ describe("project helpers", () => {
 
 describe("resource gauges", () => {
   it("expresses CPU load per core", () => {
-    expect(cpuGauge({ cores: 8, load1: 4, load5: 0, load15: 0 })).toEqual({ fraction: 0.5, value: "4.00", unit: "/ 8 cores" });
+    expect(cpuGauge({ cores: 8, load1: 4, load5: 0, load15: 0 })).toEqual({
+      fraction: 0.5,
+      value: "4.00",
+      unit: "load avg",
+      caption: "8 cores · 5m 0.00 · 15m 0.00",
+    });
     expect(cpuGauge({ cores: 0, load1: 1, load5: 0, load15: 0 }).fraction).toBe(0);
   });
 
   it("expresses memory and disk usage", () => {
-    expect(storageGauge(sampleStatus.resources.memory)).toEqual({ fraction: 0.25, value: "3.7", unit: "GB / 14.9 GB" });
+    expect(storageGauge(sampleStatus.resources.memory)).toEqual({ fraction: 0.25, value: "3.7", unit: "GB", caption: "of 14.9 GB" })
+    expect(storageGauge({ usedBytes: 1024, totalBytes: 2048, path: "/workspace" }).caption).toBe("of 2 KB · /workspace");
   });
 });
 
 describe("descriptions", () => {
   it("describes the sandbox and processes", () => {
     expect(sandboxSubtitle(undefined)).toBeUndefined();
-    expect(sandboxSubtitle(sampleStatus)).toBe("v0.1.0 · up 1h");
+    expect(sandboxSubtitle(sampleStatus)).toBe("up 1h · sandbox · v0.1.0");
     const now = Date.parse(sampleProcess.startedAt) + 120_000;
     expect(processMeta({ ...sampleProcess, port: 5173 }, now)).toBe("port 5173 · on display · started 2m ago");
   });

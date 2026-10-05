@@ -4,6 +4,7 @@ import {
   AppWindowIcon,
   AtomIcon,
   CircleDashedIcon,
+  ClockIcon,
   PlayCircleIcon,
   WarningCircleIcon,
   CpuIcon,
@@ -67,4 +68,5 @@ export const ResourceIcons = {
   memory: MemoryIcon,
   disk: HardDrivesIcon,
   display: MonitorIcon,
+  uptime: ClockIcon,
 } as const satisfies Record<string, Icon>;

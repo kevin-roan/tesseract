@@ -87,7 +87,7 @@ describe("useSandboxHub lists", () => {
     expect(result.current.sessions[0].id).toBe(sampleTerminal.id);
     await waitFor(() => expect(result.current.recentRuns).toEqual([sampleAgentRun]));
     expect(result.current.projects).toEqual([sampleProject]);
-    expect(result.current.subtitle).toBe("v0.1.0 · up 1h");
+    expect(result.current.subtitle).toBe("up 1h · sandbox · v0.1.0");
     expect(result.current.latestActivity).toBeNull();
     expect(result.current.switcher).toEqual([{ id: TEST_SANDBOX.id, label: TEST_SANDBOX.name }]);
   });
@@ -160,12 +160,13 @@ describe("useSandboxHub lists", () => {
 describe("useSandboxHub stats", () => {
   it("maps the status to resource tiles and opens the display", async () => {
     const { result } = await renderHub();
-    await waitFor(() => expect(result.current.stats).toHaveLength(4));
+    await waitFor(() => expect(result.current.stats).toHaveLength(5));
 
-    const [cpu, memory, disk, display] = result.current.stats;
-    expect(cpu).toMatchObject({ id: "cpu", value: "0.42", unit: "/ 8 cores" });
-    expect(memory).toMatchObject({ id: "memory", progress: 0.25 });
-    expect(disk).toMatchObject({ id: "disk", progress: 0.24 });
+    const [cpu, memory, disk, uptime, display] = result.current.stats;
+    expect(cpu).toMatchObject({ id: "cpu", value: "0.42", unit: "load avg", caption: "8 cores · 5m 0.30 · 15m 0.25" });
+    expect(memory).toMatchObject({ id: "memory", progress: 0.25, caption: "of 14.9 GB" });
+    expect(disk).toMatchObject({ id: "disk", progress: 0.24, caption: "of 466 GB · /workspace" });
+    expect(uptime).toMatchObject({ id: "uptime", value: "1h" });
     expect(display).toMatchObject({ id: "display", value: "1600×900", unit: "VNC ready" });
     display.onPress?.();
     expect(mockRouter.push).toHaveBeenCalledWith("/sandbox/display");
@@ -177,8 +178,8 @@ describe("useSandboxHub stats", () => {
       display: { ...sampleStatus.display, available: false, width: null, height: null, vnc: { ...sampleStatus.display.vnc, available: false } },
     });
     const { result } = await renderHub();
-    await waitFor(() => expect(result.current.stats).toHaveLength(4));
-    expect(result.current.stats[3]).toMatchObject({ value: "Off", unit: "VNC offline" });
+    await waitFor(() => expect(result.current.stats).toHaveLength(5));
+    expect(result.current.stats[4]).toMatchObject({ value: "Off", unit: "VNC offline" });
   });
 
   it("has no stats before the status arrives", async () => {

@@ -1,6 +1,6 @@
-import { existsSync } from "node:fs";
+import { existsSync, lstatSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import type { BuildTarget, Framework, PackageManager, RunTarget } from "@theone/protocol";
+import { RUN_TARGETS, type BuildTarget, type Framework, type PackageManager, type RunTarget } from "@theone/protocol";
 import { readRegularFile } from "../core/files";
 
 export type PackageJson = {
@@ -11,6 +11,7 @@ export type PackageJson = {
   dependencies?: Record<string, string>;
   devDependencies?: Record<string, string>;
   build?: { directories?: { output?: string } };
+  workspaces?: unknown;
 };
 
 export type ProjectFacts = {
@@ -41,6 +42,12 @@ const GRADLE_MARKERS = ["build.gradle", "build.gradle.kts", "settings.gradle", "
 const EXPO_CONFIGS = ["app.json", "app.config.js", "app.config.ts"];
 export const PACKAGE_JSON_MAX_BYTES = 1024 * 1024;
 const PUBSPEC_MAX_BYTES = 256 * 1024;
+const WORKSPACE_YAML_MAX_BYTES = 256 * 1024;
+const MAX_WORKSPACE_PACKAGES = 64;
+/** `apps/mobile` or `apps/*`; negations, `**` and other globs are not expanded. */
+const WORKSPACE_PATTERN = /^[\w@][\w.@-]*(\/[\w@][\w.@-]*)*(\/\*)?$/;
+/** Workspace packages whose run targets are offered on the monorepo (plain `node` packages and `test` are not). */
+const WORKSPACE_APP_FRAMEWORKS = new Set<Framework>(["expo", "react-native", "flutter", "electron", "vite", "next"]);
 const FLUTTER_SDK_DEPENDENCY = /^\s+sdk:\s*["']?flutter["']?\s*$/m;
 
 /** A symlinked package.json may point at /dev/zero or a multi-GiB file; only small regular files are parsed. */
@@ -163,4 +170,84 @@ export function detectProject(dir: string): ProjectFacts {
     hasAndroidDir,
     runTargets: detectRunTargets(dir, framework, deps, scriptNames, hasAndroidDir),
   };
+}
+
+/** `packages:` entries of a pnpm-workspace.yaml (a block list of plain or quoted strings). */
+export function pnpmWorkspacePackages(content: string): string[] {
+  const patterns: string[] = [];
+  let inPackages = false;
+  for (const line of content.split("\n")) {
+    if (/^packages:\s*(#.*)?$/.test(line)) {
+      inPackages = true;
+      continue;
+    }
+    if (!inPackages || !line.trim() || line.trim().startsWith("#")) continue;
+    if (!/^\s/.test(line)) break;
+    const item = /^\s+-\s*(["']?)([^"'#]+?)\1\s*(#.*)?$/.exec(line);
+    if (item) patterns.push(item[2]!);
+  }
+  return patterns;
+}
+
+function workspacePatterns(dir: string, pkg: PackageJson | null): string[] {
+  const declared = pkg?.workspaces;
+  const listed = Array.isArray(declared) ? declared : Array.isArray((declared as { packages?: unknown } | undefined)?.packages) ? (declared as { packages: unknown[] }).packages : [];
+  const yaml = readRegularFile(join(dir, "pnpm-workspace.yaml"), { maxBytes: WORKSPACE_YAML_MAX_BYTES, followSymlinks: true });
+  return [...listed, ...(yaml ? pnpmWorkspacePackages(yaml.content) : [])].filter((pattern): pattern is string => typeof pattern === "string");
+}
+
+const isRealDir = (path: string): boolean => {
+  try {
+    return lstatSync(path).isDirectory();
+  } catch {
+    return false;
+  }
+};
+
+/** Project-relative folders of the workspace packages declared by package.json `workspaces` or pnpm-workspace.yaml. */
+export function workspacePackageDirs(dir: string, pkg: PackageJson | null): string[] {
+  const dirs = new Set<string>();
+  for (const raw of workspacePatterns(dir, pkg)) {
+    const pattern = raw.trim().replace(/^\.\//, "").replace(/\/+$/, "");
+    if (!WORKSPACE_PATTERN.test(pattern) || pattern.split("/").some((part) => part === "." || part === "..")) continue;
+    if (!pattern.endsWith("/*")) {
+      if (isRealDir(join(dir, pattern))) dirs.add(pattern);
+      continue;
+    }
+    const parent = pattern.slice(0, -2);
+    if (!isRealDir(join(dir, parent))) continue;
+    let entries: string[] = [];
+    try {
+      entries = readdirSync(join(dir, parent), { withFileTypes: true })
+        .filter((entry) => entry.isDirectory() && !entry.name.startsWith(".") && entry.name !== "node_modules")
+        .map((entry) => entry.name)
+        .sort();
+    } catch {}
+    for (const name of entries) dirs.add(`${parent}/${name}`);
+  }
+  return [...dirs].slice(0, MAX_WORKSPACE_PACKAGES);
+}
+
+/** A run target and where it runs: the project root (`dir` null) or a workspace package. */
+export type RunTargetSource = { target: RunTarget; dir: string | null; facts: ProjectFacts };
+
+/**
+ * Run targets of the project root, plus those of app packages of a monorepo (e.g. the Expo app in `apps/mobile`).
+ * Each target is offered once: the root wins, then the first workspace package in path order. `RUN_TARGETS` order.
+ */
+export function detectRunTargetSources(dir: string): RunTargetSource[] {
+  const root = detectProject(dir);
+  const sources: RunTargetSource[] = root.runTargets.map((target) => ({ target, dir: null, facts: root }));
+  const seen = new Set<RunTarget>(root.runTargets);
+  for (const relative of workspacePackageDirs(dir, root.pkg)) {
+    const detected = detectProject(join(dir, relative));
+    if (!WORKSPACE_APP_FRAMEWORKS.has(detected.framework)) continue;
+    const facts = { ...detected, packageManager: detected.packageManager ?? root.packageManager };
+    for (const target of facts.runTargets) {
+      if (target === "test" || seen.has(target)) continue;
+      seen.add(target);
+      sources.push({ target, dir: relative, facts });
+    }
+  }
+  return sources.sort((a, b) => RUN_TARGETS.indexOf(a.target) - RUN_TARGETS.indexOf(b.target));
 }

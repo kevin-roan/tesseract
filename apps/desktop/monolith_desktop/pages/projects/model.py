@@ -55,6 +55,7 @@ from .labels import (
     PROCESS_STATES,
     PROCESSES,
     PROJECTS_ROOT,
+    REMOVE,
     RUN_STATES,
     SYNC,
     SYNC_BLOCKED,
@@ -145,6 +146,47 @@ def _branch_error(branch: str, git_url: str) -> str | None:
     if not git_url:
         return VALIDATION["branch_needs_url"]
     return None if GIT_REF_PATTERN.match(branch) else VALIDATION["branch_invalid"]
+
+
+REMOVAL_PATH_PREVIEW = 3
+
+
+@dataclass(frozen=True)
+class RemovalPrompt:
+    heading: str
+    body: str
+    confirm_label: str
+    force: bool
+
+
+def _paths_preview(paths: list[str]) -> str:
+    shown = ", ".join(paths[:REMOVAL_PATH_PREVIEW])
+    extra = len(paths) - REMOVAL_PATH_PREVIEW
+    return REMOVE["more"].format(paths=shown, extra=extra) if extra > 0 else shown
+
+
+def removal_prompt(name: str, sync: SyncChanges) -> RemovalPrompt:
+    """The confirmation before `DELETE /v1/projects/:id`: unsynced work needs a force delete."""
+    host = (sync.get("host") or {}).get("name") or REMOVE["host"]
+    if sync.get("baselineAt") is None:
+        return RemovalPrompt(REMOVE["only_copy_title"], REMOVE["only_copy_body"].format(name=name), REMOVE["force"], True)
+    paths = [change["path"] for change in sync.get("changes", [])]
+    if paths:
+        body = REMOVE["unsynced_body"].format(
+            files=plural(len(paths), "file"), name=name, verb="is" if len(paths) == 1 else "are", host=host,
+            paths=_paths_preview(paths),
+        )
+        return RemovalPrompt(REMOVE["unsynced_title"], body, REMOVE["force"], True)
+    return RemovalPrompt(REMOVE["title"].format(name=name), REMOVE["body"].format(host=host), REMOVE["delete"], False)
+
+
+def rename_error(name: str) -> str | None:
+    return VALIDATION["name_too_long"].format(max=MAX_NAME_LENGTH) if len(name.strip()) > MAX_NAME_LENGTH else None
+
+
+def rename_value(name: str) -> str | None:
+    """Blank restores the name the sandbox detects (package.json name or folder)."""
+    return name.strip() or None
 
 
 def validate_project_draft(draft: ProjectDraft, existing_ids: Iterable[str] = ()) -> DraftResult:
@@ -504,6 +546,35 @@ def matches(project: Project, query: str) -> bool:
 
 def filter_projects(projects: Iterable[Project], query: str) -> list[Project]:
     return [project for project in projects if matches(project, query)]
+
+
+ACTIVITY_KINDS = ("agent", "building", "running", "idle")
+ACTIVITY_GLYPHS: dict[str, tuple[str, str]] = {
+    "agent": ("status-progress", "accent"),
+    "building": ("status-progress", "info"),
+    "running": ("status-progress", "success"),
+    "idle": ("status-todo", "textTertiary"),
+}
+
+
+def activity_glyph(kind: str) -> tuple[str, str]:
+    return ACTIVITY_GLYPHS.get(kind, ACTIVITY_GLYPHS["idle"])
+
+
+def in_tab(activity: Activity, tab: str) -> bool:
+    if tab == "active":
+        return activity.kind != "idle"
+    if tab == "idle":
+        return activity.kind == "idle"
+    return True
+
+
+def group_by_activity(cards: Iterable["ProjectCardModel"]) -> list[tuple[str, list["ProjectCardModel"]]]:
+    """Cards bucketed by what is happening in the project, busiest first; empty buckets are left out."""
+    buckets: dict[str, list[ProjectCardModel]] = {kind: [] for kind in ACTIVITY_KINDS}
+    for card in cards:
+        buckets.setdefault(card.activity.kind, []).append(card)
+    return [(kind, items) for kind, items in buckets.items() if items]
 
 
 @dataclass(frozen=True)

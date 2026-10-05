@@ -23,16 +23,13 @@ from .scale import (
     value_ticks,
 )
 
-LINE_WIDTH = 2.0
+LINE_WIDTH = 1.5
 GRID_WIDTH = 1.0
-FILL_TOP_ALPHA = 0.32
+FILL_TOP_ALPHA = 0.12
 FILL_BOTTOM_ALPHA = 0.0
-VERTICAL_GRID_ALPHA = 0.45
 CROSSHAIR_ALPHA = 0.55
-HALO_RADIUS = 7.0
-HALO_ALPHA = 0.22
-DOT_RADIUS = 3.5
-RING_WIDTH = 2.0
+DOT_RADIUS = 3.0
+RING_WIDTH = 1.5
 ISOLATED_RADIUS = 2.0
 LABEL_SIZE = 11
 TOOLTIP_TITLE_SIZE = 11
@@ -41,7 +38,7 @@ TOOLTIP_PADDING = 10
 TOOLTIP_ROW_GAP = 4
 TOOLTIP_KEY_WIDTH = 14
 TOOLTIP_GAP = 14
-TOOLTIP_RADIUS = 10
+TOOLTIP_RADIUS = 8
 AXIS_GAP = 8
 PAD_TOP = 12
 PAD_RIGHT = 14
@@ -246,7 +243,7 @@ class TimeSeriesChart(ThemedDrawing):
         now = self._now()
         palette = theme().chart()
         scale = self.get_scale_factor()
-        label_color = rgba(palette.label)
+        label_color = theme().color("textTertiary")
         end = self._clock()
         self._drawn_end = end
         duration = self._duration.value(now)
@@ -321,17 +318,10 @@ class TimeSeriesChart(ThemedDrawing):
             self._draw_layout(cr, now_layout, plot.x1 - now_width, label_y, label_color)
             right_limit = plot.x1 - now_width - LABEL_GAP
         last_right = -math.inf
-        grid = with_alpha(rgba(palette.grid), VERTICAL_GRID_ALPHA)
-        cr.set_line_width(GRID_WIDTH)
         for tick in time_ticks(plot.start, plot.end, max_ticks):
             x = plot.x(tick)
             if x < plot.x0 or x > plot.x1:
                 continue
-            set_source(cr, grid)
-            cx = crisp(x, scale, GRID_WIDTH)
-            cr.move_to(cx, plot.y0)
-            cr.line_to(cx, plot.y1)
-            cr.stroke()
             layout = self._layout(time_label(tick, step))
             label_width, _h = self._size(layout)
             left = min(max(x - label_width / 2, plot.x0), plot.x1 - label_width)
@@ -398,11 +388,7 @@ class TimeSeriesChart(ThemedDrawing):
             cr.stroke()
             cr.set_dash(())
 
-    def _dot(self, cr, x: float, y: float, color, alpha: float, halo: bool) -> None:
-        if halo:
-            set_source(cr, with_alpha(color, HALO_ALPHA * alpha))
-            cr.arc(x, y, HALO_RADIUS, 0, 2 * math.pi)
-            cr.fill()
+    def _dot(self, cr, x: float, y: float, color, alpha: float) -> None:
         set_source(cr, with_alpha(theme().color("surface"), alpha))
         cr.arc(x, y, DOT_RADIUS + RING_WIDTH, 0, 2 * math.pi)
         cr.fill()
@@ -415,7 +401,7 @@ class TimeSeriesChart(ThemedDrawing):
             last = next(((t, v) for t, v in reversed(series.points) if v is not None), None)
             if last is None or series.points[-1][1] is None or not plot.start <= last[0] <= plot.end:
                 continue
-            self._dot(cr, plot.x(last[0]), plot.y(min(last[1], plot.ceiling)), self._series_color(palette, series), alpha, True)
+            self._dot(cr, plot.x(last[0]), plot.y(min(last[1], plot.ceiling)), self._series_color(palette, series), alpha)
 
     def _paint_hover(self, cr, plot: _Plot, drawn, scale: float, palette, label_color, width: int) -> None:
         px, _py = self._pointer
@@ -438,7 +424,7 @@ class TimeSeriesChart(ThemedDrawing):
             value = next((v for t, v in series.points if t == moment and v is not None), None)
             color = self._series_color(palette, series)
             if value is not None:
-                self._dot(cr, plot.x(moment), plot.y(min(value, plot.ceiling)), color, alpha, False)
+                self._dot(cr, plot.x(moment), plot.y(min(value, plot.ceiling)), color, alpha)
             rows.append((series, color, self._format(value) if value is not None else self._missing_label))
         self._paint_tooltip(cr, plot, plot.x(moment), time_label(moment, 1), rows, label_color, width)
 
@@ -462,7 +448,7 @@ class TimeSeriesChart(ThemedDrawing):
         rounded_rect(cr, left, top, box_w, box_h, TOOLTIP_RADIUS)
         set_source(cr, theme().color("surfaceElevated"))
         cr.fill_preserve()
-        set_source(cr, theme().color("borderStrong"))
+        set_source(cr, theme().color("border"))
         cr.set_line_width(1)
         cr.stroke()
         self._draw_layout(cr, title_layout, left + TOOLTIP_PADDING, top + TOOLTIP_PADDING, label_color)

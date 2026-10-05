@@ -1,4 +1,4 @@
-from gi.repository import Adw, Gtk
+from gi.repository import Adw, GLib
 
 from ..api.tasks import Task, run_async
 from ..api.types import ClaudeAccountList, ClaudeAuthStatus
@@ -8,7 +8,7 @@ from ..services.connection_view import connection_label
 from ..store import ConnectionState
 from ..strings import CLAUDE as S
 from ..widgets import PreferenceRows, RadioRows
-from ..theme.icons import resolve_icon
+from ..widgets.buttons import IconButton
 from .base import PreferencesPage
 
 
@@ -25,9 +25,7 @@ class ClaudePreferences(PreferencesPage):
         self._tasks: list[Task] = []
         self._was_online = False
 
-        refresh = Gtk.Button(icon_name=resolve_icon("refresh"), tooltip_text=S["refresh"], valign=Gtk.Align.CENTER)
-        refresh.add_css_class("flat")
-        refresh.connect("clicked", lambda *_: self._refresh())
+        refresh = IconButton("refresh", S["refresh"], lambda: self._refresh())
 
         self._host_group = Adw.PreferencesGroup(title=S["host_group"], description=S["loading"])
         self.add(self._host_group)
@@ -67,7 +65,7 @@ class ClaudePreferences(PreferencesPage):
         self._track(run_async(read_host_states, on_success=self._render_host))
 
     def _render_host(self, states: list[HostClaudeState]) -> None:
-        self._host_group.set_description(S["host_description"])
+        self._host_group.set_description(GLib.markup_escape_text(S["host_description"]))
         ids = [state.account_id for state in states]
         for account_id in [account_id for account_id in self._host_accounts if account_id not in ids]:
             self._host_group.remove(self._host_accounts.pop(account_id)[0])

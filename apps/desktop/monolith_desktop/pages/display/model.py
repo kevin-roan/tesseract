@@ -3,17 +3,18 @@ from typing import Literal
 
 from gi.repository import Gdk
 
-from ...api.types import DisplayStatus
+from ...api.types import DisplayStatus, DisplayWindow
 from ...store import ConnectionState
 from ...theme.tone import Tone
 from ...viewmodels import EmptyModel
 from ...vnc.session import SessionState, display_ready
-from .labels import BADGES, EMPTY, META, OVERLAY, PREVIEW
+from .labels import BADGES, EMPTY, META, OVERLAY, PREVIEW, WINDOWS
 
 Mode = Literal["offline", "loading", "error", "no_display", "preview", "viewer"]
 
 STATUS_INTERVAL_S = 5.0
 SCREENSHOT_INTERVAL_S = 3.0
+WINDOWS_INTERVAL_S = 2.0
 FULLSCREEN_KEY = Gdk.KEY_F11
 EXIT_KEYS = (Gdk.KEY_F11, Gdk.KEY_Escape)
 VIEW_ONLY_ICON = "view-only"
@@ -57,7 +58,7 @@ PHASE_TONES: dict[str, Tone] = {
 BUSY_PHASES = ("idle", "connecting", "authenticating")
 VIEWER_ACTIONS = frozenset({"scale", "view_only", "clipboard", "keys", "fullscreen"})
 LIVE_ACTIONS = frozenset({"keys"})
-STATUS_ACTIONS = frozenset({"screenshot", "browser", "reconnect"})
+STATUS_ACTIONS = frozenset({"screenshot", "browser", "reconnect", "windows"})
 
 
 @dataclass(frozen=True)
@@ -142,3 +143,18 @@ def enabled_actions(mode: Mode, session: SessionState) -> frozenset[str]:
 
 def preview_message() -> str:
     return PREVIEW["message"].format(seconds=round(SCREENSHOT_INTERVAL_S))
+
+
+def window_title(window: DisplayWindow) -> str:
+    return window["title"].strip() or window.get("app") or WINDOWS["untitled"]
+
+
+def window_state(window: DisplayWindow) -> str | None:
+    if window["active"]:
+        return WINDOWS["active"]
+    return WINDOWS["minimized"] if window["minimized"] else None
+
+
+def windows_in_order(windows: list[DisplayWindow]) -> list[DisplayWindow]:
+    """Newest first, like a task switcher (the controller lists them oldest first)."""
+    return list(reversed(windows))

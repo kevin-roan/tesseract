@@ -22,7 +22,7 @@ import ProjectScreen from "@/app/sandbox/projects/[id]";
 import NewProjectScreen from "@/app/sandbox/projects/new";
 import TerminalScreen from "@/app/sandbox/terminal/[id]";
 import { DEFAULT_ACCOUNT_CHOICE, projectAccountOptions } from "@/features/claude-account/utils/accounts";
-import { toChatEvents } from "@/features/chat/utils/messages";
+import { toTranscript } from "@/features/chat/utils/transcript";
 import { EMPTY_PAIRING_DRAFT } from "@/features/sandbox/utils/pairing";
 import { buildTargetOptions } from "@/features/sandbox/utils/labels";
 import { SYNC_ACTIONS } from "@/features/sandbox/utils/actions";
@@ -172,7 +172,11 @@ describe("AgentRunScreen", () => {
     nav: mockNav,
     run: sampleAgentRun,
     events: sampleAgentRunEvents,
-    messages: toChatEvents(sampleAgentRunEvents),
+    transcript: toTranscript(sampleAgentRunEvents, { startedAt: sampleAgentRun.startedAt, endedAt: null, running: true }),
+    model: "Opus 5.5",
+    tab: "agent",
+    setTab: jest.fn(),
+    changes: [],
     running: true,
     badge: { label: "Running", tone: "info" },
     result: null,
@@ -238,9 +242,28 @@ describe("AgentRunScreen", () => {
     expect(mockHooks.agentRun).toHaveBeenCalledWith(sampleAgentRun.id);
     expect(screen.getByText(sampleAgentRun.prompt)).toBeOnTheScreen();
     expect(screen.getByText("Starting the build.")).toBeOnTheScreen();
-    expect(screen.getByText("Running")).toBeOnTheScreen();
+    expect(screen.getByText("Opus 5.5")).toBeOnTheScreen();
+    expect(screen.getByText("Working")).toBeOnTheScreen();
+    expect(screen.getByTestId("activity-line")).toHaveTextContent("Bash · Build succeeded");
     expect(screen.queryByTestId("run-composer")).toBeNull();
-    expect(screen.getAllByText("Claude").length).toBeGreaterThan(0);
+    expect(screen.getByText("You")).toBeOnTheScreen();
+  });
+
+  it("unfolds Claude's steps and switches to the project's changes", async () => {
+    const setTab = jest.fn();
+    mockParams = { id: sampleAgentRun.id };
+    mockHooks.agentRun.mockReturnValue(runScreen({ setTab, changes: sampleSyncChanges.changes }));
+    await render(<AgentRunScreen />);
+
+    expect(screen.queryByText("npx electron-builder --win nsis --x64")).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: /^Working/ }));
+    expect(screen.getByText("npx electron-builder --win nsis --x64")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("tab", { name: `Changes ${sampleSyncChanges.changes.length}` }));
+    expect(setTab).toHaveBeenCalledWith("changes");
+
+    mockHooks.agentRun.mockReturnValue(runScreen({ tab: "changes", changes: sampleSyncChanges.changes }));
+    await render(<AgentRunScreen />);
+    expect(screen.getByText(sampleSyncChanges.changes[0]!.path)).toBeOnTheScreen();
   });
 
   it("shows the outcome, a one-line brief, stream problems and a continue box for a finished run", async () => {
@@ -652,6 +675,7 @@ describe("ProjectScreen", () => {
     downloads: { download: jest.fn(), pendingId: null, error: null },
     sync: syncState(),
     claudeAccount: claudeAccountState(),
+    renameSheet: { visible: false, name: "", setName: jest.fn(), hint: "", error: null, saving: false, save: jest.fn(), close: jest.fn() },
     appRuns: appRunsState(),
     actionError: null,
     ...overrides,

@@ -11,7 +11,7 @@ from .labels import MANAGE, NO_PROJECT, NO_PROJECT_OPTION, STATES, UNTITLED
 FINAL_STATES = ("succeeded", "failed", "cancelled")
 TITLE_LIMIT = 80
 STATE_TONES: Mapping[str, Tone] = {"running": "info", "succeeded": "success", "failed": "danger", "cancelled": "neutral"}
-STATE_ICONS: Mapping[str, str] = {"succeeded": "success", "failed": "failed", "cancelled": "stop"}
+STATE_ICONS: Mapping[str, str] = {"succeeded": "status-done", "failed": "failed", "cancelled": "status-canceled"}
 NO_PROJECT_KEY = ""
 TERMINAL_SOURCES = ("terminal", "cli")
 ARCHIVED_FILTER = "archived"
@@ -124,9 +124,13 @@ class RunGroup:
     runs: tuple[AgentRun, ...]
 
 
+def sort_recent(runs: Iterable[AgentRun]) -> list[AgentRun]:
+    return sorted(runs, key=lambda r: r.get("startedAt") or "", reverse=True)
+
+
 def group_runs(runs: Iterable[AgentRun], names: Mapping[str, str]) -> list[RunGroup]:
     buckets: dict[str, list[AgentRun]] = {}
-    for run in sorted(runs, key=lambda r: r.get("startedAt") or "", reverse=True):
+    for run in sort_recent(runs):
         buckets.setdefault(run.get("projectId") or NO_PROJECT_KEY, []).append(run)
     return [
         RunGroup(key, project_name(key or None, names), tuple(items))

@@ -5,26 +5,28 @@ from gi.repository import Adw, Gtk
 
 from ...api.client import ControllerClient
 from ...api.errors import ControllerError, describe_error
-from ...api.types import AgentRun, ClaudeAccountList, GitDetails, Project
+from ...api.types import AgentRun, AppRun, ClaudeAccountList, GitDetails, Project, RunTargetInfo
 from ...services.workspace import upsert
-from ...theme.icons import resolve_icon
-from ...widgets.badges import StatusBadge
+from ...util.format import join_meta
 from ...widgets.buttons import ActionButton, IconButton
 from ...widgets.choice_dropdown import ChoiceDropdown
 from ...widgets.desktop import copy_text
 from ...widgets.feedback import EmptyState, Notice
-from ...widgets.header import HeaderAction, ScreenHeader
 from ...widgets.lifecycle import while_mapped
-from ...widgets.motion import crossfade_stack, view_stack
+from ...widgets.list_view import PillTabs, PropertyChip
+from ...widgets.motion import crossfade_stack
 from ...widgets.page_body import PageBody
-from .labels import CLAUDE_ACCOUNT, DETAIL, GIT, TABS
+from ...widgets.record_row import status_glyph
+from ...widgets.text import Text
+from .emulator import android_target, live_run, run_on_emulator, viewer
+from .labels import CLAUDE_ACCOUNT, DETAIL, EMULATOR, GIT, TABS
 from .model import (
     DEFAULT_CLAUDE_ACCOUNT,
     active_build_count,
+    activity_glyph,
     claude_account_label,
     claude_account_options,
     confidential_badge,
-    detail_subtitle,
     dirty_badge,
     effective_claude_account,
     framework_label,
@@ -36,6 +38,8 @@ from .model import (
     running_count,
     sync_label,
 )
+from .remove_action import remove_project
+from .rename_dialog import RenameProjectDialog
 from .tab_artifacts import ArtifactsTab
 from .tab_builds import BuildsTab
 from .tab_conversations import ConversationsTab
@@ -47,6 +51,7 @@ if TYPE_CHECKING:
     from ...context import AppContext
 
 REFRESH_INTERVAL_S = 15.0
+BRANCH_CHARS = 40
 LOADING, ERROR, CONTENT = "loading", "error", "content"
 SORTERS: dict[str, Callable[[list, str], list]] = {
     "processes": project_processes,
@@ -68,6 +73,8 @@ class ProjectDetail:
         self._fetch_failed = False
         self._runs: list[AgentRun] | None = None
         self._accounts: ClaudeAccountList | None = None
+        self._run_targets: list[RunTargetInfo] | None = None
+        self._app_runs: list[AppRun] | None = None
 
         self.widget = crossfade_stack()
         self._state = EmptyState(DETAIL["loading"], loading=True)
@@ -78,32 +85,52 @@ class ProjectDetail:
         self._render()
 
     def _build_content(self) -> Gtk.Widget:
-        body = PageBody(spacing=24)
-        self._badges = Adw.WrapBox(child_spacing=6, line_spacing=6)
-        self._framework = StatusBadge("", icon="project")
-        self._branch = StatusBadge("", icon="branch")
-        self._sync = StatusBadge("", "info")
-        self._dirty = StatusBadge("")
-        self._activity = StatusBadge("")
-        self._confidential = StatusBadge("", icon="confidential")
-        self._claude_account = StatusBadge("", icon="agents")
+        body = PageBody(spacing=0)
+        body.box.remove_css_class("to-page")
+        body.box.add_css_class("to-detail-body")
+
+        crumb = Gtk.Box(spacing=8, css_classes=["to-detail-crumb"])
+        self._key = Text(self.project_id, "caption", "textTertiary")
+        self._path = Text("", "code", "textTertiary")
+        self._path.set_hexpand(True)
+        self._path.set_selectable(True)
+        crumb.append(self._key)
+        crumb.append(self._path)
+        for icon, label, callback in (
+            ("copy", DETAIL["copy_path"], self._copy_path),
+            ("rename", DETAIL["rename"], self._rename),
+            ("delete", DETAIL["delete"], self._remove),
+        ):
+            button = IconButton(icon, label, callback)
+            button.add_css_class("to-row-action")
+            if icon == "delete":
+                button.add_css_class("to-danger-button")
+            crumb.append(button)
+        body.append(crumb)
+
+        self._title = Text(self.project_id, "h1", selectable=True)
+        body.append(self._title)
+
+        self._badges = Adw.WrapBox(child_spacing=6, line_spacing=6, css_classes=["to-detail-props"])
+        self._activity = PropertyChip("status-todo")
+        self._framework = PropertyChip("project")
+        self._branch = PropertyChip("branch", max_chars=BRANCH_CHARS)
+        self._sync = PropertyChip("sync")
+        self._dirty = PropertyChip("status-progress")
+        self._confidential = PropertyChip("confidential", icon_color="warning")
+        self._claude_account = PropertyChip("agents")
         for badge in (
-            self._confidential, self._activity, self._framework, self._branch, self._sync, self._dirty, self._claude_account
+            self._activity, self._framework, self._branch, self._sync, self._dirty, self._confidential, self._claude_account
         ):
             self._badges.append(badge)
-        self._header = ScreenHeader(
-            self.project_id,
-            actions=[HeaderAction("copy", "copy", DETAIL["copy_path"], self._copy_path)],
-            accessory=self._badges,
-        )
-        self._badges.set_margin_top(8)
-        body.append(self._header)
+        body.append(self._badges)
 
-        quick = Adw.WrapBox(child_spacing=8, line_spacing=8)
+        quick = Adw.WrapBox(child_spacing=8, line_spacing=8, css_classes=["to-detail-actions"])
         quick.append(ActionButton(DETAIL["ask"], self.ask_claude, "primary", "agents"))
         quick.append(ActionButton(DETAIL["claude_terminal"], lambda: self._terminal("claude"), "secondary", "terminal"))
         quick.append(ActionButton(DETAIL["shell"], lambda: self._terminal("shell"), "secondary", "terminal"))
-        quick.append(ActionButton(DETAIL["display"], lambda: self.ctx.navigate("display"), "secondary", "display"))
+        self._display_button = ActionButton(DETAIL["display"], self._display_action, "secondary", "display")
+        quick.append(self._display_button)
         self._account_picker = ChoiceDropdown(on_change=self._set_claude_account, tooltip=CLAUDE_ACCOUNT["tooltip"])
         self._account_picker.set_visible(False)
         quick.append(self._account_picker)
@@ -111,35 +138,36 @@ class ProjectDetail:
 
         self._notice = Notice("", tone="danger")
         self._notice.set_visible(False)
+        self._notice.set_margin_top(12)
         self._notice.set_action(DETAIL["dismiss"], lambda: self._notice.set_visible(False))
         body.append(self._notice)
 
-        self._stack = view_stack(vhomogeneous=False)
+        self._stack = crossfade_stack(vhomogeneous=False, hhomogeneous=False, css_classes=["to-detail-tab"])
         self.git = GitTab()
         self.processes = ProcessesTab(self)
         self.builds = BuildsTab(self)
         self.artifacts = ArtifactsTab(self)
         self.conversations = ConversationsTab(self)
-        self._pages: dict[str, Adw.ViewStackPage] = {}
         self.sync_back = SyncTab(self, self._sync_count)
-        for name, tab, icon in (
-            ("git", self.git, "branch"),
-            ("sync", self.sync_back, "host"),
-            ("processes", self.processes, "processes"),
-            ("builds", self.builds, "builds"),
-            ("artifacts", self.artifacts, "artifacts"),
-            ("conversations", self.conversations, "agents"),
-        ):
-            self._pages[name] = self._stack.add_titled_with_icon(tab.widget, name, TABS[name], resolve_icon(icon))
-        switcher = Adw.InlineViewSwitcher(stack=self._stack, can_shrink=False, halign=Gtk.Align.START)
-        tabs = Gtk.ScrolledWindow(
-            child=switcher,
+        tabs = {
+            "processes": self.processes,
+            "builds": self.builds,
+            "artifacts": self.artifacts,
+            "git": self.git,
+            "sync": self.sync_back,
+            "conversations": self.conversations,
+        }
+        for name, tab in tabs.items():
+            self._stack.add_named(tab.widget, name)
+        self._tabs = PillTabs([(name, TABS[name]) for name in tabs], "processes", self._stack.set_visible_child_name, DETAIL["tabs"])
+        bar = Gtk.ScrolledWindow(
+            child=self._tabs,
             vscrollbar_policy=Gtk.PolicyType.NEVER,
             hscrollbar_policy=Gtk.PolicyType.EXTERNAL,
             propagate_natural_height=True,
-            css_classes=["to-project-tabs"],
+            css_classes=["to-detail-tabs"],
         )
-        body.append(tabs)
+        body.append(bar)
         body.append(self._stack)
         return body
 
@@ -147,18 +175,19 @@ class ProjectDetail:
         return [IconButton("refresh", DETAIL["refresh"], self.refresh)]
 
     def _sync_count(self, count: int) -> None:
-        if "sync" in self._pages:
-            self._pages["sync"].set_badge_number(count)
+        if hasattr(self, "_tabs"):
+            self._tabs.set_count("sync", count)
 
     def show_tab(self, name: str) -> None:
-        if name in self._pages:
-            self._stack.set_visible_child_name(name)
+        if self._stack.get_child_by_name(name) is not None:
+            self._tabs.select(name)
 
     def _attach(self) -> Callable[[], None]:
         detach = [
             self.ctx.subscribe(event, lambda message, key=key, kind=kind: self._event(kind, message.get(key)))
             for event, key, kind in EVENTS
         ]
+        detach.append(self.ctx.subscribe("app.updated", lambda message: self._app_run_updated(message.get("run"))))
         detach.append(self.ctx.subscribe("artifact.deleted", lambda message: self.remove("artifacts", message.get("id"))))
         detach.append(self.ctx.store.projects.subscribe(self._store_projects))
         detach.append(self.ctx.store.agent_runs.subscribe(self._store_runs))
@@ -174,7 +203,14 @@ class ProjectDetail:
             "git": None,
             "git_error": None,
             "accounts": None,
+            "run_targets": None,
+            "app_runs": None,
         }
+        try:
+            snapshot["run_targets"] = client.list_run_targets(self.project_id)
+            snapshot["app_runs"] = client.list_app_runs(self.project_id)
+        except ControllerError:
+            pass
         try:
             snapshot["accounts"] = client.claude_accounts()
         except ControllerError:
@@ -193,6 +229,8 @@ class ProjectDetail:
         self._git = snapshot["git"]
         self._git_error = snapshot["git_error"]
         self._accounts = snapshot["accounts"]
+        self._run_targets = snapshot["run_targets"]
+        self._app_runs = snapshot["app_runs"]
         if self._fetch_failed:
             self._fetch_failed = False
             self._notice.set_visible(False)
@@ -254,6 +292,40 @@ class ProjectDetail:
         self.sync_back.refresh()
         self.ctx.workspace.refresh()
 
+    def _app_run_updated(self, run: Any) -> None:
+        if not isinstance(run, dict) or run.get("projectId") != self.project_id or self._app_runs is None:
+            return
+        self._app_runs = upsert(self._app_runs, run)
+        self._render_display_button()
+
+    def _display_action(self) -> None:
+        target = android_target(self._run_targets)
+        if target is None:
+            self.ctx.navigate("display")
+        elif not target["available"]:
+            self.report(EMULATOR["unavailable"].format(reason=target["reason"]))
+        else:
+            self._display_button.set_sensitive(False)
+            self.ctx.call(
+                lambda client: run_on_emulator(client, self.project_id, target["target"]),
+                self._on_emulator_run,
+                lambda error: self.report(EMULATOR["failed"].format(error=describe_error(error))),
+                lambda: self._display_button.set_sensitive(True),
+            )
+
+    def _on_emulator_run(self, result: tuple[AppRun, bool, str | None]) -> None:
+        run, started, serial = result
+        self._app_run_updated(run)
+        if started:
+            self.ctx.toast(EMULATOR["started"])
+        if not viewer.installed():
+            self.ctx.toast(EMULATOR["no_scrcpy"])
+        elif serial is None:
+            self.report(EMULATOR["no_serial"])
+        else:
+            name = (self.project or {}).get("name") or self.project_id
+            viewer.open(serial, EMULATOR["title"].format(name=name), lambda error: self.report(EMULATOR["viewer_failed"].format(error=error)))
+
     def ask_claude(self) -> None:
         self.ctx.navigate("agents", {"new": True, "projectId": self.project_id})
 
@@ -286,6 +358,14 @@ class ProjectDetail:
         self._account_picker.set_sensitive(True)
         self._render_header()
 
+    def _rename(self) -> None:
+        if self.project is not None:
+            RenameProjectDialog(self.ctx, self.project).present()
+
+    def _remove(self) -> None:
+        if self.project is not None:
+            remove_project(self.ctx, self.project, self.ctx.pop)
+
     def _copy_path(self) -> None:
         if self.project:
             copy_text(self.widget, self.project["path"])
@@ -305,9 +385,9 @@ class ProjectDetail:
         self.processes.render(self.project, self._lists["processes"])
         self.builds.render(self.project, self._lists["builds"])
         self.artifacts.render(self._lists["artifacts"])
-        self._pages["processes"].set_badge_number(running_count(self._lists["processes"]))
-        self._pages["builds"].set_badge_number(active_build_count(self._lists["builds"]))
-        self._pages["artifacts"].set_badge_number(0)
+        self._tabs.set_count("processes", running_count(self._lists["processes"]))
+        self._tabs.set_count("builds", active_build_count(self._lists["builds"]))
+        self._tabs.set_count("artifacts", len(self._lists["artifacts"] or []))
         self._render_header()
 
     def _render_header(self) -> None:
@@ -315,29 +395,42 @@ class ProjectDetail:
         if project is None:
             return
         name = project.get("name") or project["id"]
-        self._header.set_title(name)
-        self._header.set_subtitle(detail_subtitle(project))
+        self._title.set_label(name)
+        self._key.set_label(project["id"])
+        self._path.set_label(project.get("path") or "")
         if self.page is not None:
             self.page.set_title(name)
         confidential = confidential_badge(project)
-        self._confidential.set_visible(confidential is not None)
-        if confidential:
-            self._confidential.update(*confidential)
+        self._confidential.update(confidential[0] if confidential else None)
         git = project.get("git")
-        self._framework.set_label(framework_label(project.get("framework")))
-        self._branch.set_visible(git is not None)
-        self._branch.set_label((git or {}).get("branch") or GIT["detached"])
-        sync = sync_label(git.get("ahead", 0), git.get("behind", 0)) if git else None
-        self._sync.set_visible(bool(sync))
-        self._sync.set_label(sync or "")
+        self._framework.update(join_meta(framework_label(project.get("framework")), project.get("packageManager")))
+        self._branch.update(((git or {}).get("branch") or GIT["detached"]) if git else None)
+        self._sync.update(sync_label(git.get("ahead", 0), git.get("behind", 0)) if git else None)
         dirty = dirty_badge(git, len(self._git.get("files", [])) if self._git else None)
-        self._dirty.set_visible(dirty is not None)
         if dirty:
-            self._dirty.update(*dirty)
+            self._dirty.update(dirty[0], *status_glyph(dirty[1]))
+        else:
+            self._dirty.update(None)
         self._render_claude_account(project)
+        self._render_display_button()
         activity = project_activity(self.project_id, self._lists["processes"], self._lists["builds"], self._runs)
-        self._activity.set_visible(activity.kind != "idle")
-        self._activity.update(activity.label, activity.tone)
+        self._activity.update(activity.label, *activity_glyph(activity.kind))
+
+    def _render_display_button(self) -> None:
+        target = android_target(self._run_targets)
+        if target is None:
+            self._display_button.set_label_text(DETAIL["display"])
+            self._display_button.set_icon("display")
+            self._display_button.set_tooltip_text(None)
+            return
+        running = live_run(self._app_runs, target["target"]) is not None
+        self._display_button.set_label_text(EMULATOR["show" if running else "run"])
+        self._display_button.set_icon("smartphone")
+        self._display_button.set_tooltip_text(
+            (EMULATOR["tooltip_dir"].format(dir=target["dir"]) if target.get("dir") else EMULATOR["tooltip"])
+            if target["available"]
+            else target["reason"]
+        )
 
     def _render_claude_account(self, project: Project) -> None:
         accounts = self._accounts
@@ -347,5 +440,4 @@ class ProjectDetail:
                 claude_account_options(project, accounts), project_claude_account(project) or DEFAULT_CLAUDE_ACCOUNT
             )
         label = claude_account_label(project, accounts)
-        self._claude_account.set_visible(accounts is not None and label is not None)
-        self._claude_account.set_label(label or "")
+        self._claude_account.update(label if accounts is not None else None)

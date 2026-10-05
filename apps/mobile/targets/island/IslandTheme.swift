@@ -3,15 +3,30 @@ import SwiftUI
 
 enum IslandTheme {
   static let background = Color(hex: 0x0D0D0D)
-  static let card = Color(hex: 0x161616)
-  static let element = Color(hex: 0x1D1D1D)
   static let button = Color(hex: 0x222222)
   static let text = Color(hex: 0xEDEDED)
   static let secondary = Color(hex: 0x8F8F8F)
   static let hairline = Color.white.opacity(0.14)
-  static let live = Color(hex: 0x3DD68C)
   static let keyline = Color(hex: 0x6B6B6B)
   static let appIcon = "appIcon"
+}
+
+enum IslandFont {
+  static func regular(_ size: CGFloat) -> Font {
+    .custom("Poppins-Regular", fixedSize: size)
+  }
+
+  static func medium(_ size: CGFloat) -> Font {
+    .custom("Poppins-Medium", fixedSize: size)
+  }
+
+  static func semibold(_ size: CGFloat) -> Font {
+    .custom("Poppins-SemiBold", fixedSize: size)
+  }
+
+  static func bold(_ size: CGFloat) -> Font {
+    .custom("Poppins-Bold", fixedSize: size)
+  }
 }
 
 private extension Color {

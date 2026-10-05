@@ -15,6 +15,7 @@ import BuildTargetCard from "@/features/sandbox/components/build-target-card";
 import GitCard from "@/features/sandbox/components/git-card";
 import MotionItem from "@/components/motion-item";
 import ProcessCard from "@/features/sandbox/components/process-card";
+import RenameProjectSheet from "@/features/sandbox/components/rename-project-sheet";
 import ScriptCard from "@/features/sandbox/components/script-card";
 import SyncSection from "@/features/sandbox/components/sync-section";
 import WebLinkCard from "@/features/sandbox/components/web-link-card";
@@ -209,6 +210,8 @@ export default function ProjectScreen() {
           ))}
         </Section>
       </MotionItem>
+
+      <RenameProjectSheet state={detail.renameSheet} />
     </ScreenScaffold>
   );
 }

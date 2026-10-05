@@ -3,12 +3,18 @@ from datetime import datetime, timedelta, timezone
 from monolith_desktop.config.model import ConnectionConfig
 from monolith_desktop.services.connection_view import connection_label, status_title
 from monolith_desktop.store import ConnectionState
+from monolith_desktop.theme.css import css_var
 from monolith_desktop.theme.extras.chrome import rules
+from monolith_desktop.theme.extras.sidebar import rules as sidebar_rules
 from monolith_desktop.widgets.sidebar_composer import composer_params
+from monolith_desktop.theme.tokens import SIDEBAR_WIDTH, SIDEBAR_WIDTH_RANGE
 from monolith_desktop.widgets.sidebar_model import (
+    clamp_sidebar_width,
+    dragged_sidebar_width,
     project_items,
     run_title,
     running_total,
+    stored_sidebar_width,
     workspace_state,
 )
 from monolith_desktop.widgets.window_controls import decoration_buttons
@@ -104,6 +110,8 @@ def test_composer_params():
     assert composer_params("   ", "p1") is None
     assert composer_params(" hi \n", None) == {"prompt": "hi", "send": True}
     assert composer_params("hi", "p1") == {"prompt": "hi", "send": True, "projectId": "p1"}
+    assert composer_params("hi", None, ["upl_1"]) == {"prompt": "hi", "send": True, "attachmentIds": ["upl_1"]}
+    assert composer_params("hi", None, []) == {"prompt": "hi", "send": True}
 
 
 def test_status_title_and_label_without_name():
@@ -123,3 +131,44 @@ def test_chrome_rules_cover_both_schemes_without_titlebutton_selectors():
         assert not any("titlebutton" in selector for selector in ruleset)
         assert all(props for props in ruleset.values())
         assert not any(key in ("margin-start", "margin-end") for props in ruleset.values() for key in props)
+
+
+def test_sidebar_rules_are_flat_and_scoped():
+    for scheme in ("light", "dark", "graphite"):
+        ruleset = sidebar_rules(scheme)
+        assert "list.to-nav-list > row:selected" in ruleset
+        assert not any(".to-canvas" in selector for selector in ruleset)
+        assert not any("gradient" in value for props in ruleset.values() for value in props.values())
+        assert all(".to-side-composer" in selector for selector in ruleset if "composer" in selector)
+
+
+def test_sidebar_width_is_clamped_to_range():
+    low, high = SIDEBAR_WIDTH_RANGE
+    assert low < SIDEBAR_WIDTH < high
+    assert clamp_sidebar_width(low - 50) == low
+    assert clamp_sidebar_width(high + 50) == high
+    assert clamp_sidebar_width(301.4) == 301
+
+
+def test_stored_sidebar_width_falls_back_to_default():
+    low, high = SIDEBAR_WIDTH_RANGE
+    assert stored_sidebar_width(None) == SIDEBAR_WIDTH
+    assert stored_sidebar_width("300") == SIDEBAR_WIDTH
+    assert stored_sidebar_width(True) == SIDEBAR_WIDTH
+    assert stored_sidebar_width(float("nan")) == SIDEBAR_WIDTH
+    assert stored_sidebar_width(310) == 310
+    assert stored_sidebar_width(10_000) == high
+    assert stored_sidebar_width(0) == low
+
+
+def test_dragged_sidebar_width_is_in_unzoomed_units():
+    assert dragged_sidebar_width(250, 30, 1.0) == 280
+    assert dragged_sidebar_width(250, 30, 1.5) == 270
+    assert dragged_sidebar_width(250, -600, 1.5) == SIDEBAR_WIDTH_RANGE[0]
+    assert dragged_sidebar_width(250, 600, 1.0) == SIDEBAR_WIDTH_RANGE[1]
+
+
+def test_sidebar_resize_handle_highlights_on_hover():
+    css = sidebar_rules("graphite")
+    assert "min-width" in css[".to-resize-handle"]
+    assert css_var("borderStrong") in css[".to-resize-handle:hover, .to-resize-handle.dragging"]["box-shadow"]

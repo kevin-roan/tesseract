@@ -53,9 +53,14 @@ const PLATFORM_EXTENSIONS: Record<string, string> = {
   ".aab": "android",
   ".exe": "windows",
   ".msi": "windows",
+  ".msix": "windows",
+  ".appx": "windows",
   ".deb": "linux",
   ".rpm": "linux",
   ".appimage": "linux",
+  ".snap": "linux",
+  ".ipa": "ios",
+  ".dmg": "macos",
 };
 
 export function sharedPlatform(fileName: string): string {

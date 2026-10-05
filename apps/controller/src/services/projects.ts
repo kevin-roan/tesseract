@@ -104,6 +104,15 @@ export class ProjectService {
     return project;
   }
 
+  /** Display name only: the directory and id stay, so host sync, runs and processes keep working. Null restores the detected name. */
+  async rename(id: string, name: string | null): Promise<Project> {
+    const location = this.require(id);
+    this.repos.setProjectName(location.id, name, nowIso());
+    const project = await this.describe(location);
+    this.hub.publish({ type: "project.updated", project });
+    return project;
+  }
+
   async gitDetails(id: string): Promise<GitDetails> {
     const location = this.require(id);
     const details = await this.git.details(location.path);
@@ -215,6 +224,7 @@ export class ProjectService {
     if (!moved.ok) {
       throw new HttpError("internal", `Could not move project ${location.id}: ${moved.stderr.trim() || moved.error || `mv exited with ${moved.code}`}`);
     }
+    this.repos.setProjectName(location.id, null, nowIso());
     try {
       await this.syncBack.forget(location.id);
     } catch (error) {
@@ -237,7 +247,7 @@ export class ProjectService {
     const facts = detectProject(location.path);
     const confidential = this.isConfidential(location.id);
     const pkgName = typeof facts.pkg?.name === "string" ? facts.pkg.name.trim() : "";
-    const name = !confidential && pkgName ? pkgName : location.id;
+    const name = this.repos.projectName(location.id) ?? (!confidential && pkgName ? pkgName : location.id);
     return {
       id: location.id,
       name,

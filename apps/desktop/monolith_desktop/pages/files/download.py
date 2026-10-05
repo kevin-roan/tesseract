@@ -30,8 +30,18 @@ def download_artifact(
     expected_sha256: str | None = None,
     on_progress: Callable[[int, int | None], None] | None = None,
 ) -> str:
+    return download_file(client, rest.artifact_download(artifact_id), destination, expected_sha256, on_progress)
+
+
+def download_file(
+    client: ControllerClient,
+    api_path: str,
+    destination: str,
+    expected_sha256: str | None = None,
+    on_progress: Callable[[int, int | None], None] | None = None,
+) -> str:
     request = urllib.request.Request(
-        client.http_url(rest.artifact_download(artifact_id)),
+        client.http_url(api_path),
         headers={**client.auth_headers(), "User-Agent": USER_AGENT},
     )
     partial = destination + PART_SUFFIX
@@ -53,7 +63,7 @@ def download_artifact(
         raise error_from_response(error.code, error.read()) from None
     except (TimeoutError, socket.timeout) as error:
         _discard(partial)
-        raise RequestTimeout("artifact download timed out") from error
+        raise RequestTimeout("download timed out") from error
     except urllib.error.URLError as error:
         _discard(partial)
         raise NetworkError(str(error.reason)) from error
