@@ -59,6 +59,7 @@ class AgentsPage(Page):
         self._inbox: list[InboxItem] = []
         self._sessions: list[Mapping] = []
         self._names: dict[str, str] = {}
+        self._badges: dict[str, model.ProjectBadge] = {}
         self._archived: list[AgentRun] | None = None
         self._starting = False
         self._time_source: int | None = None
@@ -183,6 +184,7 @@ class AgentsPage(Page):
 
     def _projects_changed(self) -> None:
         self._names = model.project_names(self.ctx.store.projects.value)
+        self._badges = model.project_badges(self.ctx.store.projects.value)
         self._new.set_projects(model.project_options(self.ctx.store.projects.value))
         self._render_list()
 
@@ -196,7 +198,7 @@ class AgentsPage(Page):
 
     def _render_list(self) -> None:
         attention = model.notice_items(self._inbox)
-        self._list.set_data(self.ctx.store.agent_runs.value, self._names, attention, self._sessions)
+        self._list.set_data(self.ctx.store.agent_runs.value, self._names, attention, self._sessions, self._badges)
         self._list.set_archived(self._archived)
         self._push_context()
 

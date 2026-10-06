@@ -1,5 +1,7 @@
 import type { ListeningPort } from "@theone/protocol";
 
+import type { SegmentedOption } from "@/components/segmented-pills";
+
 export function siteUrl(site: ListeningPort): string | null {
   return site.url ?? site.dnsUrl;
 }
@@ -18,4 +20,13 @@ export function projectSites(sites: readonly ListeningPort[] | undefined, projec
 
 export function processSite(sites: readonly ListeningPort[] | undefined, processId: string): ListeningPort | undefined {
   return sortSites(sites).find((site) => site.processId === processId && siteUrl(site) !== null);
+}
+
+export type ProjectsView = "projects" | "sites";
+
+export function projectsViewOptions(projectCount: number, siteCount: number): SegmentedOption<ProjectsView>[] {
+  return [
+    { value: "projects", label: `Projects · ${projectCount}` },
+    { value: "sites", label: `Websites · ${siteCount}` },
+  ];
 }

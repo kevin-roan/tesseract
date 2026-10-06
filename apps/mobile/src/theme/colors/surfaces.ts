@@ -204,7 +204,7 @@ const graphite: Record<SurfaceTone, SurfaceStyle> = {
     glass: graphiteGlass,
   },
   brand: {
-    fill: { inner: Palette.clay[600], outer: Palette.clay[900], cx: 0.15, cy: 0, r: 1.3 },
+    fill: flat(Palette.linear[500]),
     border: 'rgba(255, 255, 255, 0.1)',
     ink: {
       ...onDarkTint(Palette.graphite[50]),
@@ -258,7 +258,7 @@ const graphiteLight: Record<SurfaceTone, SurfaceStyle> = {
     glass: graphiteLightGlass,
   },
   brand: {
-    fill: { inner: Palette.clay[500], outer: Palette.clay[700], cx: 0.15, cy: 0, r: 1.3 },
+    fill: flat(Palette.linear[500]),
     border: 'rgba(0, 0, 0, 0.06)',
     ink: {
       ...onDarkTint(Palette.paper),

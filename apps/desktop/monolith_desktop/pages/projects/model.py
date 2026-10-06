@@ -31,6 +31,7 @@ from ...syncback.pull import is_conflict as file_conflicts
 from ...syncback.state import Link, Snapshot, SyncState
 from ...syncback.summary import plural
 from ...theme.tone import Tone
+from ...util.text import clean_log_text
 from ...util.format import (
     elapsed_seconds,
     format_duration,
@@ -691,6 +692,54 @@ def running_count(processes: Iterable[ProcessInfo] | None) -> int:
 
 def active_build_count(builds: Iterable[BuildJob] | None) -> int:
     return sum(1 for build in builds or [] if not is_final_build(build))
+
+
+FIX_LOG_TAIL = 150
+
+
+def can_fix_process(process: ProcessInfo) -> bool:
+    return process.get("state") == "failed" or (
+        process.get("state") == "exited" and process.get("exitCode") not in (0, None)
+    )
+
+
+def can_fix_build(build: BuildJob) -> bool:
+    return build.get("state") == "failed"
+
+
+def failure_prompt(
+    subject: str,
+    lines: Sequence[dict[str, Any]],
+    command: str | None = None,
+    exit_code: int | None = None,
+    error: str | None = None,
+) -> str:
+    """A ready-to-send chat prompt asking the agent to find and fix the cause of a failure."""
+    tail = lines[-FIX_LOG_TAIL:]
+    log = "\n".join(clean_log_text(str(line.get("text", ""))) for line in tail).strip()
+    facts = [
+        f"Command: `{command}`" if command else None,
+        f"Exit code: {exit_code}" if exit_code is not None else None,
+        f"Error: {error}" if error else None,
+    ]
+    parts = [
+        f"{subject} failed. Find the cause and fix it, then run it again to confirm it works.",
+        "\n".join(fact for fact in facts if fact),
+        f"Last {len(tail)} log lines:\n```\n{log}\n```" if log else "No log output was captured.",
+    ]
+    return "\n\n".join(part for part in parts if part)
+
+
+def process_failure_prompt(process: ProcessInfo, lines: Sequence[dict[str, Any]]) -> str:
+    return failure_prompt(
+        f"`{process.get('name') or process['id']}`", lines,
+        command=command_label(process.get("command", "")) or None, exit_code=process.get("exitCode"),
+    )
+
+
+def build_failure_prompt(build: BuildJob, lines: Sequence[dict[str, Any]]) -> str:
+    subject = f"The {target_label(build['target'])} {profile_label(build.get('profile', '')).lower()} build"
+    return failure_prompt(" ".join(subject.split()), lines, error=build.get("error"))
 
 
 def log_status(state: str, exit_code: int | None = None, ended: bool = False) -> tuple[str, Tone]:

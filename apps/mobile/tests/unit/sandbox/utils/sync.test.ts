@@ -23,8 +23,10 @@ import {
   syncFailureTitle,
   syncFileToggleLabel,
   syncGetBody,
+  syncHostChanges,
   syncHostLabel,
   syncHostWarning,
+  syncWaiting,
   syncKindCode,
   syncKindTone,
   syncLineStats,
@@ -276,6 +278,21 @@ describe("syncActionReasons", () => {
     expect(syncActionDetail("revert", SYNC_COPY.nothingToRevert, linked.changes)).toBe(SYNC_COPY.nothingToRevert);
     expect(isSyncActionId("discard")).toBe(true);
     expect(isSyncActionId("sync")).toBe(false);
+  });
+
+  it("counts the changes waiting in each direction", () => {
+    const withHost = (host: SyncChanges["host"]): SyncChanges => ({ ...sampleSyncChanges, host });
+    expect(syncActionDetail("pull", null, linked.changes)).toBe("3 files changed in the sandbox");
+    expect(syncActionDetail("get", null, linked.changes, 2)).toBe("2 files changed on your computer");
+    expect(syncActionDetail("get", null, linked.changes, 0)).toBe(SYNC_COPY.hostUnchanged);
+    const reported = withHost({ ...sampleSyncChanges.host!, changes: 2 });
+    expect(syncHostChanges(reported)).toBe(2);
+    expect(syncHostChanges(sampleSyncChanges)).toBeNull();
+    expect(syncHostChanges(withHost({ ...sampleSyncChanges.host!, linked: false, changes: 2 }))).toBeNull();
+    expect(syncWaiting(reported)).toEqual({ pull: true, get: true });
+    expect(syncWaiting({ ...reported, changes: [], host: { ...reported.host!, changes: 0 } })).toEqual({ pull: false, get: false });
+    expect(syncWaiting({ ...reported, baselineAt: null })).toEqual({ pull: false, get: false });
+    expect(syncWaiting(undefined)).toEqual({ pull: false, get: false });
   });
 });
 

@@ -11,6 +11,7 @@ import {
   syncActionDetail,
   syncChangesSummary,
   syncFileToggleLabel,
+  syncHostChanges,
   syncHostLabel,
   type SyncActionId,
   type SyncSheetMode,
@@ -85,7 +86,7 @@ export function useSyncBack(projectId: string) {
 
   const actions = SECONDARY_ACTIONS.map((id) => ({
     ...SYNC_ACTIONS[id],
-    detail: syncActionDetail(id, reasons[id], changes),
+    detail: syncActionDetail(id, reasons[id], changes, syncHostChanges(changesQuery.data)),
     disabled: reasons[id] !== null,
     onPress: openers[id],
   }));

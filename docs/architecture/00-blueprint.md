@@ -315,7 +315,7 @@ It runs `bun apps/controller/src/index.ts` from its checkout, or `MONOLITH_CONTR
 | POST | `/v1/sync/requests/:id/claim` | `ClaimSyncRequest { host }` | `200 SyncRequest` (`claimed`); 409 unless `pending`; publishes `sync.updated` |
 | POST | `/v1/sync/requests/:id/complete` | `CompleteSyncRequest { status: "applied" \| "failed", result?, error? }` | `200 SyncRequest`; 409 unless `claimed`; publishes `sync.updated` |
 | POST | `/v1/sync/requests/:id/cancel` | — | `200 SyncRequest` (`cancelled`); 409 unless `pending`; publishes `sync.updated` |
-| POST | `/v1/sync/heartbeat` | `SyncHeartbeat { host, projects: ProjectId[] }` | `204`; remembers the host per linked project for `SyncChanges.host` (online = seen in the last 60 s) |
+| POST | `/v1/sync/heartbeat` | `SyncHeartbeat { host, projects: ProjectId[], changes?: Record<ProjectId, number> }` | `204`; remembers the host per linked project for `SyncChanges.host` (online = seen in the last 60 s) and its host-side change count; publishes `sync.changed` when a count moves |
 | POST | `/v1/sync/requests/:id/plan` | `SyncGetPlan { hostPath, changes: { path, kind, sha256 \| null, executable }[] (≤ 5000), git: { changed, deleted } \| null }` | `200 SyncGetPlanResponse { request, upload, gitUpload }`; 409 unless a `claimed` `get`; 400 for a duplicate path, a hash on a delete (or none on an add/modify) or a path behind a sandbox symlink; conflicts without `force` complete the request `failed` (sync-back.md §6) |
 | POST | `/v1/sync/requests/:id/apply` | gzip or plain tar of exactly `upload` + `.git/<gitUpload>` (body limit 1 GiB) | `200 SyncRequest` (`applied` with the `get` stats, or `failed` on conflicts); 409 unless `claimed` with a plan; 400 for a bad archive or an unplanned hash (the request stays `claimed`); 500 when applying failed and was rolled back; publishes `sync.updated`, `sync.changed`, `project.updated` |
 | GET | `/v1/processes` | `?projectId=` | `ProcessInfo[]` |
@@ -548,7 +548,8 @@ type SyncFileChange = { path: string; kind: "added" | "modified" | "deleted"; sh
                         discardable?: boolean /* baseline restorable: always for added; else its blob is stored */ };
 type SyncDiscard = { paths?: string[] /* omitted = every change */ };
 type SyncDiscardResult = { discarded: string[]; unavailable: string[] /* no blob */; backupPath: string | null; changes: SyncChanges };
-type SyncHost = { name: string; lastSeenAt: string; online: boolean; linked: boolean };
+type SyncHost = { name: string; lastSeenAt: string; online: boolean; linked: boolean;
+                  changes?: number /* host files changed since the last push/get, from the heartbeat */ };
 type SyncChanges = { projectId: string; baselineAt: string | null /* never pushed */; changes: SyncFileChange[];
                      totalBytes: number; host: SyncHost | null; lastGetAt?: string | null /* last get since the push */ };
 type SyncFileStat = { path: string; kind: "added" | "modified" | "deleted"; insertions: number; deletions: number; binary: boolean;

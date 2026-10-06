@@ -1,10 +1,11 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from typing import TYPE_CHECKING
 
 from gi.repository import Adw, Gtk
 
 from ..strings import SIDEBAR
 from ..theme.icons import resolve_icon
+from ..theme.project_tints import ProjectBadge, project_badge, project_badges
 from ..theme.tokens import SIDEBAR_RUN_INDENT
 from ..util.format import format_relative_time
 from .icon import Icon
@@ -108,6 +109,7 @@ class ProjectEntry(Gtk.Box):
         self._on_run = on_run
         self._on_toggle = on_toggle
         self._name = ""
+        self._tint: int | None = None
 
         self._indicator = ActivityIndicator("project" if key else "agents", 16)
         self._label = Text("", "label")
@@ -130,10 +132,10 @@ class ProjectEntry(Gtk.Box):
         self._chevron = Gtk.Button(child=self._caret, css_classes=["to-side-row-action", "to-side-hover"], valign=Gtk.Align.CENTER)
         self._chevron.connect("clicked", lambda *_: self._toggle())
 
-        row = Gtk.Box(css_classes=["to-side-row"])
+        self._row = Gtk.Box(css_classes=["to-side-row"])
         for widget in (self._main, self._add, self._chevron):
-            row.append(widget)
-        self.append(row)
+            self._row.append(widget)
+        self.append(self._row)
 
         self._runs = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=1, css_classes=["to-side-runs"])
         self._empty = Text(SIDEBAR["no_runs"], "caption", "textTertiary")
@@ -154,6 +156,15 @@ class ProjectEntry(Gtk.Box):
         tooltip = SIDEBAR["collapse" if expanded else "expand"]
         self._chevron.set_tooltip_text(tooltip)
         self._chevron.update_property([Gtk.AccessibleProperty.LABEL], [tooltip])
+
+    def set_tint(self, tint: int | None) -> None:
+        if tint == self._tint:
+            return
+        if self._tint is not None:
+            self._row.remove_css_class(f"to-tint-{self._tint}")
+        if tint is not None:
+            self._row.add_css_class(f"to-tint-{tint}")
+        self._tint = tint
 
     def update(self, item: ProjectItem) -> None:
         if item.name != self._name:
@@ -227,7 +238,7 @@ class SidebarProjects(SidebarSection):
         state = workspace_state(online, projects, len(items))
         self._show_state(state)
         self._create.set_sensitive(online)
-        self._reconcile(items if state == "ready" else [])
+        self._reconcile(items if state == "ready" else [], project_badges(projects))
 
     def _show_state(self, state: WorkspaceState) -> None:
         messages = {"loading": SIDEBAR["loading"], "offline": SIDEBAR["offline"], "empty": SIDEBAR["empty"]}
@@ -236,7 +247,7 @@ class SidebarProjects(SidebarSection):
         self._message.set_label(messages.get(state, ""))
         self._status_action.set_visible(state == "empty")
 
-    def _reconcile(self, items: list[ProjectItem]) -> None:
+    def _reconcile(self, items: list[ProjectItem], badges: Mapping[str, ProjectBadge]) -> None:
         keys = [item.id for item in items]
         for key in [key for key in self._entries if key not in keys]:
             self._list.remove(self._entries.pop(key))
@@ -251,6 +262,7 @@ class SidebarProjects(SidebarSection):
             elif item.active and item.id not in self._expanded:
                 entry.set_expanded(True)
             entry.update(item)
+            entry.set_tint(project_badge(item.id, badges).tint)
             self._list.reorder_child_after(entry, previous)
             previous = entry
 

@@ -521,6 +521,26 @@ describe("useAgentRunScreen", () => {
     );
   });
 
+  it("retries a failed run with the same prompt, attachments and session", async () => {
+    mockStream = { ...mockStream, run: { ...sampleAgentRun, state: "failed", error: "API Error: 529 Overloaded" } };
+    const { result } = await render();
+
+    expect(result.current.canRetryRun).toBe(true);
+    await act(async () => result.current.retryRun());
+    await waitFor(() =>
+      expect(fake.startAgentRun).toHaveBeenCalledWith({
+        prompt: sampleAgentRun.prompt,
+        mode: sampleAgentRun.mode,
+        projectId: sampleAgentRun.projectId,
+        attachmentIds: sampleAgentRun.attachments.map((upload) => upload.id),
+        resumeSessionId: sampleAgentRun.sessionId,
+      }),
+    );
+    await waitFor(() =>
+      expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/sandbox/agent/[id]", params: { id: started.id } }),
+    );
+  });
+
   it("cannot continue a finished run without a session", async () => {
     mockStream = { ...mockStream, run: { ...sampleAgentRun, state: "failed", sessionId: null } };
     const { result } = await render();

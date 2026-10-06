@@ -5,7 +5,7 @@ import type { HeaderAction } from "@/components/screen-header";
 
 import { PAGE_ACTIONS, SYNC_ACTIONS } from "../utils/actions";
 import { SYNC_CHANGES_REFRESH_INTERVAL_MS } from "../utils/constants";
-import { isSyncActionId, SYNC_ACTION_IDS, syncActionDetail, type SyncActionId } from "../utils/sync";
+import { isSyncActionId, SYNC_ACTION_IDS, syncActionDetail, syncHostChanges, syncWaiting, type SyncActionId } from "../utils/sync";
 import { useSyncActions } from "./use-sync-actions";
 
 /**
@@ -25,16 +25,18 @@ export function useSyncMenu(projectId: string | null, active = false) {
     wasActive.current = active;
   }, [active, projectId, refetch]);
 
+  const data = sync.changesQuery.data;
+  const hostChanges = syncHostChanges(data);
   const options = useMemo<MenuOption[]>(
     () =>
       SYNC_ACTION_IDS.map((id) => ({
         id,
         label: SYNC_ACTIONS[id].label,
         icon: SYNC_ACTIONS[id].icon,
-        description: syncActionDetail(id, reasons[id], changes),
+        description: syncActionDetail(id, reasons[id], changes, hostChanges),
         disabled: reasons[id] !== null,
       })),
-    [changes, reasons],
+    [changes, hostChanges, reasons],
   );
 
   const close = useCallback(() => setOpen(false), []);
@@ -58,9 +60,15 @@ export function useSyncMenu(projectId: string | null, active = false) {
     else if (id === "discard") confirmDiscard();
   }, [confirmDiscard, revert]);
 
+  // Like the desktop's Sync buttons, the header action stands out while either side has changes waiting.
+  const waiting = syncWaiting(data);
+  const pending = waiting.pull || waiting.get;
   const action = useMemo<HeaderAction | null>(
-    () => (projectId ? { ...PAGE_ACTIONS.sync, onPress: () => setOpen(true), disabled: !sync.loaded } : null),
-    [projectId, sync.loaded],
+    () =>
+      projectId
+        ? { ...PAGE_ACTIONS.sync, onPress: () => setOpen(true), disabled: !sync.loaded, ...(pending ? { tone: "info" as const } : {}) }
+        : null,
+    [pending, projectId, sync.loaded],
   );
 
   return {

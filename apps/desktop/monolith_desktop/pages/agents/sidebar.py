@@ -39,6 +39,7 @@ class ConversationList(Gtk.Box):
         self._runs: list[AgentRun] | None = None
         self._archived: list[AgentRun] | None = None
         self._names: Mapping[str, str] = {}
+        self._badges: Mapping[str, model.ProjectBadge] = {}
         self._attention: list[InboxItem] = []
         self._sessions: list[Mapping] = []
         self._selected: str | None = None
@@ -121,9 +122,11 @@ class ConversationList(Gtk.Box):
         names: Mapping[str, str],
         attention: list[InboxItem],
         sessions: list[Mapping],
+        badges: Mapping[str, model.ProjectBadge] | None = None,
     ) -> None:
         self._runs = runs
         self._names = names
+        self._badges = badges or {}
         self._attention = attention
         self._sessions = sessions
         self._render()
@@ -209,7 +212,9 @@ class ConversationList(Gtk.Box):
         needs = model.attention_items(self._attention)
         visible = model.filter_runs(runs, self._filter, self._query, self._names, needs)
         rows: list[RowModel] = [
-            row_model(run, self._names, model.is_follow_up(run, runs), bool(model.attention_for_run(run, needs)))
+            row_model(
+                run, self._names, model.is_follow_up(run, runs), bool(model.attention_for_run(run, needs)), self._badges
+            )
             for run in model.sort_recent(visible)
         ]
         attention = self._attention if self._filter not in ("running", model.ARCHIVED_FILTER) else []

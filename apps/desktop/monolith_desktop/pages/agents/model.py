@@ -3,6 +3,7 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 from ...api.types import ATTENTION_KINDS, AgentRun, InboxCounts, InboxItem, Project, run_total_tokens
+from ...theme.project_tints import NO_PROJECT_BADGE, ProjectBadge, project_badge, project_badges, project_tint
 from ...theme.tone import Tone
 from ...util.format import elapsed_seconds, format_duration, format_relative_time, format_tokens, join_meta, pluralize
 from ...util.markdown import plain_text

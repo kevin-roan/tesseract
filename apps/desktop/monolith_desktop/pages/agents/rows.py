@@ -20,9 +20,16 @@ class RowModel:
     meta: str
     started_at: str
     attention: bool
+    badge: model.ProjectBadge = model.NO_PROJECT_BADGE
 
 
-def row_model(run: AgentRun, names: Mapping[str, str], follow_up: bool, attention: bool) -> RowModel:
+def row_model(
+    run: AgentRun,
+    names: Mapping[str, str],
+    follow_up: bool,
+    attention: bool,
+    badges: Mapping[str, model.ProjectBadge] | None = None,
+) -> RowModel:
     return RowModel(
         run["id"],
         run["state"],
@@ -30,6 +37,7 @@ def row_model(run: AgentRun, names: Mapping[str, str], follow_up: bool, attentio
         model.row_meta(run, names, LIST["follow_up"] if follow_up else None),
         run.get("startedAt") or "",
         attention,
+        model.project_badge(run.get("projectId"), badges or {}),
     )
 
 
@@ -59,6 +67,8 @@ class ConversationRow(Gtk.ListBoxRow):
         on_context: "Callable[[ConversationRow, float, float], None] | None" = None,
     ) -> None:
         super().__init__(css_classes=["to-convo-row"])
+        if data.badge.tint is not None:
+            self.add_css_class(f"to-tint-{data.badge.tint}")
         self.data = data
         self.group_key = group_key
         box = Gtk.Box(spacing=10)
@@ -72,7 +82,10 @@ class ConversationRow(Gtk.ListBoxRow):
         self._time = Text(format_relative_time(data.started_at), "caption", "textTertiary", xalign=1.0)
         top.append(self._time)
         column.append(top)
-        bottom = Gtk.Box(spacing=8)
+        bottom = Gtk.Box(spacing=6)
+        logo = Icon(data.badge.icon, "xs")
+        logo.add_css_class("to-convo-logo")
+        bottom.append(logo)
         meta = Text(data.meta, "caption", "textSecondary")
         meta.set_hexpand(True)
         bottom.append(meta)

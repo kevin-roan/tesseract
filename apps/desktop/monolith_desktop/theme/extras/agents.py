@@ -1,5 +1,6 @@
 from ..css import css_var
-from ..semantic import SchemeName, ink_alpha
+from ..palette import PROJECT_TINTS
+from ..semantic import SchemeName, ink_alpha, is_dark
 from ..tokens import AVATAR_SIZE, BORDER_WIDTH, CONTROL_HEIGHT, RADIUS, SPACING, transition
 
 PANE_BAR_HEIGHT = 44
@@ -9,6 +10,24 @@ BODY_INDENT = AVATAR_SIZE["sm"] + SPACING["sm"]
 
 def _px(value: float) -> str:
     return f"{value}px"
+
+
+def _rgba(color: str, alpha: float) -> str:
+    red, green, blue = (int(color[i:i + 2], 16) for i in (1, 3, 5))
+    return f"rgba({red}, {green}, {blue}, {alpha})"
+
+
+def _tint_rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
+    """Each project's rows, in the run list and the sidebar, carry a faint wash of its hue; hover and selection deepen it."""
+    rest, hover, selected = (0.05, 0.09, 0.14) if is_dark(scheme) else (0.06, 0.1, 0.16)
+    rules: dict[str, dict[str, str]] = {}
+    for index, color in enumerate(PROJECT_TINTS):
+        row = f"list.to-convo-list > row.to-convo-row.to-tint-{index}"
+        side = f".to-side-row.to-tint-{index}"
+        rules[f"{row}, {side}"] = {"background-color": _rgba(color, rest)}
+        rules[f"{row}:hover, {side}:hover"] = {"background-color": _rgba(color, hover)}
+        rules[f"{row}:selected"] = {"background-color": _rgba(color, selected)}
+    return rules
 
 
 def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
@@ -42,15 +61,18 @@ def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
         ".to-agents-group-title": {"padding": f"{_px(s['sm'])} {_px(10)} {_px(s['xs'])} {_px(10)}"},
         "list.to-convo-list": {"background": "none"},
         "list.to-convo-list > row.to-convo-row": {
-            "padding": f"{_px(s['sm'])} {_px(10)}",
-            "border-radius": _px(r["sm"]),
-            "margin": "1px 0",
+            "padding": f"{_px(10)} {_px(s['md'])}",
+            "border-radius": _px(r["md"]),
+            "margin": f"{_px(s['xs'])} 0",
+            "box-shadow": "none",
         },
         "list.to-convo-list > row.to-convo-row:hover": {"background-color": css_var("backgroundElement")},
         "list.to-convo-list > row.to-convo-row:selected": {
             "background-color": css_var("backgroundSelected"),
             "color": css_var("text"),
         },
+        **_tint_rules(scheme),
+        ".to-convo-logo": {"-gtk-icon-size": _px(12)},
         ".to-state-glyph": {"min-width": _px(16), "min-height": _px(16), "margin-top": _px(1)},
         ".to-state-succeeded": {"color": css_var("accent")},
         ".to-state-failed": {"color": css_var("danger")},
@@ -100,13 +122,13 @@ def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
             "transition": transition("border-color"),
         },
         ".to-composer:focus-within": {"border-color": ink_alpha(scheme, 0.2)},
-        ".to-composer.large": {
+        ".to-composer.to-composer-large": {
             "padding": f"{_px(s['xs'])} {_px(s['md'])} {_px(s['md'])} {_px(s['md'])}",
             "border": "none",
             "border-radius": _px(r["xl"]),
             "background": "none",
         },
-        ".to-composer.large > overlay": {"margin": f"0 {_px(s['xs'])}"},
+        ".to-composer.to-composer-large > overlay": {"margin": f"0 {_px(s['xs'])}"},
         ".to-composer.locked textview.to-composer-input": {"opacity": "0.6"},
         ".to-composer textview.to-composer-input, .to-composer textview.to-composer-input > text": {
             "background": "none",
@@ -139,7 +161,7 @@ def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
             "border-radius": _px(r["full"]),
             "color": css_var("textSecondary"),
         },
-        ".to-composer.large menubutton.to-composer-attach > button": {
+        ".to-composer.to-composer-large menubutton.to-composer-attach > button": {
             "min-width": _px(CONTROL_HEIGHT["md"]),
             "min-height": _px(CONTROL_HEIGHT["md"]),
             "border": hairline,

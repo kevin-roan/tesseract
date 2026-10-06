@@ -1,15 +1,12 @@
 import { useMemo } from "react";
 import { View } from "react-native";
 import Animated from "react-native-reanimated";
-import { ChatCircleIcon, FolderIcon } from "phosphor-react-native";
 
-import IconTile from "@/components/icon-tile";
 import PressableScale from "@/components/pressable-scale";
-import TagChip from "@/components/tag-chip";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useEntrance } from "@/hooks/use-entrance";
-import { ControlHeight, IconSize } from "@/theme";
+import { MaxFontSizeMultiplier } from "@/theme";
 
 import createStyles from "./styles";
 
@@ -34,33 +31,40 @@ const ChatRow = ({ title, preview, project, time, tokens, active, divider = fals
   return (
     <Animated.View entering={entering} style={divider && styles.divider}>
       <PressableScale accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={styles.row}>
-        <IconTile icon={ChatCircleIcon} size={ControlHeight.md} iconSize={IconSize.md} radius="md" />
-        <View style={styles.body}>
-          <View style={styles.top}>
-            <ThemedText variant="bodyStrong" numberOfLines={1} style={styles.title}>
-              {title}
-            </ThemedText>
-            <ThemedText variant="caption" color="textTertiary" numberOfLines={1} style={styles.figure}>
-              {time}
-            </ThemedText>
-          </View>
-          {preview ? (
-            <ThemedText variant="bodySmall" color="textSecondary" numberOfLines={2}>
-              {preview}
+        <View style={styles.top}>
+          <ThemedText variant="label" numberOfLines={1} style={styles.title}>
+            {title}
+          </ThemedText>
+          <ThemedText
+            variant="caption"
+            color="textTertiary"
+            numberOfLines={1}
+            maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+            style={styles.figure}
+          >
+            {time}
+          </ThemedText>
+        </View>
+        {preview ? (
+          <ThemedText variant="bodySmall" color="textSecondary" numberOfLines={1}>
+            {preview}
+          </ThemedText>
+        ) : null}
+        <View style={styles.meta}>
+          {project ? (
+            <ThemedText variant="caption" color="textTertiary" numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome} style={styles.project}>
+              {project}
             </ThemedText>
           ) : null}
-          <View style={styles.meta}>
-            {project ? (
-              <View style={styles.project}>
-                <TagChip label={project} icon={FolderIcon} />
-              </View>
-            ) : null}
-            {active ? <TagChip label="Active" tone="success" dot /> : null}
-            <View style={styles.spacer} />
-            <ThemedText variant="caption" color="textTertiary" style={styles.figure}>
-              {tokens} tokens
+          <ThemedText variant="caption" color="textTertiary" maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome} style={styles.figure}>
+            {project ? "· " : ""}
+            {tokens} tokens
+          </ThemedText>
+          {active ? (
+            <ThemedText variant="caption" color="success" maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
+              · Active
             </ThemedText>
-          </View>
+          ) : null}
         </View>
       </PressableScale>
     </Animated.View>

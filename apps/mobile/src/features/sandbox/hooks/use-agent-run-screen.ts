@@ -12,6 +12,7 @@ import { describeError } from "../utils/errors";
 import { elapsedSeconds, formatDuration, formatUsageBreakdown, formatUsageTokens } from "../utils/format";
 import { agentRunTone, stateLabel } from "../utils/states";
 import { useAgentRunStream } from "./use-agent-run-stream";
+import { useRetryAgentRun } from "./use-retry-agent-run";
 import { useCancelAgentRun } from "./use-sandbox-mutations";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
 import { useSyncMenu } from "./use-sync-menu";
@@ -43,6 +44,7 @@ export function useAgentRunScreen(runId: string) {
     locked: running || !run?.sessionId,
     onStarted,
   });
+  const retryRun = useRetryAgentRun(run, onStarted);
   const [tab, setTab] = useState<AgentRunTab>("agent");
   const transcript = useMemo(
     () => (run ? toTranscript(stream.events, { startedAt: run.startedAt, endedAt: run.endedAt, running }) : []),
@@ -87,8 +89,6 @@ export function useAgentRunScreen(runId: string) {
     canContinue: Boolean(run && !running && run.sessionId),
     /** Shown while Claude works too, so the next message can be drafted; sending waits for the run to end. */
     showComposer: Boolean(run && (running || run.sessionId)),
-    /** Shown while Claude works too, so the next message can be drafted; sending waits for the run to end. */
-    showComposer: Boolean(run && (running || run.sessionId)),
     composer,
     headerActions,
     isLoading: stream.isLoading,
@@ -99,5 +99,9 @@ export function useAgentRunScreen(runId: string) {
     syncNotice: sync.notice,
     dismissSyncNotice: sync.dismiss,
     retry: reconnect,
+    canRetryRun: retryRun.canRetry,
+    retryRun: retryRun.retry,
+    retryingRun: retryRun.retrying,
+    retryRunError: retryRun.error,
   };
 }

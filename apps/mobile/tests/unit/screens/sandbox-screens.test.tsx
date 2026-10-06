@@ -193,6 +193,10 @@ describe("AgentRunScreen", () => {
     syncNotice: null,
     dismissSyncNotice: jest.fn(),
     retry: jest.fn(),
+    canRetryRun: false,
+    retryRun: jest.fn(),
+    retryingRun: false,
+    retryRunError: null,
     ...overrides,
   });
 
@@ -267,8 +271,9 @@ describe("AgentRunScreen", () => {
     expect(screen.getByText(sampleSyncChanges.changes[0]!.path)).toBeOnTheScreen();
   });
 
-  it("shows the outcome, a one-line brief, stream problems and a continue box for a finished run", async () => {
+  it("shows the outcome, a one-line brief, stream problems, a retry and a continue box for a finished run", async () => {
     const retry = jest.fn();
+    const retryRun = jest.fn();
     mockParams = { id: sampleAgentRun.id };
     mockHooks.agentRun.mockReturnValue(
       runScreen({
@@ -280,9 +285,17 @@ describe("AgentRunScreen", () => {
         streamError: "Stream dropped",
         cancelError: "Cancel failed",
         retry,
+        canRetryRun: true,
+        showComposer: true,
+        retryRun,
+        retryRunError: "Couldn't start it again",
       }),
     );
     await render(<AgentRunScreen />);
+
+    await fireEvent.press(screen.getByLabelText("Retry"));
+    expect(retryRun).toHaveBeenCalled();
+    expect(screen.getByText("Couldn't start it again")).toBeOnTheScreen();
 
     expect(screen.getByText("Partial installer")).toBeOnTheScreen();
     expect(screen.getByText("wine crashed")).toBeOnTheScreen();

@@ -9,11 +9,15 @@ from ...widgets.keyed_list import KeyedList
 from ...widgets.log_panel import LogPanel
 from ...widgets.record_row import RecordRow, RowAction
 from ...widgets.list_view import ListGroup
-from .labels import BUILD_PROFILES, BUILDS, LOGS
+from .fix_action import FixWithAi
+from .labels import BUILD_PROFILES, BUILDS, FIX, LOGS
 from .model import (
+    FIX_LOG_TAIL,
+    build_failure_prompt,
     build_meta,
     build_progress,
     build_state,
+    can_fix_build,
     is_final_build,
     profile_label,
     target_label,
@@ -34,6 +38,7 @@ class BuildsTab:
         self._project: Project | None = None
         self._builds: list[BuildJob] = []
         self._pending: set[str] = set()
+        self._fix = FixWithAi(host, self._rerender)
         self._profile = DEFAULT_PROFILE
         self.widget = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=TAB_SPACING)
 
@@ -106,8 +111,23 @@ class BuildsTab:
                 "cancel", "stop", BUILDS["cancel"], lambda: self._confirm_cancel(build),
                 build["id"] not in self._pending, destructive=True,
             ))
+        if can_fix_build(build):
+            fixing = self._fix.is_pending(build["id"])
+            actions.insert(0, RowAction("fix", "fix-ai", FIX["label"], lambda: self._fix_build(build), not fixing))
+        if open_logs:
+            self._panel.set_action(
+                FIX["label"] if can_fix_build(build) else None, "fix-ai",
+                lambda: self._fix_build(build), not self._fix.is_pending(build["id"]),
+            )
         row.set_actions(actions)
         row.set_on_activate(lambda: self._toggle_logs(build))
+
+    def _fix_build(self, build: BuildJob) -> None:
+        self._fix.open(
+            build["id"],
+            lambda client: client.build_logs(build["id"], FIX_LOG_TAIL),
+            lambda lines: build_failure_prompt(build, lines),
+        )
 
     def _toggle_logs(self, build: BuildJob) -> None:
         if self._panel.get_visible() and self._follower.target == ("build", build["id"]):
@@ -118,6 +138,7 @@ class BuildsTab:
     def show_logs(self, build: BuildJob) -> None:
         self._panel.set_title(BUILDS["logs_title"].format(target=target_label(build["target"])))
         self._panel.set_status(None)
+        self._panel.set_action(None)
         self._panel.set_visible(True)
         self._follower.follow("build", build["id"])
         self._rerender()

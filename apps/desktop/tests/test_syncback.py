@@ -45,7 +45,7 @@ class FakeController:
         self.acks: list[list[dict]] = []
         self.export_override: bytes | None = None
         self.requests: dict[str, dict] = {}
-        self.heartbeats: list[tuple[str, list[str]]] = []
+        self.heartbeats: list[tuple[str, list[str], dict[str, int] | None]] = []
 
     def push(self) -> None:
         self.baseline = build_manifest(self.sandbox, walk(self.sandbox))
@@ -545,7 +545,7 @@ def test_service_claims_linked_requests_once_and_notifies(env, monkeypatch):
 
     monkeypatch.setattr(service_module, "run_async", run_now)
     controller.pending_sync_requests = lambda: [r for r in controller.requests.values() if r["status"] == "pending"]
-    controller.sync_heartbeat = lambda host_name, projects: controller.heartbeats.append((host_name, projects))
+    controller.sync_heartbeat = lambda host_name, projects, changes=None: controller.heartbeats.append((host_name, projects, changes))
     events, app = Events(), App()
     service = service_module.SyncBackService(app, AppStore(), lambda: controller, events, state)
     request = controller.add_request("pull")
@@ -556,3 +556,4 @@ def test_service_claims_linked_requests_once_and_notifies(env, monkeypatch):
     assert (host / "src/new/feature.py").exists()
     service._enqueue_all(service._beat())
     assert controller.heartbeats[-1][1] == [PROJECT]
+    assert controller.heartbeats[-1][2] == {PROJECT: 0}

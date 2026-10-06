@@ -11,8 +11,11 @@ from ..api.tasks import run_async
 from ..api.types import SyncRequest
 from ..store import AppStore, ConnectionState, Observable
 from ..strings import SYNC_BACK
+from ..syncback.errors import SyncBackError
+from ..syncback.get import host_changes
+from ..syncback.manifest import DigestCache
 from ..syncback.requests import Handled, claimable, handle_request
-from ..syncback.state import SyncState
+from ..syncback.state import Link, SyncState
 
 log = logging.getLogger(__name__)
 
@@ -45,6 +48,7 @@ class SyncBackService:
         self._seen: set[str] = set()
         self._active = False
         self._timer: int | None = None
+        self._digests: dict[str, DigestCache] = {}
         events.subscribe("sync.updated", self._request_event)
         events.subscribe("sync.changed", lambda _m: self._bump())
         events.subscribe("hello", lambda _m: self.tick())
@@ -82,9 +86,20 @@ class SyncBackService:
 
     def _beat(self) -> list[SyncRequest]:
         client = self._client()
-        linked = list(self.state.links())
-        client.sync_heartbeat(self.host, linked)
+        links = self.state.links()
+        linked = list(links)
+        client.sync_heartbeat(self.host, linked, self._host_changes(links))
         return client.pending_sync_requests() if linked else []
+
+    def _host_changes(self, links: dict[str, Link]) -> dict[str, int]:
+        """How many host files a get would bring in, per linked project, so the phone can show it too."""
+        counts: dict[str, int] = {}
+        for project_id, link in links.items():
+            try:
+                counts[project_id] = len(host_changes(link, self._digests.setdefault(project_id, DigestCache())))
+            except (OSError, SyncBackError) as error:
+                log.debug("host changes of %s unavailable: %s", project_id, error)
+        return counts
 
     def _connection_changed(self, state: ConnectionState) -> None:
         if state.online and self._timer is None:

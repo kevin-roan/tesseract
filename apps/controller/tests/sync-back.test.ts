@@ -262,6 +262,13 @@ describe("heartbeat", () => {
     expect((await t.json("POST", "/v1/sync/heartbeat", { host: "", projects: [] })).status).toBe(400);
     await waitFor(async () => (await changes("app")).host?.online === false, HOST_ONLINE_MS * 3);
   });
+
+  test("reports the host's own change count per project", async () => {
+    await t.request("POST", "/v1/sync/heartbeat", { host: "laptop", projects: ["app"], changes: { app: 3 } });
+    expect((await changes("app")).host?.changes).toBe(3);
+    await t.request("POST", "/v1/sync/heartbeat", { host: "laptop", projects: ["app"] });
+    expect((await changes("app")).host).not.toHaveProperty("changes");
+  });
 });
 
 test("baseline file is not written for a failed push", async () => {

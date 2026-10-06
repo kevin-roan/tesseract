@@ -69,7 +69,6 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
         <ChatHeader
           title={run?.projectId ?? "Claude"}
           detail={screen.model ?? screen.badge?.label}
-          tone={screen.badge?.tone}
           onBack={screen.nav.back}
           actions={screen.headerActions}
           tabs={run?.projectId ? <TabPills options={tabs} value={screen.tab} onChange={screen.setTab} /> : null}
@@ -121,7 +120,18 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
               ) : null}
               {run.error ? (
                 <Reveal>
-                  <Notice tone="danger" title="Error" message={run.error} />
+                  <Notice
+                    tone="danger"
+                    title="Error"
+                    message={run.error}
+                    actionLabel="Retry"
+                    onAction={screen.canRetryRun && !screen.retryingRun ? screen.retryRun : undefined}
+                  />
+                </Reveal>
+              ) : null}
+              {screen.retryRunError ? (
+                <Reveal>
+                  <Notice tone="danger" message={screen.retryRunError} />
                 </Reveal>
               ) : null}
               {screen.brief ? (

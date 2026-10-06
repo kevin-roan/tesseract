@@ -50,7 +50,8 @@ request** on the controller, and the desktop companion claims and applies it.
 SyncChangeKind = "added" | "modified" | "deleted"
 SyncFileChange = { path: string; kind: SyncChangeKind; sha256: string | null /* null for deleted */; size: number | null;
                    discardable?: boolean /* added: true; else the baseline blob is stored (or only the mode changed) */ }
-SyncHost      = { name: string; lastSeenAt: Timestamp; online: boolean /* seen in the last 60 s */; linked: boolean /* this project is linked on it */ }
+SyncHost      = { name: string; lastSeenAt: Timestamp; online: boolean /* seen in the last 60 s */; linked: boolean /* this project is linked on it */;
+                  changes?: number /* host files changed since the last push/get, from the last heartbeat; absent: unknown */ }
 SyncChanges   = { projectId: ProjectId; baselineAt: Timestamp | null /* null: never pushed, sync back unavailable */;
                   changes: SyncFileChange[]; totalBytes: number; host: SyncHost | null;
                   lastGetAt?: Timestamp | null /* last get applied since the last push */ }
@@ -74,7 +75,8 @@ CreateSyncRequest = { kind: SyncRequestKind; paths?: string[] (1–5000); force?
 ClaimSyncRequest  = { host: string }
 CompleteSyncRequest = { status: "applied" | "failed"; result?: SyncResult; error?: string }
 SyncAck       = { changes: { path: string; sha256: string | null; executable?: boolean }[] }
-SyncHeartbeat = { host: string; projects: ProjectId[] /* projects linked on this host */ }
+SyncHeartbeat = { host: string; projects: ProjectId[] /* projects linked on this host */;
+                  changes?: Record<ProjectId, number> /* per linked project, host files a get would bring in */ }
 SyncDiscard   = { paths?: SyncPath[] (1–5000) /* omitted: every change */ }
 SyncDiscardResult = { discarded: SyncPath[]; unavailable: SyncPath[] /* no blob, untouched */;
                       backupPath: string | null; changes: SyncChanges }
@@ -101,7 +103,7 @@ Event on `/v1/events`: `{ type: "sync.updated", request: SyncRequest }` and
 | POST | `/v1/sync/requests/:id/claim` | `ClaimSyncRequest` | `200 SyncRequest` (`claimed`); 409 unless `pending` |
 | POST | `/v1/sync/requests/:id/complete` | `CompleteSyncRequest` | `200 SyncRequest`; 409 unless `claimed` |
 | POST | `/v1/sync/requests/:id/cancel` | — | `200 SyncRequest` (`cancelled`); 409 unless `pending` |
-| POST | `/v1/sync/heartbeat` | `SyncHeartbeat` | `204`; remembers the host per project for `SyncChanges.host` |
+| POST | `/v1/sync/heartbeat` | `SyncHeartbeat` | `204`; remembers the host per project for `SyncChanges.host`, with its change count; publishes `sync.changed` when a count moves |
 | POST | `/v1/sync/requests/:id/plan` | `SyncGetPlan` (body limit 64 MiB) | `200 SyncGetPlanResponse`; 409 unless a `claimed` `get`. With conflicts and no `force` the request is completed `failed` (`result.conflicts`) and `upload` is empty |
 | POST | `/v1/sync/requests/:id/apply` | gzip (or plain) tar of exactly `upload` + `.git/<gitUpload>` (body limit 1 GiB) | `200 SyncRequest`: `applied` with the stats, or `failed` on conflicts found at apply time; 409 unless `claimed` with a plan; 400 for a bad archive or a file whose hash is not the planned one (the request stays `claimed`: the host completes it `failed`) |
 

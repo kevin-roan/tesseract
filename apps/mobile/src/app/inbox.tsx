@@ -29,7 +29,7 @@ export default function InboxScreen() {
       header={<ScreenHeader title="Inbox" subtitle={subtitle} onBack={inbox.back} actions={inbox.headerActions} />}
     >
       {!inbox.hydrated || inbox.loading ? (
-        <SkeletonList count={3} height={88} radius="card" />
+        <SkeletonList count={4} height={72} radius="card" />
       ) : !inbox.paired ? (
         <EmptyState
           icon={TrayIcon}

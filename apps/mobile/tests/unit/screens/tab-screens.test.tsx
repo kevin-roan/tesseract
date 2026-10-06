@@ -345,6 +345,12 @@ describe("ProjectsScreen", () => {
       running: { processes: [], builds: [], runs: [] },
       runningCount: 0,
       processPress: jest.fn(() => undefined),
+      view: "projects",
+      viewOptions: [
+        { value: "projects", label: "Projects · 0" },
+        { value: "sites", label: "Websites · 0" },
+      ],
+      selectView: jest.fn(),
       sites: [],
       sitePress: jest.fn(() => undefined),
       openSite: jest.fn(),
@@ -405,9 +411,21 @@ describe("ProjectsScreen", () => {
     expect(nav.agentRun).toHaveBeenCalledWith(sampleAgentRun.id);
   });
 
+  it("switches between projects and websites with a segmented control", async () => {
+    const state = projects({ sites: [TEST_SITE] });
+    mockProjects.mockReturnValue(state);
+    await render(<ProjectsScreen />);
+
+    expect(screen.getByTestId("projects-list")).toBeOnTheScreen();
+    expect(screen.queryByTestId("sites-section")).toBeNull();
+    await fireEvent.press(screen.getByLabelText("Websites · 0"));
+    expect(state.selectView).toHaveBeenCalledWith("sites");
+  });
+
   it("lists running websites with their Tailscale links", async () => {
     const openProject = jest.fn();
     const state = projects({
+      view: "sites",
       sites: [TEST_SITE, { ...TEST_SITE, port: 8080, projectId: null, processId: null, url: null, dnsUrl: null }],
       sitePress: jest.fn((site: typeof TEST_SITE) => (site.projectId ? openProject : undefined)),
       siteError: "Can't open that link",

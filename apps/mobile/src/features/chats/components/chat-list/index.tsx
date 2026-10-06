@@ -36,7 +36,7 @@ const ChatList = ({ items, loading, error, onRetry, onOpen, projectName, skeleto
       {loading ? (
         <View style={styles.skeletons}>
           {Array.from({ length: skeletonRows }, (_, index) => (
-            <Skeleton key={index} height={ControlHeight.xl} radius="md" />
+            <Skeleton key={index} height={ControlHeight.lg} radius="md" />
           ))}
         </View>
       ) : (

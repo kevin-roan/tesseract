@@ -7,6 +7,7 @@
     "typecheck": "python3 -m compileall -q monolith_desktop tests",
     "lint": "python3 -m compileall -q monolith_desktop tests",
     "test": "python3 -m pytest -q tests",
-    "install-desktop": "tools/install.sh"
+    "install-desktop": "tools/install.sh",
+    "rebuild": "tools/rebuild.sh"
   }
 }

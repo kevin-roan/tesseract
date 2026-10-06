@@ -260,3 +260,17 @@ def test_usage_parsing_and_token_meta():
     assert model.row_meta(tokens, {}).endswith("1.2M tokens")
     assert "$" not in model.header_meta(tokens, {}, 0)
     assert model.row_meta(run(), {}) == model.row_meta(run(usage=None), {})
+
+
+def test_project_badges_use_framework_logos_and_distinct_tints():
+    projects = [{"id": f"p{index}", "framework": "electron" if index == 0 else "expo"} for index in range(9)]
+    badges = model.project_badges(projects)
+    assert badges["p0"].icon == "logo-electron"
+    assert badges["p1"].icon == "logo-react"
+    assert len({badge.tint for badge in badges.values()}) == 9
+
+
+def test_project_badge_falls_back():
+    assert model.project_badge(None, {}) == model.NO_PROJECT_BADGE
+    assert model.project_badge("gone", {}).icon == "project"
+    assert model.project_badges([{"id": "x", "framework": "unknown"}])["x"].icon == "project"

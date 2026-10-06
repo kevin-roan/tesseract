@@ -1,33 +1,42 @@
 import { StyleSheet } from "react-native";
 
-import type { Theme } from "@/theme";
+import { Shadows, type Theme } from "@/theme";
+
+import { ISLAND_PANEL_MAX_WIDTH, ISLAND_PANEL_RADIUS } from "../../utils/constants";
 
 export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     root: {
       flex: 1,
-      justifyContent: "flex-end",
+      alignItems: "center",
+      paddingHorizontal: theme.spacing.sm,
     },
     scrim: {
       ...StyleSheet.absoluteFill,
-      backgroundColor: theme.colors.overlay,
     },
-    sheet: {
+    card: {
+      width: "100%",
+      maxWidth: ISLAND_PANEL_MAX_WIDTH,
       paddingTop: theme.spacing.sm,
-      borderTopLeftRadius: theme.radius.sheet,
-      borderTopRightRadius: theme.radius.sheet,
+      borderRadius: ISLAND_PANEL_RADIUS,
       borderCurve: "continuous",
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.surfaceSunken,
       borderWidth: StyleSheet.hairlineWidth,
-      borderBottomWidth: 0,
-      borderColor: theme.colors.border,
+      borderColor: theme.colors.borderStrong,
+      transformOrigin: "top",
+      ...Shadows.level3,
+    },
+    header: {
+      paddingLeft: theme.spacing.base,
+      paddingRight: theme.spacing.sm,
+      paddingBottom: theme.spacing.sm,
     },
     expanded: {
       flex: 1,
     },
     content: {
       gap: theme.spacing.base,
-      paddingHorizontal: theme.gutter,
+      paddingHorizontal: theme.spacing.base,
       paddingBottom: theme.spacing.base,
     },
   });

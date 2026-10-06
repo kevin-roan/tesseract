@@ -65,7 +65,7 @@ type PendingGet = { plan: SyncGetPlan; upload: string[]; gitUpload: string[] };
 type ManifestEntry = { sha256: string; size: number; executable: boolean };
 type Manifest = Map<string, ManifestEntry>;
 type CachedHash = { key: string; sha256: string };
-type HostSeen = { lastSeenAt: number; projects: Set<string> };
+type HostSeen = { lastSeenAt: number; projects: Set<string>; changes: Map<string, number> };
 
 export type SyncBackOptions = {
   claimTimeoutMs?: number;
@@ -292,7 +292,13 @@ export class SyncBackService {
 
   heartbeat(input: SyncHeartbeat): void {
     const now = Date.now();
-    this.hosts.set(input.host, { lastSeenAt: now, projects: new Set(input.projects) });
+    const changes = new Map(Object.entries(input.changes ?? {}));
+    const previous = this.hosts.get(input.host)?.changes ?? new Map<string, number>();
+    this.hosts.set(input.host, { lastSeenAt: now, projects: new Set(input.projects), changes });
+    // Clients only refetch `SyncChanges` on events, so tell them when the host's side moved.
+    for (const id of new Set([...changes.keys(), ...previous.keys()])) {
+      if (changes.get(id) !== previous.get(id)) this.hub.publish({ type: "sync.changed", projectId: id });
+    }
     for (const [name, seen] of this.hosts) {
       if (now - seen.lastSeenAt > HOST_FORGET_MS) this.hosts.delete(name);
     }
@@ -535,11 +541,13 @@ export class SyncBackService {
       }
     }
     if (!best) return null;
+    const changes = best.seen.changes.get(projectId);
     return {
       name: best.name,
       lastSeenAt: new Date(best.seen.lastSeenAt).toISOString(),
       online: Date.now() - best.seen.lastSeenAt < this.hostOnlineMs,
       linked: best.linked,
+      ...(changes === undefined ? {} : { changes }),
     };
   }
 

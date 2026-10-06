@@ -6,6 +6,7 @@ import Notice from "@/components/notice";
 import ProjectCard from "@/components/project-card";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
+import SegmentedPills from "@/components/segmented-pills";
 import Section from "@/components/section";
 import AgentRunCard from "@/features/sandbox/components/agent-run-card";
 import BuildCard from "@/features/sandbox/components/build-card";
@@ -82,6 +83,12 @@ export default function ProjectsScreen() {
 
       {screen.sites.length > 0 ? (
         <MotionItem index={1}>
+          <SegmentedPills options={screen.viewOptions} value={screen.view} onChange={screen.selectView} />
+        </MotionItem>
+      ) : null}
+
+      {screen.view === "sites" ? (
+        <MotionItem index={2}>
           <Section title="Websites" testID="sites-section">
             {screen.siteError ? (
               <MotionItem>
@@ -95,41 +102,41 @@ export default function ProjectsScreen() {
             ))}
           </Section>
         </MotionItem>
-      ) : null}
-
-      <MotionItem index={2}>
-        <Section
-          title="All projects"
-          testID="projects-list"
-          actionLabel="Add"
-          onPressAction={screen.addProject}
-          loading={screen.projectsLoading && screen.projects.length === 0}
-          loadingLabel="Loading projects…"
-          isEmpty={!screen.projectsLoading && screen.projects.length === 0}
-          emptyLabel="No projects in /workspace/projects yet. Clone a repository or start an empty one, or ask Claude to."
-          emptyActionLabel="Add a project"
-          emptyActionIcon={FolderPlusIcon}
-          onEmptyAction={screen.addProject}
-        >
-          {screen.removeError ? (
-            <MotionItem>
-              <Notice tone="danger" message={screen.removeError} />
-            </MotionItem>
-          ) : null}
-          {screen.projects.map(({ id, ...card }, index) => (
-            <MotionItem key={id} index={index}>
-              <ProjectCard
-                {...card}
-                testID={`project-card-${id}`}
-                chatLabel={`Ask Claude about ${card.title}`}
-                onPress={() => screen.openProject(id)}
-                onPressChat={() => screen.askClaude(id)}
-                onPressMenu={() => screen.projectMenu({ id, title: card.title })}
-              />
-            </MotionItem>
-          ))}
-        </Section>
-      </MotionItem>
+      ) : (
+        <MotionItem index={2}>
+          <Section
+            title="All projects"
+            testID="projects-list"
+            actionLabel="Add"
+            onPressAction={screen.addProject}
+            loading={screen.projectsLoading && screen.projects.length === 0}
+            loadingLabel="Loading projects…"
+            isEmpty={!screen.projectsLoading && screen.projects.length === 0}
+            emptyLabel="No projects in /workspace/projects yet. Clone a repository or start an empty one, or ask Claude to."
+            emptyActionLabel="Add a project"
+            emptyActionIcon={FolderPlusIcon}
+            onEmptyAction={screen.addProject}
+          >
+            {screen.removeError ? (
+              <MotionItem>
+                <Notice tone="danger" message={screen.removeError} />
+              </MotionItem>
+            ) : null}
+            {screen.projects.map(({ id, ...card }, index) => (
+              <MotionItem key={id} index={index}>
+                <ProjectCard
+                  {...card}
+                  testID={`project-card-${id}`}
+                  chatLabel={`Ask Claude about ${card.title}`}
+                  onPress={() => screen.openProject(id)}
+                  onPressChat={() => screen.askClaude(id)}
+                  onPressMenu={() => screen.projectMenu({ id, title: card.title })}
+                />
+              </MotionItem>
+            ))}
+          </Section>
+        </MotionItem>
+      )}
 
       <MenuSheet testID="project-menu" {...screen.projectMenuSheet} />
       <RenameProjectSheet state={screen.renameSheet} />

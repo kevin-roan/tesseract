@@ -93,6 +93,7 @@ ICONS = MappingProxyType({
     "link": ("lc-link-symbolic", "insert-link-symbolic"),
     "check": ("lc-check-symbolic", "object-select-symbolic"),
     "whats-new": ("lc-sparkles-symbolic", "starred-symbolic"),
+    "fix-ai": ("lc-sparkles-symbolic", "starred-symbolic"),
     "team": ("lc-square-user-symbolic", "system-users-symbolic"),
     "caret-down": ("lc-chevron-down-symbolic", "pan-down-symbolic"),
     "caret-right": ("lc-chevron-right-symbolic", "pan-end-symbolic"),
@@ -120,6 +121,28 @@ ICONS = MappingProxyType({
     "file-pdf": ("lc-file-text-symbolic", "x-office-document-symbolic", "text-x-generic-symbolic"),
     "audio": ("lc-audio-waveform-symbolic", "audio-x-generic-symbolic"),
 })
+
+LOGO_PREFIX = "logo-"
+
+# Framework -> (Simple Icons slug, brand color that reads on both canvases). Written by tools/brand_icons.py.
+FRAMEWORK_LOGOS = MappingProxyType({
+    "expo": ("react", "#61DAFB"),
+    "react-native": ("react", "#61DAFB"),
+    "electron": ("electron", "#9FEAF9"),
+    "vite": ("vite", "#9499FF"),
+    "next": ("nextdotjs", "#A1A1AA"),
+    "node": ("javascript", "#F7DF1E"),
+    "android": ("android", "#3DDC84"),
+    "python": ("python", "#4B8BBE"),
+    "flutter": ("flutter", "#54C5F8"),
+    "unknown": (None, None),
+})
+
+
+def framework_icon(framework: str | None) -> str:
+    slug, _ = FRAMEWORK_LOGOS.get(framework or "unknown", (None, None))
+    return f"{LOGO_PREFIX}{slug}" if slug else "project"
+
 
 def icon_candidates(name: str) -> tuple[str, ...]:
     return ICONS.get(name, (name,))

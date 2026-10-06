@@ -9,12 +9,16 @@ from ...widgets.keyed_list import KeyedList
 from ...widgets.log_panel import LogPanel
 from ...widgets.record_row import RecordRow, RowAction
 from ...widgets.list_view import ListGroup
-from .labels import DEFAULT_PACKAGE_MANAGER, LOGS, PROCESSES
+from .fix_action import FixWithAi
+from .labels import DEFAULT_PACKAGE_MANAGER, FIX, LOGS, PROCESSES
 from .model import (
+    FIX_LOG_TAIL,
+    can_fix_process,
     command_label,
     host_of,
     is_live_process,
     prefers_display,
+    process_failure_prompt,
     process_meta,
     process_state,
     project_ports,
@@ -38,6 +42,7 @@ class ProcessesTab:
         self._processes: list[ProcessInfo] = []
         self._ports: list[ListeningPort] = []
         self._pending: set[str] = set()
+        self._fix = FixWithAi(host, self._rerender)
         self.widget = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=TAB_SPACING)
 
         self._sites = KeyedList(lambda: RecordRow("ports"), self._update_site)
@@ -140,8 +145,23 @@ class ProcessesTab:
                 "stop", "stop", PROCESSES["stop"], lambda: self._confirm_stop(process),
                 process["id"] not in self._pending, destructive=True,
             ))
+        if can_fix_process(process):
+            fixing = self._fix.is_pending(process["id"])
+            actions.insert(0, RowAction("fix", "fix-ai", FIX["label"], lambda: self._fix_process(process), not fixing))
+        if open_logs:
+            self._panel.set_action(
+                FIX["label"] if can_fix_process(process) else None, "fix-ai",
+                lambda: self._fix_process(process), not self._fix.is_pending(process["id"]),
+            )
         row.set_actions(actions)
         row.set_on_activate(lambda: self._toggle_logs(process))
+
+    def _fix_process(self, process: ProcessInfo) -> None:
+        self._fix.open(
+            process["id"],
+            lambda client: client.process_logs(process["id"], FIX_LOG_TAIL),
+            lambda lines: process_failure_prompt(process, lines),
+        )
 
     def _toggle_logs(self, process: ProcessInfo) -> None:
         if self._panel.get_visible() and self._follower.target == ("process", process["id"]):
@@ -152,6 +172,7 @@ class ProcessesTab:
     def show_logs(self, process: ProcessInfo) -> None:
         self._panel.set_title(PROCESSES["logs_title"].format(name=process.get("name") or process["id"]))
         self._panel.set_status(None)
+        self._panel.set_action(None)
         self._panel.set_visible(True)
         self._follower.follow("process", process["id"])
         self._rerender()

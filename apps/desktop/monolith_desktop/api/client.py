@@ -266,8 +266,11 @@ class ControllerClient:
         """Uploads the gzip tar of a planned get (exactly `upload` + `.git/<gitUpload>`)."""
         return self.request("POST", rest.sync_request_apply(request_id), content=("application/gzip", archive, size), timeout=SYNC_TIMEOUT_S)
 
-    def sync_heartbeat(self, host: str, projects: list[str]) -> None:
-        self.post(rest.sync_heartbeat(), {"host": host, "projects": list(projects)})
+    def sync_heartbeat(self, host: str, projects: list[str], changes: dict[str, int] | None = None) -> None:
+        body: dict[str, Any] = {"host": host, "projects": list(projects)}
+        if changes is not None:
+            body["changes"] = changes
+        self.post(rest.sync_heartbeat(), body)
 
     def list_processes(self, project_id: str | None = None) -> list[T.ProcessInfo]:
         return self.get(rest.processes(project_id))

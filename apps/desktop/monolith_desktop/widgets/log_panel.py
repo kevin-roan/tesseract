@@ -4,7 +4,7 @@ from gi.repository import Gtk
 
 from ..theme.tone import Tone
 from .badges import StatusBadge
-from .buttons import IconButton
+from .buttons import ActionButton, IconButton
 from .icon import Icon
 from .log_view import LogView
 from .text import Text
@@ -28,7 +28,11 @@ class LogPanel(Gtk.Box):
         self._title.set_hexpand(True)
         self._status = StatusBadge("")
         self._status.set_visible(False)
+        self._action = ActionButton("", self._activate_action, "secondary")
+        self._action.set_visible(False)
+        self._on_action: Callable[[], None] | None = None
         header.append(self._title)
+        header.append(self._action)
         header.append(self._status)
         if on_close:
             close = IconButton("close", close_label, on_close)
@@ -49,6 +53,22 @@ class LogPanel(Gtk.Box):
         self._status.set_visible(bool(label))
         if label:
             self._status.update(label, tone, live)
+
+    def set_action(
+        self, label: str | None, icon: str | None = None, on_activate: Callable[[], None] | None = None, sensitive: bool = True,
+    ) -> None:
+        """A header button next to the status badge; a None label hides it."""
+        self._on_action = on_activate
+        self._action.set_visible(bool(label))
+        if label:
+            self._action.set_label_text(label)
+            if icon:
+                self._action.set_icon(icon)
+            self._action.set_sensitive(sensitive)
+
+    def _activate_action(self) -> None:
+        if self._on_action:
+            self._on_action()
 
     def set_notice(self, message: str | None) -> None:
         self._notice.set_text_value(message)

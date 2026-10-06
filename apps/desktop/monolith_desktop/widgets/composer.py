@@ -43,7 +43,7 @@ class Composer(Gtk.Box):
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=8, css_classes=["to-composer"])
         if large:
-            self.add_css_class("large")
+            self.add_css_class("to-composer-large")
         self._on_submit = on_submit
         self._hint_text = hint or ""
         self._busy = False

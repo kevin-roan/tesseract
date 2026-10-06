@@ -310,6 +310,35 @@ def test_log_status():
     assert model.log_status("closed", None, ended=True) == ("Stopped", "neutral")
 
 
+def test_can_fix_only_failures():
+    assert model.can_fix_process(process("p", "a", "exited", exitCode=1))
+    assert model.can_fix_process(process("p", "a", "failed"))
+    assert not model.can_fix_process(process("p", "a", "exited", exitCode=0))
+    assert not model.can_fix_process(process("p", "a", "stopped"))
+    assert not model.can_fix_process(process("p", "a", "running"))
+    assert model.can_fix_build({"id": "b", "target": "web", "state": "failed"})
+    assert not model.can_fix_build({"id": "b", "target": "web", "state": "cancelled"})
+
+
+def test_process_failure_prompt_has_command_exit_code_and_clean_log_tail():
+    lines = [{"text": f"line {i}\n"} for i in range(200)] + [{"text": "\x1b[31mError: boom\x1b[0m"}]
+    prompt = model.process_failure_prompt(
+        process("p", "a", "exited", exitCode=1, name="expo-android", command="pnpm exec expo run:android"), lines,
+    )
+    assert prompt.startswith("`expo-android` failed. Find the cause and fix it")
+    assert "Command: `pnpm exec expo run:android`\nExit code: 1" in prompt
+    assert "Last 150 log lines:" in prompt
+    assert "line 50\n" not in prompt and "line 51\n" in prompt
+    assert prompt.endswith("Error: boom\n```")
+
+
+def test_build_failure_prompt_without_logs():
+    prompt = model.build_failure_prompt({"id": "b", "target": "web", "profile": "release", "state": "failed", "error": "exit 127"}, [])
+    assert "build failed." in prompt
+    assert "Error: exit 127" in prompt
+    assert prompt.endswith("No log output was captured.")
+
+
 PUSHED = "2026-09-28T10:00:00Z"
 
 

@@ -50,3 +50,5 @@ export const ISLAND_ORB_BOTTOM_CLEARANCE = 88;
 export const HEADLINE_MIN_FONT_SCALE = 0.6;
 /** How much a crop corner grows while it is being dragged. */
 export const CROP_HANDLE_GRAB_SCALE = 1.25;
+/** Where a card dropping out of the Dynamic Island starts: pulled up and pinched toward the island. */
+export const ISLAND_DROP_FROM = { translateY: -12, scaleX: 0.35, scaleY: 0.2 };

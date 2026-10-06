@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { ListeningPort, ProcessInfo } from "@theone/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
@@ -6,7 +6,7 @@ import type { HeaderAction } from "@/components/screen-header";
 import { PROJECTS_HEADER_ACTIONS } from "../utils/actions";
 import { describeError } from "../utils/errors";
 import { activeWork, activeWorkCount, projectCardModels } from "../utils/overview";
-import { sortSites } from "../utils/sites";
+import { type ProjectsView, projectsViewOptions, sortSites } from "../utils/sites";
 import { useConfirmedStop } from "./use-confirmed-stop";
 import { useSandboxClient } from "./use-sandbox-client";
 import { useSandboxLink } from "./use-sandbox-events";
@@ -43,6 +43,9 @@ export function useProjectsScreen() {
   );
 
   const sites = useMemo(() => sortSites(ports.data?.ports), [ports.data]);
+  const [selectedView, setView] = useState<ProjectsView>("projects");
+  const view: ProjectsView = sites.length > 0 ? selectedView : "projects";
+  const viewOptions = useMemo(() => projectsViewOptions(cards.length, sites.length), [cards.length, sites.length]);
 
   const sitePress = useCallback(
     (site: ListeningPort) => {
@@ -92,6 +95,9 @@ export function useProjectsScreen() {
     running,
     runningCount: activeWorkCount(running),
     processPress,
+    view,
+    viewOptions,
+    selectView: setView,
     sites,
     sitePress,
     openSite: openSite.open,

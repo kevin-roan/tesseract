@@ -64,6 +64,7 @@ export const SYNC_CONFLICT_PREVIEW = 3;
 export const SYNC_COPY = {
   neverPushed: "Run monolith --sync in the project folder on your computer",
   upToDate: "Host is up to date",
+  hostUnchanged: "No changes on your computer",
   notLinked: "Not linked — run monolith --sync on your computer",
   offline: "Desktop companion offline — the request waits until it connects",
   pending: "Waiting for Monolith on your computer…",
@@ -208,8 +209,29 @@ export function syncActionReasons(
   };
 }
 
-export function syncActionDetail(id: SyncActionId, reason: string | null, changes: readonly SyncFileChange[]): string {
+/** Files changed on the host since the last push/get, as its last heartbeat reported; `null`: unknown. */
+export function syncHostChanges(changes: SyncChanges | undefined): number | null {
+  const host = changes?.host;
+  return host?.linked && host.changes !== undefined ? host.changes : null;
+}
+
+/** Whether each direction has changes waiting, so the Sync button can stand out. */
+export function syncWaiting(changes: SyncChanges | undefined): { pull: boolean; get: boolean } {
+  if (!changes || changes.baselineAt === null) return { pull: false, get: false };
+  return { pull: changes.changes.length > 0, get: (syncHostChanges(changes) ?? 0) > 0 };
+}
+
+export function syncActionDetail(
+  id: SyncActionId,
+  reason: string | null,
+  changes: readonly SyncFileChange[],
+  hostChanges: number | null = null,
+): string {
   if (reason) return reason;
+  if (id === "pull") return `${pluralize(changes.length, "file")} changed in the sandbox`;
+  if (id === "get" && hostChanges !== null) {
+    return hostChanges > 0 ? `${pluralize(hostChanges, "file")} changed on your computer` : SYNC_COPY.hostUnchanged;
+  }
   if (id === "discard") return `${pluralize(discardableChanges(changes).length, "file")} can go back to the last synced version`;
   return SYNC_ACTION_DESCRIPTIONS[id];
 }

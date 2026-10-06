@@ -82,3 +82,5 @@ TINT = MappingProxyType({
     "blush": MappingProxyType({"light": "#F8EFEF", "dark": "#373031"}),
     "oat": MappingProxyType({"light": "#F0EEE6", "dark": "#353431"}),
 })
+# Linear's label hues: one per project, so rows from different projects read apart at a glance.
+PROJECT_TINTS = ("#5E6AD2", "#26B5CE", "#4CB782", "#F2C94C", "#F2994A", "#EB5757", "#E255A1", "#9B51E0", "#4EA7FC")

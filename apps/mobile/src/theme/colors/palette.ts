@@ -136,6 +136,11 @@ export const Palette = {
     900: '#1F1640',
   },
 
+  /** Linear's indigo — the profile hero fill in the graphite looks; matches the desktop app. */
+  linear: {
+    500: '#5E6AD2',
+  },
+
   indigo: {
     100: '#ECEAFD',
     200: '#D4CFFA',

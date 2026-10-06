@@ -54,6 +54,8 @@ export const SyncHostSchema = z.object({
   online: z.boolean(),
   /** The project is linked on this host. */
   linked: z.boolean(),
+  /** Host files changed since the last push/get (what a `get` would bring in), from the last heartbeat; absent: unknown. */
+  changes: z.number().int().nonnegative().optional(),
 });
 export type SyncHost = z.infer<typeof SyncHostSchema>;
 
@@ -228,6 +230,8 @@ export type SyncGetPlanResponse = z.infer<typeof SyncGetPlanResponseSchema>;
 export const SyncHeartbeatSchema = z.object({
   host: SyncHostNameSchema,
   projects: z.array(ProjectIdSchema).max(LIMITS.maxSyncPaths),
+  /** Per linked project, how many host files changed since the last push/get; projects left out are unknown. */
+  changes: z.record(ProjectIdSchema, z.number().int().nonnegative()).optional(),
 });
 export type SyncHeartbeat = z.infer<typeof SyncHeartbeatSchema>;
 

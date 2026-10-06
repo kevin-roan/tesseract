@@ -284,6 +284,10 @@ LOGS = MappingProxyType({
     "close": "Close logs",
 })
 
+FIX = MappingProxyType({
+    "label": "Fix with AI",
+})
+
 CREATE = MappingProxyType({
     "title": "New project",
     "subtitle": "Start an empty folder or clone a repository into the sandbox.",
