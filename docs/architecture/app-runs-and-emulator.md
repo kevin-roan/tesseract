@@ -407,12 +407,32 @@ drawn, so it works in iOS WKWebView over plain http.
   `processIds[0]`), **Stop**, and **Open** per viewer: `url` → in-app WebView screen;
   `deeplink` → `Linking.openURL(devClientUrl ?? expoGoUrl)`; `display` → the display
   screen; `android` → the host emulator screen (pair/unlock the host first if needed).
-  Live updates from `app.updated`.
+  Live updates from `app.updated`. An unavailable `android` target also shows
+  **Set up emulator**, which opens the host screen (pair, unlock, start, link).
+- **Mobile (project detail)**: when the project offers a target with viewer `android` (or has a
+  live run of one), the header gets an emulator action and script cards drop **Run on display**.
+  The action is **Show emulator** while a run of an `android` target is `starting`/`ready`
+  (opens the host emulator screen), else **Open on emulator** for the first available target
+  (starts the run, then opens the host emulator screen), else **Set up emulator** with the
+  target's `reason` as hint (opens the host screen with the emulator controls). Other projects
+  keep the display option.
 - **Desktop (project detail)**: when the project offers a target with viewer `android`, the
-  **Display** button becomes **Run on emulator** (**Show emulator** while a run of it is
-  `starting`/`ready`; an unavailable target shows its `reason`). It starts the run unless one
-  is live, then opens `scrcpy --serial <GET /v1/android emulator.serial>` on the host (one
-  window; the desktop runs on the host whose adb server the daemon connected the emulator to).
+  **Display** button becomes **Open on emulator** (**Show emulator** while a run of it is
+  `starting`/`ready`). Projects of framework `expo`, `react-native` or `android` never show
+  **Display**: without an `android` target (none detected, or `run-targets` failed, e.g. 404 from
+  an older controller) the button is a disabled **Open on emulator** with the cause as tooltip.
+  It starts the run unless one is live, then opens `scrcpy --serial <GET /v1/android emulator.serial>`
+  on the host (one window; the desktop runs on the host whose adb server the daemon connected
+  the emulator to). When the target is unavailable for one of the three host reasons of §1.1,
+  the desktop prepares the emulator through the host daemon it runs itself (`host serve`, which
+  must be serving with a PIN set; the host token comes from `host pair --json`): it asks for the
+  PIN once (`POST /v1/host/unlock`, session kept in memory), reads `GET /v1/android`, then
+  stops a non-isolated emulator (after a confirm), starts the current or first AVD
+  (`POST /v1/android/emulator`), links its own sandbox URL and token (`POST /v1/android/link`,
+  confirm first when the host is connected to another sandbox), waits up to 5½ min for the
+  emulator to be `running`, isolated and linked, and up to 60 s for the target to become
+  available, then runs it as above. `isolation: "none"`, `available: false`, no AVD or a
+  `stopping` emulator only show a notice.
 - **Host → Android emulator**: `HostAndroidStatus`, AVD picker, Start/Stop, **Open screen**
   (WebView of `/ui/android` with a ticket), **Link sandbox** (posts the active sandbox's
   base URL and token to `POST /v1/android/link`), link state. The emulator card shows

@@ -66,3 +66,11 @@ def status_rows(status: SttStatus) -> list[Row]:
         (S["activity"], activity_label(status)),
         (S["cpus"], str(status["cpus"]) if status["cpus"] else S["none"]),
     ]
+
+
+
+def gemini_subtitle(status: SttStatus | None) -> str:
+    if status is None:
+        return ""
+    gemini = status["gemini"]
+    return join_meta(S[f"gemini_source_{gemini['source'] or 'none'}"], gemini["model"] or None)

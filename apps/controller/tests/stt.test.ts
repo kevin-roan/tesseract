@@ -87,7 +87,7 @@ describe("speech-to-text over HTTP", () => {
       cpus: 16,
       busy: false,
       queued: 0,
-      gemini: { configured: false, model: "gemini-2.5-flash" },
+      gemini: { configured: false, model: "gemini-2.5-flash", source: null },
     });
     expect(status.profiles.map((profile) => profile.id)).toEqual([...STT_PROFILES]);
   });

@@ -30,6 +30,7 @@ from .services.connection import ConnectionService  # noqa: E402
 from .store import AppStore  # noqa: E402
 from .strings import ABOUT, ZOOM_TOAST  # noqa: E402
 from .theme.manager import theme  # noqa: E402
+from .theme.semantic import APPEARANCES, Appearance  # noqa: E402
 from .widgets.sidebar_model import stored_sidebar_width  # noqa: E402
 
 log = logging.getLogger("monolith_desktop")
@@ -45,6 +46,7 @@ ACCELERATORS = {
     "app.zoom-reset": ["<Control>0", "<Control>KP_0"],
 }
 ZOOM_SETTING = "zoom"
+APPEARANCE_SETTING = "appearance"
 SIDEBAR_WIDTH_SETTING = "sidebarWidth"
 
 
@@ -104,9 +106,13 @@ class MonolithApplication(Adw.Application):
             Gtk.IconTheme.get_for_display(display).add_search_path(str(ICONS_DIR))
         Gtk.Window.set_default_icon_name(APP_ID)
         migrate_legacy_config()
-        zoom = read_settings().get(ZOOM_SETTING)
+        settings = read_settings()
+        zoom = settings.get(ZOOM_SETTING)
         if isinstance(zoom, (int, float)):
             theme().set_zoom(float(zoom))
+        appearance = settings.get(APPEARANCE_SETTING)
+        if appearance in APPEARANCES:
+            theme().set_appearance(appearance)
         theme().install(display)
         store = AppStore()
         self.ctx = AppContext(self, store, ConnectionService(store), theme())
@@ -244,6 +250,10 @@ class MonolithApplication(Adw.Application):
 
     def save_sidebar_width(self, width: int) -> None:
         self._save_setting(SIDEBAR_WIDTH_SETTING, width)
+
+    def set_appearance(self, appearance: Appearance) -> None:
+        theme().set_appearance(appearance)
+        self._save_setting(APPEARANCE_SETTING, appearance)
 
     def _save_setting(self, key: str, value: Any) -> None:
         settings = read_settings()

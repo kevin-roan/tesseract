@@ -21,6 +21,7 @@ ICONS = MappingProxyType({
     "sessions": ("lc-history-symbolic", "document-open-recent-symbolic"),
     "context": ("lc-file-text-symbolic", "text-x-generic-symbolic", "document-properties-symbolic"),
     "pair": ("lc-qr-code-symbolic", "phone-symbolic"),
+    "appearance": ("lc-sun-moon-symbolic", "weather-clear-night-symbolic", "preferences-desktop-appearance-symbolic"),
     "settings": ("lc-settings-symbolic", "preferences-system-symbolic", "emblem-system-symbolic"),
     "connection": ("lc-plug-symbolic", "network-server-symbolic"),
     "microphone": ("lc-mic-symbolic", "audio-input-microphone-symbolic"),

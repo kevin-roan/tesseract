@@ -115,6 +115,16 @@ HOST_PIN = MappingProxyType({
     "failed": "Couldn't save the PIN: {error}",
 })
 
+HOST_UNLOCK = MappingProxyType({
+    "title": "Unlock the host shell",
+    "context": "This computer",
+    "subtitle": "Enter the host shell PIN to start the Android emulator",
+    "pin": "PIN",
+    "unlock": "Unlock",
+    "cancel": "Cancel",
+    "invalid": "The PIN must be 6 to 12 digits",
+})
+
 MAIN_MENU_TOOLTIP = "Main menu"
 REFRESH_TOOLTIP = "Refresh"
 ZOOM_TOAST = "Zoom {percent}%"
@@ -302,6 +312,19 @@ CLAUDE = MappingProxyType({
     "outdated": "This sandbox is too old for Claude sign-in. Rebuild and restart it: `bun run sandbox build` then `bun run sandbox up`.",
 })
 
+APPEARANCE = MappingProxyType({
+    "title": "Appearance",
+    "icon": "appearance",
+    "theme_group": "Theme",
+    "theme_description": "Choose how Monolith looks on this computer.",
+    "system": "System",
+    "system_subtitle": "Follow the light or dark setting of your desktop",
+    "light": "Light",
+    "light_subtitle": "Light panels with dark text",
+    "dark": "Dark",
+    "dark_subtitle": "Dark panels with light text",
+})
+
 STT = MappingProxyType({
     "title": "Speech-to-text",
     "icon": "microphone",
@@ -339,6 +362,20 @@ STT = MappingProxyType({
     "disconnected": "Not connected",
     "changed": "Speech-to-text set to {profile}",
     "change_failed": "Couldn't change speech-to-text: {error}",
+    "gemini_group": "Gemini",
+    "gemini_description": (
+        "Cloud transcription for voice notes sent with the Gemini provider. "
+        "The key is stored on the sandbox and shared with the mobile app."
+    ),
+    "gemini_key": "API key",
+    "gemini_source_settings": "Saved from an app",
+    "gemini_source_env": "GEMINI_API_KEY on the sandbox",
+    "gemini_source_none": "Not set",
+    "gemini_remove": "Remove saved key",
+    "save": "Save",
+    "gemini_saved": "Gemini API key saved",
+    "gemini_removed": "Gemini API key removed",
+    "gemini_failed": "Couldn't update the Gemini API key: {error}",
     "outdated": "This sandbox is too old for speech-to-text settings. Rebuild and restart it: `bun run sandbox build` then `bun run sandbox up`.",
 })
 

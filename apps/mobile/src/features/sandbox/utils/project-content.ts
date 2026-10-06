@@ -6,6 +6,7 @@ export const PROJECT_COPY = {
   waitingForOutput: "Waiting for output…",
   sections: {
     git: "Git",
+    chats: "Chats",
     sites: "Websites",
     scripts: "Scripts",
     build: "Build",
@@ -14,10 +15,13 @@ export const PROJECT_COPY = {
     artifacts: "Artifacts",
   },
   empty: {
+    chats: "No chats about this project yet.",
     scripts: "No package scripts found.",
     build: "No build targets detected.",
     processes: "Nothing has run here yet.",
     artifacts: "No artifacts yet.",
   },
+  newChat: "New chat",
+  allChats: "View all",
   needsInstall: "Dependencies aren't installed yet. Run installs them first.",
 } as const;

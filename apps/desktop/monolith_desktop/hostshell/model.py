@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from ..pairing import parse_params
 from ..paths import PACKAGE_DIR
 
 REPO_ROOT = PACKAGE_DIR.parents[2]
@@ -93,6 +94,14 @@ def parse_pairing(stdout: str) -> HostPairing:
         name=str(data.get("name") or ""),
         pin_set=data.get("pinSet") is True,
     )
+
+
+def host_token(link: str) -> str:
+    """The host token carried by the `theone://host?…` pairing link."""
+    token = parse_params(link.partition("?")[2].partition("#")[0]).get("token")
+    if not token:
+        raise HostShellError("The host pairing link has no token")
+    return token
 
 
 def cli_error(output: str, code: int | None = None) -> str:

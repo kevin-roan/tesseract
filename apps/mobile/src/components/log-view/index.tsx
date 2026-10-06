@@ -1,15 +1,16 @@
 import { memo, useCallback, useMemo, useRef } from "react";
 import { FlatList, ScrollView, View, type ListRenderItem, type StyleProp, type ViewStyle } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
-import { ArrowDownIcon } from "phosphor-react-native";
+import { ArrowDownIcon, CheckIcon, CopyIcon } from "phosphor-react-native";
 
 import PressableScale from "@/components/pressable-scale";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { useCopyText } from "@/hooks/use-copy-text";
 import { useStickToBottom } from "@/hooks/use-stick-to-bottom";
 import { Durations, HitSlop, IconSize } from "@/theme";
 
-import { INLINE_LINE_LIMIT, StreamColors, cleanLogText, type LogViewLine } from "./lines";
+import { INLINE_LINE_LIMIT, LOG_VIEW_COPY, StreamColors, cleanLogText, logText, type LogViewLine } from "./lines";
 import createStyles from "./styles";
 
 export type { LogViewLine } from "./lines";
@@ -40,6 +41,9 @@ const LogView = ({ lines, emptyLabel = "No output yet.", inline = false, style }
   const getScrollable = useCallback(() => (inline ? scrollRef.current : listRef.current), [inline]);
   const { following, onScroll, onContentSizeChange, jumpToEnd } = useStickToBottom(getScrollable);
   const renderItem: ListRenderItem<LogViewLine> = useCallback(({ item }) => <LogRow line={item} />, []);
+  const text = useMemo(() => logText(lines), [lines]);
+  const { copied, copy, canCopy } = useCopyText(text);
+  const CopyStateIcon = copied ? CheckIcon : CopyIcon;
   const empty = (
     <ThemedText variant="caption" color="textTertiary">
       {emptyLabel}
@@ -75,6 +79,18 @@ const LogView = ({ lines, emptyLabel = "No output yet.", inline = false, style }
           ListEmptyComponent={empty}
         />
       )}
+      {canCopy && lines.length > 0 ? (
+        <PressableScale
+          depth="control"
+          accessibilityRole="button"
+          accessibilityLabel={copied ? LOG_VIEW_COPY.copied : LOG_VIEW_COPY.copy}
+          hitSlop={HitSlop.md}
+          onPress={() => void copy()}
+          style={styles.copy}
+        >
+          <CopyStateIcon size={IconSize.sm} color={copied ? theme.colors.success : theme.colors.textSecondary} weight="regular" />
+        </PressableScale>
+      ) : null}
       {!following && lines.length > 0 ? (
         <Animated.View entering={FadeIn.duration(Durations.fast)} exiting={FadeOut.duration(Durations.fast)} style={styles.jumpSlot}>
           <PressableScale

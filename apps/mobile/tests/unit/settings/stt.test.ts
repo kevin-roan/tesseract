@@ -1,9 +1,9 @@
 import { sampleSttStatus } from "@theone/protocol/fixtures";
 
-import { geminiUnavailable, isSttProfile, isSttProvider, sttProfileRows, sttProviderRows } from "@/features/settings/utils/stt";
+import { geminiKeyHint, geminiUnavailable, isSttProfile, isSttProvider, sttProfileRows, sttProviderRows } from "@/features/settings/utils/stt";
 import { fallbackNotice } from "@/features/voice/utils/fallback";
 
-const configured = { ...sampleSttStatus, gemini: { configured: true, model: "gemini-2.5-flash" } };
+const configured = { ...sampleSttStatus, gemini: { configured: true, model: "gemini-2.5-flash", source: "env" as const } };
 
 describe("speech-to-text settings", () => {
   it("recognises providers and profiles", () => {
@@ -30,6 +30,8 @@ describe("speech-to-text settings", () => {
     expect(geminiUnavailable("native", sampleSttStatus)).toBe(false);
     expect(geminiUnavailable("gemini", configured)).toBe(false);
     expect(geminiUnavailable("gemini", undefined)).toBe(false);
+    expect(geminiKeyHint(sampleSttStatus)).toContain("aistudio.google.com");
+    expect(geminiKeyHint(configured)).toContain("GEMINI_API_KEY");
   });
 
   it("lists the native profiles with their availability", () => {

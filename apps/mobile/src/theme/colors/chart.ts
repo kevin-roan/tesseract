@@ -131,7 +131,31 @@ const graphite: ChartPalette = {
   barEmptyStroke: 'rgba(255, 255, 255, 0.16)',
 };
 
-export const ChartColors = { light, dark, graphite } as const;
+const graphiteLight: ChartPalette = {
+  ...light,
+  sequential: [
+    Palette.graphite[200],
+    Palette.graphite[300],
+    Palette.graphite[500],
+    Palette.graphite[600],
+    Palette.graphite[800],
+  ],
+  diverging: { negative: Palette.red[500], neutral: Palette.graphite[200], positive: Palette.green[500] },
+  status: {
+    success: Colors.graphiteLight.successSolid,
+    warning: Colors.graphiteLight.warningSolid,
+    danger: Colors.graphiteLight.dangerSolid,
+    info: Colors.graphiteLight.infoSolid,
+  },
+  grid: 'rgba(0, 0, 0, 0.07)',
+  axis: Palette.graphite[200],
+  label: Colors.graphiteLight.textSecondary,
+  bar: Palette.graphite[950],
+  barEmpty: 'rgba(0, 0, 0, 0.05)',
+  barEmptyStroke: 'rgba(0, 0, 0, 0.16)',
+};
+
+export const ChartColors = { light, dark, graphite, graphiteLight } as const;
 
 export type ChartSeriesName = keyof ChartPalette['named'];
 

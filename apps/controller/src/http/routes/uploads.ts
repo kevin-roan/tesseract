@@ -29,5 +29,5 @@ export function registerUploadRoutes(app: Hono, services: Services): void {
 
   app.get(rest.stt, (c) => c.json(transcriptions.status()));
 
-  app.put(rest.stt, async (c) => c.json(transcriptions.setProfile((await jsonBody(c, UpdateSttSchema)).profile)));
+  app.put(rest.stt, async (c) => c.json(transcriptions.update(await jsonBody(c, UpdateSttSchema))));
 }

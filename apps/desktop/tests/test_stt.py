@@ -26,6 +26,7 @@ STATUS = {
     "cpus": 16,
     "busy": False,
     "queued": 0,
+    "gemini": {"configured": True, "model": "gemini-2.5-flash", "source": "env"},
 }
 
 
@@ -46,6 +47,7 @@ def test_parse_stt_status_defaults():
     assert loose["profile"] == "off" and loose["engine"] is None and loose["ready"] is False
     assert loose["profiles"] == [{"id": "eco", "model": None, "threads": 0, "nice": 0, "available": False}]
     assert (loose["cpus"], loose["queued"], loose["reason"], loose["busy"]) == (0, 2, None, False)
+    assert loose["gemini"] == {"configured": False, "model": "", "source": None}
     assert parse_stt_status({})["profiles"] == []
     with pytest.raises(ProtocolError):
         parse_stt_status([])
@@ -81,6 +83,14 @@ def test_status_rows():
     assert busy["State"] == "Not ready · Model missing"
     assert busy["Activity"] == "Transcribing · 3 queued"
     assert busy["Engine"] == busy["Model"] == busy["CPU cores"] == STT["none"]
+
+
+def test_gemini_subtitle_names_the_key_source():
+    assert model.gemini_subtitle(parse_stt_status(STATUS)) == "GEMINI_API_KEY on the sandbox · gemini-2.5-flash"
+    saved = parse_stt_status({**STATUS, "gemini": {"configured": True, "model": "gemini-2.5-flash", "source": "settings"}})
+    assert model.gemini_subtitle(saved).startswith(STT["gemini_source_settings"])
+    assert model.gemini_subtitle(parse_stt_status({**STATUS, "gemini": None})) == STT["gemini_source_none"]
+    assert model.gemini_subtitle(None) == ""
 
 
 def test_status_error_message_flags_outdated_controller():
@@ -135,10 +145,16 @@ def test_client_stt_status_and_set_profile(server):
     assert conflict.value.status == 409 and conflict.value.message == "Model not installed"
     with pytest.raises(ValueError):
         client.set_stt_profile("turbo")
+    assert client.set_gemini_api_key("  AIza-key \n")["profile"] == "eco"
+    assert client.set_gemini_api_key(None)["profile"] == "eco"
+    with pytest.raises(ValueError):
+        client.set_gemini_api_key("   ")
     assert _Handler.requests == [
         ("GET", "/v1/stt", None),
         ("PUT", "/v1/stt", {"profile": "balanced"}),
         ("PUT", "/v1/stt", {"profile": "performance"}),
+        ("PUT", "/v1/stt", {"geminiApiKey": "AIza-key"}),
+        ("PUT", "/v1/stt", {"geminiApiKey": None}),
     ]
     with pytest.raises(ApiError) as denied:
         ControllerClient(server, "wrong").stt_status()

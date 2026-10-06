@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.kevinbpract.theone.island.theone-island-release-26:/layout-watch-v20/abc_alert_dialog_button_bar_material.xml",
+        "source": "com.kevinbpract.theone.island.theone-island-appcompat-1.6.1-22:/layout-watch-v20/abc_alert_dialog_button_bar_material.xml"
+    },
+    {
+        "merged": "com.kevinbpract.theone.island.theone-island-release-26:/layout-watch-v20/abc_alert_dialog_title_material.xml",
+        "source": "com.kevinbpract.theone.island.theone-island-appcompat-1.6.1-22:/layout-watch-v20/abc_alert_dialog_title_material.xml"
+    }
+]

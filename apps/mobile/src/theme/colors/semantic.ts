@@ -208,7 +208,57 @@ const graphite: Record<keyof typeof light, string> = {
   auraCool: Palette.graphite[800],
 };
 
-export const Colors = { light, dark, graphite } as const;
+/**
+ * Graphite light: the same monochrome look on a pale grey canvas — white
+ * hairline cards, near-black primary pill, status inks from `light`.
+ */
+const graphiteLight: Record<keyof typeof light, string> = {
+  ...light,
+  background: Palette.graphite[50],
+  backgroundPattern: 'rgba(13, 13, 13, 0.08)',
+  backgroundElement: Palette.graphite[100],
+  backgroundSelected: Palette.graphite[150],
+  surface: Palette.white,
+  surfaceElevated: Palette.white,
+  surfaceSunken: Palette.graphite[100],
+  overlay: 'rgba(0, 0, 0, 0.32)',
+
+  text: Palette.graphite[950],
+  textSecondary: Palette.graphite[600],
+  textTertiary: Palette.graphite[500],
+  textInverse: Palette.graphite[50],
+  textOnAccent: Palette.graphite[50],
+
+  border: 'rgba(0, 0, 0, 0.08)',
+  borderStrong: 'rgba(0, 0, 0, 0.16)',
+  divider: 'rgba(0, 0, 0, 0.07)',
+
+  accent: Palette.graphite[950],
+  accentInk: Palette.graphite[50],
+  accentPressed: Palette.graphite[700],
+  accentMuted: Palette.graphite[100],
+  accentStrong: Palette.graphite[950],
+  focusRing: Palette.graphite[600],
+  highlight: Palette.graphite[950],
+
+  brand: Palette.clay[600],
+  brandMuted: Palette.clay[50],
+  selection: Palette.graphite[950],
+  badge: Palette.graphite[100],
+  badgeText: Palette.graphite[700],
+
+  bubbleUser: Palette.graphite[100],
+  bubbleUserText: Palette.graphite[950],
+  bubbleAssistant: Palette.graphite[50],
+  bubbleAssistantText: Palette.graphite[950],
+  codeBackground: Palette.graphite[100],
+  streamingCursor: Palette.graphite[950],
+  voiceActive: Palette.graphite[950],
+  auraWarm: Palette.graphite[400],
+  auraCool: Palette.graphite[150],
+};
+
+export const Colors = { light, dark, graphite, graphiteLight } as const;
 
 export type ColorSchemeName = keyof typeof Colors;
 /** The schemes the OS knows about — what native materials (blur, glass) accept. */

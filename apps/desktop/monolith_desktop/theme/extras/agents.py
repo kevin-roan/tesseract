@@ -1,5 +1,5 @@
 from ..css import css_var
-from ..semantic import SchemeName
+from ..semantic import SchemeName, ink_alpha
 from ..tokens import AVATAR_SIZE, BORDER_WIDTH, CONTROL_HEIGHT, RADIUS, SPACING, transition
 
 PANE_BAR_HEIGHT = 44
@@ -99,7 +99,7 @@ def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
             "box-shadow": "none",
             "transition": transition("border-color"),
         },
-        ".to-composer:focus-within": {"border-color": "rgba(255, 255, 255, 0.2)"},
+        ".to-composer:focus-within": {"border-color": ink_alpha(scheme, 0.2)},
         ".to-composer.large": {
             "padding": f"{_px(s['xs'])} {_px(s['md'])} {_px(s['md'])} {_px(s['md'])}",
             "border": "none",

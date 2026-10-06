@@ -34,6 +34,10 @@ class ControllerClient:
         self.timeout = timeout
         self._token = token
 
+    @property
+    def token(self) -> str:
+        return self._token
+
     def auth_headers(self) -> dict[str, str]:
         return {"Authorization": f"Bearer {self._token}"}
 
@@ -140,6 +144,14 @@ class ControllerClient:
         if profile not in T.STT_PROFILES:
             raise ValueError(f"Unknown speech-to-text profile: {profile}")
         return T.parse_stt_status(self.put(rest.stt(), {"profile": profile}))
+
+    def set_gemini_api_key(self, key: str | None) -> T.SttStatus:
+        """Saves the key on the sandbox (it wins over GEMINI_API_KEY); None forgets it."""
+        if key is not None:
+            key = key.strip()
+            if not key:
+                raise ValueError("The Gemini API key must not be empty")
+        return T.parse_stt_status(self.put(rest.stt(), {"geminiApiKey": key}))
 
     def context(self) -> T.AgentContext:
         return self.get(rest.context())

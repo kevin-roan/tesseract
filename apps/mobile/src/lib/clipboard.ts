@@ -13,3 +13,5 @@ function loadClipboard(): typeof ExpoClipboard | null {
 }
 
 export const Clipboard = loadClipboard();
+
+export const COPY_FEEDBACK_MS = 1600;

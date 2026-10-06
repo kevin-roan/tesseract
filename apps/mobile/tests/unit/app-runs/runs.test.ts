@@ -1,4 +1,4 @@
-import type { AppRun } from "@theone/protocol";
+import type { AppRun, RunTargetInfo } from "@theone/protocol";
 import { sampleAppRun, sampleExpoAppRun, sampleRunTargets } from "@theone/protocol/fixtures";
 
 import {
@@ -6,6 +6,8 @@ import {
   appRunMeta,
   canStart,
   deepLinkFor,
+  emulatorActionFor,
+  emulatorDestination,
   isActiveAppRun,
   isUnreachable,
   openPlanFor,
@@ -89,5 +91,55 @@ describe("run helpers", () => {
     const now = Date.parse(sampleAppRun.readyAt!) + 120_000;
     expect(appRunMeta(sampleAppRun, now)).toMatch(/^port 8090 · ready /);
     expect(appRunMeta({ ...androidRun, port: null }, now)).toMatch(/^started /);
+  });
+});
+
+describe("emulatorActionFor", () => {
+  const expoAndroid: RunTargetInfo = {
+    target: "expo-android",
+    label: "Android emulator · apps/mobile",
+    dir: "apps/mobile",
+    available: true,
+    reason: null,
+    viewer: "android",
+    actions: ["reload", "restart"],
+  };
+  const webDev: RunTargetInfo = { ...sampleRunTargets[0], target: "web-dev", label: "Web" };
+  const expoRun: AppRun = { ...androidRun, id: "app_expo", target: "expo-android", dir: "apps/mobile" };
+
+  it("offers nothing for a project without an android target", () => {
+    expect(emulatorActionFor(appRunEntries([webDev], [sampleAppRun]))).toBeNull();
+    expect(emulatorActionFor(appRunEntries(sampleRunTargets.filter((info) => info.viewer !== "android"), []))).toBeNull();
+  });
+
+  it("opens on the emulator by starting an available target", () => {
+    const action = emulatorActionFor(appRunEntries([webDev, expoAndroid], []));
+    expect(action).toMatchObject({ kind: "start", entry: { target: "expo-android", label: "Android emulator · apps/mobile" } });
+    expect(emulatorDestination(action!)).toBe("android");
+    expect(emulatorActionFor(appRunEntries([expoAndroid], [{ ...expoRun, state: "exited" }]))?.kind).toBe("start");
+  });
+
+  it("shows the emulator while a run of the target is live, even when the target is unavailable now", () => {
+    for (const state of ["starting", "ready"] as const) {
+      const action = emulatorActionFor(appRunEntries([{ ...expoAndroid, available: false, reason: "Start the emulator on the host" }], [{ ...expoRun, state }]));
+      expect(action).toMatchObject({ kind: "show", run: { id: expoRun.id } });
+      expect(emulatorDestination(action!)).toBe("android");
+    }
+  });
+
+  it("shows a live run of a target no longer offered", () => {
+    expect(emulatorActionFor(appRunEntries([], [expoRun]))).toMatchObject({ kind: "show", entry: { info: null } });
+    expect(emulatorActionFor(appRunEntries([], [{ ...expoRun, state: "failed" }]))).toBeNull();
+  });
+
+  it("routes to the host emulator controls with the reason while no target can start", () => {
+    const action = emulatorActionFor(appRunEntries(sampleRunTargets, []));
+    expect(action).toMatchObject({ kind: "setup", entry: { target: "flutter-android" }, reason: "Link the host Android emulator first" });
+    expect(emulatorDestination(action!)).toBe("host");
+  });
+
+  it("prefers a startable target over an unavailable one", () => {
+    const blocked: RunTargetInfo = { ...expoAndroid, target: "rn-android", available: false, reason: "Start the emulator on the host" };
+    expect(emulatorActionFor(appRunEntries([blocked, expoAndroid], []))).toMatchObject({ kind: "start", entry: { target: "expo-android" } });
   });
 });

@@ -180,5 +180,35 @@ def _detail(scheme: SchemeName) -> dict[str, dict[str, str]]:
     }
 
 
+def _sync_review(scheme: SchemeName) -> dict[str, dict[str, str]]:
+    s, r = SPACING, radius_for(scheme)
+    divider = f"{_px(BORDER_WIDTH['thin'])} solid {css_var('divider')}"
+    return {
+        ".to-sync-review paned > separator": {"background": css_var("divider"), "min-width": _px(1)},
+        ".to-sync-review-sidebar": {"padding": f"{_px(s['sm'])} {_px(s['md'])} {_px(s['md'])} {_px(s['base'])}"},
+        "listview.to-sync-review-files, listview.to-sync-review-lines": {"background": "none"},
+        "listview.to-sync-review-files > row": {"padding": f"{_px(s['xs'])} {_px(s['sm'])}", "border-radius": _px(r["sm"])},
+        "listview.to-sync-review-files > row:hover": {"background": css_var("backgroundElement")},
+        "listview.to-sync-review-files > row:selected": {"background": css_var("backgroundSelected")},
+        ".to-sync-review-diff": {
+            "margin": f"0 {_px(s['md'])} 0 {_px(s['md'])}",
+            "border": f"{_px(BORDER_WIDTH['thin'])} solid {css_var('border')}",
+            "border-radius": _px(r["md"]),
+            "background-color": css_var("codeBackground"),
+        },
+        ".to-sync-review-diff-header": {"padding": f"{_px(s['sm'])} {_px(s['md'])}", "border-bottom": divider},
+        "listview.to-sync-review-lines > row": {"padding": "0"},
+        ".to-diff-line": {"padding": f"0 {_px(s['sm'])} 0 0"},
+        ".to-diff-line.add": {"background-color": css_var("successMuted")},
+        ".to-diff-line.del": {"background-color": css_var("dangerMuted")},
+        ".to-diff-line.hunk": {"background-color": css_var("infoMuted"), "margin-top": _px(s["xs"])},
+        ".to-diff-line.hunk label": {"color": css_var("info")},
+        ".to-diff-gutter": {"min-width": _px(44), "padding": f"0 {_px(s['xs'])}", "border-right": divider},
+        ".to-diff-sign": {"min-width": _px(16), "padding-left": _px(s["xs"])},
+        ".to-diff-line.add .to-diff-sign": {"color": css_var("success")},
+        ".to-diff-line.del .to-diff-sign": {"color": css_var("danger")},
+    }
+
+
 def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
-    return {**_list(scheme), **_cards(scheme), **_detail(scheme)}
+    return {**_list(scheme), **_cards(scheme), **_detail(scheme), **_sync_review(scheme)}

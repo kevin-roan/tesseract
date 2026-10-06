@@ -23,7 +23,22 @@ export default function createStyles(theme: Theme) {
     },
     content: {
       padding: theme.spacing.md,
+      paddingRight: theme.spacing.sm * 2 + ControlHeight.sm,
       gap: theme.spacing.xxs,
+    },
+    copy: {
+      position: "absolute",
+      top: theme.spacing.sm,
+      right: theme.spacing.sm,
+      width: ControlHeight.sm,
+      height: ControlHeight.sm,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: theme.radius.xs,
+      borderCurve: "continuous",
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: theme.colors.border,
+      backgroundColor: theme.colors.codeBackground,
     },
     jumpSlot: {
       position: "absolute",

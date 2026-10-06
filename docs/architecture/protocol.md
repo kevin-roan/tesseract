@@ -319,8 +319,8 @@ Rules (detection, commands, readiness, viewers, the host emulator link):
 | POST | `/v1/uploads` | `CreateUpload { name, mimeType, data /* base64 */ }` | `201 Upload` (28 MiB body, 20 MiB file) |
 | GET | `/v1/uploads/:id/content` | bearer or `?ticket=` | file stream (single `Range` supported) |
 | POST | `/v1/transcriptions` | `CreateTranscription { uploadId, language? }` | `Transcription { uploadId, text, language, durationMs, engine }`; 503 when the profile is `off` or without a speech-to-text engine; one runs at a time (FIFO) |
-| GET | `/v1/stt` | none | `SttStatus { profile, profiles, engine, ready, reason, model, cpus, busy, queued }` |
-| PUT | `/v1/stt` | `UpdateStt { profile: "off" \| "eco" \| "balanced" \| "performance" }` | `SttStatus`; stored across restarts, publishes `stt.updated` on change |
+| GET | `/v1/stt` | none | `SttStatus { profile, profiles, engine, ready, reason, model, cpus, busy, queued, gemini { configured, model, source } }` |
+| PUT | `/v1/stt` | `UpdateStt { profile?: "off" \| "eco" \| "balanced" \| "performance", geminiApiKey?: string \| null }` | `SttStatus`; stored across restarts (a saved Gemini key wins over `GEMINI_API_KEY`, `null` forgets it), publishes `stt.updated` on change |
 | DELETE | `/v1/agent/runs/:id` | none | `AgentRun` (cancel) |
 
 The controller runs `claude -p` with streaming JSON output and

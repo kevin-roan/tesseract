@@ -102,6 +102,8 @@ export const STT_PROFILES = ["off", "eco", "balanced", "performance"] as const;
 export const STT_ENGINE_NAMES = ["whisper.cpp", "openai-compatible", "gemini"] as const;
 /** `native`: the controller's own engine (whisper.cpp / openai-compatible); `gemini`: Gemini first, native when it fails. */
 export const STT_PROVIDERS = ["native", "gemini"] as const;
+/** Where the Gemini key comes from: `settings` (saved from the mobile or desktop app, wins) or `env` (GEMINI_API_KEY). */
+export const GEMINI_KEY_SOURCES = ["settings", "env"] as const;
 export const AGENT_RUN_EVENT_KINDS = ["text", "tool_use", "tool_result", "system"] as const;
 export const LOG_STREAMS = ["stdout", "stderr", "system"] as const;
 export const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;

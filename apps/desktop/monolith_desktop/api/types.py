@@ -370,6 +370,30 @@ class EmulatorInfo(TypedDict):
     error: str | None
 
 
+class AndroidLinkInfo(TypedDict):
+    configured: bool
+    sandboxUrl: str | None
+    connected: bool
+    lastError: str | None
+
+
+class HostAndroidStatus(TypedDict):
+    available: bool
+    reason: str | None
+    sdkRoot: str | None
+    isolation: Literal["netns", "none"]
+    avds: list[str]
+    scrcpy: bool
+    ffmpeg: bool
+    emulator: EmulatorInfo
+    link: AndroidLinkInfo
+
+
+class HostSession(TypedDict):
+    session: str
+    expiresAt: str
+
+
 class SandboxAndroidStatus(TypedDict):
     linked: bool
     hostId: str | None
@@ -721,6 +745,15 @@ class SttProfileInfo(TypedDict):
     available: bool
 
 
+GEMINI_KEY_SOURCES: tuple[str, ...] = ("settings", "env")
+
+
+class SttGemini(TypedDict):
+    configured: bool
+    model: str
+    source: Literal["settings", "env"] | None
+
+
 class SttStatus(TypedDict):
     profile: SttProfile
     profiles: list[SttProfileInfo]
@@ -731,6 +764,7 @@ class SttStatus(TypedDict):
     cpus: int
     busy: bool
     queued: int
+    gemini: SttGemini
 
 
 def _int(value: Any) -> int:
@@ -765,6 +799,17 @@ def parse_stt_status(value: Any) -> SttStatus:
         "cpus": max(0, _int(raw.get("cpus"))),
         "busy": raw.get("busy") is True,
         "queued": max(0, _int(raw.get("queued"))),
+        "gemini": parse_stt_gemini(raw.get("gemini")),
+    }
+
+
+def parse_stt_gemini(value: Any) -> SttGemini:
+    raw = value if isinstance(value, dict) else {}
+    source = raw.get("source")
+    return {
+        "configured": raw.get("configured") is True,
+        "model": raw["model"] if isinstance(raw.get("model"), str) else "",
+        "source": source if source in GEMINI_KEY_SOURCES else None,
     }
 
 UsageReport = dict[str, Any]

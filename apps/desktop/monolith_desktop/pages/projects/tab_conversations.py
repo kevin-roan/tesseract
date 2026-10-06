@@ -1,13 +1,14 @@
+from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from gi.repository import Gtk
 
-from ...api.types import AgentRun
+from ...api.types import AgentRun, ClaudeSession
 from ...widgets.keyed_list import KeyedList
 from ...widgets.record_row import RecordRow, RowAction
 from ...widgets.list_view import ListGroup
 from .labels import CONVERSATIONS
-from .model import project_runs, run_meta, run_state, run_title
+from .model import session_meta, session_state, session_title
 
 if TYPE_CHECKING:
     from .detail import ProjectDetail
@@ -16,7 +17,8 @@ if TYPE_CHECKING:
 class ConversationsTab:
     def __init__(self, host: "ProjectDetail") -> None:
         self._host = host
-        self.runs: list[AgentRun] = []
+        self.sessions: list[ClaudeSession] = []
+        self._runs: list[AgentRun] | None = None
         self.widget = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
         self._list = KeyedList(lambda: RecordRow("agents"), self._update)
         self._list.add_css_class("divided")
@@ -25,22 +27,29 @@ class ConversationsTab:
         )
         self.widget.append(self._section)
 
-    def render(self, runs: list[AgentRun] | None) -> None:
-        if runs is None:
+    def render(self, sessions: list[ClaudeSession] | None, runs: list[AgentRun] | None) -> None:
+        if sessions is None:
             self._section.set_loading(True)
             return
         self._section.set_loading(False)
-        self.runs = project_runs(runs, self._host.project_id)
-        self._list.sync((run["id"], run) for run in self.runs)
-        self._section.set_empty(not self.runs)
-        self._section.set_count(len(self.runs))
+        self.sessions = sessions
+        self._runs = runs
+        self._list.sync((session["sessionId"], session) for session in sessions)
+        self._section.set_empty(not sessions)
+        self._section.set_count(len(sessions))
 
-    def _update(self, row: RecordRow, run: AgentRun) -> None:
-        label, tone = run_state(run)
-        row.set_content(run_title(run), None, run_meta(run))
+    def _update(self, row: RecordRow, session: ClaudeSession) -> None:
+        label, tone = session_state(session, self._runs)
+        row.set_content(session_title(session), session.get("preview"), session_meta(session))
         row.set_status(label, tone, glyph=True)
-        row.set_actions([RowAction("open", "forward", CONVERSATIONS["open"], lambda: self._open(run))])
-        row.set_on_activate(lambda: self._open(run))
+        target = self._target(session)
+        row.set_actions([RowAction("open", "forward", CONVERSATIONS["open"], target)] if target else [])
+        row.set_on_activate(target)
 
-    def _open(self, run: AgentRun) -> None:
-        self._host.ctx.navigate("agents", {"runId": run["id"]})
+    def _target(self, session: ClaudeSession) -> Callable[[], None] | None:
+        navigate = self._host.ctx.navigate
+        if session.get("agentRunId"):
+            return lambda: navigate("agents", {"runId": session["agentRunId"]})
+        if session.get("terminalId"):
+            return lambda: navigate("terminals", {"terminalId": session["terminalId"]})
+        return None

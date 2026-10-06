@@ -7,7 +7,9 @@ import { DEFAULT_ISLAND_DOCK, DEFAULT_ISLAND_PLACEMENT } from "@/features/island
 import { cornerDock, isIslandPlacement, isOrbDock } from "@/features/island/utils/placement";
 import { listStorage } from "@/features/sandbox/store/list-storage";
 
-import { DEFAULT_STT_PROVIDER, SETTINGS_STORE_NAME, SETTINGS_STORE_VERSION } from "../utils/constants";
+import type { AppearancePreference } from "../types";
+import { isAppearancePreference } from "../utils/appearance";
+import { DEFAULT_APPEARANCE, DEFAULT_STT_PROVIDER, SETTINGS_STORE_NAME, SETTINGS_STORE_VERSION } from "../utils/constants";
 import { isSttProvider } from "../utils/stt";
 
 type SettingsPrefs = {
@@ -15,6 +17,7 @@ type SettingsPrefs = {
   islandPlacement: IslandPlacement;
   islandDock: OrbDock;
   liveActivity: boolean;
+  appearance: AppearancePreference;
 };
 
 export type SettingsStore = SettingsPrefs & {
@@ -22,6 +25,7 @@ export type SettingsStore = SettingsPrefs & {
   setIslandPlacement: (islandPlacement: IslandPlacement) => void;
   setIslandDock: (islandDock: OrbDock) => void;
   setLiveActivity: (liveActivity: boolean) => void;
+  setAppearance: (appearance: AppearancePreference) => void;
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -31,21 +35,24 @@ export const useSettingsStore = create<SettingsStore>()(
       islandPlacement: DEFAULT_ISLAND_PLACEMENT,
       islandDock: DEFAULT_ISLAND_DOCK,
       liveActivity: true,
+      appearance: DEFAULT_APPEARANCE,
       setSttProvider: (sttProvider) => set({ sttProvider }),
       setIslandPlacement: (islandPlacement) =>
         set(islandPlacement === "hidden" ? { islandPlacement } : { islandPlacement, islandDock: cornerDock(islandPlacement) }),
       setIslandDock: (islandDock) => set({ islandDock }),
       setLiveActivity: (liveActivity) => set({ liveActivity }),
+      setAppearance: (appearance) => set({ appearance }),
     }),
     {
       name: SETTINGS_STORE_NAME,
       version: SETTINGS_STORE_VERSION,
       storage: createJSONStorage(() => listStorage),
-      partialize: ({ sttProvider, islandPlacement, islandDock, liveActivity }): SettingsPrefs => ({
+      partialize: ({ sttProvider, islandPlacement, islandDock, liveActivity, appearance }): SettingsPrefs => ({
         sttProvider,
         islandPlacement,
         islandDock,
         liveActivity,
+        appearance,
       }),
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<SettingsPrefs>;
@@ -55,6 +62,7 @@ export const useSettingsStore = create<SettingsStore>()(
           ...(isIslandPlacement(saved.islandPlacement) ? { islandPlacement: saved.islandPlacement } : {}),
           ...(isOrbDock(saved.islandDock) ? { islandDock: saved.islandDock } : {}),
           ...(typeof saved.liveActivity === "boolean" ? { liveActivity: saved.liveActivity } : {}),
+          ...(isAppearancePreference(saved.appearance) ? { appearance: saved.appearance } : {}),
         };
       },
     },

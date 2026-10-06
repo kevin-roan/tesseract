@@ -6,6 +6,7 @@ import {
   type ColorScheme,
   type ColorSchemeName,
   type SurfaceTone,
+  type SystemScheme,
 } from './colors';
 import { isTablet as isTabletSize, resolveBreakpoint, resolveDeviceClass } from './tokens/breakpoints';
 import { CompactHeight, GridColumns, MaxBubbleWidthRatio, MaxContentWidth, SidebarWidth } from './tokens/layout';
@@ -28,18 +29,29 @@ const ShapeFor: Record<ColorSchemeName, CornerShape> = {
   light: 'soft',
   dark: 'soft',
   graphite: 'square',
+  graphiteLight: 'square',
 };
 
-const KeyboardAppearanceFor: Record<ColorSchemeName, 'default' | 'dark'> = {
+const KeyboardAppearanceFor: Record<ColorSchemeName, 'default' | 'light' | 'dark'> = {
   light: 'default',
   dark: 'default',
   graphite: 'dark',
+  graphiteLight: 'light',
+};
+
+/** Whether a scheme is drawn light or dark; native chrome (status bar, keyboards, navigation) follows this. */
+const ModeFor: Record<ColorSchemeName, SystemScheme> = {
+  light: 'light',
+  dark: 'dark',
+  graphite: 'dark',
+  graphiteLight: 'light',
 };
 
 const TypefaceFor: Record<ColorSchemeName, Typeface> = {
   light: 'classic',
   dark: 'classic',
   graphite: 'classic',
+  graphiteLight: 'classic',
 };
 
 /** Visual language a scheme is drawn in; components branch on this, never on the typeface. */
@@ -49,6 +61,7 @@ const LookFor: Record<ColorSchemeName, Look> = {
   light: 'classic',
   dark: 'classic',
   graphite: 'graphite',
+  graphiteLight: 'graphite',
 };
 
 const WeightsFor: Record<Look, VariantWeights> = {
@@ -70,6 +83,7 @@ function buildTheme({ scheme, width, height, tone }: ThemeInput) {
 
   return {
     scheme,
+    mode: ModeFor[scheme],
     colors: (tone ? { ...Colors[scheme], ...surfaces[tone].ink } : Colors[scheme]) as ColorScheme,
     gradients: gradientsFor(scheme),
     /** Card fills, rendered by `<Surface tone="…" />`. */

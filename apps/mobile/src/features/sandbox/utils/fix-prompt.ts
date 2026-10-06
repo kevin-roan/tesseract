@@ -1,4 +1,4 @@
-import type { BuildJob, LogLine, ProcessInfo } from "@theone/protocol";
+import type { AppRun, BuildJob, LogLine, ProcessInfo } from "@theone/protocol";
 
 import { cleanLogText } from "@/components/log-view/lines";
 
@@ -25,6 +25,10 @@ export function canFixBuild(build: BuildJob): boolean {
   return build.state === "failed";
 }
 
+export function canFixAppRun(run: AppRun): boolean {
+  return run.state === "failed";
+}
+
 export function processFailure(process: ProcessInfo, lines: readonly LogLine[]): FailureContext {
   return {
     subject: `\`${process.name}\``,
@@ -38,6 +42,14 @@ export function buildFailure(build: BuildJob, lines: readonly LogLine[]): Failur
   return {
     subject: `The ${buildTargetLabel(build.target)} ${buildProfileLabel(build.profile).toLowerCase()} build`,
     error: build.error,
+    lines,
+  };
+}
+
+export function appRunFailure(run: AppRun, label: string, lines: readonly LogLine[]): FailureContext {
+  return {
+    subject: `Running the app on ${label} (\`${run.target}\`${run.dir ? ` in \`${run.dir}\`` : ""})`,
+    error: run.error,
     lines,
   };
 }

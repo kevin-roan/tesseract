@@ -13,6 +13,7 @@ import {
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { monolithInk } from "@/features/home/utils/monolith";
 
 import { MONOLITH, monolithPaths } from "./monolith-geometry";
 import { SCENE_LOOP, frac, sparkState, useSceneClock } from "./scene-clock";
@@ -46,7 +47,8 @@ const Mote = ({ t, cx: center, offset, loops, phase, size, color }: MoteProps) =
  * of light follows it up the faces, and dust drifts slowly around it.
  */
 const Monolith = () => {
-  const { colors } = useAppTheme();
+  const theme = useAppTheme();
+  const ink = useMemo(() => monolithInk(theme), [theme]);
   const { width } = useWindowDimensions();
   const CX = width / 2;
   const { lit, shade, litRoof, shadeRoof, tip, shoulderY, left, right } = useMemo(
@@ -72,7 +74,7 @@ const Monolith = () => {
   return (
     <Canvas style={{ width, height }}>
       {MOTES.map(([offset, loops, phase, size], index) => (
-        <Mote key={index} t={t} cx={CX} offset={offset} loops={loops} phase={phase} size={size} color={colors.text} />
+        <Mote key={index} t={t} cx={CX} offset={offset} loops={loops} phase={phase} size={size} color={ink.ink} />
       ))}
       <Group layer>
         {/* Lit face: bright under the roof, settling to satin grey, rounded off toward its outer edge. */}
@@ -80,7 +82,7 @@ const Monolith = () => {
           <LinearGradient
             start={{ x: 0, y: tipY }}
             end={{ x: 0, y: height }}
-            colors={[colors.text, colors.textSecondary, colors.textTertiary]}
+            colors={ink.face}
             positions={[0, 0.35, 1]}
           />
         </Path>
@@ -88,17 +90,17 @@ const Monolith = () => {
           <LinearGradient
             start={{ x: left, y: 0 }}
             end={{ x: CX, y: 0 }}
-            colors={["rgba(0, 0, 0, 0.22)", "rgba(0, 0, 0, 0)", "rgba(255, 255, 255, 0.08)"]}
+            colors={ink.faceShade}
             positions={[0, 0.6, 1]}
           />
         </Path>
         {/* Shaded face: darker than the screen, with a faint sky reflection near the top. */}
-        <Path path={shade} color="rgba(0, 0, 0, 0.72)" />
+        <Path path={shade} color={ink.shade} />
         <Path path={shade}>
           <LinearGradient
             start={{ x: right, y: shoulderY }}
             end={{ x: CX, y: shoulderY + body * 0.6 }}
-            colors={["rgba(255, 255, 255, 0.09)", "rgba(255, 255, 255, 0)"]}
+            colors={ink.shadeSheen}
           />
         </Path>
         {/* Stone grain, like the splash. */}
@@ -110,7 +112,7 @@ const Monolith = () => {
           <LinearGradient
             start={bandStart}
             end={bandEnd}
-            colors={["transparent", colors.text, "transparent"]}
+            colors={["transparent", ink.glow, "transparent"]}
             positions={[0, 0.5, 1]}
             mode="decal"
           />
@@ -120,7 +122,7 @@ const Monolith = () => {
           <LinearGradient
             start={{ x: CX, y: tipY }}
             end={{ x: CX, y: tipY + body * 0.7 }}
-            colors={["rgba(255, 255, 255, 0.55)", "rgba(255, 255, 255, 0)"]}
+            colors={ink.ridge}
           />
         </Rect>
         {/* Silhouette edge of the shaded face against the screen. */}
@@ -128,25 +130,25 @@ const Monolith = () => {
           <LinearGradient
             start={{ x: right, y: shoulderY }}
             end={{ x: right, y: shoulderY + body * 0.5 }}
-            colors={["rgba(255, 255, 255, 0.18)", "rgba(255, 255, 255, 0)"]}
+            colors={ink.edge}
           />
         </Rect>
         <Group opacity={sparkOpacity}>
           <Rect x={CX - 1} y={tipY} width={2} height={body}>
-            <LinearGradient start={trailStart} end={trailEnd} colors={["transparent", colors.text]} mode="decal" />
+            <LinearGradient start={trailStart} end={trailEnd} colors={["transparent", ink.glow]} mode="decal" />
             <BlurMask blur={1.5} style="solid" />
           </Rect>
-          <Circle cx={CX} cy={sparkY} r={2} color={colors.text}>
+          <Circle cx={CX} cy={sparkY} r={2} color={ink.glow}>
             <BlurMask blur={3} style="solid" />
           </Circle>
         </Group>
         <Group opacity={litRoofOpacity}>
-          <Path path={litRoof} style="stroke" strokeWidth={1} color={colors.text}>
+          <Path path={litRoof} style="stroke" strokeWidth={1} color={ink.ink}>
             <BlurMask blur={0.6} style="solid" />
           </Path>
         </Group>
         <Group opacity={shadeRoofOpacity}>
-          <Path path={shadeRoof} style="stroke" strokeWidth={1} color={colors.text} />
+          <Path path={shadeRoof} style="stroke" strokeWidth={1} color={ink.ink} />
         </Group>
         {/* Sinks the base into the screen, like the splash. */}
         <Rect x={0} y={0} width={width} height={height} blendMode="dstIn">

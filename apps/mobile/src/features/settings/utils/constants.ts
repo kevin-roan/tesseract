@@ -11,16 +11,23 @@ import {
   CpuIcon,
   CursorClickIcon,
   EyeSlashIcon,
+  DeviceMobileIcon,
   HandPointingIcon,
+  MoonIcon,
+  SunIcon,
   type Icon,
 } from "phosphor-react-native";
 
 import type { ChoiceOption } from "@/components/choice-group";
 import type { IslandPlacement } from "@/features/island/types";
 
+import type { AppearancePreference } from "../types";
+
 export const SETTINGS_STORE_NAME = "theone.settings";
 export const SETTINGS_STORE_VERSION = 1;
 export const DEFAULT_STT_PROVIDER: SttProvider = "gemini";
+export const DEFAULT_APPEARANCE: AppearancePreference = "dark";
+export const APPEARANCE_PREFERENCES = ["system", "light", "dark"] as const satisfies readonly AppearancePreference[];
 
 export const STT_PROVIDER_ICONS: Record<SttProvider, Icon> = { gemini: CloudIcon, native: CpuIcon };
 
@@ -30,6 +37,12 @@ export const STT_PROFILE_LABELS: Record<SttProfile, string> = {
   balanced: "Balanced",
   performance: "Performance",
 };
+
+export const APPEARANCE_OPTIONS: ChoiceOption[] = [
+  { id: "system", label: "System", icon: DeviceMobileIcon },
+  { id: "light", label: "Light", icon: SunIcon },
+  { id: "dark", label: "Dark", icon: MoonIcon },
+] satisfies (ChoiceOption & { id: AppearancePreference })[];
 
 export const INPUT_MODE_OPTIONS: ChoiceOption[] = [
   { id: "trackpad", label: "Trackpad", icon: CursorClickIcon },
@@ -63,7 +76,16 @@ export const SETTINGS_COPY = {
   nativeLabel: "Native",
   nativeDetail: "whisper.cpp on the sandbox. Private, runs on the sandbox CPU.",
   geminiMissingTitle: "Gemini isn't set up",
-  geminiMissing: "GEMINI_API_KEY isn't set on the sandbox, so voice messages use Native transcription.",
+  geminiMissing: "Add a Gemini API key below, otherwise voice messages use Native transcription.",
+  geminiKeyLabel: "Gemini API key",
+  geminiKeyPlaceholder: "AIza…",
+  geminiKeyHint: {
+    settings: "A key is saved on the sandbox. Paste a new one to replace it.",
+    env: "Using GEMINI_API_KEY from the sandbox. A key saved here takes priority.",
+    none: "Stored on the sandbox and shared with the desktop app. Get one at aistudio.google.com.",
+  },
+  geminiKeySave: "Save key",
+  geminiKeyRemove: "Remove",
   profileTitle: "Native engine",
   profileFootnote: "How much of the sandbox CPU whisper.cpp may use.",
   profileOff: "Native transcription is turned off",
@@ -72,6 +94,9 @@ export const SETTINGS_COPY = {
   saving: "Saving…",
   sttFailed: "Couldn't load the speech-to-text settings",
   retry: "Try again",
+  appearanceTitle: "Appearance",
+  appearanceLabel: "Theme",
+  appearanceFootnote: "System follows the light or dark setting of this device.",
   sandboxTitle: "Sandbox",
   hubTitle: "Sandbox hub",
   hubSubtitle: "Projects, runs and builds",

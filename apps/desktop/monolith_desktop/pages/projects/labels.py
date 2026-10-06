@@ -142,10 +142,14 @@ DETAIL = MappingProxyType({
 })
 
 EMULATOR = MappingProxyType({
-    "run": "Run on emulator",
+    "run": "Open on emulator",
     "show": "Show emulator",
     "tooltip": "Build the app and install it on the host Android emulator",
     "tooltip_dir": "Build the app in {dir} and install it on the host Android emulator",
+    "tooltip_setup": "{reason}. Monolith starts and links the emulator on this computer first",
+    "no_target": "No Android app was detected in this project",
+    "outdated": "This sandbox can't run apps on the emulator yet; update the sandbox",
+    "no_targets": "Couldn't read the project's run targets: {error}",
     "unavailable": "Can't run on the emulator: {reason}",
     "started": "Building for the emulator; the app opens there when the build finishes",
     "failed": "Couldn't run on the emulator: {error}",
@@ -153,6 +157,33 @@ EMULATOR = MappingProxyType({
     "no_scrcpy": "The app runs on the emulator; install scrcpy to see its screen here",
     "viewer_failed": "Couldn't show the emulator: {error}",
     "title": "{name} · Android emulator",
+    "host_stopped": "The host shell isn't running, so Monolith can't start the emulator. Turn on Serve host shell in Preferences.",
+    "host_loading": "Monolith is still reading the host shell settings; try again in a moment.",
+    "host_no_pin": "Set a host shell PIN in Preferences so Monolith can start the emulator.",
+    "host_unavailable": "The host can't run the Android emulator",
+    "host_failed": "The host shell couldn't prepare the emulator: {error}",
+    "preferences": "Preferences",
+    "isolation_off": "The host shell runs with THEONE_EMULATOR_ISOLATION=none, so the sandbox may not use its emulator",
+    "stopping": "The emulator is stopping; try again in a moment",
+    "no_avd": "This computer has no Android virtual device; create one in Android Studio",
+    "emulator_failed": "The emulator failed: {error}",
+    "stop_timeout": "The emulator did not stop in time",
+    "boot_timeout": "The emulator did not boot within {minutes} minutes",
+    "target_timeout": "The sandbox did not pick up the emulator within {seconds} seconds",
+    "progress": MappingProxyType({
+        "checking": "Checking the emulator…",
+        "stopping": "Stopping the emulator…",
+        "starting": "Starting the emulator…",
+        "linking": "Linking the emulator to the sandbox…",
+        "booting": "Waiting for the emulator…",
+    }),
+    "restart_title": "Restart the emulator isolated?",
+    "restart_body": "The running emulator was started outside Monolith, so the sandbox may not use it. Monolith stops it and starts {avd} in an isolated network.",
+    "restart_confirm": "Restart",
+    "relink_title": "Link this sandbox instead?",
+    "relink_body": "The host emulator is linked to {url}. Linking it to this sandbox ends that link.",
+    "relink_confirm": "Link",
+    "cancel": "Cancel",
 })
 
 CLAUDE_ACCOUNT = MappingProxyType({
@@ -169,7 +200,7 @@ TABS = MappingProxyType({
     "processes": "Processes",
     "builds": "Builds",
     "artifacts": "Artifacts",
-    "conversations": "Conversations",
+    "conversations": "Chats",
 })
 
 PROCESSES = MappingProxyType({
@@ -232,10 +263,13 @@ ARTIFACTS = MappingProxyType({
 })
 
 CONVERSATIONS = MappingProxyType({
-    "list": "Claude runs",
-    "list_empty": "No Claude runs for this project yet.",
-    "new": "New conversation",
-    "open": "Open conversation",
+    "list": "Chats",
+    "list_empty": "No chats about this project yet.",
+    "new": "New chat",
+    "open": "Open chat",
+    "untitled": "Untitled chat",
+    "active": "Active",
+    "sources": MappingProxyType({"agent-run": "Agent run", "terminal": "Terminal", "cli": "Claude Code"}),
 })
 
 LOGS = MappingProxyType({
@@ -369,9 +403,6 @@ SYNC = MappingProxyType({
     "requests": "Recent requests",
     "requests_empty": "No sync requests yet.",
     "request_meta": "from {source} · {when}",
-    "confirm_title": "Sync {count} to {path}?",
-    "confirm_body": "A snapshot is taken first, so you can undo this with Revert last sync.\n\n{files}",
-    "confirm_conflicts": "{count} of them changed on this computer since the push and will be overwritten.\n\n",
     "confirm": "Sync",
     "confirm_force": "Overwrite and Sync",
     "cancel": "Cancel",
@@ -429,3 +460,26 @@ SYNC_STATES = MappingProxyType({
 SYNC_KINDS = MappingProxyType({"pull": "Sync to host", "revert": "Revert", "get": "Sync from host"})
 
 SYNC_CODES = MappingProxyType({"added": ("A", "success"), "modified": ("M", "warning"), "deleted": ("D", "danger")})
+
+SYNC_REVIEW = MappingProxyType({
+    "title": "Review sync to host",
+    "destination": "Into {path}",
+    "stats": "{count} · {size}",
+    "filter": "Filter files",
+    "no_match": "No files match",
+    "conflicts": "{count} changed on this computer since the push and will be overwritten.",
+    "select": "Select a file to see what changes on the host",
+    "loading": "Loading the diff…",
+    "added": "New file",
+    "modified": "Modified",
+    "deleted": "Deleted on the host",
+    "lines": "+{added} −{removed}",
+    "binary": "Binary file, {before} → {after}",
+    "too_large": "Too large to preview ({size})",
+    "identical": "Same content as the host copy",
+    "empty": "Empty file",
+    "truncated": "Diff cut off after {count} lines",
+    "failed": "Couldn't load the diff: {error}",
+    "absent": "none",
+    "snapshot": "A snapshot is taken first, so Revert can undo this.",
+})

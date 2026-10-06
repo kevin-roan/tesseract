@@ -398,3 +398,40 @@ def test_notifications_and_labels_know_get():
     assert SYNC_KINDS["get"] == "Sync from host"
     assert notification_kind({"kind": "get"}) == "get" and notification_kind({"kind": "other"}) == "pull"
     assert SYNC_BACK["get_done"].format(project="demo") == "Sent demo changes to the sandbox"
+
+
+def test_host_changes_lists_what_a_get_would_bring_in(tmp_path):
+    from monolith_desktop.syncback.manifest import DigestCache, build_manifest
+
+    host = tmp_path / "host"
+    write(host, "same.txt", "a")
+    write(host, "edited.txt", "a")
+    write(host, "gone.txt", "a")
+    link = Link(PROJECT, str(host), PUSHED_AT, build_manifest(host, ["same.txt", "edited.txt", "gone.txt"]))
+    digests = DigestCache()
+    assert get_module.host_changes(link, digests) == []
+    write(host, "edited.txt", "b")
+    write(host, "new.txt", "a")
+    (host / "gone.txt").unlink()
+    assert get_module.host_changes(link, digests) == ["edited.txt", "gone.txt", "new.txt"]
+
+
+def test_host_changes_is_empty_when_the_host_folder_is_missing(tmp_path):
+    link = Link(PROJECT, str(tmp_path / "missing"), PUSHED_AT, {"a.txt": "0" * 64})
+    assert get_module.host_changes(link) == []
+
+
+def test_digest_cache_rehashes_only_files_whose_stat_changed(tmp_path, monkeypatch):
+    from monolith_desktop.syncback import manifest
+
+    write(tmp_path, "a.txt", "one")
+    hashed = []
+    real = manifest.hash_path
+    monkeypatch.setattr(manifest, "hash_path", lambda path: hashed.append(path) or real(path))
+    digests = manifest.DigestCache()
+    first = digests(tmp_path / "a.txt")
+    assert digests(tmp_path / "a.txt") == first and len(hashed) == 1
+    write(tmp_path, "a.txt", "two!")
+    assert digests(tmp_path / "a.txt") != first and len(hashed) == 2
+    (tmp_path / "a.txt").unlink()
+    assert digests(tmp_path / "a.txt") is None

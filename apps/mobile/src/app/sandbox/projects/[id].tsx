@@ -7,6 +7,7 @@ import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
 import Section from "@/components/section";
+import ChatList from "@/features/chats/components/chat-list";
 import AppRunsSection from "@/features/app-runs/components/app-runs-section";
 import ProjectClaudeAccount from "@/features/claude-account/components/project-claude-account";
 import ArtifactCard from "@/features/sandbox/components/artifact-card";
@@ -82,6 +83,28 @@ export default function ProjectScreen() {
       ) : null}
 
       <MotionItem index={1}>
+        <Section
+          title={PROJECT_COPY.sections.chats}
+          actionLabel={PROJECT_COPY.allChats}
+          onPressAction={detail.chats.viewAll}
+          isEmpty={!detail.chats.loading && !detail.chats.error && detail.chats.items.length === 0}
+          emptyLabel={PROJECT_COPY.empty.chats}
+          emptyActionLabel={PROJECT_COPY.newChat}
+          onEmptyAction={detail.chats.newChat}
+          testID="project-chats"
+        >
+          <ChatList
+            items={detail.chats.items}
+            loading={detail.chats.loading}
+            error={detail.chats.error}
+            onRetry={detail.chats.retry}
+            onOpen={detail.chats.open}
+            projectName={() => null}
+          />
+        </Section>
+      </MotionItem>
+
+      <MotionItem index={1}>
         <SyncSection sync={detail.sync} />
       </MotionItem>
 
@@ -114,6 +137,8 @@ export default function ProjectScreen() {
           logsOpen={(id) => detail.logsOpen(id, "app")}
           onToggleLogs={(id) => detail.toggleLogs(id, "app")}
           logs={logView}
+          onFix={(run, label) => void detail.fixAppRun(run, label)}
+          fixingId={detail.fixingId}
         />
       </MotionItem>
 
@@ -128,6 +153,7 @@ export default function ProjectScreen() {
               script={script}
               command={command}
               preferDisplay={detail.preferDisplay}
+              offerDisplay={detail.offerDisplay}
               onRun={(display) => detail.runScript(script, display)}
               onShowDisplay={detail.nav.display}
               running={detail.runningScript === script}

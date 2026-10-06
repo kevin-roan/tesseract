@@ -34,6 +34,9 @@ export function sttProviderRows(selected: SttProvider, status: SttStatus | undef
 export const geminiUnavailable = (selected: SttProvider, status: SttStatus | undefined): boolean =>
   selected === "gemini" && status !== undefined && !status.gemini.configured;
 
+export const geminiKeyHint = (status: SttStatus): string =>
+  SETTINGS_COPY.geminiKeyHint[status.gemini.source ?? "none"];
+
 export function sttProfileRows(status: SttStatus, pending: SttProfile | null): ChoiceRow[] {
   return status.profiles.map((profile) => ({
     id: profile.id,

@@ -511,6 +511,10 @@ export class Repositories {
       .run(key, value, at);
   }
 
+  deleteSetting(key: string): void {
+    this.db.query("DELETE FROM settings WHERE key = ?").run(key);
+  }
+
   markConfidential(projectId: string, at: string): void {
     this.db.query("INSERT INTO confidential_projects (project_id, marked_at) VALUES (?, ?) ON CONFLICT(project_id) DO NOTHING").run(projectId, at);
   }

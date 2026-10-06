@@ -8,7 +8,7 @@ export function useNavigationTheme(): NavigationTheme {
   const theme = useAppTheme();
 
   return useMemo(() => {
-    const base = theme.scheme === 'light' ? DefaultTheme : DarkTheme;
+    const base = theme.mode === 'light' ? DefaultTheme : DarkTheme;
     return {
       ...base,
       colors: {

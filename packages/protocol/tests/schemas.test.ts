@@ -202,6 +202,11 @@ describe("response schemas reject bad payloads", () => {
     rejects(UpdateSttSchema, { profile: "max" });
     rejects(UpdateSttSchema, {});
     expect(UpdateSttSchema.parse({ profile: "balanced" })).toEqual({ profile: "balanced" });
+    rejects(UpdateSttSchema, { geminiApiKey: "  " });
+    rejects(UpdateSttSchema, { geminiApiKey: "AIza key" });
+    expect(UpdateSttSchema.parse({ geminiApiKey: " AIzaSyX \n" })).toEqual({ geminiApiKey: "AIzaSyX" });
+    expect(UpdateSttSchema.parse({ geminiApiKey: null })).toEqual({ geminiApiKey: null });
+    rejects(SttStatusSchema, { ...sampleSttStatus, gemini: { ...sampleSttStatus.gemini, source: "file" } });
   });
   test("missing required fields", () => {
     const { artifacts: _artifacts, ...withoutArtifacts } = sampleBuild;

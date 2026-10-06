@@ -13,6 +13,7 @@ from ...api.types import (
     Artifact,
     BuildJob,
     ClaudeAccountList,
+    ClaudeSession,
     GitFileStatus,
     GitSummary,
     ListeningPort,
@@ -22,10 +23,10 @@ from ...api.types import (
     SyncDiscardResult,
     SyncFileChange,
     SyncRequest,
-    run_total_tokens,
 )
 from ...syncback.errors import SyncBackError
-from ...syncback.manifest import resolve_inside
+from ...syncback.get import host_changes
+from ...syncback.manifest import DigestCache, resolve_inside
 from ...syncback.pull import is_conflict as file_conflicts
 from ...syncback.state import Link, Snapshot, SyncState
 from ...syncback.summary import plural
@@ -47,6 +48,7 @@ from .labels import (
     BUILDS,
     CLAUDE_ACCOUNT,
     CONFIDENTIAL,
+    CONVERSATIONS,
     CREATE,
     DEFAULT_PACKAGE_MANAGER,
     FRAMEWORKS,
@@ -442,8 +444,8 @@ def project_artifacts(artifacts: Iterable[Artifact] | None, project_id: str) -> 
     return newest_first(for_project(artifacts, project_id), lambda a: a.get("createdAt"))
 
 
-def project_runs(runs: Iterable[AgentRun] | None, project_id: str) -> list[AgentRun]:
-    return newest_first(for_project(runs, project_id), lambda r: r.get("startedAt"))
+def project_run_ids(runs: Iterable[AgentRun] | None, project_id: str) -> set[str]:
+    return {run["id"] for run in for_project(runs, project_id)}
 
 
 def project_ports(ports: Iterable[ListeningPort] | None, project_id: str) -> list[ListeningPort]:
@@ -664,12 +666,23 @@ def build_meta(build: BuildJob, now: float | None = None) -> str:
     return join_meta(*parts)
 
 
-def run_title(run: AgentRun) -> str:
-    return " ".join((run.get("prompt") or "").split()) or run["id"]
+def session_title(session: ClaudeSession) -> str:
+    return " ".join((session.get("title") or "").split()) or CONVERSATIONS["untitled"]
 
 
-def run_meta(run: AgentRun, now: float | None = None) -> str:
-    return join_meta(format_relative_time(run.get("startedAt"), now), format_tokens(run_total_tokens(run)), run.get("error"))
+def session_meta(session: ClaudeSession, now: float | None = None) -> str:
+    return join_meta(
+        CONVERSATIONS["sources"].get(session.get("source") or ""),
+        format_relative_time(session.get("lastActiveAt"), now),
+        format_tokens((session.get("usage") or {}).get("totalTokens")),
+    )
+
+
+def session_state(session: ClaudeSession, runs: Iterable[AgentRun] | None) -> tuple[str | None, Tone]:
+    run = next((r for r in runs or [] if r["id"] == session.get("agentRunId")), None)
+    if run is not None:
+        return run_state(run)
+    return (CONVERSATIONS["active"], "success") if session.get("active") else (None, "neutral")
 
 
 def running_count(processes: Iterable[ProcessInfo] | None) -> int:
@@ -716,6 +729,8 @@ class SyncView:
     snapshots: tuple[Snapshot, ...] = ()
     conflicts: frozenset[str] = frozenset()
     error: BaseException | None = field(default=None, compare=False)
+    host_files: tuple[str, ...] = ()
+    """Host files changed since the last push/get, which a get would bring into the sandbox."""
 
     @property
     def files(self) -> list[SyncFileChange]:
@@ -779,7 +794,12 @@ def discard_summary(result: SyncDiscardResult) -> tuple[str, Tone]:
     return "\n".join(lines), "warning" if unavailable or not discarded else "success"
 
 
-def load_sync_view(client: Any, state: SyncState, project_id: str) -> SyncView:
+def sync_waiting(view: SyncView) -> dict[str, bool]:
+    """Whether each direction has changes waiting, so its button should stand out."""
+    return {"pull": bool(view.files), "get": bool(view.host_files)}
+
+
+def load_sync_view(client: Any, state: SyncState, project_id: str, digests: DigestCache | None = None) -> SyncView:
     link = state.link(project_id)
     snapshots = tuple(state.snapshots(project_id))
     try:
@@ -797,4 +817,8 @@ def load_sync_view(client: Any, state: SyncState, project_id: str) -> SyncView:
                 conflicts.add(change["path"])
         except SyncBackError:
             conflicts.add(change["path"])
-    return SyncView(link, changes, requests, snapshots, frozenset(conflicts))
+    try:
+        host_files = tuple(host_changes(link, digests))
+    except (OSError, SyncBackError):
+        host_files = ()
+    return SyncView(link, changes, requests, snapshots, frozenset(conflicts), host_files=host_files)

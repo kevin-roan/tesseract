@@ -6,13 +6,15 @@ from gi.repository import Gtk
 from ...api.client import ControllerClient
 from ...api.errors import describe_error
 from ...api.types import SyncDiscardResult
+from ...syncback.manifest import DigestCache
 from ...syncback.summary import plural
 from ...theme.tone import Tone
 from ...widgets.buttons import ActionButton
 from ...widgets.confirm_dialog import confirm
 from ...widgets.lifecycle import while_mapped
 from .labels import SYNC, SYNC_HINTS
-from .model import SyncView, discard_summary, listed_paths, load_sync_view, sync_blockers
+from .model import SyncView, discard_summary, listed_paths, load_sync_view, sync_blockers, sync_waiting
+from .sync_review import SyncReviewDialog
 
 if TYPE_CHECKING:
     from ...context import AppContext
@@ -22,7 +24,8 @@ class SyncActions:
     """Sync to host / Sync from host / Revert / Discard for one project, with the sync view they act on.
 
     Polls the project's `SyncView` while `anchor` is mapped (and on every sync-back revision) and keeps
-    each button disabled, with the reason as its tooltip, while its action can't run.
+    each button disabled, with the reason as its tooltip, while its action can't run. Sync to host and Sync from
+    host stand out while their direction has changes waiting.
     """
 
     def __init__(
@@ -46,6 +49,7 @@ class SyncActions:
         self._pending = False
         self.view = SyncView()
         self.loaded = False
+        self._digests = DigestCache()
         self.buttons = {
             "pull": ActionButton(SYNC["sync"], lambda: self._activate(self._confirm_pull), "primary", "sync-to-host"),
             "get": ActionButton(SYNC["get"], lambda: self._activate(self._confirm_get), "secondary", "sync-from-host"),
@@ -66,6 +70,7 @@ class SyncActions:
         self._project_id = project_id
         self.view = SyncView()
         self.loaded = False
+        self._digests = DigestCache()
         self.render()
         if self._on_view:
             self._on_view(self.view)
@@ -84,10 +89,16 @@ class SyncActions:
         project_id = self._project_id
         busy = project_id in self._service.busy.value
         blockers = sync_blockers(self.view, busy)
+        waiting = sync_waiting(self.view)
         for kind, button in self.buttons.items():
             reason = blockers[kind]
-            button.set_sensitive(project_id is not None and reason is None and not self._pending)
+            sensitive = project_id is not None and reason is None and not self._pending
+            button.set_sensitive(sensitive)
             button.set_tooltip_text(reason or SYNC_HINTS[kind])
+            if sensitive and waiting.get(kind, False):
+                button.add_css_class("to-attention")
+            else:
+                button.remove_css_class("to-attention")
 
     def _attach(self) -> Callable[[], None]:
         detach = [
@@ -100,7 +111,7 @@ class SyncActions:
         project_id = self._project_id
         if project_id is None:
             return None, SyncView()
-        return project_id, load_sync_view(client, self._service.state, project_id)
+        return project_id, load_sync_view(client, self._service.state, project_id, self._digests)
 
     def _loaded(self, loaded: tuple[str | None, SyncView]) -> None:
         project_id, view = loaded
@@ -129,23 +140,12 @@ class SyncActions:
             self._ctx.toast(message.split("\n", 1)[0])
 
     def _confirm_pull(self) -> None:
-        view = self.view
-        if view.link is None or not view.files:
+        project_id, view = self._project_id, self.view
+        if project_id is None or view.link is None or not view.files:
             return
-        paths = [change["path"] for change in view.files]
-        conflicts = [path for path in paths if path in view.conflicts]
-        body = SYNC["confirm_body"].format(files=listed_paths(paths))
-        if conflicts:
-            body = SYNC["confirm_conflicts"].format(count=plural(len(conflicts), "file")) + body
-        confirm(
-            self._ctx.window,
-            SYNC["confirm_title"].format(count=plural(len(paths), "file"), path=view.link.host_path),
-            body,
-            SYNC["confirm_force"] if conflicts else SYNC["confirm"],
-            SYNC["cancel"],
-            lambda: self._submit("pull", bool(conflicts), paths),
-            destructive=bool(conflicts),
-        )
+        SyncReviewDialog(
+            self._ctx, project_id, view, lambda force, paths: self._submit("pull", force, paths)
+        ).present(self._ctx.window)
 
     def _confirm_get(self) -> None:
         view = self.view

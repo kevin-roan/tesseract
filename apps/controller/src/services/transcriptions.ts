@@ -2,7 +2,7 @@ import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { availableParallelism, tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { STT_PROFILES, type CreateTranscription, type SttEngineName, type SttProfile, type SttStatus, type Transcription } from "@theone/protocol";
+import { STT_PROFILES, type CreateTranscription, type SttEngineName, type SttProfile, type SttStatus, type Transcription, type UpdateStt } from "@theone/protocol";
 import { badRequest, errorMessage, HttpError, unavailable } from "../core/errors";
 import type { EventHub } from "../core/events";
 import { resolveExecutable, run, type RunResult } from "../core/exec";
@@ -261,7 +261,7 @@ const GEMINI_MIME_TYPES: Record<string, string> = {
   "audio/wave": "audio/wav",
 };
 const GEMINI_KEY_ERRORS = /API_KEY_INVALID|API_KEY_EXPIRED/;
-export const GEMINI_KEY_MISSING = "Gemini API key is not set (GEMINI_API_KEY)";
+export const GEMINI_KEY_MISSING = "Gemini API key is not set (save one in the mobile or desktop app, or set GEMINI_API_KEY)";
 
 type GeminiResponse = { candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }>; promptFeedback?: { blockReason?: unknown } };
 
@@ -374,12 +374,15 @@ export function selectEngine(
 }
 
 const PROFILE_SETTING = "stt.profile";
+const GEMINI_KEY_SETTING = "stt.geminiApiKey";
 
 const isSttProfile = (value: string | null): value is SttProfile => STT_PROFILES.includes(value as SttProfile);
 
 /** Runs one transcription at a time (FIFO) under the selected resource profile. */
 export class TranscriptionService {
   private profile: SttProfile;
+  /** Saved from an app through `PUT /v1/stt`; wins over GEMINI_API_KEY. */
+  private geminiKey: string | null;
   private busy = false;
   private queued = 0;
   private tail: Promise<void> = Promise.resolve();
@@ -394,6 +397,7 @@ export class TranscriptionService {
   ) {
     const stored = repos.setting(PROFILE_SETTING);
     this.profile = isSttProfile(stored) ? stored : config.stt.profile;
+    this.geminiKey = repos.setting(GEMINI_KEY_SETTING) || null;
   }
 
   status(): SttStatus {
@@ -419,20 +423,37 @@ export class TranscriptionService {
       cpus,
       busy: this.busy,
       queued: this.queued,
-      gemini: { configured: Boolean(this.config.stt.geminiApiKey), model: this.config.stt.geminiModel },
+      gemini: {
+        configured: this.geminiApiKey() !== null,
+        model: this.config.stt.geminiModel,
+        source: this.geminiKey ? "settings" : this.config.stt.geminiApiKey ? "env" : null,
+      },
     };
   }
 
-  setProfile(profile: SttProfile): SttStatus {
-    const changed = profile !== this.profile;
-    this.profile = profile;
-    this.repos.saveSetting(PROFILE_SETTING, profile, nowIso());
-    const status = this.status();
-    if (changed) {
-      this.logger.info("speech-to-text profile changed", { profile });
-      this.hub.publish({ type: "stt.updated", stt: status });
+  update(body: UpdateStt): SttStatus {
+    let changed = false;
+    const at = nowIso();
+    if (body.profile !== undefined) {
+      changed ||= body.profile !== this.profile;
+      this.profile = body.profile;
+      this.repos.saveSetting(PROFILE_SETTING, body.profile, at);
+      this.logger.info("speech-to-text profile set", { profile: body.profile });
     }
+    if (body.geminiApiKey !== undefined) {
+      changed ||= body.geminiApiKey !== this.geminiKey;
+      this.geminiKey = body.geminiApiKey;
+      if (body.geminiApiKey === null) this.repos.deleteSetting(GEMINI_KEY_SETTING);
+      else this.repos.saveSetting(GEMINI_KEY_SETTING, body.geminiApiKey, at);
+      this.logger.info(body.geminiApiKey === null ? "gemini api key removed" : "gemini api key saved");
+    }
+    const status = this.status();
+    if (changed) this.hub.publish({ type: "stt.updated", stt: status });
     return status;
+  }
+
+  private geminiApiKey(): string | null {
+    return this.geminiKey ?? this.config.stt.geminiApiKey;
   }
 
   async transcribe(input: CreateTranscription): Promise<Transcription> {
@@ -441,7 +462,8 @@ export class TranscriptionService {
     const audio: AudioInput = { path, name: upload.name, mimeType: upload.mimeType, language: normalizeLanguage(input.language) };
     let fallbackReason: string | null = null;
     if (input.provider === "gemini") {
-      const { geminiApiKey, geminiModel } = this.config.stt;
+      const geminiApiKey = this.geminiApiKey();
+      const { geminiModel } = this.config.stt;
       if (!geminiApiKey) fallbackReason = GEMINI_KEY_MISSING;
       else {
         const fetchImpl = this.options.fetch ?? ((url: string, init: RequestInit) => fetch(url, init));

@@ -135,6 +135,15 @@ describe("resource cards", () => {
     expect(onRun.mock.calls).toEqual([[false], [true]]);
   });
 
+  it("offers no display for a project that opens its app on the emulator", async () => {
+    const onRun = jest.fn();
+    await render(<ScriptCard script="start" command="npm run start" preferDisplay offerDisplay={false} onRun={onRun} />);
+
+    expect(screen.queryByLabelText("Run on display")).toBeNull();
+    await fireEvent.press(screen.getByLabelText("Run start"));
+    expect(onRun).toHaveBeenCalledWith(false);
+  });
+
   it("jumps to the display while a script runs on it", async () => {
     const onShowDisplay = jest.fn();
     const run = { ...sampleProcess, display: true, state: "running" as const, exitCode: null };

@@ -310,7 +310,9 @@ The whisper.cpp default keeps voice notes on the machine; a paid API is only cal
 A resource profile keeps transcription from slowing the host. `GET /v1/stt` reports it,
 `PUT /v1/stt { profile }` switches it at runtime (stored in the `settings` table, key
 `stt.profile`; `THEONE_STT_PROFILE`, default `eco`, applies until then) and publishes
-`stt.updated`. `cpus` is `os.availableParallelism()` capped by the cgroup v2 `cpu.max` quota.
+`stt.updated`. The same request takes `geminiApiKey` (string to save, `null` to forget): the mobile
+and desktop apps set the Gemini key this way, stored under `stt.geminiApiKey` and preferred over
+`GEMINI_API_KEY`; `GET /v1/stt` only reports `gemini.configured` and `gemini.source`. `cpus` is `os.availableParallelism()` capped by the cgroup v2 `cpu.max` quota.
 
 | Profile | Model | Threads (`-t`) | Priority |
 |---|---|---|---|

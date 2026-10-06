@@ -16,12 +16,14 @@ export const Palette = {
   paper: '#FAF9F5',
 
   /**
-   * Neutral greys for the graphite scheme: 950 is the canvas, 900–800 card
-   * and control fills, 700–500 hairlines and quiet ink, 400–100 readable ink.
+   * Neutral greys for the graphite schemes. Dark: 950 is the canvas, 900–800
+   * card and control fills, 700–500 hairlines and quiet ink, 400–100 readable
+   * ink. Light mirrors it: 50 is the canvas, 100–200 fills, 500–950 ink.
    */
   graphite: {
     50: '#F5F5F5',
     100: '#EDEDED',
+    150: '#E3E3E3',
     200: '#D4D4D4',
     300: '#B3B3B3',
     400: '#8F8F8F',

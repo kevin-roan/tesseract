@@ -387,7 +387,10 @@ class ConversationPane(Gtk.Box):
                 self._update(entry[1], item)
                 self._widgets[item.key] = (item, entry[1])
         self._keys = keys
-        self._thinking.set_visible(run["state"] == "running")
+        running = run["state"] == "running"
+        self._thinking.set_visible(running)
+        if self._first_text in self._widgets:
+            self._widgets[self._first_text][1].set_working(running)
 
     def _create(self, item: TimelineItem) -> Gtk.Widget:
         if item.kind == "prompt":

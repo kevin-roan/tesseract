@@ -8,6 +8,7 @@ import MotionItem from "@/components/motion-item";
 import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
+import SecretField from "@/components/secret-field";
 import Section from "@/components/section";
 import { ThemedText } from "@/components/themed-text";
 import { useSettingsScreen } from "@/features/settings/hooks/use-settings-screen";
@@ -24,6 +25,20 @@ export default function SettingsScreen() {
       header={<ScreenHeader title={SETTINGS_COPY.title} subtitle={SETTINGS_COPY.subtitle} onBack={screen.back} />}
     >
       <MotionItem index={0}>
+        <Section title={SETTINGS_COPY.appearanceTitle} testID="settings-appearance">
+          <ChoiceGroup
+            label={SETTINGS_COPY.appearanceLabel}
+            options={screen.appearance.options}
+            selectedId={screen.appearance.selectedId}
+            onSelect={screen.appearance.select}
+          />
+          <ThemedText variant="caption" color="textTertiary">
+            {SETTINGS_COPY.appearanceFootnote}
+          </ThemedText>
+        </Section>
+      </MotionItem>
+
+      <MotionItem index={1}>
         <Section title={SETTINGS_COPY.sttTitle} loading={stt.loading} testID="settings-stt">
           <ChoiceList
             rows={stt.providerRows}
@@ -37,6 +52,22 @@ export default function SettingsScreen() {
               icon={InfoIcon}
               title={SETTINGS_COPY.geminiMissingTitle}
               message={SETTINGS_COPY.geminiMissing}
+            />
+          ) : null}
+          {stt.geminiKey ? (
+            <SecretField
+              label={SETTINGS_COPY.geminiKeyLabel}
+              placeholder={SETTINGS_COPY.geminiKeyPlaceholder}
+              hint={stt.geminiKey.hint}
+              value={stt.geminiKey.value}
+              onChange={stt.geminiKey.onChange}
+              saveLabel={SETTINGS_COPY.geminiKeySave}
+              onSave={stt.geminiKey.save}
+              saving={stt.geminiKey.saving}
+              removeLabel={SETTINGS_COPY.geminiKeyRemove}
+              onRemove={stt.geminiKey.remove}
+              removing={stt.geminiKey.removing}
+              testID="gemini-key"
             />
           ) : null}
           {stt.updateError ? <Notice tone="danger" message={stt.updateError} /> : null}
@@ -61,7 +92,7 @@ export default function SettingsScreen() {
         </Section>
       </MotionItem>
 
-      <MotionItem index={1}>
+      <MotionItem index={2}>
         <Section title={SETTINGS_COPY.sandboxTitle} testID="settings-sandbox">
           <ListCard
             icon={SquaresFourIcon}
@@ -84,7 +115,7 @@ export default function SettingsScreen() {
         </Section>
       </MotionItem>
 
-      <MotionItem index={2}>
+      <MotionItem index={3}>
         <Section title={SETTINGS_COPY.displayTitle} testID="settings-display">
           <ChoiceGroup
             label={SETTINGS_COPY.inputModeLabel}
@@ -98,7 +129,7 @@ export default function SettingsScreen() {
         </Section>
       </MotionItem>
 
-      <MotionItem index={3}>
+      <MotionItem index={4}>
         <Section title={SETTINGS_COPY.islandTitle} testID="settings-island">
           <ChoiceGroup
             label={SETTINGS_COPY.islandPlacementLabel}

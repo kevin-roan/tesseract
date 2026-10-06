@@ -13,11 +13,11 @@ def test_schemes_share_keys():
 
 
 def test_graphite_is_rendered_with_the_linear_palette():
-    from monolith_desktop.theme.semantic import RENDERED_SCHEME, is_dark, look_for
+    from monolith_desktop.theme.semantic import is_dark, look_for, rendered_scheme
 
     graphite = COLORS["graphite"]
-    assert RENDERED_SCHEME == "graphite"
-    assert is_dark("graphite") and is_dark("dark") and not is_dark("light")
+    assert rendered_scheme("dark") == "graphite"
+    assert is_dark("graphite") and is_dark("dark") and not is_dark("light") and not is_dark("graphiteLight")
     assert look_for("graphite") == "graphite"
     assert graphite["background"] == "#09090A"
     assert graphite["surface"] == "#121213"
@@ -30,12 +30,32 @@ def test_graphite_is_rendered_with_the_linear_palette():
     assert graphite["danger"] == "#EB5757"
 
 
+def test_graphite_light_keeps_the_linear_look_on_light_panels():
+    from monolith_desktop.theme.semantic import APPEARANCES, DEFAULT_APPEARANCE, ink_alpha, look_for, rendered_scheme
+    from monolith_desktop.theme.tokens import radius_for
+    from monolith_desktop.widgets.terminal.palette import palette_for
+
+    light = COLORS["graphiteLight"]
+    assert rendered_scheme("light") == "graphiteLight"
+    assert look_for("graphiteLight") == "graphite"
+    assert radius_for("graphiteLight") == radius_for("graphite")
+    assert light["surface"] == "#FFFFFF" and light["background"] == "#F5F5F6"
+    assert light["accent"] == COLORS["graphite"]["accent"]
+    assert light["text"] != COLORS["graphite"]["text"]
+    assert palette_for("graphiteLight").background == "#FFFFFF"
+    assert ink_alpha("graphiteLight", 0.1) == "rgba(0, 0, 0, 0.1)"
+    assert ink_alpha("graphite", 0.1) == "rgba(255, 255, 255, 0.1)"
+    assert APPEARANCES == ("system", "light", "dark") and DEFAULT_APPEARANCE == "dark"
+    css = generate_css("graphiteLight")
+    assert "rgba(255, 255, 255, 0.12)" not in css
+
+
 def test_graphite_variants_cover_every_scheme_table():
     from monolith_desktop.theme.gradients import GRADIENTS
 
     for table in (SURFACES, GRADIENTS):
         assert set(table) == set(SCHEMES)
-    assert set(SURFACES["graphite"]) == set(SURFACES["light"])
+    assert set(SURFACES["graphite"]) == set(SURFACES["graphiteLight"]) == set(SURFACES["light"])
     assert set(GRADIENTS["light"]) <= set(GRADIENTS["graphite"])
     assert SURFACES["graphite"]["neutral"].fill.inner == "#121213"
     assert chart_for("graphite").bar == "#5E6AD2"

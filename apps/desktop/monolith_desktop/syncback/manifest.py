@@ -2,7 +2,7 @@ import hashlib
 import os
 import posixpath
 import stat
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from pathlib import Path
 
 from .errors import SyncBackError
@@ -35,17 +35,38 @@ def hash_path(path: Path) -> str | None:
     return digest.hexdigest()
 
 
+class DigestCache:
+    """`hash_path` that reuses a file's digest while its lstat (mode, size, mtime, ctime, inode) is unchanged."""
+
+    def __init__(self) -> None:
+        self._digests: dict[Path, tuple[tuple[int, ...], str | None]] = {}
+
+    def __call__(self, path: Path) -> str | None:
+        try:
+            info = os.lstat(path)
+        except FileNotFoundError:
+            self._digests.pop(path, None)
+            return None
+        key = (info.st_mode, info.st_size, info.st_mtime_ns, info.st_ctime_ns, info.st_ino)
+        cached = self._digests.get(path)
+        if cached is not None and cached[0] == key:
+            return cached[1]
+        digest = hash_path(path)
+        self._digests[path] = (key, digest)
+        return digest
+
+
 def is_git_path(rel: str) -> bool:
     return GIT_DIR in rel.split("/")
 
 
-def build_manifest(root: Path, files: Iterable[str]) -> Manifest:
+def build_manifest(root: Path, files: Iterable[str], hasher: Callable[[Path], str | None] = hash_path) -> Manifest:
     manifest: Manifest = {}
     for rel in files:
         rel = Path(rel).as_posix()
         if is_git_path(rel) or rel.split("/")[0] in SKIPPED_DIRS:
             continue
-        digest = hash_path(root / rel)
+        digest = hasher(root / rel)
         if digest is not None:
             manifest[rel] = digest
     return manifest

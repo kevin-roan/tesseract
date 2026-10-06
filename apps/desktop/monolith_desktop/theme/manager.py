@@ -10,10 +10,17 @@ from gi.repository import Adw, Gdk, Gtk, PangoCairo  # noqa: E402
 from .chart import ChartPalette, chart_for  # noqa: E402
 from .css import generate_css, scale_css  # noqa: E402
 from .fonts import register_bundled_fonts  # noqa: E402
-from .semantic import COLORS, RENDERED_SCHEME, SchemeName  # noqa: E402
+from .semantic import COLORS, DEFAULT_APPEARANCE, Appearance, SchemeName, rendered_scheme  # noqa: E402
 from .surfaces import surfaces_for  # noqa: E402
 from .tokens import ZOOM_STEPS  # noqa: E402
 from .tone import TONE_COLORS, Tone  # noqa: E402
+
+
+ADW_SCHEMES = {
+    "system": Adw.ColorScheme.DEFAULT,
+    "light": Adw.ColorScheme.FORCE_LIGHT,
+    "dark": Adw.ColorScheme.FORCE_DARK,
+}
 
 
 def rgba(value: str) -> Gdk.RGBA:
@@ -31,15 +38,17 @@ class ThemeManager:
         self._style = Adw.StyleManager.get_default()
         register_bundled_fonts()
         self._fonts = {family.get_name() for family in PangoCairo.FontMap.get_default().list_families()}
-        self._scheme: SchemeName = RENDERED_SCHEME
+        self._appearance: Appearance = DEFAULT_APPEARANCE
+        self._scheme: SchemeName = rendered_scheme("dark")
+        self._style.connect("notify::dark", lambda *_: self._sync_scheme())
 
     def install(self, display: Gdk.Display | None = None) -> None:
         display = display or Gdk.Display.get_default()
         Gtk.StyleContext.add_provider_for_display(
             display, self._provider, Gtk.STYLE_PROVIDER_PRIORITY_USER + 1
         )
-        self._style.set_color_scheme(Adw.ColorScheme.FORCE_DARK)
-        self._reload()
+        self._style.set_color_scheme(ADW_SCHEMES[self._appearance])
+        self._sync_scheme(force=True)
 
     def add_stylesheet(self, css: str) -> None:
         provider = Gtk.CssProvider()
@@ -72,6 +81,24 @@ class ThemeManager:
     @property
     def scheme(self) -> SchemeName:
         return self._scheme
+
+    @property
+    def appearance(self) -> Appearance:
+        return self._appearance
+
+    def set_appearance(self, appearance: Appearance) -> None:
+        self._appearance = appearance
+        self._style.set_color_scheme(ADW_SCHEMES[appearance])
+        self._sync_scheme()
+
+    def _sync_scheme(self, force: bool = False) -> None:
+        scheme = rendered_scheme("dark" if self._style.get_dark() else "light")
+        if scheme == self._scheme and not force:
+            return
+        self._scheme = scheme
+        self._reload()
+        for listener in list(self._listeners):
+            listener(scheme)
 
     def css(self) -> str:
         return generate_css(self._scheme, self._fonts)

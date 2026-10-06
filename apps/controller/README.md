@@ -266,7 +266,8 @@ tests/                  bun test suites; fixtures/fake-claude.sh stands in for C
     The key is never logged and is redacted from provider errors.
   - `auto` uses whisper.cpp when binary, ffmpeg and model exist, else openai-compatible when URL
     and key are set, else 503 naming the variables. An empty transcript is 400 `No speech detected`.
-  - `provider: "gemini"` sends the audio inline to Gemini (`GEMINI_API_KEY`,
+  - `provider: "gemini"` sends the audio inline to Gemini (the key saved from the mobile or desktop app with
+    `PUT /v1/stt { geminiApiKey }`, else `GEMINI_API_KEY`;
     `THEONE_GEMINI_STT_MODEL`, default `gemini-2.5-flash`) outside the queue and regardless of
     the profile. Without a key or when Gemini fails (quota, rejected key, network), the native
     engine answers and `fallbackReason` explains why. `bun run dev` loads the repo-root `.env`

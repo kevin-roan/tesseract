@@ -31,7 +31,7 @@ RADIUS = MappingProxyType({
     "card": 10, "sheet": 12, "pill": 999, "full": 999,
 })
 SQUARE_CORNERS = MappingProxyType({"card": 10, "sheet": 12, "pill": 999})
-CORNER_SHAPES = MappingProxyType({"light": "soft", "dark": "soft", "graphite": "square"})
+CORNER_SHAPES = MappingProxyType({"light": "soft", "dark": "soft", "graphite": "square", "graphiteLight": "square"})
 
 DURATIONS = MappingProxyType({
     "instant": 0, "fastest": 60, "fast": 120, "normal": 180, "slow": 260, "slower": 400, "slowest": 720,

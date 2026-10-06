@@ -85,3 +85,26 @@ export function appRunMeta(run: AppRun, now: number = Date.now()): string {
 
 export const canStart = (entry: AppRunEntry): boolean =>
   entry.info?.available === true && (entry.run === null || !isActiveAppRun(entry.run));
+
+export type EmulatorAction =
+  | { kind: "show"; entry: AppRunEntry; run: AppRun }
+  | { kind: "start"; entry: AppRunEntry }
+  | { kind: "setup"; entry: AppRunEntry; reason: string | null };
+
+export type EmulatorDestination = "android" | "host";
+
+/** How an Android project opens its app: the live run's emulator, a new run, or the host emulator controls while no target can start. */
+export function emulatorActionFor(entries: readonly AppRunEntry[]): EmulatorAction | null {
+  const android = entries.filter((entry) => entry.viewer === "android");
+  const live = android.find((entry) => entry.run !== null && isActiveAppRun(entry.run));
+  if (live?.run) return { kind: "show", entry: live, run: live.run };
+  const offered = android.filter((entry) => entry.info !== null);
+  const startable = offered.find(canStart);
+  if (startable) return { kind: "start", entry: startable };
+  const first = offered[0];
+  return first ? { kind: "setup", entry: first, reason: first.info?.reason ?? null } : null;
+}
+
+/** The emulator screen once a run exists or is started, the host screen (pair, unlock, start, link) otherwise. */
+export const emulatorDestination = (action: EmulatorAction): EmulatorDestination =>
+  action.kind === "setup" ? "host" : "android";

@@ -3,7 +3,7 @@ import { StyleSheet } from "react-native";
 import { BorderWidth, ControlHeight, type Theme } from "@/theme";
 
 export function onMediaColor(theme: Theme) {
-  return theme.scheme === "light" ? theme.colors.textInverse : theme.colors.text;
+  return theme.mode === "light" ? theme.colors.textInverse : theme.colors.text;
 }
 
 export default function createStyles(theme: Theme, large: boolean) {

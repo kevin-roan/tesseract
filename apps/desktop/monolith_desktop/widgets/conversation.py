@@ -4,6 +4,7 @@ from ..theme.tokens import AVATAR_SIZE
 from ..theme.tone import Tone
 from .avatar import Avatar
 from .buttons import IconButton
+from .dot_sphere import DotSphere
 from .icon import Icon
 from .markdown import MarkdownView
 from .motion import revealer
@@ -50,11 +51,14 @@ class Placeholder(Gtk.Box):
 
 
 class AgentAvatar(Gtk.Box):
-    def __init__(self, icon: str = "agents") -> None:
+    def __init__(self) -> None:
         super().__init__(halign=Gtk.Align.START, valign=Gtk.Align.CENTER, css_classes=["to-agent-avatar"])
-        mark = Icon(icon, "xs")
-        mark.set_size_request(AVATAR_SIZE["sm"], AVATAR_SIZE["sm"])
-        self.append(mark)
+        self._sphere = DotSphere(AVATAR_SIZE["xs"], dots=20, color="textOnAccent")
+        self._sphere.set_hexpand(True)
+        self.append(self._sphere)
+
+    def set_working(self, working: bool) -> None:
+        self._sphere.set_spinning(working)
 
 
 class AuthorLine(Gtk.Box):
@@ -112,13 +116,13 @@ class AssistantMessage(Gtk.Box):
         self,
         text: str,
         author: str | None = None,
-        icon: str = "agents",
         copy_label: str = "Copy",
         copied_label: str = "Copied",
     ) -> None:
         super().__init__(orientation=Gtk.Orientation.VERTICAL, spacing=6, css_classes=["to-assistant-message"])
-        if author:
-            self.append(AuthorLine(AgentAvatar(icon), author))
+        self._avatar = AgentAvatar() if author else None
+        if self._avatar:
+            self.append(AuthorLine(self._avatar, author))
         self._body = MarkdownView(text, copy_label=copy_label, copied_label=copied_label)
         self._body.set_hexpand(True)
         self._body.add_css_class("to-message-body")
@@ -126,6 +130,10 @@ class AssistantMessage(Gtk.Box):
 
     def set_text(self, text: str) -> None:
         self._body.set_markdown(text)
+
+    def set_working(self, working: bool) -> None:
+        if self._avatar:
+            self._avatar.set_working(working)
 
 
 class ToolCallCard(Gtk.Box):

@@ -51,6 +51,28 @@ describe("useSttSettings", () => {
     expect(fake.updateStt).toHaveBeenCalledWith({ profile: "performance" });
   });
 
+  it("saves and removes the Gemini key on the sandbox", async () => {
+    const saved = { ...sampleSttStatus, gemini: { ...sampleSttStatus.gemini, configured: true, source: "settings" as const } };
+    fake.updateStt.mockResolvedValueOnce(saved).mockResolvedValueOnce(sampleSttStatus);
+    const { result } = await renderSettings();
+    await waitFor(() => expect(result.current.geminiKey).not.toBeNull());
+    expect(result.current.geminiKey?.remove).toBeUndefined();
+
+    await act(async () => result.current.geminiKey?.save());
+    expect(fake.updateStt).not.toHaveBeenCalled();
+
+    await act(async () => result.current.geminiKey?.onChange("  AIza-new  "));
+    await act(async () => result.current.geminiKey?.save());
+    await waitFor(() => expect(result.current.geminiMissing).toBe(false));
+    expect(fake.updateStt).toHaveBeenCalledWith({ geminiApiKey: "AIza-new" });
+    expect(result.current.geminiKey?.value).toBe("");
+    expect(result.current.geminiKey?.hint).toContain("A key is saved");
+
+    await act(async () => result.current.geminiKey?.remove?.());
+    await waitFor(() => expect(result.current.geminiKey?.remove).toBeUndefined());
+    expect(fake.updateStt).toHaveBeenLastCalledWith({ geminiApiKey: null });
+  });
+
   it("reports a failed status load", async () => {
     fake.stt.mockRejectedValue(new Error("Sandbox unreachable"));
     const { result } = await renderSettings();

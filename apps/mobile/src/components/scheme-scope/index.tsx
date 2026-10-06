@@ -18,7 +18,7 @@ const Canvas = ({ children }: { children: ReactNode }) => {
 
   return (
     <View style={[styles.fill, { backgroundColor: theme.colors.background }]}>
-      <StatusBar style={theme.scheme === "light" ? "dark" : "light"} />
+      <StatusBar style={theme.mode === "light" ? "dark" : "light"} />
       {children}
     </View>
   );

@@ -25,7 +25,7 @@ export const ISLAND_PANEL_MAX_WIDTH = 420;
 export const ISLAND_PANEL_RADIUS = 40;
 export const ISLAND_PANEL_GLYPH_SIZE = 44;
 /** Island color scheme for each app scheme, so the island stays near-black like the system one. */
-export const ISLAND_SCHEMES = { light: "dark", dark: "dark", graphite: "graphite" } as const;
+export const ISLAND_SCHEMES = { light: "dark", dark: "dark", graphite: "graphite", graphiteLight: "graphite" } as const;
 /** Spring the capsule morphs into the panel on, and the stiffer one it folds back with. */
 export const ISLAND_OPEN_SPRING = { damping: 18, stiffness: 210, mass: 0.9 };
 export const ISLAND_CLOSE_SPRING = { damping: 22, stiffness: 280, mass: 0.9 };

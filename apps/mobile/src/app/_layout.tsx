@@ -2,22 +2,19 @@ import { useCallback, useState } from 'react';
 import { Stack } from 'expo-router';
 import { ThemeProvider } from 'expo-router/react-navigation';
 import * as SplashScreen from 'expo-splash-screen';
-import { Appearance } from 'react-native';
 
 import { useAppReady } from '@/hooks/use-app-ready';
 import { useNavigationTheme } from '@/hooks/use-navigation-theme';
 import { usePortraitLock } from '@/hooks/use-orientation-lock';
 import InboxNotifier from '@/features/inbox/components/inbox-notifier';
 import IslandHost from '@/features/island/components/island-host';
+import { useAppScheme } from '@/features/settings/hooks/use-app-scheme';
 import AppProviders from '@/providers/app-providers';
 import SchemeScope from '@/components/scheme-scope';
 import SplashOverlay from '@/components/splash-overlay';
 import { initMonitoring, useMonitoredNavigation, withMonitoring } from '@/lib/monitoring';
 
 initMonitoring();
-
-// Graphite is a dark scheme: native chrome (alerts, keyboards, pickers, tab bar) must follow it, not the system setting.
-Appearance.setColorScheme('dark');
 
 // Held until the splash overlay has the same image on screen; the overlay then
 // stays up until the fonts are registered and the paired sandboxes are known.
@@ -74,10 +71,11 @@ function RootNavigator() {
 function RootLayout() {
   usePortraitLock();
   useMonitoredNavigation();
+  const scheme = useAppScheme();
 
   return (
     <AppProviders>
-      <SchemeScope scheme="graphite">
+      <SchemeScope scheme={scheme}>
         <RootNavigator />
       </SchemeScope>
     </AppProviders>

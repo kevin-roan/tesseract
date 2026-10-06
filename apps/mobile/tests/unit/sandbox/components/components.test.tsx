@@ -10,6 +10,8 @@ import { cleanLogText } from "@/components/log-view/lines";
 import StatusBadge from "@/components/status-badge";
 import { createTheme } from "@/theme";
 
+import { setStringAsync } from "../../../mocks/expo-clipboard";
+
 const theme = createTheme({ scheme: "light", width: 390, height: 844 });
 const colorOf = (node: { props: { style?: unknown } }) =>
   StyleSheet.flatten(node.props.style as StyleProp<TextStyle>)?.color;
@@ -36,6 +38,19 @@ describe("<LogView />", () => {
 
     await render(<LogView lines={[]} emptyLabel="Nothing yet" inline />);
     expect(screen.getByText("Nothing yet")).toBeOnTheScreen();
+  });
+
+  it("copies every line as plain text", async () => {
+    await render(<LogView lines={lines} inline />);
+
+    await fireEvent.press(screen.getByLabelText("Copy logs"));
+    expect(setStringAsync).toHaveBeenCalledWith("✔ compiled\nwarning: wine not initialised\nprocess exited with code 0");
+    expect(screen.getByLabelText("Logs copied")).toBeOnTheScreen();
+  });
+
+  it("hides the copy button while there is no output", async () => {
+    await render(<LogView lines={[]} />);
+    expect(screen.queryByLabelText("Copy logs")).toBeNull();
   });
 
   it("keeps only the latest lines in the inline variant", async () => {

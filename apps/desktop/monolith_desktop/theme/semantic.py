@@ -3,11 +3,18 @@ from typing import Literal
 
 from . import palette as P
 
-SchemeName = Literal["light", "dark", "graphite"]
-SCHEMES: tuple[SchemeName, ...] = ("light", "dark", "graphite")
-RENDERED_SCHEME: SchemeName = "graphite"
+SchemeName = Literal["light", "dark", "graphite", "graphiteLight"]
+SCHEMES: tuple[SchemeName, ...] = ("light", "dark", "graphite", "graphiteLight")
+Mode = Literal["light", "dark"]
+Appearance = Literal["system", "light", "dark"]
+APPEARANCES: tuple[Appearance, ...] = ("system", "light", "dark")
+DEFAULT_APPEARANCE: Appearance = "dark"
+RENDERED_SCHEMES: MappingProxyType = MappingProxyType({"dark": "graphite", "light": "graphiteLight"})
 Look = Literal["classic", "graphite"]
-LOOKS: MappingProxyType = MappingProxyType({"light": "classic", "dark": "classic", "graphite": "graphite"})
+LOOKS: MappingProxyType = MappingProxyType({
+    "light": "classic", "dark": "classic", "graphite": "graphite", "graphiteLight": "graphite",
+})
+LIGHT_SCHEMES = frozenset({"light", "graphiteLight"})
 
 LIGHT = MappingProxyType({
     "background": P.CANVAS,
@@ -174,7 +181,52 @@ GRAPHITE = MappingProxyType({
     "auraCool": P.GRAPHITE[800],
 })
 
-COLORS = MappingProxyType({"light": LIGHT, "dark": DARK, "graphite": GRAPHITE})
+GRAPHITE_LIGHT = MappingProxyType({
+    **GRAPHITE,
+    "background": P.LINEAR_LIGHT["window"],
+    "backgroundPattern": "rgba(0, 0, 0, 0)",
+    "backgroundElement": P.LINEAR_LIGHT["hover"],
+    "backgroundSelected": P.LINEAR_LIGHT["selected"],
+    "surface": P.LINEAR_LIGHT["panel"],
+    "surfaceElevated": P.LINEAR_LIGHT["panel"],
+    "surfaceSunken": P.LINEAR_LIGHT["window"],
+    "overlay": "rgba(0, 0, 0, 0.28)",
+    "shimmer": "rgba(0, 0, 0, 0.05)",
+    "text": P.LINEAR_LIGHT["text"],
+    "textSecondary": P.LINEAR_LIGHT["textSecondary"],
+    "textTertiary": P.LINEAR_LIGHT["textTertiary"],
+    "textInverse": P.LINEAR_LIGHT["panel"],
+    "border": "rgba(0, 0, 0, 0.09)",
+    "borderStrong": "rgba(0, 0, 0, 0.15)",
+    "divider": "rgba(0, 0, 0, 0.06)",
+    "accentMuted": P.LINEAR_LIGHT["indigoMuted"],
+    "accentStrong": P.LINEAR_LIGHT["indigoInk"],
+    "highlight": P.LINEAR_LIGHT["indigoInk"],
+    "brandMuted": P.LINEAR_LIGHT["indigoMuted"],
+    "badge": P.LINEAR_LIGHT["selected"],
+    "badgeText": P.LINEAR_LIGHT["textSecondary"],
+    "success": P.LINEAR_LIGHT["green"],
+    "successMuted": P.LINEAR_LIGHT["greenMuted"],
+    "successSolid": P.LINEAR_LIGHT["greenSolid"],
+    "warning": P.LINEAR_LIGHT["yellow"],
+    "warningMuted": P.LINEAR_LIGHT["yellowMuted"],
+    "warningSolid": P.LINEAR_LIGHT["yellowSolid"],
+    "danger": P.LINEAR_LIGHT["red"],
+    "dangerMuted": P.LINEAR_LIGHT["redMuted"],
+    "dangerSolid": P.LINEAR_LIGHT["redSolid"],
+    "info": P.LINEAR_LIGHT["blue"],
+    "infoMuted": P.LINEAR_LIGHT["blueMuted"],
+    "infoSolid": P.LINEAR_LIGHT["blueSolid"],
+    "bubbleUser": P.LINEAR_LIGHT["hover"],
+    "bubbleUserText": P.LINEAR_LIGHT["text"],
+    "bubbleAssistant": P.LINEAR_LIGHT["panel"],
+    "bubbleAssistantText": P.LINEAR_LIGHT["text"],
+    "codeBackground": P.LINEAR_LIGHT["window"],
+    "auraWarm": P.GRAPHITE[300],
+    "auraCool": P.GRAPHITE[100],
+})
+
+COLORS = MappingProxyType({"light": LIGHT, "dark": DARK, "graphite": GRAPHITE, "graphiteLight": GRAPHITE_LIGHT})
 
 
 def colors_for(scheme: SchemeName) -> MappingProxyType:
@@ -182,7 +234,17 @@ def colors_for(scheme: SchemeName) -> MappingProxyType:
 
 
 def is_dark(scheme: SchemeName) -> bool:
-    return scheme != "light"
+    return scheme not in LIGHT_SCHEMES
+
+
+def rendered_scheme(mode: Mode) -> SchemeName:
+    return RENDERED_SCHEMES[mode]
+
+
+def ink_alpha(scheme: SchemeName, alpha: float) -> str:
+    """Translucent ink that reads on the scheme's canvas: white on dark schemes, black on light ones."""
+    rgb = "255, 255, 255" if is_dark(scheme) else "0, 0, 0"
+    return f"rgba({rgb}, {alpha})"
 
 
 def look_for(scheme: SchemeName) -> Look:

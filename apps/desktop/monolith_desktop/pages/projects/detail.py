@@ -1,11 +1,12 @@
+import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from gi.repository import Adw, Gtk
 
 from ...api.client import ControllerClient
-from ...api.errors import ControllerError, describe_error
-from ...api.types import AgentRun, AppRun, ClaudeAccountList, GitDetails, Project, RunTargetInfo
+from ...api.errors import ApiError, ControllerError, describe_error
+from ...api.types import AgentRun, AppRun, ClaudeAccountList, ClaudeSession, GitDetails, Project, RunTargetInfo
 from ...services.workspace import upsert
 from ...util.format import join_meta
 from ...widgets.buttons import ActionButton, IconButton
@@ -18,7 +19,8 @@ from ...widgets.motion import crossfade_stack
 from ...widgets.page_body import PageBody
 from ...widgets.record_row import status_glyph
 from ...widgets.text import Text
-from .emulator import android_target, live_run, run_on_emulator, viewer
+from .emulator import DisplayButton, android_target, display_button, viewer
+from .emulator_launch import EmulatorLauncher
 from .labels import CLAUDE_ACCOUNT, DETAIL, EMULATOR, GIT, TABS
 from .model import (
     DEFAULT_CLAUDE_ACCOUNT,
@@ -35,6 +37,7 @@ from .model import (
     project_builds,
     project_claude_account,
     project_processes,
+    project_run_ids,
     running_count,
     sync_label,
 )
@@ -50,7 +53,10 @@ from .tab_sync import SyncTab
 if TYPE_CHECKING:
     from ...context import AppContext
 
+log = logging.getLogger(__name__)
+
 REFRESH_INTERVAL_S = 15.0
+SESSION_LIMIT = 50
 BRANCH_CHARS = 40
 LOADING, ERROR, CONTENT = "loading", "error", "content"
 SORTERS: dict[str, Callable[[list, str], list]] = {
@@ -72,9 +78,12 @@ class ProjectDetail:
         self._git_error: BaseException | None = None
         self._fetch_failed = False
         self._runs: list[AgentRun] | None = None
+        self._sessions: list[ClaudeSession] | None = None
         self._accounts: ClaudeAccountList | None = None
         self._run_targets: list[RunTargetInfo] | None = None
+        self._run_targets_error: ControllerError | None = None
         self._app_runs: list[AppRun] | None = None
+        self._emulator_busy = False
 
         self.widget = crossfade_stack()
         self._state = EmptyState(DETAIL["loading"], loading=True)
@@ -131,6 +140,9 @@ class ProjectDetail:
         quick.append(ActionButton(DETAIL["shell"], lambda: self._terminal("shell"), "secondary", "terminal"))
         self._display_button = ActionButton(DETAIL["display"], self._display_action, "secondary", "display")
         quick.append(self._display_button)
+        self._emulator = EmulatorLauncher(
+            self.ctx, self.project_id, self.widget, self.report, self._set_emulator_busy, self._on_emulator_run
+        )
         self._account_picker = ChoiceDropdown(on_change=self._set_claude_account, tooltip=CLAUDE_ACCOUNT["tooltip"])
         self._account_picker.set_visible(False)
         quick.append(self._account_picker)
@@ -204,13 +216,19 @@ class ProjectDetail:
             "git_error": None,
             "accounts": None,
             "run_targets": None,
+            "run_targets_error": None,
             "app_runs": None,
+            "sessions": [],
         }
         try:
             snapshot["run_targets"] = client.list_run_targets(self.project_id)
             snapshot["app_runs"] = client.list_app_runs(self.project_id)
-        except ControllerError:
-            pass
+        except ControllerError as error:
+            snapshot["run_targets_error"] = error
+        try:
+            snapshot["sessions"] = client.sessions(SESSION_LIMIT, self.project_id)
+        except ControllerError as error:
+            log.warning("project %s: couldn't read chats: %s", self.project_id, describe_error(error))
         try:
             snapshot["accounts"] = client.claude_accounts()
         except ControllerError:
@@ -231,6 +249,8 @@ class ProjectDetail:
         self._accounts = snapshot["accounts"]
         self._run_targets = snapshot["run_targets"]
         self._app_runs = snapshot["app_runs"]
+        self._sessions = snapshot["sessions"]
+        self._run_targets_failed(snapshot["run_targets_error"])
         if self._fetch_failed:
             self._fetch_failed = False
             self._notice.set_visible(False)
@@ -257,9 +277,16 @@ class ProjectDetail:
             self._poller.refresh()
 
     def _store_runs(self, runs: list[AgentRun] | None) -> None:
+        previous = self._runs
         self._runs = runs
-        self.conversations.render(runs)
+        self._render_conversations()
         self._render_header()
+        if previous is not None and self._sessions is not None and project_run_ids(runs, self.project_id) - project_run_ids(previous, self.project_id):
+            self._poller.refresh()
+
+    def _render_conversations(self) -> None:
+        self.conversations.render(self._sessions, self._runs)
+        self._tabs.set_count("conversations", len(self._sessions or []) or None)
 
     def _event(self, kind: str, item: Any) -> None:
         if not isinstance(item, dict) or item.get("projectId") != self.project_id:
@@ -280,10 +307,24 @@ class ProjectDetail:
         self._lists[kind] = [item for item in current if item.get("id") != item_id]
         self._render_lists()
 
-    def report(self, error: BaseException | str) -> None:
+    def report(self, error: BaseException | str, action: tuple[str, Callable[[], None]] | None = None) -> None:
         message = error if isinstance(error, str) else describe_error(error)
         self._notice.update(message, tone="danger")
+        if action is None:
+            self._notice.set_action(DETAIL["dismiss"], lambda: self._notice.set_visible(False))
+        else:
+            label, on_action = action
+            self._notice.set_action(label, lambda: (self._notice.set_visible(False), on_action()))
         self._notice.set_visible(True)
+
+    def _run_targets_failed(self, error: ControllerError | None) -> None:
+        previous, self._run_targets_error = self._run_targets_error, error
+        if error is None or describe_error(error) == describe_error(previous):
+            return
+        if isinstance(error, ApiError) and error.status == 404:
+            log.info("project %s: the controller has no run targets (older sandbox?): %s", self.project_id, error)
+        else:
+            log.warning("project %s: couldn't read run targets: %s", self.project_id, describe_error(error))
 
     def refresh(self) -> None:
         if self.project is None:
@@ -300,18 +341,16 @@ class ProjectDetail:
 
     def _display_action(self) -> None:
         target = android_target(self._run_targets)
-        if target is None:
+        if target is not None:
+            self._emulator.launch(target)
+        elif self._display_state().mode == "display":
             self.ctx.navigate("display")
-        elif not target["available"]:
-            self.report(EMULATOR["unavailable"].format(reason=target["reason"]))
-        else:
-            self._display_button.set_sensitive(False)
-            self.ctx.call(
-                lambda client: run_on_emulator(client, self.project_id, target["target"]),
-                self._on_emulator_run,
-                lambda error: self.report(EMULATOR["failed"].format(error=describe_error(error))),
-                lambda: self._display_button.set_sensitive(True),
-            )
+
+    def _set_emulator_busy(self, busy: bool, label: str | None) -> None:
+        self._emulator_busy = busy
+        self._render_display_button()
+        if busy and label:
+            self._display_button.set_label_text(label)
 
     def _on_emulator_run(self, result: tuple[AppRun, bool, str | None]) -> None:
         run, started, serial = result
@@ -377,6 +416,7 @@ class ProjectDetail:
         self.widget.set_visible_child_name(CONTENT)
         self._render_header()
         self.git.render(self.project, self._git, self._git_error)
+        self._render_conversations()
         self._render_lists()
 
     def _render_lists(self) -> None:
@@ -416,21 +456,16 @@ class ProjectDetail:
         activity = project_activity(self.project_id, self._lists["processes"], self._lists["builds"], self._runs)
         self._activity.update(activity.label, *activity_glyph(activity.kind))
 
+    def _display_state(self) -> DisplayButton:
+        framework = (self.project or {}).get("framework")
+        return display_button(self._run_targets, self._app_runs, framework, self._run_targets_error)
+
     def _render_display_button(self) -> None:
-        target = android_target(self._run_targets)
-        if target is None:
-            self._display_button.set_label_text(DETAIL["display"])
-            self._display_button.set_icon("display")
-            self._display_button.set_tooltip_text(None)
-            return
-        running = live_run(self._app_runs, target["target"]) is not None
-        self._display_button.set_label_text(EMULATOR["show" if running else "run"])
-        self._display_button.set_icon("smartphone")
-        self._display_button.set_tooltip_text(
-            (EMULATOR["tooltip_dir"].format(dir=target["dir"]) if target.get("dir") else EMULATOR["tooltip"])
-            if target["available"]
-            else target["reason"]
-        )
+        state = self._display_state()
+        self._display_button.set_label_text(state.label)
+        self._display_button.set_icon(state.icon)
+        self._display_button.set_tooltip_text(state.tooltip)
+        self._display_button.set_sensitive(state.mode != "unsupported" and not self._emulator_busy)
 
     def _render_claude_account(self, project: Project) -> None:
         accounts = self._accounts

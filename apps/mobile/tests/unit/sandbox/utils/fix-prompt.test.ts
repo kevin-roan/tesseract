@@ -1,9 +1,11 @@
 import type { LogLine } from "@theone/protocol";
-import { sampleBuild, sampleProcess } from "@theone/protocol/fixtures";
+import { sampleAppRun, sampleBuild, sampleProcess } from "@theone/protocol/fixtures";
 
 import {
   FIX_LOG_TAIL,
+  appRunFailure,
   buildFailure,
+  canFixAppRun,
   canFixBuild,
   canFixProcess,
   failurePrompt,
@@ -20,6 +22,8 @@ describe("canFix", () => {
     expect(canFixProcess(sampleProcess)).toBe(false);
     expect(canFixBuild({ ...sampleBuild, state: "failed" })).toBe(true);
     expect(canFixBuild({ ...sampleBuild, state: "succeeded" })).toBe(false);
+    expect(canFixAppRun({ ...sampleAppRun, state: "failed" })).toBe(true);
+    expect(canFixAppRun(sampleAppRun)).toBe(false);
   });
 });
 
@@ -33,6 +37,14 @@ describe("failurePrompt", () => {
     expect(prompt).toContain("Exit code: 1");
     expect(prompt).toContain("cd: release/app/node_modules/better-sqlite3: No such file\n```");
     expect(prompt).not.toContain("\u001b");
+  });
+
+  it("describes a failed app run with its target, folder and error", () => {
+    const run = { ...sampleAppRun, target: "expo-android", dir: "apps/mobile", state: "failed" as const, error: "No Android device found" };
+    const prompt = failurePrompt(appRunFailure(run, "Android emulator", [line(1, "at resolveDevice.js:23:10")]));
+    expect(prompt).toContain("Running the app on Android emulator (`expo-android` in `apps/mobile`) failed");
+    expect(prompt).toContain("Error: No Android device found");
+    expect(prompt).toContain("at resolveDevice.js:23:10");
   });
 
   it("keeps only the last lines", () => {

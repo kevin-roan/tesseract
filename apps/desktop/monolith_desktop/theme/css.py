@@ -3,7 +3,7 @@ from collections.abc import Iterable
 
 from .chart import chart_for
 from .extras import extra_rules
-from .semantic import COLORS, SchemeName, look_for
+from .semantic import COLORS, SchemeName, ink_alpha, look_for
 from .surfaces import SURFACE_TONES, surfaces_for
 from .tokens import BORDER_WIDTH, CHART_MOTION, CONTROL_HEIGHT, ICON_SIZE, SHADOWS, SPACING, radius_for
 from .tone import TONE_COLORS, TONES
@@ -259,8 +259,8 @@ def _adwaita(scheme: SchemeName) -> str:
         },
         "check": {"border-radius": _px(r["xs"])},
         "check:checked, radio:checked": {"background": css_var("accent"), "border-color": css_var("accent"), "color": "#ffffff"},
-        "scrollbar slider": {"min-width": _px(6), "min-height": _px(6), "background": "rgba(255, 255, 255, 0.12)"},
-        "scrollbar slider:hover": {"background": "rgba(255, 255, 255, 0.22)"},
+        "scrollbar slider": {"min-width": _px(6), "min-height": _px(6), "background": ink_alpha(scheme, 0.12)},
+        "scrollbar slider:hover": {"background": ink_alpha(scheme, 0.22)},
         "tooltip": {
             "padding": f"{_px(s['xs'])} {_px(s['sm'])}",
             "border-radius": _px(r["sm"]),
@@ -434,6 +434,13 @@ def _components(scheme: SchemeName) -> str:
             "border": f"{hairline} {css_var('border')}",
             "box-shadow": "none",
         },
+        # A secondary button with work waiting (sync changes) wears the accent without becoming the primary action.
+        f"button.{PREFIX}-secondary.{PREFIX}-attention:not(:hover):not(:active)": {
+            "background": css_var("accentMuted"),
+            "border": f"{hairline} {css_var('accent')}",
+            "color": css_var("accentStrong"),
+        },
+        f"button.{PREFIX}-secondary.{PREFIX}-attention": {"color": css_var("accentStrong")},
         f".{PREFIX}-qr": {
             "padding": _px(s["md"]),
             "border-radius": _px(r["md"]),

@@ -1,11 +1,11 @@
 import { useCallback, useState } from "react";
 import type { TheOneClient } from "@theone/client";
-import type { BuildJob, LogLine, ProcessInfo } from "@theone/protocol";
+import type { AppRun, BuildJob, LogLine, ProcessInfo } from "@theone/protocol";
 
 import { useIslandStore } from "@/features/island/store/island-store";
 
 import { describeError } from "../utils/errors";
-import { FIX_LOG_TAIL, buildFailure, failurePrompt, processFailure, type FailureContext } from "../utils/fix-prompt";
+import { FIX_LOG_TAIL, appRunFailure, buildFailure, failurePrompt, processFailure, type FailureContext } from "../utils/fix-prompt";
 import { useSandboxClient } from "./use-sandbox-client";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
 
@@ -65,5 +65,18 @@ export function useFixWithAi() {
     [open],
   );
 
-  return { fixProcess, fixBuild, pendingId, error };
+  const fixAppRun = useCallback(
+    (run: AppRun, label: string) => {
+      const processId = run.processIds[0];
+      return open(
+        run.id,
+        run.projectId,
+        async (api) => (processId ? api.processLogs(processId, { tail: FIX_LOG_TAIL }) : []),
+        (lines) => appRunFailure(run, label, lines),
+      );
+    },
+    [open],
+  );
+
+  return { fixProcess, fixBuild, fixAppRun, pendingId, error };
 }

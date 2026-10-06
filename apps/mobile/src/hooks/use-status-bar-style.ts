@@ -7,7 +7,7 @@ import { useAppTheme } from "@/hooks/use-app-theme";
 /** Status bar style for the focused screen, restored to the scheme's own style when it blurs. */
 export function useStatusBarStyle(style: StatusBarStyle) {
   const theme = useAppTheme();
-  const fallback: StatusBarStyle = theme.scheme === "light" ? "dark" : "light";
+  const fallback: StatusBarStyle = theme.mode === "light" ? "dark" : "light";
 
   useFocusEffect(
     useCallback(() => {

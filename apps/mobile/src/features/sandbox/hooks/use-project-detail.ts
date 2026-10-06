@@ -3,6 +3,8 @@ import type { BuildProfile, BuildTarget, ProcessInfo } from "@theone/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
 import { useAppRuns } from "@/features/app-runs/hooks/use-app-runs";
+import { VIEWER_ICONS } from "@/features/app-runs/utils/content";
+import { useProjectChats } from "@/features/chats/hooks/use-project-chats";
 import { useProjectClaudeAccount } from "@/features/claude-account/hooks/use-project-claude-account";
 
 import { PROJECT_ACTIONS } from "../utils/actions";
@@ -43,6 +45,7 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
   const sync = useSyncBack(projectId);
   const bookmarks = useScriptBookmarks(projectId);
   const appRuns = useAppRuns(projectId);
+  const chats = useProjectChats(projectId);
   const fix = useFixWithAi();
   const [openLogs, setOpenLogs] = useState<{ id: string; in: LogsHost } | null>(
     initialProcessId ? { id: initialProcessId, in: "process" } : null,
@@ -80,14 +83,18 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     [nav, projectId, startBuild],
   );
 
+  const emulator = appRuns.emulator;
   const headerActions = useMemo<HeaderAction[]>(
     () => [
+      ...(emulator
+        ? [{ id: "emulator", icon: VIEWER_ICONS.android, label: emulator.label, hint: emulator.hint, disabled: emulator.busy, onPress: emulator.open }]
+        : []),
       { ...PROJECT_ACTIONS.shell, onPress: () => nav.newTerminal({ kind: "shell", projectId }) },
       { ...PROJECT_ACTIONS.claudeSession, onPress: () => nav.newTerminal({ kind: "claude", projectId }) },
       { ...PROJECT_ACTIONS.askClaude, onPress: () => nav.newAgentRun(projectId) },
       { ...PROJECT_ACTIONS.rename, onPress: () => openRename({ id: projectId, title: data?.name ?? projectId }) },
     ],
-    [nav, projectId, openRename, data?.name],
+    [emulator, nav, projectId, openRename, data?.name],
   );
 
   const sortedProcesses = useMemo(() => newestFirst(processes.data ?? [], (process) => process.startedAt), [processes.data]);
@@ -123,6 +130,7 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     scripts,
     toggleBookmark: bookmarks.toggle,
     preferDisplay: data ? prefersDisplay(data.framework) : false,
+    offerDisplay: emulator === null,
     runScript,
     runningScript: startProcess.isPending ? (startProcess.variables?.name ?? null) : null,
     targets: buildTargetOptions(data?.buildTargets ?? []),
@@ -146,7 +154,9 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     claudeAccount,
     renameSheet: rename.sheet,
     appRuns,
+    chats,
     fixProcess: fix.fixProcess,
+    fixAppRun: fix.fixAppRun,
     fixingId: fix.pendingId,
     actionError,
     refreshing,

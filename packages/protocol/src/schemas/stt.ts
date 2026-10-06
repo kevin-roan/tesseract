@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { STT_ENGINE_NAMES, STT_PROFILES, STT_PROVIDERS } from "../constants";
+import { GEMINI_KEY_SOURCES, STT_ENGINE_NAMES, STT_PROFILES, STT_PROVIDERS } from "../constants";
 
 export const SttProfileSchema = z.enum(STT_PROFILES);
 export type SttProfile = z.infer<typeof SttProfileSchema>;
@@ -36,10 +36,26 @@ export const SttStatusSchema = z.object({
   cpus: z.int().positive(),
   busy: z.boolean(),
   queued: z.int().nonnegative(),
-  /** Whether `provider: "gemini"` can be tried (GEMINI_API_KEY is set) and the model it uses. */
-  gemini: z.object({ configured: z.boolean(), model: z.string() }),
+  /** Whether `provider: "gemini"` can be tried (a key is set) and the model it uses. The key itself is never returned. */
+  gemini: z.object({
+    configured: z.boolean(),
+    model: z.string(),
+    /** Where the key in use comes from; null when there is none. */
+    source: z.enum(GEMINI_KEY_SOURCES).nullable(),
+  }),
 });
 export type SttStatus = z.infer<typeof SttStatusSchema>;
 
-export const UpdateSttSchema = z.object({ profile: SttProfileSchema });
+/** A Gemini API key as pasted into an app: printable ASCII without spaces. */
+export const GeminiApiKeySchema = z
+  .string()
+  .trim()
+  .min(1, "The Gemini API key must not be empty")
+  .max(256, "The Gemini API key is too long")
+  .regex(/^[\x21-\x7e]+$/, "The Gemini API key must not contain spaces or special characters");
+
+/** Any subset of the fields; `geminiApiKey: null` forgets the saved key (GEMINI_API_KEY applies again, if set). */
+export const UpdateSttSchema = z
+  .object({ profile: SttProfileSchema.optional(), geminiApiKey: GeminiApiKeySchema.nullable().optional() })
+  .refine((body) => body.profile !== undefined || body.geminiApiKey !== undefined, "Nothing to update");
 export type UpdateStt = z.infer<typeof UpdateSttSchema>;

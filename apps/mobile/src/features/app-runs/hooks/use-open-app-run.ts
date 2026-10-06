@@ -3,7 +3,7 @@ import { Linking } from "react-native";
 import type { AppRun } from "@theone/protocol";
 
 import { useHostNavigation } from "@/features/host-shell/hooks/use-host-navigation";
-import { useCopyText } from "@/features/onboarding/hooks/use-copy-text";
+import { useCopyText } from "@/hooks/use-copy-text";
 import { useActiveSandbox } from "@/features/sandbox/hooks/use-sandbox-client";
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
 

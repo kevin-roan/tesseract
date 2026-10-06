@@ -229,7 +229,68 @@ const graphite: Record<SurfaceTone, SurfaceStyle> = {
   },
 };
 
-export const Surfaces = { light, dark, graphite } as const;
+const graphiteLightGlass: SurfaceGlass = {
+  fill: 'rgba(255, 255, 255, 0.8)',
+  border: 'rgba(0, 0, 0, 0.08)',
+  sheen: 'rgba(255, 255, 255, 0.9)',
+  scheme: 'light',
+};
+
+const onGraphiteLight = (highlight: string): Partial<Record<ThemeColor, string>> => ({
+  surfaceElevated: 'rgba(0, 0, 0, 0.03)',
+  backgroundElement: 'rgba(0, 0, 0, 0.04)',
+  backgroundSelected: 'rgba(0, 0, 0, 0.08)',
+  highlight,
+});
+
+const graphiteLightTone = (highlight: string): SurfaceStyle => ({
+  fill: flat(Palette.white),
+  border: 'rgba(0, 0, 0, 0.08)',
+  ink: onGraphiteLight(highlight),
+  glass: graphiteLightGlass,
+});
+
+const graphiteLight: Record<SurfaceTone, SurfaceStyle> = {
+  neutral: {
+    fill: { inner: Palette.white, outer: '#FAFAFA', cx: 0.2, cy: 0, r: 1.2 },
+    border: 'rgba(0, 0, 0, 0.08)',
+    ink: {},
+    glass: graphiteLightGlass,
+  },
+  brand: {
+    fill: { inner: Palette.clay[500], outer: Palette.clay[700], cx: 0.15, cy: 0, r: 1.3 },
+    border: 'rgba(0, 0, 0, 0.06)',
+    ink: {
+      ...onDarkTint(Palette.paper),
+      text: Palette.paper,
+      textSecondary: 'rgba(250, 249, 245, 0.78)',
+      textTertiary: 'rgba(250, 249, 245, 0.64)',
+      border: 'rgba(255, 255, 255, 0.18)',
+      borderStrong: 'rgba(255, 255, 255, 0.26)',
+      divider: 'rgba(255, 255, 255, 0.14)',
+      accent: Palette.paper,
+      accentInk: Palette.ink,
+      textOnAccent: Palette.ink,
+    },
+    glass: darkGlass,
+  },
+  violet: graphiteLightTone(Palette.graphite[950]),
+  indigo: graphiteLightTone(Palette.graphite[950]),
+  yellow: graphiteLightTone(Palette.amber[600]),
+  lavender: graphiteLightTone(Palette.graphite[950]),
+  mint: graphiteLightTone(Palette.green[500]),
+  rose: graphiteLightTone(Palette.red[500]),
+  sky: graphiteLightTone(Palette.graphite[950]),
+  sand: graphiteLightTone(Palette.graphite[950]),
+  ink: {
+    fill: flat(Palette.graphite[100]),
+    border: 'rgba(0, 0, 0, 0.16)',
+    ink: onGraphiteLight(Palette.graphite[950]),
+    glass: graphiteLightGlass,
+  },
+};
+
+export const Surfaces = { light, dark, graphite, graphiteLight } as const;
 
 export function surfacesFor(scheme: ColorSchemeName): Record<SurfaceTone, SurfaceStyle> {
   return Surfaces[scheme];

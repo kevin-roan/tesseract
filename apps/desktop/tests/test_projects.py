@@ -273,13 +273,17 @@ def test_build_meta_and_progress():
     assert model.target_label("android-apk") == "Android APK" and model.target_platform("web") == "Static files"
 
 
-def test_run_meta():
-    run = {"id": "run_1", "projectId": "a", "prompt": "  fix\n the   build ", "state": "failed",
-           "startedAt": "2026-09-28T11:00:00Z", "usage": {"inputTokens": 12000, "outputTokens": 345, "cacheReadTokens": 0, "cacheWriteTokens": 0, "totalTokens": 12345}, "error": "boom"}
-    assert model.run_title(run) == "fix the build"
-    assert model.run_meta(run, NOW) == "1h ago · 12.3k tokens · boom"
-    assert model.run_state(run) == ("Failed", "danger")
-    assert model.run_title(dict(run, prompt="")) == "run_1"
+def test_session_rows():
+    session = {"sessionId": "s1", "projectId": "a", "title": "  fix\n the   build ", "source": "terminal", "agentRunId": "run_1",
+               "terminalId": None, "active": False, "lastActiveAt": "2026-09-28T11:00:00Z", "usage": {"totalTokens": 12345}}
+    run = {"id": "run_1", "projectId": "a", "state": "failed"}
+    assert model.session_title(session) == "fix the build"
+    assert model.session_title(dict(session, title=None)) == "Untitled chat"
+    assert model.session_meta(session, NOW) == "Terminal · 1h ago · 12.3k tokens"
+    assert model.session_state(session, [run]) == ("Failed", "danger")
+    assert model.session_state(session, []) == (None, "neutral")
+    assert model.session_state(dict(session, active=True), None) == ("Active", "success")
+    assert model.project_run_ids([run, {"id": "run_2", "projectId": "b"}], "a") == {"run_1"}
 
 
 def test_project_ports_and_site_url():
@@ -408,6 +412,12 @@ def test_discard_summary():
     assert model.discard_summary({"discarded": [], "unavailable": [], "backupPath": None, "changes": changes}) == (
         "Nothing was discarded", "warning",
     )
+
+
+def test_sync_waiting_flags_each_direction_with_changes():
+    assert model.sync_waiting(model.SyncView(_link(), _changes())) == {"pull": False, "get": False}
+    waiting = model.sync_waiting(model.SyncView(_link(), _changes(_file("a.txt")), host_files=("b.txt",)))
+    assert waiting == {"pull": True, "get": True}
 
 
 def test_load_sync_view_reads_changes_for_unlinked_projects(tmp_path):

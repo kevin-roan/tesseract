@@ -16,6 +16,8 @@ import {
 import type { HeaderAction } from "@/components/screen-header";
 import type { Tone } from "@/lib/tone";
 
+import type { EmulatorAction } from "./runs";
+
 type ActionTemplate = Omit<HeaderAction, "onPress">;
 
 export const VIEWER_ICONS: Record<AppViewerKind, Icon> = {
@@ -38,8 +40,20 @@ export const OPEN_LABELS: Record<AppViewerKind, string> = {
   url: "Open",
   deeplink: "Open in Expo",
   display: "Show display",
-  android: "Open emulator",
+  android: "Show emulator",
   none: "Open",
+};
+
+export const EMULATOR_ACTION_LABELS: Record<EmulatorAction["kind"], string> = {
+  show: "Show emulator",
+  start: "Open on emulator",
+  setup: "Set up emulator",
+};
+
+export const EMULATOR_ACTION_HINTS: Record<EmulatorAction["kind"], string> = {
+  show: "Opens the host Android emulator",
+  start: "Starts the app and opens the host Android emulator",
+  setup: "Opens the host emulator controls",
 };
 
 export const RUN_ACTION_LABELS: Record<AppRunAction, string> = {
@@ -72,6 +86,7 @@ export const APP_RUNS_COPY = {
   stop: "Stop",
   logs: "Logs",
   hideLogs: "Hide logs",
+  fix: "Fix with AI",
   unavailable: "Unavailable",
   unreachable: "No Tailscale address yet, so this app can't be reached from your phone.",
   deeplinkTitle: "Couldn't open the app",
@@ -84,6 +99,7 @@ export const APP_RUNS_COPY = {
 export const APP_RUN_A11Y = {
   start: (label: string) => `Start ${label}`,
   stop: (label: string) => `Stop ${label}`,
+  fix: (label: string) => `Fix ${label} with AI`,
   action: (action: string, label: string) => `${action} ${label}`,
   labelled: (action: string, label: string) => `${action}: ${label}`,
 } as const;

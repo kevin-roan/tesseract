@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import { sampleSttStatus } from "@theone/protocol/fixtures";
 
 import SettingsScreen from "@/app/settings";
-import { INPUT_MODE_OPTIONS, ISLAND_PLACEMENT_OPTIONS, LIVE_ACTIVITY_OPTIONS } from "@/features/settings/utils/constants";
+import { APPEARANCE_OPTIONS, INPUT_MODE_OPTIONS, ISLAND_PLACEMENT_OPTIONS, LIVE_ACTIVITY_OPTIONS } from "@/features/settings/utils/constants";
 import { sttProfileRows, sttProviderRows } from "@/features/settings/utils/stt";
 
 const mockScreen = jest.fn();
@@ -22,11 +22,13 @@ function state(stt: object = {}) {
       error: null,
       retry: jest.fn(),
       updateError: null,
+      geminiKey: { value: "", onChange: jest.fn(), hint: "hint", save: jest.fn(), saving: false, remove: jest.fn(), removing: false },
       ...stt,
     },
     hub: { title: "Sandbox hub", subtitle: "devbox", open: jest.fn() },
     claude: { title: "Claude accounts", subtitle: "dev@example.com", open: jest.fn() },
     host: { title: "Host shell", subtitle: "Not paired", open: jest.fn() },
+    appearance: { options: APPEARANCE_OPTIONS, selectedId: "dark", select: jest.fn() },
     inputMode: { options: INPUT_MODE_OPTIONS, selectedId: "trackpad", select: jest.fn() },
     islandPlacement: { options: ISLAND_PLACEMENT_OPTIONS, selectedId: "bottomRight", select: jest.fn() },
     liveActivity: { options: LIVE_ACTIVITY_OPTIONS, selectedId: "on", select: jest.fn() },
@@ -48,6 +50,10 @@ describe("SettingsScreen", () => {
     expect(value.stt.selectProvider).toHaveBeenCalledWith("native");
     await fireEvent.press(screen.getByTestId("stt-profile-balanced"));
     expect(value.stt.selectProfile).toHaveBeenCalledWith("balanced");
+    await fireEvent.changeText(screen.getByTestId("gemini-key-input"), "AIza");
+    expect(value.stt.geminiKey.onChange).toHaveBeenCalledWith("AIza");
+    await fireEvent.press(screen.getByTestId("gemini-key-remove"));
+    expect(value.stt.geminiKey.remove).toHaveBeenCalled();
 
     await fireEvent.press(screen.getByText("Sandbox hub"));
     expect(value.hub.open).toHaveBeenCalled();
@@ -55,6 +61,8 @@ describe("SettingsScreen", () => {
     expect(value.claude.open).toHaveBeenCalled();
     await fireEvent.press(screen.getByText("Host shell"));
     expect(value.host.open).toHaveBeenCalled();
+    await fireEvent.press(screen.getByText("Light"));
+    expect(value.appearance.select).toHaveBeenCalledWith("light");
     await fireEvent.press(screen.getByText("Touch"));
     expect(value.inputMode.select).toHaveBeenCalledWith("touch");
     await fireEvent.press(screen.getByText("Top left"));

@@ -9,6 +9,7 @@ from ..strings import STT as S
 from ..stt import model
 from ..widgets import PreferenceRows
 from ..widgets.buttons import IconButton
+from ..widgets.preference_rows import SettingsActions, entry_row
 from .base import PreferencesPage
 
 
@@ -40,6 +41,15 @@ class SttPreferences(PreferencesPage):
             self._rows[profile] = row
             self._checks[profile] = check
         self.add(profiles_group)
+
+        gemini_group = Adw.PreferencesGroup(title=S["gemini_group"], description=S["gemini_description"])
+        self._key_row, self._gemini_key = entry_row(S["gemini_key"], password=True, on_activate=self._on_save_key)
+        gemini_group.add(self._key_row)
+        actions = SettingsActions()
+        self._remove_key = actions.add(S["gemini_remove"], self._on_remove_key, "destructive")
+        self._save_key = actions.add(S["save"], self._on_save_key, "primary")
+        gemini_group.add(actions)
+        self.add(gemini_group)
 
         self._status_group = Adw.PreferencesGroup(title=S["status_group"], header_suffix=refresh)
         self._status_rows = PreferenceRows(self._status_group, selectable=True)
@@ -92,10 +102,15 @@ class SttPreferences(PreferencesPage):
             row.set_sensitive(status is not None and choice.available and not self._pending)
             self._checks[choice.id].set_active(status is not None and status["profile"] == choice.id)
         self._syncing = False
+        self._gemini_key.set_sensitive(status is not None and not self._pending)
+        self._save_key.set_sensitive(status is not None and not self._pending)
+        self._remove_key.set_visible(status is not None and status["gemini"]["source"] == "settings")
+        self._remove_key.set_sensitive(not self._pending)
         if status is None:
             self._status_rows.set_rows([(S["status"], message or S["disconnected"])])
         else:
             self._status_rows.set_rows(model.status_rows(status))
+        self._key_row.set_subtitle(model.gemini_subtitle(status))
 
     def _on_toggled(self, check: Gtk.CheckButton, profile: str) -> None:
         if self._syncing or not check.get_active() or self._status is None or self._status["profile"] == profile:
@@ -110,6 +125,35 @@ class SttPreferences(PreferencesPage):
                 on_done=self._on_change_done,
             )
         )
+
+    def _on_save_key(self) -> None:
+        key = self._gemini_key.get_text().strip()
+        if not key or self._status is None or self._pending:
+            return
+        self._update_key(key)
+
+    def _on_remove_key(self) -> None:
+        if self._status is not None and not self._pending:
+            self._update_key(None)
+
+    def _update_key(self, key: str | None) -> None:
+        self._pending = True
+        self._render(self._status)
+        self._track(
+            self.ctx.call(
+                lambda client: client.set_gemini_api_key(key),
+                on_success=lambda status: self._on_key_changed(status, key is not None),
+                on_error=lambda error: self.dialog.add_toast(
+                    Adw.Toast(title=S["gemini_failed"].format(error=describe_error(error)), timeout=6)
+                ),
+                on_done=self._on_change_done,
+            )
+        )
+
+    def _on_key_changed(self, status: SttStatus, saved: bool) -> None:
+        self._status = status
+        self._gemini_key.set_text("")
+        self.dialog.add_toast(Adw.Toast(title=S["gemini_saved"] if saved else S["gemini_removed"]))
 
     def _on_changed(self, status: SttStatus) -> None:
         self._status = status

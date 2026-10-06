@@ -309,7 +309,7 @@ export const sampleSttStatus: SttStatus = {
   cpus: 8,
   busy: false,
   queued: 0,
-  gemini: { configured: false, model: "gemini-2.5-flash" },
+  gemini: { configured: false, model: "gemini-2.5-flash", source: null },
 };
 
 export const sampleAgentRun: AgentRun = {

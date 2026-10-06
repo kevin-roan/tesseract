@@ -5,15 +5,18 @@ import shutil
 import subprocess
 import sys
 import threading
+import time
 import urllib.request
 from collections.abc import Callable, Mapping
 from dataclasses import replace
 
 from gi.repository import GLib
 
+from ..api import types as T
 from ..api.tasks import Task, call_on_main, run_async
 from ..config.storage import read_settings, write_settings
 from ..store import Observable
+from .android import HostAndroidClient, session_expiry
 from .model import (
     LISTENING_MARKER,
     HostPairing,
@@ -23,6 +26,7 @@ from .model import (
     cli_error,
     controller_command,
     health_url,
+    host_token,
     is_host_health,
     parse_pairing,
 )
@@ -34,6 +38,7 @@ CLI_TIMEOUT_S = 30
 HEALTH_TIMEOUT_S = 1.5
 STOP_GRACE_S = 5
 SHUTDOWN_WAIT_S = 3
+SESSION_MARGIN_S = 30
 
 
 class HostShellService:
@@ -44,6 +49,7 @@ class HostShellService:
         self.state: Observable[HostShellState] = Observable(HostShellState(autostart=self._read_autostart()))
         self._process: subprocess.Popen[str] | None = None
         self._stopping = False
+        self._session: tuple[str, float] | None = None
 
     def start_if_enabled(self) -> None:
         if self.state.value.autostart:
@@ -109,6 +115,34 @@ class HostShellService:
             on_success=lambda _out: (on_success(), self.refresh()),
             on_error=on_error,
         )
+
+    def android_client(self) -> HostAndroidClient | None:
+        """A client for the host's Android API while the daemon serves and a PIN session is live."""
+        state = self.state.value
+        if not state.ready or state.pairing is None or self._session is None:
+            return None
+        session, expires = self._session
+        if expires - SESSION_MARGIN_S <= time.time():
+            self._session = None
+            return None
+        return HostAndroidClient(state.pairing.url, session)
+
+    def unlock(self, pin: str, on_success: Callable[[], None], on_error: Callable[[BaseException], None]) -> Task[T.HostSession]:
+        pairing = self.state.value.pairing
+
+        def work() -> T.HostSession:
+            if pairing is None:
+                raise HostShellError("The host shell is not running")
+            return HostAndroidClient(pairing.url, host_token(pairing.link)).unlock(pin)
+
+        def unlocked(session: T.HostSession) -> None:
+            self._session = (session["session"], session_expiry(session))
+            on_success()
+
+        return run_async(work, on_success=unlocked, on_error=on_error)
+
+    def forget_session(self) -> None:
+        self._session = None
 
     def shutdown(self) -> None:
         process, self._process = self._process, None

@@ -17,6 +17,8 @@ export type ScriptCardProps = {
   script: string;
   command: string;
   preferDisplay: boolean;
+  /** Off for Android projects, which open their app on the host emulator instead of the display. */
+  offerDisplay?: boolean;
   onRun: (display: boolean) => void;
   /** Opens the screen the run is drawing on, shown while it runs on the display. */
   onShowDisplay?: () => void;
@@ -40,6 +42,7 @@ const ScriptCard = ({
   script,
   command,
   preferDisplay,
+  offerDisplay = true,
   onRun,
   onShowDisplay,
   running = false,
@@ -89,7 +92,7 @@ const ScriptCard = ({
               onPress={onShowDisplay}
               accessibilityLabel={`Show ${script} on the display`}
             />
-          ) : active ? null : (
+          ) : active || !offerDisplay ? null : (
             <Chip label="Run on display" icon={MonitorIcon} selected={display} onPress={toggleDisplay} />
           )}
           {active && onStop ? (
@@ -108,7 +111,7 @@ const ScriptCard = ({
               icon={PlayIcon}
               size="sm"
               loading={running}
-              onPress={() => onRun(display)}
+              onPress={() => onRun(offerDisplay && display)}
               accessibilityLabel={`Run ${script}`}
             />
           )}

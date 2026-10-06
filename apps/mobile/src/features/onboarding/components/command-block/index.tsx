@@ -4,9 +4,9 @@ import { CheckIcon, CopyIcon } from "phosphor-react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
+import { useCopyText } from "@/hooks/use-copy-text";
 import { HitSlop, IconSize } from "@/theme";
 
-import { useCopyText } from "../../hooks/use-copy-text";
 import createStyles from "./styles";
 
 export type CommandBlockProps = {

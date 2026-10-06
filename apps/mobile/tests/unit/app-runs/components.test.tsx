@@ -26,6 +26,8 @@ const runsState = (runs: AppRun[], overrides: Partial<AppRunsState> = {}): AppRu
   open: jest.fn(),
   deeplinkFailureFor: () => null,
   copyManifest: { copied: false, copy: jest.fn(async () => undefined), canCopy: true },
+  emulator: null,
+  setupEmulator: jest.fn(),
   ...overrides,
 });
 
@@ -39,6 +41,9 @@ describe("AppRunsSection", () => {
 
     expect(screen.getByText("Link the host Android emulator first")).toBeOnTheScreen();
     expect(screen.getByLabelText("Start Android emulator").props.accessibilityState.disabled).toBe(true);
+    await fireEvent.press(screen.getByLabelText("Set up emulator: Android emulator"));
+    expect(runs.setupEmulator).toHaveBeenCalled();
+    expect(screen.queryByLabelText("Set up emulator: Linux desktop")).toBeNull();
     await fireEvent.press(screen.getByLabelText("Start Linux desktop"));
     expect(runs.start).toHaveBeenCalledWith("flutter-linux");
 
@@ -64,6 +69,18 @@ describe("AppRunsSection", () => {
     expect(screen.getByLabelText("Start Web")).toBeOnTheScreen();
     await fireEvent.press(screen.getByText("Copy URL"));
     expect(runs.copyManifest.copy).toHaveBeenCalled();
+  });
+
+  it("hands a failed run to AI and offers it only once the run has failed", async () => {
+    const failed: AppRun = { ...sampleAppRun, state: "failed", error: "No Android device found" };
+    const onFix = jest.fn();
+    await render(<AppRunsSection runs={runsState([failed])} logsOpen={() => false} onToggleLogs={jest.fn()} logs={null} onFix={onFix} />);
+
+    await fireEvent.press(screen.getByLabelText("Fix Web with AI"));
+    expect(onFix).toHaveBeenCalledWith(failed, "Web");
+
+    await render(<AppRunsSection runs={runsState([sampleAppRun])} logsOpen={() => false} onToggleLogs={jest.fn()} logs={null} onFix={onFix} />);
+    expect(screen.queryByLabelText("Fix Web with AI")).toBeNull();
   });
 
   it("hides a deep link failure that belongs to an older run", async () => {

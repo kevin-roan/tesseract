@@ -35,6 +35,10 @@ _LIGHT_NAMED = MappingProxyType({
     "indigo": P.INDIGO[500], "teal": P.TEAL[500], "coral": P.CORAL[500],
     "blue": P.BLUE[500], "rose": P.ROSE[500], "amber": P.AMBER[600],
 })
+_GRAPHITE_LIGHT_NAMED = MappingProxyType({
+    "indigo": P.LINEAR["indigo"], "teal": P.TEAL[500], "coral": P.CORAL[500],
+    "blue": P.BLUE[500], "rose": P.ROSE[500], "amber": P.AMBER[600],
+})
 _DARK_NAMED = MappingProxyType({
     "indigo": P.INDIGO[400], "teal": P.TEAL[400], "coral": P.CORAL[400],
     "blue": P.BLUE[400], "rose": P.ROSE[400], "amber": P.AMBER[600],
@@ -79,6 +83,19 @@ CHART = MappingProxyType({
         bar=P.LINEAR["indigo"],
         bar_empty="rgba(255, 255, 255, 0.06)",
         bar_empty_stroke="rgba(255, 255, 255, 0.16)",
+    ),
+    "graphiteLight": ChartPalette(
+        categorical=_categorical(_GRAPHITE_LIGHT_NAMED),
+        named=_GRAPHITE_LIGHT_NAMED,
+        sequential=(P.GRAPHITE[100], P.GRAPHITE[200], P.GRAPHITE[400], P.GRAPHITE[500], P.GRAPHITE[700]),
+        diverging=MappingProxyType({"negative": P.LINEAR["red"], "neutral": P.GRAPHITE[200], "positive": P.LINEAR["green"]}),
+        status=_status("graphiteLight"),
+        grid="rgba(0, 0, 0, 0.06)",
+        axis=P.GRAPHITE[200],
+        label=COLORS["graphiteLight"]["textSecondary"],
+        bar=P.LINEAR["indigo"],
+        bar_empty="rgba(0, 0, 0, 0.04)",
+        bar_empty_stroke="rgba(0, 0, 0, 0.14)",
     ),
 })
 

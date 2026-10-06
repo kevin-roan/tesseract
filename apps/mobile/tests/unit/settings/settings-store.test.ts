@@ -7,7 +7,7 @@ const saved = (sttProvider: string) => JSON.stringify({ state: { sttProvider }, 
 
 beforeEach(() => {
   resetKvStore();
-  useSettingsStore.setState({ sttProvider: DEFAULT_STT_PROVIDER, islandPlacement: "bottomRight", islandDock: { edge: "right", offset: 1 }, liveActivity: true });
+  useSettingsStore.setState({ sttProvider: DEFAULT_STT_PROVIDER, islandPlacement: "bottomRight", islandDock: { edge: "right", offset: 1 }, liveActivity: true, appearance: "dark" });
 });
 
 describe("useSettingsStore", () => {
@@ -20,7 +20,7 @@ describe("useSettingsStore", () => {
     useSettingsStore.getState().setSttProvider("native");
     expect(useSettingsStore.getState().sttProvider).toBe("native");
     await Promise.resolve();
-    expect(JSON.parse(dumpKvStore()[SETTINGS_STORE_NAME]).state).toEqual({ sttProvider: "native", islandPlacement: "bottomRight", islandDock: { edge: "right", offset: 1 }, liveActivity: true });
+    expect(JSON.parse(dumpKvStore()[SETTINGS_STORE_NAME]).state).toEqual({ sttProvider: "native", islandPlacement: "bottomRight", islandDock: { edge: "right", offset: 1 }, liveActivity: true, appearance: "dark" });
   });
 
   it("restores a saved provider and ignores an unknown one", async () => {

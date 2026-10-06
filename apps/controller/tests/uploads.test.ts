@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ErrorBodySchema, LIMITS, TranscriptionSchema, UploadSchema, type Upload } from "@theone/protocol";
+import { ErrorBodySchema, LIMITS, TranscriptionSchema, UploadSchema, type ServerEvent, type Upload } from "@theone/protocol";
 import { loadConfig } from "../src/config";
 import { HttpError } from "../src/core/errors";
 import { EventHub } from "../src/core/events";
@@ -502,11 +502,39 @@ describe("gemini transcriptions", () => {
     t.config.stt.geminiApiKey = null;
     try {
       expect(await transcript({ uploadId: voice.id, provider: "gemini" })).toMatchObject({ engine: "whisper.cpp", fallbackReason: GEMINI_KEY_MISSING });
-      expect((await t.json("GET", "/v1/stt")).body).toMatchObject({ gemini: { configured: false, model: "gemini-test" } });
+      expect((await t.json("GET", "/v1/stt")).body).toMatchObject({ gemini: { configured: false, model: "gemini-test", source: null } });
     } finally {
       t.config.stt.geminiApiKey = "AIza-secret";
     }
     expect(requests.length).toBe(calls);
-    expect((await t.json("GET", "/v1/stt")).body).toMatchObject({ gemini: { configured: true, model: "gemini-test" } });
+    expect((await t.json("GET", "/v1/stt")).body).toMatchObject({ gemini: { configured: true, model: "gemini-test", source: "env" } });
+  });
+
+  test("a key saved from an app wins over GEMINI_API_KEY, survives restarts and is never returned", async () => {
+    const voice = await upload();
+    const events: ServerEvent[] = [];
+    const unsubscribe = t.controller.services.hub.subscribe((event) => events.push(event));
+    const saved = await t.json("PUT", "/v1/stt", { geminiApiKey: " AIza-saved " });
+    unsubscribe();
+    expect(saved.status).toBe(200);
+    expect(saved.body).toMatchObject({ profile: "eco", gemini: { configured: true, source: "settings" } });
+    expect(JSON.stringify(saved.body)).not.toContain("AIza-saved");
+    expect(events.filter((event) => event.type === "stt.updated")).toHaveLength(1);
+
+    reply = () => geminiText("Saved key");
+    expect(await transcript({ uploadId: voice.id, provider: "gemini" })).toMatchObject({ text: "Saved key", engine: "gemini" });
+    expect(requests.at(-1)?.key).toBe("AIza-saved");
+
+    await t.stop();
+    t = await startTestController({
+      workspace: t.workspace,
+      env: { THEONE_WHISPER_MODEL: model, THEONE_GEMINI_STT_MODEL: "gemini-test" },
+      controller: { transcription: sttOptions },
+    });
+    expect((await t.json("GET", "/v1/stt")).body).toMatchObject({ gemini: { configured: true, source: "settings" } });
+
+    expect((await t.json("PUT", "/v1/stt", { geminiApiKey: "has space" })).status).toBe(400);
+    expect((await t.json("PUT", "/v1/stt", { geminiApiKey: null })).body).toMatchObject({ gemini: { configured: false, source: null } });
+    expect(await transcript({ uploadId: voice.id, provider: "gemini" })).toMatchObject({ engine: "whisper.cpp", fallbackReason: GEMINI_KEY_MISSING });
   });
 });

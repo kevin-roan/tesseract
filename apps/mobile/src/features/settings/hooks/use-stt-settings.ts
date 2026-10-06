@@ -1,10 +1,10 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useUpdateStt } from "@/features/sandbox/hooks/use-sandbox-mutations";
 import { useSttStatus } from "@/features/sandbox/hooks/use-sandbox-queries";
 import { describeError } from "@/features/sandbox/utils/errors";
 
-import { geminiUnavailable, isSttProfile, isSttProvider, sttProfileRows, sttProviderRows } from "../utils/stt";
+import { geminiKeyHint, geminiUnavailable, isSttProfile, isSttProvider, sttProfileRows, sttProviderRows } from "../utils/stt";
 import { useSetSttProvider, useSttProvider } from "./use-stt-provider";
 
 export function useSttSettings() {
@@ -14,6 +14,8 @@ export function useSttSettings() {
   const update = useUpdateStt();
   const data = status.data;
   const pending = update.isPending ? (update.variables?.profile ?? null) : null;
+  const pendingKey = update.isPending ? update.variables?.geminiApiKey : undefined;
+  const [keyDraft, setKeyDraft] = useState("");
 
   const providerRows = useMemo(() => sttProviderRows(provider, data), [provider, data]);
   const profileRows = useMemo(() => (data ? sttProfileRows(data, pending) : null), [data, pending]);
@@ -34,12 +36,33 @@ export function useSttSettings() {
     [isPending, mutate, data?.profile],
   );
 
+  const saveKey = useCallback(() => {
+    const key = keyDraft.trim();
+    if (isPending || !key) return;
+    mutate({ geminiApiKey: key }, { onSuccess: () => setKeyDraft("") });
+  }, [isPending, keyDraft, mutate]);
+
+  const removeKey = useCallback(() => {
+    if (!isPending) mutate({ geminiApiKey: null });
+  }, [isPending, mutate]);
+
   return {
     providerRows,
     selectProvider,
     geminiMissing: geminiUnavailable(provider, data),
     profileRows,
     selectProfile,
+    geminiKey: data
+      ? {
+          value: keyDraft,
+          onChange: setKeyDraft,
+          hint: geminiKeyHint(data),
+          save: saveKey,
+          saving: typeof pendingKey === "string",
+          remove: data.gemini.source === "settings" ? removeKey : undefined,
+          removing: pendingKey === null,
+        }
+      : null,
     loading: status.isLoading,
     engineIssue: data && !data.ready ? data.reason : null,
     error: status.error ? describeError(status.error) : null,

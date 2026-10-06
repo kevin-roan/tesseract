@@ -2,6 +2,7 @@ import { createRef } from "react";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { PlusIcon } from "phosphor-react-native";
 import {
+  sampleClaudeSession,
   sampleAgentRun,
   sampleAgentRunEvents,
   sampleArtifact,
@@ -677,7 +678,18 @@ describe("ProjectScreen", () => {
     claudeAccount: claudeAccountState(),
     renameSheet: { visible: false, name: "", setName: jest.fn(), hint: "", error: null, saving: false, save: jest.fn(), close: jest.fn() },
     appRuns: appRunsState(),
+    chats: chatsState(),
     actionError: null,
+    ...overrides,
+  });
+  const chatsState = (overrides: object = {}) => ({
+    items: [],
+    loading: false,
+    error: null,
+    retry: jest.fn(),
+    open: jest.fn(),
+    newChat: jest.fn(),
+    viewAll: undefined,
     ...overrides,
   });
   const appRunsState = () => ({
@@ -693,6 +705,8 @@ describe("ProjectScreen", () => {
     open: jest.fn(),
     deeplinkFailureFor: () => null,
     copyManifest: { copied: false, copy: jest.fn(), canCopy: true },
+    emulator: null,
+    setupEmulator: jest.fn(),
   });
   const claudeAccountState = (overrides: object = {}) => ({
     visible: true,
@@ -729,6 +743,26 @@ describe("ProjectScreen", () => {
     expect(mockNav.build).toHaveBeenCalledWith(sampleBuild.id);
     await fireEvent.press(screen.getByLabelText(`Download ${sampleArtifact.fileName}`));
     expect(state.downloads.download).toHaveBeenCalledWith(sampleArtifact.id);
+  });
+
+  it("lists the project's chats and starts a new one", async () => {
+    mockParams = { id: sampleProject.id };
+    const chats = chatsState({ items: [sampleClaudeSession], viewAll: jest.fn() });
+    mockHooks.project.mockReturnValue(detail({ chats }));
+    await render(<ProjectScreen />);
+
+    await fireEvent.press(screen.getByLabelText(new RegExp(`^${sampleClaudeSession.title}`)));
+    expect(chats.open).toHaveBeenCalledWith(sampleClaudeSession);
+    await fireEvent.press(screen.getByLabelText("View all, Chats"));
+    expect(chats.viewAll).toHaveBeenCalled();
+
+    const empty = chatsState();
+    mockHooks.project.mockReturnValue(detail({ chats: empty }));
+    await render(<ProjectScreen />);
+    expect(screen.getByText("No chats about this project yet.")).toBeOnTheScreen();
+    expect(screen.queryByLabelText("View all, Chats")).toBeNull();
+    await fireEvent.press(screen.getByLabelText("New chat"));
+    expect(empty.newChat).toHaveBeenCalled();
   });
 
   it("shows the project's Claude account and opens the picker", async () => {

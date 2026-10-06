@@ -1,3 +1,4 @@
+import { useLocalSearchParams } from "expo-router";
 import { ChatsIcon, PlusIcon } from "phosphor-react-native";
 
 import EmptyState from "@/components/empty-state";
@@ -5,9 +6,11 @@ import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
 import ChatList from "@/features/chats/components/chat-list";
 import { useChatsScreen } from "@/features/chats/hooks/use-chats-screen";
+import { firstParam } from "@/features/sandbox/utils/routes";
 
 export default function ChatsScreen() {
-  const chats = useChatsScreen();
+  const params = useLocalSearchParams<{ projectId?: string }>();
+  const chats = useChatsScreen(firstParam(params.projectId) ?? null);
   const empty = !chats.loading && !chats.error && chats.items.length === 0;
 
   return (
@@ -17,7 +20,7 @@ export default function ChatsScreen() {
       header={
         <ScreenHeader
           title="Chats"
-          subtitle="Claude conversations in this sandbox"
+          subtitle={chats.project ?? "Claude conversations in this sandbox"}
           onBack={chats.back}
           actions={[{ id: "new", icon: PlusIcon, label: "New chat", onPress: chats.newChat }]}
         />

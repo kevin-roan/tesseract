@@ -79,7 +79,25 @@ const graphite: Record<keyof typeof light, Gradient> = {
   },
 };
 
-export const Gradients = { light, dark, graphite } as const;
+const graphiteLight: Record<keyof typeof light, Gradient> = {
+  brand: {
+    colors: [Palette.graphite[950], Palette.graphite[950]],
+    locations: [0, 1],
+    ...Horizontal,
+  },
+  scrim: {
+    colors: ['rgba(245, 245, 245, 0)', 'rgba(245, 245, 245, 0.85)', Palette.graphite[50]],
+    locations: [0, 0.6, 1],
+    ...Vertical,
+  },
+  wash: {
+    colors: [Palette.clay[50], Palette.graphite[50], Palette.graphite[50]],
+    locations: [0, 0.45, 1],
+    ...Vertical,
+  },
+};
+
+export const Gradients = { light, dark, graphite, graphiteLight } as const;
 
 export type GradientName = keyof typeof light;
 

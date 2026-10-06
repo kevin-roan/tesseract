@@ -4,10 +4,11 @@ from pathlib import Path
 from typing import Any, BinaryIO, Protocol
 
 from .errors import SyncBackError
-from .manifest import GIT_DIR
+from .fsutil import is_executable
+from .manifest import GIT_DIR, DigestCache, build_manifest
 from .pull import require_link
 from .state import REDACTED, Link, SyncState, iso, utc_now
-from .tree import GitManifest, HostTree, collect_files, scan_tree
+from .tree import GitManifest, HostTree, collect_files, contained, scan_tree
 
 MAX_CHANGES = 5000
 MAX_GIT_PATHS = 200_000
@@ -35,6 +36,16 @@ def plan_changes(tree: HostTree, link: Link) -> list[dict[str, Any]]:
             kind = "added" if before is None else "modified"
             changes.append({"path": path, "kind": kind, "sha256": digest, "executable": path in executable})
     return changes
+
+
+def host_changes(link: Link, digests: DigestCache | None = None) -> list[str]:
+    """Paths a get would bring in: host files changed since the last push/get (none when the folder is missing)."""
+    root = Path(link.host_path).resolve()
+    if not root.is_dir():
+        return []
+    manifest = build_manifest(root, contained(root, collect_files(root)), digests or DigestCache())
+    tree = HostTree(manifest, sorted(path for path in manifest if is_executable(root / path)), None)
+    return [change["path"] for change in plan_changes(tree, link)]
 
 
 def plan_git(current: GitManifest | None, previous: GitManifest | None) -> dict[str, list[str]] | None:

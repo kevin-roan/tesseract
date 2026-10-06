@@ -227,8 +227,6 @@ export const SETUP_LABELS = {
   copied: "Copied",
 } as const;
 
-export const COPY_FEEDBACK_MS = 1600;
-
 export const SLIDE_PARALLAX = { hero: 0.3, copy: 0.15 } as const;
 
 export function stepIndex(position: number): string {

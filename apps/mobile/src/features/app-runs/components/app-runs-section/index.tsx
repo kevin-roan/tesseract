@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode } from "react";
+import type { AppRun } from "@theone/protocol";
 
 import MotionItem from "@/components/motion-item";
 import Notice from "@/components/notice";
@@ -13,9 +14,11 @@ export type AppRunsSectionProps = {
   logsOpen: (processId: string | undefined) => boolean;
   onToggleLogs: (processId: string) => void;
   logs: ReactNode;
+  onFix?: (run: AppRun, label: string) => void;
+  fixingId?: string | null;
 };
 
-const AppRunsSection = ({ runs, logsOpen, onToggleLogs, logs }: AppRunsSectionProps) => {
+const AppRunsSection = ({ runs, logsOpen, onToggleLogs, logs, onFix, fixingId = null }: AppRunsSectionProps) => {
   return (
     <Section
       title={APP_RUNS_COPY.title}
@@ -53,6 +56,7 @@ const AppRunsSection = ({ runs, logsOpen, onToggleLogs, logs }: AppRunsSectionPr
                 entry={entry}
                 onStart={() => runs.start(entry.target)}
                 starting={runs.startingTarget === entry.target}
+                onSetupEmulator={runs.setupEmulator}
                 onOpen={() => run && runs.open(run, entry.label)}
                 onAction={(action) => run && runs.runAction(run.id, action)}
                 pendingAction={run && runs.pendingAction?.runId === run.id ? runs.pendingAction.action : null}
@@ -61,6 +65,8 @@ const AppRunsSection = ({ runs, logsOpen, onToggleLogs, logs }: AppRunsSectionPr
                 onToggleLogs={processId ? () => onToggleLogs(processId) : undefined}
                 logsOpen={logsOpen(processId)}
                 logs={logs}
+                onFix={run && onFix ? () => onFix(run, entry.label) : undefined}
+                fixing={run !== null && fixingId === run.id}
               />
             </MotionItem>
           </Fragment>

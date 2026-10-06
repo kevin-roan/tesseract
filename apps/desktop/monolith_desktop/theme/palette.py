@@ -17,6 +17,16 @@ LINEAR = MappingProxyType({
     "orange": "#F2994A", "red": "#EB5757", "redMuted": "#2C1517", "blue": "#4EA7FC", "blueMuted": "#122233",
     "purple": "#BB87FC",
 })
+LINEAR_LIGHT = MappingProxyType({
+    "window": "#F5F5F6", "panel": "#FFFFFF", "hover": "#EEEEF0", "selected": "#E7E7EA",
+    "text": "#1B1B1F", "textSecondary": "#5C5D66", "textTertiary": "#7E7F88",
+    "indigoInk": "#4F5BC4", "indigoMuted": "#EDEEFA",
+    "green": "#2E8A5B", "greenSolid": "#4CB782", "greenMuted": "#E5F4EC",
+    "yellow": "#8F6400", "yellowSolid": "#E2B22E", "yellowMuted": "#FBF2D9",
+    "red": "#C93A3A", "redSolid": "#EB5757", "redMuted": "#FCE9E9",
+    "blue": "#1F6FCB", "blueSolid": "#4EA7FC", "blueMuted": "#E5F1FE",
+    "purple": "#8A4FD8",
+})
 STONE = MappingProxyType({
     50: "#FAF9F6", 100: "#F0EEE6", 200: "#E8E6DC", 300: "#DEDBCF", 400: "#A6A39A", 500: "#908D85", 600: "#65645E",
     650: "#5C5B55", 700: "#45443F", 800: "#3A3936", 850: "#30302E", 900: "#1F1E1D", 950: "#141413",
