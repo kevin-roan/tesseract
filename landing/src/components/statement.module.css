@@ -1,7 +1,0 @@
-.root {
-  padding: clamp(80px, 10vw, 140px) 0 clamp(96px, 12vw, 180px);
-}
-
-.label {
-  margin-bottom: 28px;
-}

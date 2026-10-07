@@ -1,8 +1,0 @@
-.root {
-  font-size: clamp(26px, 3.6vw, 44px);
-  font-weight: 510;
-  letter-spacing: -0.024em;
-  line-height: 1.22;
-  color: var(--text);
-  max-width: 980px;
-}
