@@ -1,0 +1,34 @@
+.surface {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--to-surface-tone-border);
+  border-radius: var(--to-radius-card);
+  background: var(--to-surface-tone-fill);
+  color: var(--to-text);
+  transition: var(--to-state-transition);
+}
+
+.card {
+  padding: 16px;
+}
+
+.compact {
+  padding: 12px;
+  border-radius: var(--to-radius-md);
+}
+
+.neutral {
+  --to-highlight: var(--to-text);
+}
+
+.violet {
+  --to-highlight: #bb87fc;
+}
+
+.indigo {
+  --to-highlight: var(--to-accent-strong);
+}
+
+.yellow {
+  --to-highlight: var(--to-warning);
+}

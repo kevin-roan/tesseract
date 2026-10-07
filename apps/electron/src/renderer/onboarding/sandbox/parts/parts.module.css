@@ -1,0 +1,128 @@
+.caption {
+  flex: none;
+  min-width: 48px;
+  text-align: right;
+}
+
+.locked {
+  cursor: default;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-pill);
+  background: transparent;
+  color: var(--to-text-secondary);
+  font: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--to-state-transition);
+}
+
+.chip:active:not(:disabled) {
+  transform: scale(var(--to-press-scale));
+}
+
+.chip:hover:not(:disabled) {
+  background: var(--to-background-element);
+  color: var(--to-text);
+}
+
+.chipOn {
+  border-color: var(--to-border-strong);
+  background: var(--to-background-selected);
+  color: var(--to-text);
+}
+
+.chip:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 0 3px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-sm);
+  background: var(--to-surface-elevated);
+  transition: var(--to-state-transition);
+}
+
+.stepper:focus-within {
+  border-color: var(--to-accent);
+  outline: 1px solid var(--to-focus-ring);
+  outline-offset: 1px;
+}
+
+.stepperInput {
+  width: 40px;
+  height: 100%;
+  padding: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--to-text);
+  font: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.stepperInput[data-invalid] {
+  color: var(--to-danger);
+}
+
+.unit {
+  min-width: 34px;
+}
+
+.field {
+  min-width: 320px;
+}
+
+.fieldError {
+  display: block;
+  color: var(--to-danger);
+}
+
+@media (max-width: 819px) {
+  .field {
+    min-width: 240px;
+  }
+}
+
+.phaseRow {
+  --to-pref-row-min-height: 36px;
+  --to-pref-row-text-margin: 6px;
+}
+
+.glyph {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.glyphLayer {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}

@@ -1,0 +1,10 @@
+.dot {
+  flex: none;
+  display: inline-block;
+  border-radius: 50%;
+  transition: background-color var(--to-duration-normal) var(--to-ease-standard);
+}
+
+.live {
+  animation: to-pulse var(--to-pulse-duration) var(--to-ease-standard) infinite;
+}

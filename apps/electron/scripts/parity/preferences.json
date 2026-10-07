@@ -1,0 +1,77 @@
+[
+  {
+    "reference": "preferences-connection.png",
+    "route": "/overview?preferences=connection",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "preferences-connection-light.png",
+    "route": "/overview?preferences=connection",
+    "scenario": "gtk-parity",
+    "light": true,
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "preferences-appearance.png",
+    "route": "/overview?preferences=appearance",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "preferences-appearance-light.png",
+    "route": "/overview?preferences=appearance",
+    "scenario": "gtk-parity",
+    "light": true,
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "preferences-claude.png",
+    "route": "/overview?preferences=claude",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "preferences-claude-light.png",
+    "route": "/overview?preferences=claude",
+    "scenario": "gtk-parity",
+    "light": true,
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "preferences-host-shell.png",
+    "route": "/overview?preferences=host-shell",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "preferences-host-shell-light.png",
+    "route": "/overview?preferences=host-shell",
+    "scenario": "gtk-parity",
+    "light": true,
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "preferences-stt.png",
+    "route": "/overview?preferences=stt",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "preferences-stt-light.png",
+    "route": "/overview?preferences=stt",
+    "scenario": "gtk-parity",
+    "light": true,
+    "width": 1024,
+    "height": 768
+  }
+]

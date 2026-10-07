@@ -16,6 +16,7 @@ module.exports = {
     "^expo-document-picker$": "<rootDir>/tests/mocks/expo-document-picker.ts",
     "^expo-clipboard$": "<rootDir>/tests/mocks/expo-clipboard.ts",
     "^expo-file-system$": "<rootDir>/tests/mocks/expo-file-system.ts",
+    "^expo-sharing$": "<rootDir>/tests/mocks/expo-sharing.ts",
     "^@shopify/react-native-skia$": "<rootDir>/tests/mocks/react-native-skia.tsx",
     "^react-native-pulsar$": "react-native-pulsar/jest-mock",
     "^react-native-webview$": "<rootDir>/tests/mocks/react-native-webview.tsx",

@@ -1,0 +1,22 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "types": ["node", "vite/client"],
+    "paths": {
+      "@shared/*": ["./src/shared/*"],
+      "@core/*": ["./src/core/*"]
+    }
+  },
+  "include": [
+    "src/main",
+    "src/preload",
+    "src/core",
+    "src/shared",
+    "cli",
+    "scripts",
+    "tests",
+    "e2e",
+    "*.config.ts"
+  ]
+}

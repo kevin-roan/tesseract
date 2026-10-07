@@ -1,0 +1,71 @@
+.frame {
+  display: flex;
+  height: 768px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-lg);
+  background: var(--to-background);
+  overflow: hidden;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 289px;
+}
+
+.fill {
+  position: relative;
+  display: flex;
+  background: var(--to-background);
+}
+
+:global([data-gallery-entry]) .fill {
+  margin: -24px;
+}
+
+.pageBody {
+  flex: 1;
+  min-height: 0;
+  padding: 24px 32px;
+  overflow: auto;
+}
+
+.panelBox {
+  display: flex;
+  flex-direction: column;
+  min-height: 160px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-surface);
+  overflow: hidden;
+}
+
+.chromeRow {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.demoBox {
+  padding: 12px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-background);
+}
+
+.viewBox {
+  display: flex;
+  height: 120px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-surface);
+  overflow: hidden;
+}
+
+.view {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+}

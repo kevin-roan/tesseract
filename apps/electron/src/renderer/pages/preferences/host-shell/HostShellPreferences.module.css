@@ -1,0 +1,12 @@
+.log {
+  composes: to-overlay-scrollbar from global;
+  margin: 8px 12px;
+  overflow-y: auto;
+  color: var(--to-text-secondary);
+  font-family: var(--to-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}

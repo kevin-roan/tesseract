@@ -1,0 +1,87 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+}
+
+.titles {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.title {
+  margin-bottom: 2px;
+  color: var(--to-text);
+}
+
+.titleFlush {
+  margin-bottom: 0;
+}
+
+.trailing {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.linkButton {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: var(--to-radius-sm);
+  background: transparent;
+  color: var(--to-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: var(--to-state-transition);
+}
+
+.linkButton:hover {
+  background: var(--to-background-element);
+  color: var(--to-text);
+}
+
+.linkButton:active {
+  background: var(--to-background-selected);
+  transform: scale(var(--to-press-scale));
+}
+
+.stack {
+  display: grid;
+  min-width: 0;
+}
+
+.layer {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.layer > svg {
+  align-self: flex-start;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}

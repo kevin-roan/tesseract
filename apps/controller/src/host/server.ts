@@ -17,6 +17,7 @@ import {
   StartEmulatorSchema,
   TerminalClientMessageSchema,
   TICKET_PARAM,
+  UpdateAndroidStreamSchema,
   validate,
   wsPaths,
   type AndroidScreenServerMessage,
@@ -31,13 +32,13 @@ import androidPage from "../ui/android.html";
 import terminalPage from "../ui/terminal.html";
 import { VERSION } from "../version";
 import { HostAndroid, type HostAndroidOptions } from "./android";
-import type { ScreenClient } from "./android/screen";
+import type { ScreenClient, ScreenRequest } from "./android/screen";
 import { HostAuth, type HostAuthOptions } from "./auth";
 import type { HostConfig } from "./config";
 import { HostStateStore } from "./state";
 import { HostTerminals } from "./terminals";
 
-type WsData = { kind: "terminal" | "screen"; id: string; maxSize: number | undefined; screen: ScreenClient | null; cleanup: (() => void) | null };
+type WsData = { kind: "terminal" | "screen"; id: string; request: ScreenRequest; screen: ScreenClient | null; cleanup: (() => void) | null };
 
 export type HostShellOptions = HostAuthOptions & { logger?: Logger; stopGraceMs?: number; android?: HostAndroidOptions };
 
@@ -64,7 +65,7 @@ const STREAM_PATH = new RegExp(`^${routePatterns.ws.terminalStream.replace(":id"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, DELETE",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE",
   "Access-Control-Allow-Headers": "Authorization, Content-Type",
 };
 
@@ -122,7 +123,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") throw badRequest("WebSocket upgrade required");
       if (!tickets.consume(url.searchParams.get(TICKET_PARAM))) throw new HttpError("unauthorized", "Missing, expired or already used ticket");
       if (!isIdOfKind("terminal", streamId) || !terminals.has(streamId)) throw notFound(`Terminal ${streamId.slice(0, 80)} not found`);
-      if (server.upgrade(request, { data: { kind: "terminal", id: streamId, maxSize: undefined, screen: null, cleanup: null } })) return undefined;
+      if (server.upgrade(request, { data: { kind: "terminal", id: streamId, request: {}, screen: null, cleanup: null } })) return undefined;
       throw badRequest("WebSocket upgrade failed");
     }
 
@@ -131,10 +132,13 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       const query = validate(AndroidScreenQuerySchema, {
         ticket: url.searchParams.get(TICKET_PARAM),
         maxSize: url.searchParams.get("maxSize") ?? undefined,
+        serial: url.searchParams.get("serial") ?? undefined,
+        codec: url.searchParams.get("codec") ?? undefined,
       });
       if (!query.ok) throw badRequest(`Invalid query: ${query.error.message}`);
       if (!tickets.consume(query.value.ticket)) throw new HttpError("unauthorized", "Missing, expired or already used ticket");
-      if (server.upgrade(request, { data: { kind: "screen", id: "screen", maxSize: query.value.maxSize, screen: null, cleanup: null } })) return undefined;
+      const { ticket: _ticket, ...screen } = query.value;
+      if (server.upgrade(request, { data: { kind: "screen", id: "screen", request: screen, screen: null, cleanup: null } })) return undefined;
       throw badRequest("WebSocket upgrade failed");
     }
 
@@ -152,7 +156,8 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     }
 
     const terminalId = decodeId(TERMINAL_PATH.exec(path));
-    const androidPath = path === restPaths.android() || path === restPaths.androidEmulator() || path === restPaths.androidLink();
+    const androidPaths: string[] = [restPaths.android(), restPaths.androidEmulator(), restPaths.androidLink(), restPaths.androidDevices(), restPaths.androidStream()];
+    const androidPath = androidPaths.includes(path);
     const known = path === restPaths.authTicket() || path === restPaths.terminals() || terminalId !== null || androidPath;
     if (!known) throw notFound(`No route for ${method} ${path}`);
     auth.requireSession(authorization);
@@ -169,6 +174,9 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     if (path === restPaths.androidEmulator() && method === "DELETE") return respond(android.stop());
     if (path === restPaths.androidLink() && method === "POST") return respond(android.linkSandbox(await readBody(request, LinkSandboxSchema)));
     if (path === restPaths.androidLink() && method === "DELETE") return respond(android.unlinkSandbox());
+    if (path === restPaths.androidDevices() && method === "GET") return respond(await android.devices());
+    if (path === restPaths.androidStream() && method === "GET") return respond(android.streamSettings());
+    if (path === restPaths.androidStream() && method === "PUT") return respond(android.updateStream(await readBody(request, UpdateAndroidStreamSchema)));
     throw new HttpError("bad_request", `${method} is not supported on ${path}`, 405);
   }
 
@@ -182,7 +190,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       close: (code, reason) => ws.close(code, reason),
     };
     ws.data.screen = client;
-    ws.data.cleanup = android.screens.attach(client, ws.data.maxSize);
+    ws.data.cleanup = android.screens.attach(client, ws.data.request);
   }
 
   const server: Server<WsData> = Bun.serve<WsData>({

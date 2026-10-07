@@ -35,7 +35,8 @@ function builds(overrides: object = {}) {
     selectProject: jest.fn(),
     clearFilters: jest.fn(),
     download: jest.fn(),
-    downloadingKey: null,
+    share: jest.fn(),
+    localStatus: jest.fn(() => ({ downloaded: false, progress: undefined, sharing: false })),
     downloadError: null,
     ...overrides,
   };
@@ -67,7 +68,8 @@ function files(overrides: object = {}) {
     projectId: "all",
     selectProject: jest.fn(),
     download: jest.fn(),
-    downloadingId: null,
+    share: jest.fn(),
+    localStatus: jest.fn(() => ({ downloaded: false, progress: undefined, sharing: false })),
     downloadError: null,
     remove: jest.fn(),
     deletingId: null,
@@ -100,7 +102,9 @@ describe("FilesScreen", () => {
     expect(screen.getByLabelText("Build")).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByLabelText("Download notes.apk"));
-    expect(state.download).toHaveBeenCalledWith(shared.id);
+    expect(state.download).toHaveBeenCalledWith(shared);
+    await fireEvent.press(screen.getByLabelText("Share notes.apk"));
+    expect(state.share).toHaveBeenCalledWith(shared);
     await fireEvent.press(screen.getByLabelText("Send notes.apk with Taildrop"));
     expect(state.openTaildrop).toHaveBeenCalledWith(shared);
     await fireEvent.press(screen.getByLabelText("Delete notes.apk"));
@@ -124,10 +128,27 @@ describe("FilesScreen", () => {
     expect(screen.getByText("android/app/build/outputs/apk/release")).toBeOnTheScreen();
     await fireEvent.press(screen.getByLabelText("Download app-release.apk"));
     expect(viewing.builds.download).toHaveBeenCalledWith(APK);
+    await fireEvent.press(screen.getByLabelText("Share app-release.apk"));
+    expect(viewing.builds.share).toHaveBeenCalledWith(APK);
 
     mockFiles.mockReturnValue(files({ view: "builds", builds: builds({ outputs: [], total: 0 }) }));
     await rerender(<FilesScreen />);
     expect(screen.getByText("No builds found")).toBeOnTheScreen();
+  });
+
+  it("shows download progress, then the saved state", async () => {
+    const state = files({ localStatus: (artifact: Artifact) => ({ downloaded: false, progress: artifact.id === shared.id ? 0.42 : undefined, sharing: false }) });
+    mockFiles.mockReturnValue(state);
+    const { rerender } = await render(<FilesScreen />);
+    expect(screen.getByText("42%")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Downloading notes.apk")).toBeOnTheScreen();
+
+    const saved = files({ localStatus: () => ({ downloaded: true, progress: undefined, sharing: false }) });
+    mockFiles.mockReturnValue(saved);
+    await rerender(<FilesScreen />);
+    expect(screen.getAllByText("Saved")).toHaveLength(2);
+    await fireEvent.press(screen.getByLabelText("notes.apk is saved on this device"));
+    expect(saved.download).not.toHaveBeenCalled();
   });
 
   it("hides Taildrop when the sandbox has no tailnet access", async () => {

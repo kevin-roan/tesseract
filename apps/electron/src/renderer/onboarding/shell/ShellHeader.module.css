@@ -1,0 +1,36 @@
+.header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 24px;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--to-divider);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.title {
+  min-width: 0;
+}
+
+.end {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+}
+
+.separator {
+  width: 1px;
+  align-self: stretch;
+  margin: 6px 4px;
+  background: var(--to-divider);
+}

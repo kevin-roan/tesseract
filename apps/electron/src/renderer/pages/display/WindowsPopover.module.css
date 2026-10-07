@@ -1,0 +1,52 @@
+.panel {
+  width: 400px;
+  max-width: calc(100vw - 16px);
+}
+
+.popover {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 2px 0 8px;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  color: var(--to-text-tertiary);
+}
+
+.content {
+  min-height: 0;
+}
+
+.state {
+  margin: 20px auto;
+}
+
+.list {
+  composes: to-overlay-scrollbar from global;
+  display: flex;
+  flex-direction: column;
+  max-height: 380px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.row {
+  border-radius: var(--to-radius-sm);
+}
+
+.list[aria-busy] .row {
+  cursor: progress;
+}

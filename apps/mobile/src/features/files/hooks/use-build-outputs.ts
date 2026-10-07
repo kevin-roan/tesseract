@@ -29,7 +29,8 @@ export function useBuildOutputs(enabled: boolean, names: ReadonlyMap<string, str
     selectProject: (id: string) => setProjectId(projectFilterId(id)),
     clearFilters: () => setProjectId(null),
     download: downloads.download,
-    downloadingKey: downloads.pendingKey,
+    share: downloads.share,
+    localStatus: downloads.status,
     downloadError: downloads.error,
   };
 }

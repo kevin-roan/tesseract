@@ -61,7 +61,10 @@ they export TypeScript source (`exports: { ".": "./src/index.ts" }`).
 /
 ├── apps/
 │   ├── mobile/          @theone/mobile      Expo SDK 56 / RN 0.85 / expo-router (existing app)
-│   └── controller/      @theone/controller  Bun + Hono daemon that runs INSIDE the sandbox
+│   ├── controller/      @theone/controller  Bun + Hono daemon that runs INSIDE the sandbox
+│   ├── desktop/         Monolith GTK4/libadwaita app (Python, dev.monolith.Desktop): the visual reference
+│   └── electron/        @monolith/electron  Monolith desktop app (Electron 44, React 19): setup wizard,
+│                                            sandbox stack control, host Android emulator, `monolith` CLI (§12)
 ├── packages/
 │   ├── protocol/        @theone/protocol    zod v4 schemas + types + route helpers (the wire contract);
 │   │                                        subpath exports ./bridge (zod-free) and ./fixtures
@@ -77,7 +80,7 @@ they export TypeScript source (`exports: { ".": "./src/index.ts" }`).
 ├── examples/
 │   └── electron-hello/  tiny Electron + electron-builder app used for e2e build tests
 │                        (NOT a workspace member — never installed on the host)
-├── docs/                architecture/, adr/, runbooks/, archive/
+├── docs/                architecture/, adr/, runbooks/, archive/, electron/ (desktop app specs + conventions)
 ├── SPEC.md              operating spec for the agent that runs inside the sandbox
 ├── package.json         workspaces + root scripts
 ├── bunfig.toml
@@ -87,7 +90,8 @@ they export TypeScript source (`exports: { ".": "./src/index.ts" }`).
 Root scripts: `bun run typecheck`, `bun run test`, `bun run lint` (fan out with
 `bun run --filter '*'`), `bun run mobile`, `bun run controller:dev`,
 `bun run controller:build`, `bun run sandbox <cmd>`, `bun run test:infra` (§11),
-`bun run e2e` (§11).
+`bun run e2e` (§11), `bun run host <cmd>` (§7), and the desktop app shortcuts
+`bun run electron` (dev), `electron:build`, `electron:e2e`, `electron:dist`, `electron:smoke` (§12).
 
 Every workspace package has `typecheck` and `test` scripts. Adding a dependency
 from an automated agent MUST go through `flock /tmp/theone-bun-install.lock bun add …`
@@ -128,7 +132,9 @@ from an automated agent MUST go through `flock /tmp/theone-bun-install.lock bun 
 | Host shell daemon | `theone-controller host serve` on the host, `<host Tailscale IPv4>:7701` (`HOST_SHELL_PORT`, `THEONE_HOST_SHELL_PORT`); only loopback or `100.64.0.0/10` binds |
 | ADB tunnel | `127.0.0.1:15555` in the sandbox (`DEFAULT_ADB_TUNNEL_PORT`, `THEONE_ADB_TUNNEL_PORT`), adb serial `127.0.0.1:15555`; open only while the host emulator is linked and `running` ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2.3) |
 | Host Android emulator | console `5554`, adbd `5555` (`DEFAULT_EMULATOR_PORT`, `THEONE_EMULATOR_PORT`); adb serial `127.0.0.1:<bridge port>` in `netns` isolation (`THEONE_EMULATOR_ADB_PORT`), `emulator-<port>` for a plain (`none` or adopted non-isolated) emulator |
-| Host shell state | `$XDG_CONFIG_HOME/theone/host-shell/state.json` (default `~/.config/…`, `THEONE_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters, `androidLink` (sandbox URL + token) |
+| Desktop renderer dev server | `http://127.0.0.1:4545` (`RENDERER_DEV_PORT`, `strictPort`, dev and preview); never the Electron/Vite defaults |
+| Desktop app id / deep link | `dev.monolith.Desktop`; `monolith://<page>[?…]`, `monolith://preferences/<section>`, `monolith://onboarding/<step>`, `monolith://pair`, … (§12.3) |
+| Host shell state | `$XDG_CONFIG_HOME/theone/host-shell/state.json` (default `~/.config/…`, `THEONE_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters, `androidLink` (sandbox URL + token), `androidStream` (the `AndroidStreamSettings` fields changed from the defaults; invalid fields fall back to them) |
 
 `projectId` = directory name under `/workspace/projects`, must match
 `^[a-z0-9][a-z0-9._-]{0,63}$` (case-insensitive input is lower-cased). Paths are
@@ -247,7 +253,7 @@ knob: `THEONE_WAIT_X_TIMEOUT` (s, default 60).
 | `THEONE_ADB` | `adb` | host adb client (the user's adb server on 5037) |
 | `THEONE_SCRCPY_SERVER` | `/usr/share/scrcpy/scrcpy-server`, else `/usr/local/share/scrcpy/scrcpy-server` | scrcpy server jar |
 | `THEONE_SCRCPY_VERSION` | parsed from `scrcpy --version` | must equal the jar's version |
-| `THEONE_FFMPEG` | `ffmpeg` | H.264 → MJPEG for `/v1/android/screen` |
+| `THEONE_FFMPEG` | `ffmpeg` | H.264 → MJPEG for `/v1/android/screen` viewers that can't decode H.264 (or with `encoding: "mjpeg"`) |
 | `THEONE_EMULATOR_PORT` | `5554` | emulator console port; adbd = +1; serial `emulator-<port>` when not isolated |
 | `THEONE_EMULATOR_GPU` | `swiftshader_indirect` | emulator `-gpu` |
 | `THEONE_EMULATOR_ISOLATION` | `netns` | `netns`: emulator in its own user + network namespace, guest egress only to public addresses through a filtering proxy, adb via a host bridge (serial `127.0.0.1:<port>`); needs `unshare`, `ip` and unprivileged user namespaces, else `GET /v1/android` is `available: false`. `none`: emulator on the host network (the guest, and the linked sandbox, can reach host loopback, LAN, tailnet) |
@@ -261,7 +267,38 @@ The desktop app (Preferences → Host Shell, and the "This Computer" tab of Pair
 CLI: it runs `host serve` as its child process (stopped on quit; `setpriv --pdeathsig` when available),
 sets the PIN with `host pin --stdin`, rotates with `host token --rotate` and reads `host pair --json`.
 It runs `bun apps/controller/src/index.ts` from its checkout, or `MONOLITH_CONTROLLER_COMMAND`;
-"Start With Monolith" is `host_shell_autostart` in the desktop `config.json`.
+"Start With Monolith" is `host_shell_autostart` in the desktop `config.json`. The Electron app
+(`apps/electron`, §12) resolves the command in this order: `MONOLITH_CONTROLLER_COMMAND`, the bundled
+`resources/bin/theone-controller` in a packaged build, `bun apps/controller/src/index.ts` in a checkout,
+then `apps/controller/dist/theone-controller`. It fills `THEONE_ANDROID_SDK_ROOT` (and `THEONE_ADB`) from the
+SDK its setup wizard installed when they are not already set.
+
+### 4.4 Desktop app and `monolith` CLI (`apps/electron`, runs on the host)
+
+| Var | Default | Meaning |
+|---|---|---|
+| `MONOLITH_DESKTOP_CONFIG` | see §12.4 | path of `config.json` (app and CLI) |
+| `MONOLITH_USER_DATA` | OS user-data dir (§12.4) | Electron `userData`: sandbox env file, downloads, Android catalog cache, window state |
+| `MONOLITH_STATE_DIR` | `$XDG_STATE_HOME/monolith`, else `~/.local/state/monolith` (Windows `%LOCALAPPDATA%\Monolith\state`) | sync-back links and snapshots (shared with the GTK app) |
+| `MONOLITH_DESKTOP_URL` / `THEONE_TOKEN` / `MONOLITH_DESKTOP_NAME` / `MONOLITH_DESKTOP_PAIRING_URL` | — | connection used when `config.json` has none (url + token both required) |
+| `MONOLITH_DESKTOP_LOG` | `info` | main-process log level `debug\|info\|warn\|error` (`--debug` = `debug`) |
+| `MONOLITH_FIXTURES` | — | `1` = renderer runs on fixtures (no controller, no Docker); set by snapshots and e2e |
+| `MONOLITH_SNAPSHOT` | — | `1` = isolated run: no single-instance lock (snapshots, e2e) |
+| `MONOLITH_CONTROLLER_COMMAND` | — | command line for the host shell daemon (§4.3) |
+| `MONOLITH_SANDBOX_IMAGE_REF` | — | registry ref the wizard may **pull** instead of building (`sandboxImageRef` in `config.json` wins) |
+| `MONOLITH_DISABLE_UPDATES` | — | set = no background update checks |
+| `MONOLITH_DISABLE_DISCOVERY` | — | `1` = no Docker discovery of a running sandbox on first run (§12.2); set by the tests |
+| `MONOLITH_ANDROID_REPOSITORY_URL` / `MONOLITH_ANDROID_SYSIMG_URL` | Google's `…/repository/repository2-3.xml` / `…/sys-img/google_apis/sys-img2-3.xml` | Android catalog mirror (app and CLI): a full `.xml` URL, or a base URL the default file name is appended to; `http`/`https` only, else `invalid_argument` |
+| `MONOLITH_APP_PATH` | installed app (AppImage copy: `appPath` in `~/.local/share/monolith/app.json`, §12.5) | CLI: the app executable `monolith open` launches |
+| `MONOLITH_SANDBOX_CONTEXT` | bundled `resources/sandbox`, else (AppImage copy) `sandboxDir` in `~/.local/share/monolith/app.json`, else the checkout | CLI: directory holding `infra/compose` and the Dockerfile |
+| `ELECTRON_RENDERER_URL` | — | set by `electron-vite dev` to `http://127.0.0.1:4545` |
+| `THEONE_COMPOSE_PROJECT`, `THEONE_CONTROLLER_HOST_PORT`, `THEONE_BIND_ADDR` | §4.2 | read by sandbox discovery (find a running `theone` stack and its controller port) |
+| `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME` | — | move config, state and cache dirs as usual (also on macOS/Windows when set) |
+| `ANDROID_AVD_HOME`, `ANDROID_USER_HOME` | `~/.android/avd` | where AVDs are written and listed |
+
+Build-time only (`scripts/dist.ts`): `MONOLITH_UPDATE_URL`, `MONOLITH_UPDATE_CHANNEL` (update feed),
+`MONOLITH_NOTARIZE` + `APPLE_API_KEY`/`APPLE_API_KEY_ID`/`APPLE_API_ISSUER`, or `APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/`APPLE_TEAM_ID`,
+or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: §11.
 
 ## 5. Controller protocol v1
 
@@ -346,7 +383,7 @@ It runs `bun apps/controller/src/index.ts` from its checkout, or `MONOLITH_CONTR
 | POST | `/v1/inbox/read` | `MarkInboxRead { ids: InboxId[] } \| { all: true }` | `200 InboxCounts { unreadCount, attentionCount }`; unknown ids are ignored |
 | POST | `/v1/hooks/claude` | `ClaudeHookPayload` (the Claude Code hook JSON, extra fields kept) | `202`; maps `Notification`/`Stop`/`StopFailure`/`UserPromptSubmit` to inbox items (controller.md "Inbox and Claude hooks"); other events are ignored. Sent by `theone-controller hook` |
 | GET | `/v1/push/devices` | — | `PushDevice[]`, newest `updatedAt` first |
-| POST | `/v1/push/devices` | `RegisterPushDevice { token (Expo push token), platform: "ios" \| "android", name? (≤ 128) }` | `200 PushDevice`; upserts by token (a re-registered token keeps `createdAt`). Unread `completed`/`failed`/`needs_input`/`permission`/`file` inbox items are then pushed to every device through `THEONE_PUSH_URL` (controller.md "Inbox and Claude hooks") |
+| POST | `/v1/push/devices` | `RegisterPushDevice { token (Expo push token), platform: "ios" \| "android", name? (≤ 128), deviceId? (≤ 128, id of the phone shared by its Monolith builds) }` | `200 PushDevice`; upserts by token (a re-registered token keeps `createdAt`) and deletes the other tokens with the same `deviceId`. Unread `completed`/`failed`/`needs_input`/`permission`/`file` inbox items are then pushed to every device through `THEONE_PUSH_URL` (controller.md "Inbox and Claude hooks") |
 | DELETE | `/v1/push/devices/:token` | — | `PushDevice` (removed); invalid token → 400, unknown → 404 |
 | GET | `/v1/push/live-activities` | — | `LiveActivityToken[]`, newest `updatedAt` first |
 | POST | `/v1/push/live-activities` | `RegisterLiveActivity { kind: "activity" \| "push-to-start", token (hex, 32-512 chars), activityId? (≤ 128, null for push-to-start) }` | `200 LiveActivityToken`; upserts by token (stored lower-case, `createdAt` kept). The controller then mirrors `IslandState` into the phone's Live Activity through ActivityKit pushes when `THEONE_APNS_*` is set (controller.md "Live Activities") |
@@ -566,7 +603,7 @@ type SyncRequest = { id: string /* sync_ */; projectId: string; kind: "pull" | "
                      createdAt: string; updatedAt: string };
 
 type PushDevice = { token: string /* ExponentPushToken[…] */; platform: "ios" | "android"; name: string | null;
-                    createdAt: string; updatedAt: string };
+                    deviceId: string | null; createdAt: string; updatedAt: string };
 type PushData = { url: "/inbox"; sandboxId: string; itemId: string; kind: InboxKind; artifactId: string | null };  // `data` of each push
 
 type LiveActivityTokenKind = "activity" | "push-to-start";
@@ -627,7 +664,15 @@ type AndroidLinkInfo = { configured: boolean; sandboxUrl: string | null; connect
 type EmulatorIsolationMode = "netns" | "none"; // EMULATOR_ISOLATION_MODES, THEONE_EMULATOR_ISOLATION
 type HostAndroidStatus = { available: boolean; reason: string | null; sdkRoot: string | null;
                            isolation: EmulatorIsolationMode; avds: string[];
-                           scrcpy: boolean; ffmpeg: boolean; emulator: EmulatorInfo; link: AndroidLinkInfo };
+                           scrcpy: boolean; ffmpeg: boolean; emulator: EmulatorInfo; link: AndroidLinkInfo;
+                           stream: AndroidStreamSettings; devices: AndroidDevice[] };
+// Defaults (DEFAULT_ANDROID_STREAM): h264, 8 Mbit/s, 60 fps, maxSize null, key frame every 2 s, JPEG q 5, device null
+type AndroidStreamSettings = { encoding: "h264" | "mjpeg"; bitRate: number /* 250 000..50 000 000 bps */;
+                               maxFps: number /* 1..120 */; maxSize: number | null /* 160..4096, null: the viewer's */;
+                               keyFrameInterval: number /* 1..10 s */; jpegQuality: number /* ffmpeg -q:v 2..31 */;
+                               device: string | null /* adb serial, null: the host emulator */ };
+type AndroidDevice = { serial: string; state: string /* "device" | "unauthorized" | "offline" … */;
+                       kind: "emulator" | "genymotion" | "network" | "usb"; model: string | null; hostEmulator: boolean };
 type SandboxAndroidStatus = { linked: boolean; hostId: string | null; emulator: EmulatorInfo | null;
                               adbSerial: string | null; adbConnected: boolean };
 // WS frames: AndroidLinkHostMessage / AndroidLinkSandboxMessage (§5.3), AndroidScreenClientMessage /
@@ -721,7 +766,10 @@ host), the page hides its own top bar (the app shows status) and starts the key 
 **⌨** (toggle the phone keyboard), **URL** and **Paste** (post `vnc-action`; view-only keeps only **URL**); `theone-insets` pads
 the screen below the app's header (`top`) and the key row above its bottom chrome (`bottom`).
 
-Android page (`/ui/android` on the host daemon, fragment `ticket`, optional `maxSize`): pointer
+Android page (`/ui/android` on the host daemon, fragment `ticket`, optional `maxSize` and `serial`): it
+asks for `codec=h264` when WebCodecs `VideoDecoder` supports `avc1`, decodes H.264 with the SPS/PPS put
+in front of each key frame and skips to the next key frame when the decoder queue holds more than
+6 frames; a decoder error closes the socket and the next connect asks for JPEG. Pointer
 events are touches (multi-touch, pointer ids 0..9) in the last `meta`/`size` space, the wheel
 scrolls, the bottom bar is ◁ ○ ▢ ⌨ ⟳ (back, home, recents, keyboard, rotate). Embedded, it hides
 its top bar; `theone-insets` pads the screen (`top`) and the bottom bar (`bottom`). A host `error`
@@ -753,8 +801,11 @@ changes). Neither is accepted where the other is expected.
 | DELETE | `/v1/android/emulator` | session | — | `EmulatorInfo` (`stopping`, then `stopped`; the isolated emulator's namespace is swept and its runtime dir removed) |
 | POST | `/v1/android/link` | session | `LinkSandbox { sandboxUrl (http/https, no userinfo or fragment), token }` | `200 AndroidLinkInfo`; stored in `state.json` as `androidLink`, the daemon (re)connects to the sandbox's `/v1/android/link` |
 | DELETE | `/v1/android/link` | session | — | `AndroidLinkInfo` (cleared, link closed) |
-| WS | `/v1/android/screen?ticket=&maxSize=` | ticket | client → daemon `AndroidScreenClientMessage` `touch` · `scroll` · `key` · `text` · `rotate`; daemon → client `AndroidScreenServerMessage` `meta` · `size` · `error` + binary JPEG frames | the emulator screen via scrcpy; frames skipped while > 512 KiB is buffered; one session shared by all viewers, sized by the first viewer's `maxSize` (default 1280, at least 160) — later viewers get that size; query checked before the ticket is used; per-viewer pointer ids, lifted when a viewer leaves |
-| GET | `/ui/android` | — | — | the emulator screen page (fragment `#ticket=…&maxSize=…`, same bridge as `/ui/vnc`) |
+| GET | `/v1/android/devices` | session | — | `AndroidDevice[]` from `adb devices -l` (`[]` without adb) |
+| GET | `/v1/android/stream` | session | — | `AndroidStreamSettings` |
+| PUT | `/v1/android/stream` | session | `UpdateAndroidStream` (any `AndroidStreamSettings` fields) | `AndroidStreamSettings`; stored in `state.json` as `androidStream`. Also `theone-controller host stream [--json] [--stdin]` (the desktop app uses it, no PIN). On a change (this route, or `state.json` rewritten, watched with a 150 ms debounce) every open screen whose session would differ moves to a new session: it gets a new `meta` (maybe another `codec`) and keeps its socket |
+| WS | `/v1/android/screen?ticket=&maxSize=&serial=&codec=` | ticket | client → daemon `AndroidScreenClientMessage` `touch` · `scroll` · `key` · `text` · `rotate`; daemon → client `AndroidScreenServerMessage` `meta` (with `codec`) · `size` · `error` + binary video | an adb device's screen via scrcpy: `serial` (default: the settings' `device`, else the host emulator; only the host emulator needs `running`), `codec=h264` when the viewer decodes H.264. With settings `encoding: "h264"` and `codec=h264`, scrcpy's H.264 is forwarded as is: each binary message is a flags byte (`ANDROID_H264_FLAGS`: 1 config, 2 key frame) + an Annex B access unit; else ffmpeg turns it into one JPEG per message. scrcpy gets `video_bit_rate`, `max_fps`, `max_size` and `i-frame-interval` from the settings. Viewers of the same device, codec and settings share one session, sized by the first viewer's `maxSize` (default 1280, at least 160, at most the settings' `maxSize`); a late H.264 viewer gets the config and the frames since the last key frame (≤ 8 MiB); a viewer with > 512 KiB buffered skips frames until the next key frame; query checked before the ticket is used; per-viewer pointer ids, lifted when a viewer leaves |
+| GET | `/ui/android` | — | — | the Android screen page (fragment `#ticket=…&maxSize=…&serial=…`, same bridge as `/ui/vnc`) |
 
 Android emulator details (scrcpy session, link protocol, adb tunnel): [app-runs-and-emulator.md](app-runs-and-emulator.md) §2.
 
@@ -890,6 +941,38 @@ printed as `***`. Exit codes (`api`, `emit`): 0 ok, 1 request failed / non-2xx
 (set by the controller for terminals and agent runs), gives up after 1.5 s and never prints
 or fails, so a controller outage never blocks Claude.
 
+### 7.1 Desktop `monolith` CLI (host)
+
+`apps/electron/cli`, compiled with `bun build --compile` (`bun run --cwd apps/electron cli:build`) to
+`dist-cli/<linux|mac|win>-<x64|arm64>/monolith[.exe]` and shipped in the installers as `resources/bin/monolith`
+next to `theone-controller` (§12.5). It shares `src/core` with the app, so both read the same `config.json`,
+sandbox env file and Android SDK. Every command takes `--json`, `--verbose`, `--help`.
+
+```
+monolith status [--json]                                # config, setup progress, connection, Docker, stack, Android
+monolith open [overview|agents|projects|files|terminals|display]   # start or focus the app (else monolith://<page>)
+monolith doctor [docker|image|kvm|sdk]... [--json]      # Docker, sandbox image, hardware acceleration, Android SDK
+monolith sandbox status|up|down [--volumes]|restart [service]|logs [--tail N] [--follow]
+monolith sandbox build [--with android,flutter,mono,whisper|all|none] [--pull | --existing] [--verbose]
+monolith sandbox pair [--no-qr]
+monolith android images [--refresh] [--all]
+monolith android install <api|package>... [--accept-licenses] [--sdk PATH]
+monolith android [avd] [list]                           # bare `android` / `android avd` list the AVDs
+monolith android avd create [name] [--image API|package] [--device pixel_5|pixel_8|medium_phone|pixel_tablet]
+                    [--storage GB] [--ram MB] [--cores N] [--default]   # storage 2–64 GB, default 6
+monolith android avd start [name] [--detach] [--headless] [--gpu MODE] | delete <name>
+monolith pair [--no-qr]                                 # pairing link + QR for the phone
+monolith sync [push] [--confidential] | pull [--dry-run] [--force] | revert [--force] | status
+monolith config path | get [key] [--reveal] | set <key> <value> [--force] | unset <key>
+monolith version | help [command]
+monolith --sync [--confidential] | --pull [--dry-run] [--force] | --revert [--force] | --sync-status   # GTK-compatible flags
+```
+
+`--get` on the host only prints that it runs inside the sandbox (`theone-controller monolith --get`, §7).
+`config get` prints the token as `…` unless `--reveal`. The packaged app forwards the sync flags to the
+bundled CLI (`Monolith --sync` = `monolith --sync`). Exit codes: 0 ok, 1 failure, 2 sync conflict,
+64 bad arguments, 130 interrupted.
+
 ## 8. Sandbox image
 
 Multi-stage `infra/docker/sandbox/Dockerfile`, build context = repo root.
@@ -921,6 +1004,9 @@ applied to every session, interactive or `claude -p`) runs `/usr/local/bin/theon
 (timeout 5 s) on `Notification`, `Stop`, `StopFailure` and `UserPromptSubmit`.
 `/etc/claude-code/CLAUDE.md` (managed memory) tells Claude to run `theone-controller share <file> --note …`
 for finished deliverables (APK/AAB, installers, zips, reports, exported media), not intermediate files.
+`/etc/claude-code/.claude/skills/send-file/` is a managed skill, `/send-file [latest|apk|aab|android|windows|linux|build|md|<path or name>] [-- note]`
+(interactive or `claude -p`, so also from a phone chat): it picks the file (the chat's last deliverable, the newest
+of a kind via its `find-files` helper, or a named file), refuses secrets, and runs `theone-controller share`.
 
 Rootfs helpers (`/usr/local/bin`): `theone-entrypoint`, `theone-xvnc`, `theone-wait-x`,
 `theone-controller-run`, `theone-wine-init`, `theone-screenshot`, `theone-doctor`.
@@ -997,8 +1083,10 @@ limits from `.env`, explicit `environment` lists (no `env_file`), json-file logs
   **Run** lists `RunTargetInfo`s and active `AppRun`s (live via `app.updated`) with Logs, Stop,
   actions and **Open** per viewer (`url` in-app WebView, `deeplink` → `Linking.openURL`,
   `display` → the display screen, `android` → the host emulator screen). The host screen adds
-  **Android emulator**: AVD picker, Start/Stop, **Open screen** (`<host>/ui/android#ticket=…`)
-  and **Link sandbox** (`POST /v1/android/link` with the active sandbox's URL and token).
+  **Android emulator**: AVD picker, Start/Stop, a **Screen sharing** card (device picker over
+  `devices`, **Open screen** → `host/android?serial=…` = `<host>/ui/android#ticket=…&serial=…` on a
+  full-bleed stage with a floating bar: rotate, full screen, reconnect; full screen hides the bar
+  and status bar behind a small exit button, Android back leaves it) and **Link sandbox** (`POST /v1/android/link` with the active sandbox's URL and token).
 * The **Profile tab** reads the paired sandbox: Tailscale identity from `GET /v1/identity`
   (viewer, else owner, else the sandbox name; tailnet pill; a notice when the controller does not
   expose it), counts from `/v1/status`, and an activity feed merged from builds, Claude runs and
@@ -1012,7 +1100,100 @@ limits from `.env`, explicit `environment` lists (no `env_file`), json-file logs
 |---|---|
 | `bun run typecheck`, `bun run test` | every workspace: protocol, client, controller (bun test), mobile (jest) |
 | `bun run test:infra [--quick\|--coverage]` | bats suites in `infra/tests` (containers `theone-test-*`, images `theone/infra-test:*`) |
-| `bun run e2e [--no-build\|--keep\|--web]` | `infra/e2e`: builds `theone/sandbox:e2e`, starts project `theone-e2e` (volumes `theone-e2e-*`) in local mode on `127.0.0.1:17700/15901`, runs `bun test ./infra/e2e`, removes the stack |
+| `bun run e2e [--no-build\|--keep\|--web\|--electron\|--electron-only]` | `infra/e2e`: builds `theone/sandbox:e2e`, starts project `theone-e2e` (volumes `theone-e2e-*`) in local mode on `127.0.0.1:17700/15901`, runs `bun test ./infra/e2e`, removes the stack |
+| `bun run --cwd apps/electron test` (part of `bun run test`) | `@monolith/electron` vitest: node project (`tests/`, `src/{core,shared,main}`, `cli/`, `scripts/`; temp dirs `monolith-test-*`) and happy-dom project (`src/renderer`); no display, no Docker |
+| `bun run electron:e2e` | `apps/electron/e2e`: Playwright `_electron` specs (shell, preferences, onboarding, CLI, packaging, visual snapshots, live controller); headless on Linux, isolated profiles under `$TMPDIR/monolith-test-*`; Docker resources `monolith-test-*`; live tests only with `THEONE_E2E_URL`/`THEONE_E2E_TOKEN`, which `bun run e2e --electron[-only]` sets for its `theone-e2e` stack |
+| `bun run electron:smoke` | the built Linux AppImage/deb: packaged files, sandbox context vs its `manifest.json`, update feed, `monolith --version`, deb postinst and desktop entry, one headless render of the wizard |
 
 The e2e suite is not a workspace: typecheck it with `bunx tsc -p infra/e2e/tsconfig.json`.
 Runbook: [e2e-testing.md](../runbooks/e2e-testing.md).
+
+## 12. Desktop app (`apps/electron`, package `@monolith/electron`)
+
+The Monolith desktop app for Linux, macOS and Windows. It is the Electron rebuild of the GTK app in
+`apps/desktop` (same app id `dev.monolith.Desktop`, same `config.json`, same pages, matched pixel for pixel
+against `docs/electron/reference/`). It talks to the sandbox controller with `@theone/client` like the phone,
+and it also sets the machine up: Docker, the sandbox stack and image, the host Android emulator.
+Specs and the code conventions: [docs/electron/](../electron/README.md).
+
+### 12.1 Processes and windows
+
+| Part | What |
+|---|---|
+| Main (`src/main`, ESM) | windows, tray, menu, deep links, updater, IPC handlers (`monolith:<service>:<method>`, events `monolith:<service>:event:<event>`); spawns `docker`, `theone-controller host serve`, the Android emulator; proxies the renderer's HTTP through `net.fetch` |
+| Core (`src/core`, Node only) | docker, sandbox, android, connection, host, syncback, claude, config, paths; shared with the `monolith` CLI (§7.1), never imports `electron` |
+| Preload (`src/preload`, CJS, sandboxed) | the typed IPC bridge |
+| Renderer (`src/renderer`, React 19, hash router) | the shell, pages, Settings, setup wizard; dev server `http://127.0.0.1:4545` |
+
+Main window 1240×800 (min 360×480), setup wizard 880×620 (min 760×560); both frameless (macOS traffic
+lights, drawn window controls on Linux/Windows). Single instance; a second launch forwards its arguments.
+
+### 12.2 Setup wizard
+
+Opens instead of the main window until `onboarding.completedAt` is set, unless a connection is already
+configured (file or env). Before opening it, the app runs Docker discovery ([onboarding spec](../electron/spec/onboarding.md) §3.4, 2.5 s
+timeout; off with `MONOLITH_DISABLE_DISCOVERY=1`): a sandbox whose controller answers `/v1/health` is saved as the
+connection and onboarding is marked complete (`docker`/`sandbox`/`build` done, the rest skipped), so the main
+window opens instead. Steps: `welcome` → `docker` → `claude` → `sandbox` (with its build phase; the id
+`build` is an alias) → `android` (optional) → `pair` (optional) → `finish`.
+
+| Step | Does |
+|---|---|
+| `docker` | checks the CLI, daemon, Compose, buildx and resources; Podman is reported as unsupported. Install options: macOS Docker Desktop; Windows Docker Desktop (machine or user) or WSL; Linux Docker Engine (convenience script through `pkexec`), Docker Desktop for Linux, `docker`/`kvm` group membership; always a manual path. Starts a stopped engine |
+| `claude` | reads the host's `~/.claude` and `~/.claude-<n>` login state (never secrets); can create the dir |
+| `sandbox` | stack choices (mode `local`/`tailscale`/`host-tailscale`, Tailscale key and tailnet, components `android`/`flutter`/`mono`/`whisper` = the Dockerfile's `WITH_*` args, Whisper models, CPUs, memory, ports, project, image, dind), writes `<userData>/sandbox/.env` (0600), then builds the image from the bundled context with `docker buildx build --progress=rawjson` (or pulls `sandboxImageRef`, or reuses an existing image), runs compose `up`, waits for `/v1/health`, pairs with `theone-controller pair --json` |
+| `android` | its own SDK manager: Google's `repository2-3.xml` and `sys-img2-3.xml`, downloads `emulator`, `platform-tools` and one `system-images;android-<api>;google_apis;<abi>` with sha1 checks and license acceptance, unzips into the SDK root, writes the AVD (`<name>.ini` + `config.ini` with the device profile `pixel_5`/`pixel_8`/`medium_phone`/`pixel_tablet` → `hw.device.*`, `hw.lcd.*`, `skin.name`, and internal storage 2–64 GB, default 6 → `disk.dataPartition.size`); checks KVM (Linux x64, `x86_64` images), WHPX (Windows x64) or HVF (macOS, `arm64-v8a` on Apple silicon) with `emulator -accel-check`; Linux and Windows on arm64 are unsupported, and only Linux can link the emulator to the sandbox. The host shell daemon uses this SDK for the host emulator ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2) |
+| `pair` | QR code and link for the phone |
+| `finish` | summary; "start the sandbox with Monolith" (`sandboxAutostart`, default on): at every launch, also `--hidden`, `compose up -d` for a Monolith-created stack only (its own env file, matching project, `builtAt` set); skipped when off or already running; Docker unreachable → one notification |
+
+Contract details: [docs/electron/spec/onboarding.md](../electron/spec/onboarding.md).
+
+### 12.3 Routes, deep links, launch flags
+
+| What | Values |
+|---|---|
+| Pages (`#/<page>`) | `overview`, `agents`, `projects`, `files`, `terminals`, `display` |
+| Settings (`?preferences=<section>`) | `connection`, `appearance`, `claude`, `host-shell`, `stt`, `sandbox`, `android`, `about` |
+| Wizard (`#/onboarding/<step>`) | as §12.2 |
+| Deep links | `monolith://<page>[?params]`, `monolith://preferences|settings[/<section>]`, `monolith://onboarding|setup[/<step>]`, `monolith://new-conversation`, `pair`, `pair-host`, `refresh`, `rediscover`, `about`; registered only in packaged builds |
+| Launch flags | `--hidden`, `--page <id>`, `--quit` (ask the running instance to quit), `--debug`; `--sync`, `--pull`, `--revert`, `--sync-status`, `--get` run the CLI (§7.1) and exit |
+
+### 12.4 Files
+
+| What | Linux | macOS | Windows |
+|---|---|---|---|
+| `config.json` (`MONOLITH_DESKTOP_CONFIG`; shared with the GTK app and the CLI) | `$XDG_CONFIG_HOME/monolith-desktop/config.json` (`~/.config/…`) | `<userData>/config.json` | `<userData>/config.json` |
+| `userData` (`MONOLITH_USER_DATA`) | `~/.config/Monolith` | `~/Library/Application Support/Monolith` | `%APPDATA%\Monolith` |
+| Sandbox env file | `<userData>/sandbox/.env` (0600) | same | same |
+| Docker installer downloads | `<userData>/downloads/` | same | same |
+| Android catalog cache | `<userData>/android/cache/` | same | same |
+| Window state | `<userData>/window-state.json` | same | same |
+| Android SDK (default, `androidSdkRoot` overrides) | `~/.local/share/theone/android-sdk` | `~/Library/Application Support/Monolith/android-sdk` | `%LOCALAPPDATA%\Monolith\android-sdk` |
+| AVDs | `$ANDROID_AVD_HOME`, else `$ANDROID_USER_HOME/avd`, else `~/.android/avd` | same | same |
+| State (`MONOLITH_STATE_DIR`): sync-back links, snapshots, locks | `~/.local/state/monolith` | `~/.local/state/monolith` | `%LOCALAPPDATA%\Monolith\state` |
+| Cache (`metrics.json`) | `~/.cache/monolith-desktop` | `~/Library/Caches/Monolith` | `%LOCALAPPDATA%\Monolith\cache` |
+
+`config.json` keys: the GTK ones (`url` (legacy `apiUrl`), `token`, `name`, `pairingUrl`, `appearance`, `zoom`,
+`sidebarWidth`, `host_shell_autostart`) plus `onboarding` (`{ version, step, statuses, completedAt }`),
+`sandboxStack`, `sandboxImageRef`, `sandboxAutostart`, `androidSdkRoot`, `androidAvd`. Writes are serialized
+read-modify-write, keep unknown keys and are atomic with mode 0600. On macOS and Windows, at the default config
+path, the token is stored encrypted with Electron `safeStorage` as `tokenSealed`; on Linux it stays plain so the
+GTK app and the CLI can read it.
+
+### 12.5 Packaging and CLI install
+
+`bun run electron:dist [-- --platform linux|mac|win] [--dir] [--publish never|always|onTag] [--update-url <url>]
+[--channel <name>] [--smoke]` runs `electron-vite build`, `cli:build` (`monolith` + `theone-controller` per target),
+`bundle:sandbox` (git-tracked sandbox build context + `manifest.json` + `build-weights.json` into
+`build/sandbox-context/`) and electron-builder. Artifacts go to `apps/electron/dist/`
+(`Monolith-<version>-<arch>.<ext>`).
+
+| OS | Installer | `monolith` on PATH |
+|---|---|---|
+| macOS | universal `dmg` + `zip` (hardened runtime; notarized when the `APPLE_*` variables are set) | Settings › About "Install monolith command": admin prompt, symlink `/usr/local/bin/monolith` (only from `/Applications`) |
+| Windows | per-user one-click NSIS `exe` (x64) | the installer adds `$INSTDIR\resources\bin` to the user `Path` and removes it on uninstall |
+| Linux | `AppImage` and `deb` (x64) | deb: app in `/opt/Monolith`, postinst links `/usr/bin/monolith` (only when free or already ours); AppImage: Settings › About copies it to `~/.local/share/monolith/bin/monolith` and links `~/.local/bin/monolith`; on install and every AppImage launch the app writes `~/.local/share/monolith/app.json` `{appPath, sandboxDir}` and syncs the bundled context to `~/.local/share/monolith/sandbox` (marker `.bundle-hash`) |
+
+`extraResources`: `resources/bin/{monolith,theone-controller}`, `resources/sandbox/` (the build context the
+wizard and `monolith sandbox build` use), icons and font licenses. Updates: electron-updater against the generic
+feed in `electron-builder.yml` (first check 60 s after start, then every 6 h; `MONOLITH_DISABLE_UPDATES` turns it off).

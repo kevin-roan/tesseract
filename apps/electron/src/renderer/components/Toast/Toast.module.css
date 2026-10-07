@@ -1,0 +1,62 @@
+.host {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 24px;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.motion {
+  display: flex;
+  justify-content: center;
+  max-width: calc(100% - 24px);
+  pointer-events: auto;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 560px;
+  min-height: 40px;
+  padding: 6px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-surface-elevated);
+  color: var(--to-text);
+  box-shadow: var(--to-shadow-level3);
+}
+
+.message {
+  min-width: 0;
+  padding: 0 6px;
+  font-size: 13px;
+  line-height: 20px;
+  overflow-wrap: anywhere;
+}
+
+.action {
+  flex: none;
+  min-height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--to-radius-sm);
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: var(--to-state-transition);
+}
+
+.action:hover {
+  background: color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.action:active {
+  background: color-mix(in srgb, currentColor 30%, transparent);
+  transform: scale(var(--to-press-scale));
+}

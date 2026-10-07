@@ -122,7 +122,7 @@ def _settings_rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
             "border-radius": _px(r["sm"]),
             "min-height": _px(h["md"]),
         },
-        "entry.to-row-entry": {"min-width": _px(320), "background": css_var("surfaceElevated")},
+        "entry.to-row-entry": {"min-width": _px(240), "background": css_var("surfaceElevated")},
     }
 
 

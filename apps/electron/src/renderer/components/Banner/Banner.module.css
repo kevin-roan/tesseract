@@ -1,0 +1,100 @@
+.reveal {
+  overflow: hidden;
+  flex: none;
+}
+
+.banner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  padding: 4px 12px;
+  background: var(--to-background-element);
+  color: var(--to-text);
+  box-shadow: inset 0 -1px var(--to-border);
+  transition: var(--to-state-transition);
+}
+
+.info {
+  background: var(--to-info-muted);
+}
+
+.warning {
+  background: var(--to-warning-muted);
+}
+
+.danger {
+  background: var(--to-danger-muted);
+}
+
+.success {
+  background: var(--to-success-muted);
+}
+
+.title {
+  grid-column: 2;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 20px;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.end {
+  grid-column: 3;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.button {
+  min-height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--to-radius-pill);
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  color: var(--to-text);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: var(--to-state-transition);
+}
+
+.button:hover {
+  background: color-mix(in srgb, currentColor 15%, transparent);
+}
+
+.button:active {
+  background: color-mix(in srgb, currentColor 30%, transparent);
+  transform: scale(var(--to-press-scale));
+}
+
+.info .button {
+  background: var(--to-info);
+}
+
+.warning .button {
+  background: var(--to-warning);
+}
+
+.danger .button {
+  background: var(--to-danger);
+}
+
+.success .button {
+  background: var(--to-success);
+}
+
+.info .button,
+.warning .button,
+.danger .button,
+.success .button {
+  color: var(--to-text-inverse);
+}
+
+.info .button:hover,
+.warning .button:hover,
+.danger .button:hover,
+.success .button:hover {
+  filter: brightness(1.1);
+}

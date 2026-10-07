@@ -1,0 +1,93 @@
+.stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--to-background);
+}
+
+.stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px transparent;
+  transition: box-shadow var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.stage:focus-within::after {
+  box-shadow: inset 0 0 0 1px var(--to-focus-ring);
+}
+
+.slot {
+  position: absolute;
+  inset: 0;
+}
+
+.slot :global([data-vnc-host]) {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.slot :global([data-vnc-ghost]) {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.slot :global(canvas) {
+  transition: opacity 200ms ease-out;
+}
+
+.slot :global(canvas:focus-visible) {
+  outline: none;
+}
+
+.dimmed .slot :global(canvas) {
+  opacity: 0.3;
+}
+
+.unit .slot :global(canvas) {
+  image-rendering: pixelated;
+}
+
+.viewOnly .slot :global(canvas) {
+  cursor: default !important;
+}
+
+.overlayLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.overlay {
+  max-width: 420px;
+  margin: 24px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-xl);
+  background: var(--to-surface-elevated);
+  box-shadow: var(--to-shadow-level3);
+  pointer-events: auto;
+}
+
+.overlay .overlayContent {
+  width: auto;
+  margin: 28px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot :global(canvas) {
+    transition: none;
+  }
+}
+
+:global(:root[data-reduced-motion="true"]) .slot :global(canvas) {
+  transition: none;
+}

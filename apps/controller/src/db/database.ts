@@ -196,6 +196,17 @@ const MIGRATIONS: readonly string[] = [
     updated_at TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE IF NOT EXISTS push_devices (
+    token TEXT PRIMARY KEY,
+    platform TEXT NOT NULL,
+    name TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  ALTER TABLE push_devices ADD COLUMN device_id TEXT;
+  CREATE INDEX push_devices_device_id ON push_devices (device_id);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

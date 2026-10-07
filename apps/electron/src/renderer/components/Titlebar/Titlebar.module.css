@@ -1,0 +1,72 @@
+.titlebar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-height: var(--to-titlebar-height);
+  padding: 8px 7px 8px 12px;
+  background: none;
+  box-shadow: none;
+  color: var(--to-text);
+  user-select: none;
+}
+
+.page {
+  padding-top: 11px;
+  padding-left: 11px;
+}
+
+.sidebar {
+  padding-left: 7px;
+}
+
+:global(html[data-platform="darwin"]) .inset {
+  padding-left: 80px;
+}
+
+.divided {
+  box-shadow: inset 0 -1px var(--to-divider);
+}
+
+.sidebar.divided {
+  box-shadow: none;
+}
+
+.start,
+.end,
+.group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.start {
+  flex: 1 1 auto;
+}
+
+.end {
+  flex: none;
+}
+
+.titlebar :is(button, a, input, select, textarea, [role="button"], [role="tab"]) {
+  -webkit-app-region: no-drag;
+}
+
+.separator {
+  flex: none;
+  width: 1px;
+  align-self: stretch;
+  margin: 6px 4px;
+  background: var(--to-divider);
+}
+
+.titlebar[data-backdrop] .start,
+:global(html[data-backdrop]) .start {
+  opacity: 0.7;
+}
+
+.start {
+  transition: opacity var(--to-duration-fast) var(--to-ease-standard);
+}

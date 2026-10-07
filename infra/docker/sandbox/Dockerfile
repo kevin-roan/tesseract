@@ -280,7 +280,7 @@ COPY infra/docker/sandbox/rootfs/ /
 COPY SPEC.md /etc/theone/SPEC.md
 # The agent spec becomes Claude Code's managed memory (/etc/claude-code/CLAUDE.md, ahead of
 # the rootfs notes there): /home/dev/.claude is the host's Claude dir, so nothing goes there.
-RUN chmod 0755 /usr/local/bin/theone-* /usr/local/bin/monolith \
+RUN chmod 0755 /usr/local/bin/theone-* /usr/local/bin/monolith /etc/claude-code/.claude/skills/send-file/find-files \
  && install -d -m 1777 /tmp/.X11-unix \
  && { cat /etc/theone/SPEC.md; printf '\n'; cat /etc/claude-code/CLAUDE.md; } > /tmp/theone-claude.md \
  && install -m 0644 /tmp/theone-claude.md /etc/claude-code/CLAUDE.md \

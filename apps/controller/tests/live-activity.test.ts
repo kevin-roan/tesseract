@@ -215,7 +215,7 @@ describe("live activity pushes", () => {
       "stale-date": Math.floor(NOW / 1000) + 120,
       "attributes-type": "IslandAttributes",
       attributes: { sandboxId: "sbx-1", sandboxName: "dev-box" },
-      alert: { title: "Electron Hello: Claude started", body: "Build the Windows installer" },
+      alert: { title: "Monolith", subtitle: "Electron Hello · Claude started", body: "Build the Windows installer" },
     });
     expect(IslandStateSchema.parse(request?.json.aps["content-state"]).runs.map((run) => run.id)).toEqual([sampleAgentRun.id]);
 

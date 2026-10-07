@@ -1,0 +1,23 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-width: 0;
+  padding: 8px 12px;
+}
+
+.start {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  gap: 8px;
+  min-width: 0;
+}
+
+.end {
+  display: flex;
+  align-items: center;
+  flex: none;
+  gap: 2px;
+}

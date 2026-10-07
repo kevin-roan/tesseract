@@ -194,6 +194,24 @@ export const ANDROID_KEYS = [
 export const ANDROID_TOUCH_ACTIONS = ["down", "move", "up", "cancel"] as const;
 /** AVD names as listed by `emulator -list-avds`. */
 export const AVD_NAME_PATTERN = /^[A-Za-z0-9._-]{1,128}$/;
+/** adb serials (`emulator-5554`, `192.168.56.101:5555`, USB serials, mDNS names); never starts with `-`. */
+export const ADB_SERIAL_PATTERN = /^[A-Za-z0-9[][A-Za-z0-9._:%[\]-]{0,127}$/;
+/** `h264` sends scrcpy's stream untouched when the viewer can decode it (WebCodecs), else JPEG; `mjpeg` always sends JPEG. */
+export const ANDROID_STREAM_ENCODINGS = ["h264", "mjpeg"] as const;
+/** First byte of an H.264 screen message: bit 0 codec config (SPS/PPS), bit 1 key frame. */
+export const ANDROID_H264_FLAGS = { config: 1, keyFrame: 2 } as const;
+/** `emulator`: an Android Studio emulator; `genymotion`: a Genymotion VM; `network`: adb over TCP/Wi-Fi; `usb`: anything else. */
+export const ANDROID_DEVICE_KINDS = ["emulator", "genymotion", "network", "usb"] as const;
+/** Host Android screen stream settings when `state.json` sets none (`GET/PUT /v1/android/stream`). */
+export const DEFAULT_ANDROID_STREAM = {
+  encoding: "h264",
+  bitRate: 8_000_000,
+  maxFps: 60,
+  maxSize: null,
+  keyFrameInterval: 2,
+  jpegQuality: 5,
+  device: null,
+} as const;
 
 export const CLAUDE_AUTH_METHODS = ["oauth_token", "credentials", "api_key", "none"] as const;
 
@@ -310,4 +328,12 @@ export const LIMITS = {
   maxAndroidPointerId: 9,
   maxAndroidScroll: 16,
   maxAndroidScreenSize: 4_096,
+  minAndroidScreenSize: 160,
+  minAndroidBitRate: 250_000,
+  maxAndroidBitRate: 50_000_000,
+  maxAndroidFps: 120,
+  maxAndroidKeyFrameInterval: 10,
+  /** ffmpeg `-q:v`: 2 is the best JPEG quality, 31 the worst. */
+  minAndroidJpegQuality: 2,
+  maxAndroidJpegQuality: 31,
 } as const;

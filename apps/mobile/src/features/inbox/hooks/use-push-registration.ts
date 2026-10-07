@@ -3,7 +3,7 @@ import { AppState } from "react-native";
 
 import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
 
-import { registerPushToken, reportPushError } from "../api/push";
+import { forgetPushRegistrations, registerPushToken, reportPushError } from "../api/push";
 import { getExpoPushToken, subscribePushTokenChanges } from "../notifications";
 
 export function usePushRegistration(): void {
@@ -29,7 +29,9 @@ export function usePushRegistration(): void {
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") setResumes((count) => count + 1);
+      if (state !== "active") return;
+      forgetPushRegistrations();
+      setResumes((count) => count + 1);
     });
     return () => subscription.remove();
   }, []);

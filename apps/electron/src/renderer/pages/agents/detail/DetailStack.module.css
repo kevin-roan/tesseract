@@ -1,0 +1,20 @@
+.stack {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.layer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.layer > * {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.fill {
+  height: 100%;
+}

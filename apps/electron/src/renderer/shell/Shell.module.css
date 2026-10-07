@@ -1,0 +1,22 @@
+.page {
+  composes: to-overlay-scrollbar from global;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.about {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 4px;
+  text-align: center;
+}
+
+.aboutComments {
+  margin-top: 6px;
+}

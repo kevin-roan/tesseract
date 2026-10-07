@@ -1,0 +1,59 @@
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  border-radius: var(--to-radius-sm);
+  background: transparent;
+  transition: var(--to-state-transition);
+}
+
+.row:hover,
+.row[data-selected] {
+  background: var(--to-background-element);
+}
+
+.row[data-selected] {
+  background: var(--to-background-selected);
+}
+
+.row:focus-visible {
+  outline-offset: -2px;
+}
+
+.activatable {
+  cursor: pointer;
+}
+
+.divided {
+  border-radius: 0;
+}
+
+.hoverActions {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px 0 8px;
+  border-radius: var(--to-radius-sm);
+  background: var(--to-background-element);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition:
+    opacity var(--to-duration-fast) var(--to-ease-standard),
+    visibility 0s linear var(--to-duration-fast);
+}
+
+.row:hover > .hoverActions,
+.row:focus-within > .hoverActions {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition:
+    opacity var(--to-duration-fast) var(--to-ease-standard),
+    visibility 0s;
+}

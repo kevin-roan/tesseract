@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Upload } from "@theone/protocol";
 
 import { describeError } from "@/features/sandbox/utils/errors";
 
@@ -58,6 +59,27 @@ export function useAttachments() {
     [send],
   );
 
+  /** Puts a file that is already on the sandbox (a voice note) in the tray, ready to send. */
+  const addUploaded = useCallback((upload: Upload, uri: string) => {
+    if (remainingSlots(itemsRef.current.length) === 0) {
+      setNotice(tooManyMessage());
+      return;
+    }
+    const draft: DraftAttachment = {
+      uri,
+      name: upload.name,
+      mimeType: upload.mimeType,
+      sizeBytes: upload.sizeBytes,
+      key: draftKey("voice", 0),
+      kind: upload.kind,
+      status: "ready",
+      upload,
+      error: null,
+    };
+    itemsRef.current = [...itemsRef.current, draft];
+    setItems(itemsRef.current);
+  }, []);
+
   const pick = useCallback(
     async (source: PickerSource) => {
       const slots = remainingSlots(itemsRef.current.length);
@@ -106,5 +128,5 @@ export function useAttachments() {
     };
   }, [items]);
 
-  return { items, notice, pick, add, remove, retry, clear, dismissNotice, ...derived };
+  return { items, notice, pick, add, addUploaded, remove, retry, clear, dismissNotice, ...derived };
 }

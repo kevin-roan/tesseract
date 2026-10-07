@@ -1,4 +1,11 @@
-import { LIMITS, type AndroidLinkInfo, type EmulatorInfo, type EmulatorState, type HostAndroidStatus } from "@theone/protocol";
+import {
+  LIMITS,
+  type AndroidDevice,
+  type AndroidLinkInfo,
+  type EmulatorInfo,
+  type EmulatorState,
+  type HostAndroidStatus,
+} from "@theone/protocol";
 
 import type { Tone } from "@/lib/tone";
 
@@ -38,6 +45,26 @@ export function pickAvd(status: HostAndroidStatus | undefined, selected: string 
   if (status.emulator.avd && status.avds.includes(status.emulator.avd)) return status.emulator.avd;
   return status.avds[0] ?? null;
 }
+
+/** Devices adb can stream now (not offline or unauthorized). */
+export const streamableDevices = (status: HostAndroidStatus | undefined): AndroidDevice[] =>
+  status?.devices.filter((device) => device.state === "device") ?? [];
+
+/** The picked device, else the host's default stream device, else the host emulator, else the first one. */
+export function pickDevice(status: HostAndroidStatus | undefined, selected: string | null): AndroidDevice | null {
+  const devices = streamableDevices(status);
+  return (
+    devices.find((device) => device.serial === selected) ??
+    devices.find((device) => device.serial === status?.stream.device) ??
+    devices.find((device) => device.hostEmulator) ??
+    devices[0] ??
+    null
+  );
+}
+
+export const deviceLabel = (device: AndroidDevice): string => device.model ?? device.serial;
+
+export const deviceMeta = (device: AndroidDevice): string => [ANDROID_COPY.deviceKinds[device.kind], device.serial].join(" · ");
 
 const trimSlash = (url: string): string => url.trim().replace(/\/+$/, "").toLowerCase();
 
@@ -79,7 +106,7 @@ export function isolationNotice(status: HostAndroidStatus): IsolationNotice | nu
   return null;
 }
 
-/** Longest side of the streamed screen in device pixels, capped to keep the MJPEG stream light. */
+/** Longest side of the streamed screen in device pixels, capped to keep the stream light. */
 export function androidScreenMaxSize(width: number, height: number, scale: number): number {
   return Math.max(1, Math.min(LIMITS.maxAndroidScreenSize, ANDROID_SCREEN_MAX_SIZE, Math.round(Math.max(width, height) * scale)));
 }

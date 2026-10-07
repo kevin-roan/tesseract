@@ -210,6 +210,51 @@ MANAGED_SETTINGS="${ROOTFS}/etc/claude-code/managed-settings.json"
   grep -q 'theone-controller share <file> \[--project <id>\] \[--name <name>\] \[--note <text>\]' "${REPO}/apps/controller/src/cli/commands.ts"
 }
 
+# --- /etc/claude-code/.claude/skills/send-file (managed /send-file skill) ---
+
+SEND_FILE="${ROOTFS}/etc/claude-code/.claude/skills/send-file"
+
+@test "send-file: SKILL.md is named send-file and shares with theone-controller share" {
+  run sed -n '2p' "${SEND_FILE}/SKILL.md"
+  assert_output "name: send-file"
+  grep -q 'theone-controller share "<file>" --note' "${SEND_FILE}/SKILL.md"
+  grep -qF '${CLAUDE_SKILL_DIR}/find-files' "${SEND_FILE}/SKILL.md"
+}
+
+@test "send-file: the image makes find-files executable" {
+  grep -q 'chmod 0755 .*/etc/claude-code/.claude/skills/send-file/find-files' "${REPO}/infra/docker/sandbox/Dockerfile"
+}
+
+@test "send-file: find-files lists matches newest first and skips build intermediates" {
+  local dir="${BATS_TEST_TMPDIR}/proj"
+  mkdir -p "${dir}/out" "${dir}/node_modules/x" "${dir}/build/intermediates"
+  touch -d '2026-01-01 10:00' "${dir}/out/old.apk"
+  touch -d '2026-01-02 10:00' "${dir}/out/new.aab"
+  touch "${dir}/node_modules/x/dep.apk" "${dir}/build/intermediates/tmp.apk" "${dir}/README.md"
+  run "${SEND_FILE}/find-files" android "${dir}"
+  assert_success
+  assert_line --index 0 --partial "2026-01-02T10:00 0 ${dir}/out/new.aab"
+  assert_line --index 1 --partial "${dir}/out/old.apk"
+  assert_equal "${#lines[@]}" 2
+  run "${SEND_FILE}/find-files" android "${dir}" 1
+  assert_success
+  assert_output "2026-01-02T10:00 0 ${dir}/out/new.aab"
+  run "${SEND_FILE}/find-files" README.md "${dir}"
+  assert_output --partial "${dir}/README.md"
+  run "${SEND_FILE}/find-files" '*.pdf' "${dir}"
+  assert_success
+  assert_output ""
+}
+
+@test "send-file: find-files rejects bad arguments" {
+  run "${SEND_FILE}/find-files"
+  assert_failure 2
+  run "${SEND_FILE}/find-files" md "${BATS_TEST_TMPDIR}/missing"
+  assert_failure 2
+  run "${SEND_FILE}/find-files" md "${BATS_TEST_TMPDIR}" 0
+  assert_failure 2
+}
+
 @test "claude memory: the image prepends SPEC.md to the managed CLAUDE.md, never ~/.claude" {
   local dockerfile="${REPO}/infra/docker/sandbox/Dockerfile"
   grep -qx 'COPY SPEC.md /etc/theone/SPEC.md' "${dockerfile}"

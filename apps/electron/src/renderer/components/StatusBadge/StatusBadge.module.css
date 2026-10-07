@@ -1,0 +1,25 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 22px;
+  padding: 0 8px 0 7px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-pill);
+  background: transparent;
+  flex: none;
+  transition: var(--to-state-transition);
+}
+
+.icon {
+  display: inline-flex;
+  transition: color var(--to-duration-normal) var(--to-ease-standard);
+}
+
+.label {
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  color: var(--to-text-secondary);
+  white-space: nowrap;
+}

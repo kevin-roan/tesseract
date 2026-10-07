@@ -12,6 +12,7 @@ import { dockCorner, isIslandPlacement } from "@/features/island/utils/placement
 import { useSettingsStore } from "../store/settings-store";
 import { isAppearancePreference } from "../utils/appearance";
 import { APPEARANCE_OPTIONS, INPUT_MODE_OPTIONS, ISLAND_PLACEMENT_OPTIONS, LIVE_ACTIVITY_OPTIONS, SETTINGS_COPY } from "../utils/constants";
+import { useAboutEntry } from "./use-about-entry";
 import { useSttSettings } from "./use-stt-settings";
 
 const isInputMode = (value: string): value is InputMode => (INPUT_MODES as readonly string[]).includes(value);
@@ -22,6 +23,7 @@ export function useSettingsScreen() {
   const stt = useSttSettings();
   const claude = useClaudeAccountEntry();
   const host = useHostEntry();
+  const about = useAboutEntry();
   const inputMode = useDisplayStore((state) => state.inputMode);
   const setInputMode = useDisplayStore((state) => state.setInputMode);
   const { refreshing, refresh } = useSandboxRefresh();
@@ -65,6 +67,7 @@ export function useSettingsScreen() {
     },
     claude,
     host,
+    about,
     appearance: { options: APPEARANCE_OPTIONS, selectedId: appearance, select: selectAppearance },
     inputMode: { options: INPUT_MODE_OPTIONS, selectedId: inputMode, select: selectInputMode },
     islandPlacement: { options: ISLAND_PLACEMENT_OPTIONS, selectedId: islandPlacement === "hidden" ? islandPlacement : dockCorner(islandDock), select: selectIslandPlacement },

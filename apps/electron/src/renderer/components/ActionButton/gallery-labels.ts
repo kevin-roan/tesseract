@@ -1,0 +1,17 @@
+export const GALLERY_LABELS = {
+  primary: "Start conversation",
+  secondary: "Refresh",
+  attention: "Sync",
+  flat: "Cancel",
+  link: "View all",
+  destructive: "Forget",
+  disabled: "Disabled",
+  busy: "Working",
+  run: "Run",
+  create: "Create project",
+  delete: "Delete",
+  sizeMd: "md",
+  sizeSm: "sm",
+  sizeDialog: "dialog",
+  states: "states",
+} as const;

@@ -1,25 +1,26 @@
-import { DownloadSimpleIcon } from "phosphor-react-native";
 import type { BuildOutput } from "@theone/protocol";
 import Animated from "react-native-reanimated";
 
-import ActionButton from "@/components/action-button";
 import ResourceCard from "@/components/resource-card";
 import { ThemedText } from "@/components/themed-text";
 import { useEntrance } from "@/hooks/use-entrance";
 import { useLayoutMotion } from "@/hooks/use-layout-motion";
 
+import type { LocalFileStatus } from "../../hooks/use-local-downloads";
 import { buildOutputFolder, buildOutputIcon, buildOutputMeta, buildOutputSubtitle } from "../../utils/build-outputs";
+import LocalFileActions, { LocalFileProgress } from "../local-file-actions";
 
 export type BuildOutputCardProps = {
   output: BuildOutput;
   project: string | null;
+  local: LocalFileStatus;
   onDownload: () => void;
-  downloading?: boolean;
+  onShare: () => void;
   /** Position in the list, for the staggered entrance. */
   index?: number;
 };
 
-const BuildOutputCard = ({ output, project, onDownload, downloading = false, index = 0 }: BuildOutputCardProps) => {
+const BuildOutputCard = ({ output, project, local, onDownload, onShare, index = 0 }: BuildOutputCardProps) => {
   const entering = useEntrance(index, "tight");
   const motion = useLayoutMotion();
 
@@ -30,22 +31,13 @@ const BuildOutputCard = ({ output, project, onDownload, downloading = false, ind
         title={output.fileName}
         subtitle={buildOutputSubtitle(output, project)}
         meta={buildOutputMeta(output)}
-        onPress={onDownload}
-        footer={
-          <ActionButton
-            label="Download"
-            icon={DownloadSimpleIcon}
-            variant="secondary"
-            size="sm"
-            loading={downloading}
-            onPress={onDownload}
-            accessibilityLabel={`Download ${output.fileName}`}
-          />
-        }
+        onPress={local.downloaded ? onShare : onDownload}
+        footer={<LocalFileActions fileName={output.fileName} status={local} onDownload={onDownload} onShare={onShare} />}
       >
         <ThemedText variant="caption" color="textSecondary" numberOfLines={2}>
           {buildOutputFolder(output)}
         </ThemedText>
+        <LocalFileProgress fileName={output.fileName} status={local} />
       </ResourceCard>
     </Animated.View>
   );

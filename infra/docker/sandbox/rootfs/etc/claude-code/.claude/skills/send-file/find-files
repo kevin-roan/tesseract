@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Lists shareable files in a project, newest first, for the /send-file skill.
+set -euo pipefail
+
+usage() {
+  cat << 'USAGE'
+Usage: find-files KIND [DIR] [LIMIT]
+
+KIND: apk, aab, android (apk + aab), windows (exe msi msix appx), linux (AppImage deb rpm snap),
+      build (all of these plus zip), md, or a file name / glob (e.g. CHANGELOG.md, "*.pdf").
+DIR defaults to the git root of the current directory (else the current directory).
+LIMIT defaults to 10.
+Prints "<mtime ISO> <size bytes> <path>" lines, newest first. Skips node_modules, .git,
+intermediate build dirs and /workspace/artifacts (those are already in the app's Files).
+USAGE
+}
+
+[[ $# -ge 1 && $# -le 3 && "$1" != "-h" && "$1" != "--help" ]] || { usage >&2; exit 2; }
+
+kind="$1"
+dir="${2:-$(git rev-parse --show-toplevel 2> /dev/null || pwd)}"
+limit="${3:-10}"
+[[ -d "${dir}" ]] || { echo "find-files: not a directory: ${dir}" >&2; exit 2; }
+[[ "${limit}" =~ ^[1-9][0-9]*$ ]] || { echo "find-files: LIMIT must be a positive integer" >&2; exit 2; }
+
+names=()
+add() { local n; for n in "$@"; do names+=(-o -iname "${n}"); done; }
+case "${kind}" in
+  apk) add '*.apk' ;;
+  aab) add '*.aab' ;;
+  android) add '*.apk' '*.aab' ;;
+  windows) add '*.exe' '*.msi' '*.msix' '*.appx' ;;
+  linux) add '*.AppImage' '*.deb' '*.rpm' '*.snap' ;;
+  build) add '*.apk' '*.aab' '*.exe' '*.msi' '*.msix' '*.appx' '*.AppImage' '*.deb' '*.rpm' '*.snap' '*.zip' ;;
+  md) add '*.md' '*.markdown' ;;
+  *) add "${kind}" ;;
+esac
+names=("${names[@]:1}")
+
+# Unreadable dirs make find exit 1: list what it could read.
+{
+  find "${dir}" \
+    \( -name node_modules -o -name .git -o -name .gradle -o -name .cxx -o -name intermediates \
+       -o -name native-debug-symbols -o -name .expo -o -name Pods -o -name .venv -o -name __pycache__ \
+       -o -path /workspace/artifacts -o -path /workspace/.agent/controller \) -prune \
+    -o -type f \( "${names[@]}" \) -printf '%T@ %TY-%Tm-%TdT%TH:%TM %s %p\n' 2> /dev/null || true
+} | sort -rn | awk -v n="${limit}" 'NR <= n { sub(/^[^ ]+ /, ""); print }'

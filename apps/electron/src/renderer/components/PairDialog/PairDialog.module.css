@@ -1,0 +1,77 @@
+.segmentedRow {
+  display: flex;
+  justify-content: center;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qr {
+  display: flex;
+  align-self: center;
+  margin-bottom: 4px;
+  padding: 12px;
+  border-radius: var(--to-radius-md);
+  background: #ffffff;
+}
+
+.qr svg {
+  display: block;
+}
+
+.linkField {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 34px;
+  padding: 0 4px 0 10px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-sm);
+  background: var(--to-surface);
+}
+
+.linkValue {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  color: var(--to-text-secondary);
+  font-family: var(--to-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre;
+  user-select: text;
+}
+
+.linkHead {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.linkTail {
+  display: flex;
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  direction: rtl;
+}
+
+.linkTailInner {
+  flex: none;
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+.caption {
+  align-self: stretch;
+}
+
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

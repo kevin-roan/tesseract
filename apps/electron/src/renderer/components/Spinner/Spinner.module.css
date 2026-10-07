@@ -1,0 +1,5 @@
+.spinner {
+  flex: none;
+  display: block;
+  animation: to-spin var(--to-spinner-duration) linear infinite;
+}

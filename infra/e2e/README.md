@@ -8,6 +8,8 @@ bun run e2e                    # build theone/sandbox:e2e, start the stack, test
 bun run e2e --no-build         # reuse the existing image
 bun run e2e --keep -t health   # keep the stack afterwards; other arguments go to bun test
 bun run e2e --web              # also drive the mobile web build (see "Mobile web flow")
+bun run e2e --electron         # also run the Electron app's Playwright suites (see "Electron app")
+bun run e2e --electron-only    # only the Electron suites, skip bun test ./infra/e2e
 ```
 
 A clean run takes about 3 minutes on a warm build cache: the two Electron builds need
@@ -92,3 +94,19 @@ direct children of `TabList` or of its single `asChild` element; there they sit 
 down (`View` > `ThemedView`). Moving the `View`/`ThemedView` wrapper into a component that
 renders `{children}` (as the Expo template's `CustomTabList` does) fixes it: with that change
 applied to a copy of the app, every step of the driver passes.
+
+## Electron app
+
+`--electron` runs `bun run --cwd apps/electron e2e` (Playwright: onboarding, app, preferences,
+shell, cli and packaging suites) after the bun tests, against the same stack, with
+`THEONE_E2E_URL`, `THEONE_E2E_TOKEN`, `THEONE_E2E_PROJECT`, `THEONE_E2E_ENV_FILE`,
+`THEONE_E2E_IMAGE`, `THEONE_E2E_VNC_PORT` and `THEONE_E2E_VNC_PASSWORD` exported; without
+them the stack-dependent tests skip. `--electron-only` skips `bun test ./infra/e2e`. The
+Electron windows run with `--ozone-platform=headless` and an isolated `monolith-test-*`
+profile. Against a stack kept with `--keep`:
+
+```bash
+THEONE_E2E_URL=http://127.0.0.1:17700 THEONE_E2E_TOKEN=theone-e2e-token-not-a-secret \
+  THEONE_E2E_PROJECT=theone-e2e THEONE_E2E_ENV_FILE=<env file printed by --keep> \
+  bun run --cwd apps/electron e2e
+```

@@ -82,10 +82,11 @@ export default function FilesScreen() {
                     index={index}
                     artifact={artifact}
                     project={screen.projectName(artifact.projectId)}
-                    onDownload={() => screen.download(artifact.id)}
-                    onSend={screen.taildropAvailable ? () => screen.openTaildrop(artifact) : undefined}
+                    local={screen.localStatus(artifact)}
+                    onDownload={() => screen.download(artifact)}
+                    onShare={() => screen.share(artifact)}
+                    onTaildrop={screen.taildropAvailable ? () => screen.openTaildrop(artifact) : undefined}
                     onDelete={() => screen.remove(artifact)}
-                    downloading={screen.downloadingId === artifact.id}
                     deleting={screen.deletingId === artifact.id}
                   />
                 ))}

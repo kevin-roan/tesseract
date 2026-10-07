@@ -1,0 +1,71 @@
+.root {
+  position: relative;
+  padding-top: clamp(120px, 18vh, 176px);
+  overflow: hidden;
+}
+
+.copy {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.announcement {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px 0 4px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 13px;
+  font-weight: 510;
+  color: var(--text-2);
+  margin-bottom: 28px;
+  transition:
+    border-color 0.16s,
+    color 0.16s;
+}
+
+.announcement:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.tag {
+  height: 22px;
+  padding: 0 8px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: #aab1ff;
+  font-size: 12px;
+}
+
+.title {
+  font-size: clamp(42px, 6.6vw, 80px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  font-weight: 510;
+  max-width: 980px;
+}
+
+.lead {
+  margin-top: 24px;
+  max-width: 560px;
+  font-size: clamp(16px, 1.5vw, 18px);
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+.actions {
+  margin-top: 36px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}

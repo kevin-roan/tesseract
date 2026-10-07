@@ -1,0 +1,41 @@
+.summary {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 4px 12px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+}
+
+.summaryRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  padding: 4px 0;
+}
+
+.summaryRow dt {
+  flex: none;
+}
+
+.summaryValue {
+  display: flex;
+  flex: 1 1 0;
+  justify-content: flex-end;
+  min-width: 0;
+  margin: 0;
+  text-align: right;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 8px;
+  row-gap: 8px;
+  padding: 1px 0;
+}
+
+.action {
+  min-height: 28px;
+}

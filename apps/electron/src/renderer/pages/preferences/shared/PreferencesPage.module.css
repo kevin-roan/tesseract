@@ -1,0 +1,22 @@
+.page {
+  --to-pref-row-text-margin: 9px 0 11px;
+  --to-pref-row-min-height: 48px;
+  --to-pref-row-padding-x: 16px;
+  --to-pref-entry-width: 340px;
+  --to-pref-group-line-height: 18px;
+  --to-pref-group-text-gap: 5px;
+  --to-pref-actions-offset: -8px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  box-sizing: content-box;
+  max-width: 576px;
+  margin: 0 auto;
+  padding: 18px 24px 32px;
+}
+
+.page section > header {
+  min-height: 34px;
+  margin-bottom: 2px;
+}
+

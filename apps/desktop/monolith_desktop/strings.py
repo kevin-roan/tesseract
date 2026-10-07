@@ -100,6 +100,47 @@ HOST_SHELL = MappingProxyType({
     "cancel": "Cancel",
 })
 
+ANDROID_STREAM = MappingProxyType({
+    "title": "Android streaming",
+    "icon": "smartphone",
+    "description": (
+        "How the host shell streams an Android screen to your phone over Tailscale. "
+        "Saved settings switch every open screen over within a moment."
+    ),
+    "device_group": "Device",
+    "device": "Default device",
+    "device_subtitle": "The phone opens this one unless it picks another; any adb device works",
+    "device_host": "Host emulator",
+    "device_missing": "{serial} · not connected",
+    "kind_emulator": "Emulator",
+    "kind_genymotion": "Genymotion",
+    "kind_network": "Wi-Fi",
+    "kind_usb": "USB",
+    "video_group": "Video",
+    "encoding": "Encoding",
+    "encoding_subtitle": "H.264 is sent as-is and decoded on the phone; JPEG is the fallback",
+    "encoding_h264": "H.264 (recommended)",
+    "encoding_mjpeg": "JPEG only",
+    "bit_rate": "Bitrate",
+    "bit_rate_subtitle": "Mbit/s of H.264 from the device; lower it on slow or relayed links",
+    "max_fps": "Frame rate limit",
+    "max_fps_subtitle": "Frames per second at most",
+    "max_size": "Resolution limit",
+    "max_size_subtitle": "Longest side of the streamed screen",
+    "size_viewer": "Match the phone",
+    "size_px": "{size} px",
+    "key_frame_interval": "Key frame interval",
+    "key_frame_interval_subtitle": "Seconds between key frames; shorter recovers faster from dropped frames",
+    "jpeg_quality": "JPEG quality",
+    "jpeg_quality_subtitle": "2 is the best, 31 the smallest; used when the phone can't decode H.264",
+    "reset": "Reset to defaults",
+    "save": "Save",
+    "saved": "Saved; open screens switch to the new settings",
+    "refresh": "Refresh devices",
+    "load_failed": "Couldn't read the stream settings: {error}",
+    "save_failed": "Couldn't save the stream settings: {error}",
+})
+
 HOST_PIN = MappingProxyType({
     "title": "Host shell PIN",
     "context": "This computer",

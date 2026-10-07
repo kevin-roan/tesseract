@@ -1,9 +1,11 @@
 import { parseArgs } from "node:util";
 import { renderANSI } from "uqr";
-import { buildPairingLink, HOST_PAIRING_ACTION, HOST_PIN_PATTERN } from "@theone/protocol";
+import { buildPairingLink, HOST_PAIRING_ACTION, HOST_PIN_PATTERN, parseJsonWith, UpdateAndroidStreamSchema } from "@theone/protocol";
 import { CliError } from "../cli/local-api";
 import type { Output } from "../cli/output";
 import type { Env } from "../core/exec";
+import { emulatorSerial } from "./android/config";
+import { listAdbDevices } from "./android/devices";
 import { HELPER_COMMAND, runEmulatorHelper } from "./android/netns-helper";
 import { HostConfigError, loadHostConfig, tailscaleServeUrl } from "./config";
 import { startHostShell } from "./server";
@@ -22,7 +24,11 @@ export const HOST_USAGE = `  theone-controller host serve [--bind <ipv4>] [--por
                                      print the host shell pairing link (theone://host) and a QR code;
                                      --json prints { link, url, name, pinSet }
   theone-controller host token [--rotate]
-                                     print the host token, or replace it (paired phones must pair again)`;
+                                     print the host token, or replace it (paired phones must pair again)
+  theone-controller host stream [--json] [--stdin]
+                                     print the Android screen stream settings and the adb devices;
+                                     --stdin reads a JSON object of settings to change first;
+                                     --json prints { stream, devices }`;
 
 export type HostCliIo = {
   env: Env;
@@ -135,6 +141,27 @@ function token(args: string[], io: HostCliIo): number {
   return 0;
 }
 
+async function stream(args: string[], io: HostCliIo): Promise<number> {
+  const { values } = parseArgs({ args, options: { json: { type: "boolean", default: false }, stdin: { type: "boolean", default: false } }, strict: true });
+  const settings = config(io.env, {}, false);
+  const store = new HostStateStore(settings.stateDir, settings.stateFile);
+  if (values.stdin) {
+    const parsed = parseJsonWith(UpdateAndroidStreamSchema, await io.readStdin());
+    if (!parsed.ok) throw new CliError(`Invalid stream settings: ${parsed.error.message}`, 2);
+    store.updateAndroidStream(parsed.value);
+  }
+  const current = store.androidStreamSettings();
+  const devices = await listAdbDevices(settings.android, emulatorSerial(settings.android));
+  if (values.json) {
+    io.output.out(JSON.stringify({ stream: current, devices }));
+    return 0;
+  }
+  for (const [key, value] of Object.entries(current)) io.output.out(`${key}: ${value ?? "-"}`);
+  io.output.out(devices.length ? "\ndevices:" : "\nno adb devices");
+  for (const device of devices) io.output.out(`  ${device.serial}  ${device.state}  ${device.kind}  ${device.model ?? ""}`);
+  return 0;
+}
+
 /** Returns the exit code, or null while the daemon runs. */
 export async function hostCli(args: string[], io: HostCliIo): Promise<number | null> {
   const [command, ...rest] = args;
@@ -147,6 +174,8 @@ export async function hostCli(args: string[], io: HostCliIo): Promise<number | n
       return pair(rest, io);
     case "token":
       return token(rest, io);
+    case "stream":
+      return await stream(rest, io);
     case HELPER_COMMAND:
       try {
         return await runEmulatorHelper(rest);
@@ -154,6 +183,6 @@ export async function hostCli(args: string[], io: HostCliIo): Promise<number | n
         throw new CliError(error instanceof Error ? error.message : String(error), 2);
       }
     default:
-      throw new CliError(`Unknown host command "${command ?? ""}"; expected serve, pin, pair or token`, 2);
+      throw new CliError(`Unknown host command "${command ?? ""}"; expected serve, pin, pair, token or stream`, 2);
   }
 }

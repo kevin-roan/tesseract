@@ -266,7 +266,10 @@ export function randomScid(): string {
   return (crypto.getRandomValues(new Uint32Array(1))[0]! & 0x7fffffff).toString(16).padStart(8, "0");
 }
 
-export function scrcpyServerArgs(version: string, scid: string, maxSize: number): string[] {
+/** What one scrcpy server encodes: H.264 at `bitRate` bps, at most `maxFps`, a key frame every `keyFrameInterval` s. */
+export type EncoderOptions = { maxSize: number; bitRate: number; maxFps: number; keyFrameInterval: number };
+
+export function scrcpyServerArgs(version: string, scid: string, encoder: EncoderOptions): string[] {
   return [
     "CLASSPATH=/data/local/tmp/scrcpy-server.jar",
     "app_process",
@@ -278,8 +281,10 @@ export function scrcpyServerArgs(version: string, scid: string, maxSize: number)
     "audio=false",
     "control=true",
     "video_codec=h264",
-    `max_size=${maxSize}`,
-    "max_fps=30",
+    `max_size=${encoder.maxSize}`,
+    `max_fps=${encoder.maxFps}`,
+    `video_bit_rate=${encoder.bitRate}`,
+    `video_codec_options=i-frame-interval:int=${encoder.keyFrameInterval}`,
     "send_frame_meta=true",
     "send_device_meta=true",
     "send_codec_meta=true",
@@ -290,7 +295,8 @@ export function scrcpyServerArgs(version: string, scid: string, maxSize: number)
 
 export const SCRCPY_DEVICE_JAR = "/data/local/tmp/scrcpy-server.jar";
 
-export const FFMPEG_MJPEG_ARGS = [
+/** H.264 on stdin → JPEG frames on stdout; `quality` is ffmpeg's `-q:v` (2 best, 31 worst). */
+export const ffmpegMjpegArgs = (quality: number) => [
   "-loglevel",
   "error",
   "-threads",
@@ -314,6 +320,6 @@ export const FFMPEG_MJPEG_ARGS = [
   "-c:v",
   "mjpeg",
   "-q:v",
-  "5",
+  String(quality),
   "pipe:1",
 ];

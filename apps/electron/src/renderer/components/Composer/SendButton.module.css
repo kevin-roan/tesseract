@@ -1,0 +1,64 @@
+.send {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  align-self: flex-end;
+  padding: 0;
+  border: none;
+  border-radius: var(--to-radius-pill);
+  background: var(--to-accent);
+  color: var(--to-text-on-accent);
+  overflow: hidden;
+  transition: var(--to-state-transition);
+}
+
+.send:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.send:active:not(:disabled) {
+  background: var(--to-accent-pressed);
+  transform: scale(var(--to-press-scale));
+}
+
+.send:disabled {
+  background: var(--to-background-selected);
+  color: var(--to-text-tertiary);
+  opacity: 0.5;
+}
+
+.send[aria-busy="true"]:disabled {
+  background: var(--to-accent);
+  color: var(--to-text-on-accent);
+  opacity: 0.7;
+}
+
+.round {
+  width: 28px;
+  height: 28px;
+}
+
+.compact {
+  width: 24px;
+  height: 24px;
+}
+
+.pill {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 14px;
+  font: 500 13px/18px var(--to-font-sans);
+  white-space: nowrap;
+}
+
+.content {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stopIcon {
+  fill: currentColor;
+}

@@ -1,0 +1,94 @@
+.rail {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 200px;
+  gap: 4px;
+  width: 200px;
+  min-width: 0;
+  padding: 12px 8px;
+}
+
+:global(html[data-platform="darwin"]) .rail {
+  padding-top: 40px;
+}
+
+.overline {
+  padding: 4px 8px;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  margin-bottom: 1px;
+}
+
+.row {
+  position: relative;
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--to-radius-sm);
+  background: transparent;
+  color: var(--to-text-secondary);
+  text-align: left;
+  transition: var(--to-state-transition);
+}
+
+.row > :not(.highlight) {
+  position: relative;
+}
+
+.row:hover:not(.locked):not(.current) {
+  background: var(--to-background-element);
+}
+
+.highlight {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--to-radius-sm);
+  background: var(--to-background-selected);
+}
+
+.current {
+  color: var(--to-text);
+}
+
+.locked {
+  color: var(--to-text-tertiary);
+  cursor: default;
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.optional {
+  flex: none;
+  color: var(--to-text-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.footer {
+  margin-top: auto;
+  padding: 8px;
+}

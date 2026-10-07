@@ -1,4 +1,4 @@
-import { DownloadSimpleIcon, PaperPlaneTiltIcon, TrashIcon } from "phosphor-react-native";
+import { PaperPlaneTiltIcon, TrashIcon } from "phosphor-react-native";
 import type { Artifact } from "@theone/protocol";
 import Animated from "react-native-reanimated";
 
@@ -8,30 +8,24 @@ import { ThemedText } from "@/components/themed-text";
 import { useEntrance } from "@/hooks/use-entrance";
 import { useLayoutMotion } from "@/hooks/use-layout-motion";
 
+import type { LocalFileStatus } from "../../hooks/use-local-downloads";
 import { fileIcon, fileMeta, fileSourceBadge, fileSubtitle } from "../../utils/describe";
+import LocalFileActions, { LocalFileProgress } from "../local-file-actions";
 
 export type FileCardProps = {
   artifact: Artifact;
   project: string | null;
+  local: LocalFileStatus;
   onDownload: () => void;
-  onSend?: () => void;
+  onShare: () => void;
+  onTaildrop?: () => void;
   onDelete?: () => void;
-  downloading?: boolean;
   deleting?: boolean;
   /** Position in the list, for the staggered entrance. */
   index?: number;
 };
 
-const FileCard = ({
-  artifact,
-  project,
-  onDownload,
-  onSend,
-  onDelete,
-  downloading = false,
-  deleting = false,
-  index = 0,
-}: FileCardProps) => {
+const FileCard = ({ artifact, project, local, onDownload, onShare, onTaildrop, onDelete, deleting = false, index = 0 }: FileCardProps) => {
   const entering = useEntrance(index, "tight");
   const motion = useLayoutMotion();
 
@@ -43,25 +37,17 @@ const FileCard = ({
         subtitle={fileSubtitle(artifact, project)}
         meta={fileMeta(artifact)}
         badge={fileSourceBadge(artifact.source)}
-        onPress={onDownload}
+        onPress={local.downloaded ? onShare : onDownload}
         footer={
           <>
-            <ActionButton
-              label="Download"
-              icon={DownloadSimpleIcon}
-              variant="secondary"
-              size="sm"
-              loading={downloading}
-              onPress={onDownload}
-              accessibilityLabel={`Download ${artifact.fileName}`}
-            />
-            {onSend ? (
+            <LocalFileActions fileName={artifact.fileName} status={local} onDownload={onDownload} onShare={onShare} />
+            {onTaildrop ? (
               <ActionButton
-                label="Send"
+                label="Taildrop"
                 icon={PaperPlaneTiltIcon}
                 variant="secondary"
                 size="sm"
-                onPress={onSend}
+                onPress={onTaildrop}
                 accessibilityLabel={`Send ${artifact.fileName} with Taildrop`}
               />
             ) : null}
@@ -84,6 +70,7 @@ const FileCard = ({
             {artifact.note}
           </ThemedText>
         ) : null}
+        <LocalFileProgress fileName={artifact.fileName} status={local} />
       </ResourceCard>
     </Animated.View>
   );

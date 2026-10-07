@@ -1,0 +1,18 @@
+export const GALLERY_LABELS = {
+  refresh: "Refresh",
+  filter: "Search projects",
+  group: "Group by status",
+  compose: "New conversation",
+  send: "Send",
+  close: "Close",
+  more: "More actions",
+  delete: "Delete",
+  down: "Scroll to bottom",
+  attach: "Attach files",
+  disabled: "Disabled",
+  flat: "flat",
+  bordered: "bordered",
+  round: "round · filled",
+  small: "24 · 22",
+  other: "elevated · danger",
+} as const;

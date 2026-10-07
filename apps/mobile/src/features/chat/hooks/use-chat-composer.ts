@@ -10,6 +10,7 @@ import type { PickerSource } from "@/features/attachments/types";
 import { defaultPromptFor } from "@/features/attachments/utils/files";
 import { ATTACH_OPTIONS, isPickerSource } from "@/features/attachments/utils/sources";
 import { useDraftInjection } from "@/features/island/hooks/use-draft-injection";
+import { mergeDraftText } from "@/features/island/utils/shared";
 import { useCreateProject, useStartAgentRun } from "@/features/sandbox/hooks/use-sandbox-mutations";
 import { PROJECTS_ROOT } from "@/features/sandbox/utils/constants";
 import { describeError } from "@/features/sandbox/utils/errors";
@@ -147,16 +148,21 @@ export function useChatComposer({
     startRun(pendingChat.prompt, pendingChat.attachmentIds, null).catch(() => undefined);
   }, [pendingChat, startRun]);
 
-  /** Backing out keeps the message: a voice note's transcript lands in the empty input. */
+  /** Backing out keeps the message in the empty input. */
   const closeNewProject = useCallback(() => {
     if (pendingChat) setText((current) => (current.trim() ? current : pendingChat.prompt));
     setPendingChat(null);
     setSheet(null);
   }, [pendingChat]);
 
+  /** A voice note becomes a draft: the transcript lands in the input to edit, the audio in the tray, and the user sends. */
+  const { addUploaded } = attachments;
   const onVoiceReady = useCallback(
-    ({ prompt, audio }: VoiceNote) => submit(prompt, [...attachments.uploadIds, audio.id]),
-    [submit, attachments.uploadIds],
+    async ({ prompt, audio, uri }: VoiceNote) => {
+      setText((current) => mergeDraftText(current, prompt));
+      addUploaded(audio, uri);
+    },
+    [addUploaded],
   );
   const voice = useVoiceMessage({ onReady: onVoiceReady });
 

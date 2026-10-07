@@ -13,7 +13,8 @@ import { fallbackNotice } from "../utils/fallback";
 import { formatDuration, padLevels, resampleLevels, voiceFileName, voiceMimeType } from "../utils/levels";
 import { useVoiceRecorder } from "./use-voice-recorder";
 
-export type VoiceNote = { prompt: string; audio: Upload };
+/** A transcribed recording; `uri` is the local clip, so the draft can play it back. */
+export type VoiceNote = { prompt: string; audio: Upload; uri: string };
 
 type Pending = { clip: RecordedClip; audio: Upload | null; transcript: string | null };
 
@@ -58,7 +59,7 @@ export function useVoiceMessage({ onReady }: VoiceMessageOptions) {
         }
         if (!transcript) throw new Error("No speech was recognised in this recording.");
         setPending({ clip: next.clip, audio, transcript });
-        await onReady({ prompt: transcript, audio });
+        await onReady({ prompt: transcript, audio, uri: next.clip.uri });
         setPending(null);
       } catch (cause) {
         setError(describeError(cause));

@@ -1,0 +1,70 @@
+.root {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--to-text);
+  font-size: 13px;
+  line-height: 20px;
+  border-radius: var(--to-radius-xs);
+}
+
+.root:disabled {
+  opacity: 0.5;
+}
+
+.box {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--to-border-strong);
+  border-radius: var(--to-radius-xs);
+  background: transparent;
+  transition: var(--to-state-transition);
+}
+
+.root:hover:not(:disabled) .box {
+  background: var(--to-background-element);
+}
+
+.root:active:not(:disabled) .box {
+  transform: scale(var(--to-press-scale));
+}
+
+.root[data-checked] .box {
+  border-color: var(--to-accent);
+  background: var(--to-accent);
+}
+
+.glyph {
+  width: 16px;
+  height: 16px;
+  margin: -1px;
+}
+
+.stroke {
+  fill: none;
+  stroke: #ffffff;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: var(--checkbox-length);
+  stroke-dashoffset: var(--checkbox-length);
+  transition: stroke-dashoffset var(--to-duration-fast) var(--to-ease-decelerate);
+}
+
+.root[data-checked] .stroke {
+  stroke-dashoffset: 0;
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

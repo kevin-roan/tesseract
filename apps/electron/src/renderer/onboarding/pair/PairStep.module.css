@@ -1,0 +1,28 @@
+.body {
+  display: flex;
+  justify-content: center;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  width: 100%;
+  max-width: 392px;
+}
+
+.qr {
+  display: flex;
+  align-self: center;
+}
+
+.placeholder {
+  align-self: center;
+  border-radius: var(--to-radius-md);
+}
+
+.caption {
+  align-self: stretch;
+}
+

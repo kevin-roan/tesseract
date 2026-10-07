@@ -265,8 +265,8 @@ def test_usage_parsing_and_token_meta():
 def test_project_badges_use_framework_logos_and_distinct_tints():
     projects = [{"id": f"p{index}", "framework": "electron" if index == 0 else "expo"} for index in range(9)]
     badges = model.project_badges(projects)
-    assert badges["p0"].icon == "logo-electron"
-    assert badges["p1"].icon == "logo-react"
+    assert badges["p0"].icon == "logo-electron-symbolic"
+    assert badges["p1"].icon == "logo-react-symbolic"
     assert len({badge.tint for badge in badges.values()}) == 9
 
 

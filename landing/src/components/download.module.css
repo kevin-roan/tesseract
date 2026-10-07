@@ -1,0 +1,117 @@
+.root {
+  position: relative;
+  padding: clamp(112px, 14vw, 200px) 0 clamp(96px, 10vw, 140px);
+  border-top: 1px solid var(--line-2);
+  overflow: hidden;
+}
+
+.glow {
+  position: absolute;
+  left: 50%;
+  bottom: -420px;
+  width: 1400px;
+  height: 700px;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(94, 106, 210, 0.14), transparent);
+  pointer-events: none;
+}
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 32px;
+  flex-wrap: wrap;
+  margin-bottom: 56px;
+}
+
+.head h2 {
+  font-size: clamp(38px, 5.4vw, 68px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+}
+
+.head h2 span {
+  display: block;
+}
+
+.head h2 span + span {
+  color: var(--text-2);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 22px 22px 24px;
+  transition: background 0.2s;
+}
+
+.tile + .tile {
+  border-left: 1px solid var(--line);
+}
+
+a.tile:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.icon {
+  color: var(--text);
+  margin-bottom: 28px;
+}
+
+.label {
+  font-size: 15px;
+  font-weight: 590;
+}
+
+.detail {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.soon .detail,
+.soon .icon {
+  color: var(--text-3);
+}
+
+.arrow {
+  position: absolute;
+  top: 22px;
+  right: 20px;
+  color: var(--text-3);
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .tile + .tile {
+    border-left: none;
+  }
+
+  .tile {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tile:nth-child(2n) {
+    border-left: 1px solid var(--line);
+  }
+}

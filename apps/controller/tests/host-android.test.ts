@@ -1,12 +1,22 @@
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { createServer, type Server as TcpServer, type Socket } from "node:net";
 import { join } from "node:path";
-import { AndroidLinkInfoSchema, EmulatorInfoSchema, HostAndroidStatusSchema, HostSessionSchema, type EmulatorInfo } from "@theone/protocol";
+import {
+  AndroidLinkInfoSchema,
+  DEFAULT_ANDROID_STREAM,
+  EmulatorInfoSchema,
+  HostAndroidStatusSchema,
+  HostSessionSchema,
+  type AndroidStreamSettings,
+  type EmulatorInfo,
+} from "@theone/protocol";
 import { silentLogger } from "../src/core/logger";
 import { HostConfigError, loadHostConfig, type HostConfig } from "../src/host/config";
-import { loadAndroidConfig, parseScrcpyVersion, type AndroidConfig } from "../src/host/android/config";
+import { defaultGpu, loadAndroidConfig, parseScrcpyVersion, type AndroidConfig } from "../src/host/android/config";
 import { EMULATOR_MESSAGES, EmulatorManager, parseAvdList, parseWmSize } from "../src/host/android/emulator";
+import { parseAdbDevices } from "../src/host/android/devices";
+import { HostAndroid } from "../src/host/android";
 import { runtimePaths } from "../src/host/android/netns-helper";
 import { AndroidScreens, type ScreenClient } from "../src/host/android/screen";
 import { startHostShell, type HostShell } from "../src/host/server";
@@ -140,7 +150,7 @@ describe("android config", () => {
       scrcpyVersion: "4.1",
       ffmpeg: join(bin, "ffmpeg"),
       emulatorPort: 5554,
-      gpu: "swiftshader_indirect",
+      gpu: defaultGpu(),
       isolation: "netns",
       unshare: Bun.which("unshare", { PATH: `${bin}:/usr/bin:/bin` }),
       ip: Bun.which("ip", { PATH: `${bin}:/usr/bin:/bin:/usr/sbin:/sbin` }),
@@ -159,6 +169,18 @@ describe("android config", () => {
       THEONE_EMULATOR_GPU: "host",
     });
     expect(custom).toMatchObject({ adb: fakes.adb, ffmpeg: null, scrcpyVersion: "3.3", scrcpyServer: null, emulatorPort: 5560, gpu: "host" });
+  });
+
+  test("uses the host GPU only when a render node can be opened", () => {
+    const dri = makeTempDir("dri");
+    expect(defaultGpu(join(dri, "missing"))).toBe("swiftshader_indirect");
+    writeFileSync(join(dri, "card0"), "");
+    expect(defaultGpu(dri)).toBe("swiftshader_indirect");
+    writeFileSync(join(dri, "renderD128"), "");
+    chmodSync(join(dri, "renderD128"), 0o400);
+    expect(defaultGpu(dri)).toBe("swiftshader_indirect");
+    chmodSync(join(dri, "renderD128"), 0o600);
+    expect(defaultGpu(dri)).toBe("host");
   });
 
   test("rejects an emulator port the emulator would not accept", () => {
@@ -365,7 +387,14 @@ describe("adopted emulator that never boots", () => {
 });
 
 /** Stands in for scrcpy-server behind `adb forward`: the first connection is video, the second control. */
-async function fakeScrcpy(): Promise<{ server: TcpServer; port: number; control: Buffer[] }> {
+function videoPacket(data: Buffer, flags: { config?: boolean; keyFrame?: boolean } = {}): Buffer {
+  const header = Buffer.alloc(12);
+  header.writeUInt32BE((flags.config ? 0x40000000 : 0) | (flags.keyFrame ? 0x20000000 : 0), 0);
+  header.writeUInt32BE(data.length, 8);
+  return Buffer.concat([header, data]);
+}
+
+async function fakeScrcpy(frames: Buffer[] = []): Promise<{ server: TcpServer; port: number; control: Buffer[] }> {
   const control: Buffer[] = [];
   let connections = 0;
   const preamble = Buffer.alloc(69);
@@ -378,7 +407,7 @@ async function fakeScrcpy(): Promise<{ server: TcpServer; port: number; control:
   const server = createServer((socket: Socket) => {
     socket.on("error", () => {});
     connections += 1;
-    if (connections === 1) socket.write(Buffer.concat([preamble, session]));
+    if (connections % 2 === 1) socket.write(Buffer.concat([preamble, session, ...frames]));
     else socket.on("data", (chunk: Buffer) => control.push(chunk));
   });
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
@@ -398,13 +427,49 @@ function touches(control: Buffer[]): Touch[] {
   return result;
 }
 
-function viewer(): { client: ScreenClient; messages: unknown[] } {
+function viewer(): { client: ScreenClient; messages: unknown[]; frames: string[] } {
   const messages: unknown[] = [];
-  return { messages, client: { send: (message) => messages.push(message), sendFrame: () => {}, bufferedAmount: () => 0, close: () => {} } };
+  const frames: string[] = [];
+  return {
+    messages,
+    frames,
+    client: { send: (message) => messages.push(message), sendFrame: (frame) => frames.push(Buffer.from(frame).toString("hex")), bufferedAmount: () => 0, close: () => {} },
+  };
 }
 
+describe("adb devices", () => {
+  test("parses adb devices -l and tells emulators, Genymotion, network and USB devices apart", () => {
+    const output = `List of devices attached
+emulator-5554          device product:sdk_gphone64_x86_64 model:sdk_gphone64_x86_64 device:emu64xa transport_id:1
+127.0.0.1:41555        device product:sdk_gphone64_x86_64 model:sdk_gphone64_x86_64 device:emu64xa transport_id:2
+192.168.56.101:5555    device product:vbox86p model:Google_Pixel_3 device:vbox86p transport_id:3
+192.168.2.5:41479      device product:PacmanIND model:A142 device:Pacman transport_id:4
+R5CT20ABCDE            unauthorized usb:1-1 transport_id:5
+`;
+    expect(parseAdbDevices(output, "127.0.0.1:41555")).toEqual([
+      { serial: "emulator-5554", state: "device", kind: "emulator", model: "sdk gphone64 x86 64", hostEmulator: false },
+      { serial: "127.0.0.1:41555", state: "device", kind: "emulator", model: "sdk gphone64 x86 64", hostEmulator: true },
+      { serial: "192.168.56.101:5555", state: "device", kind: "genymotion", model: "Google Pixel 3", hostEmulator: false },
+      { serial: "192.168.2.5:41479", state: "device", kind: "network", model: "A142", hostEmulator: false },
+      { serial: "R5CT20ABCDE", state: "unauthorized", kind: "usb", model: null, hostEmulator: false },
+    ]);
+    expect(parseAdbDevices("* daemon started successfully\nList of devices attached\n\n", "emulator-5554")).toEqual([]);
+  });
+});
+
+describe("stream settings", () => {
+  test("only valid changed fields are stored", () => {
+    const dir = makeTempDir("stream");
+    const store = new HostStateStore(dir, join(dir, "state.json"));
+    expect(store.androidStreamSettings()).toEqual(DEFAULT_ANDROID_STREAM);
+    expect(store.updateAndroidStream({ bitRate: 4_000_000, device: "192.168.2.5:41479" })).toEqual({ ...DEFAULT_ANDROID_STREAM, bitRate: 4_000_000, device: "192.168.2.5:41479" });
+    writeFileSync(join(dir, "state.json"), JSON.stringify({ androidStream: { bitRate: 1, maxFps: 30, encoding: "vp9" } }));
+    expect(store.androidStreamSettings()).toEqual({ ...DEFAULT_ANDROID_STREAM, maxFps: 30 });
+  });
+});
+
 describe("android screen sessions", () => {
-  async function screens(fakes: Fakes, scrcpyPort: number) {
+  async function screens(fakes: Fakes, scrcpyPort: number, settings: Partial<AndroidStreamSettings> = {}, current = () => settings) {
     writeFileSync(join(fakes.dir, "online"), "");
     writeFileSync(join(fakes.dir, "booted"), "");
     writeFileSync(join(fakes.dir, "forward.port"), String(scrcpyPort));
@@ -415,7 +480,7 @@ describe("android screen sessions", () => {
     const emulator = manager(fakes, {}, config);
     await emulator.init();
     expect(emulator.running).toBe(true);
-    const created = new AndroidScreens(config, emulator, silentLogger, { connectTimeoutMs: 2_000 });
+    const created = new AndroidScreens(config, emulator, silentLogger, { connectTimeoutMs: 2_000, settings: () => ({ ...DEFAULT_ANDROID_STREAM, ...current() }) });
     return created;
   }
 
@@ -425,10 +490,10 @@ describe("android screen sessions", () => {
     const android = await screens(fakes, scrcpy.port);
     const a = viewer();
     const b = viewer();
-    const detachA = android.attach(a.client, 720);
+    const detachA = android.attach(a.client, { maxSize: 720 });
     const detachB = android.attach(b.client);
     await waitFor(() => a.messages.length > 0 && b.messages.length > 0);
-    expect(a.messages[0]).toEqual({ type: "meta", deviceName: "sdk_gphone64_x86_64", width: 1080, height: 2340 });
+    expect(a.messages[0]).toEqual({ type: "meta", deviceName: "sdk_gphone64_x86_64", codec: "mjpeg", width: 1080, height: 2340 });
     expect(argv(fakes, "adb").find((line) => line.includes("scrcpy.Server"))).toContain("max_size=720");
 
     const at = { width: 1080, height: 2340, pressure: 1 };
@@ -458,9 +523,114 @@ describe("android screen sessions", () => {
     const scrcpy = await fakeScrcpy();
     const android = await screens(fakes, scrcpy.port);
     const a = viewer();
-    android.attach(a.client, 8);
+    android.attach(a.client, { maxSize: 8 });
     await waitFor(() => a.messages.length > 0);
     expect(argv(fakes, "adb").find((line) => line.includes("scrcpy.Server"))).toContain("max_size=160");
+    await android.shutdown();
+    scrcpy.server.close();
+  });
+
+  test("H.264 is passed through with flags and a late viewer gets the config and the frames since the key frame", async () => {
+    const fakes = fakeAndroid();
+    const config = Buffer.from("00000001674d", "hex");
+    const key = Buffer.from("0000000165aa", "hex");
+    const delta = Buffer.from("0000000141bb", "hex");
+    const scrcpy = await fakeScrcpy([videoPacket(config, { config: true }), videoPacket(key, { keyFrame: true }), videoPacket(delta)]);
+    const android = await screens(fakes, scrcpy.port, { bitRate: 2_000_000, maxFps: 24, keyFrameInterval: 3, maxSize: 600 });
+    const a = viewer();
+    android.attach(a.client, { maxSize: 1080, codec: "h264" });
+    const expected = [`01${config.toString("hex")}`, `02${key.toString("hex")}`, `00${delta.toString("hex")}`];
+    await waitFor(() => a.frames.length === 3);
+    expect(a.messages[0]).toEqual({ type: "meta", deviceName: "sdk_gphone64_x86_64", codec: "h264", width: 1080, height: 2340 });
+    expect(a.frames).toEqual(expected);
+    const server = argv(fakes, "adb").find((line) => line.includes("scrcpy.Server")) ?? "";
+    for (const arg of ["max_size=600", "video_bit_rate=2000000", "max_fps=24", "video_codec_options=i-frame-interval:int=3"]) expect(server).toContain(arg);
+
+    const late = viewer();
+    android.attach(late.client, { codec: "h264" });
+    expect(late.frames).toEqual(expected);
+    await android.shutdown();
+    scrcpy.server.close();
+  });
+
+  test("new settings move open viewers to a new session without closing them", async () => {
+    const fakes = fakeAndroid();
+    const scrcpy = await fakeScrcpy();
+    let settings: Partial<AndroidStreamSettings> = { bitRate: 8_000_000 };
+    const android = await screens(fakes, scrcpy.port, {}, () => settings);
+    const a = viewer();
+    android.attach(a.client, { codec: "h264" });
+    await waitFor(() => a.messages.length === 1);
+    const servers = () => argv(fakes, "adb").filter((line) => line.includes("scrcpy.Server"));
+
+    settings = { bitRate: 8_000_000, jpegQuality: 20 };
+    android.restart();
+    expect(servers()).toHaveLength(1);
+
+    settings = { bitRate: 2_000_000 };
+    android.restart();
+    await waitFor(() => a.messages.length === 2);
+    expect(a.messages[1]).toMatchObject({ type: "meta", codec: "h264" });
+    expect(servers()).toHaveLength(2);
+    expect(servers()[1]).toContain("video_bit_rate=2000000");
+    expect(android.viewers).toBe(1);
+
+    settings = { encoding: "mjpeg" };
+    android.restart();
+    await waitFor(() => a.messages.length === 3);
+    expect(a.messages[2]).toMatchObject({ type: "meta", codec: "mjpeg" });
+    await android.shutdown();
+    scrcpy.server.close();
+  });
+
+  test("settings saved by the CLI reach the open screens", async () => {
+    const fakes = fakeAndroid();
+    const dir = makeTempDir("watch");
+    const store = new HostStateStore(dir, join(dir, "state.json"));
+    store.ensureToken();
+    const host = new HostAndroid(fakes.config, store, { hostId: "h", version: "1" }, silentLogger, { settingsDebounceMs: 20 });
+    let restarts = 0;
+    host.screens.restart = () => {
+      restarts += 1;
+    };
+    await host.init();
+    new HostStateStore(dir, join(dir, "state.json")).updateAndroidStream({ maxFps: 30 });
+    await waitFor(() => restarts === 1);
+    store.updateAndroidStream({ maxFps: 30 });
+    await Bun.sleep(100);
+    expect(restarts).toBe(1);
+    host.updateStream({ maxFps: 24 });
+    expect(restarts).toBe(2);
+    await host.shutdown();
+  });
+
+  test("a viewer that cannot decode H.264 gets its own JPEG session", async () => {
+    const fakes = fakeAndroid();
+    const scrcpy = await fakeScrcpy();
+    const android = await screens(fakes, scrcpy.port, { jpegQuality: 12 });
+    const h264 = viewer();
+    const jpeg = viewer();
+    android.attach(h264.client, { codec: "h264" });
+    await waitFor(() => h264.messages.length > 0);
+    android.attach(jpeg.client);
+    await waitFor(() => jpeg.messages.length > 0);
+    expect(h264.messages[0]).toMatchObject({ type: "meta", codec: "h264" });
+    expect(jpeg.messages[0]).toMatchObject({ type: "meta", codec: "mjpeg" });
+    expect(argv(fakes, "adb").filter((line) => line.includes("scrcpy.Server"))).toHaveLength(2);
+    await android.shutdown();
+    scrcpy.server.close();
+  });
+
+  test("another adb device streams while the emulator is stopped", async () => {
+    const fakes = fakeAndroid();
+    const scrcpy = await fakeScrcpy();
+    const android = await screens(fakes, scrcpy.port, { device: "192.168.56.101:5555" });
+    rmSync(join(fakes.dir, "online"));
+    const a = viewer();
+    android.attach(a.client, { codec: "h264" });
+    await waitFor(() => a.messages.length > 0);
+    expect(a.messages[0]).toMatchObject({ type: "meta", codec: "h264" });
+    expect(argv(fakes, "adb").find((line) => line.includes("scrcpy.Server"))).toStartWith("-s 192.168.56.101:5555 shell");
     await android.shutdown();
     scrcpy.server.close();
   });
@@ -522,10 +692,23 @@ describe("host android API", () => {
       ["DELETE", "/v1/android/emulator"],
       ["POST", "/v1/android/link"],
       ["DELETE", "/v1/android/link"],
+      ["GET", "/v1/android/devices"],
+      ["GET", "/v1/android/stream"],
+      ["PUT", "/v1/android/stream"],
     ] as const) {
       expect((await call(method, path, null)).status).toBe(401);
       expect((await call(method, path, token)).status).toBe(401);
     }
+  });
+
+  test("stream settings are read and changed", async () => {
+    const session = await start(fakeAndroid().config);
+    expect((await call("GET", "/v1/android/stream", session)).body).toEqual(DEFAULT_ANDROID_STREAM);
+    const changed = await call("PUT", "/v1/android/stream", session, { encoding: "mjpeg", maxFps: 30 });
+    expect(changed.body).toEqual({ ...DEFAULT_ANDROID_STREAM, encoding: "mjpeg", maxFps: 30 });
+    expect((await call("PUT", "/v1/android/stream", session, { bitRate: 10 })).status).toBe(400);
+    expect((await call("GET", "/v1/android", session)).body.stream).toEqual(changed.body);
+    expect((await call("GET", "/v1/android/devices", session)).status).toBe(200);
   });
 
   test("status reports missing tools without failing", async () => {
@@ -542,6 +725,8 @@ describe("host android API", () => {
       ffmpeg: false,
       emulator: { state: "unavailable", avd: null, serial: null, managed: false, isolated: false, width: null, height: null, startedAt: null, error: null },
       link: { configured: false, sandboxUrl: null, connected: false, lastError: null },
+      stream: DEFAULT_ANDROID_STREAM,
+      devices: [],
     });
     expect((await call("POST", "/v1/android/emulator", session, { avd: "Pixel_5" })).status).toBe(503);
   });

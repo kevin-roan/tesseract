@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BackHandler, type LayoutChangeEvent } from "react-native";
+import type { LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { VncAction } from "@theone/protocol";
 
@@ -12,6 +12,7 @@ import { displayInsets, nextInputMode } from "../utils/display";
 import { useDisplayPageSync } from "./use-display-page-sync";
 import { useDisplayPaste } from "./use-display-paste";
 import { useDisplaySession } from "./use-display-session";
+import { useFullscreen } from "./use-fullscreen";
 
 /**
  * Everything around the full-bleed VNC page: the floating bar's actions,
@@ -21,7 +22,7 @@ import { useDisplaySession } from "./use-display-session";
 export function useDisplayScreen() {
   const [browserOpen, setBrowserOpen] = useState(false);
   const [windowsOpen, setWindowsOpen] = useState(false);
-  const [fullscreen, setFullscreen] = useState(false);
+  const { fullscreen, enter: enterFullscreen, exit: exitFullscreen } = useFullscreen();
   const [barBottom, setBarBottom] = useState(0);
   const safeArea = useSafeAreaInsets();
   const rotation = useRotationToggle();
@@ -47,15 +48,6 @@ export function useDisplayScreen() {
 
   useDisplayPageSync(display.session.surfaceRef, display.session.connection, insets, inputMode);
 
-  useEffect(() => {
-    if (!fullscreen) return;
-    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-      setFullscreen(false);
-      return true;
-    });
-    return () => subscription.remove();
-  }, [fullscreen]);
-
   const onBarLayout = useCallback((event: LayoutChangeEvent) => {
     const { y, height } = event.nativeEvent.layout;
     setBarBottom(y + height);
@@ -65,8 +57,6 @@ export function useDisplayScreen() {
   const closeBrowser = useCallback(() => setBrowserOpen(false), []);
   const openWindows = useCallback(() => setWindowsOpen(true), []);
   const closeWindows = useCallback(() => setWindowsOpen(false), []);
-  const enterFullscreen = useCallback(() => setFullscreen(true), []);
-  const exitFullscreen = useCallback(() => setFullscreen(false), []);
   const toggleInputMode = useCallback(() => setInputMode(nextInputMode(inputMode)), [inputMode, setInputMode]);
 
   const barActions = useMemo<GlassToolbarAction[]>(

@@ -12,7 +12,7 @@ from .labels import MANAGE, NO_PROJECT, NO_PROJECT_OPTION, STATES, UNTITLED
 FINAL_STATES = ("succeeded", "failed", "cancelled")
 TITLE_LIMIT = 80
 STATE_TONES: Mapping[str, Tone] = {"running": "info", "succeeded": "success", "failed": "danger", "cancelled": "neutral"}
-STATE_ICONS: Mapping[str, str] = {"succeeded": "status-done", "failed": "failed", "cancelled": "status-canceled"}
+STATE_ICONS: Mapping[str, str] = {"succeeded": "status-done-all", "failed": "failed", "cancelled": "status-canceled"}
 NO_PROJECT_KEY = ""
 TERMINAL_SOURCES = ("terminal", "cli")
 ARCHIVED_FILTER = "archived"

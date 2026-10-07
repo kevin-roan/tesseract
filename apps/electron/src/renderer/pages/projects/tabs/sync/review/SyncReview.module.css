@@ -1,0 +1,295 @@
+.sheet {
+  height: calc(720px + 2px);
+}
+
+.body {
+  flex-direction: row;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: none;
+  width: 360px;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px 12px 12px 16px;
+  box-sizing: border-box;
+}
+
+.divider {
+  flex: none;
+  width: 1px;
+  background: var(--to-divider);
+}
+
+.destination {
+  color: var(--to-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.counts {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.counts:empty {
+  display: none;
+}
+
+.count {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.code {
+  flex: none;
+  font-family: var(--to-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+}
+
+.filter {
+  height: 32px;
+  background: var(--to-surface-elevated);
+}
+
+.noMatch {
+  display: block;
+}
+
+.files {
+  composes: to-overlay-scrollbar from global;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  outline: none;
+}
+
+.file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: var(--to-radius-sm);
+  cursor: default;
+  transition: var(--to-state-transition);
+}
+
+.file:hover {
+  background: var(--to-background-element);
+}
+
+.file[data-selected] {
+  background: var(--to-background-selected);
+}
+
+.files:focus-visible .file[data-selected] {
+  outline: 1px solid var(--to-focus-ring);
+  outline-offset: -1px;
+}
+
+.fileName {
+  flex: 0 1 auto;
+  color: var(--to-text);
+  font-size: 13px;
+  line-height: 20px;
+}
+
+.fileDir {
+  flex: 1 1 0;
+  color: var(--to-text-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.hostEdit {
+  flex: none;
+  color: var(--to-warning);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.middle {
+  display: flex;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.middleHead {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.middleTail {
+  flex: none;
+}
+
+.start {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+}
+
+.startInner {
+  direction: ltr;
+  unicode-bidi: embed;
+}
+
+.diff {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  margin: 0 12px;
+  overflow: hidden;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-code-background);
+}
+
+.diffHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  min-height: 18px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--to-divider);
+}
+
+.diffPath {
+  flex: 1 1 0;
+  font-family: var(--to-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--to-text);
+}
+
+.added,
+.removed {
+  flex: none;
+  font-family: var(--to-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.added {
+  color: var(--to-success);
+}
+
+.removed {
+  color: var(--to-danger);
+}
+
+.diffBody {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.lines {
+  composes: to-overlay-scrollbar from global;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  font-family: var(--to-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.line {
+  display: flex;
+  align-items: stretch;
+  padding: 0 8px 0 0;
+  content-visibility: auto;
+  contain-intrinsic-size: auto 18px;
+}
+
+.line[data-kind="add"] {
+  background: var(--to-success-muted);
+}
+
+.line[data-kind="del"] {
+  background: var(--to-danger-muted);
+}
+
+.line[data-kind="hunk"] {
+  margin-top: 4px;
+  background: var(--to-info-muted);
+  color: var(--to-info);
+}
+
+.gutter {
+  flex: none;
+  min-width: 44px;
+  padding: 0 4px;
+  border-right: 1px solid var(--to-divider);
+  color: var(--to-text-tertiary);
+  text-align: right;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.line[data-kind="hunk"] .gutter {
+  color: var(--to-info);
+}
+
+.sign {
+  flex: none;
+  min-width: 16px;
+  padding-left: 4px;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.line[data-kind="add"] .sign {
+  color: var(--to-success);
+}
+
+.line[data-kind="del"] .sign {
+  color: var(--to-danger);
+}
+
+.lineText {
+  flex: 1 1 0;
+  min-width: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}
+
+.message {
+  display: flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.footnote {
+  display: block;
+  flex: none;
+  padding: 4px 12px 8px;
+}

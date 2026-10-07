@@ -1,0 +1,56 @@
+.view {
+  position: absolute;
+  inset: 0;
+  padding: 10px;
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity var(--to-duration-fast) var(--to-ease-standard),
+    visibility 0s linear var(--to-duration-fast);
+}
+
+.view[data-visible] {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.host {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.host > div {
+  height: 100%;
+  margin-right: -14px;
+}
+
+.host :global(.xterm) {
+  height: 100%;
+}
+
+.host :global(.xterm .xterm-viewport) {
+  background-color: transparent !important;
+}
+
+.host :global(.xterm .xterm-scrollable-element > .scrollbar.vertical) {
+  right: 6px !important;
+  width: 10px !important;
+}
+
+.host :global(.xterm .xterm-scrollable-element > .scrollbar.vertical > .slider) {
+  left: 2px !important;
+  width: 6px !important;
+  border-radius: var(--to-radius-pill);
+}
+
+.host :global(.xterm .xterm-scrollable-element > .visible),
+.host :global(.xterm .xterm-scrollable-element > .invisible.fade) {
+  transition: opacity var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.host :global(.xterm .xterm-scrollable-element > .shadow) {
+  display: none !important;
+}

@@ -38,6 +38,18 @@ elif args[:2] == ["host", "pin"]:
     data["pin"] = pin
 elif args[:2] == ["host", "token"]:
     data["token"] = data["token"] + "x"
+elif args[:2] == ["host", "stream"]:
+    stream = {"encoding": "h264", "bitRate": 8000000, "maxFps": 60, "maxSize": None, "keyFrameInterval": 2, "jpegQuality": 5, "device": None}
+    stream.update(data.get("stream", {}))
+    if "--stdin" in args:
+        change = json.loads(sys.stdin.read())
+        if change.get("bitRate", 1000000) < 250000:
+            print("error: Invalid stream settings: bitRate: Too small", file=sys.stderr)
+            sys.exit(2)
+        data["stream"] = {**data.get("stream", {}), **change}
+        stream.update(change)
+    devices = [{"serial": "192.168.56.101:5555", "state": "device", "kind": "genymotion", "model": "Google Pixel 3", "hostEmulator": False}]
+    print(json.dumps({"stream": stream, "devices": devices}))
 elif args[:2] == ["host", "serve"]:
     if data.get("fail"):
         print("error: Could not read the host's Tailscale IPv4 (is tailscale up?)", flush=True)
@@ -167,3 +179,22 @@ def test_autostart_is_persisted(fake):
 
     assert read_settings()[AUTOSTART_SETTING] is True
     service.shutdown()
+
+
+def test_stream_settings_round_trip(fake):
+    env, state = fake
+    service = HostShellService(env)
+    loaded, errors = [], []
+    service.stream(loaded.append, errors.append)
+    pump(lambda: loaded)
+    assert loaded[0].settings["encoding"] == "h264"
+    assert loaded[0].devices[0]["kind"] == "genymotion"
+
+    service.update_stream({"bitRate": 4_000_000, "device": "192.168.56.101:5555"}, loaded.append, errors.append)
+    pump(lambda: len(loaded) == 2)
+    assert loaded[1].settings["bitRate"] == 4_000_000
+    assert json.loads(state.read_text())["stream"] == {"bitRate": 4_000_000, "device": "192.168.56.101:5555"}
+
+    service.update_stream({"bitRate": 1}, loaded.append, errors.append)
+    pump(lambda: errors)
+    assert str(errors[0]) == "Invalid stream settings: bitRate: Too small"

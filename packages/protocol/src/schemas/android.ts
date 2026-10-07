@@ -1,5 +1,15 @@
 import { z } from "zod";
-import { ANDROID_KEYS, ANDROID_TOUCH_ACTIONS, AVD_NAME_PATTERN, EMULATOR_ISOLATION_MODES, EMULATOR_STATES, LIMITS } from "../constants";
+import {
+  ADB_SERIAL_PATTERN,
+  ANDROID_DEVICE_KINDS,
+  ANDROID_KEYS,
+  ANDROID_STREAM_ENCODINGS,
+  ANDROID_TOUCH_ACTIONS,
+  AVD_NAME_PATTERN,
+  EMULATOR_ISOLATION_MODES,
+  EMULATOR_STATES,
+  LIMITS,
+} from "../constants";
 import { AdbStreamIdSchema, TimestampSchema } from "./primitives";
 
 export const EmulatorStateSchema = z.enum(EMULATOR_STATES);
@@ -33,6 +43,43 @@ export const AndroidLinkInfoSchema = z.object({
 });
 export type AndroidLinkInfo = z.infer<typeof AndroidLinkInfoSchema>;
 
+export const AdbSerialSchema = z.string().regex(ADB_SERIAL_PATTERN, "Invalid adb serial");
+
+export const AndroidStreamEncodingSchema = z.enum(ANDROID_STREAM_ENCODINGS);
+export type AndroidStreamEncoding = z.infer<typeof AndroidStreamEncodingSchema>;
+
+/**
+ * How the host streams an Android screen; a new screen session uses the settings current when it starts.
+ * `maxSize` caps the viewer's own size (null: the viewer decides), `device` is the default adb serial (null: the host emulator).
+ */
+export const AndroidStreamSettingsSchema = z.object({
+  encoding: AndroidStreamEncodingSchema,
+  bitRate: z.int().min(LIMITS.minAndroidBitRate).max(LIMITS.maxAndroidBitRate),
+  maxFps: z.int().min(1).max(LIMITS.maxAndroidFps),
+  maxSize: z.int().min(LIMITS.minAndroidScreenSize).max(LIMITS.maxAndroidScreenSize).nullable(),
+  keyFrameInterval: z.int().min(1).max(LIMITS.maxAndroidKeyFrameInterval),
+  jpegQuality: z.int().min(LIMITS.minAndroidJpegQuality).max(LIMITS.maxAndroidJpegQuality),
+  device: AdbSerialSchema.nullable(),
+});
+export type AndroidStreamSettings = z.infer<typeof AndroidStreamSettingsSchema>;
+
+/** `PUT /v1/android/stream`: the fields to change. */
+export const UpdateAndroidStreamSchema = AndroidStreamSettingsSchema.partial();
+export type UpdateAndroidStream = z.infer<typeof UpdateAndroidStreamSchema>;
+
+export const AndroidDeviceKindSchema = z.enum(ANDROID_DEVICE_KINDS);
+export type AndroidDeviceKind = z.infer<typeof AndroidDeviceKindSchema>;
+
+/** One line of the host's `adb devices -l`; only `state: "device"` can be streamed. `hostEmulator`: the emulator this daemon drives. */
+export const AndroidDeviceSchema = z.object({
+  serial: z.string(),
+  state: z.string(),
+  kind: AndroidDeviceKindSchema,
+  model: z.string().nullable(),
+  hostEmulator: z.boolean(),
+});
+export type AndroidDevice = z.infer<typeof AndroidDeviceSchema>;
+
 /** `GET /v1/android` of the host daemon; a missing tool gives `available: false` and a `reason`. */
 export const HostAndroidStatusSchema = z.object({
   available: z.boolean(),
@@ -45,6 +92,9 @@ export const HostAndroidStatusSchema = z.object({
   ffmpeg: z.boolean(),
   emulator: EmulatorInfoSchema,
   link: AndroidLinkInfoSchema,
+  stream: AndroidStreamSettingsSchema,
+  /** Every adb device the host sees; empty without adb. */
+  devices: z.array(AndroidDeviceSchema),
 });
 export type HostAndroidStatus = z.infer<typeof HostAndroidStatusSchema>;
 
@@ -121,9 +171,12 @@ export const AndroidScreenClientMessageSchema = z.discriminatedUnion("type", [
 ]);
 export type AndroidScreenClientMessage = z.infer<typeof AndroidScreenClientMessageSchema>;
 
-/** Daemon → client text frames on `/v1/android/screen`; JPEG frames are binary messages. */
+/**
+ * Daemon → client text frames on `/v1/android/screen`. Video is binary: with `codec: "mjpeg"` one JPEG per message,
+ * with `codec: "h264"` one flags byte (`ANDROID_H264_FLAGS`) followed by an Annex B access unit.
+ */
 export const AndroidScreenServerMessageSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("meta"), deviceName: z.string(), width: ScreenSizeSchema, height: ScreenSizeSchema }),
+  z.object({ type: z.literal("meta"), deviceName: z.string(), codec: AndroidStreamEncodingSchema, width: ScreenSizeSchema, height: ScreenSizeSchema }),
   z.object({ type: z.literal("size"), width: ScreenSizeSchema, height: ScreenSizeSchema }),
   z.object({ type: z.literal("error"), message: z.string() }),
 ]);
@@ -132,5 +185,9 @@ export type AndroidScreenServerMessage = z.infer<typeof AndroidScreenServerMessa
 export const AndroidScreenQuerySchema = z.object({
   ticket: z.string().min(1),
   maxSize: z.coerce.number<string | number | undefined>().int().min(1).max(LIMITS.maxAndroidScreenSize).optional(),
+  /** The device to stream; the stream settings' `device` (or the host emulator) when missing. */
+  serial: AdbSerialSchema.optional(),
+  /** `h264` when the viewer can decode H.264; the host falls back to JPEG otherwise. */
+  codec: AndroidStreamEncodingSchema.optional(),
 });
 export type AndroidScreenQuery = z.infer<typeof AndroidScreenQuerySchema>;

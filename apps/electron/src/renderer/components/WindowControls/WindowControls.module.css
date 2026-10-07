@@ -1,0 +1,54 @@
+.controls {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--to-radius-sm);
+  background: transparent;
+  color: var(--to-text-secondary);
+  outline-offset: -2px;
+  transition: var(--to-state-transition);
+}
+
+.controls[data-backdrop] .button,
+:global(html[data-backdrop]) .button {
+  color: var(--to-text-tertiary);
+}
+
+.button:hover,
+.controls[data-backdrop] .button:hover {
+  background: var(--to-background-element);
+  color: var(--to-text);
+}
+
+.button:active,
+.controls[data-backdrop] .button:active {
+  background: var(--to-background-selected);
+  color: var(--to-text);
+  transform: scale(var(--to-press-scale));
+}
+
+.button.close:hover {
+  background: var(--to-danger-solid);
+  color: #ffffff;
+}
+
+.button.close:active {
+  background: var(--to-danger);
+  color: #ffffff;
+}
+
+.button svg {
+  display: block;
+}

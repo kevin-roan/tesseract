@@ -1,0 +1,213 @@
+.timeline {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.scroller {
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.column {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px 24px 48px 24px;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+}
+
+.items,
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.messageBody {
+  margin-left: 28px;
+}
+
+.authorLine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+}
+
+.initials {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  overflow: hidden;
+  border-radius: var(--to-radius-pill);
+  background: var(--to-background-selected);
+  color: var(--to-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  user-select: none;
+}
+
+.initialsImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.agentAvatar {
+  display: inline-block;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--to-radius-pill);
+  background: var(--to-accent);
+}
+
+.activity {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.inset {
+  padding: 0 13px;
+}
+
+.glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+}
+
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+
+.userMessage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-surface-elevated);
+}
+
+.attachments {
+  display: grid;
+  grid-template-columns: repeat(4, max-content);
+  justify-content: start;
+  gap: 6px;
+}
+
+.assistantMessage {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 0 13px;
+}
+
+.system,
+.thinking {
+  align-items: center;
+}
+
+.outcome {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+  padding: 0 13px;
+}
+
+.toolCard {
+  display: flex;
+  flex-direction: column;
+}
+
+.toolHeader {
+  display: block;
+  width: 100%;
+  min-height: 24px;
+  padding: 2px 13px;
+  border: none;
+  border-radius: var(--to-radius-sm);
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  transition: var(--to-state-transition);
+}
+
+.toolHeader:hover {
+  background: var(--to-background-element);
+}
+
+.toolHeader:active {
+  background: var(--to-background-selected);
+  transform: scale(0.99);
+}
+
+.toolChevron {
+  display: inline-flex;
+  flex: none;
+  opacity: 0;
+  transition:
+    opacity var(--to-duration-fast) var(--to-ease-standard),
+    transform var(--to-duration-normal) var(--to-ease-standard);
+}
+
+.toolChevron[data-open] {
+  transform: rotate(90deg);
+}
+
+.toolHeader:hover .toolChevron,
+.toolHeader:focus-visible .toolChevron {
+  opacity: 1;
+}
+
+.toolReveal {
+  overflow: hidden;
+}
+
+.toolDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 4px 13px 4px 41px;
+  padding: 8px 12px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-code-background);
+}
+
+.preWrap.preWrap {
+  white-space: pre-wrap;
+}

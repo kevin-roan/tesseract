@@ -1,0 +1,42 @@
+.window {
+  display: flex;
+  height: 100%;
+  background: var(--to-background);
+}
+
+.panel {
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  margin: 8px 8px 8px 0;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-card);
+  background: var(--to-surface);
+  overflow: hidden;
+}
+
+.body {
+  composes: to-overlay-scrollbar from global;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 640px;
+  margin: 20px 24px 32px 24px;
+}
+
+.footer {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 30px;
+  padding: 8px 12px 12px 16px;
+}

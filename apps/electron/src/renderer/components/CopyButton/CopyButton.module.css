@@ -1,0 +1,39 @@
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--to-radius-sm);
+  background: var(--to-surface-elevated);
+  color: var(--to-text);
+  transition: var(--to-state-transition);
+}
+
+.button:hover {
+  background: var(--to-background-element);
+}
+
+.button:active {
+  background: var(--to-background-selected);
+  transform: scale(var(--to-press-scale));
+}
+
+.glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

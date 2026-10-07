@@ -1,0 +1,49 @@
+.bone {
+  position: relative;
+  display: block;
+  flex: none;
+  height: 12px;
+  overflow: hidden;
+  background: var(--to-background-element);
+}
+
+.bone::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(to right, transparent, var(--to-shimmer), transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  background-position: -100% 0;
+  animation: to-shimmer var(--to-shimmer-duration) linear infinite;
+}
+
+.text {
+  border-radius: var(--to-radius-xs);
+}
+
+.circle {
+  border-radius: var(--to-radius-pill);
+}
+
+.block {
+  border-radius: var(--to-radius-sm);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 8px 0 12px;
+}
+
+.fill {
+  flex: 1 1 auto;
+}

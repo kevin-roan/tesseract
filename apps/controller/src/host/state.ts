@@ -1,4 +1,5 @@
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { DEFAULT_ANDROID_STREAM, UpdateAndroidStreamSchema, type AndroidStreamSettings, type UpdateAndroidStream } from "@theone/protocol";
 import { generateToken } from "../auth/token";
 
 export type AndroidLinkConfig = { sandboxUrl: string; token: string };
@@ -11,12 +12,14 @@ export type HostState = {
   lockedUntil: string | null;
   lockouts: number;
   androidLink: AndroidLinkConfig | null;
+  /** Only the stream settings changed from `DEFAULT_ANDROID_STREAM`. */
+  androidStream: UpdateAndroidStream;
 };
 
 const DIR_MODE = 0o700;
 const FILE_MODE = 0o600;
 
-const EMPTY: HostState = { token: null, pinHash: null, pinSetAt: null, failures: 0, lockedUntil: null, lockouts: 0, androidLink: null };
+const EMPTY: HostState = { token: null, pinHash: null, pinSetAt: null, failures: 0, lockedUntil: null, lockouts: 0, androidLink: null, androidStream: {} };
 
 const text = (value: unknown) => (typeof value === "string" && value ? value : null);
 function androidLink(value: unknown): AndroidLinkConfig | null {
@@ -24,6 +27,16 @@ function androidLink(value: unknown): AndroidLinkConfig | null {
   const sandboxUrl = text((value as Record<string, unknown>).sandboxUrl);
   const token = text((value as Record<string, unknown>).token);
   return sandboxUrl && token ? { sandboxUrl, token } : null;
+}
+/** Keeps each valid field; an invalid one falls back to its default. */
+function androidStream(value: unknown): UpdateAndroidStream {
+  if (typeof value !== "object" || value === null) return {};
+  const kept: Record<string, unknown> = {};
+  for (const [key, field] of Object.entries(value)) {
+    const parsed = UpdateAndroidStreamSchema.safeParse({ [key]: field });
+    if (parsed.success && key in parsed.data) kept[key] = field;
+  }
+  return kept as UpdateAndroidStream;
 }
 const count = (value: unknown) => (typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0);
 
@@ -51,6 +64,7 @@ export class HostStateStore {
       lockedUntil: text(parsed.lockedUntil),
       lockouts: count(parsed.lockouts),
       androidLink: androidLink(parsed.androidLink),
+      androidStream: androidStream(parsed.androidStream),
     };
   }
 
@@ -81,6 +95,15 @@ export class HostStateStore {
 
   setAndroidLink(link: AndroidLinkConfig | null): void {
     this.update((current) => ({ ...current, androidLink: link }));
+  }
+
+  androidStreamSettings(): AndroidStreamSettings {
+    return { ...DEFAULT_ANDROID_STREAM, ...this.read().androidStream };
+  }
+
+  updateAndroidStream(change: UpdateAndroidStream): AndroidStreamSettings {
+    const next = this.update((current) => ({ ...current, androidStream: { ...current.androidStream, ...change } }));
+    return { ...DEFAULT_ANDROID_STREAM, ...next.androidStream };
   }
 
   async setPin(pin: string, now: Date = new Date()): Promise<void> {

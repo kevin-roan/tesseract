@@ -1,0 +1,115 @@
+.glyph {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.glyphLayer {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rowButton {
+  min-height: 28px;
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.progressTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progressDetail {
+  margin-top: -2px;
+  direction: ltr;
+}
+
+.disclosure {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.disclosureBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+}
+
+.disclosureToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 0 8px 0 4px;
+  margin-left: -4px;
+  border: none;
+  border-radius: var(--to-radius-sm);
+  background: transparent;
+  color: var(--to-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  transition: var(--to-state-transition);
+}
+
+.disclosureToggle:active {
+  transform: scale(var(--to-press-scale));
+}
+
+.disclosureToggle:hover {
+  background: var(--to-background-element);
+  color: var(--to-text);
+}
+
+.chevron {
+  display: inline-flex;
+}
+
+.logBox {
+  display: flex;
+  min-width: 0;
+}
+
+.logBox > * {
+  background: var(--to-code-background);
+}
+
+.command {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 4px 0 10px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-sm);
+  background: var(--to-surface);
+}
+
+.commandText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--to-text-secondary);
+  font-family: var(--to-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}

@@ -1,0 +1,131 @@
+.composer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px 8px 12px;
+  border: 1px solid var(--to-border-strong);
+  border-radius: var(--to-radius-lg);
+  background: var(--to-surface-elevated);
+  transition: var(--to-state-transition);
+}
+
+.composer:focus-within {
+  border-color: var(--to-ink-20);
+}
+
+.composer.dropTarget {
+  border-color: var(--to-accent);
+  background: var(--to-accent-muted);
+}
+
+.large {
+  padding: 4px 12px 12px 12px;
+  border: none;
+  border-radius: var(--to-radius-xl);
+  background: none;
+}
+
+.large.dropTarget {
+  border: none;
+  box-shadow: inset 0 0 0 1px var(--to-accent);
+}
+
+.inputArea {
+  position: relative;
+  display: flex;
+  padding-bottom: 4px;
+  cursor: text;
+}
+
+.large .inputArea {
+  margin: 0 4px;
+  padding-bottom: 0;
+}
+
+.input {
+  display: block;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow-x: hidden;
+  background: none;
+  color: var(--to-text);
+  font: 400 13px/20px var(--to-font-sans);
+  overflow-wrap: anywhere;
+}
+
+.input:focus-visible {
+  outline: none;
+}
+
+.large .input {
+  font: 400 15px/22px var(--to-font-sans);
+}
+
+.locked .input {
+  opacity: 0.6;
+  caret-color: transparent;
+}
+
+.placeholder {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  color: var(--to-text-tertiary);
+  font: 400 13px/20px var(--to-font-sans);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.large .placeholder {
+  font: 600 15px/20px var(--to-font-display);
+  letter-spacing: -0.2px;
+}
+
+.properties {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0 8px 0;
+}
+
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accessories {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.hint {
+  flex: 1;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  color: var(--to-text-tertiary);
+  font: 400 12px/16px var(--to-font-sans);
+  text-align: right;
+  overflow-wrap: anywhere;
+  transition: color var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.hintLocked {
+  color: var(--to-warning);
+}

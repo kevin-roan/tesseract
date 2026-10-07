@@ -1,0 +1,126 @@
+.display {
+  font-family: var(--to-font-display);
+  font-size: 32px;
+  line-height: 38px;
+  font-weight: 600;
+  letter-spacing: -0.8px;
+}
+
+.title,
+.h1 {
+  font-family: var(--to-font-display);
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+}
+
+.greeting {
+  font-family: var(--to-font-display);
+  font-size: 20px;
+  line-height: 28px;
+  font-weight: 500;
+  letter-spacing: -0.4px;
+}
+
+.h2 {
+  font-family: var(--to-font-display);
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.h3 {
+  font-family: var(--to-font-display);
+  font-size: 15px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+
+.h4 {
+  font-family: var(--to-font-sans);
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.metric {
+  font-family: var(--to-font-display);
+  font-size: 28px;
+  line-height: 32px;
+  font-weight: 600;
+  letter-spacing: -0.4px;
+  font-feature-settings: "tnum";
+}
+
+.metricSmall {
+  font-family: var(--to-font-display);
+  font-size: 20px;
+  line-height: 24px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  font-feature-settings: "tnum";
+}
+
+.bodyLarge {
+  font-family: var(--to-font-sans);
+  font-size: 15px;
+  line-height: 22px;
+  font-weight: 400;
+}
+
+.body {
+  font-family: var(--to-font-sans);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 400;
+}
+
+.bodyStrong {
+  font-family: var(--to-font-sans);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+}
+
+.bodySmall {
+  font-family: var(--to-font-sans);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+.label,
+.button {
+  font-family: var(--to-font-sans);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+}
+
+.caption {
+  font-family: var(--to-font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}
+
+.overline {
+  font-family: var(--to-font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+.code {
+  font-family: var(--to-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+.tabular {
+  font-feature-settings: "tnum";
+}

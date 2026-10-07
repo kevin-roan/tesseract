@@ -1,0 +1,23 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 16px 8px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-card);
+  background: transparent;
+}
+
+.chart {
+  margin-top: 12px;
+}
+
+.stage {
+  padding: 16px;
+  background: var(--to-background);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}

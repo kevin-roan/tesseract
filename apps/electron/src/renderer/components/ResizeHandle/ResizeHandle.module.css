@@ -1,0 +1,22 @@
+.handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  width: 6px;
+  background: none;
+  cursor: col-resize;
+  touch-action: none;
+  transition: box-shadow var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.handle:hover,
+.handle[data-dragging] {
+  box-shadow: inset -1px 0 var(--to-border-strong);
+}
+
+.handle:focus-visible {
+  outline: none;
+  box-shadow: inset -1px 0 var(--to-focus-ring);
+}

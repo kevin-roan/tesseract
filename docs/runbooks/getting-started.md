@@ -113,7 +113,9 @@ bun run android          # expo run:android: builds and installs the dev client 
 # or: an EAS development build (eas build --profile development --platform ios)
 #     it installs as "Monolith Dev" (com.kevinbpract.theone.dev) next to the production app;
 #     APP_VARIANT picks the variant (eas.json env, EAS environments, .env.development for expo start)
-#     JS-only changes ship with: eas update --channel development --environment development
+#     JS-only changes ship with: bun run update:development | update:preview | update:production --message "…"
+#     (these pin APP_VARIANT; a bare `eas update` picks up .env.development, gets the dev
+#     fingerprint and never reaches preview/production builds)
 cd ../.. && bun run mobile   # Metro for the dev client
 ```
 

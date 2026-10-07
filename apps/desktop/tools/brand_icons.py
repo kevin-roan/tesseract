@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Writes the framework logos mapped in theme/icons.py (FRAMEWORK_LOGOS) as full-color SVGs.
+"""Writes the framework logos mapped in theme/icons.py (FRAMEWORK_LOGOS) as single-color symbolic SVGs.
 
-The glyphs come from Simple Icons (CC0). Each is painted in a brand color that reads on both the dark and the
-light canvas, so the files are not ``-symbolic`` and GTK draws them as they are. Rerun after adding a logo:
+The glyphs come from Simple Icons (CC0). The files are ``-symbolic``, so GTK recolors them with the widget's text
+color and they stay monochrome on both canvases. Rerun after adding a logo:
 
     python3 apps/desktop/tools/brand_icons.py
 """
@@ -23,13 +23,16 @@ OUT_DIR = DESKTOP_DIR / "data" / "icons" / "hicolor" / "scalable" / "actions"
 PATH = re.compile(r'<path d="([^"]+)"')
 
 
-def logo(source: str, color: str) -> str:
+SYMBOLIC_FILL = "#2e3436"
+
+
+def logo(source: str) -> str:
     match = PATH.search(source)
     if match is None:
         raise ValueError("no path")
     return (
         '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">'
-        f'<path fill="{color}" d="{match.group(1)}"/></svg>\n'
+        f'<path fill="{SYMBOLIC_FILL}" d="{match.group(1)}"/></svg>\n'
     )
 
 
@@ -41,9 +44,9 @@ def fetch(slug: str) -> str:
 def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     failed = []
-    for slug, color in sorted({(slug, color) for slug, color in FRAMEWORK_LOGOS.values() if slug}):
+    for slug in sorted({slug for slug in FRAMEWORK_LOGOS.values() if slug}):
         try:
-            (OUT_DIR / f"{LOGO_PREFIX}{slug}.svg").write_text(logo(fetch(slug), color))
+            (OUT_DIR / f"{LOGO_PREFIX}{slug}-symbolic.svg").write_text(logo(fetch(slug)))
         except (OSError, ValueError) as error:
             failed.append(f"{slug}: {error}")
     for line in failed:

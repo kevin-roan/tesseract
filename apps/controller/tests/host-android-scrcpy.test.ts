@@ -12,6 +12,7 @@ import {
   JpegSplitter,
   randomScid,
   scrcpyServerArgs,
+  ffmpegMjpegArgs,
   MAX_VIDEO_PACKET_BYTES,
   ScrcpyProtocolError,
   ScrcpyVideoParser,
@@ -212,11 +213,19 @@ describe("scrcpy server", () => {
   test("arguments request frame meta and a forward tunnel", () => {
     const scid = randomScid();
     expect(scid).toMatch(/^[0-7][0-9a-f]{7}$/);
-    const args = scrcpyServerArgs("4.1", scid, 720);
+    const args = scrcpyServerArgs("4.1", scid, { maxSize: 720, bitRate: 4_000_000, maxFps: 60, keyFrameInterval: 2 });
     expect(args.slice(0, 5)).toEqual(["CLASSPATH=/data/local/tmp/scrcpy-server.jar", "app_process", "/", "com.genymobile.scrcpy.Server", "4.1"]);
     expect(args).toContain(`scid=${scid}`);
     expect(args).toContain("send_frame_meta=true");
     expect(args).toContain("tunnel_forward=true");
     expect(args).toContain("max_size=720");
+    expect(args).toContain("max_fps=60");
+    expect(args).toContain("video_bit_rate=4000000");
+    expect(args).toContain("video_codec_options=i-frame-interval:int=2");
+  });
+
+  test("ffmpeg JPEG quality", () => {
+    const args = ffmpegMjpegArgs(9);
+    expect(args[args.indexOf("-q:v") + 1]).toBe("9");
   });
 });

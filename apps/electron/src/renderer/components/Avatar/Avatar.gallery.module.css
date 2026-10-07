@@ -1,0 +1,7 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--to-background);
+}

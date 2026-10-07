@@ -21,6 +21,9 @@ Decisions that need the owner's call come first.
 | Orphans after a controller crash | Kill the process groups of rows found `running` at startup (pids/pgids are recorded) instead of only marking them `orphaned` | marked only; they keep running untracked |
 | Scoped tickets | `POST /v1/auth/ticket { scope }` binding a ticket to one socket or download (protocol change) | tickets open any socket or download for 60 s |
 | Web build tab bar | Fix `apps/mobile/src/components/app-tabs.web.tsx` (user-owned) as described in [mobile-app](architecture/mobile-app.md#web-build) | every tab route blank on web; native unaffected |
+| Desktop installer signing | Sign the Windows NSIS installer (Authenticode certificate, `CSC_*` / `WIN_CSC_*`) and the macOS app with a Developer ID so Gatekeeper and SmartScreen stop warning; macOS notifications also need a signed app | macOS: hardened runtime, notarization runs only when the `APPLE_*` variables are set, the dmg itself is unsigned; Windows: unsigned ([blueprint §12.5](architecture/00-blueprint.md#125-packaging-and-cli-install)) |
+| Published sandbox image | Publish `theone/sandbox` to a registry (CI job, `-DGGML_NATIVE=OFF`, multi-arch, fixed `WITH_*` sets or several tags) so the setup wizard can pull about 3 GB instead of building about 7 GB locally | the wizard and `monolith sandbox build` build locally; **Pull** appears only when `sandboxImageRef` / `MONOLITH_SANDBOX_IMAGE_REF` is set |
+| Update feed | Host the electron-updater feed (`electron-builder.yml` → generic `https://downloads.monolith.dev/desktop`) or switch provider (GitHub releases) | URL configured, nothing published; `MONOLITH_DISABLE_UPDATES` turns checks off |
 
 
 ## Near term
@@ -67,6 +70,24 @@ Decisions that need the owner's call come first.
   rendering (`compose.bats`), not by a live tailnet.
 - The opt-in Android e2e test (`THEONE_E2E_ANDROID=1`) has not been run by the
   harness yet (a manual run built the APK in about 15 minutes).
+
+### Desktop app (`apps/electron`)
+- **Done:** the Electron rebuild of the GTK app (every page, Settings, tray, deep links, command palette),
+  the setup wizard (Docker install and checks, Claude login state, sandbox stack and image build with the
+  `WITH_*` components, Android SDK / system image / AVD for the host emulator with KVM, WHPX or HVF checks,
+  pairing), the `monolith` CLI, installers for macOS (universal dmg), Windows (per-user NSIS) and Linux
+  (AppImage, deb), and the vitest + Playwright suites ([e2e-testing](runbooks/e2e-testing.md#desktop-app-appselectron)).
+  Specs: [docs/electron](electron/README.md).
+- **Next:** run the wizard end to end on real macOS and Windows machines (Docker Desktop install, WSL 2,
+  WHPX/HVF, the `~/.claude` bind mount and `DEV_UID` ownership under Docker Desktop and rootless Docker, and
+  `host-tailscale` mode through Docker Desktop's port forwarding are untested there); Linux arm64 and Windows
+  arm64 installers (the CLI already compiles for `linux-arm64`, the installers are x64 only, and the
+  host emulator is not supported on arm64 Linux or Windows); linking the host emulator to the sandbox from
+  macOS and Windows (Linux only today); retire `apps/desktop` once the Electron app has replaced it.
+- **Image:** Chromium and wine are part of the base image, not optional components; making them optional needs
+  `WITH_CHROMIUM` / `WITH_WINE` build args in the Dockerfile and `compose.yml`. Check that the image's
+  `bun install --frozen-lockfile --filter @theone/controller` still works now that `apps/electron` is a workspace
+  in `bun.lock` (the `controller-build` stage copies only `apps/mobile/package.json`).
 
 ## Medium term
 

@@ -6,6 +6,8 @@ import {
   androidScreenMaxSize,
   canStartEmulator,
   canStopEmulator,
+  deviceLabel,
+  deviceMeta,
   emulatorMeta,
   isEmulatorUnisolated,
   isLinkedTo,
@@ -13,6 +15,8 @@ import {
   linkBadge,
   linkBlockedReason,
   pickAvd,
+  pickDevice,
+  streamableDevices,
 } from "@/features/host-shell/utils/android";
 import { ANDROID_LINK_POLL_INTERVAL_MS, ANDROID_POLL_INTERVAL_MS, ANDROID_SCREEN_MAX_SIZE } from "@/features/host-shell/utils/constants";
 import { ANDROID_COPY } from "@/features/host-shell/utils/content";
@@ -22,6 +26,27 @@ const stopped: HostAndroidStatus = {
   avds: ["Pixel_8_API_35", "Tablet_API_34"],
   emulator: { ...sampleEmulator, state: "stopped", avd: null, serial: null, width: null, height: null, startedAt: null },
 };
+
+describe("android device helpers", () => {
+  const [emulator, genymotion] = sampleHostAndroidStatus.devices;
+  const offline = { serial: "R5CT20ABCDE", state: "unauthorized", kind: "usb" as const, model: null, hostEmulator: false };
+  const status: HostAndroidStatus = { ...sampleHostAndroidStatus, devices: [offline, ...sampleHostAndroidStatus.devices] };
+
+  it("streams only ready devices and prefers the pick, then the host default, then the host emulator", () => {
+    expect(streamableDevices(status)).toEqual([emulator, genymotion]);
+    expect(pickDevice(status, "192.168.56.101:5555")).toEqual(genymotion);
+    expect(pickDevice(status, "R5CT20ABCDE")).toEqual(emulator);
+    expect(pickDevice({ ...status, stream: { ...status.stream, device: "192.168.56.101:5555" } }, null)).toEqual(genymotion);
+    expect(pickDevice({ ...status, devices: [offline] }, null)).toBeNull();
+    expect(pickDevice(undefined, null)).toBeNull();
+  });
+
+  it("labels a device by model and kind", () => {
+    expect(deviceLabel(genymotion!)).toBe("Google Pixel 3");
+    expect(deviceLabel(offline)).toBe("R5CT20ABCDE");
+    expect(deviceMeta(genymotion!)).toBe("Genymotion · 192.168.56.101:5555");
+  });
+});
 
 describe("android status helpers", () => {
   it("polls fast while the emulator boots or stops or the link dials, and slowly while a link exists", () => {

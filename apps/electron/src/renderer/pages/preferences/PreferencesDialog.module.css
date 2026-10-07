@@ -1,0 +1,126 @@
+.backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--to-overlay);
+}
+
+.sheet {
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--to-sheet-outline);
+  border-radius: var(--to-radius-sheet);
+  background: var(--to-background);
+  box-shadow: var(--to-shadow-level4);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 216px;
+  padding: 12px 8px;
+}
+
+.overline {
+  padding: 4px 8px;
+}
+
+.navList {
+  display: flex;
+  flex-direction: column;
+}
+
+.navRow {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  padding: 0 8px;
+  margin-bottom: 1px;
+  border: none;
+  border-radius: var(--to-radius-sm);
+  background: transparent;
+  color: var(--to-text);
+  text-align: left;
+  transition: var(--to-state-transition);
+}
+
+.navRow:hover {
+  background: var(--to-background-element);
+}
+
+.navRow:active {
+  transform: scale(var(--to-press-scale-card));
+}
+
+.navHighlight {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--to-background-selected);
+}
+
+.navIcon {
+  color: var(--to-text-secondary);
+  transition: color var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.navLabel {
+  color: var(--to-text);
+}
+
+.selected:hover {
+  background: transparent;
+}
+
+.selected .navIcon {
+  color: var(--to-text);
+}
+
+.content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  margin: 8px 8px 8px 0;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-card);
+  background: var(--to-surface);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 24px;
+  padding: 8px 8px 8px 16px;
+  border-bottom: 1px solid var(--to-divider);
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.body {
+  composes: to-overlay-scrollbar from global;
+  flex: 1;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-gutter: stable both-edges;
+}
+
+.pane[hidden] {
+  display: none;
+}

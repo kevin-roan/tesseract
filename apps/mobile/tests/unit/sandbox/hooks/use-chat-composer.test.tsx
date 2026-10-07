@@ -330,10 +330,10 @@ describe("useChatComposer", () => {
     expect(fake.createUpload).not.toHaveBeenCalled();
   });
 
-  it("records, transcribes and sends a voice message with its audio attached", async () => {
+  it("turns a voice message into an editable draft with its audio attached", async () => {
     __setFile("file:///cache/recording.m4a", "AAAA");
     const onStarted = jest.fn();
-    const { result } = await render({ onStarted });
+    const { result } = await render({ onStarted, defaultProjectId: "electron-hello" });
 
     await act(async () => result.current.startVoice());
     await waitFor(() => expect(result.current.voice.phase).toBe("recording"));
@@ -342,18 +342,36 @@ describe("useChatComposer", () => {
     __setRecorderStatus({ durationMillis: 2_400 });
     await act(async () => result.current.voice.stop());
 
-    await waitFor(() => expect(result.current.newProject.visible).toBe(true));
-    await act(async () => result.current.newProject.create());
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(started));
+    await waitFor(() => expect(result.current.voice.phase).toBe("idle"));
     expect(fake.createUpload).toHaveBeenCalledWith(
       expect.objectContaining({ mimeType: "audio/mp4", data: "AAAA" }),
       expect.anything(),
     );
     expect(fake.transcribe).toHaveBeenCalledWith({ uploadId: sampleUpload.id, provider: "gemini" }, expect.anything());
+    expect(fake.startAgentRun).not.toHaveBeenCalled();
+    expect(result.current.text).toBe(sampleTranscription.text);
+    expect(result.current.attachments.uploadIds).toEqual([sampleUpload.id]);
+    expect(result.current.primary).toBe("send");
+
+    await act(async () => result.current.setText("Edited transcript"));
+    await act(async () => result.current.send());
+    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(started));
     expect(fake.startAgentRun).toHaveBeenCalledWith(
-      { prompt: sampleTranscription.text, mode: "bypassPermissions", attachmentIds: [sampleUpload.id], projectId: "build-the-windows-installer" }
+      { prompt: "Edited transcript", mode: "bypassPermissions", attachmentIds: [sampleUpload.id], projectId: "electron-hello" },
     );
-    await waitFor(() => expect(result.current.voice.phase).toBe("idle"));
+  });
+
+  it("appends a second voice note's transcript to the draft", async () => {
+    __setFile("file:///cache/recording.m4a", "AAAA");
+    const { result } = await render({ defaultProjectId: "electron-hello" });
+    await act(async () => result.current.setText("Fix the login screen."));
+
+    await act(async () => result.current.startVoice());
+    await waitFor(() => expect(result.current.voice.phase).toBe("recording"));
+    __setRecorderStatus({ durationMillis: 2_400 });
+    await act(async () => result.current.voice.stop());
+
+    await waitFor(() => expect(result.current.text).toBe(`Fix the login screen.\n${sampleTranscription.text}`));
   });
 
   it("uses the chosen provider and surfaces a Gemini fallback until dismissed", async () => {
@@ -368,9 +386,8 @@ describe("useChatComposer", () => {
     __setRecorderStatus({ durationMillis: 2_400 });
     await act(async () => result.current.voice.stop());
 
-    await waitFor(() => expect(result.current.newProject.visible).toBe(true));
-    await act(async () => result.current.newProject.create());
-    await waitFor(() => expect(onStarted).toHaveBeenCalledWith(started));
+    await waitFor(() => expect(result.current.text).toBe(sampleTranscription.text));
+    expect(onStarted).not.toHaveBeenCalled();
     expect(fake.transcribe).toHaveBeenCalledWith({ uploadId: sampleUpload.id, provider: "native" }, expect.anything());
     await waitFor(() => expect(result.current.voice.phase).toBe("idle"));
     expect(result.current.notice).toBe("Gemini unavailable — used native transcription: quota exhausted");
@@ -410,7 +427,8 @@ describe("useChatComposer", () => {
     await waitFor(() => expect(result.current.voice.phase).toBe("idle"));
     expect(fake.createUpload).toHaveBeenCalledTimes(1);
     expect(fake.transcribe).toHaveBeenCalledTimes(2);
-    expect(fake.startAgentRun).toHaveBeenCalledTimes(1);
+    expect(fake.startAgentRun).not.toHaveBeenCalled();
+    expect(result.current.text).toBe(sampleTranscription.text);
   });
 
   it("explains a denied microphone permission", async () => {

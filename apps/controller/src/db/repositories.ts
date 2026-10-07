@@ -144,6 +144,7 @@ const pushDeviceFromRow = (row: Row): PushDevice => ({
   token: text(row, "token"),
   platform: text(row, "platform") as PushPlatform,
   name: textOrNull(row, "name"),
+  deviceId: textOrNull(row, "device_id"),
   createdAt: text(row, "created_at"),
   updatedAt: text(row, "updated_at"),
 });
@@ -489,15 +490,19 @@ export class Repositories {
   }
 
   /** Inserts or refreshes a device; a re-registered token keeps its `created_at`. */
+  /** Upserts by token. A device id holds one token: the other builds registered from that phone are dropped. */
   savePushDevice(device: PushDevice): PushDevice {
-    const row = this.db
-      .query<Row, Binding[]>(
-        `INSERT INTO push_devices (token, platform, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
-          ON CONFLICT(token) DO UPDATE SET platform = excluded.platform, name = excluded.name, updated_at = excluded.updated_at
-          RETURNING *`,
-      )
-      .get(device.token, device.platform, device.name, device.createdAt, device.updatedAt);
-    return row ? pushDeviceFromRow(row) : device;
+    return this.db.transaction(() => {
+      if (device.deviceId !== null) this.db.query("DELETE FROM push_devices WHERE device_id = ? AND token <> ?").run(device.deviceId, device.token);
+      const row = this.db
+        .query<Row, Binding[]>(
+          `INSERT INTO push_devices (token, platform, name, device_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(token) DO UPDATE SET platform = excluded.platform, name = excluded.name, device_id = excluded.device_id, updated_at = excluded.updated_at
+            RETURNING *`,
+        )
+        .get(device.token, device.platform, device.name, device.deviceId, device.createdAt, device.updatedAt);
+      return row ? pushDeviceFromRow(row) : device;
+    })();
   }
 
   setting(key: string): string | null {

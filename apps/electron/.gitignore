@@ -1,0 +1,7 @@
+out/
+dist/
+dist-cli/
+build/sandbox-context/
+test-results/
+playwright-report/
+.snapshots/

@@ -1,0 +1,46 @@
+.window {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  background: var(--to-background);
+  overflow: hidden;
+}
+
+.sidebarPane {
+  position: relative;
+  display: flex;
+  flex: none;
+  height: 100%;
+  min-width: 0;
+}
+
+.collapsed .sidebarPane {
+  flex: 1 1 auto;
+  width: 100%;
+}
+
+.handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 8px 8px 8px 0;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-surface);
+  overflow: hidden;
+}
+
+.collapsed .panel {
+  margin-left: 8px;
+}

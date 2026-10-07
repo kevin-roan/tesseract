@@ -1,0 +1,99 @@
+.row {
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 8px 0 12px;
+}
+
+.leading {
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.code {
+  flex: none;
+  min-width: 18px;
+  font-family: var(--to-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ellipsis {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.title {
+  flex: 1 1 auto;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  color: var(--to-text);
+}
+
+.withSubtitle .title {
+  flex: 0 1 auto;
+  max-width: 56ch;
+}
+
+.subtitle {
+  flex: 1 1 0;
+  font-size: 13px;
+  line-height: 20px;
+  color: var(--to-text-tertiary);
+}
+
+.title.mono,
+.subtitle.mono {
+  font-family: var(--to-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+}
+
+.progress {
+  flex: none;
+  width: 80px;
+}
+
+.meta {
+  flex: none;
+  max-width: 48ch;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--to-text-tertiary);
+  text-align: right;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.actions .iconAction:hover:not(:disabled) {
+  background: var(--to-background-element);
+}
+
+.actions .destructive:hover:not(:disabled) {
+  color: var(--to-danger);
+}
+
+.labeledAction[data-active] {
+  background: var(--to-background-selected);
+}

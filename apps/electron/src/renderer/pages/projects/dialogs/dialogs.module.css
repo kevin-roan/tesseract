@@ -1,0 +1,67 @@
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.titleRow > input {
+  flex: 1;
+  min-width: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-pill);
+  background: transparent;
+  color: var(--to-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+  transition: var(--to-state-transition);
+}
+
+.chip:hover:not(:disabled) {
+  background: var(--to-background-element);
+  color: var(--to-text);
+}
+
+.chip:active:not(:disabled) {
+  transform: scale(var(--to-press-scale));
+}
+
+.chip[aria-pressed="true"] {
+  border-color: var(--to-border-strong);
+  background: var(--to-background-selected);
+  color: var(--to-text);
+}
+
+.chip:disabled {
+  opacity: 0.5;
+}
+
+.progress {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.progressHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progressTitle {
+  flex: 1;
+  min-width: 0;
+}
+
+.logPanel {
+  margin-top: 4px;
+}

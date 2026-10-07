@@ -5,6 +5,9 @@ picture, or [getting started](runbooks/getting-started.md) to run it. The
 [blueprint](architecture/00-blueprint.md) is the contract that every other
 note builds on.
 
+The desktop app (Monolith, `apps/electron`) has its own folder:
+[electron/](electron/README.md) holds its specs, reference captures and code conventions.
+
 ## Architecture
 
 | Note | What it covers |
@@ -17,10 +20,21 @@ note builds on.
 | [sandbox-image.md](architecture/sandbox-image.md) | Dockerfile stages, build args, users, volumes, entrypoint, supervisord programs, extending |
 | [networking-tailscale.md](architecture/networking-tailscale.md) | userspace sidecar, serve config, MagicDNS/HTTPS, ACLs, host-tailscale and local modes, what is never exposed |
 | [display-vnc.md](architecture/display-vnc.md) | Xvnc + openbox, noVNC through the controller bridge, native VNC clients, screenshots, geometry, phone UX |
+| [sync-back.md](architecture/sync-back.md) | `monolith --sync` / `--get` / sync back between a host checkout and the sandbox: baselines, requests, conflicts, snapshots and revert |
 | [app-runs-and-emulator.md](architecture/app-runs-and-emulator.md) | run targets (web, Expo, React Native, Flutter, Electron, tests), app runs and viewers, the host Android emulator, its sandbox adb link and screen stream |
 | [electron-windows-wine.md](architecture/electron-windows-wine.md) | how Windows builds work on Linux, builder vs forge, targets, signing, wine smoke tests, limits |
 | [mobile-app.md](architecture/mobile-app.md) | the sandbox feature module, stores, react-query + events socket, reconnect and re-pair, screens (incl. add project), WebView pages, web build, dev builds |
 | [security-model.md](architecture/security-model.md) | threat model, controls, dind risk, Claude `bypassPermissions`, secrets, prompt injection, token blast radius, same-user limit, audit results |
+| [ios-simulator-macos.md](architecture/ios-simulator-macos.md) | proposal (not implemented): iOS Simulator and Android emulator on a macOS host |
+
+## Desktop app (`apps/electron`)
+
+| Note | What it covers |
+|---|---|
+| [electron/README.md](electron/README.md) | what the Electron app is, its layout and commands, index of the specs and reference captures |
+| [electron/conventions.md](electron/conventions.md) | stack, directory map, IPC contract, fixtures, components, CSS tokens, motion, snapshot workflow, tests, packaging |
+| [electron/spec/](electron/spec/) | per-area specs surveyed from the GTK app (theme, shell, widgets, pages, Settings, services, host Android) and the setup wizard ([onboarding.md](electron/spec/onboarding.md)) |
+| [blueprint §4.4, §7.1, §12](architecture/00-blueprint.md#12-desktop-app-appselectron-package-monolithelectron) | the contract: env vars, the `monolith` CLI, windows, wizard steps, routes and deep links, files, installers |
 
 ## Decisions (ADRs)
 
@@ -47,10 +61,13 @@ ADR. Supersede it with a new one instead.
 | [getting-started.md](runbooks/getting-started.md) | set up Tailscale, configure `.env`, build and start the sandbox, run the app |
 | [pairing-mobile.md](runbooks/pairing-mobile.md) | pair a phone (QR, deep link, manual), manage several sandboxes, re-pair |
 | [electron-builds.md](runbooks/electron-builds.md) | build Linux and Windows Electron apps, run them on the display, sign them |
+| [host-shell.md](runbooks/host-shell.md) | run the PIN-protected host shell daemon, pair the phone with it, use the host Android emulator |
 | [android-builds.md](runbooks/android-builds.md) | build APKs/AABs, release signing, EAS, memory tuning |
 | [claude-in-sandbox.md](runbooks/claude-in-sandbox.md) | log Claude in, permission modes, SPEC as CLAUDE.md, headless runs from the phone |
 | [operations.md](runbooks/operations.md) | run several stacks, upgrade the image, back up and restore volumes, rotate the token, reset the wine prefix, resource limits, logs |
-| [e2e-testing.md](runbooks/e2e-testing.md) | run the unit, infra (bats) and end-to-end suites; what they cover; what to do when they fail |
+| [e2e-testing.md](runbooks/e2e-testing.md) | run the unit, infra (bats) and end-to-end suites, including the desktop app's Playwright suite; what they cover; what to do when they fail |
+| [live-activities.md](runbooks/live-activities.md) | turn on iOS Live Activity (Dynamic Island) pushes with an APNs key |
+| [tailscale-https-setup.md](runbooks/tailscale-https-setup.md) | switch the sandbox to HTTPS when the iPhone app cannot reach it |
 | [troubleshooting.md](runbooks/troubleshooting.md) | symptom → cause → fix |
 
 ## Other

@@ -1,0 +1,24 @@
+[
+  {
+    "reference": "page-files-overview-files-shared.png",
+    "route": "/files/shared",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-files-overview-files-shared-light.png",
+    "route": "/files/shared",
+    "scenario": "gtk-parity",
+    "light": true,
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-files-overview-files-builds.png",
+    "route": "/files/builds",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  }
+]

@@ -1,0 +1,119 @@
+[
+  {
+    "reference": "page-projects-core-list.png",
+    "route": "/projects",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-core-list-light.png",
+    "route": "/projects",
+    "scenario": "gtk-parity",
+    "light": true,
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-core-detail.png",
+    "route": "/projects/theone-mobile",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-core-detail-light.png",
+    "route": "/projects/theone-mobile",
+    "scenario": "gtk-parity",
+    "light": true,
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-core-create-dialog.png",
+    "route": "/projects?dialog=create",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-core-detail-error.png",
+    "route": "/projects/monolith-test-missing",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-tabs-processes.png",
+    "route": "/projects/nimble-lotus?tab=processes",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-tabs-processes-light.png",
+    "route": "/projects/nimble-lotus?tab=processes",
+    "scenario": "gtk-parity",
+    "light": true,
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-tabs-builds.png",
+    "route": "/projects/brave-hare?tab=builds",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-tabs-artifacts.png",
+    "route": "/projects/sante-production?tab=artifacts",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-tabs-git.png",
+    "route": "/projects/sante-production?tab=git",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-tabs-git-light.png",
+    "route": "/projects/sante-production?tab=git",
+    "scenario": "gtk-parity",
+    "light": true,
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-tabs-sync.png",
+    "route": "/projects/sante-production?tab=sync",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-tabs-sync-light.png",
+    "route": "/projects/sante-production?tab=sync",
+    "scenario": "gtk-parity",
+    "light": true,
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-tabs-sync-changes.png",
+    "route": "/projects/brave-hare?tab=sync",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-projects-tabs-conversations.png",
+    "route": "/projects/sante-production?tab=conversations",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  }
+]

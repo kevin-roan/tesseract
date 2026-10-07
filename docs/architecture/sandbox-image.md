@@ -125,7 +125,7 @@ settings. `DISPLAY` is deliberately not set image-wide.
 | `/opt/android-sdk`, `/opt/java/openjdk` | image | SDK, owned by `dev`; runtime additions (NDK, CMake that Gradle installs) are lost on recreate |
 | `/opt/flutter` | image | Flutter SDK, owned by `dev`; artifacts `flutter` downloads at runtime (other platforms) are lost on recreate. Its `flutter config` settings live in `/home/dev`, so an existing home volume keeps its own |
 | `/etc/theone/` | image | `SPEC.md`, `agent-templates/` |
-| `/etc/claude-code/` | image | `CLAUDE.md` (managed memory: `SPEC.md` followed by the rootfs notes), `managed-settings.json` (hooks → `theone-controller hook`) |
+| `/etc/claude-code/` | image | `CLAUDE.md` (managed memory: `SPEC.md` followed by the rootfs notes), `managed-settings.json` (hooks → `theone-controller hook`), `.claude/skills/send-file/` (managed `/send-file` skill: `SKILL.md` + `find-files` helper → `theone-controller share`) |
 | `/run/theone/` | container layer, rewritten on every start | `controller.env` with the VNC password (and `THEONE_TOKEN` if set), readable by `dev` only |
 | `/run/supervisor/` | container layer | supervisord socket and pid file (0700, dev) |
 | `/run/user/<uid>` | container layer | `XDG_RUNTIME_DIR` (0700, dev) |

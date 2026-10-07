@@ -28,8 +28,8 @@ async function decode(blob: Blob): Promise<Decoded> {
 }
 
 /**
- * Draws JPEG frames on a canvas letterboxed into its container. Only the newest pending
- * frame is decoded; every decoded image is released right after drawing.
+ * Draws JPEG frames or decoded video frames on a canvas letterboxed into its container. Only the
+ * newest pending JPEG is decoded; every decoded image is released right after drawing.
  */
 export class FrameCanvas {
   private readonly context: CanvasRenderingContext2D;
@@ -61,6 +61,12 @@ export class FrameCanvas {
   push(frame: ArrayBuffer): void {
     this.pending = new Blob([frame], { type: JPEG_TYPE });
     if (!this.decoding) void this.drain();
+  }
+
+  /** Draws and closes a WebCodecs frame. */
+  drawFrame(frame: VideoFrame): void {
+    this.draw(frame, frame.displayWidth, frame.displayHeight);
+    frame.close();
   }
 
   /** Client coordinates → remote screen coordinates, clamped to the screen. */
@@ -96,13 +102,17 @@ export class FrameCanvas {
       } catch {
         continue;
       }
-      if (this.canvas.width !== decoded.width || this.canvas.height !== decoded.height) {
-        this.canvas.width = decoded.width;
-        this.canvas.height = decoded.height;
-      }
-      this.context.drawImage(decoded.image, 0, 0);
+      this.draw(decoded.image, decoded.width, decoded.height);
       decoded.release();
     }
     this.decoding = false;
+  }
+
+  private draw(image: CanvasImageSource, width: number, height: number): void {
+    if (this.canvas.width !== width || this.canvas.height !== height) {
+      this.canvas.width = width;
+      this.canvas.height = height;
+    }
+    this.context.drawImage(image, 0, 0);
   }
 }

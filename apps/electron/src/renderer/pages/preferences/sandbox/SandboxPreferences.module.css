@@ -1,0 +1,9 @@
+.toolsActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.progress {
+  padding: 12px 14px;
+}

@@ -420,12 +420,16 @@ publishes `inbox.updated` with the new counts (and the item when one was added
 or bumped). After each insert only the newest 1 000 items by `updatedAt` are kept.
 
 **Push.** Phones register an Expo push token with `POST /v1/push/devices` (table
-`push_devices`). `PushService` follows `inbox.updated`: an unread `completed`, `failed`,
-`needs_input`, `permission` or `file` item is POSTed to `THEONE_PUSH_URL` (Expo's push API,
-which delivers through FCM on Android and APNs on iOS) as one message per device, 100 per
-request, with channel `inbox` and `data` = `PushData { url: "/inbox", sandboxId, itemId, kind,
-artifactId }`. The same item id is pushed at most once per 15 s, so the Stop hook and the
-run's end that bump one item send one push. Tokens whose ticket says `DeviceNotRegistered` are
+`push_devices`). A registration with a `deviceId` drops the other tokens of that id, so a phone
+with both the production app and the dev client gets each push once, on the build opened last
+(the app re-registers on every foreground). `PushService` follows `inbox.updated`: an unread
+`completed`, `failed`, `needs_input`, `permission` or `file` item is POSTed to `THEONE_PUSH_URL`
+(Expo's push API, which delivers through FCM on Android and APNs on iOS) as one message per
+device, 100 per request, with channel `inbox` and `data` = `PushData { url: "/inbox", sandboxId,
+itemId, kind, artifactId }`. Every push is titled `Monolith`; the item title (prefixed with the
+project id) is the `subtitle` on iOS and leads the body (`<heading>: <body>`) on Android. The
+same item id is pushed at most once per 15 s, and the `completed`/`failed` outcome of an agent
+run once per run (6 h), so the Stop hook(s) and the run's end that bump one item send one push. Tokens whose ticket says `DeviceNotRegistered` are
 deleted; other errors and network failures are logged and never reach the inbox.
 `THEONE_EXPO_ACCESS_TOKEN` is sent as a bearer token when set; `THEONE_PUSH_URL=off` turns
 pushes off.
@@ -449,7 +453,8 @@ session per host reused and reopened on close, 10 s per request):
   registers a new one);
 - with no `activity` token, a run that just started is sent as `event: "start"` to every
   `push-to-start` token with `attributes-type: "IslandAttributes"`, `attributes: { sandboxId,
-  sandboxName }` and an `alert`.
+  sandboxName }` and an `alert` (`title: "Monolith"`, `subtitle: "<project> · Claude started"`,
+  `body`: the run title).
 
 Headers: `authorization: bearer <JWT>` (ES256 over the `.p8` key, `iss` = team id, cached
 50 min), `apns-topic: <bundle id>.push-type.liveactivity`, `apns-push-type: liveactivity`,

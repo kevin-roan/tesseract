@@ -1,0 +1,7 @@
+.glyph {
+  color: var(--to-text-tertiary);
+}
+
+.clear {
+  display: inline-flex;
+}

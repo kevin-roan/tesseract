@@ -109,3 +109,52 @@ export const SETTINGS_COPY = {
   liveActivityLabel: Platform.OS === "ios" ? "Live Activity" : "Ongoing notification",
   liveActivityFootnote: `Shows runs and commands in the ${SYSTEM_ACTIVITY} and on the lock screen.`,
 } as const;
+
+export const ABOUT_COPY = {
+  title: "About",
+  subtitle: "Version and update details for this install",
+  entryTitle: "About Monolith",
+  entrySubtitle: (version: string, channel: string) => `Version ${version} · ${channel}`,
+  sectionTitle: "About",
+  appTitle: "Application",
+  updatesTitle: "Over-the-air updates",
+  version: "Version",
+  build: "Build",
+  channel: "Release channel",
+  runtime: "Runtime version",
+  update: "Running update",
+  published: "Published",
+  launch: "Launched from",
+  platform: "Platform",
+  environment: "Environment",
+  noChannel: "None",
+  embedded: "Embedded bundle",
+  downloaded: "Downloaded update",
+  unknown: "Unknown",
+  devEnvironment: "Development",
+  releaseEnvironment: "Release",
+  disabledTitle: "Updates are off in this build",
+  disabledMessage: "Development builds and the dev server don't load EAS updates. Install a preview or production build to receive them.",
+  emergencyTitle: "Running the embedded bundle after an error",
+  checkLabel: "Check for updates",
+  restartLabel: "Restart to update",
+  checking: "Checking for updates…",
+  downloading: "Downloading the update…",
+  upToDate: "This is the latest update for this channel and runtime.",
+  noCheck: "Updates are checked each time the app starts.",
+  pending: "A new update is downloaded. Restart to start using it.",
+  checkFailed: "Couldn't check for updates",
+  downloadFailed: "Couldn't download the update",
+  lastChecked: (time: string) => `Last checked ${time}`,
+} as const;
+
+export const UPDATE_SHEET_COPY = {
+  title: "Update available",
+  message: "A new version of Monolith is ready. Installing restarts the app, which takes a few seconds.",
+  published: (time: string) => `Published ${time}`,
+  install: "Install update",
+  later: "Later",
+  failed: "Couldn't install the update",
+} as const;
+
+export const UPDATE_PROMPT_HIDDEN_ROUTES = ["/welcome", "/setup", "/pair", "/host"] as const;

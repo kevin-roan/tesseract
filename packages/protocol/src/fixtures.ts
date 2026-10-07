@@ -35,6 +35,7 @@ import type {
   Ticket,
   UsageReport,
 } from "./index";
+import { DEFAULT_ANDROID_STREAM } from "./constants";
 
 const TS = "2026-09-23T10:00:00.000Z";
 const LATER = "2026-09-23T10:05:00.000Z";
@@ -549,6 +550,11 @@ export const sampleHostAndroidStatus: HostAndroidStatus = {
   ffmpeg: true,
   emulator: sampleEmulator,
   link: sampleAndroidLink,
+  stream: { ...DEFAULT_ANDROID_STREAM },
+  devices: [
+    { serial: "127.0.0.1:41555", state: "device", kind: "emulator", model: "sdk gphone64 x86 64", hostEmulator: true },
+    { serial: "192.168.56.101:5555", state: "device", kind: "genymotion", model: "Google Pixel 3", hostEmulator: false },
+  ],
 };
 
 export const sampleSandboxAndroidStatus: SandboxAndroidStatus = {

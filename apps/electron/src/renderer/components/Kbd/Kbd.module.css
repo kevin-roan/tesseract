@@ -1,0 +1,44 @@
+.keys {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 2px;
+  font-family: var(--to-font-sans);
+  font-weight: 500;
+  font-feature-settings: "tnum";
+  white-space: nowrap;
+}
+
+.cap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-xs);
+  background: var(--to-background-element);
+  color: var(--to-text-secondary);
+  font: inherit;
+}
+
+.md .cap {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.sm .cap {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 11px;
+  line-height: 14px;
+}
+
+.plain {
+  color: var(--to-text-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+}

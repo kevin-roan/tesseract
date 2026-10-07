@@ -1,0 +1,126 @@
+.conversation {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  min-height: 44px;
+  padding: 0 8px 0 16px;
+  border-bottom: 1px solid var(--to-border);
+}
+
+.headerStart {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.headerProject {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: max-content;
+}
+
+.headerCaret {
+  flex: none;
+}
+
+.headerTitle {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: max-content;
+}
+
+.headerEnd {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.stopButton.stopButton {
+  min-height: 28px;
+}
+
+.sync {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 4px;
+}
+
+.more {
+  display: inline-flex;
+  margin: 0 1px;
+}
+
+.glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.noticesReveal {
+  flex: none;
+  overflow: hidden;
+}
+
+.notices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 24px 0 24px;
+}
+
+.noticeItem {
+  min-width: 0;
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+}
+
+.bodyLayer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.footer {
+  display: flex;
+  justify-content: center;
+  flex: none;
+  padding: 8px 24px 16px 24px;
+}
+
+.composer {
+  flex: 1;
+  min-width: 0;
+  max-width: 760px;
+}
+
+.syncButton {
+  flex: none;
+}
+
+.syncCompact > :last-child {
+  display: none;
+}
+
+.syncCompact.syncCompact {
+  gap: 0;
+}

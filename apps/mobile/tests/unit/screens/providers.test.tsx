@@ -45,6 +45,7 @@ jest.mock("@/features/inbox/components/inbox-notifier", () => {
     return <MockText>inbox-notifier</MockText>;
   };
 });
+jest.mock("@/features/settings/components/update-prompt", () => () => null);
 jest.mock("@/components/splash-overlay", () => {
   const { Text: MockText } = jest.requireActual<typeof import("react-native")>("react-native");
   return function MockSplashOverlay({ ready }: { ready: boolean }) {

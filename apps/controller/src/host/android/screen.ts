@@ -1,7 +1,15 @@
 import { spawn, type ChildProcessByStdio } from "node:child_process";
 import { connect, type Socket } from "node:net";
 import type { Readable, Writable } from "node:stream";
-import { LIMITS, type AndroidScreenClientMessage, type AndroidScreenServerMessage } from "@theone/protocol";
+import {
+  ANDROID_H264_FLAGS,
+  DEFAULT_ANDROID_STREAM,
+  LIMITS,
+  type AndroidScreenClientMessage,
+  type AndroidScreenServerMessage,
+  type AndroidStreamEncoding,
+  type AndroidStreamSettings,
+} from "@theone/protocol";
 import { errorMessage } from "../../core/errors";
 import { run } from "../../core/exec";
 import type { Logger } from "../../core/logger";
@@ -14,12 +22,13 @@ import {
   encodeScroll,
   encodeText,
   encodeTouch,
-  FFMPEG_MJPEG_ARGS,
+  ffmpegMjpegArgs,
   JpegSplitter,
   randomScid,
   SCRCPY_DEVICE_JAR,
   scrcpyServerArgs,
   ScrcpyVideoParser,
+  type EncoderOptions,
   type Point,
 } from "./scrcpy";
 
@@ -34,21 +43,29 @@ export type ScreenOptions = {
   /** `max_size` when the first viewer gives none. */
   defaultMaxSize?: number;
   connectTimeoutMs?: number;
+  /** The stream settings a new session starts with. */
+  settings?: () => AndroidStreamSettings;
 };
+
+/** What a viewer asks for: its size, the device (default: the settings' device, else the host emulator) and what it can decode. */
+export type ScreenRequest = { maxSize?: number; serial?: string; codec?: AndroidStreamEncoding };
 
 type Size = { width: number; height: number };
 type Meta = Size & { deviceName: string };
+type SessionStream = EncoderOptions & { codec: AndroidStreamEncoding; jpegQuality: number };
+/** A JPEG (always a key frame) or an H.264 access unit. */
+type ScreenFrame = { data: Buffer; config: boolean; keyFrame: boolean };
 
 type SessionEvents = {
   meta: (meta: Meta) => void;
   size: (size: Size) => void;
-  frame: (frame: Buffer) => void;
+  frame: (frame: ScreenFrame) => void;
   failed: (message: string) => void;
 };
 
 export const DEFAULT_SCREEN_MAX_SIZE = 1280;
-/** Smallest `maxSize` a viewer may ask for; smaller requests are raised to it. */
-export const MIN_SCREEN_MAX_SIZE = 160;
+/** H.264 frames kept since the last key frame for viewers that join late; past this they wait for the next key frame. */
+const MAX_GOP_BYTES = 8 * 1024 * 1024;
 /** Android pointer ids per viewer: viewer n uses `n * POINTER_SLOTS + pointerId`. */
 const POINTER_SLOTS = LIMITS.maxAndroidPointerId + 1;
 const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
@@ -87,7 +104,7 @@ function firstChunk(socket: Socket): Promise<Buffer | null> {
   });
 }
 
-/** One scrcpy server on the emulator, decoded to JPEG by ffmpeg. */
+/** One scrcpy server on a device; its H.264 is passed through or decoded to JPEG by ffmpeg. */
 class ScrcpySession {
   private stopped = false;
   private starting: Promise<void> | null = null;
@@ -105,7 +122,7 @@ class ScrcpySession {
   constructor(
     private readonly config: AndroidConfig,
     private readonly serial: string,
-    private readonly maxSize: number,
+    private readonly stream: SessionStream,
     private readonly connectTimeoutMs: number,
     private readonly logger: Logger,
     private readonly events: SessionEvents,
@@ -133,7 +150,8 @@ class ScrcpySession {
 
   private async run(): Promise<void> {
     const { adb, scrcpyServer, scrcpyVersion, ffmpeg } = this.config;
-    if (!adb || !scrcpyServer || !scrcpyVersion || !ffmpeg) throw new Error("scrcpy-server or ffmpeg is not installed on the host");
+    if (!adb || !scrcpyServer || !scrcpyVersion) throw new Error("scrcpy-server is not installed on the host");
+    if (this.stream.codec === "mjpeg" && !ffmpeg) throw new Error("ffmpeg is not installed on the host");
     const env = sdkEnv(this.config);
     const adbRun = (args: string[]) => run([adb, "-s", this.serial, ...args], { env, timeoutMs: COMMAND_TIMEOUT_MS });
 
@@ -147,7 +165,7 @@ class ScrcpySession {
     if (this.port === null) throw new Error(`adb forward failed: ${(forwarded.stderr || forwarded.error || "").trim()}`);
     this.assertLive();
 
-    const server = Bun.spawn([adb, "-s", this.serial, "shell", ...scrcpyServerArgs(scrcpyVersion, scid, this.maxSize)], {
+    const server = Bun.spawn([adb, "-s", this.serial, "shell", ...scrcpyServerArgs(scrcpyVersion, scid, this.stream)], {
       env,
       stdin: "ignore",
       stdout: "pipe",
@@ -191,17 +209,16 @@ class ScrcpySession {
       if (!this.stopped) this.fail(SCREEN_MESSAGES.ended);
     });
     this.assertLive();
-    this.decode(ffmpeg, first);
+    if (this.stream.codec === "h264" || !ffmpeg) this.pump(first, (frame) => this.events.frame(frame));
+    else this.decode(ffmpeg, first);
   }
 
   private decode(ffmpegBin: string, first: Buffer): void {
-    const video = this.video;
-    if (!video) return;
-    const ffmpeg = spawn(ffmpegBin, FFMPEG_MJPEG_ARGS, { stdio: ["pipe", "pipe", "pipe"] });
+    const ffmpeg = spawn(ffmpegBin, ffmpegMjpegArgs(this.stream.jpegQuality), { stdio: ["pipe", "pipe", "pipe"] });
     this.ffmpeg = ffmpeg;
     const splitter = new JpegSplitter();
     ffmpeg.stdout.on("data", (chunk: Buffer) => {
-      for (const frame of splitter.push(chunk)) this.events.frame(frame);
+      for (const data of splitter.push(chunk)) this.events.frame({ data, config: false, keyFrame: true });
     });
     ffmpeg.stderr.on("data", (chunk: Buffer) => this.remember(chunk.toString("utf8")));
     ffmpeg.stdin.on("error", () => {});
@@ -209,7 +226,17 @@ class ScrcpySession {
     ffmpeg.on("exit", (code) => {
       if (!this.stopped) this.fail(`ffmpeg exited (code ${code})${this.lastOutput()}`);
     });
+    this.pump(first, (frame, video) => {
+      if (ffmpeg.stdin.write(frame.data)) return;
+      video.pause();
+      ffmpeg.stdin.once("drain", () => video.resume());
+    });
+  }
 
+  /** Parses the video socket, starting with its already read `first` chunk. */
+  private pump(first: Buffer, packet: (frame: ScreenFrame, video: Socket) => void): void {
+    const video = this.video;
+    if (!video) return;
     const parser = new ScrcpyVideoParser();
     const onData = (chunk: Buffer) => {
       let events: ReturnType<ScrcpyVideoParser["push"]>;
@@ -223,10 +250,7 @@ class ScrcpySession {
       for (const event of events) {
         if (event.type === "device") this.deviceName = event.deviceName;
         else if (event.type === "session") this.resized({ width: event.width, height: event.height });
-        else if (!ffmpeg.stdin.write(event.data)) {
-          video.pause();
-          ffmpeg.stdin.once("drain", () => video.resume());
-        }
+        else packet(event, video);
       }
     };
     video.on("data", onData);
@@ -330,24 +354,46 @@ export function controlBytes(message: AndroidScreenClientMessage, size: Size | n
   }
 }
 
+
 type TouchMessage = Extract<AndroidScreenClientMessage, { type: "touch" }>;
 
-/** A viewer and the pointers it holds down, so they can be lifted when it leaves. */
-type Viewer = { ordinal: number; pointers: Map<number, TouchMessage> };
+/** A viewer and the pointers it holds down; `synced` once it has the frames its decoder needs to show the next one. */
+type Viewer = { ordinal: number; pointers: Map<number, TouchMessage>; group: Group; synced: boolean; request: ScreenRequest };
+
+/** One scrcpy session and its viewers; `gop` holds what a late viewer needs (the last JPEG, or the H.264 frames since the key frame). */
+type Group = {
+  key: string;
+  serial: string;
+  hostEmulator: boolean;
+  stream: SessionStream;
+  session: ScrcpySession;
+  viewers: Map<ScreenClient, Viewer>;
+  meta: Meta | null;
+  config: Buffer | null;
+  gop: Buffer[];
+  gopBytes: number;
+};
+
+/** The H.264 screen message: a flags byte, then the access unit. */
+export function h264Message(frame: ScreenFrame): Buffer {
+  const flags = (frame.config ? ANDROID_H264_FLAGS.config : 0) | (frame.keyFrame ? ANDROID_H264_FLAGS.keyFrame : 0);
+  return Buffer.concat([Buffer.of(flags), frame.data]);
+}
 
 /**
- * Fans one scrcpy session out to every open screen socket. The session starts with the
- * first viewer's `maxSize` and keeps it: later viewers asking another size share it.
- * Each viewer's pointer ids are offset so two viewers never drive the same pointer.
+ * Fans scrcpy sessions out to the open screen sockets: viewers of the same device that decode the same
+ * codec under the same settings share one session, which keeps the first viewer's `maxSize`. `restart()`
+ * moves every viewer to a session with the current settings without closing its socket. Each viewer's
+ * pointer ids are offset so two viewers never drive the same pointer. A congested viewer skips frames
+ * until the next key frame.
  */
 export class AndroidScreens {
+  private readonly groups = new Map<string, Group>();
   private readonly clients = new Map<ScreenClient, Viewer>();
   private nextOrdinal = 0;
-  private session: ScrcpySession | null = null;
-  private meta: Meta | null = null;
-  private lastFrame: Buffer | null = null;
   private readonly defaultMaxSize: number;
   private readonly connectTimeoutMs: number;
+  private readonly settings: () => AndroidStreamSettings;
   private readonly unsubscribe: () => void;
 
   constructor(
@@ -358,8 +404,10 @@ export class AndroidScreens {
   ) {
     this.defaultMaxSize = options.defaultMaxSize ?? DEFAULT_SCREEN_MAX_SIZE;
     this.connectTimeoutMs = options.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
+    this.settings = options.settings ?? (() => ({ ...DEFAULT_ANDROID_STREAM }));
     this.unsubscribe = emulator.onChange((info) => {
-      if (info.state !== "running" && (this.session || this.clients.size > 0)) this.endAll(SCREEN_MESSAGES.stopped);
+      if (info.state === "running") return;
+      for (const group of [...this.groups.values()]) if (group.hostEmulator) this.endGroup(group, SCREEN_MESSAGES.stopped);
     });
   }
 
@@ -368,35 +416,69 @@ export class AndroidScreens {
   }
 
   /** Why the screen cannot be streamed, or null. */
-  unavailableReason(): string | null {
+  unavailableReason(codec: AndroidStreamEncoding = "mjpeg", hostEmulator = true): string | null {
     if (!this.config.scrcpyServer) return "scrcpy-server is not installed on the host; set THEONE_SCRCPY_SERVER";
     if (!this.config.scrcpyVersion) return "The scrcpy version is unknown; install scrcpy or set THEONE_SCRCPY_VERSION";
-    if (!this.config.ffmpeg) return "ffmpeg is not installed on the host; set THEONE_FFMPEG";
+    if (codec === "mjpeg" && !this.config.ffmpeg) return "ffmpeg is not installed on the host; set THEONE_FFMPEG";
     if (!this.config.adb) return "adb is not installed on the host; set THEONE_ADB";
-    if (!this.emulator.running) return SCREEN_MESSAGES.notRunning;
+    if (hostEmulator && !this.emulator.running) return SCREEN_MESSAGES.notRunning;
     return null;
   }
 
-  attach(client: ScreenClient, maxSize?: number): () => void {
-    const reason = this.unavailableReason();
+  attach(client: ScreenClient, request: ScreenRequest = {}): () => void {
+    this.join(client, request);
+    return () => this.leave(client);
+  }
+
+  /** New settings: every viewer gets a fresh `meta` (maybe another codec) and the stream of a new session. */
+  restart(): void {
+    const settings = this.settings();
+    const moved = [...this.clients.entries()].filter(([, viewer]) => this.target(viewer.request, settings).key !== viewer.group.key);
+    if (moved.length === 0) return;
+    this.logger.info("android screen sessions restarting with new settings", { viewers: moved.length });
+    for (const [client] of moved) this.leave(client);
+    for (const [client, viewer] of moved) this.join(client, viewer.request);
+  }
+
+  /** The session a request maps to under `settings`; its `key` is shared by every viewer that can share it. */
+  private target(request: ScreenRequest, settings: AndroidStreamSettings) {
+    const serial = request.serial ?? settings.device ?? this.emulator.serial;
+    const codec: AndroidStreamEncoding = settings.encoding === "h264" && request.codec === "h264" ? "h264" : "mjpeg";
+    const cap = settings.maxSize ?? LIMITS.maxAndroidScreenSize;
+    const stream: SessionStream = {
+      codec,
+      maxSize: Math.max(LIMITS.minAndroidScreenSize, Math.min(request.maxSize ?? this.defaultMaxSize, cap)),
+      bitRate: settings.bitRate,
+      maxFps: settings.maxFps,
+      keyFrameInterval: settings.keyFrameInterval,
+      jpegQuality: settings.jpegQuality,
+    };
+    const key = JSON.stringify([serial, codec, cap, settings.bitRate, settings.maxFps, settings.keyFrameInterval, codec === "mjpeg" ? settings.jpegQuality : 0]);
+    return { serial, hostEmulator: serial === this.emulator.serial, stream, key };
+  }
+
+  private join(client: ScreenClient, request: ScreenRequest): void {
+    const { serial, hostEmulator, stream, key } = this.target(request, this.settings());
+    const reason = this.unavailableReason(stream.codec, hostEmulator);
     if (reason) {
       client.send({ type: "error", message: reason });
       client.close(NORMAL_CLOSURE, "unavailable");
-      return () => {};
+      return;
     }
-    this.clients.set(client, { ordinal: this.nextOrdinal++, pointers: new Map() });
-    if (this.meta) {
-      client.send({ type: "meta", ...this.meta });
-      if (this.lastFrame) client.sendFrame(this.lastFrame);
+    const group = this.groups.get(key) ?? this.open(key, serial, hostEmulator, stream);
+    const viewer: Viewer = { ordinal: this.nextOrdinal++, pointers: new Map(), group, synced: false, request };
+    group.viewers.set(client, viewer);
+    this.clients.set(client, viewer);
+    if (group.meta) {
+      client.send({ type: "meta", codec: stream.codec, ...group.meta });
+      this.resync(client, viewer);
     }
-    if (!this.session) this.open(Math.max(MIN_SCREEN_MAX_SIZE, maxSize ?? this.defaultMaxSize));
-    return () => this.detach(client);
   }
 
   handle(client: ScreenClient, message: AndroidScreenClientMessage): void {
     const viewer = this.clients.get(client);
-    const session = this.session;
-    if (!viewer || !session) return;
+    if (!viewer) return;
+    const session = viewer.group.session;
     if (message.type !== "touch") {
       const bytes = controlBytes(message, session.size);
       if (bytes) session.sendControl(bytes);
@@ -410,74 +492,122 @@ export class AndroidScreens {
 
   async shutdown(): Promise<void> {
     this.unsubscribe();
-    this.endAll(SCREEN_MESSAGES.ended);
-    await this.closeSession();
+    await Promise.all([...this.groups.values()].map((group) => this.endGroup(group, SCREEN_MESSAGES.ended)));
   }
 
-  private open(maxSize: number): void {
-    const session: ScrcpySession = new ScrcpySession(this.config, this.emulator.serial, maxSize, this.connectTimeoutMs, this.logger, {
-      meta: (meta) => {
-        if (this.session !== session) return;
-        this.meta = meta;
-        for (const client of this.clients.keys()) client.send({ type: "meta", ...meta });
-      },
-      size: (size) => {
-        if (this.session !== session || !this.meta) return;
-        this.meta = { ...this.meta, ...size };
-        for (const client of this.clients.keys()) client.send({ type: "size", ...size });
-      },
-      frame: (frame) => {
-        if (this.session !== session) return;
-        this.lastFrame = frame;
-        for (const client of this.clients.keys()) {
-          if (client.bufferedAmount() <= LIMITS.androidScreenBackpressureBytes) client.sendFrame(frame);
-        }
-      },
-      failed: (message) => {
-        if (this.session === session) this.endAll(message);
-      },
+  private open(key: string, serial: string, hostEmulator: boolean, stream: SessionStream): Group {
+    const group: Group = {
+      key,
+      serial,
+      hostEmulator,
+      stream,
+      viewers: new Map(),
+      meta: null,
+      config: null,
+      gop: [],
+      gopBytes: 0,
+      session: new ScrcpySession(this.config, serial, stream, this.connectTimeoutMs, this.logger, {
+        meta: (meta) => {
+          if (!this.live(group)) return;
+          group.meta = meta;
+          for (const client of group.viewers.keys()) client.send({ type: "meta", codec: stream.codec, ...meta });
+        },
+        size: (size) => {
+          if (!this.live(group) || !group.meta) return;
+          group.meta = { ...group.meta, ...size };
+          for (const client of group.viewers.keys()) client.send({ type: "size", ...size });
+        },
+        frame: (frame) => {
+          if (this.live(group)) this.frame(group, frame);
+        },
+        failed: (message) => {
+          if (this.live(group)) void this.endGroup(group, message);
+        },
+      }),
+    };
+    this.groups.set(key, group);
+    this.logger.info("android screen session starting", { serial, codec: stream.codec, maxSize: stream.maxSize, bitRate: stream.bitRate, maxFps: stream.maxFps });
+    group.session.start().catch((error: unknown) => {
+      if (this.live(group)) void this.endGroup(group, errorMessage(error));
     });
-    this.session = session;
-    this.logger.info("android screen session starting", { maxSize });
-    session.start().catch((error: unknown) => {
-      if (this.session === session) this.endAll(errorMessage(error));
-    });
+    return group;
   }
 
-  /** Lifts the pointers a leaving viewer still holds down. */
-  private detach(client: ScreenClient): void {
+  private live(group: Group): boolean {
+    return this.groups.get(group.key) === group;
+  }
+
+  private frame(group: Group, frame: ScreenFrame): void {
+    const message = group.stream.codec === "h264" ? h264Message(frame) : frame.data;
+    if (frame.config) {
+      group.config = message;
+      group.gop = [];
+      group.gopBytes = 0;
+      for (const viewer of group.viewers.values()) viewer.synced = false;
+      return;
+    }
+    if (frame.keyFrame) {
+      group.gop = [message];
+      group.gopBytes = message.length;
+    } else if (group.gop.length > 0) {
+      group.gopBytes += message.length;
+      if (group.gopBytes > MAX_GOP_BYTES) {
+        group.gop = [];
+        group.gopBytes = 0;
+      } else group.gop.push(message);
+    }
+    for (const [client, viewer] of group.viewers) {
+      if (client.bufferedAmount() > LIMITS.androidScreenBackpressureBytes) viewer.synced = false;
+      else if (viewer.synced) client.sendFrame(message);
+      else if (frame.keyFrame) this.resync(client, viewer);
+    }
+  }
+
+  /** Sends a viewer what its decoder needs to show the current frame, if the group still has it. */
+  private resync(client: ScreenClient, viewer: Viewer): void {
+    const group = viewer.group;
+    const h264 = group.stream.codec === "h264";
+    if (group.gop.length === 0 || (h264 && !group.config)) return;
+    if (h264 && group.config) client.sendFrame(group.config);
+    for (const message of group.gop) client.sendFrame(message);
+    viewer.synced = true;
+  }
+
+  /** Lifts the pointers a leaving viewer still holds down; its group's session ends with its last viewer. */
+  private leave(client: ScreenClient): void {
     const viewer = this.clients.get(client);
     if (!viewer) return;
     this.clients.delete(client);
-    const session = this.session;
-    if (session?.size) {
+    const group = viewer.group;
+    group.viewers.delete(client);
+    const session = group.session;
+    if (session.size) {
       for (const [pointerId, touch] of viewer.pointers) {
         session.sendControl(encodeTouch("up", viewer.ordinal * POINTER_SLOTS + pointerId, toVideoPoint(touch, session.size), 0));
       }
     }
     viewer.pointers.clear();
-    if (this.clients.size === 0) void this.closeSession();
+    if (group.viewers.size === 0 && this.live(group)) void this.closeGroup(group);
   }
 
-  private endAll(message: string): void {
-    const clients = [...this.clients.keys()];
-    this.clients.clear();
+  private endGroup(group: Group, message: string): Promise<void> {
+    const clients = [...group.viewers.keys()];
+    group.viewers.clear();
     for (const client of clients) {
+      this.clients.delete(client);
       client.send({ type: "error", message });
       client.close(INTERNAL_ERROR, message.slice(0, 120));
     }
-    void this.closeSession();
+    return this.closeGroup(group);
   }
 
-  private async closeSession(): Promise<void> {
-    const session = this.session;
-    this.session = null;
-    this.meta = null;
-    this.lastFrame = null;
-    if (!session) return;
-    this.logger.info("android screen session stopping");
+  private async closeGroup(group: Group): Promise<void> {
+    if (this.live(group)) this.groups.delete(group.key);
+    group.gop = [];
+    group.config = null;
+    this.logger.info("android screen session stopping", { serial: group.serial });
     try {
-      await session.stop();
+      await group.session.stop();
     } catch (error) {
       this.logger.warn("android screen cleanup failed", { error: errorMessage(error) });
     }

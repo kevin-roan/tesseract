@@ -8,7 +8,18 @@ import { selectActiveToken, useSandboxStore } from "@/features/sandbox/store/san
 import { confirm } from "@/lib/confirm";
 import { resetSettled } from "@/lib/mutations";
 
-import { canStartEmulator, canStopEmulator, isLinkedTo, isolationNotice, linkBlockedReason, pickAvd } from "../utils/android";
+import {
+  canStartEmulator,
+  canStopEmulator,
+  deviceLabel,
+  deviceMeta,
+  isLinkedTo,
+  isolationNotice,
+  linkBlockedReason,
+  pickAvd,
+  pickDevice,
+  streamableDevices,
+} from "../utils/android";
 import { ANDROID_COPY, HOST_LOCKED, LINK_CONFIRM } from "../utils/content";
 import { describeHostError } from "../utils/errors";
 import { useHostAndroidStatus } from "./use-host-android-status";
@@ -22,6 +33,8 @@ export function useHostAndroid(enabled: boolean) {
   const sandboxToken = useSandboxStore(selectActiveToken);
   const [selected, setSelected] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState<string | null>(null);
+  const [devicePickerOpen, setDevicePickerOpen] = useState(false);
 
   const patch = useCallback(
     (update: Partial<HostAndroidStatus>) =>
@@ -69,6 +82,11 @@ export function useHostAndroid(enabled: boolean) {
   const data = status.data;
   const avd = pickAvd(data, selected);
   const avdOptions = useMemo<MenuOption[]>(() => (data?.avds ?? []).map((name) => ({ id: name, label: name })), [data?.avds]);
+  const device = pickDevice(data, selectedDevice);
+  const deviceOptions = useMemo<MenuOption[]>(
+    () => streamableDevices(data).map((item) => ({ id: item.serial, label: deviceLabel(item), description: deviceMeta(item) })),
+    [data],
+  );
   const failure = start.error ?? stop.error ?? link.error ?? unlink.error ?? status.error;
   const clearOutcomes = () => resetSettled([start, stop, link, unlink]);
   const confirmLink = async () => {
@@ -95,7 +113,18 @@ export function useHostAndroid(enabled: boolean) {
     },
     canStart: data ? canStartEmulator(data, avd) : false,
     canStop: data ? canStopEmulator(data.emulator.state) : false,
-    canOpen: data?.emulator.state === "running",
+    device,
+    devicePicker: {
+      visible: devicePickerOpen,
+      options: deviceOptions,
+      open: () => setDevicePickerOpen(true),
+      close: () => setDevicePickerOpen(false),
+      select: (id: string) => {
+        setSelectedDevice(id);
+        setDevicePickerOpen(false);
+      },
+    },
+    canOpen: device !== null,
     start: () => {
       if (!avd) return;
       clearOutcomes();
@@ -107,7 +136,10 @@ export function useHostAndroid(enabled: boolean) {
       stop.mutate();
     },
     stopping: stop.isPending,
-    openScreen: nav.android,
+    openScreen: () => {
+      if (device) nav.android(device.serial);
+    },
+    openStreamSettings: nav.stream,
     sandboxName: sandbox?.name ?? null,
     canLink: sandbox !== null && sandboxToken !== null,
     linkBlocked: linkBlockedReason(data),

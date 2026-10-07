@@ -1,0 +1,8 @@
+[
+  { "reference": "docs/electron/reference/shell-default.png", "route": "/overview?parity=shell&clock=24", "scenario": "gtk-parity", "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/shell-default-light.png", "route": "/overview?parity=shell-light&clock=37", "scenario": "gtk-parity", "light": true, "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/shell-collapsed.png", "route": "/overview?parity=shell&clock=24", "scenario": "gtk-parity", "width": 600, "height": 768, "collapsedSidebar": true },
+  { "reference": "docs/electron/reference/shell-pair-dialog.png", "route": "/overview?action=pair&parity=pair,loading&clock=97", "scenario": "gtk-parity", "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/shell-pair-dialog-light.png", "route": "/overview?action=pair&parity=pair,loading&clock=97", "scenario": "gtk-parity", "light": true, "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/shell-pair-host-dialog.png", "route": "/overview?action=pair-host&parity=pair-host,loading&clock=126", "scenario": "gtk-parity", "width": 1024, "height": 768 }
+]

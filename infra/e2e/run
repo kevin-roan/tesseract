@@ -21,7 +21,7 @@ readonly BASE_URL="http://127.0.0.1:${CONTROLLER_PORT}"
 
 usage() {
   cat << 'EOF'
-Usage: infra/e2e/run [--no-build] [--keep] [--web] [--] [bun test args]
+Usage: infra/e2e/run [--no-build] [--keep] [--web] [--electron | --electron-only] [--] [bun test args]
 
 Builds theone/sandbox:e2e (target sandbox), starts compose project theone-e2e in local
 mode (127.0.0.1:17700 controller, 127.0.0.1:15901 VNC, volumes theone-e2e-*), waits for
@@ -31,6 +31,10 @@ mode (127.0.0.1:17700 controller, 127.0.0.1:15901 VNC, volumes theone-e2e-*), wa
   --keep       leave the stack running (prints the command that removes it)
   --web        afterwards drive the mobile web build with infra/e2e/web/run
                (THEONE_E2E_WEB_EXPORT_DIR: use that export instead of exporting apps/mobile)
+  --electron   afterwards run the Electron app's Playwright suites (bun run --cwd apps/electron e2e)
+               against the same stack
+  --electron-only
+               run only the Electron suites, not `bun test ./infra/e2e`
   -h, --help   show this help
 
 Any other argument, and everything after `--`, is appended to `bun test`, e.g.
@@ -61,6 +65,8 @@ die() {
 build=1
 keep=""
 web=""
+electron=""
+infra_tests=1
 test_args=()
 env_file=""
 claude_dir=""
@@ -73,6 +79,11 @@ parse_args() {
       --no-build) build="" ;;
       --keep) keep=1 ;;
       --web) web=1 ;;
+      --electron) electron=1 ;;
+      --electron-only)
+        electron=1
+        infra_tests=""
+        ;;
       -h | --help)
         usage
         exit 0
@@ -203,6 +214,21 @@ run_web() {
     "${SCRIPT_DIR}/web/run" ${args[@]+"${args[@]}"}
 }
 
+run_electron() {
+  log "running the Electron e2e suites (apps/electron)"
+  (
+    cd "${REPO_ROOT}"
+    THEONE_E2E_URL="${BASE_URL}" \
+      THEONE_E2E_TOKEN="${TOKEN}" \
+      THEONE_E2E_PROJECT="${PROJECT}" \
+      THEONE_E2E_ENV_FILE="${env_file}" \
+      THEONE_E2E_IMAGE="${IMAGE}" \
+      THEONE_E2E_VNC_PORT="${VNC_PORT}" \
+      THEONE_E2E_VNC_PASSWORD="${VNC_PASSWORD}" \
+      bun run --cwd apps/electron e2e
+  )
+}
+
 main() {
   parse_args "$@"
   [[ "${PROJECT}" =~ ^theone-e2e[a-z0-9_-]*$ ]] \
@@ -226,7 +252,12 @@ main() {
   sandbox up
   wait_for_health
   local status=0
-  run_tests || status=$?
+  if [[ -n "${infra_tests}" ]]; then
+    run_tests || status=$?
+  fi
+  if [[ -n "${electron}" ]]; then
+    run_electron || status=$?
+  fi
   if [[ -n "${web}" ]]; then
     run_web || status=$?
   fi

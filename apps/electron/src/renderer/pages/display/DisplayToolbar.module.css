@@ -1,0 +1,104 @@
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: none;
+  min-height: 40px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--to-divider);
+  background: var(--to-surface);
+  color: var(--to-text);
+}
+
+.info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.meta {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--to-text-secondary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+
+.actions > span {
+  display: inline-flex;
+}
+
+.separator {
+  flex: none;
+  width: 1px;
+  height: 24px;
+  margin: 8px 4px;
+  background: var(--to-divider);
+}
+
+.scale {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-width: 46px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-pill);
+  background: transparent;
+  color: var(--to-text-secondary);
+  white-space: nowrap;
+  transition: var(--to-state-transition);
+}
+
+.pill:hover:not(:disabled) {
+  background: var(--to-background-element);
+  color: var(--to-text);
+}
+
+.pill:active:not(:disabled) {
+  transform: scale(var(--to-press-scale));
+}
+
+.pill[data-checked] {
+  border-color: var(--to-border-strong);
+  color: var(--to-text);
+}
+
+.pill:disabled {
+  opacity: 0.5;
+}
+
+.pillIndicator {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--to-background-selected);
+}
+
+.pillLabel {
+  position: relative;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+}

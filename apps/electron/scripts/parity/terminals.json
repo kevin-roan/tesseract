@@ -1,0 +1,6 @@
+[
+  { "reference": "docs/electron/reference/page-terminals-default.png", "route": "/terminals", "scenario": "gtk-parity", "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/page-terminals-default-light.png", "route": "/terminals", "scenario": "gtk-parity", "light": true, "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/page-terminals-narrow.png", "route": "/terminals?parity=terminals-loading", "scenario": "gtk-parity", "width": 800, "height": 700, "collapsed": true },
+  { "reference": "docs/electron/reference/page-terminals-collapsed.png", "route": "/terminals", "scenario": "gtk-parity", "width": 520, "height": 700, "collapsed": true }
+]

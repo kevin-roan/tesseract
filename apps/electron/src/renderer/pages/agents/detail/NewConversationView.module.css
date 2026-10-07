@@ -1,0 +1,111 @@
+.scroller {
+  composes: to-overlay-scrollbar from global;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 48px 24px 24px 24px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-xl);
+  background: var(--to-surface-elevated);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 8px 0 12px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.crumbChip {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: var(--to-radius-sm);
+  background: var(--to-background-selected);
+}
+
+.picker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 2px 0 10px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-pill);
+  transition: var(--to-state-transition);
+}
+
+.picker:hover {
+  background: var(--to-background-element);
+}
+
+.pickerDropdown.pickerDropdown {
+  height: 28px;
+  padding: 0 14px 0 3px;
+  border: none;
+  background: transparent;
+  color: var(--to-text-secondary);
+  font-weight: 500;
+}
+
+.pickerDropdown.pickerDropdown:hover,
+.pickerDropdown.pickerDropdown[data-open] {
+  background: transparent;
+  color: var(--to-text);
+}
+
+.pickerDropdown > svg {
+  display: none;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 4px;
+}
+
+.suggestion {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-pill);
+  background: transparent;
+  color: var(--to-text-secondary);
+  font: 400 12px/16px var(--to-font-sans);
+  transition:
+    background-color var(--to-duration-fast) var(--to-ease-standard),
+    color var(--to-duration-fast) var(--to-ease-standard),
+    scale var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.suggestion:active {
+  scale: var(--to-press-scale);
+}
+
+.suggestion:hover {
+  background: var(--to-background-element);
+  color: var(--to-text);
+}

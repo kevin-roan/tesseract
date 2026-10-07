@@ -1,7 +1,7 @@
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { PushDataSchema, PushDeviceSchema, restPaths, type PushData, type PushDevice } from "@theone/protocol";
 import { loadConfig } from "../src/config";
-import type { PushFetch } from "../src/services/push";
+import type { PushFetch, PushOptions } from "../src/services/push";
 import { makeTempDir, removeTempDirs, startTestController, waitFor, type TestController, type TestEnv } from "./helpers";
 
 const IOS = "ExponentPushToken[ios-device-1]";
@@ -28,13 +28,19 @@ function fakeExpo(tickets: (messages: Record<string, unknown>[]) => unknown[] = 
   return { sent, fetch };
 }
 
-async function start(fetch: PushFetch, env: TestEnv = {}): Promise<TestController> {
-  t = await startTestController({ env: { THEONE_PUSH_URL: PUSH_URL, ...env }, controller: { push: { fetch } } });
+async function start(fetch: PushFetch, env: TestEnv = {}, options: Omit<PushOptions, "fetch"> = {}): Promise<TestController> {
+  t = await startTestController({ env: { THEONE_PUSH_URL: PUSH_URL, ...env }, controller: { push: { fetch, ...options } } });
   return t;
 }
 
-async function register(c: TestController, token: string, platform: "ios" | "android", name: string | null = null): Promise<PushDevice> {
-  const { status, body } = await c.json("POST", restPaths.pushDevices(), { token, platform, name });
+async function register(
+  c: TestController,
+  token: string,
+  platform: "ios" | "android",
+  name: string | null = null,
+  deviceId?: string,
+): Promise<PushDevice> {
+  const { status, body } = await c.json("POST", restPaths.pushDevices(), { token, platform, name, deviceId });
   expect(status).toBe(200);
   return PushDeviceSchema.parse(body);
 }
@@ -53,7 +59,7 @@ describe("push devices over HTTP", () => {
   test("register, list and unregister need the bearer token", async () => {
     const c = await start(fakeExpo().fetch);
     const first = await register(c, IOS, "ios", "Kevin's iPhone");
-    expect(first).toMatchObject({ token: IOS, platform: "ios", name: "Kevin's iPhone" });
+    expect(first).toMatchObject({ token: IOS, platform: "ios", name: "Kevin's iPhone", deviceId: null });
     await Bun.sleep(5);
     const again = await register(c, IOS, "ios", "Renamed");
     expect(again).toMatchObject({ name: "Renamed", createdAt: first.createdAt });
@@ -75,15 +81,29 @@ describe("push devices over HTTP", () => {
     const anonymousDelete = await fetch(`${c.baseUrl}${restPaths.pushDevice(ANDROID)}`, { method: "DELETE" });
     expect(anonymousDelete.status).toBe(401);
   });
+
+  test("a phone keeps one token: the build registered last replaces the others with its device id", async () => {
+    const c = await start(fakeExpo().fetch);
+    const DEV = "ExponentPushToken[ios-dev-build]";
+    await register(c, IOS, "ios", "iPhone", "phone-1");
+    await register(c, ANDROID, "android", "Pixel", "phone-2");
+    await register(c, DEV, "ios", "iPhone", "phone-1");
+    expect(c.controller.services.push.list().map((device) => device.token)).toEqual([DEV, ANDROID]);
+    await register(c, IOS, "ios", "iPhone", "phone-1");
+    expect(c.controller.services.push.list().map((device) => [device.token, device.deviceId])).toEqual([
+      [IOS, "phone-1"],
+      [ANDROID, "phone-2"],
+    ]);
+  });
 });
 
 describe("inbox pushes", () => {
-  test("an unread completed item sends one request with every token", async () => {
+  test("an unread completed item sends one request with every token, titled with the app name", async () => {
     const expo = fakeExpo();
     const c = await start(expo.fetch, { THEONE_EXPO_ACCESS_TOKEN: "expo-secret" });
     await register(c, IOS, "ios");
     await register(c, ANDROID, "android");
-    const item = c.controller.services.inbox.add({ kind: "completed", title: "Claude finished", body: "All green", sessionId: "sess-1" });
+    const item = c.controller.services.inbox.add({ kind: "completed", title: "Claude finished", body: "All green", sessionId: "sess-1", projectId: "hello" });
     c.controller.services.inbox.add({ kind: "status", title: "Quota", body: "resumed" });
 
     await waitFor(() => expo.sent.length === 1);
@@ -94,9 +114,11 @@ describe("inbox pushes", () => {
     expect(request?.headers.get("authorization")).toBe("Bearer expo-secret");
     const data: PushData = { url: "/inbox", sandboxId: "test-sandbox", itemId: item.id, kind: "completed", artifactId: null };
     expect(PushDataSchema.parse(request?.messages[0]?.data)).toEqual(data);
-    expect(request?.messages).toEqual(
-      [ANDROID, IOS].map((to) => ({ to, title: "Claude finished", body: "All green", sound: "default", priority: "high", channelId: "inbox", data })),
-    );
+    const common = { sound: "default", priority: "high", channelId: "inbox", data };
+    expect(request?.messages).toEqual([
+      { to: ANDROID, title: "Monolith", body: "hello · Claude finished: All green", ...common },
+      { to: IOS, title: "Monolith", subtitle: "hello · Claude finished", body: "All green", ...common },
+    ]);
   });
 
   test("a bumped item is not pushed again within the dedupe window", async () => {
@@ -111,7 +133,23 @@ describe("inbox pushes", () => {
 
     await waitFor(() => expo.sent.length === 2);
     await Bun.sleep(20);
-    expect(expo.sent.map((request) => request.messages[0]?.title)).toEqual(["Claude finished", "Claude needs permission"]);
+    expect(expo.sent.map((request) => request.messages[0]?.subtitle)).toEqual(["Claude finished", "Claude needs permission"]);
+  });
+
+  test("a run's outcome is pushed once even when Claude stops again after the dedupe window", async () => {
+    const expo = fakeExpo();
+    const c = await start(expo.fetch, {}, { dedupeMs: 0 });
+    await register(c, IOS, "ios");
+    const { inbox } = c.controller.services;
+    const link = { sessionId: "sess-5", agentRunId: "run_5" };
+    inbox.add({ kind: "completed", title: "Claude finished", body: "first stop", ...link });
+    await waitFor(() => expo.sent.length === 1);
+    inbox.add({ kind: "completed", title: "Claude finished", body: "second stop", ...link });
+    inbox.add({ kind: "completed", title: "Claude finished", body: "next run", sessionId: "sess-5", agentRunId: "run_6" });
+
+    await waitFor(() => expo.sent.length === 2);
+    await Bun.sleep(20);
+    expect(expo.sent.map((request) => request.messages[0]?.body)).toEqual(["first stop", "next run"]);
   });
 
   test("tokens Expo reports as DeviceNotRegistered are removed", async () => {

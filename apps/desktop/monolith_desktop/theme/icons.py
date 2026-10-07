@@ -87,6 +87,7 @@ ICONS = MappingProxyType({
     "status-todo": ("lc-circle-symbolic", "radio-symbolic"),
     "status-progress": ("lc-circle-dot-symbolic", "media-record-symbolic"),
     "status-done": ("lc-circle-check-symbolic", "emblem-ok-symbolic"),
+    "status-done-all": ("lc-check-check-symbolic", "lc-check-symbolic", "emblem-ok-symbolic"),
     "status-canceled": ("lc-circle-x-symbolic", "process-stop-symbolic"),
     "assignee": ("lc-circle-user-symbolic", "avatar-default-symbolic"),
     "label": ("lc-tag-symbolic", "tag-symbolic"),
@@ -124,24 +125,24 @@ ICONS = MappingProxyType({
 
 LOGO_PREFIX = "logo-"
 
-# Framework -> (Simple Icons slug, brand color that reads on both canvases). Written by tools/brand_icons.py.
+# Framework -> Simple Icons slug. Drawn as single-color symbolic icons (tools/brand_icons.py), so they follow the text color.
 FRAMEWORK_LOGOS = MappingProxyType({
-    "expo": ("react", "#61DAFB"),
-    "react-native": ("react", "#61DAFB"),
-    "electron": ("electron", "#9FEAF9"),
-    "vite": ("vite", "#9499FF"),
-    "next": ("nextdotjs", "#A1A1AA"),
-    "node": ("javascript", "#F7DF1E"),
-    "android": ("android", "#3DDC84"),
-    "python": ("python", "#4B8BBE"),
-    "flutter": ("flutter", "#54C5F8"),
-    "unknown": (None, None),
+    "expo": "react",
+    "react-native": "react",
+    "electron": "electron",
+    "vite": "vite",
+    "next": "nextdotjs",
+    "node": "javascript",
+    "android": "android",
+    "python": "python",
+    "flutter": "flutter",
+    "unknown": None,
 })
 
 
 def framework_icon(framework: str | None) -> str:
-    slug, _ = FRAMEWORK_LOGOS.get(framework or "unknown", (None, None))
-    return f"{LOGO_PREFIX}{slug}" if slug else "project"
+    slug = FRAMEWORK_LOGOS.get(framework or "unknown")
+    return f"{LOGO_PREFIX}{slug}-symbolic" if slug else "project"
 
 
 def icon_candidates(name: str) -> tuple[str, ...]:

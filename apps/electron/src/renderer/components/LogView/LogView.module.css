@@ -1,0 +1,49 @@
+.view {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-background);
+}
+
+.scroller {
+  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.content {
+  padding: 10px 12px;
+  font-family: var(--to-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  cursor: text;
+}
+
+.chunk {
+  content-visibility: auto;
+}
+
+.line {
+  min-height: 18px;
+}
+
+.empty {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-family: var(--to-font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--to-text-tertiary);
+  pointer-events: none;
+  user-select: none;
+}

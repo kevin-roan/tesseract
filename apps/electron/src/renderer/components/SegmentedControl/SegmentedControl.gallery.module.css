@@ -1,0 +1,13 @@
+.column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.dialogSample {
+  padding: 12px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-xl);
+  background: var(--to-surface-elevated);
+}

@@ -1,0 +1,62 @@
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 13px 4px 13px;
+}
+
+.introMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.badge.badge {
+  min-height: 22px;
+}
+
+.badge.badge > :last-child {
+  font-weight: 500;
+}
+
+.introText {
+  flex: 1;
+  min-width: 0;
+}
+
+.previous {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 6px;
+  max-width: 100%;
+  min-width: 0;
+  padding: 2px 8px;
+  border: none;
+  border-radius: var(--to-radius-sm);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: var(--to-state-transition);
+}
+
+.previous:hover {
+  background: var(--to-background-element);
+}
+
+.previous:active {
+  background: var(--to-background-selected);
+  transform: scale(var(--to-press-scale-card));
+}
+
+.agentAvatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--to-radius-pill);
+  background: var(--to-accent);
+}

@@ -28,6 +28,7 @@ function state(stt: object = {}) {
     hub: { title: "Sandbox hub", subtitle: "devbox", open: jest.fn() },
     claude: { title: "Claude accounts", subtitle: "dev@example.com", open: jest.fn() },
     host: { title: "Host shell", subtitle: "Not paired", open: jest.fn() },
+    about: { title: "About Monolith", subtitle: "Version 1.0.0 · production", open: jest.fn() },
     appearance: { options: APPEARANCE_OPTIONS, selectedId: "dark", select: jest.fn() },
     inputMode: { options: INPUT_MODE_OPTIONS, selectedId: "trackpad", select: jest.fn() },
     islandPlacement: { options: ISLAND_PLACEMENT_OPTIONS, selectedId: "bottomRight", select: jest.fn() },

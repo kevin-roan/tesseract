@@ -8,6 +8,7 @@ import { useNavigationTheme } from '@/hooks/use-navigation-theme';
 import { usePortraitLock } from '@/hooks/use-orientation-lock';
 import InboxNotifier from '@/features/inbox/components/inbox-notifier';
 import IslandHost from '@/features/island/components/island-host';
+import UpdatePrompt from '@/features/settings/components/update-prompt';
 import { useAppScheme } from '@/features/settings/hooks/use-app-scheme';
 import AppProviders from '@/providers/app-providers';
 import SchemeScope from '@/components/scheme-scope';
@@ -42,6 +43,7 @@ function RootNavigator() {
               <Stack.Screen name="sandbox/agent/[id]" options={{ title: 'Claude run' }} />
               <Stack.Screen name="sandbox/claude" options={{ title: 'Claude accounts' }} />
               <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
+              <Stack.Screen name="settings/about" options={{ title: 'About' }} />
               <Stack.Screen name="inbox" options={{ title: 'Inbox' }} />
               <Stack.Screen name="files" options={{ title: 'Files' }} />
               <Stack.Screen name="chats/index" options={{ title: 'Chats' }} />
@@ -58,9 +60,11 @@ function RootNavigator() {
             <Stack.Screen name="host/index" options={{ title: 'Host shell' }} />
             <Stack.Screen name="host/terminal/[id]" options={{ gestureEnabled: false, title: 'Host shell' }} />
             <Stack.Screen name="host/android" options={{ gestureEnabled: false, title: 'Android emulator' }} />
+            <Stack.Screen name="host/stream" options={{ title: 'Stream settings' }} />
           </Stack>
           {paired ? <InboxNotifier /> : null}
           {paired ? <IslandHost /> : null}
+          {paired ? <UpdatePrompt /> : null}
         </ThemeProvider>
       ) : null}
       {splashDone ? null : <SplashOverlay ready={ready} title="Monolith" onDone={finishSplash} />}

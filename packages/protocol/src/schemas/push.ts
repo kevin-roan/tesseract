@@ -14,6 +14,8 @@ export const RegisterPushDeviceSchema = z.object({
   token: PushTokenSchema,
   platform: PushPlatformSchema,
   name: z.string().trim().min(1).max(128).nullable().optional(),
+  /** Stable id of the physical phone, shared by every Monolith build installed on it (production and dev client). */
+  deviceId: z.string().trim().min(1).max(128).nullable().optional(),
 });
 export type RegisterPushDevice = z.infer<typeof RegisterPushDeviceSchema>;
 
@@ -21,6 +23,7 @@ export const PushDeviceSchema = z.object({
   token: PushTokenSchema,
   platform: PushPlatformSchema,
   name: z.string().nullable(),
+  deviceId: z.string().nullable(),
   createdAt: TimestampSchema,
   updatedAt: TimestampSchema,
 });

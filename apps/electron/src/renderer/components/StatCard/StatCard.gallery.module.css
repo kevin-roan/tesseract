@@ -1,0 +1,11 @@
+.stage {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  background: var(--to-background);
+}
+
+.half {
+  width: 480px;
+}

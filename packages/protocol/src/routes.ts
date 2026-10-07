@@ -14,8 +14,8 @@ export type AgentRunFilter = { projectId?: string; archived?: boolean };
 export type TerminalPageParams = { ticket: string; session: string };
 export type VncPageParams = { ticket: string; password?: string | null };
 export type AppRunFilter = { projectId?: string };
-export type AndroidScreenFilter = { maxSize?: number };
-export type AndroidScreenParams = { ticket: string; maxSize?: number };
+export type AndroidScreenFilter = { maxSize?: number; serial?: string; codec?: string };
+export type AndroidScreenParams = { ticket: string; maxSize?: number; serial?: string };
 
 const segment = (value: string) => encodeURIComponent(value);
 const api = (path: string) => `${API_PREFIX}${path}`;
@@ -99,6 +99,8 @@ export const restPaths = {
   android: () => api("/android"),
   androidEmulator: () => api("/android/emulator"),
   androidLink: () => api("/android/link"),
+  androidDevices: () => api("/android/devices"),
+  androidStream: () => api("/android/stream"),
 } as const;
 
 export const wsPaths = {
@@ -199,6 +201,8 @@ export const routePatterns = {
     android: api("/android"),
     androidEmulator: api("/android/emulator"),
     androidLink: api("/android/link"),
+    androidDevices: api("/android/devices"),
+    androidStream: api("/android/stream"),
   },
   ws: {
     events: api("/events"),

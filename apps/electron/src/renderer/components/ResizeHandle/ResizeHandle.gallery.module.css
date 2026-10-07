@@ -1,0 +1,21 @@
+.frame {
+  display: flex;
+  height: 200px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-lg);
+  overflow: hidden;
+}
+
+.sidebar {
+  position: relative;
+  flex: none;
+  padding: 12px;
+  background: var(--to-background);
+  color: var(--to-text-secondary);
+  font: 400 12px/16px var(--to-font-sans);
+}
+
+.content {
+  flex: 1;
+  background: var(--to-surface);
+}

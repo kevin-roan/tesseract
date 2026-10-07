@@ -1,0 +1,24 @@
+.anchor {
+  display: inline-flex;
+  flex: none;
+}
+
+.anchor .attach {
+  color: var(--to-text-secondary);
+}
+
+.anchor .attach[data-open] {
+  background: var(--to-background-selected);
+  color: var(--to-text);
+}
+
+.anchor .large {
+  width: 34px;
+  height: 34px;
+  border-color: var(--to-border);
+  background: var(--to-background-element);
+}
+
+.anchor .large:hover:not(:disabled) {
+  background: var(--to-background-selected);
+}

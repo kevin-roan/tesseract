@@ -1,0 +1,17 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.item {
+  min-width: 0;
+  margin: -2px;
+  padding: 2px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.item > * {
+  pointer-events: auto;
+}

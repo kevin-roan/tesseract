@@ -1,0 +1,21 @@
+.row {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.target {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 280px;
+  height: 120px;
+  border: 1px dashed var(--to-border-strong);
+  border-radius: var(--to-radius-lg);
+  color: var(--to-text-secondary);
+  font-size: 12px;
+}
+
+.staticPanel {
+  width: 180px;
+}

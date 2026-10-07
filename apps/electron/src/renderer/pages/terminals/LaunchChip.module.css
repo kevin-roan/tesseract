@@ -1,0 +1,112 @@
+.chip {
+  display: inline-flex;
+  align-items: stretch;
+  flex: none;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-pill);
+  overflow: hidden;
+  transition: opacity var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.chip[data-disabled] {
+  opacity: 0.5;
+}
+
+.main,
+.arrow {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  color: var(--to-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  transition:
+    background-color var(--to-duration-fast) var(--to-ease-standard),
+    color var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.main:hover:not(:disabled),
+.arrow:hover:not(:disabled),
+.arrow[data-open] {
+  background: var(--to-background-element);
+  color: var(--to-text);
+}
+
+.main:active:not(:disabled) .mainContent,
+.arrow:active:not(:disabled) .triangle {
+  transform: scale(var(--to-press-scale));
+}
+
+.mainContent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: transform var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.main {
+  padding: 0 8px 0 10px;
+  border-radius: var(--to-radius-pill) 0 0 var(--to-radius-pill);
+}
+
+.separator {
+  flex: none;
+  align-self: center;
+  width: 1px;
+  height: 14px;
+  background: var(--to-border);
+}
+
+.arrow {
+  justify-content: center;
+  padding: 0 9px 0 6px;
+  border-radius: 0 var(--to-radius-pill) var(--to-radius-pill) 0;
+}
+
+.triangle {
+  width: 0;
+  height: 0;
+  border-top: 5px solid currentColor;
+  border-right: 5px solid transparent;
+  border-left: 5px solid transparent;
+  transition: transform var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.arrow[data-open] .triangle {
+  transform: rotate(180deg);
+}
+
+.picker {
+  border-radius: var(--to-radius-lg);
+  transform-origin: top left;
+}
+
+.pickerBody {
+  gap: 6px;
+  padding: 6px;
+}
+
+.pickerTitle {
+  padding: 2px 6px 0;
+}
+
+.pickerList {
+  composes: to-overlay-scrollbar from global;
+  display: flex;
+  flex-direction: column;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.pickerItem {
+  padding: 6px 12px 6px 6px;
+  font-weight: 500;
+}
+
+.pickerLoading {
+  padding: 6px;
+}

@@ -1,0 +1,77 @@
+.root {
+  padding: clamp(96px, 12vw, 160px) 0 clamp(64px, 8vw, 120px);
+  border-top: 1px solid var(--line-2);
+}
+
+.head h2 {
+  font-size: clamp(28px, 3.4vw, 44px);
+  letter-spacing: -0.03em;
+  max-width: 620px;
+  margin-bottom: 48px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line);
+}
+
+.cell {
+  padding: 32px 28px 36px;
+  border-bottom: 1px solid var(--line);
+  transition: background 0.2s;
+}
+
+.cell:not(:nth-child(3n + 1)) {
+  border-left: 1px solid var(--line);
+}
+
+.cell:hover {
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.icon {
+  color: var(--text-2);
+  margin-bottom: 18px;
+}
+
+.cell h3 {
+  font-size: 15px;
+  font-weight: 590;
+  letter-spacing: -0.012em;
+  margin-bottom: 6px;
+}
+
+.cell p {
+  font-size: 14.5px;
+  color: var(--text-2);
+  line-height: 1.55;
+}
+
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .cell:not(:nth-child(3n + 1)) {
+    border-left: none;
+  }
+
+  .cell:nth-child(2n) {
+    border-left: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 520px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cell:nth-child(2n) {
+    border-left: none;
+  }
+
+  .cell {
+    padding: 28px 0;
+  }
+}

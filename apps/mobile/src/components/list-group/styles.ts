@@ -74,6 +74,16 @@ export default function createStyles(theme: Theme) {
         justifyContent: "center",
         backgroundColor: theme.colors.badge,
       },
+      stepper: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: theme.spacing.xs,
+      },
+      stepperValue: {
+        minWidth: ControlHeight.md,
+        textAlign: "center",
+        fontVariant: ["tabular-nums"],
+      },
       check: {
         width: IconSize.lg,
         height: IconSize.lg,

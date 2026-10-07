@@ -121,17 +121,17 @@ describe("<ChatComposer />", () => {
 });
 
 describe("<RecordingBar />", () => {
-  it("cancels or sends while recording and shows transcription progress", async () => {
-    const props = { levels: [0.1, 0.5], elapsedLabel: "0:12", onCancel: jest.fn(), onSend: jest.fn(), onRetry: jest.fn() };
+  it("cancels or finishes while recording and shows transcription progress", async () => {
+    const props = { levels: [0.1, 0.5], elapsedLabel: "0:12", onCancel: jest.fn(), onFinish: jest.fn(), onRetry: jest.fn() };
     await render(<RecordingBar phase="recording" {...props} />);
     await fireEvent.press(screen.getByLabelText("Cancel recording"));
     expect(props.onCancel).toHaveBeenCalled();
-    await fireEvent.press(screen.getByLabelText("Send voice message"));
-    expect(props.onSend).toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText("Finish recording"));
+    expect(props.onFinish).toHaveBeenCalled();
 
     await render(<RecordingBar phase="transcribing" statusLabel="Transcribing…" {...props} />);
     expect(screen.getByText("Transcribing…")).toBeOnTheScreen();
-    expect(screen.queryByLabelText("Send voice message")).toBeNull();
+    expect(screen.queryByLabelText("Finish recording")).toBeNull();
   });
 });
 

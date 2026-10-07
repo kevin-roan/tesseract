@@ -1,0 +1,93 @@
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-surface-elevated);
+  box-shadow: var(--to-shadow-level3);
+  color: var(--to-text);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.floating {
+  position: fixed;
+  z-index: 1000;
+  max-height: calc(100vh - 16px);
+  outline: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  padding: 0 8px;
+  border: none;
+  border-radius: var(--to-radius-xs);
+  background: transparent;
+  color: var(--to-text);
+  font-size: 13px;
+  line-height: 18px;
+  text-align: left;
+  white-space: nowrap;
+  transition: var(--to-state-transition);
+}
+
+.item:hover:not(:disabled),
+.item:focus-visible {
+  background: var(--to-background-selected);
+  outline: none;
+}
+
+.item:disabled {
+  opacity: 0.45;
+}
+
+.item[data-danger] {
+  color: var(--to-danger);
+}
+
+.itemIcon {
+  color: var(--to-text-secondary);
+}
+
+.item[data-danger] .itemIcon {
+  color: inherit;
+}
+
+.itemLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.check {
+  flex: none;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: opacity var(--to-duration-fast) var(--to-ease-standard), transform var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.checkVisible {
+  opacity: 1;
+  transform: none;
+}
+
+.separator {
+  flex: none;
+  height: 1px;
+  margin: 4px 0;
+  background: var(--to-divider);
+}

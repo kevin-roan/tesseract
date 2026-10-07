@@ -1,0 +1,28 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 300px;
+  min-height: 280px;
+  background: var(--to-surface);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+}
+
+.layer {
+  display: flex;
+  flex-direction: column;
+}
+
+.layer > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.holder {
+  position: relative;
+  background: var(--to-background);
+}

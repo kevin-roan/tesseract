@@ -1,0 +1,1 @@
+export const LOG_PANEL_DEFAULT_MIN_HEIGHT = 320;

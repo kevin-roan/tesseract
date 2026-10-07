@@ -31,3 +31,4 @@ export const useFont = (_source: unknown, size = 14) => ({
 export const FractalNoise = () => null;
 export const SweepGradient = () => null;
 export const vec = (x = 0, y = 0) => ({ x, y });
+export const usePathValue = () => ({ value: Skia.Path.Make() });

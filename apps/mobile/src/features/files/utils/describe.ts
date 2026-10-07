@@ -4,6 +4,8 @@ import { FileArrowDownIcon, HammerIcon, PackageIcon, RobotIcon, type Icon } from
 import type { StatusBadgeProps } from "@/components/status-badge";
 import { capitalize, formatBytes, formatRelativeTime, pluralize } from "@/features/sandbox/utils/format";
 
+import type { LocalFileStatus } from "../hooks/use-local-downloads";
+
 const join = (parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(" · ");
 
 const SOURCE_BADGES: Record<ArtifactSource, StatusBadgeProps> = {
@@ -43,4 +45,9 @@ export function sortTaildropTargets(targets: readonly TaildropTarget[]): Taildro
   return [...targets].sort(
     (a, b) => Number(b.online) - Number(a.online) || a.hostName.localeCompare(b.hostName),
   );
+}
+
+export function downloadLabel(status: LocalFileStatus): string {
+  if (status.progress !== undefined) return status.progress === null ? "Downloading…" : `${Math.round(status.progress * 100)}%`;
+  return status.downloaded ? "Saved" : "Download";
 }

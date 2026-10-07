@@ -1,0 +1,29 @@
+.anchor {
+  display: contents;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 320px;
+  padding: 4px 8px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-sm);
+  background: var(--to-surface-elevated);
+  color: var(--to-text);
+  box-shadow: var(--to-shadow-level2);
+  font-family: var(--to-font-sans);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 400;
+  pointer-events: none;
+  user-select: none;
+  overflow-wrap: anywhere;
+}
+
+.pending {
+  visibility: hidden;
+}

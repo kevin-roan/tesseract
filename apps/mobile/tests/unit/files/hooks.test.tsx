@@ -7,6 +7,8 @@ import { sampleArtifact, sampleProject } from "@theone/protocol/fixtures";
 import { useFileDownload } from "@/features/files/hooks/use-file-download";
 import { useFilesScreen } from "@/features/files/hooks/use-files-screen";
 import { MISSING_FILE_MESSAGE } from "@/features/files/utils/constants";
+import * as mockFs from "../../mocks/expo-file-system";
+import * as mockSharing from "../../mocks/expo-sharing";
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
 import { confirm } from "@/lib/confirm";
 
@@ -94,20 +96,63 @@ beforeEach(() => {
   fake.sendArtifactToTaildrop.mockReset().mockResolvedValue(shared);
   MockClient.mockReset().mockImplementation(() => fake);
   openURL = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+  mockFs.__reset();
+  mockSharing.shareAsync.mockClear();
 });
 
 afterEach(() => openURL.mockRestore());
 
 describe("useFileDownload", () => {
-  it("opens a ticketed URL for a file the sandbox still has", async () => {
+  const savedUri = `file:///document/downloads/artifacts/${SID}/${shared.id}/notes.apk`;
+
+  it("saves a file the sandbox still has into app storage", async () => {
+    mockFs.__setDownload(shared.sizeBytes);
     const queryClient = createTestQueryClient();
     queryClient.setQueryData(sandboxKeys.artifacts(SID), [shared]);
     const { result } = await renderHook(() => useFileDownload(), { wrapper: createWrapper(queryClient) });
+    expect(result.current.status(shared)).toEqual({ downloaded: false, progress: undefined, sharing: false });
 
-    await act(async () => result.current.download(shared.id));
-    await waitFor(() => expect(openURL).toHaveBeenCalledWith(`http://sandbox/v1/artifacts/${shared.id}/download?ticket=t`));
+    await act(async () => result.current.download(shared));
+    await waitFor(() => expect(result.current.status(shared).downloaded).toBe(true));
+    expect(mockFs.downloads).toEqual([{ url: `http://sandbox/v1/artifacts/${shared.id}/download?ticket=t`, uri: savedUri }]);
     expect(fake.listArtifacts).not.toHaveBeenCalled();
+    expect(openURL).not.toHaveBeenCalled();
     expect(result.current.error).toBeNull();
+  });
+
+  it("shares a saved file without downloading it again", async () => {
+    mockFs.__setFile(savedUri, "", shared.sizeBytes);
+    const { result } = await renderHook(() => useFileDownload(), { wrapper: createWrapper(createTestQueryClient()) });
+    await act(async () => result.current.share(shared));
+    await waitFor(() => expect(mockSharing.shareAsync).toHaveBeenCalledWith(savedUri, { dialogTitle: "notes.apk" }));
+    expect(mockFs.downloads).toEqual([]);
+  });
+
+  it("downloads a file before sharing it", async () => {
+    mockFs.__setDownload(shared.sizeBytes);
+    const { result } = await renderHook(() => useFileDownload(), { wrapper: createWrapper(createTestQueryClient()) });
+    await act(async () => result.current.share(shared));
+    await waitFor(() => expect(mockSharing.shareAsync).toHaveBeenCalledWith(savedUri, { dialogTitle: "notes.apk" }));
+    expect(mockFs.downloads).toHaveLength(1);
+    expect(result.current.status(shared)).toEqual({ downloaded: true, progress: undefined, sharing: false });
+  });
+
+  it("re-downloads a partial copy", async () => {
+    mockFs.__setFile(savedUri, "", 1);
+    mockFs.__setDownload(shared.sizeBytes);
+    const { result } = await renderHook(() => useFileDownload(), { wrapper: createWrapper(createTestQueryClient()) });
+    expect(result.current.status(shared).downloaded).toBe(false);
+    await act(async () => result.current.download(shared));
+    await waitFor(() => expect(result.current.status(shared).downloaded).toBe(true));
+  });
+
+  it("removes a failed download and reports why", async () => {
+    mockFs.__setDownload(null, new Error("Connection reset"));
+    const { result } = await renderHook(() => useFileDownload(), { wrapper: createWrapper(createTestQueryClient()) });
+    await act(async () => result.current.download(shared));
+    await waitFor(() => expect(result.current.error).toBe("Connection reset"));
+    expect(result.current.status(shared)).toEqual({ downloaded: false, progress: undefined, sharing: false });
+    expect(mockSharing.shareAsync).not.toHaveBeenCalled();
   });
 
   it("checks the sandbox before downloading an unknown file and explains when it was deleted", async () => {
@@ -115,17 +160,17 @@ describe("useFileDownload", () => {
     const queryClient = createTestQueryClient();
     const { result } = await renderHook(() => useFileDownload(), { wrapper: createWrapper(queryClient) });
 
-    await act(async () => result.current.download("art_gone"));
+    await act(async () => result.current.download({ ...shared, id: "art_gone" }));
     await waitFor(() => expect(result.current.error).toBe(MISSING_FILE_MESSAGE));
     expect(fake.listArtifacts).toHaveBeenCalledTimes(1);
     expect(fake.artifactDownloadUrl).not.toHaveBeenCalled();
-    expect(openURL).not.toHaveBeenCalled();
+    expect(mockFs.downloads).toEqual([]);
   });
 
   it("treats a 404 from the controller as a deleted file", async () => {
     fake.artifactDownloadUrl.mockRejectedValue(new ApiError(404, "not_found", "Unknown artifact"));
     const { result } = await renderHook(() => useFileDownload(), { wrapper: createWrapper(createTestQueryClient()) });
-    await act(async () => result.current.download(shared.id));
+    await act(async () => result.current.download(shared));
     await waitFor(() => expect(result.current.error).toBe(MISSING_FILE_MESSAGE));
   });
 });
@@ -173,9 +218,16 @@ describe("useFilesScreen", () => {
     expect(result.current.builds.outputs).toEqual([APK]);
     expect(result.current.subtitle).toBe("1 of 2 builds");
 
+    mockFs.__setDownload(APK.sizeBytes);
     await act(async () => result.current.builds.download(APK));
-    await waitFor(() => expect(openURL).toHaveBeenCalledWith("http://sandbox/v1/projects/notes/outputs/download?ticket=t"));
+    await waitFor(() => expect(result.current.builds.localStatus(APK).downloaded).toBe(true));
     expect(fake.buildOutputDownloadUrl).toHaveBeenCalledWith(APK);
+    expect(mockFs.downloads).toEqual([
+      {
+        url: "http://sandbox/v1/projects/notes/outputs/download?ticket=t",
+        uri: `file:///document/downloads/builds/${SID}/notes_android_app_build_outputs_apk_release_app-release.apk/${Date.parse(APK.modifiedAt)}/app-release.apk`,
+      },
+    ]);
   });
 
   it("deletes a file only after confirmation", async () => {
@@ -225,10 +277,11 @@ describe("useFilesScreen", () => {
 
   it("downloads the file a notification pointed at once", async () => {
     mockParams = { download: shared.id };
-    const { rerender } = await renderScreen();
-    await waitFor(() => expect(openURL).toHaveBeenCalledTimes(1));
+    mockFs.__setDownload(shared.sizeBytes);
+    const { result, rerender } = await renderScreen();
+    await waitFor(() => expect(result.current.localStatus(shared).downloaded).toBe(true));
     await rerender({});
-    expect(openURL).toHaveBeenCalledTimes(1);
+    expect(mockFs.downloads).toHaveLength(1);
   });
 
   it("reports a failing file list and retries", async () => {

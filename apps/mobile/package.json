@@ -10,7 +10,10 @@
     "lint": "expo lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "update:development": "APP_VARIANT=development eas update --channel development --environment development",
+    "update:preview": "APP_VARIANT=production eas update --channel preview --environment preview",
+    "update:production": "APP_VARIANT=production eas update --channel production --environment production"
   },
   "dependencies": {
     "@bacons/apple-targets": "^5.0.0",
@@ -55,6 +58,7 @@
     "expo-screen-orientation": "~56.0.5",
     "expo-secure-store": "~56.0.4",
     "expo-sensors": "~56.0.6",
+    "expo-sharing": "~56.0.26",
     "expo-splash-screen": "~56.0.15",
     "expo-sqlite": "~56.0.6",
     "expo-status-bar": "~56.0.4",

@@ -1,0 +1,12 @@
+[
+  { "reference": "docs/electron/reference/page-agents-list.png", "route": "/agents?parity=connecting", "scenario": "gtk-parity", "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/page-agents-list-light.png", "route": "/agents?clock=140", "scenario": "gtk-parity", "light": true, "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/page-agents-new.png", "route": "/agents/new?parity=loading", "scenario": "gtk-parity", "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/page-agents-new-light.png", "route": "/agents/new?clock=150", "scenario": "gtk-parity", "light": true, "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/page-agents-conversation-done.png", "route": "/agents/run_fx03?clock=80", "scenario": "gtk-parity", "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/page-agents-conversation-done-light.png", "route": "/agents/run_fx03?clock=170", "scenario": "gtk-parity", "light": true, "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/page-agents-conversation-failed.png", "route": "/agents/run_conv_failed?clock=100", "scenario": "gtk-parity", "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/page-agents-conversation-cancelled.png", "route": "/agents/run_conv_cancelled?clock=110", "scenario": "gtk-parity", "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/page-agents-filter-archived.png", "route": "/agents?filter=archived", "scenario": "gtk-parity", "width": 1024, "height": 768 },
+  { "reference": "docs/electron/reference/page-agents-search.png", "route": "/agents?search&clock=130", "scenario": "gtk-parity", "width": 1024, "height": 768 }
+]

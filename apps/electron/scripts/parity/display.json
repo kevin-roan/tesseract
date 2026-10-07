@@ -1,0 +1,25 @@
+[
+  {
+    "reference": "page-display-live.png",
+    "route": "/display",
+    "scenario": "gtk-parity",
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-display-live-light.png",
+    "route": "/display",
+    "scenario": "gtk-parity",
+    "light": true,
+    "width": 1024,
+    "height": 768
+  },
+  {
+    "reference": "page-display-compact.png",
+    "route": "/display",
+    "scenario": "gtk-parity",
+    "width": 500,
+    "height": 600,
+    "collapsed": true
+  }
+]

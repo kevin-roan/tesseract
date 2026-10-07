@@ -1,0 +1,27 @@
+.ring {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.arc {
+  transition:
+    stroke-dasharray var(--to-duration-normal) var(--to-ease-decelerate),
+    opacity var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.arc.empty {
+  opacity: 0;
+}
+
+.label {
+  position: relative;
+}

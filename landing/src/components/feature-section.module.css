@@ -1,0 +1,106 @@
+.root {
+  padding: clamp(96px, 12vw, 160px) 0 0;
+  border-top: 1px solid var(--line-2);
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 32px 64px;
+  align-items: end;
+  margin-bottom: clamp(40px, 6vw, 72px);
+}
+
+.headline {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.headline h2 {
+  font-size: clamp(32px, 4.4vw, 56px);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+}
+
+.body {
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--text-2);
+  max-width: 460px;
+}
+
+.visual {
+  position: relative;
+}
+
+.points {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-top: clamp(40px, 5vw, 64px);
+  margin-bottom: clamp(48px, 6vw, 80px);
+}
+
+.points li {
+  padding: 28px 28px 32px;
+}
+
+.points li + li {
+  border-left: 1px solid var(--line);
+}
+
+.points li:first-child {
+  padding-left: 0;
+}
+
+.figure {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-4);
+  margin-bottom: 20px;
+}
+
+.icon {
+  color: var(--text-2);
+  margin-bottom: 14px;
+}
+
+.points h3 {
+  font-size: 15px;
+  font-weight: 590;
+  letter-spacing: -0.012em;
+  margin-bottom: 6px;
+}
+
+.points p {
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--text-2);
+}
+
+@media (max-width: 860px) {
+  .header {
+    grid-template-columns: 1fr;
+  }
+
+  .points {
+    grid-template-columns: 1fr;
+  }
+
+  .points li,
+  .points li:first-child {
+    padding: 24px 0;
+  }
+
+  .points li + li {
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+}

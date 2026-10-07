@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { accessSync, constants, existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { DEFAULT_EMULATOR_GPU, DEFAULT_EMULATOR_PORT, EMULATOR_ISOLATION_MODES, type EmulatorIsolationMode } from "@theone/protocol";
@@ -45,6 +45,23 @@ export function defaultSdkRoot(env: Env): string | null {
   return env.ANDROID_SDK_ROOT || env.ANDROID_HOME || null;
 }
 
+/**
+ * `host` when this user can open a GPU render node, else software rendering. The emulator's own
+ * `-gpu auto` picks software rendering with `-no-window`, which makes the guest UI lag.
+ */
+export function defaultGpu(driDir = "/dev/dri"): string {
+  try {
+    for (const name of readdirSync(driDir)) {
+      if (!name.startsWith("renderD")) continue;
+      try {
+        accessSync(join(driDir, name), constants.R_OK | constants.W_OK);
+        return "host";
+      } catch {}
+    }
+  } catch {}
+  return DEFAULT_EMULATOR_GPU;
+}
+
 /** `scrcpy 4.1 <https://…>` → `4.1`. */
 export function parseScrcpyVersion(output: string): string | null {
   return SCRCPY_VERSION_LINE.exec(output.split("\n")[0]?.trim() ?? "")?.[1] ?? null;
@@ -87,7 +104,7 @@ export function loadAndroidConfig(env: Env): AndroidConfig {
     scrcpyVersion: scrcpyVersion(env),
     ffmpeg: executable(env.THEONE_FFMPEG, "ffmpeg", env),
     emulatorPort,
-    gpu: env.THEONE_EMULATOR_GPU || DEFAULT_EMULATOR_GPU,
+    gpu: env.THEONE_EMULATOR_GPU || defaultGpu(),
     isolation: isolation as EmulatorIsolationMode,
     unshare: which("unshare", env),
     ip: which("ip", { PATH: `${env.PATH ?? ""}:/usr/sbin:/sbin` }),

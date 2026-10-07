@@ -1,0 +1,55 @@
+.reference {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: -24px;
+  padding: 6px 16px 8px;
+  background: var(--to-background);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.toolbarStart {
+  display: flex;
+  flex: 1 1 auto;
+  gap: 8px;
+}
+
+.toolbarEnd {
+  display: flex;
+  gap: 2px;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.wide {
+  width: 100%;
+}
+
+.controls {
+  display: flex;
+  gap: 8px;
+}
+
+.frame {
+  display: flex;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-surface);
+  overflow: hidden;
+}
+
+.placeholder {
+  height: 72px;
+  border: 1px dashed var(--to-border-strong);
+  border-radius: var(--to-radius-lg);
+}

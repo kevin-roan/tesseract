@@ -12,3 +12,4 @@ theone-controller share <file> --note "<one line: what it is and what changed>"
 - Share final outputs only, not intermediate files, logs or build caches.
 - The file must be inside /workspace; pass `--project <id>` if it is not under a project directory.
 - It shows up in the app's inbox, ready to download or send to a device.
+- `/send-file [latest|apk|aab|md|<path or name>] [-- note]` is the user's shortcut for this: follow the `send-file` skill.

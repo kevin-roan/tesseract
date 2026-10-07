@@ -119,20 +119,11 @@ describe("useInboxScreen", () => {
 });
 
 describe("useInboxScreen shared files", () => {
-  it("marks a file item read and downloads the file", async () => {
+  it("marks a file item read and opens it on the Files screen", async () => {
     const { result } = await renderInbox();
     await act(async () => result.current.open(fileItem));
-    await waitFor(() => expect(openURL).toHaveBeenCalledWith(`http://sandbox/v1/artifacts/${sampleArtifact.id}/download?ticket=t`));
     expect(fake.markInboxRead).toHaveBeenCalledWith({ ids: [fileItem.id] });
-    expect(mockRouter.push).not.toHaveBeenCalled();
-  });
-
-  it("explains when the shared file has since been deleted", async () => {
-    fake.listArtifacts.mockResolvedValue([]);
-    const { result } = await renderInbox();
-    await act(async () => result.current.open(fileItem));
-    await waitFor(() => expect(result.current.downloadError).toMatch(/no longer on the sandbox/));
-    expect(openURL).not.toHaveBeenCalled();
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/files", params: { download: sampleArtifact.id } });
   });
 });
 

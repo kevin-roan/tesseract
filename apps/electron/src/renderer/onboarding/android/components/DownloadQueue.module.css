@@ -1,0 +1,42 @@
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  transition: opacity var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.item[data-state="queued"] {
+  opacity: 0.6;
+}
+
+.glyph {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  width: 16px;
+  height: 18px;
+  align-items: center;
+  color: var(--to-text-tertiary);
+}
+
+.glyph[data-state="active"] {
+  color: var(--to-accent-strong);
+}
+
+.glyph[data-state="done"] {
+  color: var(--to-success);
+}
+
+.glyphLayer {
+  position: absolute;
+  inset: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.progress {
+  flex: 1;
+  min-width: 0;
+}

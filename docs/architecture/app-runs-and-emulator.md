@@ -7,6 +7,9 @@ Electron) draw on the sandbox display (VNC), and Android builds run on an
 emulator **on the host** (KVM) whose screen is streamed to the phone with touch
 and keys passed back.
 
+A macOS host (iOS Simulator, Android emulator without `netns`) is a proposal in
+[ios-simulator-macos.md](ios-simulator-macos.md).
+
 ```mermaid
 flowchart LR
   subgraph phone
@@ -26,7 +29,7 @@ flowchart LR
   end
   app -->|REST| ctl
   app -->|REST| hd
-  wv -->|"WS /v1/android/screen: JPEG ↓ touch/keys ↑"| hd
+  wv -->|"WS /v1/android/screen: H.264 or JPEG ↓ touch/keys ↑"| hd
   hd -->|"WS link (host dials out)"| ctl
   dev --> adbs -->|"tcp 127.0.0.1:15555"| ctl
   ctl -.->|"WS /v1/android/link/streams/:id"| hd --> emu
@@ -172,7 +175,7 @@ when the socket cannot be opened within 3 s.
 | `THEONE_ADB` | `adb` on `PATH` | host adb client (talks to the user's normal adb server on 5037) |
 | `THEONE_SCRCPY_SERVER` | first of `/usr/share/scrcpy/scrcpy-server`, `/usr/local/share/scrcpy/scrcpy-server` | scrcpy server jar |
 | `THEONE_SCRCPY_VERSION` | parsed from `scrcpy --version` | must equal the jar's version |
-| `THEONE_FFMPEG` | `ffmpeg` on `PATH` | H.264 → MJPEG |
+| `THEONE_FFMPEG` | `ffmpeg` on `PATH` | H.264 → MJPEG for viewers without H.264 |
 | `THEONE_EMULATOR_PORT` | `5554` | console port; adbd = +1 (inside the namespace when isolated); serial `emulator-<port>` when not isolated |
 | `THEONE_EMULATOR_GPU` | `swiftshader_indirect` | `-gpu` |
 | `THEONE_EMULATOR_ISOLATION` | `netns` | `netns`: the emulator runs in its own user + network namespace with filtered egress (below); `none`: the old behaviour, emulator on the host network (**the guest, and so the linked sandbox, can reach the host's loopback, LAN and tailnet**) |
@@ -285,8 +288,10 @@ LinkSandbox { sandboxUrl: string (http/https URL, no user:password@, no #fragmen
 | DELETE | `/v1/android/emulator` | — | `EmulatorInfo` (`stopping`, then `stopped`); also stops an adopted emulator that is `failed` because it never booted |
 | POST | `/v1/android/link` | `LinkSandbox` | `200 AndroidLinkInfo`; saved to `state.json` (0600) as `androidLink`, the daemon (re)connects at once |
 | DELETE | `/v1/android/link` | — | `AndroidLinkInfo` (cleared, link closed) |
-| WS | `/v1/android/screen?ticket=&maxSize=` | §2.4 | the emulator screen |
-| GET | `/ui/android` | — | the screen page (no secrets; fragment `#ticket=…&maxSize=…`) |
+| GET | `/v1/android/devices` | — | `AndroidDevice[]` (`adb devices -l`) |
+| GET, PUT | `/v1/android/stream` | §2.4 | `AndroidStreamSettings` |
+| WS | `/v1/android/screen?ticket=&maxSize=&serial=&codec=` | §2.4 | an adb device's screen (default: the emulator) |
+| GET | `/ui/android` | — | the screen page (no secrets; fragment `#ticket=…&maxSize=…&serial=…`) |
 
 ### 2.3 Sandbox link (host dials the sandbox)
 
@@ -340,10 +345,15 @@ App runs of `*-android` targets get `ANDROID_SERIAL=127.0.0.1:<port>`.
 
 ### 2.4 Screen stream (`WS /v1/android/screen`)
 
-The daemon runs one scrcpy session per emulator while at least one screen socket is open
-(fan-out to all). It pushes `THEONE_SCRCPY_SERVER` to `/data/local/tmp/scrcpy-server.jar`,
+The daemon runs one scrcpy session per (adb serial, codec, stream settings) while at least
+one screen socket for it is open (fan-out to all). The serial is the socket's `serial`, else
+the stream settings' `device`, else the emulator's; any device in `adb devices` works
+(Genymotion, USB, Wi-Fi), and only the emulator must be `running`. Stream settings
+(`AndroidStreamSettings`, `state.json` `androidStream`, `GET/PUT /v1/android/stream`,
+`theone-controller host stream`) are read when a session starts; when they change, the
+daemon moves every viewer whose session would differ to a new one (new `meta`, same socket). It pushes `THEONE_SCRCPY_SERVER` to `/data/local/tmp/scrcpy-server.jar`,
 `adb forward tcp:<free local port> localabstract:scrcpy_<scid>` and starts
-`CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobile.scrcpy.Server <version> scid=<scid> tunnel_forward=true audio=false control=true video_codec=h264 max_size=<maxSize> max_fps=30 send_frame_meta=true send_device_meta=true send_codec_meta=true send_dummy_byte=true cleanup=true`
+`CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobile.scrcpy.Server <version> scid=<scid> tunnel_forward=true audio=false control=true video_codec=h264 max_size=<maxSize> max_fps=<maxFps> video_bit_rate=<bitRate> video_codec_options=i-frame-interval:int=<keyFrameInterval> send_frame_meta=true send_device_meta=true send_codec_meta=true send_dummy_byte=true cleanup=true`
 (exact option names and socket order verified against the scrcpy source of that version).
 Verified against scrcpy 4.1 on the host (spike, Android 12 emulator): connect the
 video socket first, then the control socket (both to the forwarded port). The video
@@ -351,8 +361,12 @@ socket starts with 1 dummy byte, 64 bytes device name (NUL-padded), 4 bytes code
 (`h264`); then 12-byte headers: if bit 63 of the first 8 bytes is set it is a **session**
 packet (`u32 flags, u32 width, u32 height`, sent at start and on every rotation/resize —
 this is the video size for touch coordinates); otherwise `u64 pts|flags (bit 62 config,
-bit 61 key frame)` + `u32 size` + `size` bytes of H.264 Annex-B. Payloads go to
-`ffmpeg -loglevel error -threads 1 -probesize 32 -analyzeduration 0 -flags low_delay -f h264 -i pipe:0 -fps_mode passthrough -f image2pipe -pix_fmt yuvj420p -c:v mjpeg -q:v 5 pipe:1`
+bit 61 key frame)` + `u32 size` + `size` bytes of H.264 Annex-B. A socket that asked for
+`codec=h264` while the settings say `encoding: "h264"` gets them as is: one binary message per
+packet, a flags byte (1 config, 2 key frame) followed by the Annex B bytes; the group keeps the
+last config and the packets since the last key frame (≤ 8 MiB) for late viewers. Otherwise
+the payloads go to
+`ffmpeg -loglevel error -threads 1 -probesize 32 -analyzeduration 0 -flags low_delay -f h264 -i pipe:0 -fps_mode passthrough -f image2pipe -pix_fmt yuvj420p -c:v mjpeg -q:v <jpegQuality> pipe:1`
 (do **not** add `-fflags nobuffer`: with ffmpeg 9 it produces no output on a live pipe;
 `-pix_fmt yuvj420p` is required by the mjpeg encoder). Use `node:child_process` (or
 flush Bun's FileSink after every write) for ffmpeg stdin. JPEG frames are split on
@@ -364,16 +378,18 @@ text = `u8 1, u32 len, utf8`; scroll = `u8 3, i32 x, i32 y, u16 w, u16 h, i16 hs
 stream must announce codec `h264`, session sizes must be 1..4096 and a packet over 8 MiB ends
 the session (`error` to every viewer). Text is cut to 300 UTF-8 bytes on a code point
 boundary. A socket whose
-`bufferedAmount` exceeds 512 KiB skips frames until it drains. The session is started with the
-first viewer's `maxSize` (default 1280, raised to at least 160) and shared: a later viewer asking another size gets the
-running session's size (its `meta`) and the last frame at once. It ends (server killed, ffmpeg
+`bufferedAmount` exceeds 512 KiB skips frames until the next key frame once it drains (every
+JPEG is one). The session is started with the first viewer's `maxSize` (default 1280, raised
+to at least 160, capped by the settings' `maxSize`) and shared: a later viewer asking another size gets the
+running session's size (its `meta`) and the last JPEG, or the H.264 config and frames since
+the key frame, at once. It ends (server killed, ffmpeg
 killed, forward removed) when the last viewer leaves — also when it leaves while the session
 is still starting (everything acquired so far is released); when the emulator leaves `running` every
-viewer gets `error` and is closed. Each viewer's pointer ids are offset (`viewer × 10 + pointerId`)
+viewer of an emulator session gets `error` and is closed. Each viewer's pointer ids are offset (`viewer × 10 + pointerId`)
 so two viewers never drive the same Android pointer, and a viewer that disconnects gets `up`
 injected for the pointers it still holds down. The query is validated before the ticket is consumed.
 
-Server → client text: `{type:"meta", deviceName, width, height}` (first, and again as
+Server → client text: `{type:"meta", deviceName, codec: "h264"|"mjpeg", width, height}` (first, and again as
 `{type:"size", width, height}` when the video size changes), `{type:"error", message}`.
 
 Client → server text (zod):

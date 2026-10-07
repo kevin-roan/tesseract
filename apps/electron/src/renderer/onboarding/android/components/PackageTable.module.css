@@ -1,0 +1,146 @@
+.table {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.table > * + * {
+  border-top: 1px solid var(--to-divider);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 28px 60px 76px 56px 96px;
+  align-items: center;
+  column-gap: 10px;
+  padding: 0 14px;
+}
+
+.header {
+  min-height: 30px;
+  color: var(--to-text-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+.section {
+  min-height: 30px;
+}
+
+.sectionTitle {
+  grid-column: 2 / -1;
+  color: var(--to-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+.row {
+  min-height: 36px;
+  color: var(--to-text);
+  transition: var(--to-state-transition);
+}
+
+.interactive {
+  cursor: default;
+}
+
+.interactive:hover {
+  background: var(--to-background-element);
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+}
+
+.name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.nameText {
+  flex: none;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.revision {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--to-text-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+}
+
+.cell {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--to-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.numeric {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.mono {
+  font-family: var(--to-font-mono);
+}
+
+.status {
+  display: flex;
+  min-width: 0;
+}
+
+.revealRow {
+  overflow: hidden;
+}
+
+.skeleton {
+  padding: 4px 14px;
+}
+
+.empty {
+  margin: 0;
+  padding: 12px 14px;
+  color: var(--to-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.more {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 14px;
+  border: none;
+  background: transparent;
+  color: var(--to-text-secondary);
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  text-align: left;
+  transition: var(--to-state-transition);
+}
+
+.more:hover {
+  background: var(--to-background-element);
+  color: var(--to-text);
+}
+
+.moreIcon {
+  display: inline-flex;
+}

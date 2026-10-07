@@ -1,0 +1,31 @@
+.text {
+  display: block;
+  min-width: 0;
+  margin: 0;
+}
+
+.single {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wrap {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.clamp {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.center {
+  text-align: center;
+}
+
+.selectable {
+  user-select: text;
+  cursor: text;
+}

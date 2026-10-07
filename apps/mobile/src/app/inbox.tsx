@@ -49,7 +49,6 @@ export default function InboxScreen() {
       ) : (
         <>
           {inbox.markError ? <Notice tone="danger" message={inbox.markError} /> : null}
-          {inbox.downloadError ? <Notice tone="danger" icon={WarningIcon} message={inbox.downloadError} /> : null}
           {inbox.sections.map((section, sectionIndex) => (
             <Section key={section.id} title={section.title} testID={`inbox-section-${section.id}`}>
               {section.items.map((item, itemIndex) => (

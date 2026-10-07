@@ -90,6 +90,9 @@ describe("HostShellClient", () => {
       "POST /v1/android/link": respond(200, sampleAndroidLink),
       "DELETE /v1/android/link": respond(200, { configured: false, sandboxUrl: null, connected: false, lastError: null }),
       "POST /v1/auth/ticket": respond(200, sampleTicket),
+      "GET /v1/android/devices": respond(200, sampleHostAndroidStatus.devices),
+      "GET /v1/android/stream": respond(200, sampleHostAndroidStatus.stream),
+      "PUT /v1/android/stream": respond(200, { ...sampleHostAndroidStatus.stream, maxFps: 30 }),
     };
     const { client, calls } = hostClient((call) => replies[`${call.init.method} ${new URL(call.url).pathname}`] ?? respond(404, {}));
     const session = client.sessionClient(SESSION);
@@ -99,6 +102,12 @@ describe("HostShellClient", () => {
     expect(await session.linkSandbox({ sandboxUrl: "http://100.64.0.2:7700", token: "t" })).toEqual(sampleAndroidLink);
     expect((await session.unlinkSandbox()).configured).toBe(false);
     expect(await session.androidScreenPageUrl(1280)).toBe(`${BASE}/ui/android#ticket=${sampleTicket.ticket}&maxSize=1280`);
+    expect(await session.androidScreenPageUrl(720, "192.168.56.101:5555")).toBe(
+      `${BASE}/ui/android#ticket=${sampleTicket.ticket}&maxSize=720&serial=192.168.56.101%3A5555`,
+    );
+    expect(await session.androidDevices()).toEqual(sampleHostAndroidStatus.devices);
+    expect(await session.androidStreamSettings()).toEqual(sampleHostAndroidStatus.stream);
+    expect((await session.updateAndroidStream({ maxFps: 30 })).maxFps).toBe(30);
     expect(JSON.parse(calls[1]?.init.body ?? "{}")).toEqual({ avd: "Pixel_8_API_35", coldBoot: true });
     expect(calls.every((call) => call.init.headers.Authorization === `Bearer ${SESSION}`)).toBe(true);
   });

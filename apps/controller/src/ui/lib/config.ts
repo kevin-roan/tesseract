@@ -29,7 +29,10 @@ export const FRAGMENT_KEYS = {
   viewOnly: "viewOnly",
   input: "input",
   maxSize: "maxSize",
+  serial: "serial",
 } as const;
+
+export const ANDROID_QUERY = { maxSize: "maxSize", serial: "serial", codec: "codec" } as const;
 
 export const DEFAULT_INPUT_MODE: InputMode = "trackpad";
 
@@ -219,4 +222,5 @@ export const MESSAGES = {
   reconnect: "Reconnect",
   keyboard: "Keyboard",
   androidTitle: "Android emulator",
+  decoderFailed: "The video decoder failed; reconnect to stream JPEG instead",
 } as const;

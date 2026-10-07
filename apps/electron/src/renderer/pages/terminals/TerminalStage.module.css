@@ -1,0 +1,56 @@
+.stage {
+  position: relative;
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.views {
+  position: relative;
+  flex: 1 1 auto;
+  min-width: 0;
+  background: var(--to-surface);
+  overflow: hidden;
+}
+
+.placeholder {
+  position: absolute;
+  inset: -0.5px 0 0;
+  display: flex;
+  flex-direction: column;
+  transition: opacity var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.placeholder[data-disabled] {
+  opacity: 0.5;
+}
+
+.banner {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+}
+
+.notice {
+  box-shadow: var(--to-shadow-level2);
+}
+
+.placeholder button {
+  min-height: 28px;
+  padding: 0 13px;
+}
+
+.placeholder button + button {
+  padding: 0 12px 0 10px;
+}
+
+.placeholder p {
+  max-width: none;
+}
+
+.placeholder > div > svg {
+  margin-right: 1px;
+}

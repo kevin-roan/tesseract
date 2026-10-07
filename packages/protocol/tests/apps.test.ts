@@ -6,10 +6,12 @@ import {
   AndroidScreenClientMessageSchema,
   AndroidScreenQuerySchema,
   AndroidScreenServerMessageSchema,
+  AndroidStreamSettingsSchema,
   AppRunActionRequestSchema,
   AppRunListSchema,
   AppRunSchema,
   createId,
+  DEFAULT_ANDROID_STREAM,
   FRAMEWORKS,
   HostAndroidStatusSchema,
   ID_PREFIXES,
@@ -27,6 +29,7 @@ import {
   StartAppRunSchema,
   StartEmulatorSchema,
   uiPaths,
+  UpdateAndroidStreamSchema,
   wsPaths,
 } from "../src/index";
 import {
@@ -99,6 +102,17 @@ describe("android", () => {
     rejects(HostAndroidStatusSchema, { ...sampleHostAndroidStatus, emulator: { ...sampleHostAndroidStatus.emulator, state: "booting" } });
   });
 
+  test("stream settings and screen query", () => {
+    roundTrip(AndroidStreamSettingsSchema, { ...DEFAULT_ANDROID_STREAM, device: "192.168.2.5:41479", maxSize: 1080 });
+    rejects(AndroidStreamSettingsSchema, { ...DEFAULT_ANDROID_STREAM, bitRate: 1 });
+    rejects(AndroidStreamSettingsSchema, { ...DEFAULT_ANDROID_STREAM, encoding: "vp8" });
+    rejects(UpdateAndroidStreamSchema, { device: "-s other" });
+    expect(UpdateAndroidStreamSchema.parse({ maxFps: 30 })).toEqual({ maxFps: 30 });
+    expect(AndroidScreenQuerySchema.parse({ ticket: "t", serial: "emulator-5554", codec: "h264" })).toEqual({ ticket: "t", serial: "emulator-5554", codec: "h264" });
+    rejects(AndroidScreenQuerySchema, { ticket: "t", serial: "a b" });
+    expect(uiPaths.android({ ticket: "t", serial: "emulator-5554" })).toBe("/ui/android#ticket=t&serial=emulator-5554");
+  });
+
   test("requests", () => {
     expect(StartEmulatorSchema.parse({ avd: "Pixel_8_API_35", coldBoot: true })).toEqual({ avd: "Pixel_8_API_35", coldBoot: true });
     rejects(StartEmulatorSchema, { avd: "" });
@@ -142,7 +156,7 @@ describe("android", () => {
     rejects(AndroidScreenClientMessageSchema, { type: "scroll", x: 1, y: 2, width: 100, height: 200, hscroll: 0, vscroll: 17 });
     rejects(AndroidScreenClientMessageSchema, { type: "key", key: "menu" });
     rejects(AndroidScreenClientMessageSchema, { type: "text", text: "x".repeat(301) });
-    roundTrip(AndroidScreenServerMessageSchema, { type: "meta", deviceName: "sdk_gphone64", width: 1080, height: 2400 });
+    roundTrip(AndroidScreenServerMessageSchema, { type: "meta", deviceName: "sdk_gphone64", codec: "h264", width: 1080, height: 2400 });
     roundTrip(AndroidScreenServerMessageSchema, { type: "size", width: 2400, height: 1080 });
     roundTrip(AndroidScreenServerMessageSchema, { type: "error", message: "Emulator is not running" });
     expect(AndroidScreenQuerySchema.parse({ ticket: "t", maxSize: "1280" })).toEqual({ ticket: "t", maxSize: 1280 });

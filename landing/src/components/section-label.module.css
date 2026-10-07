@@ -1,0 +1,26 @@
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 510;
+  color: var(--text-2);
+  transition: color 0.16s;
+}
+
+.root:hover {
+  color: var(--text);
+}
+
+.index {
+  font-family: var(--font-mono);
+  color: var(--text-3);
+}
+
+.chevron {
+  transition: transform 0.2s var(--ease);
+}
+
+.root:hover .chevron {
+  transform: translateX(2px);
+}

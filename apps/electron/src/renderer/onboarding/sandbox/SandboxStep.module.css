@@ -1,0 +1,45 @@
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  max-width: 640px;
+  min-width: 0;
+}
+
+.nested > * + * {
+  border-top: 1px solid var(--to-divider);
+}
+
+.linkRow {
+  display: flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 8px;
+}
+
+.componentBlock {
+  display: flex;
+  flex-direction: column;
+}
+
+.models {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 2px 14px 12px 40px;
+}
+
+.build {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.counter {
+  margin-top: -6px;
+}
+
+.anchor {
+  scroll-margin-top: 20px;
+}

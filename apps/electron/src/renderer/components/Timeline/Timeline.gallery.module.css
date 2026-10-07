@@ -1,0 +1,8 @@
+.frame {
+  display: flex;
+  height: 620px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-lg);
+  background: var(--to-surface);
+  overflow: hidden;
+}

@@ -32,6 +32,8 @@ Claude runs) goes through its token-authenticated REST and WebSocket API.
 ```text
 apps/mobile/          @theone/mobile      Expo SDK 56 / React Native 0.85 / expo-router app
 apps/controller/      @theone/controller  Bun + Hono daemon that runs inside the sandbox
+apps/electron/        @monolith/electron  Monolith desktop app (Electron): setup wizard, pages, `monolith` CLI
+apps/desktop/         Monolith GTK4/libadwaita app (Python), the design reference for apps/electron
 packages/protocol/    @theone/protocol    zod schemas and types: the wire contract
 packages/client/      @theone/client      typed REST/WS client (React Native, browser, Bun)
 infra/docker/sandbox/ sandbox image (Dockerfile + rootfs)
@@ -78,6 +80,25 @@ bun run mobile                        # from the repo root: starts Metro for the
 In the app: **Agents** tab → **Pair a sandbox** → scan the QR code. Step-by-step
 details are in [docs/runbooks/getting-started.md](docs/runbooks/getting-started.md).
 
+## Desktop app (Monolith)
+
+`apps/electron` is the desktop companion for Linux, macOS and Windows. On first run a setup wizard (like
+Android Studio's) checks or installs Docker, builds and starts the sandbox with the components you pick
+(Android SDK, Flutter, Mono, Whisper), downloads the Android emulator, a system image and an AVD for the host
+emulator (KVM, WHPX or HVF), and shows the pairing QR code for the phone. Afterwards it shows the same pages as
+the phone (Overview, Agents, Projects, Files, Terminals, Display). Installers: universal `dmg`, per-user NSIS
+`exe`, `AppImage` and `deb`; each puts the `monolith` command on your PATH (`monolith status`, `doctor`,
+`sandbox up|down|build|logs|pair`, `android images|install|avd`, `sync`, `config`).
+
+```bash
+bun run electron                      # dev mode; the renderer dev server is http://127.0.0.1:4545
+bun run electron:dist                 # installers for this OS in apps/electron/dist/
+bun run electron:e2e                  # Playwright suites (headless on Linux)
+```
+
+Details: [docs/electron/README.md](docs/electron/README.md) and
+[blueprint §12](docs/architecture/00-blueprint.md#12-desktop-app-appselectron-package-monolithelectron).
+
 ## Common commands
 
 | Command | What it does |
@@ -99,6 +120,8 @@ details are in [docs/runbooks/getting-started.md](docs/runbooks/getting-started.
 | `bun run test:infra` | bats tests for the operator CLI, rootfs scripts and compose files (in docker) |
 | `bun run e2e` | end-to-end suite against an isolated `theone-e2e` stack on loopback ([e2e-testing](docs/runbooks/e2e-testing.md)) |
 | `bun run mobile` | Expo dev server for the app |
+| `bun run electron` / `electron:build` / `electron:dist` | desktop app: dev mode (renderer on 4545), production build, installers |
+| `bun run electron:e2e` / `electron:smoke` | desktop app Playwright suites / checks of the built AppImage and deb |
 | `bun run controller:dev` | run the controller locally with watch mode |
 
 ## Documentation
@@ -107,6 +130,7 @@ details are in [docs/runbooks/getting-started.md](docs/runbooks/getting-started.
 - [Architecture overview](docs/architecture/overview.md) · [Blueprint (contract)](docs/architecture/00-blueprint.md) · [Protocol](docs/architecture/protocol.md)
 - [Security model](docs/architecture/security-model.md) · [Networking and Tailscale](docs/architecture/networking-tailscale.md)
 - Runbooks: [getting started](docs/runbooks/getting-started.md), [pairing](docs/runbooks/pairing-mobile.md), [Electron builds](docs/runbooks/electron-builds.md), [Android builds](docs/runbooks/android-builds.md), [Claude in the sandbox](docs/runbooks/claude-in-sandbox.md), [operations](docs/runbooks/operations.md), [testing](docs/runbooks/e2e-testing.md), [troubleshooting](docs/runbooks/troubleshooting.md)
+- Desktop app: [docs/electron/README.md](docs/electron/README.md) (specs, reference captures, conventions)
 - [SPEC.md](SPEC.md): how Claude behaves inside the sandbox
 - [Roadmap and open decisions](docs/roadmap.md)
 
@@ -117,6 +141,7 @@ bun install
 bun run typecheck && bun run test
 bun run test:infra                    # needs docker
 bun run e2e                           # needs docker and network; builds theone/sandbox:e2e
+bun run e2e --electron                # also runs the desktop app's Playwright suites against that stack
 THEONE_HOST=127.0.0.1 THEONE_WORKSPACE=/tmp/theone-ws bun run controller:dev
 #   controller on http://127.0.0.1:7700; display, wine and claude are reported as unavailable.
 #   The defaults (0.0.0.0, /workspace) are meant for the sandbox.

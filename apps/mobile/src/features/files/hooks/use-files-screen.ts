@@ -13,7 +13,7 @@ import { describeError } from "@/features/sandbox/utils/errors";
 import { firstParam } from "@/features/sandbox/utils/routes";
 import { confirm } from "@/lib/confirm";
 
-import { ALL_PROJECTS, FILE_DOWNLOAD_PARAM } from "../utils/constants";
+import { ALL_PROJECTS, FILE_DOWNLOAD_PARAM, MISSING_FILE_MESSAGE } from "../utils/constants";
 import { filesSubtitle, sortTaildropTargets } from "../utils/describe";
 import { describeFileError } from "../utils/errors";
 import {
@@ -48,17 +48,20 @@ export function useFilesScreen() {
   const [sharing, setSharing] = useState<Artifact | null>(null);
   const requested = firstParam(params[FILE_DOWNLOAD_PARAM]);
   const handled = useRef<string | null>(null);
-  const { download } = downloads;
+  const { download, showError } = downloads;
   const { mutate: deleteFile } = deletion;
   const { mutate: sendFile, reset: resetSend } = sending;
 
-  useEffect(() => {
-    if (!requested || !client || handled.current === requested) return;
-    handled.current = requested;
-    download(requested);
-  }, [requested, client, download]);
-
   const all = artifacts.data;
+
+  useEffect(() => {
+    if (!requested || !client || !all || handled.current === requested) return;
+    handled.current = requested;
+    const artifact = all.find((item) => item.id === requested);
+    if (artifact) download(artifact);
+    else showError(MISSING_FILE_MESSAGE);
+  }, [requested, client, all, download, showError]);
+
   const names = useMemo(() => projectNames(projects.data), [projects.data]);
   const builds = useBuildOutputs(view === "builds", names);
   const files = useMemo(() => filterFiles(all ?? [], filters), [all, filters]);
@@ -131,7 +134,8 @@ export function useFilesScreen() {
     projectId: filters.projectId ?? ALL_PROJECTS,
     selectProject,
     download,
-    downloadingId: downloads.pendingId,
+    share: downloads.share,
+    localStatus: downloads.status,
     downloadError: downloads.error,
     remove: (artifact: Artifact) => void remove(artifact),
     deletingId: deletion.isPending ? deletion.variables : null,

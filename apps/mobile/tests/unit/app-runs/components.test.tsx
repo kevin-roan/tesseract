@@ -102,12 +102,21 @@ const androidState = (status: HostAndroidStatus, overrides: Partial<HostAndroidS
   avdPicker: { visible: false, options: status.avds.map((id) => ({ id, label: id })), open: jest.fn(), close: jest.fn(), select: jest.fn() },
   canStart: false,
   canStop: true,
+  device: status.devices[0] ?? null,
+  devicePicker: {
+    visible: false,
+    options: status.devices.map((item) => ({ id: item.serial, label: item.model ?? item.serial })),
+    open: jest.fn(),
+    close: jest.fn(),
+    select: jest.fn(),
+  },
   canOpen: true,
   start: jest.fn(),
   starting: false,
   stop: jest.fn(),
   stopping: false,
   openScreen: jest.fn(),
+  openStreamSettings: jest.fn(),
   sandboxName: "workstation",
   canLink: true,
   linkBlocked: null,
@@ -127,6 +136,7 @@ describe("HostAndroid", () => {
 
     expect(screen.getByText("Pixel_8_API_35")).toBeOnTheScreen();
     expect(screen.getByText("Connected")).toBeOnTheScreen();
+    expect(screen.getByText("Emulator · 127.0.0.1:41555")).toBeOnTheScreen();
     await fireEvent.press(screen.getByText("Open screen"));
     expect(android.openScreen).toHaveBeenCalled();
     await fireEvent.press(screen.getByText("Stop"));
@@ -134,6 +144,14 @@ describe("HostAndroid", () => {
     await fireEvent.press(screen.getByText("Unlink"));
     expect(android.unlink).toHaveBeenCalled();
     expect(screen.queryByText("Link sandbox: workstation")).toBeNull();
+  });
+
+  it("explains that no adb device is connected", async () => {
+    const status: HostAndroidStatus = { ...sampleHostAndroidStatus, devices: [] };
+    await render(<HostAndroid android={androidState(status, { device: null, canOpen: false })} />);
+
+    expect(screen.getByText(/No adb device is connected to the host/)).toBeOnTheScreen();
+    expect(screen.queryByText("Open screen")).toBeNull();
   });
 
   it("offers start and link when stopped and unlinked", async () => {

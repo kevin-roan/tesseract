@@ -434,6 +434,11 @@ def _components(scheme: SchemeName) -> str:
             "border": f"{hairline} {css_var('border')}",
             "box-shadow": "none",
         },
+        f"button.{PREFIX}-secondary.destructive-action": {"color": css_var("danger")},
+        f"button.{PREFIX}-secondary.destructive-action:hover, button.{PREFIX}-secondary.destructive-action:active": {
+            "background": css_var("dangerMuted"),
+            "border": f"{hairline} {css_var('danger')}",
+        },
         # A secondary button with work waiting (sync changes) wears the accent without becoming the primary action.
         f"button.{PREFIX}-secondary.{PREFIX}-attention:not(:hover):not(:active)": {
             "background": css_var("accentMuted"),

@@ -17,6 +17,7 @@ import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";
 import type { Repositories } from "../db/repositories";
 import { APNS_HOSTS, ApnsTokenSigner, Http2ApnsTransport, loadApnsKey, type ApnsRequest, type ApnsTransport } from "./apns";
+import { PUSH_TITLE } from "./push";
 
 export type IslandSources = {
   /** Every stored agent run (the running ones become `runs`, the rest count towards `runsToday`). */
@@ -283,7 +284,11 @@ export class LiveActivityService {
     if (event === "start") {
       aps["attributes-type"] = ATTRIBUTES_TYPE;
       aps.attributes = { sandboxId: state.sandboxId, sandboxName: state.sandboxName };
-      aps.alert = { title: started?.project ? `${started.project}: Claude started` : "Claude started", body: started?.title ?? "A run is in progress" };
+      aps.alert = {
+        title: PUSH_TITLE,
+        subtitle: started?.project ? `${started.project} · Claude started` : "Claude started",
+        body: started?.title ?? "A run is in progress",
+      };
     }
     return { aps };
   }

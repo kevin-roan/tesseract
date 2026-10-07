@@ -1,0 +1,123 @@
+appId: dev.monolith.Desktop
+productName: Monolith
+artifactName: ${productName}-${version}-${arch}.${ext}
+copyright: Copyright © 2026 Monolith
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+  - "!**/*.map"
+  - "!node_modules/**/*"
+asar: true
+npmRebuild: false
+nodeGypRebuild: false
+extraMetadata:
+  name: monolith-desktop
+  desktopName: dev.monolith.Desktop.desktop
+afterSign: ./scripts/hooks/after-sign.ts
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
+extraResources:
+  - from: dist-cli/${os}-${arch}
+    to: bin
+    filter: ["**/*"]
+  - from: build/sandbox-context
+    to: sandbox
+    filter: ["**/*"]
+  - from: build/icons
+    to: icons
+    filter: ["*.png"]
+  - from: src/renderer/theme/fonts
+    to: licenses
+    filter: ["LICENSE-*"]
+protocols:
+  - name: Monolith
+    schemes: [monolith]
+publish:
+  provider: generic
+  url: https://downloads.monolith.dev/desktop
+  useMultipleRangeRequest: false
+generateUpdatesFilesForAllChannels: true
+mac:
+  category: public.app-category.developer-tools
+  icon: build/icon-mac.png
+  target:
+    - target: dmg
+      arch: [universal]
+    - target: zip
+      arch: [universal]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  notarize: false
+  minimumSystemVersion: "12.0"
+  entitlements: build/entitlements.mac.plist
+  entitlementsInherit: build/entitlements.mac.plist
+  extendInfo:
+    NSMicrophoneUsageDescription: Monolith records voice notes for Claude when you ask it to.
+    LSApplicationCategoryType: public.app-category.developer-tools
+dmg:
+  sign: false
+  writeUpdateInfo: false
+  window:
+    width: 540
+    height: 380
+  contents:
+    - x: 140
+      y: 190
+      type: file
+    - x: 400
+      y: 190
+      type: link
+      path: /Applications
+win:
+  icon: build/icon.ico
+  executableName: Monolith
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: true
+  perMachine: false
+  allowElevation: false
+  runAfterFinish: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Monolith
+  uninstallDisplayName: Monolith
+  deleteAppDataOnUninstall: false
+  include: build/installer.nsh
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+linux:
+  icon: build/icons
+  executableName: monolith-desktop
+  syncDesktopName: true
+  maintainer: Monolith <desktop@monolith.dev>
+  vendor: Monolith
+  category: Development
+  synopsis: Claude Code and builds in a sandbox, followed from your phone
+  description: Monolith runs Claude Code, builds and Android emulators in a Docker sandbox and lets you follow them from your phone.
+  desktop:
+    entry:
+      Name: Monolith
+      Keywords: claude;docker;sandbox;android;
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+appImage:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+deb:
+  packageName: monolith-desktop
+  packageCategory: devel
+  priority: optional
+  depends: ["libgtk-3-0", "libnotify4", "libnss3", "libxss1", "libxtst6", "xdg-utils", "libatspi2.0-0", "libuuid1", "libsecret-1-0"]
+  recommends: ["docker.io | docker-ce"]
+  afterInstall: build/linux/after-install.sh
+  afterRemove: build/linux/after-remove.sh

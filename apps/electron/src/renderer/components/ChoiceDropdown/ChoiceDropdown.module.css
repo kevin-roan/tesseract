@@ -1,0 +1,69 @@
+.trigger {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  height: 30px;
+  border: 1px solid var(--to-border);
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 400;
+  white-space: nowrap;
+  transition: var(--to-state-transition);
+}
+
+.trigger:active:not(:disabled) {
+  transform: scale(var(--to-press-scale));
+}
+
+.trigger:disabled {
+  opacity: 0.5;
+}
+
+.default {
+  padding: 0 8px;
+  border-radius: var(--to-radius-sm);
+  background: var(--to-surface-elevated);
+  color: var(--to-text);
+}
+
+.default:hover:not(:disabled),
+.default[data-open] {
+  background: var(--to-background-element);
+  border-color: var(--to-border-strong);
+}
+
+.toolbar {
+  padding: 0 8px 0 10px;
+  border-radius: var(--to-radius-pill);
+  background: transparent;
+  color: var(--to-text-secondary);
+}
+
+.toolbar:hover:not(:disabled),
+.toolbar[data-open] {
+  background: var(--to-background-element);
+  color: var(--to-text);
+}
+
+.label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.arrow {
+  flex: none;
+  color: var(--to-text-secondary);
+  transition: transform var(--to-duration-normal) var(--to-ease-standard);
+}
+
+.default .arrow {
+  color: inherit;
+}
+
+.trigger[data-open] .arrow {
+  transform: rotate(180deg);
+}

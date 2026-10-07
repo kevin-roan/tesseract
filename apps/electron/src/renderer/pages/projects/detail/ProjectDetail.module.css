@@ -1,0 +1,79 @@
+.root {
+  flex: 1;
+}
+
+.fill {
+  display: flex;
+  height: 100%;
+}
+
+.frame {
+  position: relative;
+  height: 100%;
+}
+
+.scroller {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  padding: 20px 24px 40px;
+}
+
+.crumb {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.crumbPath {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  position: relative;
+  top: 1px;
+  margin: 0;
+}
+
+.props {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.notice {
+  margin-top: 12px;
+}
+
+.tabsStrip {
+  margin-top: 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--to-divider);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.tabsStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.tabContent {
+  margin-top: 12px;
+}

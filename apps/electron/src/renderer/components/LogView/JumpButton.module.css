@@ -1,0 +1,42 @@
+.anchor {
+  position: absolute;
+  bottom: 12px;
+  z-index: 2;
+}
+
+.end {
+  right: 12px;
+}
+
+.center {
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--to-border-strong);
+  border-radius: var(--to-radius-pill);
+  background: var(--to-surface-elevated);
+  color: var(--to-text);
+  box-shadow: var(--to-shadow-level2);
+  pointer-events: auto;
+  transition: var(--to-state-transition);
+}
+
+.button:hover {
+  background: var(--to-background-element);
+}
+
+.button:active {
+  background: var(--to-background-selected);
+  transform: scale(var(--to-press-scale));
+}

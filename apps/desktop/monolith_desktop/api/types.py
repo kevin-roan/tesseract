@@ -377,6 +377,28 @@ class AndroidLinkInfo(TypedDict):
     lastError: str | None
 
 
+AndroidStreamEncoding = Literal["h264", "mjpeg"]
+AndroidDeviceKind = Literal["emulator", "genymotion", "network", "usb"]
+
+
+class AndroidStreamSettings(TypedDict):
+    encoding: AndroidStreamEncoding
+    bitRate: int
+    maxFps: int
+    maxSize: int | None
+    keyFrameInterval: int
+    jpegQuality: int
+    device: str | None
+
+
+class AndroidDevice(TypedDict):
+    serial: str
+    state: str
+    kind: AndroidDeviceKind
+    model: str | None
+    hostEmulator: bool
+
+
 class HostAndroidStatus(TypedDict):
     available: bool
     reason: str | None
@@ -387,6 +409,8 @@ class HostAndroidStatus(TypedDict):
     ffmpeg: bool
     emulator: EmulatorInfo
     link: AndroidLinkInfo
+    stream: AndroidStreamSettings
+    devices: list[AndroidDevice]
 
 
 class HostSession(TypedDict):

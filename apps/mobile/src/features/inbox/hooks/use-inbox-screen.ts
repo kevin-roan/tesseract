@@ -4,7 +4,6 @@ import type { InboxItem } from "@theone/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
 import { useChatNavigation } from "@/features/chats/hooks/use-chat-navigation";
-import { useFileDownload } from "@/features/files/hooks/use-file-download";
 import { projectLabel, projectNames } from "@/features/chats/utils/sessions";
 import { useSandboxClient } from "@/features/sandbox/hooks/use-sandbox-client";
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
@@ -23,10 +22,8 @@ export function useInboxScreen() {
   const inbox = useInbox();
   const projects = useProjects();
   const markRead = useMarkInboxRead();
-  const files = useFileDownload();
   const { refreshing, refresh } = useSandboxRefresh();
   const { mutate } = markRead;
-  const { download } = files;
 
   const sections = useMemo(() => groupInbox(inbox.data?.items ?? []), [inbox.data]);
   const names = useMemo(() => projectNames(projects.data), [projects.data]);
@@ -35,13 +32,13 @@ export function useInboxScreen() {
   const go = useCallback(
     (target: InboxTarget | null) => {
       if (!target) return;
-      if (target.kind === "file") download(target.id);
+      if (target.kind === "file") nav.files(target.id);
       else if (target.kind === "agentRun") nav.agentRun(target.id);
       else if (target.kind === "terminal") nav.terminal(target.id);
       else if (target.kind === "chat") chats.resume(target.id);
       else nav.project(target.id);
     },
-    [nav, chats, download],
+    [nav, chats],
   );
 
   const open = useCallback(
@@ -77,8 +74,6 @@ export function useInboxScreen() {
     error: inbox.error ? describeError(inbox.error) : null,
     retry: () => void inbox.refetch(),
     markError: markRead.error ? describeError(markRead.error) : null,
-    downloadError: files.error,
-    downloadingId: files.pendingId,
     open,
     markOne,
     headerActions,

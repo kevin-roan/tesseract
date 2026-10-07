@@ -17,6 +17,7 @@ from ..api.tasks import Task, call_on_main, run_async
 from ..config.storage import read_settings, write_settings
 from ..store import Observable
 from .android import HostAndroidClient, session_expiry
+from .stream import StreamState, parse_stream
 from .model import (
     LISTENING_MARKER,
     HostPairing,
@@ -113,6 +114,19 @@ class HostShellService:
         return run_async(
             lambda: self._cli(["token", "--rotate"]),
             on_success=lambda _out: (on_success(), self.refresh()),
+            on_error=on_error,
+        )
+
+    def stream(self, on_success: Callable[[StreamState], None], on_error: Callable[[BaseException], None]) -> Task[StreamState]:
+        """The Android stream settings in the host state file and the adb devices; works while the daemon is stopped."""
+        return run_async(lambda: parse_stream(self._cli(["stream", "--json"])), on_success=on_success, on_error=on_error)
+
+    def update_stream(
+        self, change: dict, on_success: Callable[[StreamState], None], on_error: Callable[[BaseException], None]
+    ) -> Task[StreamState]:
+        return run_async(
+            lambda: parse_stream(self._cli(["stream", "--json", "--stdin"], stdin=json.dumps(change))),
+            on_success=on_success,
             on_error=on_error,
         )
 

@@ -72,9 +72,9 @@ def rules(scheme: SchemeName) -> dict[str, dict[str, str]]:
             "color": css_var("text"),
         },
         **_tint_rules(scheme),
-        ".to-convo-logo": {"-gtk-icon-size": _px(12)},
+        ".to-convo-logo": {"-gtk-icon-size": _px(12), "color": css_var("textTertiary")},
         ".to-state-glyph": {"min-width": _px(16), "min-height": _px(16), "margin-top": _px(1)},
-        ".to-state-succeeded": {"color": css_var("accent")},
+        ".to-state-succeeded": {"color": css_var("textSecondary")},
         ".to-state-failed": {"color": css_var("danger")},
         ".to-state-cancelled": {"color": css_var("textTertiary")},
         ".to-unread-dot": {

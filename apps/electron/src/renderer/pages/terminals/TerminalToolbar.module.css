@@ -1,0 +1,44 @@
+.toolbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  min-height: 41px;
+  padding: 0 8px 0 12px;
+  border-bottom: 1px solid var(--to-divider);
+  background: var(--to-surface);
+}
+
+.kind {
+  flex: none;
+}
+
+.titles {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.title {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.badge {
+  min-height: 20px;
+}
+
+.subtitle {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.more {
+  display: inline-flex;
+}
+
+.toolbar .action {
+  color: var(--to-text);
+}

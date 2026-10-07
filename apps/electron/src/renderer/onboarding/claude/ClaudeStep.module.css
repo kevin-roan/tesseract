@@ -1,0 +1,17 @@
+.status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.secondaryAction {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.accounts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+

@@ -1,4 +1,4 @@
-import { HardDrivesIcon, InfoIcon, SparkleIcon, SquaresFourIcon, WaveformIcon } from "phosphor-react-native";
+import { HardDrivesIcon, InfoIcon, RocketLaunchIcon, SparkleIcon, SquaresFourIcon, WaveformIcon } from "phosphor-react-native";
 
 import ChoiceGroup from "@/components/choice-group";
 import ChoiceList from "@/components/choice-list";
@@ -12,7 +12,7 @@ import SecretField from "@/components/secret-field";
 import Section from "@/components/section";
 import { ThemedText } from "@/components/themed-text";
 import { useSettingsScreen } from "@/features/settings/hooks/use-settings-screen";
-import { SETTINGS_COPY } from "@/features/settings/utils/constants";
+import { ABOUT_COPY, SETTINGS_COPY } from "@/features/settings/utils/constants";
 
 export default function SettingsScreen() {
   const screen = useSettingsScreen();
@@ -149,6 +149,17 @@ export default function SettingsScreen() {
           <ThemedText variant="caption" color="textTertiary">
             {SETTINGS_COPY.liveActivityFootnote}
           </ThemedText>
+        </Section>
+      </MotionItem>
+
+      <MotionItem index={5}>
+        <Section title={ABOUT_COPY.sectionTitle} testID="settings-about">
+          <ListCard
+            icon={RocketLaunchIcon}
+            title={screen.about.title}
+            subtitle={screen.about.subtitle}
+            onPress={screen.about.open}
+          />
         </Section>
       </MotionItem>
     </ScreenScaffold>

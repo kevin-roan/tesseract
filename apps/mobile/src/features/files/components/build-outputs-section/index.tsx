@@ -50,19 +50,17 @@ const BuildOutputsSection = ({ builds, projectName }: BuildOutputsSectionProps) 
         emptyActionLabel="Show all builds"
         onEmptyAction={builds.clearFilters}
       >
-        {builds.outputs.map((output, index) => {
-          const key = buildOutputKey(output);
-          return (
-            <BuildOutputCard
-              key={key}
-              index={index}
-              output={output}
-              project={projectName(output.projectId)}
-              onDownload={() => builds.download(output)}
-              downloading={builds.downloadingKey === key}
-            />
-          );
-        })}
+        {builds.outputs.map((output, index) => (
+          <BuildOutputCard
+            key={buildOutputKey(output)}
+            index={index}
+            output={output}
+            project={projectName(output.projectId)}
+            local={builds.localStatus(output)}
+            onDownload={() => builds.download(output)}
+            onShare={() => builds.share(output)}
+          />
+        ))}
       </Section>
     </>
   );

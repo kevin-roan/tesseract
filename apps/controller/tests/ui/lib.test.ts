@@ -14,6 +14,7 @@ import {
 } from "../../src/ui/lib/config";
 import { applyInsets, keepFocus, requireElement } from "../../src/ui/lib/dom";
 import { takeFragment } from "../../src/ui/lib/fragment";
+import { avcCodec, canDecodeH264, parseH264Message } from "../../src/ui/lib/h264-decoder";
 import { exposeHostApi, hasHost, parseInputMode, parseInsets, postToHost } from "../../src/ui/lib/host";
 import { keysymForChar, withCtrl } from "../../src/ui/lib/keys";
 import { webSocketUrl } from "../../src/ui/lib/socket";
@@ -306,5 +307,25 @@ describe("dom helpers and components", () => {
     expect(buttons[0]?.getAttribute("aria-pressed")).toBe("true");
     bar.setActive("keyboard", false);
     expect(buttons[0]?.getAttribute("aria-pressed")).toBe("false");
+  });
+});
+
+describe("h264 decoder helpers", () => {
+  test("reads the codec string from the SPS of a config packet", () => {
+    const config = Uint8Array.from([0, 0, 0, 1, 0x67, 0x64, 0x00, 0x29, 0xac, 0, 0, 0, 1, 0x68, 0xee]);
+    expect(avcCodec(config)).toBe("avc1.640029");
+    expect(avcCodec(Uint8Array.from([0, 0, 0, 1, 0x68, 0xee, 0x3c, 0x80]))).toBeNull();
+  });
+
+  test("splits the flags byte from the access unit", () => {
+    const packet = parseH264Message(Uint8Array.from([3, 0, 0, 1, 0x65]).buffer);
+    expect(packet.config).toBe(true);
+    expect(packet.keyFrame).toBe(true);
+    expect([...packet.data]).toEqual([0, 0, 1, 0x65]);
+    expect(parseH264Message(Uint8Array.from([0, 9]).buffer)).toMatchObject({ config: false, keyFrame: false });
+  });
+
+  test("H.264 needs WebCodecs", async () => {
+    expect(await canDecodeH264()).toBe(false);
   });
 });

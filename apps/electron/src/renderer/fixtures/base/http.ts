@@ -1,0 +1,67 @@
+import { routePatterns } from "@theone/protocol";
+import {
+  sampleAndroidLink,
+  sampleArtifact,
+  sampleBuild,
+  sampleClaudeAccountList,
+  sampleClaudeAuthStatus,
+  sampleClaudeSession,
+  sampleContext,
+  sampleDisplay,
+  sampleGitDetails,
+  sampleHealth,
+  sampleIdentity,
+  sampleInbox,
+  samplePorts,
+  sampleProcess,
+  sampleRunTargets,
+  sampleSandboxAndroidStatus,
+  sampleSttStatus,
+  sampleSyncChanges,
+  sampleTerminal,
+  sampleTicket,
+  sampleUsageReport,
+} from "@theone/protocol/fixtures";
+import { defineHttpFixtures, reply } from "../types";
+import { fixtureProjects, fixtureRuns, fixtureStatus } from "./data";
+
+const rest = routePatterns.rest;
+const get = (path: string, respond: () => unknown) => ({ method: "GET", path, respond });
+
+export default defineHttpFixtures([
+  get(rest.health, () => sampleHealth),
+  { method: "POST", path: rest.authTicket, respond: () => sampleTicket },
+  get(rest.status, () => fixtureStatus),
+  get(rest.context, () => sampleContext),
+  get(rest.identity, () => sampleIdentity),
+  get(rest.claudeAuth, () => sampleClaudeAuthStatus),
+  get(rest.claudeAccounts, () => sampleClaudeAccountList),
+  get(rest.ports, () => samplePorts),
+  get(rest.usage, () => sampleUsageReport),
+  get(rest.sessions, () => [sampleClaudeSession]),
+  get(rest.inbox, () => sampleInbox),
+  get(rest.projects, () => fixtureProjects),
+  {
+    method: "GET",
+    path: rest.project,
+    respond: ({ params }) => fixtureProjects.find((project) => project.id === params[0]) ?? reply(404, { error: { code: "not_found", message: "Project not found" } }),
+  },
+  get(rest.projectGit, () => sampleGitDetails),
+  get(rest.projectSyncChanges, () => sampleSyncChanges),
+  get(rest.projectSyncRequests, () => []),
+  get(rest.syncRequests, () => []),
+  { method: "POST", path: rest.syncHeartbeat, respond: () => undefined },
+  get(rest.processes, () => [sampleProcess]),
+  get(rest.terminals, () => [sampleTerminal]),
+  get(rest.builds, () => [sampleBuild]),
+  get(rest.artifacts, () => [sampleArtifact]),
+  get(rest.buildOutputs, () => []),
+  get(rest.display, () => sampleDisplay),
+  get(rest.displayWindows, () => ({ windows: [] })),
+  get(rest.agentRuns, () => fixtureRuns),
+  get(rest.stt, () => sampleSttStatus),
+  get(rest.projectRunTargets, () => sampleRunTargets),
+  get(rest.appRuns, () => []),
+  get(rest.android, () => sampleSandboxAndroidStatus),
+  { method: "POST", path: rest.androidLink, respond: () => sampleAndroidLink },
+]);

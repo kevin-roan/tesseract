@@ -51,7 +51,7 @@ const ChatComposer = ({
         statusLabel={transcribingLabel}
         error={voice.error}
         onCancel={recording ? voice.cancel : voice.discard}
-        onSend={voice.stop}
+        onFinish={voice.stop}
         onRetry={voice.retry}
       />
     );

@@ -8,8 +8,8 @@ import { ThemedText } from "@/components/themed-text";
 import { stateLabel } from "@/features/sandbox/utils/states";
 
 import type { HostAndroidState } from "../../hooks/use-host-android";
-import { emulatorMeta, emulatorTone, linkBadge } from "../../utils/android";
-import { ANDROID_COPY, ANDROID_ICONS } from "../../utils/content";
+import { deviceLabel, deviceMeta, emulatorMeta, emulatorTone, linkBadge } from "../../utils/android";
+import { ANDROID_COPY, ANDROID_ICONS, STREAM_COPY } from "../../utils/content";
 
 export type HostAndroidProps = {
   android: HostAndroidState;
@@ -66,6 +66,39 @@ const HostAndroid = ({ android }: HostAndroidProps) => {
                   onPress={android.start}
                 />
               )}
+            </>
+          }
+        >
+          {emulator.error ? (
+            <ThemedText variant="caption" color="danger" selectable>
+              {emulator.error}
+            </ThemedText>
+          ) : null}
+        </ResourceCard>
+      ) : null}
+      {status ? (
+        <ResourceCard
+          icon={ANDROID_ICONS.device}
+          title={android.device ? deviceLabel(android.device) : ANDROID_COPY.noDevice}
+          subtitle={ANDROID_COPY.screenCardTitle}
+          meta={android.device ? deviceMeta(android.device) : undefined}
+          footer={
+            <>
+              <Chip
+                label={android.device ? deviceLabel(android.device) : ANDROID_COPY.noDevice}
+                icon={ANDROID_ICONS.device}
+                variant="ghost"
+                disabled={android.devicePicker.options.length === 0}
+                onPress={android.devicePicker.open}
+              />
+              <ActionButton
+                label={STREAM_COPY.open}
+                icon={ANDROID_ICONS.settings}
+                variant="secondary"
+                size="sm"
+                onPress={android.openStreamSettings}
+                testID="host-stream-settings"
+              />
               {android.canOpen ? (
                 <ActionButton
                   label={ANDROID_COPY.openScreen}
@@ -78,11 +111,11 @@ const HostAndroid = ({ android }: HostAndroidProps) => {
             </>
           }
         >
-          {emulator.error ? (
-            <ThemedText variant="caption" color="danger" selectable>
-              {emulator.error}
+          {android.device ? null : (
+            <ThemedText variant="caption" color="textTertiary">
+              {ANDROID_COPY.noDevices}
             </ThemedText>
-          ) : null}
+          )}
         </ResourceCard>
       ) : null}
       {status && link ? (
@@ -130,6 +163,15 @@ const HostAndroid = ({ android }: HostAndroidProps) => {
         onSelect={android.avdPicker.select}
         onClose={android.avdPicker.close}
         footnote={ANDROID_COPY.avdFootnote}
+      />
+      <OptionSheet
+        visible={android.devicePicker.visible}
+        title={ANDROID_COPY.deviceSheetTitle}
+        options={android.devicePicker.options}
+        selectedId={android.device?.serial ?? null}
+        onSelect={android.devicePicker.select}
+        onClose={android.devicePicker.close}
+        footnote={ANDROID_COPY.deviceFootnote}
       />
     </Section>
   );

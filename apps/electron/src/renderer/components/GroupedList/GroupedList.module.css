@@ -1,0 +1,15 @@
+.groups {
+  min-width: 0;
+}
+
+.rows {
+  min-width: 0;
+}
+
+.divided > * {
+  border-bottom: 1px solid var(--to-divider);
+}
+
+.divided > *:last-child {
+  border-bottom: 0;
+}

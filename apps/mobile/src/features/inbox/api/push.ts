@@ -7,6 +7,7 @@ import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
 import type { PairedSandbox } from "@/features/sandbox/types";
 
 import { pushDeviceName } from "../utils/notify";
+import { pushDeviceId } from "./device-id";
 
 let currentToken: string | null = null;
 const registered = new Map<string, string>();
@@ -45,6 +46,7 @@ export async function registerPushToken(
   const platform = PushPlatformSchema.safeParse(Platform.OS);
   if (!platform.success) return;
   const name = pushDeviceName(Device.deviceName);
+  const deviceId = pushDeviceId();
   await Promise.all(
     sandboxes.map(async (sandbox) => {
       const auth = tokens[sandbox.id];
@@ -53,7 +55,7 @@ export async function registerPushToken(
       if (registered.get(sandbox.id) === key) return;
       registered.set(sandbox.id, key);
       try {
-        await getSandboxClient(sandbox, auth).registerPushDevice({ token: pushToken, platform: platform.data, name });
+        await getSandboxClient(sandbox, auth).registerPushDevice({ token: pushToken, platform: platform.data, name, deviceId });
         void remoteSandboxId(sandbox, auth);
       } catch (error) {
         if (registered.get(sandbox.id) === key) registered.delete(sandbox.id);
@@ -61,6 +63,14 @@ export async function registerPushToken(
       }
     }),
   );
+}
+
+/**
+ * Makes the next `registerPushToken` call reach every sandbox again. Called when the app comes to the
+ * foreground: with the production app and the dev client on one phone, the one opened last takes the pushes.
+ */
+export function forgetPushRegistrations(): void {
+  registered.clear();
 }
 
 export function unregisterPushToken(sandboxId: string): void {

@@ -1,0 +1,41 @@
+.radio {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: 1px solid var(--to-border-strong);
+  border-radius: 50%;
+  background: transparent;
+  transition: var(--to-state-transition);
+}
+
+.radio[data-checked] {
+  border-color: var(--to-accent);
+  background: var(--to-accent);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity var(--to-duration-fast) var(--to-ease-standard), transform var(--to-duration-fast) var(--to-ease-overshoot);
+}
+
+.radio[data-checked] .dot {
+  opacity: 1;
+  transform: none;
+}
+
+.row:active:not([data-disabled]) .radio {
+  transform: scale(var(--to-press-scale));
+}
+
+.rowRadio {
+  margin: 0 3px 1px;
+}

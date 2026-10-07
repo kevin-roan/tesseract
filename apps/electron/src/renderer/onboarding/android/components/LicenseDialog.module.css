@@ -1,0 +1,106 @@
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 16px 4px;
+  min-height: 0;
+}
+
+.columns {
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border: none;
+  border-radius: var(--to-radius-sm);
+  background: transparent;
+  color: var(--to-text-secondary);
+  text-align: left;
+  transition: var(--to-state-transition);
+}
+
+.item:hover {
+  background: var(--to-background-element);
+}
+
+.current,
+.current:hover {
+  background: var(--to-background-selected);
+  color: var(--to-text);
+}
+
+.glyph {
+  display: inline-flex;
+  flex: none;
+  margin-top: 1px;
+  color: var(--to-text-tertiary);
+  transition: color var(--to-duration-fast) var(--to-ease-standard);
+}
+
+.glyph[data-accepted] {
+  color: var(--to-success);
+}
+
+.itemText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.itemTitle {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+}
+
+.itemState {
+  color: var(--to-text-tertiary);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.viewer {
+  min-width: 0;
+}
+
+.viewerInner {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.text {
+  height: 240px;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-code-background);
+  color: var(--to-text-secondary);
+  font-family: var(--to-font-mono);
+  font-size: 12px;
+  line-height: 18px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+}

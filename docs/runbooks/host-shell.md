@@ -37,8 +37,8 @@ link), `THEONE_HOST_SHELL_DIR` (state directory, default `~/.config/theone/host-
 The daemon also drives an Android emulator on the host (KVM) and streams its screen to
 the app (**Host → Android emulator**); contract in
 [app-runs-and-emulator.md §2](../architecture/app-runs-and-emulator.md#2-android-emulator-on-the-host).
-It needs the Android SDK emulator, `adb`, `scrcpy` (for `scrcpy-server`) and `ffmpeg` on the
-host; `GET /v1/android` reports what is missing. Stopping the daemon leaves the emulator
+It needs the Android SDK emulator, `adb`, `scrcpy` (for `scrcpy-server`) and, for phones
+that can't decode H.264, `ffmpeg` on the host; `GET /v1/android` reports what is missing. Stopping the daemon leaves the emulator
 running; the next daemon adopts it.
 
 By default the emulator runs **network-isolated** (`THEONE_EMULATOR_ISOLATION=netns`): in its
@@ -58,7 +58,7 @@ must work as your user; most distributions allow it). Its adb serial on the host
 | `THEONE_SCRCPY_VERSION` | parsed from `scrcpy --version`; must equal the jar's version |
 | `THEONE_FFMPEG` | `ffmpeg` on `PATH` |
 | `THEONE_EMULATOR_PORT` | `5554` (even, 5554-5682; adbd = +1) |
-| `THEONE_EMULATOR_GPU` | `swiftshader_indirect` |
+| `THEONE_EMULATOR_GPU` | `host` if a `/dev/dri/renderD*` node is usable, else `swiftshader_indirect` |
 | `THEONE_EMULATOR_ISOLATION` | `netns`; `none` runs it on the host network (see the warning below) |
 | `THEONE_EMULATOR_ALLOW_NETS` | — ; comma-separated CIDRs the guest may reach anyway, e.g. `192.168.1.20/32` for a backend on your LAN |
 | `THEONE_EMULATOR_ADB_PORT` | a free port, reused after daemon restarts |
@@ -73,6 +73,41 @@ connection as `emulator egress denied host=… port=…`.
 An emulator you start yourself (`emulator -avd …`, serial `emulator-5554`) is adopted and can
 be viewed, but with isolation on it is **not** linked to the sandbox ("Emulator is not
 isolated; start it from the app"): stop it and start it from the app.
+
+### Screen sharing and stream settings
+
+The phone can view any device `adb devices` lists on the host, not only the daemon's
+emulator: a Genymotion VM (it registers with adb as `192.168.56.x:5555`; set Genymotion's
+*ADB → Use custom Android SDK tools* to the same SDK so both share one adb server), a phone
+on USB, or one connected with `adb connect <ip>:<port>` / wireless debugging. adb stays on the
+host; only the scrcpy video and input travel over the tailnet to the phone. Only the
+daemon's own (isolated) emulator can be linked to the sandbox.
+
+By default the daemon forwards scrcpy's H.264 untouched and the phone decodes it (WebCodecs),
+which needs far less bandwidth than the JPEG fallback that ffmpeg makes for phones that can't.
+Tune it in the desktop app (**Settings → Android streaming**), from the CLI, or with
+`PUT /v1/android/stream`:
+
+```sh
+theone-controller host stream                       # settings and adb devices
+echo '{"bitRate":4000000,"maxFps":30}' | theone-controller host stream --stdin
+echo '{"device":"192.168.56.101:5555"}' | theone-controller host stream --stdin
+```
+
+| Setting | Default | |
+|---|---|---|
+| `encoding` | `h264` | `mjpeg` always sends JPEG (needs ffmpeg) |
+| `bitRate` | `8000000` | bps; lower it when `tailscale status` shows the phone `relay` instead of `direct` |
+| `maxFps` | `60` | |
+| `maxSize` | `null` | caps the longest side; `null` follows the phone's screen |
+| `keyFrameInterval` | `2` | seconds; a phone that falls behind waits for the next key frame |
+| `jpegQuality` | `5` | ffmpeg `-q:v`, 2 (best) to 31 |
+| `device` | `null` | adb serial the phone opens by default; `null` is the daemon's emulator |
+
+Saved settings reach screens that are already open: the daemon watches `state.json`, so
+within a moment each phone switches to a new session with the new settings without
+reconnecting. On the phone, the corners button in the screen's bar goes full screen
+(the small button in the corner, or Android's back, leaves it).
 
 **Link sandbox** in the app stores the sandbox URL and token in `state.json` (`androidLink`)
 and the daemon dials the sandbox's `/v1/android/link`, so builds in the sandbox can use the

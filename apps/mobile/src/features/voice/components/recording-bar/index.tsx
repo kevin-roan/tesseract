@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { ArrowClockwiseIcon, ArrowUpIcon, TrashIcon } from "phosphor-react-native";
+import { ArrowClockwiseIcon, CheckIcon, TrashIcon } from "phosphor-react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import PressableScale from "@/components/pressable-scale";
@@ -18,7 +18,8 @@ export type RecordingBarProps = {
   statusLabel?: string;
   error?: string | null;
   onCancel: () => void;
-  onSend: () => void;
+  /** Stops recording and transcribes into the composer, where the user can edit before sending. */
+  onFinish: () => void;
   onRetry: () => void;
 };
 
@@ -29,7 +30,7 @@ const RecordingBar = ({
   statusLabel,
   error,
   onCancel,
-  onSend,
+  onFinish,
   onRetry,
 }: RecordingBarProps) => {
   const theme = useAppTheme();
@@ -64,15 +65,15 @@ const RecordingBar = ({
           <PressableScale
             depth="control"
             accessibilityRole="button"
-            accessibilityLabel={failed ? "Retry voice message" : "Send voice message"}
+            accessibilityLabel={failed ? "Retry voice message" : "Finish recording"}
             hitSlop={HitSlop.sm}
-            onPress={failed ? onRetry : onSend}
+            onPress={failed ? onRetry : onFinish}
             style={styles.action}
           >
             {failed ? (
               <ArrowClockwiseIcon size={IconSize.md} color={theme.colors.textOnAccent} weight="regular" />
             ) : (
-              <ArrowUpIcon size={IconSize.md} color={theme.colors.textOnAccent} weight="regular" />
+              <CheckIcon size={IconSize.md} color={theme.colors.textOnAccent} weight="regular" />
             )}
           </PressableScale>
         )}

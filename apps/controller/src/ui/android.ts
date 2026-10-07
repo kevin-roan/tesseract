@@ -4,6 +4,7 @@ import {
   ANDROID_BAR,
   ANDROID_HARDWARE_KEYS,
   ANDROID_INPUT,
+  ANDROID_QUERY,
   API_PATHS,
   FRAGMENT_KEYS,
   HOST_MESSAGES,
@@ -15,6 +16,7 @@ import {
 import { applyInsets, requireElement } from "./lib/dom";
 import { takeFragment } from "./lib/fragment";
 import { FrameCanvas } from "./lib/frame-canvas";
+import { canDecodeH264, H264Decoder } from "./lib/h264-decoder";
 import { exposeHostApi, hasHost, postToHost } from "./lib/host";
 import { PointerSlots } from "./lib/pointer-slots";
 import { webSocketUrl } from "./lib/socket";
@@ -22,7 +24,9 @@ import { webSocketUrl } from "./lib/socket";
 const fragment = takeFragment();
 const firstTicket = fragment.get(FRAGMENT_KEYS.ticket);
 const maxSize = Number(fragment.get(FRAGMENT_KEYS.maxSize) ?? "");
+const serial = fragment.get(FRAGMENT_KEYS.serial);
 const embedded = hasHost();
+const h264Support = canDecodeH264();
 
 const stage = requireElement("[data-stage]");
 const canvas = requireElement<HTMLCanvasElement>("[data-screen]");
@@ -35,6 +39,23 @@ const pointers = new PointerSlots(ANDROID_INPUT.maxPointers);
 
 let socket: WebSocket | null = null;
 let previousText = TEXT_INPUT_SENTINEL;
+let decoder: H264Decoder | null = null;
+let decoderFailed = false;
+
+function closeDecoder(): void {
+  decoder?.close();
+  decoder = null;
+}
+
+function onDecoderError(): void {
+  decoderFailed = true;
+  closeDecoder();
+  const current = socket;
+  socket = null;
+  current?.close();
+  pointers.releaseAll();
+  showServerError(MESSAGES.decoderFailed);
+}
 
 function setState(state: ConnectionState, text: string, extra: Record<string, unknown> = {}): void {
   status.set(state, text);
@@ -71,18 +92,30 @@ function receive(message: AndroidScreenServerMessage): string | null {
   if (message.type === "meta") {
     title.textContent = message.deviceName || MESSAGES.androidTitle;
     setState("connected", MESSAGES.connected);
+    closeDecoder();
+    if (message.codec === "h264") decoder = new H264Decoder((frame) => screen.drawFrame(frame), onDecoderError);
   }
   screen.setScreenSize({ width: message.width, height: message.height });
   return null;
 }
 
-function connect(ticket: string): void {
+function screenQuery(h264: boolean): string {
+  const params = new URLSearchParams();
+  if (Number.isInteger(maxSize) && maxSize > 0) params.set(ANDROID_QUERY.maxSize, String(maxSize));
+  if (serial) params.set(ANDROID_QUERY.serial, serial);
+  if (h264 && !decoderFailed) params.set(ANDROID_QUERY.codec, "h264");
+  const query = params.toString();
+  return query ? `&${query}` : "";
+}
+
+async function connect(ticket: string): Promise<void> {
   const previous = socket;
   socket = null;
   previous?.close();
+  closeDecoder();
   overlay.hide();
   setState("connecting", MESSAGES.connecting);
-  const query = Number.isInteger(maxSize) && maxSize > 0 ? `&${FRAGMENT_KEYS.maxSize}=${maxSize}` : "";
+  const query = screenQuery(await h264Support);
   const ws = new WebSocket(`${webSocketUrl(API_PATHS.androidScreen, ticket)}${query}`);
   ws.binaryType = "arraybuffer";
   socket = ws;
@@ -90,7 +123,8 @@ function connect(ticket: string): void {
   ws.addEventListener("message", (event: MessageEvent<unknown>) => {
     if (socket !== ws) return;
     if (event.data instanceof ArrayBuffer) {
-      screen.push(event.data);
+      if (decoder) decoder.push(event.data);
+      else screen.push(event.data);
       return;
     }
     if (typeof event.data !== "string") return;
@@ -102,6 +136,7 @@ function connect(ticket: string): void {
     if (socket !== ws) return;
     socket = null;
     pointers.releaseAll();
+    closeDecoder();
     if (serverError) showServerError(serverError);
     else showDisconnected(event.wasClean ? null : "connection lost");
   });
@@ -232,12 +267,12 @@ textInput.addEventListener("focus", () => bar.setActive("keyboard", true));
 textInput.addEventListener("blur", () => bar.setActive("keyboard", false));
 
 requireElement("[data-bar]").hidden = embedded;
-exposeHostApi({ reconnect: connect, setInsets: applyInsets });
+exposeHostApi({ reconnect: (ticket: string) => void connect(ticket), setInsets: applyInsets });
 resetTextInput();
 
 if (!firstTicket) {
   setState("error", MESSAGES.missingTicket);
   overlay.show(MESSAGES.missingTicket);
 } else {
-  connect(firstTicket);
+  void connect(firstTicket);
 }

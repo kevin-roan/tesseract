@@ -1,18 +1,23 @@
 import {
+  AndroidDeviceSchema,
   AndroidLinkInfoSchema,
+  AndroidStreamSettingsSchema,
   AppRunListSchema,
   AppRunSchema,
   EmulatorInfoSchema,
   HostAndroidStatusSchema,
   RunTargetListSchema,
   SandboxAndroidStatusSchema,
+  type AndroidDevice,
   type AndroidLinkInfo,
+  type AndroidStreamSettings,
   type AppRun,
   type AppRunAction,
   type AppRunFilter,
   type EmulatorInfo,
   type HostAndroidStatus,
   type LinkSandbox,
+  type UpdateAndroidStream,
   type RunTargetInfo,
   type SandboxAndroidStatus,
   type StartAppRun,
@@ -667,6 +672,18 @@ export class TheOneClient {
     return this.request("POST", restPaths.androidLink(), { read: json(AndroidLinkInfoSchema), body, options });
   }
 
+  androidDevices(options?: RequestOptions): Promise<AndroidDevice[]> {
+    return this.request("GET", restPaths.androidDevices(), { read: json(AndroidDeviceSchema.array()), options });
+  }
+
+  androidStreamSettings(options?: RequestOptions): Promise<AndroidStreamSettings> {
+    return this.request("GET", restPaths.androidStream(), { read: json(AndroidStreamSettingsSchema), options });
+  }
+
+  updateAndroidStream(body: UpdateAndroidStream, options?: RequestOptions): Promise<AndroidStreamSettings> {
+    return this.request("PUT", restPaths.androidStream(), { read: json(AndroidStreamSettingsSchema), body, options });
+  }
+
   unlinkSandbox(options?: RequestOptions): Promise<AndroidLinkInfo> {
     return this.request("DELETE", restPaths.androidLink(), { read: json(AndroidLinkInfoSchema), options });
   }
@@ -694,10 +711,10 @@ export class TheOneClient {
     return this.httpUrl(uiPaths.vnc({ ticket, password: display.vnc.password }));
   }
 
-  /** Host daemon `/ui/android` with a fresh ticket (session client). */
-  async androidScreenPageUrl(maxSize?: number, options?: RequestOptions): Promise<string> {
+  /** Host daemon `/ui/android` with a fresh ticket (session client); `serial` picks another adb device than the default. */
+  async androidScreenPageUrl(maxSize?: number, serial?: string, options?: RequestOptions): Promise<string> {
     const { ticket } = await this.createTicket(options);
-    return this.httpUrl(uiPaths.android({ ticket, maxSize }));
+    return this.httpUrl(uiPaths.android({ ticket, maxSize, serial }));
   }
 
   async artifactDownloadUrl(id: string, options?: RequestOptions): Promise<string> {

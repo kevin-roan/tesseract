@@ -1,0 +1,165 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+html {
+  background: var(--to-background);
+  color: var(--to-text);
+  font-family: var(--to-font-sans);
+  font-size: var(--to-font-size-base);
+  line-height: 20px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
+}
+
+body {
+  overflow: hidden;
+  user-select: none;
+}
+
+::selection {
+  background: var(--to-text-selection);
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: default;
+}
+
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 1px solid var(--to-focus-ring);
+  outline-offset: 1px;
+}
+
+[data-presence-focus]:focus-visible {
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--to-text-tertiary);
+}
+
+a {
+  color: var(--to-accent-strong);
+  text-decoration: none;
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+  background: transparent;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--to-ink-12);
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--to-ink-22);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+[data-overlay-scroll] {
+  scrollbar-width: none;
+}
+
+.to-overlay-scrollbar::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+.to-overlay-scrollbar::-webkit-scrollbar-thumb {
+  background-color: transparent;
+}
+
+.to-overlay-scrollbar:hover::-webkit-scrollbar-thumb {
+  background-color: var(--to-ink-12);
+}
+
+.to-overlay-scrollbar:hover::-webkit-scrollbar-thumb:hover {
+  background-color: var(--to-ink-22);
+}
+
+.to-drag {
+  -webkit-app-region: drag;
+}
+
+.to-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+@keyframes to-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: var(--to-pulse-floor);
+  }
+}
+
+@keyframes to-shimmer {
+  from {
+    background-position: -100% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes to-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+  }
+}
+
+:root[data-reduced-motion="true"] *,
+:root[data-reduced-motion="true"] *::before,
+:root[data-reduced-motion="true"] *::after {
+  animation-duration: 0ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0ms !important;
+  caret-color: transparent;
+}

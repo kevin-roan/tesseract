@@ -15,6 +15,7 @@ export function useSandboxNavigation() {
         router.push({ pathname: "/sandbox/preview", params: { sandbox: sandboxId, run: runId, title } }),
       claudeAccount: () => router.push("/sandbox/claude"),
       settings: () => router.push("/settings"),
+      about: () => router.push("/settings/about"),
       files: (downloadId?: string) =>
         router.push(
           (downloadId ? { pathname: FILES_ROUTE, params: { [FILE_DOWNLOAD_PARAM]: downloadId } } : FILES_ROUTE) as Href,
