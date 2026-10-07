@@ -204,12 +204,10 @@ Deployed to ${host} (${target}).
 Next steps:
   1. Put the CLI on PATH on the Mac (zsh):
        ssh ${host} 'echo "export PATH=\"\$HOME/.tesseract/bin:\$PATH\"" >> ~/.zprofile'
-     The CLI needs MONOLITH_SANDBOX_CONTEXT=~/.tesseract/sandbox for sandbox commands:
-       ssh ${host} 'echo "export MONOLITH_SANDBOX_CONTEXT=\"\$HOME/.tesseract/sandbox\"" >> ~/.zprofile'
   2. Set the host shell PIN (once):
        ssh -t ${host} ~/.tesseract/bin/${CONTROLLER_BIN} host pin
   3. Pair the phone (sandbox and host shell QR codes):
-       ssh -t ${host} 'MONOLITH_SANDBOX_CONTEXT=~/.tesseract/sandbox ~/.tesseract/bin/${CLI_BIN} server pair'
+       ssh -t ${host} ~/.tesseract/bin/${CLI_BIN} server pair
   4. Check it:
-       ssh -t ${host} 'MONOLITH_SANDBOX_CONTEXT=~/.tesseract/sandbox ~/.tesseract/bin/${CLI_BIN} server status'
+       ssh -t ${host} ~/.tesseract/bin/${CLI_BIN} server status
 EOF

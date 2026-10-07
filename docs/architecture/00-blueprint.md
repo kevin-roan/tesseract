@@ -130,7 +130,7 @@ from an automated agent MUST go through `flock /tmp/theone-bun-install.lock bun 
 | Browser pages | `/ui/terminal`, `/ui/vnc` (controller), `/ui/android` (host shell daemon); their bundled assets are served at root paths (`/chunk-<hash>.js`, `.css`) |
 | Mobile deep link | `theone://pair?url=<encoded base url>&token=<token>&name=<label>`; host shell: `theone://host?url=…&token=<host token>&name=<host name>` |
 | Host shell daemon | `theone-controller host serve` on the host, `<host Tailscale IPv4>:7701` (`HOST_SHELL_PORT`, `THEONE_HOST_SHELL_PORT`); only loopback or `100.64.0.0/10` binds |
-| Headless server install | `~/.tesseract/{bin,sandbox}` (`infra/scripts/deploy-mac`); host shell service LaunchAgent `dev.tesseract.host-shell` (logs `~/Library/Logs/Tesseract/`) or systemd user unit `tesseract-host-shell.service` (§7.2) |
+| Headless server install | `~/.tesseract/{bin,sandbox}` (`./setup-server.sh` on the server, or `infra/scripts/deploy-mac` from the dev box); host shell service LaunchAgent `dev.tesseract.host-shell` (logs `~/Library/Logs/Tesseract/`) or systemd user unit `tesseract-host-shell.service` (§7.2) |
 | ADB tunnel | `127.0.0.1:15555` in the sandbox (`DEFAULT_ADB_TUNNEL_PORT`, `THEONE_ADB_TUNNEL_PORT`), adb serial `127.0.0.1:15555`; open only while the host emulator is linked and `running` ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2.3). Shared host emulators (`THEONE_ANDROID_SHARE_EMULATORS`): `emulator-<n>` → `127.0.0.1:<15555 + 1 + (n − 5554)/2>` (`sharedEmulatorTunnelPort`), e.g. `emulator-5556` → `127.0.0.1:15557` |
 | Host Android emulator | console `5554`, adbd `5555` (`DEFAULT_EMULATOR_PORT`, `THEONE_EMULATOR_PORT`); adb serial `127.0.0.1:<bridge port>` in `netns` isolation (`THEONE_EMULATOR_ADB_PORT`), `emulator-<port>` for a plain (`none` or adopted non-isolated) emulator |
 | Desktop renderer dev server | `http://127.0.0.1:4545` (`RENDERER_DEV_PORT`, `strictPort`, dev and preview); never the Electron/Vite defaults |
@@ -1004,6 +1004,8 @@ login in the keychain, which the sandbox can't read). The stack restarts with Do
 | Command | `theone-controller host serve --bind <tailscale ip>` | same |
 | Logs | `~/Library/Logs/Tesseract/` | `journalctl --user -u tesseract-host-shell` |
 
+Installing on the server itself: `./setup-server.sh [--hostname NAME] [--with LIST] [--rebuild] [--yes]` from a repo checkout (builds the binaries for that machine, installs them into `~/.tesseract`, prompts for missing secrets and the host PIN, prints root-only steps such as `pmset` for the user to run, then runs `tesseract server install --mode tailscale`; see docs/runbooks/mac-server.md).
+
 Deploying from the Linux dev box: `infra/scripts/deploy-mac <ssh-host> [--arch auto|arm64|x64] [--skip-build]
 [-- <install args>]` (`bun run deploy:mac`) builds `tesseract` + `theone-controller` for `mac-arm64`/`mac-x64`
 (`uname -m` on the Mac) and the sandbox context (`bundle:sandbox`), copies them to `~/.tesseract/bin/` and
@@ -1231,7 +1233,7 @@ GTK app and the CLI can read it.
 | macOS | universal `dmg` + `zip` (hardened runtime; notarized when the `APPLE_*` variables are set) | Settings › About "Install tesseract command": admin prompt, symlink `/usr/local/bin/tesseract` (only from `/Applications`) |
 | Windows | per-user one-click NSIS `exe` (x64) | the installer adds `$INSTDIR\resources\bin` to the user `Path` and removes it on uninstall |
 | Linux | `AppImage` and `deb` (x64) | deb: app in `/opt/Monolith`, postinst links `/usr/bin/tesseract` (only when free or already ours); AppImage: Settings › About copies it to `~/.local/share/monolith/bin/tesseract` and links `~/.local/bin/tesseract`; on install and every AppImage launch the app writes `~/.local/share/monolith/app.json` `{appPath, sandboxDir}` and syncs the bundled context to `~/.local/share/monolith/sandbox` (marker `.bundle-hash`) |
-| Headless server (macOS/Linux, no app, §7.2) | `infra/scripts/deploy-mac` from the dev box | `~/.tesseract/bin/{tesseract,theone-controller}` (add `~/.tesseract/bin` to `PATH`); sandbox context in `~/.tesseract/sandbox` (`MONOLITH_SANDBOX_CONTEXT`) |
+| Headless server (macOS/Linux, no app, §7.2) | `./setup-server.sh` on the server (repo checkout), or `infra/scripts/deploy-mac` from the dev box | `~/.tesseract/bin/{tesseract,theone-controller}` (add `~/.tesseract/bin` to `PATH`); sandbox context in `~/.tesseract/sandbox` (found next to `bin/`; `MONOLITH_SANDBOX_CONTEXT` overrides) |
 
 `extraResources`: `resources/bin/{tesseract,theone-controller}`, `resources/sandbox/` (the build context the
 wizard and `tesseract sandbox build` use), icons and font licenses. Updates: electron-updater against the generic

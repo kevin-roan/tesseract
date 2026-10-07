@@ -1,9 +1,52 @@
 # Mac server (headless sandbox host)
 
 Runs the sandbox stack and the host shell on a Mac on your tailnet, without the desktop app.
-The Mac only needs Docker and Tailscale. You deploy and update it from the Linux dev machine
-with `bun run deploy:mac <mac>`, which builds the `tesseract` and `theone-controller`
-binaries for the Mac, copies them over ssh and runs `tesseract server install` there.
+The Mac only needs Docker and Tailscale. There are two ways to install it:
+
+- **On the Mac (simplest):** clone the repo there and run `./setup-server.sh` (see below).
+- **From the Linux dev machine:** `bun run deploy:mac <mac>` builds the `tesseract` and
+  `theone-controller` binaries for the Mac, copies them over ssh and runs
+  `tesseract server install` there ([Deploy from Linux](#deploy-from-linux)).
+
+## Quick start: `./setup-server.sh` on the Mac
+
+```bash
+git clone <repo-url> theone-mobile && cd theone-mobile
+./setup-server.sh                 # re-run after `git pull` to update
+```
+
+Before running it, install and open OrbStack (`brew install --cask orbstack`) or Docker Desktop,
+and install the Tailscale app and sign in. The script checks for both and stops with
+instructions if either is missing. It never runs `sudo`. When something needs root it prints
+the command and waits for you to run it in another terminal. In order, it:
+
+1. Checks git, curl, rsync, Docker (starts OrbStack/Docker Desktop if it is installed but not
+   running), docker buildx and Tailscale. It installs bun into `~/.bun` if bun is missing.
+2. Root settings: prints `sudo pmset -a sleep 0 disksleep 0` and `sudo pmset -a autorestart 1`
+   if they aren't set yet. It also reminds you to turn on automatic login (System Settings →
+   Users & Groups; needs FileVault off), because Docker and the host shell only start after a
+   login. On Linux it prints `sudo loginctl enable-linger $USER` instead, and adds
+   `usermod -aG docker` when you are not in the docker group.
+3. Runs `bun install`, builds `tesseract` and `theone-controller` for this machine (mac-arm64 or
+   mac-x64), copies them to `~/.tesseract/bin`, copies the sandbox build context to
+   `~/.tesseract/sandbox`, and adds `~/.tesseract/bin` to `PATH` in `~/.zprofile`.
+4. Secrets, each read from the environment or asked for with hidden input:
+   - The tailnet domain, detected from `tailscale status`.
+   - `TS_AUTHKEY`, asked for only on the first install. Create a key at
+     https://login.tailscale.com/admin/settings/keys.
+   - `CLAUDE_CODE_OAUTH_TOKEN`, made with `claude setup-token`; see step 5 below. Press Enter to
+     skip it.
+   Saved values are reused on later runs.
+5. Asks for the host shell PIN if none is set yet.
+6. Runs `tesseract server install --mode tailscale --hostname tesseract --with <components>`.
+   It adds `--build` on the first run, and again whenever the sandbox files changed since the
+   last build. Components default to `flutter,whisper` on Apple silicon and `all` on Intel.
+   Install starts the sandbox, installs the `dev.tesseract.host-shell` LaunchAgent, runs
+   `tailscale serve` on :8443 and prints both pairing QR codes.
+
+Options: `--hostname NAME`, `--with LIST`, `--rebuild` (force an image rebuild), and `--yes`
+(never stop to ask; fail if a secret is missing). Afterwards, from a new shell:
+`tesseract server status`, `tesseract server pair`, `tesseract sandbox logs`.
 
 Contract: [blueprint §7.2](../architecture/00-blueprint.md#72-headless-server-tesseract-server-macos-and-linux).
 Related: [tesseract-cli.md](tesseract-cli.md#server), [host-shell.md](host-shell.md),
@@ -83,15 +126,14 @@ Then, once:
 
 ```bash
 ssh -t mac-mini ~/.tesseract/bin/theone-controller host pin     # 6-12 digit PIN for the host shell
-ssh -t mac-mini 'MONOLITH_SANDBOX_CONTEXT=~/.tesseract/sandbox ~/.tesseract/bin/tesseract server pair'
+ssh -t mac-mini ~/.tesseract/bin/tesseract server pair
 ```
 
 Scan both QR codes with the phone app (sandbox, then **Host shell**). To use `tesseract` on the
 Mac directly, add to `~/.zprofile` there:
 
 ```bash
-export PATH="$HOME/.tesseract/bin:$PATH"
-export MONOLITH_SANDBOX_CONTEXT="$HOME/.tesseract/sandbox"
+export PATH="$HOME/.tesseract/bin:$PATH"   # the CLI finds ~/.tesseract/sandbox next to its bin/ directory
 ```
 
 ## Apple silicon limits
@@ -121,7 +163,7 @@ stay, so nothing has to be paired again.
 ## Uninstall
 
 ```bash
-ssh -t mac-mini 'MONOLITH_SANDBOX_CONTEXT=~/.tesseract/sandbox ~/.tesseract/bin/tesseract server uninstall'
+ssh -t mac-mini ~/.tesseract/bin/tesseract server uninstall
 ssh -t mac-mini '... tesseract server uninstall --volumes'   # also deletes /workspace and /home/dev
 ssh mac-mini 'rm -rf ~/.tesseract'
 ```

@@ -88,7 +88,7 @@ Android Studio's) checks or installs Docker, builds and starts the sandbox with 
 emulator (KVM, WHPX or HVF), and shows the pairing QR code for the phone. Afterwards it shows the same pages as
 the phone (Overview, Agents, Projects, Files, Terminals, Display). Installers: universal `dmg`, per-user NSIS
 `exe`, `AppImage` and `deb`; each puts the `tesseract` command on your PATH (`tesseract status`, `doctor`,
-`sandbox up|down|build|logs|pair`, `android images|install|avd`, `sync`, `config`, `server`). For a headless Mac sandbox see [docs/runbooks/mac-server.md](docs/runbooks/mac-server.md).
+`sandbox up|down|build|logs|pair`, `android images|install|avd`, `sync`, `config`, `server`). For a headless server (e.g. a Mac on the tailnet): clone the repo there and run `./setup-server.sh` ([docs/runbooks/mac-server.md](docs/runbooks/mac-server.md)).
 
 ```bash
 bun run electron                      # dev mode; the renderer dev server is http://127.0.0.1:4545
