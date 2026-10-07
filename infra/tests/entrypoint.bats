@@ -229,17 +229,16 @@ ${token}"
   cat > /usr/bin/supervisord << 'EOF'
 #!/bin/sh
 echo "supervisord $*"
-echo "token=${THEONE_TOKEN-unset} password=${THEONE_VNC_PASSWORD-unset} stt=${THEONE_STT_API_KEY-unset} gemini=${GEMINI_API_KEY-unset} other=${THEONE_SANDBOX_ID-unset}"
+echo "token=${THEONE_TOKEN-unset} password=${THEONE_VNC_PASSWORD-unset} stt=${THEONE_STT_API_KEY-unset} other=${THEONE_SANDBOX_ID-unset}"
 EOF
   chmod +x /usr/bin/supervisord
-  THEONE_TOKEN=secret-token THEONE_VNC_PASSWORD=secretpw THEONE_STT_API_KEY=sk-stt GEMINI_API_KEY=AIza-gemini THEONE_SANDBOX_ID=box run "${ENTRYPOINT}"
+  THEONE_TOKEN=secret-token THEONE_VNC_PASSWORD=secretpw THEONE_STT_API_KEY=sk-stt THEONE_SANDBOX_ID=box run "${ENTRYPOINT}"
   assert_success
   assert_line "supervisord -n -c /etc/supervisor/supervisord.conf"
-  assert_line "token=unset password=unset stt=unset gemini=unset other=box"
+  assert_line "token=unset password=unset stt=unset other=box"
   assert_equal "$(cat /run/theone/controller.env)" "THEONE_VNC_PASSWORD=secretpw
 THEONE_TOKEN=secret-token
-THEONE_STT_API_KEY=sk-stt
-GEMINI_API_KEY=AIza-gemini"
+THEONE_STT_API_KEY=sk-stt"
 }
 
 @test "repairs the ownership of volumes created by root" {

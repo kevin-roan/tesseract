@@ -51,6 +51,7 @@ export interface ValidationContext {
 export interface EnvSecrets {
   token: string;
   tsAuthKey?: string;
+  claudeOAuthToken?: string;
 }
 
 function limits(host: HostResources, docker: DockerReport | null) {
@@ -174,6 +175,7 @@ export function choicesToEnv(
     FLUTTER_VERSION: choices.flutterVersion || DEFAULT_FLUTTER_VERSION,
     WHISPER_MODELS: orderedWhisperModels(choices.whisperModels).join(" "),
     CLAUDE_CODE_VERSION: choices.claudeCodeVersion || DEFAULT_CLAUDE_CODE_VERSION,
+    CLAUDE_CODE_OAUTH_TOKEN: secrets.claudeOAuthToken || undefined,
   };
   for (const component of COMPONENTS) values[COMPONENT_BUILD_ARGS[component] as EnvKey] = flag(has(component));
   return values;

@@ -38,7 +38,7 @@ describe("open helpers", () => {
   });
 });
 
-describe("monolith open", () => {
+describe("tesseract open", () => {
   it("launches the installed app with the page", async () => {
     sandbox.runtime.appExecutable = () => "/opt/Monolith/monolith-desktop";
     const result = await runCli(sandbox, ["open", "projects", "--json"]);

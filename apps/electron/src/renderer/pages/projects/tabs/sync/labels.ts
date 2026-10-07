@@ -2,8 +2,8 @@ import type { SyncKind } from "../../../../../shared/contracts/syncback";
 
 export const SYNC_LABELS = {
   notLinked:
-    "Not linked on this computer. Run monolith --sync in the project's checkout to link it, then changes made in the sandbox can be synced back.",
-  neverPushed: (path: string) => `The sandbox has no push baseline yet. Run monolith --sync in ${path}.`,
+    "Not linked on this computer. Run tesseract --sync in the project's checkout to link it, then changes made in the sandbox can be synced back.",
+  neverPushed: (path: string) => `The sandbox has no push baseline yet. Run tesseract --sync in ${path}.`,
   error: (error: string) => `Couldn't read sandbox changes: ${error}`,
   hostPath: "Host folder",
   pushed: "Linked",
@@ -69,8 +69,8 @@ export const SYNC_HINTS = {
 export const SYNC_BLOCKED = {
   loading: "Loading the sandbox changes…",
   unavailable: "The sandbox changes couldn't be read",
-  notLinked: "Not linked on this computer. Run monolith --sync in the checkout first",
-  neverPushed: "Never pushed. Run monolith --sync in the checkout first",
+  notLinked: "Not linked on this computer. Run tesseract --sync in the checkout first",
+  neverPushed: "Never pushed. Run tesseract --sync in the checkout first",
   active: "A sync request is already in progress",
   nothingToSync: "Nothing to sync. The host folder matches the sandbox",
   nothingToDiscard: "Nothing to discard. The sandbox matches the last sync",

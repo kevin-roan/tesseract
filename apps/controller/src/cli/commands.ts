@@ -34,7 +34,7 @@ Usage:
   theone-controller hook             forward a Claude Code hook (JSON on stdin) to the inbox; silent, always exits 0
   theone-controller monolith --get [--force] [--json]
                                      (also /usr/local/bin/monolith) in a project folder: bring in the changes made
-                                     on the linked host checkout since the last monolith --sync or --get
+                                     on the linked host checkout since the last tesseract --sync or --get
 ${HOST_USAGE}
   theone-controller --version | --help`;
 

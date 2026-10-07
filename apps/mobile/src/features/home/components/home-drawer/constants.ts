@@ -12,7 +12,7 @@ import {
 export const DRAWER_TITLE = "Monolith";
 export const DRAWER_RECENTS_TITLE = "Recents";
 export const DRAWER_ALL_CHATS_LABEL = "All chats";
-export const DRAWER_NEW_CHAT_LABEL = "New chat";
+export const DRAWER_SETTINGS_LABEL = "Open settings";
 export const DRAWER_PROFILE_LABEL = "Open profile";
 export const DRAWER_RECENTS_LIMIT = 8;
 

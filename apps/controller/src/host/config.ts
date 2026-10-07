@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { hostname, homedir } from "node:os";
 import { join } from "node:path";
 import { HOST_SHELL_PORT } from "@theone/protocol";
@@ -52,10 +53,30 @@ export function validatePort(value: string): number {
   return port;
 }
 
-export function tailscaleIpv4(): string {
+/** Homebrew's prefixes: launchd starts the daemon with only `/usr/bin:/bin:/usr/sbin:/sbin` on PATH. */
+const DARWIN_TOOL_DIRS = ["/opt/homebrew/bin", "/usr/local/bin"];
+const TAILSCALE_APP_CLI = "/Applications/Tailscale.app/Contents/MacOS/Tailscale";
+
+/** PATH for finding host tools (adb, scrcpy, ffmpeg, tailscale), with Homebrew's prefixes appended on macOS. */
+export function hostToolPath(env: Env, platform: NodeJS.Platform = process.platform): string {
+  const path = env.PATH ?? "";
+  if (platform !== "darwin") return path;
+  return [path, ...DARWIN_TOOL_DIRS].filter(Boolean).join(":");
+}
+
+/** `tailscale` on PATH (plus Homebrew's prefixes), else the CLI inside the macOS app, which installs no symlink. */
+export function tailscaleBin(env: Env = process.env, platform: NodeJS.Platform = process.platform, exists: (path: string) => boolean = existsSync): string | null {
+  const found = Bun.which("tailscale", { PATH: hostToolPath(env, platform) });
+  if (found) return found;
+  return platform === "darwin" && exists(TAILSCALE_APP_CLI) ? TAILSCALE_APP_CLI : null;
+}
+
+export function tailscaleIpv4(env: Env = process.env): string {
+  const bin = tailscaleBin(env);
+  if (!bin) throw new HostConfigError("tailscale is not installed; install it on the host or pass --bind <ipv4>");
   let result: Bun.SyncSubprocess<"pipe", "pipe">;
   try {
-    result = Bun.spawnSync(["tailscale", "ip", "-4"], { stdout: "pipe", stderr: "pipe" });
+    result = Bun.spawnSync([bin, "ip", "-4"], { stdout: "pipe", stderr: "pipe" });
   } catch {
     throw new HostConfigError("tailscale is not installed; install it on the host or pass --bind <ipv4>");
   }
@@ -81,9 +102,11 @@ export function servedUrl(status: ServeStatus, bind: string, port: number): stri
 }
 
 /** Asks tailscaled for its serve config; null when tailscale is missing, down or serves nothing for this daemon. */
-export function tailscaleServeUrl(bind: string, port: number): string | null {
+export function tailscaleServeUrl(bind: string, port: number, env: Env = process.env): string | null {
+  const bin = tailscaleBin(env);
+  if (!bin) return null;
   try {
-    const result = Bun.spawnSync(["tailscale", "serve", "status", "--json"], { stdout: "pipe", stderr: "pipe" });
+    const result = Bun.spawnSync([bin, "serve", "status", "--json"], { stdout: "pipe", stderr: "pipe" });
     if (!result.success) return null;
     return servedUrl(JSON.parse(result.stdout.toString() || "{}") as ServeStatus, bind, port);
   } catch {
@@ -98,7 +121,10 @@ export function hostStateDir(env: Env): string {
 }
 
 /** Bind and port are resolved only when `resolveBind` is set (serve, pair), so `pin`/`token` work without Tailscale. */
-export function loadHostConfig(env: Env, overrides: HostOverrides = {}, resolveBind = true): HostConfig {
+/** macOS has no `bash -l` worth using (3.2) and launchd sets no SHELL, so default to the system zsh there. */
+export const defaultShell = (platform: NodeJS.Platform) => (platform === "darwin" ? "/bin/zsh" : "bash");
+
+export function loadHostConfig(env: Env, overrides: HostOverrides = {}, resolveBind = true, platform: NodeJS.Platform = process.platform): HostConfig {
   const stateDir = hostStateDir(env);
   const port = validatePort(overrides.port ?? env.THEONE_HOST_SHELL_PORT ?? String(HOST_SHELL_PORT));
   const requested = overrides.bind ?? env.THEONE_HOST_SHELL_BIND;
@@ -107,7 +133,7 @@ export function loadHostConfig(env: Env, overrides: HostOverrides = {}, resolveB
     if (!requested.trim() || requested.trim() === "::") throw new HostConfigError("Refusing to listen on every interface; bind the host's Tailscale IPv4");
     bind = validateBind(requested);
   } else if (resolveBind) {
-    bind = validateBind(tailscaleIpv4());
+    bind = validateBind(tailscaleIpv4(env));
   }
   const home = env.HOME || homedir();
   return {
@@ -118,7 +144,7 @@ export function loadHostConfig(env: Env, overrides: HostOverrides = {}, resolveB
     publicUrl: env.THEONE_HOST_SHELL_PUBLIC_URL || `http://${bind}:${port}`,
     hostId: hostname(),
     home,
-    shell: [env.SHELL || "bash", "-l"],
-    android: loadAndroidConfig(env),
+    shell: [env.SHELL || defaultShell(platform), "-l"],
+    android: loadAndroidConfig(env, platform),
   };
 }

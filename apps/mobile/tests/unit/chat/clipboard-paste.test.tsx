@@ -97,7 +97,22 @@ describe("clipboard image paste in useChatComposer", () => {
     await act(async () => result.current.onSheetDismissed());
 
     await waitFor(() => expect(result.current.attachments.items[0]?.status).toBe("ready"));
-    expect(optionIds(result.current.attach.options)).not.toContain("clipboard");
+    expect(result.current.clipboard.canPaste).toBe(false);
+    expect(optionIds(result.current.attach.options)).toContain("clipboard");
+  });
+
+  it("offers a new copy again after the app was only inactive (iOS screenshot overlay)", async () => {
+    hasImageAsync.mockResolvedValue(true);
+    getImageAsync.mockResolvedValue({ data: `data:image/png;base64,${PNG}`, size: { width: 1, height: 1 } });
+    const { result } = await renderComposer();
+
+    await act(async () => result.current.clipboard.onFocus());
+    await act(async () => result.current.clipboard.paste());
+    expect(result.current.clipboard.canPaste).toBe(false);
+
+    await act(async () => appStateListener?.("inactive"));
+    await act(async () => appStateListener?.("active"));
+    expect(result.current.clipboard.canPaste).toBe(true);
   });
 
   it("shows a notice when the image is gone by the time it is pasted", async () => {

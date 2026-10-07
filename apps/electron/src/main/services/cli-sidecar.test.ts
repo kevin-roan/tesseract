@@ -36,7 +36,7 @@ afterEach(() => rmSync(root, { recursive: true, force: true }));
 describe("sidecarLayout", () => {
   it("puts the sidecar next to the CLI copy's bin dir, where the CLI reads it", () => {
     const layout = sidecarLayout("/home/u");
-    expect(layout.copyPath).toBe("/home/u/.local/share/monolith/bin/monolith");
+    expect(layout.copyPath).toBe("/home/u/.local/share/monolith/bin/tesseract");
     expect(layout.file).toBe(join("/home/u/.local/share/monolith", INSTALL_SIDECAR));
     expect(layout.sandboxDir).toBe("/home/u/.local/share/monolith/sandbox");
   });

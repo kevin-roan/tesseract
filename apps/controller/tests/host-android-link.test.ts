@@ -1,9 +1,10 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createServer, type Server as TcpServer, type Socket } from "node:net";
 import type { ServerWebSocket } from "bun";
-import { AndroidLinkHostMessageSchema, createId, type AndroidLinkHostMessage, type EmulatorInfo } from "@theone/protocol";
+import { AndroidLinkHostMessageSchema, createId, type AndroidLinkHostMessage, type EmulatorInfo, type SharedEmulator } from "@theone/protocol";
 import { silentLogger } from "../src/core/logger";
 import { AndroidLink, LINK_MESSAGES, linkEmulatorView, redactUrl, type LinkOptions } from "../src/host/android/link";
+import type { Endpoint } from "../src/host/android/pipe";
 import { waitFor } from "./helpers";
 
 const TOKEN = "sandbox-token";
@@ -116,10 +117,20 @@ afterEach(async () => {
   for (const cleanup of cleanups.splice(0).reverse()) await cleanup();
 });
 
-function setup(emulator: { current: EmulatorInfo }, adbdPort = 1, options: LinkOptions = {}, refusal: string | null = null) {
+type Shared = { devices: SharedEmulator[]; adbd: Record<string, Endpoint> };
+
+function setup(emulator: { current: EmulatorInfo }, adbdPort = 1, options: LinkOptions = {}, refusal: string | null = null, shared: Shared = { devices: [], adbd: {} }) {
   const sandbox = fakeSandbox();
   const link = new AndroidLink(
-    { hostId: "test-host", version: "9.9.9", emulator: () => emulator.current, adbd: () => ({ host: "127.0.0.1", port: adbdPort }), refusal: () => refusal },
+    {
+      hostId: "test-host",
+      version: "9.9.9",
+      emulator: () => emulator.current,
+      adbd: () => ({ host: "127.0.0.1", port: adbdPort }),
+      refusal: () => refusal,
+      shared: () => shared.devices,
+      sharedAdbd: (serial) => shared.adbd[serial] ?? null,
+    },
     silentLogger,
     { reconnectMinMs: 20, reconnectMaxMs: 80, ...options },
   );
@@ -137,10 +148,11 @@ describe("android link client", () => {
     link.configure({ sandboxUrl: `${sandbox.url}/`, token: TOKEN });
     await waitFor(() => link.info().connected);
     expect(link.info()).toEqual({ configured: true, sandboxUrl: sandbox.url, connected: true, lastError: null });
-    await waitFor(() => sandbox.received.length >= 2);
-    expect(sandbox.received.slice(0, 2)).toEqual([
+    await waitFor(() => sandbox.received.length >= 3);
+    expect(sandbox.received.slice(0, 3)).toEqual([
       { type: "hello", hostId: "test-host", version: "9.9.9" },
       { type: "emulator", emulator: running },
+      { type: "devices", devices: [] },
     ]);
 
     emulator.current = stopped;
@@ -184,6 +196,33 @@ describe("android link client", () => {
     await waitFor(() => adbd.sockets.length === 2);
     adbd.sockets[1]?.destroy();
     await waitFor(() => other.closed);
+  });
+
+  test("shares other host emulators and pipes streams to the one asked for", async () => {
+    const adbd = await echoServer();
+    cleanups.push(() => void adbd.server.close());
+    const device = { serial: "emulator-5556", model: "Pixel 9" };
+    const shared: Shared = { devices: [device], adbd: { "emulator-5556": { host: "127.0.0.1", port: adbd.port } } };
+    const { sandbox, link } = setup({ current: stopped }, 1, {}, null, shared);
+    link.configure({ sandboxUrl: sandbox.url, token: TOKEN });
+    await waitFor(() => ofType(sandbox.received, "devices").length === 1);
+    expect(ofType(sandbox.received, "devices")[0]?.devices).toEqual([device]);
+
+    const streamId = createId("adbStream");
+    sandbox.lastLink()?.send(JSON.stringify({ type: "open", streamId, device: "emulator-5556" }));
+    const stream = await waitFor(() => (sandbox.streams.get(streamId)?.ws ? sandbox.streams.get(streamId) : null));
+    stream.ws.sendBinary(Buffer.from("CNXN"));
+    await waitFor(() => Buffer.concat(stream.data).toString("latin1") === "CNXN");
+
+    const unknown = createId("adbStream");
+    sandbox.lastLink()?.send(JSON.stringify({ type: "open", streamId: unknown, device: "emulator-5558" }));
+    const refusal = await waitFor(() => ofType(sandbox.received, "refuse")[0]);
+    expect(refusal).toEqual({ type: "refuse", streamId: unknown, message: LINK_MESSAGES.notShared });
+
+    shared.devices = [];
+    link.sharedChanged([]);
+    await waitFor(() => ofType(sandbox.received, "devices").length === 2);
+    expect(ofType(sandbox.received, "devices")[1]?.devices).toEqual([]);
   });
 
   test("refuses a stream while the emulator is not running", async () => {

@@ -8,7 +8,7 @@ describe("smoke helpers", () => {
   });
 
   it("parses the CLI version line", () => {
-    expect(parseCliVersion("monolith 0.1.0\n")).toBe("0.1.0");
+    expect(parseCliVersion("tesseract 0.1.0\n")).toBe("0.1.0");
     expect(parseCliVersion("error")).toBeNull();
   });
 

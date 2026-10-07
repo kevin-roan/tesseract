@@ -31,7 +31,7 @@ const BuildOutputCard = ({ output, project, local, onDownload, onShare, index = 
         title={output.fileName}
         subtitle={buildOutputSubtitle(output, project)}
         meta={buildOutputMeta(output)}
-        onPress={local.downloaded ? onShare : onDownload}
+        onPress={local.downloaded || local.progress !== undefined ? undefined : onDownload}
         footer={<LocalFileActions fileName={output.fileName} status={local} onDownload={onDownload} onShare={onShare} />}
       >
         <ThemedText variant="caption" color="textSecondary" numberOfLines={2}>

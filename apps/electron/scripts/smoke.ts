@@ -60,8 +60,8 @@ function inspectPackagedTree(root: string, expectedVersion: string): void {
   check(drift.length === 0, `sandbox context matches manifest.json (${Object.keys(manifest.files).length} files)${drift.length ? `: ${drift.join(", ")}` : ""}`);
   const feed = parseUpdateFeed(readFileSync(join(root, "resources/app-update.yml"), "utf8"));
   check(feed.provider === "generic" && feed.url?.startsWith("http"), `update feed ${feed.provider} ${feed.url}`);
-  const cli = run(join(root, "resources/bin/monolith"), ["--version"]);
-  check(parseCliVersion(cli.stdout) === expectedVersion, `monolith --version = ${cli.stdout.trim() || cli.stderr.trim()}`);
+  const cli = run(join(root, "resources/bin/tesseract"), ["--version"]);
+  check(parseCliVersion(cli.stdout) === expectedVersion, `tesseract --version = ${cli.stdout.trim() || cli.stderr.trim()}`);
 }
 
 function launchSnapshot(executable: string, out: string, env: NodeJS.ProcessEnv): void {

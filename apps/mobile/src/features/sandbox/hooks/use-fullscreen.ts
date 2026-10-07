@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState } from "react";
 import { BackHandler } from "react-native";
+import { useNavigation } from "expo-router";
 
-/** Full-screen state for a remote surface; Android's back button leaves full screen first. */
+/**
+ * Full-screen state for a remote surface; Android's back button leaves full screen first. While on, the
+ * home indicator (iOS) and the navigation bar (Android) hide so only the remote screen shows.
+ */
 export function useFullscreen() {
+  const navigation = useNavigation();
   const [fullscreen, setFullscreen] = useState(false);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({ autoHideHomeIndicator: fullscreen, navigationBarHidden: fullscreen });
+  }, [navigation, fullscreen]);
 
   useEffect(() => {
     if (!fullscreen) return;

@@ -15,6 +15,7 @@ import { useFreshEntrance } from "@/hooks/use-fresh-entrance";
 import { useStickToBottom } from "@/hooks/use-stick-to-bottom";
 import ChatComposer from "@/features/chat/components/chat-composer";
 import ChatHeader from "@/features/chat/components/chat-header";
+import EarlierTurn from "@/features/chat/components/earlier-turn";
 import RunMessage from "@/features/chat/components/run-message";
 import type { TranscriptBlock } from "@/features/chat/utils/transcript";
 
@@ -67,7 +68,7 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
       avoidKeyboard
       header={
         <ChatHeader
-          title={run?.projectId ?? "Claude"}
+          title={screen.title}
           detail={screen.model ?? screen.badge?.label}
           onBack={screen.nav.back}
           actions={screen.headerActions}
@@ -78,7 +79,8 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
         screen.showComposer && screen.tab === "agent" ? (
           <ChatComposer
             composer={composer}
-            placeholder={screen.running ? "Claude is working… draft your next message" : "Ask Claude…"}
+            placeholder={screen.running ? "Claude is working… queue your next message" : "Ask Claude…"}
+            queued={screen.queued}
             testID="run-composer"
           />
         ) : undefined
@@ -110,7 +112,14 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
           contentContainerStyle={styles.list}
-          ListHeaderComponent={<RunMessage run={run} />}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              {screen.history.map((turn) => (
+                <EarlierTurn key={turn.id} run={turn} />
+              ))}
+              <RunMessage run={run} />
+            </View>
+          }
           ListFooterComponent={
             <View style={styles.footer}>
               {screen.result ? (

@@ -36,6 +36,7 @@ function home(overrides: object = {}) {
     drawer: { visible: false, open: drawerOpen, close: jest.fn() },
     inbox: { unreadCount: 2, attention: "1 request needs you", open: inboxOpen },
     status: null,
+    running: { tasks: [], total: 0, open: jest.fn(), viewAll: jest.fn() },
     composer: chatComposerState(),
     ...overrides,
   };
@@ -48,6 +49,9 @@ function inbox(overrides: object = {}) {
     back: jest.fn(),
     pair: jest.fn(),
     sections: groupInbox(sampleInbox.items),
+    projectOptions: [] as { value: string; label: string }[],
+    projectFilter: "all",
+    selectProject: jest.fn(),
     projectName: () => "Electron hello",
     unreadCount: 1,
     attentionCount: 1,
@@ -80,6 +84,17 @@ describe("HomeScreen", () => {
     expect(drawerOpen).toHaveBeenCalled();
     await fireEvent.press(screen.getByLabelText("Open inbox, 2 unread"));
     expect(inboxOpen).toHaveBeenCalled();
+  });
+
+  it("lists running tasks and opens one", async () => {
+    const open = jest.fn();
+    const task = { id: "run_1", title: "Fix the login screen", meta: "app · just now", badge: { label: "Running" } };
+    mockHome.mockReturnValue(home({ running: { tasks: [task], total: 1, open, viewAll: jest.fn() } }));
+    await render(<HomeScreen />);
+
+    expect(screen.getByTestId("home-running")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Fix the login screen, Running" }));
+    expect(open).toHaveBeenCalledWith("run_1");
   });
 
   it("renders the drawer when it is open", async () => {
@@ -124,6 +139,21 @@ describe("HomeScreen", () => {
 });
 
 describe("InboxScreen", () => {
+  it("filters by project from the segmented control", async () => {
+    const state = inbox({
+      projectOptions: [
+        { value: "all", label: "All" },
+        { value: "hello", label: "Electron hello" },
+      ],
+    });
+    mockInbox.mockReturnValue(state);
+    await render(<InboxScreen />);
+
+    expect(screen.getByRole("radio", { name: "All" })).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("radio", { name: "Electron hello" }));
+    expect(state.selectProject).toHaveBeenCalledWith("hello");
+  });
+
   it("groups items and opens them on press", async () => {
     const state = inbox();
     mockInbox.mockReturnValue(state);

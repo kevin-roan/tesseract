@@ -3,6 +3,7 @@ import { formatTokens } from "@/features/home/utils/tokens";
 
 import type { IslandState } from "@/modules/theone-island";
 
+import { ISLAND_CHAT_ROW_HEIGHT, ISLAND_CHAT_ROWS_MAX, ISLAND_PANEL_HEIGHT } from "./constants";
 import { liveCount } from "./state";
 
 export type IslandSummary = {
@@ -28,6 +29,15 @@ export function clockLabel(startedAt: string, now: number): string {
   const minutes = Math.floor((seconds % 3600) / 60);
   const rest = seconds % 60;
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(rest)}` : `${pad(minutes)}:${pad(rest)}`;
+}
+
+/** Running chats besides the one the headline shows, as many as the panel lists. */
+export function otherChats(runs: IslandState["runs"]): IslandState["runs"] {
+  return runs.slice(1, 1 + ISLAND_CHAT_ROWS_MAX);
+}
+
+export function islandPanelHeight(chatRows: number): number {
+  return ISLAND_PANEL_HEIGHT + chatRows * ISLAND_CHAT_ROW_HEIGHT;
 }
 
 export function tokensTodayLabel(tokens: number): string {

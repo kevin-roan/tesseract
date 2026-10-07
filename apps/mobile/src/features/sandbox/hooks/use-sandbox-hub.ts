@@ -23,6 +23,7 @@ import { useSandboxLink } from "./use-sandbox-events";
 import { useConfirmedStop } from "./use-confirmed-stop";
 import { useCloseTerminal, useRemoveSandbox } from "./use-sandbox-mutations";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
+import { useProjectLabel } from "./use-project-names";
 import { useSandboxProblems } from "./use-sandbox-problems";
 import {
   useAgentRuns,
@@ -47,6 +48,7 @@ export function useSandboxHub() {
   const terminals = useTerminals();
   const builds = useBuilds();
   const runs = useAgentRuns();
+  const projectName = useProjectLabel();
   const activity = useSandboxActivity();
   const stopProcess = useConfirmedStop();
   const closeTerminal = useCloseTerminal();
@@ -141,6 +143,7 @@ export function useSandboxHub() {
 
   return {
     nav,
+    projectName,
     hydrated,
     sandbox,
     missingToken: problems.missingToken,

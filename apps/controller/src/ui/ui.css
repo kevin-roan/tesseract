@@ -278,3 +278,11 @@ body {
   max-width: 72px;
   font-size: 18px;
 }
+
+[data-immersive] .keys--android {
+  display: none;
+}
+
+[data-immersive] .overlay {
+  bottom: calc(12px + env(safe-area-inset-bottom) + var(--inset-bottom));
+}

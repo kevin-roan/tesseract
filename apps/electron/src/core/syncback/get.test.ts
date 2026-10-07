@@ -215,7 +215,7 @@ describe("get", () => {
     GET_LIMITS.maxChanges = 2;
     let handled = await runGet();
     expect(handled.ok).toBe(false);
-    expect(handled.message).toContain("monolith --sync");
+    expect(handled.message).toContain("tesseract --sync");
     expect(controller.plans).toEqual([]);
     GET_LIMITS.maxChanges = 5000;
     GET_LIMITS.maxGitPaths = 0;

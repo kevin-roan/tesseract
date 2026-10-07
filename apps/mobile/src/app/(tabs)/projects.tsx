@@ -69,12 +69,12 @@ export default function ProjectsScreen() {
             ))}
             {screen.running.builds.map((build) => (
               <MotionItem key={build.id}>
-                <BuildCard build={build} onPress={() => screen.nav.build(build.id)} />
+                <BuildCard build={build} projectName={screen.projectName(build.projectId)} onPress={() => screen.nav.build(build.id)} />
               </MotionItem>
             ))}
             {screen.running.runs.map((run) => (
               <MotionItem key={run.id}>
-                <AgentRunCard run={run} onPress={() => screen.nav.agentRun(run.id)} />
+                <AgentRunCard run={run} projectName={screen.projectName(run.projectId)} onPress={() => screen.nav.agentRun(run.id)} />
               </MotionItem>
             ))}
           </Section>

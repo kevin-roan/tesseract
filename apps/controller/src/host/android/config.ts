@@ -3,7 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { DEFAULT_EMULATOR_GPU, DEFAULT_EMULATOR_PORT, EMULATOR_ISOLATION_MODES, type EmulatorIsolationMode } from "@theone/protocol";
 import type { Env } from "../../core/exec";
-import { HostConfigError, validatePort } from "../config";
+import { HostConfigError, hostToolPath, validatePort } from "../config";
 import { parseAllowNets, type Cidr } from "./net-policy";
 import { runtimeBase } from "./netns";
 
@@ -24,11 +24,20 @@ export type AndroidConfig = {
   allowNets: Cidr[];
   /** Host loopback port of the adb bridge to an isolated emulator; null picks a free one. */
   adbBridgePort: number | null;
+  /**
+   * `THEONE_ANDROID_SHARE_EMULATORS`: also tunnel the other emulators the host adb lists (`emulator-<port>`, e.g. from
+   * Android Studio) to a linked sandbox. They run on the host network, so the sandbox can reach the host through them.
+   */
+  shareEmulators: boolean;
   /** Holds `emulator-<port>/` (sockets, pid files, log). */
   runtimeDir: string;
 };
 
-export const SCRCPY_SERVER_PATHS = ["/usr/share/scrcpy/scrcpy-server", "/usr/local/share/scrcpy/scrcpy-server"];
+export const SCRCPY_SERVER_PATHS = [
+  "/usr/share/scrcpy/scrcpy-server",
+  "/usr/local/share/scrcpy/scrcpy-server",
+  "/opt/homebrew/share/scrcpy/scrcpy-server",
+];
 const SCRCPY_VERSION_LINE = /^scrcpy\s+(\S+)/;
 const EMULATOR_BIN = join("emulator", "emulator");
 
@@ -39,17 +48,29 @@ function executable(override: string | undefined, fallback: string, env: Env): s
   return which(fallback, env);
 }
 
-export function defaultSdkRoot(env: Env): string | null {
-  const bundled = join(env.HOME || homedir(), ".local", "share", "theone", "android-sdk");
-  if (existsSync(join(bundled, EMULATOR_BIN))) return bundled;
-  return env.ANDROID_SDK_ROOT || env.ANDROID_HOME || null;
+/** The SDK the desktop app installs, per platform; on macOS also Android Studio's default. */
+function bundledSdkRoots(home: string, platform: NodeJS.Platform): string[] {
+  if (platform === "darwin") {
+    return [join(home, "Library", "Application Support", "Monolith", "android-sdk"), join(home, "Library", "Android", "sdk")];
+  }
+  return [join(home, ".local", "share", "theone", "android-sdk")];
 }
+
+export function defaultSdkRoot(env: Env, platform: NodeJS.Platform = process.platform): string | null {
+  const bundled = bundledSdkRoots(env.HOME || homedir(), platform).find((root) => existsSync(join(root, EMULATOR_BIN)));
+  return bundled ?? (env.ANDROID_SDK_ROOT || env.ANDROID_HOME || null);
+}
+
+/** `netns` needs Linux user and network namespaces, so elsewhere the emulator runs without isolation. */
+export const defaultIsolation = (platform: NodeJS.Platform): EmulatorIsolationMode => (platform === "linux" ? "netns" : "none");
 
 /**
  * `host` when this user can open a GPU render node, else software rendering. The emulator's own
- * `-gpu auto` picks software rendering with `-no-window`, which makes the guest UI lag.
+ * `-gpu auto` picks software rendering with `-no-window`, which makes the guest UI lag. macOS has
+ * no render nodes but always has Metal, so it gets `host`.
  */
-export function defaultGpu(driDir = "/dev/dri"): string {
+export function defaultGpu(driDir = "/dev/dri", platform: NodeJS.Platform = process.platform): string {
+  if (platform === "darwin") return "host";
   try {
     for (const name of readdirSync(driDir)) {
       if (!name.startsWith("renderD")) continue;
@@ -79,15 +100,26 @@ function scrcpyVersion(env: Env): string | null {
   }
 }
 
+const SWITCH_ON = new Set(["1", "on", "true", "yes"]);
+const SWITCH_OFF = new Set(["", "0", "off", "false", "no"]);
+
+/** An on/off environment switch (unset is off); null when it is neither. */
+export function parseSwitch(value: string | undefined): boolean | null {
+  const normalized = (value ?? "").trim().toLowerCase();
+  if (SWITCH_ON.has(normalized)) return true;
+  return SWITCH_OFF.has(normalized) ? false : null;
+}
+
 /** Never throws for a missing tool: absent ones are null and `/v1/android` reports why. */
-export function loadAndroidConfig(env: Env): AndroidConfig {
-  const sdkRoot = env.THEONE_ANDROID_SDK_ROOT || defaultSdkRoot(env);
+export function loadAndroidConfig(source: Env, platform: NodeJS.Platform = process.platform): AndroidConfig {
+  const env: Env = { ...source, PATH: hostToolPath(source, platform) };
+  const sdkRoot = env.THEONE_ANDROID_SDK_ROOT || defaultSdkRoot(env, platform);
   const emulatorBin = sdkRoot ? join(sdkRoot, EMULATOR_BIN) : null;
   const emulatorPort = validatePort(env.THEONE_EMULATOR_PORT ?? String(DEFAULT_EMULATOR_PORT));
   if (emulatorPort % 2 !== 0 || emulatorPort < 5554 || emulatorPort > 5682) {
     throw new HostConfigError(`THEONE_EMULATOR_PORT must be an even port from 5554 to 5682, got ${emulatorPort}`);
   }
-  const isolation = env.THEONE_EMULATOR_ISOLATION || "netns";
+  const isolation = env.THEONE_EMULATOR_ISOLATION || defaultIsolation(platform);
   if (!(EMULATOR_ISOLATION_MODES as readonly string[]).includes(isolation)) {
     throw new HostConfigError(`THEONE_EMULATOR_ISOLATION must be netns or none, got ${isolation}`);
   }
@@ -95,6 +127,9 @@ export function loadAndroidConfig(env: Env): AndroidConfig {
   if (!allowNets.ok) throw new HostConfigError(`THEONE_EMULATOR_ALLOW_NETS: "${allowNets.error}" is not a CIDR`);
   const adbBridgePort = env.THEONE_EMULATOR_ADB_PORT ? validatePort(env.THEONE_EMULATOR_ADB_PORT) : null;
   if (adbBridgePort === 0) throw new HostConfigError("THEONE_EMULATOR_ADB_PORT must not be 0");
+  const shareEmulators = parseSwitch(env.THEONE_ANDROID_SHARE_EMULATORS);
+  if (shareEmulators === null) throw new HostConfigError(`THEONE_ANDROID_SHARE_EMULATORS must be on or off, got ${env.THEONE_ANDROID_SHARE_EMULATORS}`);
+  const linux = platform === "linux";
   const scrcpyServer = env.THEONE_SCRCPY_SERVER || SCRCPY_SERVER_PATHS.find((path) => existsSync(path)) || null;
   return {
     sdkRoot,
@@ -104,12 +139,13 @@ export function loadAndroidConfig(env: Env): AndroidConfig {
     scrcpyVersion: scrcpyVersion(env),
     ffmpeg: executable(env.THEONE_FFMPEG, "ffmpeg", env),
     emulatorPort,
-    gpu: env.THEONE_EMULATOR_GPU || defaultGpu(),
+    gpu: env.THEONE_EMULATOR_GPU || defaultGpu("/dev/dri", platform),
     isolation: isolation as EmulatorIsolationMode,
-    unshare: which("unshare", env),
-    ip: which("ip", { PATH: `${env.PATH ?? ""}:/usr/sbin:/sbin` }),
+    unshare: linux ? which("unshare", env) : null,
+    ip: linux ? which("ip", { PATH: `${env.PATH ?? ""}:/usr/sbin:/sbin` }) : null,
     allowNets: allowNets.value,
     adbBridgePort,
+    shareEmulators,
     runtimeDir: runtimeBase(env),
   };
 }

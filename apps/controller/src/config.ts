@@ -91,7 +91,6 @@ export type SttConfig = {
   url: string | null;
   apiKey: string | null;
   model: string;
-  geminiApiKey: string | null;
   geminiModel: string;
 };
 
@@ -170,7 +169,6 @@ function sttConfig(env: Env): SttConfig {
     url: httpUrl(env, "THEONE_STT_URL"),
     apiKey: read(env, "THEONE_STT_API_KEY") ?? null,
     model,
-    geminiApiKey: read(env, "GEMINI_API_KEY") ?? null,
     geminiModel,
   };
 }

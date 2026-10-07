@@ -12,9 +12,11 @@ import AttachmentTray from "@/features/attachments/components/attachment-tray";
 import RecordingBar from "@/features/voice/components/recording-bar";
 
 import type { ChatComposerState } from "../../hooks/use-chat-composer";
+import type { QueuedMessage } from "../../store/queue-store";
 import ComposerBar from "../composer-bar";
 import ModePill from "../mode-pill";
 import NewProjectSheet from "../new-project-sheet";
+import QueuedMessages from "../queued-messages";
 import createStyles from "./styles";
 
 export type ChatComposerProps = {
@@ -24,6 +26,8 @@ export type ChatComposerProps = {
   transcribingLabel?: string;
   dismissLabel?: string;
   banner?: ReactNode;
+  /** Messages waiting for the current run to end. */
+  queued?: { messages: readonly QueuedMessage[]; onRemove: (id: string) => void };
   testID?: string;
 };
 
@@ -34,6 +38,7 @@ const ChatComposer = ({
   transcribingLabel = "Transcribing…",
   dismissLabel = "Dismiss",
   banner,
+  queued,
   testID,
 }: ChatComposerProps) => {
   const theme = useAppTheme();
@@ -70,6 +75,7 @@ const ChatComposer = ({
           onAction={composer.dismissNotice}
         />
       ) : null}
+      {queued ? <QueuedMessages messages={queued.messages} onRemove={queued.onRemove} /> : null}
       <ComposerBar
         value={composer.text}
         onChangeText={composer.setText}

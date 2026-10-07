@@ -71,7 +71,7 @@ describe("hostSupport", () => {
   it("matches the published emulator hosts", () => {
     expect(hostSupport(testPaths("/home/u"), "x64")).toMatchObject({ supported: true, hostOs: "linux", abi: "x86_64", acceleration: "kvm", canLinkSandbox: true });
     expect(hostSupport(testPaths("/home/u"), "arm64")).toEqual({ supported: false, reason: "Google doesn't publish the Android emulator for Linux on ARM." });
-    expect(hostSupport(testPaths("/Users/u", {}, "darwin"), "arm64")).toMatchObject({ hostArch: "aarch64", abi: "arm64-v8a", acceleration: "hvf", canLinkSandbox: false });
+    expect(hostSupport(testPaths("/Users/u", {}, "darwin"), "arm64")).toMatchObject({ hostArch: "aarch64", abi: "arm64-v8a", acceleration: "hvf", canLinkSandbox: true });
     expect(hostSupport(testPaths("/Users/u", {}, "darwin"), "x64")).toMatchObject({ hostArch: "x64", abi: "x86_64" });
     expect(hostSupport(testPaths("C:\\Users\\u", {}, "win32"), "x64")).toMatchObject({ hostOs: "windows", acceleration: "whpx" });
     expect(hostSupport(testPaths("C:\\Users\\u", {}, "win32"), "arm64")).toMatchObject({ supported: false });

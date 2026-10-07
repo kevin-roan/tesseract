@@ -320,7 +320,7 @@ Rules (detection, commands, readiness, viewers, the host emulator link):
 | GET | `/v1/uploads/:id/content` | bearer or `?ticket=` | file stream (single `Range` supported) |
 | POST | `/v1/transcriptions` | `CreateTranscription { uploadId, language? }` | `Transcription { uploadId, text, language, durationMs, engine }`; 503 when the profile is `off` or without a speech-to-text engine; one runs at a time (FIFO) |
 | GET | `/v1/stt` | none | `SttStatus { profile, profiles, engine, ready, reason, model, cpus, busy, queued, gemini { configured, model, source } }` |
-| PUT | `/v1/stt` | `UpdateStt { profile?: "off" \| "eco" \| "balanced" \| "performance", geminiApiKey?: string \| null }` | `SttStatus`; stored across restarts (a saved Gemini key wins over `GEMINI_API_KEY`, `null` forgets it), publishes `stt.updated` on change |
+| PUT | `/v1/stt` | `UpdateStt { profile?: "off" \| "eco" \| "balanced" \| "performance", geminiApiKey?: string \| null }` | `SttStatus`; stored across restarts (`null` forgets the saved Gemini key), publishes `stt.updated` on change |
 | DELETE | `/v1/agent/runs/:id` | none | `AgentRun` (cancel) |
 
 The controller runs `claude -p` with streaming JSON output and
@@ -444,10 +444,11 @@ inside the stream, using the password from `DisplayStatus.vnc.password`.
 
 Opened by the host shell daemon (it dials the sandbox with a ticket from the sandbox
 token given to `POST /v1/android/link` on the host). The link carries JSON
-`AndroidLinkHostMessage` (`hello`, `emulator`, `refuse`, `pong`) and
-`AndroidLinkSandboxMessage` (`open { streamId }`, `ping` every 20 s); a newer link
+`AndroidLinkHostMessage` (`hello`, `emulator`, `devices`, `refuse`, `pong`) and
+`AndroidLinkSandboxMessage` (`open { streamId, device? }`, `ping` every 20 s); a newer link
 closes the older with `4000`. Each stream socket is binary: raw adb bytes between one
-connection to the sandbox's `127.0.0.1:15555` and the host emulator's adbd.
+connection to the sandbox's `127.0.0.1:15555` and the host emulator's adbd, or (with
+`device`) between a shared emulator's tunnel port and that emulator's adbd.
 The host's own `WS /v1/android/screen` (emulator video and input) is in
 [app-runs-and-emulator.md](app-runs-and-emulator.md) §2.4.
 

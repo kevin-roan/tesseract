@@ -3,11 +3,11 @@
 `apps/electron` (package `@monolith/electron`, product **Monolith**, app id
 `dev.monolith.Desktop`) is the Electron rewrite of the GTK desktop companion in
 `apps/desktop`. It has the same pages and looks the same, and adds a setup wizard
-(Docker, sandbox image, Android emulator, Claude, pairing) and a standalone `monolith`
+(Docker, sandbox image, Android emulator, Claude, pairing) and a standalone `tesseract`
 CLI. Contract for agents working on it: [docs/electron/conventions.md](../electron/conventions.md);
 what each screen must look like: [docs/electron/spec/](../electron/spec/); reference
 captures of the GTK app: [docs/electron/reference/](../electron/reference/).
-User-facing setup: [onboarding.md](onboarding.md). CLI reference: [monolith-cli.md](monolith-cli.md).
+User-facing setup: [onboarding.md](onboarding.md). CLI reference: [tesseract-cli.md](tesseract-cli.md).
 
 This runbook is about building the desktop app itself. Building Electron apps
 *inside the sandbox* is [electron-builds.md](electron-builds.md).
@@ -36,7 +36,7 @@ Run these from `apps/electron`, or use the root shortcuts in the last column.
 | `bun run e2e` | builds `out/` if stale, then Playwright `_electron` specs in `e2e/` | `bun run electron:e2e` |
 | `bun run snapshot -- …` | one headless capture of a route as PNG (below) | — |
 | `bun run diff -- a.png b.png …` | pixelmatch two PNGs (below) | — |
-| `bun run cli:build` | compiles `monolith` and `theone-controller` with `bun build --compile` | — |
+| `bun run cli:build` | compiles `tesseract` and `theone-controller` with `bun build --compile` | — |
 | `bun run bundle:sandbox` | writes the sandbox build context to `build/sandbox-context/` | — |
 | `bun run dist -- …` | build + CLI + sandbox bundle + electron-builder (below) | `bun run electron:dist` |
 | `bun run smoke` | checks the built AppImage/deb (below) | `bun run electron:smoke` |
@@ -92,7 +92,7 @@ Overrides: `MONOLITH_DESKTOP_CONFIG`, `MONOLITH_USER_DATA`, `MONOLITH_STATE_DIR`
 package lists (a full `.xml` URL or a base URL; `http(s)` only), and
 `MONOLITH_DISABLE_DISCOVERY=1` stops the first-run lookup of a running sandbox through Docker.
 
-The AppImage copy of the CLI (`~/.local/share/monolith/bin/monolith`) gets an `app.json`
+The AppImage copy of the CLI (`~/.local/share/monolith/bin/tesseract`) gets an `app.json`
 (`{appPath, sandboxDir}`) and a copy of the bundled sandbox context in
 `~/.local/share/monolith/sandbox` on install and on every AppImage launch
 (`src/main/services/cli-sidecar.ts`; the copy is redone only when `.bundle-hash` changes).
@@ -189,7 +189,7 @@ in `afterEach`.
 | `preferences.spec.ts` | Settings sections and theme switch; speech-to-text profile; Claude accounts | — |
 | `onboarding.spec.ts` | fresh profile lands on Welcome; Docker step detects the local engine and Compose; Sandbox step components and a simulated build (fixtures); Android step lists packages from a local fixture repository (an HTTP server passed in with `MONOLITH_ANDROID_REPOSITORY_URL` / `MONOLITH_ANDROID_SYSIMG_URL`), installs into a temporary SDK and writes an AVD; Finish opens the main window and is remembered; a configured connection skips the wizard | Docker step: a reachable Docker. Android: linux-x64. Live: `THEONE_E2E_URL` |
 | `app.spec.ts` | visual baselines of every page, two Settings sections and the light scheme; live controller: connect from Settings, every page, overview stats, create a project, start/stop a process, terminal `echo hi`, shared files, VNC display, save preferences | live part: `THEONE_E2E_URL` + `THEONE_E2E_TOKEN` |
-| `cli.spec.ts` | `monolith` compiled for this host: version/help, exit codes, `config`, `doctor`, `android images` against the fixture repository, `sandbox status`, `pair`, `open` | Docker for some cases; e2e stack for the live cases |
+| `cli.spec.ts` | `tesseract` compiled for this host: version/help, exit codes, `config`, `doctor`, `android images` against the fixture repository, `sandbox status`, `pair`, `open` | Docker for some cases; e2e stack for the live cases |
 | `packaging.spec.ts` | `electron-builder.yml` (CLI + sandbox context as extra resources, universal dmg, per-user NSIS with PATH, AppImage + deb with CLI links); NSIS PATH macros under wine; the AppImage contents, the bundled CLI version, `--quit`, and that the packaged app renders the wizard | linux-x64; wine for the NSIS case |
 
 Environment:
@@ -198,7 +198,7 @@ Environment:
 |---|---|
 | `THEONE_E2E_URL`, `THEONE_E2E_TOKEN`, `THEONE_E2E_PROJECT`, `THEONE_E2E_ENV_FILE`, `THEONE_E2E_IMAGE` | the live stack; `infra/e2e/run --electron` sets them. The suite refuses a project that doesn't start with `theone-e2e`, so it can't mutate your `theone` stack |
 | `MONOLITH_E2E_DIST` | `stale` (default: run `dist` when the AppImage is older than its inputs, up to 30 min), `always`, or `never` (skip the AppImage cases when there is none) |
-| `MONOLITH_E2E_CLI` | path of a prebuilt `monolith` to test instead of compiling one |
+| `MONOLITH_E2E_CLI` | path of a prebuilt `tesseract` to test instead of compiling one |
 | `MONOLITH_UPDATE_SNAPSHOTS=1` | rewrite the visual baselines in `e2e/__snapshots__/` (same as Playwright `-u`) |
 
 Visual baselines: rendered with `TZ=UTC`, a fixed clock, reduced motion; a test fails when
@@ -223,10 +223,10 @@ bun run --cwd apps/electron dist -- --smoke            # Linux: build, then run 
 `scripts/dist.ts` runs, in order:
 
 1. `bun run build` (skip with `--skip-build`).
-2. `scripts/cli-build.ts` for the platform's targets (skip with `--skip-cli`): `dist-cli/<os>-<arch>/monolith` and
+2. `scripts/cli-build.ts` for the platform's targets (skip with `--skip-cli`): `dist-cli/<os>-<arch>/tesseract` and
    `theone-controller` (`.exe` on Windows). Targets: `linux` → `linux-x64`; `mac` → `mac-x64,mac-arm64`; `win` → `win-x64`.
    Standalone: `bun run cli:build -- --target linux-x64,mac-arm64`, `--all` for every target
-   (`linux-x64`, `linux-arm64`, `mac-x64`, `mac-arm64`, `win-x64`), `--no-controller` for `monolith` only.
+   (`linux-x64`, `linux-arm64`, `mac-x64`, `mac-arm64`, `win-x64`), `--no-controller` for `tesseract` only.
 3. `scripts/bundle-sandbox.ts` (skip with `--skip-sandbox`): copies the **git-tracked** files the
    sandbox image needs (`.dockerignore`, `SPEC.md`, root `package.json`/`bun.lock`/`bunfig.toml`/`tsconfig.base.json`,
    `packages/**`, `apps/controller/**`, `apps/mobile/package.json`, `apps/electron/package.json`,
@@ -246,13 +246,13 @@ Other `dist` options: `--publish never|always|onTag|onTagOrDraft` (default `neve
 |---|---|---|
 | macOS (build on a Mac) | `Monolith-<v>-universal.dmg`, `Monolith-<v>-universal.zip` (for updates) | `Monolith.app`; hardened runtime with `build/entitlements.mac.plist` (JIT, unsigned executable memory, library validation off, microphone); minimum macOS 12 (Docker Desktop itself needs 14) |
 | Windows | `Monolith-<v>-x64.exe` (NSIS, one-click, per user, no elevation) | `%LOCALAPPDATA%\Programs\Monolith\Monolith.exe`; `build/installer.nsh` appends `$INSTDIR\resources\bin` to the **user** `Path` and removes it on uninstall (not on update) |
-| Linux | `Monolith-<v>-x86_64.AppImage`, `Monolith-<v>-amd64.deb` | deb: `/opt/Monolith/monolith-desktop`, `/usr/bin/monolith-desktop`, `/usr/bin/monolith` → `resources/bin/monolith` (only when that path is free or already ours; removed on uninstall), desktop entry `dev.monolith.Desktop.desktop`, `monolith://` handler. Depends on GTK 3, NSS, libsecret…; recommends `docker.io \| docker-ce` |
+| Linux | `Monolith-<v>-x86_64.AppImage`, `Monolith-<v>-amd64.deb` | deb: `/opt/Monolith/monolith-desktop`, `/usr/bin/monolith-desktop`, `/usr/bin/tesseract` → `resources/bin/tesseract` (only when that path is free or already ours; removed on uninstall), desktop entry `dev.monolith.Desktop.desktop`, `monolith://` handler. Depends on GTK 3, NSS, libsecret…; recommends `docker.io \| docker-ce` |
 
-Every package carries, under `resources/`: `app.asar`, `bin/monolith` + `bin/theone-controller`,
+Every package carries, under `resources/`: `app.asar`, `bin/tesseract` + `bin/theone-controller`,
 `sandbox/` (the build context above), `icons/`, `licenses/LICENSE-*` (fonts) and `app-update.yml`.
 Electron fuses: `runAsNode`, `NODE_OPTIONS` and `--inspect` are off, `onlyLoadAppFromAsar` is on.
 
-Putting `monolith` on `PATH` per OS is described in [monolith-cli.md](monolith-cli.md#install).
+Putting `tesseract` on `PATH` per OS is described in [tesseract-cli.md](tesseract-cli.md#install).
 
 ### Smoke checks (Linux)
 
@@ -264,7 +264,7 @@ node apps/electron/scripts/smoke.ts --no-launch          # contents only, don't 
 
 It extracts the AppImage into a `monolith-test-*` dir and checks the packaged files and
 exec bits, that `resources/sandbox` matches `manifest.json`, that the update feed is a
-generic http(s) URL, that `resources/bin/monolith --version` prints the app version, and
+generic http(s) URL, that `resources/bin/tesseract --version` prints the app version, and
 then starts the packaged app headless on `/onboarding/welcome` (880×620) and checks the
 PNG. For the deb it unpacks `control`/`data` and checks the files, the `postinst` CLI link
 logic and the desktop entry.
@@ -272,7 +272,7 @@ logic and the desktop entry.
 ## Releasing
 
 1. Bump `version` in `apps/electron/package.json`. It is the app version, the CLI version
-   (`monolith --version`) and the update version.
+   (`tesseract --version`) and the update version.
 2. Commit, so `manifest.json` records a clean commit (`dirty: false`).
 3. Build each OS on its own OS (mac on macOS, the rest on Linux or the native OS), with the
    signing variables below, `--publish` as needed.

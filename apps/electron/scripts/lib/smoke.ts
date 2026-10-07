@@ -10,7 +10,7 @@ export const PACKAGED_FILES = [
   { path: APP_EXECUTABLE, executable: true },
   { path: "resources/app.asar", executable: false },
   { path: "resources/app-update.yml", executable: false },
-  { path: "resources/bin/monolith", executable: true },
+  { path: "resources/bin/tesseract", executable: true },
   { path: "resources/bin/theone-controller", executable: true },
   { path: "resources/sandbox/manifest.json", executable: false },
   { path: "resources/sandbox/build-weights.json", executable: false },
@@ -24,13 +24,13 @@ export const DESKTOP_ENTRY = "usr/share/applications/dev.monolith.Desktop.deskto
 
 export const DEB_FILES = [
   "opt/Monolith/monolith-desktop",
-  "opt/Monolith/resources/bin/monolith",
+  "opt/Monolith/resources/bin/tesseract",
   "opt/Monolith/resources/app.asar",
   "opt/Monolith/resources/apparmor-profile",
   DESKTOP_ENTRY,
 ] as const;
 
-export const DEB_POSTINST_MARKERS = ["APP_DIR='/opt/Monolith'", "CLI_LINK=/usr/bin/monolith", 'CLI_TARGET="$APP_DIR/resources/bin/monolith"'] as const;
+export const DEB_POSTINST_MARKERS = ["APP_DIR='/opt/Monolith'", "CLI_LINK=/usr/bin/tesseract", 'CLI_TARGET="$APP_DIR/resources/bin/tesseract"'] as const;
 
 export const DESKTOP_ENTRY_LINES = [
   "Exec=/opt/Monolith/monolith-desktop %U",
@@ -43,7 +43,7 @@ export function artifactName(version: string, ext: "AppImage" | "deb"): string {
 }
 
 export function parseCliVersion(output: string): string | null {
-  return /^monolith\s+(\S+)/m.exec(output.trim())?.[1] ?? null;
+  return /^tesseract\s+(\S+)/m.exec(output.trim())?.[1] ?? null;
 }
 
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];

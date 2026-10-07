@@ -104,7 +104,9 @@ check_supervisor() {
 
 check_wine() {
   local prefix="${WINEPREFIX:-${HOME}/.wine}"
-  if ! command -v wine > /dev/null 2>&1; then
+  if ! command -v wine > /dev/null 2>&1 && [[ "$(dpkg --print-architecture)" != "amd64" ]]; then
+    record wine SKIP "no wine on $(dpkg --print-architecture) (Windows builds need an amd64 image)"
+  elif ! command -v wine > /dev/null 2>&1; then
     record wine FAIL "wine not found on PATH"
   elif ! capture wine --version; then
     record wine FAIL "${REPLY:-wine --version failed}"
@@ -121,8 +123,10 @@ check_android() {
   else
     record java SKIP "no JDK (image built with WITH_ANDROID=false)"
   fi
-  if [[ -x "${ANDROID_HOME:-/nonexistent}/platform-tools/adb" ]]; then
+  if [[ -x "${ANDROID_HOME:-/nonexistent}/platform-tools/adb" ]] || command -v adb > /dev/null 2>&1; then
     check_tool adb adb version
+  elif [[ "$(dpkg --print-architecture)" != "amd64" ]]; then
+    record adb SKIP "no Android SDK on $(dpkg --print-architecture) (Android builds need an amd64 image)"
   else
     record adb SKIP "no Android SDK (image built with WITH_ANDROID=false)"
   fi

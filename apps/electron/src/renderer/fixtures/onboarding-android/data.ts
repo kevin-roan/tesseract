@@ -42,7 +42,7 @@ export const UNSUPPORTED: Extract<AndroidHostSupport, { supported: false }> = {
 
 export const MAC_SUPPORT: AndroidHostSupport = {
   ...SUPPORT,
-  canLinkSandbox: false,
+  canLinkSandbox: true,
   hostOs: "macosx",
   hostArch: "aarch64",
   abi: "arm64-v8a",

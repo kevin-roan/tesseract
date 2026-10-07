@@ -34,7 +34,7 @@ The desktop app (Monolith, `apps/electron`) has its own folder:
 | [electron/README.md](electron/README.md) | what the Electron app is, its layout and commands, index of the specs and reference captures |
 | [electron/conventions.md](electron/conventions.md) | stack, directory map, IPC contract, fixtures, components, CSS tokens, motion, snapshot workflow, tests, packaging |
 | [electron/spec/](electron/spec/) | per-area specs surveyed from the GTK app (theme, shell, widgets, pages, Settings, services, host Android) and the setup wizard ([onboarding.md](electron/spec/onboarding.md)) |
-| [blueprint §4.4, §7.1, §12](architecture/00-blueprint.md#12-desktop-app-appselectron-package-monolithelectron) | the contract: env vars, the `monolith` CLI, windows, wizard steps, routes and deep links, files, installers |
+| [blueprint §4.4, §7.1, §12](architecture/00-blueprint.md#12-desktop-app-appselectron-package-monolithelectron) | the contract: env vars, the `tesseract` CLI, windows, wizard steps, routes and deep links, files, installers |
 
 ## Decisions (ADRs)
 
@@ -61,6 +61,8 @@ ADR. Supersede it with a new one instead.
 | [getting-started.md](runbooks/getting-started.md) | set up Tailscale, configure `.env`, build and start the sandbox, run the app |
 | [pairing-mobile.md](runbooks/pairing-mobile.md) | pair a phone (QR, deep link, manual), manage several sandboxes, re-pair |
 | [electron-builds.md](runbooks/electron-builds.md) | build Linux and Windows Electron apps, run them on the display, sign them |
+| [mac-server.md](runbooks/mac-server.md) | deploy the headless sandbox host (stack + host shell) to a Mac on the tailnet from the Linux dev box |
+| [tesseract-cli.md](runbooks/tesseract-cli.md) | the host `tesseract` command: Docker checks, sandbox stack, host Android emulator, pairing, sync, settings, headless server |
 | [host-shell.md](runbooks/host-shell.md) | run the PIN-protected host shell daemon, pair the phone with it, use the host Android emulator |
 | [android-builds.md](runbooks/android-builds.md) | build APKs/AABs, release signing, EAS, memory tuning |
 | [claude-in-sandbox.md](runbooks/claude-in-sandbox.md) | log Claude in, permission modes, SPEC as CLAUDE.md, headless runs from the phone |

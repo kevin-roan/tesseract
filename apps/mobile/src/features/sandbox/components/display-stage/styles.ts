@@ -1,7 +1,7 @@
 import { StyleSheet } from "react-native";
 import type { EdgeInsets } from "react-native-safe-area-context";
 
-import { ControlHeight, ZIndex, type Theme } from "@/theme";
+import { ControlHeight, Palette, ZIndex, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme, safeArea: EdgeInsets) {
   const edge = theme.spacing.sm;
@@ -10,6 +10,16 @@ export default function createStyles(theme: Theme, safeArea: EdgeInsets) {
     root: {
       flex: 1,
       backgroundColor: theme.colors.background,
+    },
+    surface: {
+      flex: 1,
+    },
+    immersive: {
+      paddingTop: safeArea.top,
+      paddingBottom: safeArea.bottom,
+      paddingLeft: safeArea.left,
+      paddingRight: safeArea.right,
+      backgroundColor: Palette.black,
     },
     bar: {
       position: "absolute",

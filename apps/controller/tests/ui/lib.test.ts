@@ -141,7 +141,7 @@ describe("host bridge", () => {
     const reconnect = mock((_ticket: string) => {});
     exposeHostApi({ reconnect });
     const theone = (dom as unknown as globalThis.Window).theone;
-    expect(Object.keys(theone ?? {}).sort()).toEqual(["paste", "reconnect", "setInputMode", "setInsets"]);
+    expect(Object.keys(theone ?? {}).sort()).toEqual(["paste", "reconnect", "setImmersive", "setInputMode", "setInsets"]);
     theone?.setInputMode("touch");
     theone?.setInsets({ top: 1, bottom: 2 });
     theone?.reconnect("");
@@ -187,6 +187,19 @@ describe("host bridge", () => {
     theone?.setInsets({ top: 10, bottom: 0 });
     expect(setInputMode.mock.calls).toEqual([["touch"], ["trackpad"]]);
     expect(setInsets.mock.calls).toEqual([[{ top: 88, bottom: 34 }], [{ top: 10, bottom: 0 }]]);
+  });
+
+  test("immersive accepts only booleans on both paths", () => {
+    const setImmersive = mock((_immersive: boolean) => {});
+    exposeHostApi({ reconnect: () => {}, setImmersive });
+    const theone = (dom as unknown as globalThis.Window).theone;
+    const send = (data: unknown) => dom.dispatchEvent(new dom.MessageEvent("message", { data }));
+    send({ type: HOST_MESSAGES.immersive, immersive: "yes" });
+    theone?.setImmersive(1 as never);
+    expect(setImmersive).not.toHaveBeenCalled();
+    send({ type: HOST_MESSAGES.immersive, immersive: true });
+    theone?.setImmersive(false);
+    expect(setImmersive.mock.calls).toEqual([[true], [false]]);
   });
 
   test("paste accepts only non-empty text on both paths", () => {

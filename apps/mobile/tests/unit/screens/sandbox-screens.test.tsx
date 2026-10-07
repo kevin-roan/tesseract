@@ -184,6 +184,8 @@ describe("AgentRunScreen", () => {
     brief: null,
     canContinue: false,
     composer: chatComposerState(),
+    queued: { messages: [], onRemove: jest.fn() },
+    history: [],
     headerActions: [headerAction("Stop run")],
     isLoading: false,
     loadError: null,

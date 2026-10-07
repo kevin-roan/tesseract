@@ -13,7 +13,7 @@ export function useDoneDetails(step: AndroidStepModel): DoneGroupProps | null {
     const api = apiOfTarget(info?.target ?? null);
     const abi = info?.abi ?? (support?.supported ? support.abi : "");
     const platform = host?.platform ?? runtime.platform;
-    const linkable = support?.supported ? support.canLinkSandbox : platform === "linux";
+    const linkable = support?.supported ? support.canLinkSandbox : platform !== "win32";
     return {
       sdkRoot: phase.sdkRoot,
       avd: phase.avd,

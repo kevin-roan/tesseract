@@ -13,7 +13,7 @@ import {
   TEXT_INPUT_SENTINEL,
   type AndroidBarKeyId,
 } from "./lib/config";
-import { applyInsets, requireElement } from "./lib/dom";
+import { applyImmersive, applyInsets, requireElement } from "./lib/dom";
 import { takeFragment } from "./lib/fragment";
 import { FrameCanvas } from "./lib/frame-canvas";
 import { canDecodeH264, H264Decoder } from "./lib/h264-decoder";
@@ -267,7 +267,7 @@ textInput.addEventListener("focus", () => bar.setActive("keyboard", true));
 textInput.addEventListener("blur", () => bar.setActive("keyboard", false));
 
 requireElement("[data-bar]").hidden = embedded;
-exposeHostApi({ reconnect: (ticket: string) => void connect(ticket), setInsets: applyInsets });
+exposeHostApi({ reconnect: (ticket: string) => void connect(ticket), setInsets: applyInsets, setImmersive: applyImmersive });
 resetTextInput();
 
 if (!firstTicket) {

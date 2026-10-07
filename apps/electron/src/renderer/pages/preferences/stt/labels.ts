@@ -38,7 +38,6 @@ export const PROFILE_LABELS: Record<SttProfile, { title: string; description: st
 
 export const GEMINI_SOURCE_LABELS = {
   settings: "Saved from an app",
-  env: "GEMINI_API_KEY on the sandbox",
   none: "Not set",
 } as const;
 

@@ -17,6 +17,11 @@ export function applyInsets(insets: { top: number; bottom: number }): void {
   style.setProperty("--inset-bottom", `${insets.bottom}px`);
 }
 
+/** Full screen in the embedding app: `[data-immersive]` on the root hides the page's own chrome. */
+export function applyImmersive(immersive: boolean): void {
+  document.documentElement.toggleAttribute("data-immersive", immersive);
+}
+
 /**
  * Sizes the page to the visible area (`--viewport-height`) and pins it to the top, so a phone
  * keyboard shrinks the page instead of covering it or scrolling it out of view.

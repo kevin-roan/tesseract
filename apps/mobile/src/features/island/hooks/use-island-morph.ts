@@ -22,7 +22,6 @@ import {
   ISLAND_ORB_LIFT_SCALE,
   ISLAND_PANEL_ENTER_SCALE,
   ISLAND_PANEL_FADE,
-  ISLAND_PANEL_HEIGHT,
   ISLAND_PANEL_MAX_WIDTH,
   ISLAND_PANEL_RADIUS,
 } from "../utils/constants";
@@ -34,7 +33,13 @@ import {
  * shape has nearly settled. The panel opens away from the screen edge the
  * capsule rests nearest to and always stays inside the safe area.
  */
-export function useIslandMorph(expanded: boolean, x: SharedValue<number>, y: SharedValue<number>, lift: SharedValue<number>) {
+export function useIslandMorph(
+  expanded: boolean,
+  x: SharedValue<number>,
+  y: SharedValue<number>,
+  lift: SharedValue<number>,
+  panelHeight: number,
+) {
   const theme = useAppTheme();
   const insets = useContext(SafeAreaInsetsContext);
   const { width, height } = useWindowDimensions();
@@ -48,16 +53,16 @@ export function useIslandMorph(expanded: boolean, x: SharedValue<number>, y: Sha
   const panelWidth = Math.min(width - theme.spacing.base * 2, ISLAND_PANEL_MAX_WIDTH);
   const panelX = (width - panelWidth) / 2;
   const minTop = (insets?.top ?? 0) + theme.spacing.sm;
-  const maxTop = height - (insets?.bottom ?? 0) - theme.spacing.base - ISLAND_PANEL_HEIGHT;
+  const maxTop = height - (insets?.bottom ?? 0) - theme.spacing.base - panelHeight;
 
   const frame = useAnimatedStyle(() => {
     const p = progress.get();
     const capsuleY = y.get();
     const below = capsuleY + ISLAND_CAPSULE_HEIGHT / 2 < height / 2;
-    const panelY = below ? Math.min(capsuleY, maxTop) : Math.max(capsuleY + ISLAND_CAPSULE_HEIGHT - ISLAND_PANEL_HEIGHT, minTop);
+    const panelY = below ? Math.min(capsuleY, maxTop) : Math.max(capsuleY + ISLAND_CAPSULE_HEIGHT - panelHeight, minTop);
     return {
       width: Math.max(interpolate(p, [0, 1], [ISLAND_CAPSULE_WIDTH, panelWidth]), ISLAND_CAPSULE_HEIGHT),
-      height: Math.max(interpolate(p, [0, 1], [ISLAND_CAPSULE_HEIGHT, ISLAND_PANEL_HEIGHT]), ISLAND_CAPSULE_HEIGHT),
+      height: Math.max(interpolate(p, [0, 1], [ISLAND_CAPSULE_HEIGHT, panelHeight]), ISLAND_CAPSULE_HEIGHT),
       borderRadius: interpolate(p, [0, 1], [ISLAND_CAPSULE_HEIGHT / 2, ISLAND_PANEL_RADIUS], Extrapolation.CLAMP),
       transform: [
         { translateX: interpolate(p, [0, 1], [x.get(), panelX]) },
@@ -83,5 +88,5 @@ export function useIslandMorph(expanded: boolean, x: SharedValue<number>, y: Sha
     };
   });
 
-  return { frame, clip, capsule, panel, panelWidth };
+  return { frame, clip, capsule, panel, panelWidth, panelHeight };
 }

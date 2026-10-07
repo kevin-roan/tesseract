@@ -81,7 +81,6 @@ export const SETTINGS_COPY = {
   geminiKeyPlaceholder: "AIza…",
   geminiKeyHint: {
     settings: "A key is saved on the sandbox. Paste a new one to replace it.",
-    env: "Using GEMINI_API_KEY from the sandbox. A key saved here takes priority.",
     none: "Stored on the sandbox and shared with the desktop app. Get one at aistudio.google.com.",
   },
   geminiKeySave: "Save key",

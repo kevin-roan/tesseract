@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { router } from "expo-router";
 import type { InboxItem } from "@theone/protocol";
 
@@ -11,7 +11,15 @@ import { useProjects } from "@/features/sandbox/hooks/use-sandbox-queries";
 import { useSandboxRefresh } from "@/features/sandbox/hooks/use-sandbox-refresh";
 import { describeError } from "@/features/sandbox/utils/errors";
 
-import { groupInbox, inboxTarget, isUnread, type InboxTarget } from "../utils/group";
+import {
+  ALL_INBOX_PROJECTS,
+  filterInboxByProject,
+  groupInbox,
+  inboxProjectOptions,
+  inboxTarget,
+  isUnread,
+  type InboxTarget,
+} from "../utils/group";
 import { INBOX_ACTIONS } from "../utils/actions";
 import { useInbox, useMarkInboxRead } from "./use-inbox";
 
@@ -25,8 +33,16 @@ export function useInboxScreen() {
   const { refreshing, refresh } = useSandboxRefresh();
   const { mutate } = markRead;
 
-  const sections = useMemo(() => groupInbox(inbox.data?.items ?? []), [inbox.data]);
+  const [selectedProject, setSelectedProject] = useState(ALL_INBOX_PROJECTS);
+
+  const items = inbox.data?.items;
   const names = useMemo(() => projectNames(projects.data), [projects.data]);
+  const projectOptions = useMemo(() => inboxProjectOptions(items ?? [], names), [items, names]);
+  // Fall back to every project once the chosen one has nothing left in the inbox.
+  const projectFilter = projectOptions.some((option) => option.value === selectedProject)
+    ? selectedProject
+    : ALL_INBOX_PROJECTS;
+  const sections = useMemo(() => groupInbox(filterInboxByProject(items ?? [], projectFilter)), [items, projectFilter]);
   const unreadCount = inbox.data?.unreadCount ?? 0;
 
   const go = useCallback(
@@ -67,6 +83,9 @@ export function useInboxScreen() {
     back: () => (router.canGoBack() ? router.back() : router.replace("/")),
     pair: nav.pair,
     sections,
+    projectOptions,
+    projectFilter,
+    selectProject: setSelectedProject,
     projectName: (projectId: string | null) => projectLabel(projectId, names),
     unreadCount,
     attentionCount: inbox.data?.attentionCount ?? 0,

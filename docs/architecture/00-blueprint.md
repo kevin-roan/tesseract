@@ -64,7 +64,7 @@ they export TypeScript source (`exports: { ".": "./src/index.ts" }`).
 │   ├── controller/      @theone/controller  Bun + Hono daemon that runs INSIDE the sandbox
 │   ├── desktop/         Monolith GTK4/libadwaita app (Python, dev.monolith.Desktop): the visual reference
 │   └── electron/        @monolith/electron  Monolith desktop app (Electron 44, React 19): setup wizard,
-│                                            sandbox stack control, host Android emulator, `monolith` CLI (§12)
+│                                            sandbox stack control, host Android emulator, `tesseract` CLI (§12)
 ├── packages/
 │   ├── protocol/        @theone/protocol    zod v4 schemas + types + route helpers (the wire contract);
 │   │                                        subpath exports ./bridge (zod-free) and ./fixtures
@@ -120,7 +120,7 @@ from an automated agent MUST go through `flock /tmp/theone-bun-install.lock bun 
 | Uploads | `/workspace/.theone/uploads/<uploadId>/<sanitized name>` (dirs 0700, files 0600; `POST /v1/uploads`), rows and files older than 30 days removed at startup |
 | Agent memory | `/workspace/.agent/` (§6.4, SPEC.md) |
 | Controller data | `/workspace/.agent/controller/` (`THEONE_DATA_DIR`, 0700) → `state.db`, `token`, `logs/`, `sync/` (baselines, `blobs/`, `backups/`, `staging/`), `claude-import.json` |
-| Claude credentials | the host's `~/.claude` bind-mounted at `/home/dev/.claude` (`CLAUDE_CONFIG_DIR`): login (`.credentials.json`), settings, CLAUDE.md; the only supported credential source (the host's Claude Max subscription login) |
+| Claude credentials | the host's `~/.claude` bind-mounted at `/home/dev/.claude` (`CLAUDE_CONFIG_DIR`): login (`.credentials.json`), settings, CLAUDE.md; the host's Claude Max subscription login. On macOS the login lives in the keychain, not in `.credentials.json`, so a Mac host passes a long-lived `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token` on the Mac; `tesseract server install --claude-token`, §7.2) to the sandbox instead |
 | Claude accounts | primary account `claude` = the dir above; each `THEONE_HOST_CLAUDE_ACCOUNTS` name `<n>` adds the host's `~/.claude-<n>` (what `CLAUDE_CONFIG_DIR=~/.claude-<n> claude` uses on the host) bind-mounted at `/home/dev/.claude-<n>`, account id `claude-<n>`, global config `<dir>/.claude.json`. Live bind mounts, never copies: token refreshes by either side stay valid for both. The controller never writes into these dirs; the default account and per-project picks live in `state.db` |
 | Home | `/home/dev` (volume `<prefix>-home`: wine prefix, caches; `.claude` is the host bind mount above) |
 | Wine prefix | `/home/dev/.wine` (`WINEPREFIX`), `WINEARCH=win64`, `WINEDEBUG=-all` |
@@ -130,7 +130,8 @@ from an automated agent MUST go through `flock /tmp/theone-bun-install.lock bun 
 | Browser pages | `/ui/terminal`, `/ui/vnc` (controller), `/ui/android` (host shell daemon); their bundled assets are served at root paths (`/chunk-<hash>.js`, `.css`) |
 | Mobile deep link | `theone://pair?url=<encoded base url>&token=<token>&name=<label>`; host shell: `theone://host?url=…&token=<host token>&name=<host name>` |
 | Host shell daemon | `theone-controller host serve` on the host, `<host Tailscale IPv4>:7701` (`HOST_SHELL_PORT`, `THEONE_HOST_SHELL_PORT`); only loopback or `100.64.0.0/10` binds |
-| ADB tunnel | `127.0.0.1:15555` in the sandbox (`DEFAULT_ADB_TUNNEL_PORT`, `THEONE_ADB_TUNNEL_PORT`), adb serial `127.0.0.1:15555`; open only while the host emulator is linked and `running` ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2.3) |
+| Headless server install | `~/.tesseract/{bin,sandbox}` (`infra/scripts/deploy-mac`); host shell service LaunchAgent `dev.tesseract.host-shell` (logs `~/Library/Logs/Tesseract/`) or systemd user unit `tesseract-host-shell.service` (§7.2) |
+| ADB tunnel | `127.0.0.1:15555` in the sandbox (`DEFAULT_ADB_TUNNEL_PORT`, `THEONE_ADB_TUNNEL_PORT`), adb serial `127.0.0.1:15555`; open only while the host emulator is linked and `running` ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2.3). Shared host emulators (`THEONE_ANDROID_SHARE_EMULATORS`): `emulator-<n>` → `127.0.0.1:<15555 + 1 + (n − 5554)/2>` (`sharedEmulatorTunnelPort`), e.g. `emulator-5556` → `127.0.0.1:15557` |
 | Host Android emulator | console `5554`, adbd `5555` (`DEFAULT_EMULATOR_PORT`, `THEONE_EMULATOR_PORT`); adb serial `127.0.0.1:<bridge port>` in `netns` isolation (`THEONE_EMULATOR_ADB_PORT`), `emulator-<port>` for a plain (`none` or adopted non-isolated) emulator |
 | Desktop renderer dev server | `http://127.0.0.1:4545` (`RENDERER_DEV_PORT`, `strictPort`, dev and preview); never the Electron/Vite defaults |
 | Desktop app id / deep link | `dev.monolith.Desktop`; `monolith://<page>[?…]`, `monolith://preferences/<section>`, `monolith://onboarding/<step>`, `monolith://pair`, … (§12.3) |
@@ -176,8 +177,7 @@ always resolved (`realpath`) and verified to stay under the workspace.
 | `THEONE_STT_URL` | — | OpenAI-compatible base URL (`http(s)`, no credentials/query), e.g. `https://api.openai.com/v1`, `https://api.groq.com/openai/v1`; the controller posts to `<url>/audio/transcriptions` |
 | `THEONE_STT_API_KEY` | — | bearer key for `THEONE_STT_URL`; never logged, never passed to children (optional with `THEONE_STT_ENGINE=openai-compatible`, e.g. a local server) |
 | `THEONE_STT_MODEL` | `whisper-1` | model field of the OpenAI-compatible request (e.g. `whisper-large-v3-turbo` on Groq) |
-| `GEMINI_API_KEY` | — | optional fallback Google Gemini key for transcriptions requested with `provider: "gemini"`; normally the key is saved from the mobile or desktop app (`PUT /v1/stt { geminiApiKey }`), which wins. No key = those fall back to the native engine. Never logged, never passed to children |
-| `THEONE_GEMINI_STT_MODEL` | `gemini-2.5-flash` | Gemini model used for `provider: "gemini"` |
+| `THEONE_GEMINI_STT_MODEL` | `gemini-2.5-flash` | Gemini model used for `provider: "gemini"`. The key is not an env var: it is saved from the mobile or desktop app or `tesseract --gemini-key=KEY` (`PUT /v1/stt { geminiApiKey }`); no key = those fall back to the native engine |
 | `THEONE_PUSH_URL` | `https://exp.host/--/api/v2/push/send` | Expo push API used for inbox pushes (`http(s)`, no credentials/query); `off` disables pushes |
 | `THEONE_EXPO_ACCESS_TOKEN` | — | optional Expo access token, sent as `Authorization: Bearer` when Expo's enhanced push security is on |
 | `THEONE_APNS_KEY_FILE` | — | absolute path of the APNs auth key (`AuthKey_<KEYID>.p8`) used for Live Activity (Dynamic Island) pushes; with `THEONE_APNS_KEY_ID` and `THEONE_APNS_TEAM_ID` it enables them, setting only some of the three stops startup, none = tokens are stored but nothing is sent ([runbook](../runbooks/live-activities.md)) |
@@ -194,7 +194,7 @@ developer laptop too (for tests): every sandbox dependency (X display, VNC,
 claude, wine, java) is optional and reported as unavailable instead of crashing.
 
 Children (processes, build steps, terminals, agent runs, git/zip helpers) get the
-controller's environment **without** `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, `THEONE_STT_API_KEY` and `GEMINI_API_KEY`, plus
+controller's environment **without** `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, and `THEONE_STT_API_KEY`, plus
 `THEONE_PROCESS_ID` / `THEONE_BUILD_ID` / `THEONE_TERMINAL_ID` / `THEONE_AGENT_RUN_ID`.
 Agent runs also drop `CLAUDECODE`. The controller does not store or inject Claude
 credentials: children use the host's Claude Max login in `/home/dev/.claude` (the host's
@@ -223,7 +223,7 @@ lists. Exported shell variables win over the env file; empty counts as unset.
 | `THEONE_BIND_ADDR` | host-tailscale: `tailscale ip -4`; local: `127.0.0.1` | IPv4 the ports are published on; wildcards and non-IPv4 values are refused |
 | `THEONE_CONTROLLER_HOST_PORT` / `THEONE_VNC_HOST_PORT` | `7700` / `5901` | host side of the published ports; `THEONE_PUBLIC_URL` follows |
 | `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, `THEONE_LOG_LEVEL`, `THEONE_CLAUDE_PERMISSION_MODE`, `THEONE_CORS_ORIGINS` | as §4.1 | passed to the sandbox |
-| `THEONE_STT_ENGINE`, `THEONE_STT_PROFILE`, `THEONE_STT_URL`, `THEONE_STT_API_KEY`, `THEONE_STT_MODEL`, `THEONE_WHISPER_MODELS_DIR`, `THEONE_WHISPER_MODEL`, `GEMINI_API_KEY`, `THEONE_GEMINI_STT_MODEL` | as §4.1 | passed to the sandbox; the entrypoint moves `THEONE_STT_API_KEY` and `GEMINI_API_KEY` into `/run/theone/controller.env` like `THEONE_TOKEN` |
+| `THEONE_STT_ENGINE`, `THEONE_STT_PROFILE`, `THEONE_STT_URL`, `THEONE_STT_API_KEY`, `THEONE_STT_MODEL`, `THEONE_WHISPER_MODELS_DIR`, `THEONE_WHISPER_MODEL`, `THEONE_GEMINI_STT_MODEL` | as §4.1 | passed to the sandbox; the entrypoint moves `THEONE_STT_API_KEY` into `/run/theone/controller.env` like `THEONE_TOKEN` |
 | `THEONE_DISPLAY_GEOMETRY` | `1600x900` | Xvnc geometry |
 | `THEONE_HOST_CLAUDE_DIR` | `$HOME/.claude` | host dir bind-mounted at `/home/dev/.claude`: the host's Claude Max login is the sandbox's only Claude credential (`ANTHROPIC_API_KEY`/`CLAUDE_CODE_OAUTH_TOKEN` are not passed through) |
 | `THEONE_HOST_CLAUDE_ACCOUNTS` | — | extra host Claude accounts (`work personal`, or `name=/abs/path`): `infra/scripts/sandbox` writes a compose override (`${XDG_STATE_HOME:-~/.local/state}/theone/compose.<project>.claude-accounts.yml`, added to every compose call) binding each existing `~/.claude-<n>` at `/home/dev/.claude-<n>` and passing `THEONE_CLAUDE_ACCOUNTS`; missing dirs are skipped with a warning, never created |
@@ -244,21 +244,22 @@ knob: `THEONE_WAIT_X_TIMEOUT` (s, default 60).
 
 | Var | Default | Meaning |
 |---|---|---|
-| `THEONE_HOST_SHELL_BIND` | first line of `tailscale ip -4` | IPv4 to listen on; `--bind` wins. Wildcards, empty values and anything but loopback or `100.64.0.0/10` stop startup |
+| `THEONE_HOST_SHELL_BIND` | first line of `tailscale ip -4` (`tailscale` from `PATH`, else on macOS `/Applications/Tailscale.app/Contents/MacOS/Tailscale`) | IPv4 to listen on; `--bind` wins. Wildcards, empty values and anything but loopback or `100.64.0.0/10` stop startup |
 | `THEONE_HOST_SHELL_PORT` | `7701` | port; `--port` wins |
 | `THEONE_HOST_SHELL_DIR` | `$XDG_CONFIG_HOME/theone/host-shell` (`~/.config/theone/host-shell`) | state directory (`state.json`) |
 | `THEONE_HOST_SHELL_PUBLIC_URL` | the `tailscale serve` HTTPS URL proxying to `http://<bind>:<port>` at `/` (`tailscale serve status --json`), else `http://<bind>:<port>` | URL put into the `host pair` link. iOS blocks plain http to the Tailscale IP, so serve it over HTTPS: `tailscale serve --bg --https=8443 http://<bind>:7701` |
 | `SHELL` | `bash` | host terminals run `$SHELL -l` in `$HOME` |
 | `THEONE_ANDROID_SDK_ROOT` | `$HOME/.local/share/theone/android-sdk` if it has `emulator/emulator`, else `$ANDROID_SDK_ROOT`, else `$ANDROID_HOME` | SDK with `emulator/` and `system-images/` |
 | `THEONE_ADB` | `adb` | host adb client (the user's adb server on 5037) |
-| `THEONE_SCRCPY_SERVER` | `/usr/share/scrcpy/scrcpy-server`, else `/usr/local/share/scrcpy/scrcpy-server` | scrcpy server jar |
+| `THEONE_SCRCPY_SERVER` | `/usr/share/scrcpy/scrcpy-server`, else `/usr/local/share/scrcpy/scrcpy-server`, else (Homebrew on Apple silicon) `/opt/homebrew/share/scrcpy/scrcpy-server` | scrcpy server jar |
 | `THEONE_SCRCPY_VERSION` | parsed from `scrcpy --version` | must equal the jar's version |
 | `THEONE_FFMPEG` | `ffmpeg` | H.264 → MJPEG for `/v1/android/screen` viewers that can't decode H.264 (or with `encoding: "mjpeg"`) |
 | `THEONE_EMULATOR_PORT` | `5554` | emulator console port; adbd = +1; serial `emulator-<port>` when not isolated |
-| `THEONE_EMULATOR_GPU` | `swiftshader_indirect` | emulator `-gpu` |
-| `THEONE_EMULATOR_ISOLATION` | `netns` | `netns`: emulator in its own user + network namespace, guest egress only to public addresses through a filtering proxy, adb via a host bridge (serial `127.0.0.1:<port>`); needs `unshare`, `ip` and unprivileged user namespaces, else `GET /v1/android` is `available: false`. `none`: emulator on the host network (the guest, and the linked sandbox, can reach host loopback, LAN, tailnet) |
+| `THEONE_EMULATOR_GPU` | macOS: `host`; Linux: `swiftshader_indirect` | emulator `-gpu` |
+| `THEONE_EMULATOR_ISOLATION` | Linux: `netns`; macOS: `none` (no user/network namespaces) | `netns`: emulator in its own user + network namespace, guest egress only to public addresses through a filtering proxy, adb via a host bridge (serial `127.0.0.1:<port>`); needs `unshare`, `ip` and unprivileged user namespaces, else `GET /v1/android` is `available: false`. `none`: emulator on the host network (the guest, and the linked sandbox, can reach host loopback, LAN, tailnet) |
 | `THEONE_EMULATOR_ALLOW_NETS` | — | comma-separated CIDRs the isolated guest may still reach (e.g. a LAN backend) |
 | `THEONE_EMULATOR_ADB_PORT` | free port, kept across daemon restarts | host loopback port of the adb bridge to the isolated emulator |
+| `THEONE_ANDROID_SHARE_EMULATORS` | `off` | `on`: also tunnel every other online `emulator-<port>` the host adb lists (Android Studio, `emulator -avd …`) to the linked sandbox. They run on the host network, so **the sandbox can reach host loopback (incl. the host adb server), LAN and tailnet through them** |
 
 Host terminals get the daemon's environment without `THEONE_HOST_SHELL_*`, plus
 `TERM=xterm-256color`, `COLORTERM=truecolor`, `LANG`.
@@ -273,7 +274,7 @@ It runs `bun apps/controller/src/index.ts` from its checkout, or `MONOLITH_CONTR
 then `apps/controller/dist/theone-controller`. It fills `THEONE_ANDROID_SDK_ROOT` (and `THEONE_ADB`) from the
 SDK its setup wizard installed when they are not already set.
 
-### 4.4 Desktop app and `monolith` CLI (`apps/electron`, runs on the host)
+### 4.4 Desktop app and `tesseract` CLI (`apps/electron`, runs on the host)
 
 | Var | Default | Meaning |
 |---|---|---|
@@ -289,7 +290,7 @@ SDK its setup wizard installed when they are not already set.
 | `MONOLITH_DISABLE_UPDATES` | — | set = no background update checks |
 | `MONOLITH_DISABLE_DISCOVERY` | — | `1` = no Docker discovery of a running sandbox on first run (§12.2); set by the tests |
 | `MONOLITH_ANDROID_REPOSITORY_URL` / `MONOLITH_ANDROID_SYSIMG_URL` | Google's `…/repository/repository2-3.xml` / `…/sys-img/google_apis/sys-img2-3.xml` | Android catalog mirror (app and CLI): a full `.xml` URL, or a base URL the default file name is appended to; `http`/`https` only, else `invalid_argument` |
-| `MONOLITH_APP_PATH` | installed app (AppImage copy: `appPath` in `~/.local/share/monolith/app.json`, §12.5) | CLI: the app executable `monolith open` launches |
+| `MONOLITH_APP_PATH` | installed app (AppImage copy: `appPath` in `~/.local/share/monolith/app.json`, §12.5) | CLI: the app executable `tesseract open` launches |
 | `MONOLITH_SANDBOX_CONTEXT` | bundled `resources/sandbox`, else (AppImage copy) `sandboxDir` in `~/.local/share/monolith/app.json`, else the checkout | CLI: directory holding `infra/compose` and the Dockerfile |
 | `ELECTRON_RENDERER_URL` | — | set by `electron-vite dev` to `http://127.0.0.1:4545` |
 | `THEONE_COMPOSE_PROJECT`, `THEONE_CONTROLLER_HOST_PORT`, `THEONE_BIND_ADDR` | §4.2 | read by sandbox discovery (find a running `theone` stack and its controller port) |
@@ -340,7 +341,7 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | PUT | `/v1/projects/:id/name` | `RenameProject { name: string \| null }` | `200 Project` and `project.updated`; sets the display name only (id and directory stay); null restores the package.json name or id; 404 unknown project |
 | PUT | `/v1/projects/:id/claude-account` | `SetProjectClaudeAccount { accountId: string \| null }` | `200 Project` and `project.updated`; null follows the default account; 404 unknown project or account, 400 for an account whose dir is not mounted |
 | DELETE | `/v1/projects/:id` | `?force=1` (or `true`) | `200 DeletedProject { id, trashPath }`: moves `/workspace/projects/<id>` to `<os tmpdir>/theone-deleted-projects/<id>-<ts>` (the host copy is never touched), drops the sync-back baseline and blobs (the confidential mark stays), publishes `sync.changed`, `project.deleted`; without `force`, 409 when the project has changes not synced back to the host or no baseline (never pushed from a host); 409 (even with `force`) while a process, build, terminal or agent run of the project is running or a `pending`/`claimed` sync request exists; 404 unknown project |
-| POST | `/v1/projects/:id/sync` | `?confidential=1`; tar archive body, `Content-Type` `application/x-tar` or `application/gzip` (body limit 1 GiB) | `201 Project` when the directory was created, else `200 Project`: `confidential=1` (exactly `1`) first marks the project confidential (one-way; other values or none leave the mark as is); extracts with `tar --no-same-owner` over `/workspace/projects/<id>`; files missing from the archive are kept; a bad archive is 400 (a directory created for it is removed), another content type 400; publishes `project.updated`. Sent by `monolith --sync` (desktop), which archives the cwd (in a git checkout: tracked and unignored files, plus `.git` at the top level) |
+| POST | `/v1/projects/:id/sync` | `?confidential=1`; tar archive body, `Content-Type` `application/x-tar` or `application/gzip` (body limit 1 GiB) | `201 Project` when the directory was created, else `200 Project`: `confidential=1` (exactly `1`) first marks the project confidential (one-way; other values or none leave the mark as is); extracts with `tar --no-same-owner` over `/workspace/projects/<id>`; files missing from the archive are kept; a bad archive is 400 (a directory created for it is removed), another content type 400; publishes `project.updated`. Sent by `tesseract --sync` (desktop), which archives the cwd (in a git checkout: tracked and unignored files, plus `.git` at the top level) |
 | GET | `/v1/projects/:id/git` | — | `GitDetails { branch, ahead, behind, files: GitFileStatus[], log: GitCommit[] }`; in a confidential project every `author` is `REDACTED` |
 | GET | `/v1/projects/:id/sync/changes` | — | `SyncChanges`: current tree vs the baseline recorded by the last push ([sync-back.md](sync-back.md)); 404 unknown project |
 | POST | `/v1/projects/:id/sync/export` | `SyncExport { paths: SyncPath[] (1–5000) }`, each a current `added`/`modified` change | `200 application/gzip` tar of those files (regular files and symlinks only); 400 for a path that is not a current change |
@@ -398,9 +399,9 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | POST | `/v1/agent/runs` | `StartAgentRun { projectId?, prompt, mode?, attachmentIds?, resumeSessionId? }` | `201 AgentRun`; 503 without `claude`; 404 for an unknown attachment. `mode` → `--permission-mode` (else `THEONE_CLAUDE_PERMISSION_MODE`; stored as `null`). Attachments are stored on the run as full `Upload`s; for non-audio ones the run gets `--add-dir <uploads dir>` and the stdin prompt gains `\n\nAttached files (read them with the Read tool):\n- <path> (<mimeType>)` lines. Audio attachments are not listed (the transcript is the prompt); they stay on the run for replay. In a confidential project (also when resuming) the run gets `--append-system-prompt <confidential prompt>` (§6.1) |
 | POST | `/v1/uploads` | `CreateUpload { name, mimeType, data /* base64 */ }` (body limit 28 MiB) | `201 Upload`; 400 for invalid base64, an empty file or more than 20 MiB decoded. `name` → last path segment without control characters or leading dots, ≤ 200 UTF-8 bytes (extension kept), fallback `upload`; `mimeType` → lower-cased essence (`application/octet-stream` when malformed); `kind` = `image` (`image/*`), `pdf` (`application/pdf`), `audio` (`audio/*`), else `file` |
 | GET | `/v1/uploads/:id/content` | bearer **or** `?ticket=` | file stream with the stored `Content-Type`, `Content-Disposition` `inline` (image/pdf/audio) or `attachment` (file), `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox`; single `Range: bytes=` requests get 206 (players that issue several range requests need bearer auth, a ticket is single-use); 404 if the file is gone |
-| POST | `/v1/transcriptions` | `CreateTranscription { uploadId, language?, provider? }` | `200 Transcription { uploadId, text, language, durationMs, engine, fallbackReason }`; 404 unknown upload, 400 not audio, invalid `language` (ISO-639-1, region suffix dropped, `auto` = detect) or `No speech detected` (empty after dropping `[BLANK_AUDIO]`-style markers), 503 when the STT profile is `off` (`Speech-to-text is off (select a profile in the desktop app)`), when no engine is configured or it fails (message says which env vars to set). One transcription runs at a time; others wait in FIFO order (`busy`/`queued` in `GET /v1/stt`). whisper.cpp: `[ionice -c3] [nice -n <nice>]` prefix per profile (skipped when the binary is missing), ffmpeg → 16 kHz mono WAV in a temp dir, `whisper-cli -m <model> -t <threads> -l <lang\|auto> -oj`, 5 min timeout each, `durationMs` from the WAV. openai-compatible: multipart `file`, `model`, `response_format=verbose_json`, `language?` with `Authorization: Bearer`, 5 min timeout; a non-JSON reply is used as plain text. `provider: "gemini"` (default `native`): JSON `POST https://generativelanguage.googleapis.com/v1beta/models/<THEONE_GEMINI_STT_MODEL>:generateContent` with `x-goog-api-key`, the audio as `inline_data` (`audio/mp4`/`audio/x-m4a` sent as `audio/m4a`) and a verbatim-transcript instruction (language hint included), `temperature: 0`, 5 min timeout, outside the FIFO queue and regardless of the profile; empty text → 400 `No speech detected`. When no Gemini key is set (saved from an app or `GEMINI_API_KEY`) or Gemini fails (network, HTTP error — 429 reported as quota/rate limit, 401/403/400 `API_KEY_INVALID` as a rejected key), the native engine (profile check included) answers and `fallbackReason` says why; if it cannot either, 503 with both reasons. `fallbackReason` is null otherwise |
+| POST | `/v1/transcriptions` | `CreateTranscription { uploadId, language?, provider? }` | `200 Transcription { uploadId, text, language, durationMs, engine, fallbackReason }`; 404 unknown upload, 400 not audio, invalid `language` (ISO-639-1, region suffix dropped, `auto` = detect) or `No speech detected` (empty after dropping `[BLANK_AUDIO]`-style markers), 503 when the STT profile is `off` (`Speech-to-text is off (select a profile in the desktop app)`), when no engine is configured or it fails (message says which env vars to set). One transcription runs at a time; others wait in FIFO order (`busy`/`queued` in `GET /v1/stt`). whisper.cpp: `[ionice -c3] [nice -n <nice>]` prefix per profile (skipped when the binary is missing), ffmpeg → 16 kHz mono WAV in a temp dir, `whisper-cli -m <model> -t <threads> -l <lang\|auto> -oj`, 5 min timeout each, `durationMs` from the WAV. openai-compatible: multipart `file`, `model`, `response_format=verbose_json`, `language?` with `Authorization: Bearer`, 5 min timeout; a non-JSON reply is used as plain text. `provider: "gemini"` (default `native`): JSON `POST https://generativelanguage.googleapis.com/v1beta/models/<THEONE_GEMINI_STT_MODEL>:generateContent` with `x-goog-api-key`, the audio as `inline_data` (`audio/mp4`/`audio/x-m4a` sent as `audio/m4a`) and a verbatim-transcript instruction (language hint included), `temperature: 0`, 5 min timeout, outside the FIFO queue and regardless of the profile; empty text → 400 `No speech detected`. When no Gemini key is set (saved from an app or `tesseract --gemini-key`) or Gemini fails (network, HTTP error — 429 reported as quota/rate limit, 401/403/400 `API_KEY_INVALID` as a rejected key), the native engine (profile check included) answers and `fallbackReason` says why; if it cannot either, 503 with both reasons. `fallbackReason` is null otherwise |
 | GET | `/v1/stt` | — | `SttStatus`: selected profile, every profile's tuning and whether its model file exists, the engine and model a transcription would use now (`ready`/`reason`), `cpus` (`os.availableParallelism()` capped by the cgroup v2 `cpu.max` quota), `busy`, `queued`, `gemini { configured /* a key is set */, model, source: "settings" \| "env" \| null }` (the key itself is never returned) |
-| PUT | `/v1/stt` | `UpdateStt { profile?: SttProfile, geminiApiKey?: string \| null }` (at least one) | `200 SttStatus`; stores the profile (key `stt.profile`) and the Gemini key (key `stt.geminiApiKey`, trimmed, 1–256 printable ASCII without spaces; wins over `GEMINI_API_KEY`; `null` deletes it) in the `settings` table and publishes `stt.updated` when something changed; 400 for an unknown profile, an invalid key or an empty body |
+| PUT | `/v1/stt` | `UpdateStt { profile?: SttProfile, geminiApiKey?: string \| null }` (at least one) | `200 SttStatus`; stores the profile (key `stt.profile`) and the Gemini key (key `stt.geminiApiKey`, trimmed, 1–256 printable ASCII without spaces; `null` deletes it) in the `settings` table and publishes `stt.updated` when something changed; 400 for an unknown profile, an invalid key or an empty body |
 | POST | `/v1/agent/runs/archive` | `ArchiveAgentRuns { ids: AgentRunId[] (1–500), archived: boolean } \| { all: true, archived: boolean, projectId? }` | `200 { count }` = runs whose archived state changed; `archived: true` sets `archivedAt` to now, `false` clears it; `all` covers every finished run (of `projectId`); running runs and unknown ids are skipped; publishes `agent.updated` per changed run |
 | POST | `/v1/agent/runs/delete` | `DeleteAgentRuns { ids: AgentRunId[] (1–500) } \| { all: true, projectId?, archived?: boolean }` | `200 { count }` = runs deleted for good with their events (one transaction; inbox items keep their row with `agentRunId: null`); `all` covers every finished run, only archived ones with `archived: true`, only non-archived ones with `false`; running runs and unknown ids are skipped; publishes `agent.deleted` when `count > 0` |
 | GET | `/v1/agent/runs/:id` | — | `AgentRun & { events: AgentRunEvent[] }` |
@@ -411,7 +412,7 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | GET | `/v1/app-runs/:id` | — | `AppRun` |
 | DELETE | `/v1/app-runs/:id` | — | `AppRun` once its processes stopped |
 | POST | `/v1/app-runs/:id/actions` | `AppRunActionRequest { action: "reload" \| "restart" \| "focus" }` | `200 AppRun`; 409 not `ready` or action unsupported; 502 the action failed |
-| GET | `/v1/android` | — | `SandboxAndroidStatus { linked, hostId, emulator, adbSerial, adbConnected }` (the tunnel to the host emulator) |
+| GET | `/v1/android` | — | `SandboxAndroidStatus { linked, hostId, emulator, adbSerial, adbConnected, shared }` (the tunnels to the host emulator and shared emulators) |
 | POST | `/v1/events` | `StatusEvent` (without `ts`) | `202` — lets the in-sandbox agent publish SPEC §8.1 status events |
 
 `command` in `StartProcess` is `string` (run via `bash -lc` in the project dir)
@@ -428,8 +429,8 @@ CORS allows `GET, POST, DELETE` with `Authorization, Content-Type` and exposes
 | `/v1/processes/:id/logs/stream` | server → client `ProcessLogStreamMessage`: `{type:"log", line: LogLine}` · `{type:"exit", code}` (replays last 200 lines first) |
 | `/v1/builds/:id/logs/stream` | `LogStreamMessage`: first `{type:"build", build}`, then the replay, `log` lines, `build` on every state/stage change, `exit` |
 | `/v1/agent/runs/:id/stream` | server → client `{type:"event", event: AgentRunEvent}` · `{type:"run", run: AgentRun}` (replays prior events first) |
-| `/v1/android/link` | host daemon → controller (host dials out): JSON `AndroidLinkHostMessage` `hello` · `emulator` · `refuse` · `pong`; controller → host `AndroidLinkSandboxMessage` `open {streamId}` · `ping` (every 20 s). A newer link closes the older with 4000 |
-| `/v1/android/link/streams/:id` | **binary** raw adb bytes between the sandbox tunnel connection `:id` (`adb_…`) and the host emulator's adbd; opened by the host after `open`, within 10 s |
+| `/v1/android/link` | host daemon → controller (host dials out): JSON `AndroidLinkHostMessage` `hello` · `emulator` · `devices` (shared emulators) · `refuse` · `pong`; controller → host `AndroidLinkSandboxMessage` `open {streamId, device?}` · `ping` (every 20 s). A newer link closes the older with 4000 |
+| `/v1/android/link/streams/:id` | **binary** raw adb bytes between the sandbox tunnel connection `:id` (`adb_…`) and the host emulator's (or a shared emulator's) adbd; opened by the host after `open`, within 10 s |
 | `/v1/display/vnc` | **binary** RFB bridge to `THEONE_VNC_HOST:THEONE_VNC_PORT` (echo `Sec-WebSocket-Protocol: binary` when offered; used by noVNC) |
 
 Upgrades fail with 401 (missing/used/expired ticket), 404 (unknown target) or
@@ -553,7 +554,7 @@ type SttStatus = { profile: SttProfile; profiles: SttProfileInfo[] /* STT_PROFIL
                    model: string | null /* after the THEONE_WHISPER_MODEL fallback; THEONE_STT_MODEL for openai-compatible */;
                    cpus: number; busy: boolean; queued: number;
                    gemini: { configured: boolean; model: string;
-                             source: "settings" /* saved from an app */ | "env" /* GEMINI_API_KEY */ | null } };
+                             source: "settings" /* saved from an app or tesseract --gemini-key */ | null } };
 type UpdateStt = { profile?: SttProfile; geminiApiKey?: string | null /* null forgets the saved key */ };
 type AgentRunUsage = { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number;
                        totalTokens: number /* sum of the four */ };
@@ -673,8 +674,10 @@ type AndroidStreamSettings = { encoding: "h264" | "mjpeg"; bitRate: number /* 25
                                device: string | null /* adb serial, null: the host emulator */ };
 type AndroidDevice = { serial: string; state: string /* "device" | "unauthorized" | "offline" … */;
                        kind: "emulator" | "genymotion" | "network" | "usb"; model: string | null; hostEmulator: boolean };
+type SharedEmulator = { serial: string /* host emulator-<port> */; model: string | null };
 type SandboxAndroidStatus = { linked: boolean; hostId: string | null; emulator: EmulatorInfo | null;
-                              adbSerial: string | null; adbConnected: boolean };
+                              adbSerial: string | null; adbConnected: boolean;
+                              shared: (SharedEmulator & { adbSerial: string; adbConnected: boolean })[] };
 // WS frames: AndroidLinkHostMessage / AndroidLinkSandboxMessage (§5.3), AndroidScreenClientMessage /
 // AndroidScreenServerMessage (§5.7)
 ```
@@ -941,37 +944,72 @@ printed as `***`. Exit codes (`api`, `emit`): 0 ok, 1 request failed / non-2xx
 (set by the controller for terminals and agent runs), gives up after 1.5 s and never prints
 or fails, so a controller outage never blocks Claude.
 
-### 7.1 Desktop `monolith` CLI (host)
+### 7.1 Host `tesseract` CLI
 
 `apps/electron/cli`, compiled with `bun build --compile` (`bun run --cwd apps/electron cli:build`) to
-`dist-cli/<linux|mac|win>-<x64|arm64>/monolith[.exe]` and shipped in the installers as `resources/bin/monolith`
+`dist-cli/<linux|mac|win>-<x64|arm64>/tesseract[.exe]` and shipped in the installers as `resources/bin/tesseract`
 next to `theone-controller` (§12.5). It shares `src/core` with the app, so both read the same `config.json`,
 sandbox env file and Android SDK. Every command takes `--json`, `--verbose`, `--help`.
 
 ```
-monolith status [--json]                                # config, setup progress, connection, Docker, stack, Android
-monolith open [overview|agents|projects|files|terminals|display]   # start or focus the app (else monolith://<page>)
-monolith doctor [docker|image|kvm|sdk]... [--json]      # Docker, sandbox image, hardware acceleration, Android SDK
-monolith sandbox status|up|down [--volumes]|restart [service]|logs [--tail N] [--follow]
-monolith sandbox build [--with android,flutter,mono,whisper|all|none] [--pull | --existing] [--verbose]
-monolith sandbox pair [--no-qr]
-monolith android images [--refresh] [--all]
-monolith android install <api|package>... [--accept-licenses] [--sdk PATH]
-monolith android [avd] [list]                           # bare `android` / `android avd` list the AVDs
-monolith android avd create [name] [--image API|package] [--device pixel_5|pixel_8|medium_phone|pixel_tablet]
+tesseract status [--json]                                # config, setup progress, connection, Docker, stack, Android
+tesseract open [overview|agents|projects|files|terminals|display]   # start or focus the app (else monolith://<page>)
+tesseract doctor [docker|image|kvm|sdk]... [--json]      # Docker, sandbox image, hardware acceleration, Android SDK
+tesseract sandbox status|up|down [--volumes]|restart [service]|logs [--tail N] [--follow]
+tesseract sandbox build [--with android,flutter,mono,whisper|all|none] [--pull | --existing] [--verbose]
+tesseract sandbox pair [--no-qr]
+tesseract android images [--refresh] [--all]
+tesseract android install <api|package>... [--accept-licenses] [--sdk PATH]
+tesseract android [avd] [list]                           # bare `android` / `android avd` list the AVDs
+tesseract android avd create [name] [--image API|package] [--device pixel_5|pixel_8|medium_phone|pixel_tablet]
                     [--storage GB] [--ram MB] [--cores N] [--default]   # storage 2–64 GB, default 6
-monolith android avd start [name] [--detach] [--headless] [--gpu MODE] | delete <name>
-monolith pair [--no-qr]                                 # pairing link + QR for the phone
-monolith sync [push] [--confidential] | pull [--dry-run] [--force] | revert [--force] | status
-monolith config path | get [key] [--reveal] | set <key> <value> [--force] | unset <key>
-monolith version | help [command]
-monolith --sync [--confidential] | --pull [--dry-run] [--force] | --revert [--force] | --sync-status   # GTK-compatible flags
+tesseract android avd start [name] [--detach] [--headless] [--gpu MODE] | delete <name>
+tesseract pair [--no-qr]                                 # pairing link + QR for the phone
+tesseract sync [push] [--confidential] | pull [--dry-run] [--force] | revert [--force] | status
+tesseract config path | get [key] [--reveal] | set <key> <value> [--force] | unset <key>
+tesseract version | help [command]
+tesseract --sync [--confidential] | --pull [--dry-run] [--force] | --revert [--force] | --sync-status   # GTK-compatible flags
+tesseract --gemini-key=KEY                               # save the Gemini key for voice notes on the sandbox (PUT /v1/stt)
 ```
 
 `--get` on the host only prints that it runs inside the sandbox (`theone-controller monolith --get`, §7).
 `config get` prints the token as `…` unless `--reveal`. The packaged app forwards the sync flags to the
-bundled CLI (`Monolith --sync` = `monolith --sync`). Exit codes: 0 ok, 1 failure, 2 sync conflict,
+bundled CLI (`Monolith --sync` = `tesseract --sync`). Exit codes: 0 ok, 1 failure, 2 sync conflict,
 64 bad arguments, 130 interrupted.
+
+### 7.2 Headless server (`tesseract server`, macOS and Linux)
+
+Runs the sandbox stack and the host shell daemon on a machine without the desktop app (the
+production sandbox host, e.g. a Mac on the tailnet). Runbook: `docs/runbooks/mac-server.md`.
+
+```
+tesseract server install [--mode tailscale|host-tailscale|local] [--hostname <name>] [--tailnet-domain <x.ts.net>]
+                         [--authkey <key>] [--with <components>] [--image <ref>] [--build] [--claude-token <tok>]
+                         [--no-host-shell] [--host-https-port 8443] [--dry-run]
+tesseract server uninstall [--volumes]
+tesseract server status
+tesseract server pair                                    # sandbox and host shell pairing links + QR codes
+```
+
+`install` writes the sandbox env file (§12.4: macOS `~/Library/Application Support/Monolith/sandbox/.env`,
+Linux `~/.config/Monolith/sandbox/.env`), pulls `--image` or builds (`--build`, `--with`), runs `compose up`,
+installs the host shell service and runs `tailscale serve --bg --https=<host-https-port> http://<tailscale ip>:7701`,
+then prints the pairing. `--authkey`, `--tailnet-domain` and `--claude-token` fall back to `TS_AUTHKEY`,
+`TS_TAILNET_DOMAIN` and `CLAUDE_CODE_OAUTH_TOKEN` (passed to the sandbox, because Claude Code on macOS keeps its
+login in the keychain, which the sandbox can't read). The stack restarts with Docker (`restart: unless-stopped`).
+
+| Host shell service | macOS | Linux |
+|---|---|---|
+| Unit | LaunchAgent `~/Library/LaunchAgents/dev.tesseract.host-shell.plist` (`RunAtLoad`, `KeepAlive`) | systemd user unit `tesseract-host-shell.service` (`loginctl enable-linger` to run without a login) |
+| Command | `theone-controller host serve --bind <tailscale ip>` | same |
+| Logs | `~/Library/Logs/Tesseract/` | `journalctl --user -u tesseract-host-shell` |
+
+Deploying from the Linux dev box: `infra/scripts/deploy-mac <ssh-host> [--arch auto|arm64|x64] [--skip-build]
+[-- <install args>]` (`bun run deploy:mac`) builds `tesseract` + `theone-controller` for `mac-arm64`/`mac-x64`
+(`uname -m` on the Mac) and the sandbox context (`bundle:sandbox`), copies them to `~/.tesseract/bin/` and
+`~/.tesseract/sandbox/` and runs `MONOLITH_SANDBOX_CONTEXT=~/.tesseract/sandbox ~/.tesseract/bin/tesseract server install`.
+`TS_AUTHKEY`, `TS_TAILNET_DOMAIN` and `CLAUDE_CODE_OAUTH_TOKEN` from its environment reach the Mac over ssh stdin
+(a 0600 `~/.tesseract/secrets.env` removed before the install runs), never on a command line.
 
 ## 8. Sandbox image
 
@@ -1103,7 +1141,7 @@ limits from `.env`, explicit `environment` lists (no `env_file`), json-file logs
 | `bun run e2e [--no-build\|--keep\|--web\|--electron\|--electron-only]` | `infra/e2e`: builds `theone/sandbox:e2e`, starts project `theone-e2e` (volumes `theone-e2e-*`) in local mode on `127.0.0.1:17700/15901`, runs `bun test ./infra/e2e`, removes the stack |
 | `bun run --cwd apps/electron test` (part of `bun run test`) | `@monolith/electron` vitest: node project (`tests/`, `src/{core,shared,main}`, `cli/`, `scripts/`; temp dirs `monolith-test-*`) and happy-dom project (`src/renderer`); no display, no Docker |
 | `bun run electron:e2e` | `apps/electron/e2e`: Playwright `_electron` specs (shell, preferences, onboarding, CLI, packaging, visual snapshots, live controller); headless on Linux, isolated profiles under `$TMPDIR/monolith-test-*`; Docker resources `monolith-test-*`; live tests only with `THEONE_E2E_URL`/`THEONE_E2E_TOKEN`, which `bun run e2e --electron[-only]` sets for its `theone-e2e` stack |
-| `bun run electron:smoke` | the built Linux AppImage/deb: packaged files, sandbox context vs its `manifest.json`, update feed, `monolith --version`, deb postinst and desktop entry, one headless render of the wizard |
+| `bun run electron:smoke` | the built Linux AppImage/deb: packaged files, sandbox context vs its `manifest.json`, update feed, `tesseract --version`, deb postinst and desktop entry, one headless render of the wizard |
 
 The e2e suite is not a workspace: typecheck it with `bunx tsc -p infra/e2e/tsconfig.json`.
 Runbook: [e2e-testing.md](../runbooks/e2e-testing.md).
@@ -1121,7 +1159,7 @@ Specs and the code conventions: [docs/electron/](../electron/README.md).
 | Part | What |
 |---|---|
 | Main (`src/main`, ESM) | windows, tray, menu, deep links, updater, IPC handlers (`monolith:<service>:<method>`, events `monolith:<service>:event:<event>`); spawns `docker`, `theone-controller host serve`, the Android emulator; proxies the renderer's HTTP through `net.fetch` |
-| Core (`src/core`, Node only) | docker, sandbox, android, connection, host, syncback, claude, config, paths; shared with the `monolith` CLI (§7.1), never imports `electron` |
+| Core (`src/core`, Node only) | docker, sandbox, android, connection, host, syncback, claude, config, paths; shared with the `tesseract` CLI (§7.1), never imports `electron` |
 | Preload (`src/preload`, CJS, sandboxed) | the typed IPC bridge |
 | Renderer (`src/renderer`, React 19, hash router) | the shell, pages, Settings, setup wizard; dev server `http://127.0.0.1:4545` |
 
@@ -1183,17 +1221,18 @@ GTK app and the CLI can read it.
 ### 12.5 Packaging and CLI install
 
 `bun run electron:dist [-- --platform linux|mac|win] [--dir] [--publish never|always|onTag] [--update-url <url>]
-[--channel <name>] [--smoke]` runs `electron-vite build`, `cli:build` (`monolith` + `theone-controller` per target),
+[--channel <name>] [--smoke]` runs `electron-vite build`, `cli:build` (`tesseract` + `theone-controller` per target),
 `bundle:sandbox` (git-tracked sandbox build context + `manifest.json` + `build-weights.json` into
 `build/sandbox-context/`) and electron-builder. Artifacts go to `apps/electron/dist/`
 (`Monolith-<version>-<arch>.<ext>`).
 
-| OS | Installer | `monolith` on PATH |
+| OS | Installer | `tesseract` on PATH |
 |---|---|---|
-| macOS | universal `dmg` + `zip` (hardened runtime; notarized when the `APPLE_*` variables are set) | Settings › About "Install monolith command": admin prompt, symlink `/usr/local/bin/monolith` (only from `/Applications`) |
+| macOS | universal `dmg` + `zip` (hardened runtime; notarized when the `APPLE_*` variables are set) | Settings › About "Install tesseract command": admin prompt, symlink `/usr/local/bin/tesseract` (only from `/Applications`) |
 | Windows | per-user one-click NSIS `exe` (x64) | the installer adds `$INSTDIR\resources\bin` to the user `Path` and removes it on uninstall |
-| Linux | `AppImage` and `deb` (x64) | deb: app in `/opt/Monolith`, postinst links `/usr/bin/monolith` (only when free or already ours); AppImage: Settings › About copies it to `~/.local/share/monolith/bin/monolith` and links `~/.local/bin/monolith`; on install and every AppImage launch the app writes `~/.local/share/monolith/app.json` `{appPath, sandboxDir}` and syncs the bundled context to `~/.local/share/monolith/sandbox` (marker `.bundle-hash`) |
+| Linux | `AppImage` and `deb` (x64) | deb: app in `/opt/Monolith`, postinst links `/usr/bin/tesseract` (only when free or already ours); AppImage: Settings › About copies it to `~/.local/share/monolith/bin/tesseract` and links `~/.local/bin/tesseract`; on install and every AppImage launch the app writes `~/.local/share/monolith/app.json` `{appPath, sandboxDir}` and syncs the bundled context to `~/.local/share/monolith/sandbox` (marker `.bundle-hash`) |
+| Headless server (macOS/Linux, no app, §7.2) | `infra/scripts/deploy-mac` from the dev box | `~/.tesseract/bin/{tesseract,theone-controller}` (add `~/.tesseract/bin` to `PATH`); sandbox context in `~/.tesseract/sandbox` (`MONOLITH_SANDBOX_CONTEXT`) |
 
-`extraResources`: `resources/bin/{monolith,theone-controller}`, `resources/sandbox/` (the build context the
-wizard and `monolith sandbox build` use), icons and font licenses. Updates: electron-updater against the generic
+`extraResources`: `resources/bin/{tesseract,theone-controller}`, `resources/sandbox/` (the build context the
+wizard and `tesseract sandbox build` use), icons and font licenses. Updates: electron-updater against the generic
 feed in `electron-builder.yml` (first check 60 s after start, then every 6 h; `MONOLITH_DISABLE_UPDATES` turns it off).

@@ -15,10 +15,12 @@ import { describeHostError } from "@/features/host-shell/utils/errors";
 export default function HostScreen() {
   const screen = useHostScreen();
   const { unlock, shells } = screen;
+  const pinPad = screen.mode === "locked" && !screen.issue;
 
   return (
     <ScreenScaffold
-      avoidKeyboard
+      avoidKeyboard={!pinPad}
+      scroll={!pinPad}
       header={
         <ScreenHeader title={HOST_SCREEN.title} subtitle={screen.subtitle} onBack={screen.nav.back} actions={screen.headerActions} />
       }
@@ -35,7 +37,7 @@ export default function HostScreen() {
           onAction={screen.repair}
         />
       ) : null}
-      {screen.mode === "locked" && !screen.issue ? (
+      {pinPad ? (
         <HostUnlock
           hostName={screen.host?.name ?? HOST_SCREEN.title}
           pin={unlock.pin}

@@ -13,6 +13,9 @@ phone over Tailscale. It is opt-in: nothing runs until you start it. Contract:
 
 Every command below runs **on the host**, from the repository root.
 
+On a headless Mac (or Linux) server without a checkout, `tesseract server install` sets this up as a
+service instead (LaunchAgent / systemd user unit): see [mac-server.md](mac-server.md).
+
 ## Set up
 
 ```bash

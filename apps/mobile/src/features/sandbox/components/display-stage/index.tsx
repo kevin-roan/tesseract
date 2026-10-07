@@ -19,7 +19,7 @@ export type DisplayStageProps = {
   safeArea: EdgeInsets;
 };
 
-/** Full-bleed stage with a floating glass bar, or only a small exit button in full screen. */
+/** Full-bleed stage with a floating glass bar; in full screen the surface fits the safe area with only a small exit button. */
 const DisplayStage = ({ children, toolbar, fullscreen, exitFullscreen, safeArea }: DisplayStageProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme, safeArea), [theme, safeArea]);
@@ -28,7 +28,7 @@ const DisplayStage = ({ children, toolbar, fullscreen, exitFullscreen, safeArea 
   return (
     <View style={styles.root}>
       <StatusBar hidden={fullscreen} animated />
-      {children}
+      <View style={[styles.surface, fullscreen && styles.immersive]}>{children}</View>
       {fullscreen ? (
         // GlassButton styles its inner glass, not its Pressable, so the placement lives on a wrapper.
         <MotionItem style={styles.exit}>

@@ -7,6 +7,8 @@ import {
   ANDROID_TOUCH_ACTIONS,
   AVD_NAME_PATTERN,
   EMULATOR_ISOLATION_MODES,
+  EMULATOR_PORT_RANGE,
+  EMULATOR_SERIAL_PATTERN,
   EMULATOR_STATES,
   LIMITS,
 } from "../constants";
@@ -116,13 +118,47 @@ export const LinkSandboxSchema = z.object({
 });
 export type LinkSandbox = z.infer<typeof LinkSandboxSchema>;
 
-/** `GET /v1/android` of the controller. */
+/** Host adb serial `emulator-<port>` of an emulator the host shares besides its own. */
+export const SharedEmulatorSerialSchema = z.string().regex(EMULATOR_SERIAL_PATTERN, "Invalid emulator serial");
+
+/** The console port of `emulator-<port>`, or null for any other serial or a port no emulator uses. */
+export function emulatorConsolePort(serial: string): number | null {
+  const match = EMULATOR_SERIAL_PATTERN.exec(serial);
+  const port = match ? Number(match[1]) : Number.NaN;
+  return port >= EMULATOR_PORT_RANGE.min && port <= EMULATOR_PORT_RANGE.max && port % 2 === 0 ? port : null;
+}
+
+/**
+ * The sandbox loopback port tunnelled to a shared host emulator: right after the host emulator's tunnel port,
+ * one per console port (`emulator-5554` → base + 1, `emulator-5556` → base + 2, …), so its adb serial is stable.
+ */
+export function sharedEmulatorTunnelPort(basePort: number, serial: string): number | null {
+  const port = emulatorConsolePort(serial);
+  return port === null ? null : basePort + 1 + (port - EMULATOR_PORT_RANGE.min) / 2;
+}
+
+/** An emulator running on the host outside the daemon, shared over the link (`THEONE_ANDROID_SHARE_EMULATORS`). */
+export const SharedEmulatorSchema = z.object({
+  serial: SharedEmulatorSerialSchema,
+  model: z.string().nullable(),
+});
+export type SharedEmulator = z.infer<typeof SharedEmulatorSchema>;
+
+/** A shared host emulator as the sandbox sees it: `adbSerial` is its tunnel `127.0.0.1:<port>`. */
+export const SandboxSharedEmulatorSchema = SharedEmulatorSchema.extend({
+  adbSerial: z.string(),
+  adbConnected: z.boolean(),
+});
+export type SandboxSharedEmulator = z.infer<typeof SandboxSharedEmulatorSchema>;
+
+/** `GET /v1/android` of the controller; `shared`: other host emulators tunnelled besides the host emulator. */
 export const SandboxAndroidStatusSchema = z.object({
   linked: z.boolean(),
   hostId: z.string().nullable(),
   emulator: EmulatorInfoSchema.nullable(),
   adbSerial: z.string().nullable(),
   adbConnected: z.boolean(),
+  shared: z.array(SandboxSharedEmulatorSchema),
 });
 export type SandboxAndroidStatus = z.infer<typeof SandboxAndroidStatusSchema>;
 
@@ -130,6 +166,8 @@ export type SandboxAndroidStatus = z.infer<typeof SandboxAndroidStatusSchema>;
 export const AndroidLinkHostMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("hello"), hostId: z.string(), version: z.string() }),
   z.object({ type: z.literal("emulator"), emulator: EmulatorInfoSchema }),
+  /** The other emulators the host shares (on connect and on every change; empty when sharing is off). */
+  z.object({ type: z.literal("devices"), devices: z.array(SharedEmulatorSchema).max(LIMITS.maxSharedEmulators) }),
   z.object({ type: z.literal("refuse"), streamId: AdbStreamIdSchema, message: z.string() }),
   z.object({ type: z.literal("pong") }),
 ]);
@@ -137,7 +175,8 @@ export type AndroidLinkHostMessage = z.infer<typeof AndroidLinkHostMessageSchema
 
 /** Sandbox → host text frames on `/v1/android/link`. */
 export const AndroidLinkSandboxMessageSchema = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("open"), streamId: AdbStreamIdSchema }),
+  /** `device`: a shared emulator's host serial; missing for the host emulator. */
+  z.object({ type: z.literal("open"), streamId: AdbStreamIdSchema, device: SharedEmulatorSerialSchema.optional() }),
   z.object({ type: z.literal("ping") }),
 ]);
 export type AndroidLinkSandboxMessage = z.infer<typeof AndroidLinkSandboxMessageSchema>;

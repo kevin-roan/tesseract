@@ -4,11 +4,11 @@ import { localCommandInvocation, runLocalCommand } from "./local-command";
 describe("localCommandInvocation", () => {
   it("runs the bundled CLI in packaged builds", () => {
     expect(localCommandInvocation({ platform: "linux", packaged: true, resourcesPath: "/opt/Monolith/resources", appPath: "/x" }, ["--sync"])).toEqual({
-      file: "/opt/Monolith/resources/bin/monolith",
+      file: "/opt/Monolith/resources/bin/tesseract",
       args: ["--sync"],
     });
     expect(localCommandInvocation({ platform: "win32", packaged: true, resourcesPath: "C:\\Monolith\\resources", appPath: "C:\\x" }, ["--pull"]).file).toBe(
-      "C:\\Monolith\\resources\\bin\\monolith.exe",
+      "C:\\Monolith\\resources\\bin\\tesseract.exe",
     );
   });
 

@@ -175,7 +175,7 @@ tests/                  bun test suites; fixtures/fake-claude.sh stands in for C
   → `POST /v1/builds` answers 503 before queueing. Collection only takes files modified
   after the build started (minus 2 s).
 - Children (processes, build steps, terminals, agent runs, git/zip helpers) never get
-  `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, `THEONE_STT_API_KEY` or `GEMINI_API_KEY` (`childEnv()` in `core/exec.ts`); they get
+  `THEONE_TOKEN`, `THEONE_VNC_PASSWORD` or `THEONE_STT_API_KEY` (`childEnv()` in `core/exec.ts`); they get
   `THEONE_PROCESS_ID`/`THEONE_BUILD_ID`/`THEONE_TERMINAL_ID`/`THEONE_AGENT_RUN_ID`. A
   `THEONE_TOKEN` from the environment is mirrored into the 0600 token file so the
   in-sandbox CLI keeps working without it.
@@ -266,8 +266,8 @@ tests/                  bun test suites; fixtures/fake-claude.sh stands in for C
     The key is never logged and is redacted from provider errors.
   - `auto` uses whisper.cpp when binary, ffmpeg and model exist, else openai-compatible when URL
     and key are set, else 503 naming the variables. An empty transcript is 400 `No speech detected`.
-  - `provider: "gemini"` sends the audio inline to Gemini (the key saved from the mobile or desktop app with
-    `PUT /v1/stt { geminiApiKey }`, else `GEMINI_API_KEY`;
+  - `provider: "gemini"` sends the audio inline to Gemini (the key saved from the mobile or desktop app or
+    `monolith --gemini-key=KEY` with `PUT /v1/stt { geminiApiKey }`;
     `THEONE_GEMINI_STT_MODEL`, default `gemini-2.5-flash`) outside the queue and regardless of
     the profile. Without a key or when Gemini fails (quota, rejected key, network), the native
     engine answers and `fallbackReason` explains why. `bun run dev` loads the repo-root `.env`

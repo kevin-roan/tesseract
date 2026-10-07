@@ -10,6 +10,9 @@ export default function createStyles(theme: Theme) {
       paddingTop: theme.spacing.sm,
       paddingBottom: theme.spacing.lg,
     },
+    header: {
+      gap: theme.spacing.lg,
+    },
     footer: {
       gap: theme.spacing.md,
     },

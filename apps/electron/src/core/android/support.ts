@@ -19,7 +19,7 @@ export function hostSupport(paths: PathEnvironment, arch: string): AndroidHostSu
       hostArch: arm ? "aarch64" : "x64",
       abi: arm ? "arm64-v8a" : "x86_64",
       acceleration: "hvf",
-      canLinkSandbox: false,
+      canLinkSandbox: true,
       defaultSdkRoot,
     };
   }

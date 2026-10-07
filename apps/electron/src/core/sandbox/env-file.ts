@@ -28,6 +28,7 @@ export const ENV_KEYS = [
   "WITH_WHISPER",
   "WHISPER_MODELS",
   "CLAUDE_CODE_VERSION",
+  "CLAUDE_CODE_OAUTH_TOKEN",
 ] as const;
 
 export type EnvKey = (typeof ENV_KEYS)[number];

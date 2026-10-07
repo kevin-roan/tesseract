@@ -52,7 +52,7 @@ async function link(emulator: EmulatorInfo | null, hostId = "host-1"): Promise<W
 
 type TcpClient = { socket: Socket<undefined>; received: () => string; closed: Promise<void> };
 
-async function connectTunnel(): Promise<TcpClient> {
+async function connectTunnel(port = tunnelPort): Promise<TcpClient> {
   let text = "";
   let markClosed: () => void = () => {};
   const closed = new Promise<void>((resolve) => {
@@ -60,7 +60,7 @@ async function connectTunnel(): Promise<TcpClient> {
   });
   const socket = await Bun.connect({
     hostname: "127.0.0.1",
-    port: tunnelPort,
+    port,
     socket: {
       data: (_socket, chunk) => {
         text += new TextDecoder().decode(chunk);
@@ -115,7 +115,7 @@ describe("adb devices parsing", () => {
 
 describe("android link", () => {
   test("status and run target availability follow the link", async () => {
-    expect(await status()).toEqual({ linked: false, hostId: null, emulator: null, adbSerial: null, adbConnected: false });
+    expect(await status()).toEqual({ linked: false, hostId: null, emulator: null, adbSerial: null, adbConnected: false, shared: [] });
     expect(await targetReason()).toBe("Link the host Android emulator first");
 
     const socket = await link(STOPPED);
@@ -130,7 +130,7 @@ describe("android link", () => {
     socket.send({ type: "emulator", emulator: RUNNING });
     const serial = `127.0.0.1:${tunnelPort}`;
     await waitFor(async () => (await status()).adbConnected && (await status()).emulator?.isolated === true);
-    expect(await status()).toEqual({ linked: true, hostId: "host-1", emulator: RUNNING, adbSerial: serial, adbConnected: true });
+    expect(await status()).toEqual({ linked: true, hostId: "host-1", emulator: RUNNING, adbSerial: serial, adbConnected: true, shared: [] });
     expect(adbCalls()).toContain(`connect ${serial}`);
     expect(await targetReason()).toBeNull();
     await socket.waitFor((message: { type?: string }) => message.type === "ping");
@@ -271,6 +271,48 @@ describe("android link", () => {
     expect(response.status).toBe(404);
   });
 
+  test("shared host emulators get their own tunnels and serials", async () => {
+    const host = links.at(-1)!;
+    const sharedPort = tunnelPort + 2;
+    const serial = `127.0.0.1:${sharedPort}`;
+    host.send({ type: "devices", devices: [{ serial: "emulator-5556", model: "Pixel 9" }] });
+    await waitFor(async () => (await status()).shared.length === 1);
+    expect((await status()).shared).toEqual([{ serial: "emulator-5556", model: "Pixel 9", adbSerial: serial, adbConnected: true }]);
+    expect(adbCalls()).toContain(`connect ${serial}`);
+
+    const before = host.messages.length;
+    const client = await connectTunnel(sharedPort);
+    const open = (await host.waitFor((message: { type?: string }) => message.type === "open" && host.messages.indexOf(message) >= before)) as {
+      streamId: string;
+      device?: string;
+    };
+    expect(open.device).toBe("emulator-5556");
+    const stream = await t.socket(`/v1/android/link/streams/${open.streamId}`);
+    stream.send(new TextEncoder().encode("from-5556"));
+    await waitFor(() => client.received() === "from-5556");
+
+    host.send({ type: "devices", devices: [] });
+    await waitFor(() => adbCalls().includes(`disconnect ${serial}`));
+    await client.closed;
+    expect((await status()).shared).toEqual([]);
+  });
+
+  test("a shared emulator makes Android runs available when the host emulator is not", async () => {
+    const host = links.at(-1)!;
+    host.send({ type: "emulator", emulator: STOPPED });
+    await waitFor(async () => (await status()).adbSerial === null);
+    expect(await targetReason()).toBe("Start the emulator on the host");
+    host.send({ type: "devices", devices: [{ serial: "emulator-5560", model: null }] });
+    await waitFor(async () => (await status()).shared.length === 1);
+    expect(await targetReason()).toBeNull();
+    expect(t.controller.services.android.runSerial).toBe(`127.0.0.1:${tunnelPort + 4}`);
+
+    host.send({ type: "devices", devices: [] });
+    host.send({ type: "emulator", emulator: RUNNING });
+    await waitFor(async () => (await status()).adbConnected && (await status()).shared.length === 0);
+    expect(t.controller.services.android.runSerial).toBe(`127.0.0.1:${tunnelPort}`);
+  });
+
   test("a newer link replaces the older one and a dropped link closes the tunnel", async () => {
     const old = links.at(-1)!;
     const serialConnect = `connect 127.0.0.1:${tunnelPort}`;
@@ -289,7 +331,7 @@ describe("android link", () => {
 
     newer.close();
     await waitFor(async () => !(await status()).linked);
-    expect(await status()).toEqual({ linked: false, hostId: null, emulator: null, adbSerial: null, adbConnected: false });
+    expect(await status()).toEqual({ linked: false, hostId: null, emulator: null, adbSerial: null, adbConnected: false, shared: [] });
     await waitFor(() => adbCalls().filter((call) => call === `disconnect ${serial}`).length === 2);
     const refused = await Bun.connect({ hostname: "127.0.0.1", port: tunnelPort, socket: { data() {} } }).then(
       () => false,

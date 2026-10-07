@@ -269,6 +269,7 @@ describe("REST responses match @theone/protocol", () => {
       emulator: null,
       adbSerial: null,
       adbConnected: false,
+      shared: [],
     });
   });
 

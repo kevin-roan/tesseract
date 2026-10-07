@@ -17,8 +17,15 @@ import { listAdbDevices } from "./devices";
 import { EmulatorManager, type EmulatorOptions } from "./emulator";
 import { AndroidLink, type LinkOptions } from "./link";
 import { AndroidScreens, type ScreenOptions } from "./screen";
+import { SharedEmulators, type SharedEmulatorsOptions } from "./shared";
 
-export type HostAndroidOptions = { emulator?: EmulatorOptions; link?: LinkOptions; screen?: ScreenOptions; settingsDebounceMs?: number };
+export type HostAndroidOptions = {
+  emulator?: EmulatorOptions;
+  link?: LinkOptions;
+  screen?: ScreenOptions;
+  shared?: SharedEmulatorsOptions;
+  settingsDebounceMs?: number;
+};
 
 const SETTINGS_DEBOUNCE_MS = 150;
 
@@ -27,7 +34,9 @@ export class HostAndroid {
   readonly emulator: EmulatorManager;
   readonly link: AndroidLink;
   readonly screens: AndroidScreens;
+  readonly shared: SharedEmulators;
   private readonly unsubscribe: () => void;
+  private readonly unsubscribeShared: () => void;
   private readonly settingsDebounceMs: number;
   private streamKey: string;
   private watcher: FSWatcher | null = null;
@@ -44,23 +53,32 @@ export class HostAndroid {
     this.streamKey = JSON.stringify(store.androidStreamSettings());
     this.emulator = new EmulatorManager(config, logger, options.emulator);
     this.screens = new AndroidScreens(config, this.emulator, logger, { settings: () => store.androidStreamSettings(), ...options.screen });
+    // The emulator the link already tunnels as the host emulator is not shared a second time.
+    this.shared = new SharedEmulators(config, () => (this.emulator.current().serial && this.emulator.linkRefusal() === null ? this.emulator.serial : null), logger, options.shared);
     this.link = new AndroidLink(
       {
         ...identity,
         emulator: () => this.emulator.current(),
         adbd: () => this.emulator.adbdEndpoint(),
         refusal: () => this.emulator.linkRefusal(),
+        shared: () => this.shared.list(),
+        sharedAdbd: (serial) => this.shared.endpoint(serial),
       },
       logger,
       options.link,
     );
-    this.unsubscribe = this.emulator.onChange((info) => this.link.emulatorChanged(info));
+    this.unsubscribe = this.emulator.onChange((info) => {
+      this.link.emulatorChanged(info);
+      void this.shared.refresh();
+    });
+    this.unsubscribeShared = this.shared.onChange((devices) => this.link.sharedChanged(devices));
   }
 
   /** Adopts a running emulator, then dials the stored link and follows stream settings saved by `host stream`. */
   async init(): Promise<void> {
     this.watchSettings();
     await this.emulator.init();
+    await this.shared.start();
     const stored = this.store.read().androidLink;
     if (stored) this.link.configure(stored);
   }
@@ -145,6 +163,8 @@ export class HostAndroid {
 
   async shutdown(): Promise<void> {
     this.unsubscribe();
+    this.unsubscribeShared();
+    this.shared.stop();
     this.watcher?.close();
     if (this.watchTimer) clearTimeout(this.watchTimer);
     this.link.shutdown();

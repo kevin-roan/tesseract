@@ -1,4 +1,4 @@
-import type { AgentRunEvent, Upload } from "@theone/protocol";
+import type { AgentRun, AgentRunEvent, Upload } from "@theone/protocol";
 
 export type ChatEventItem = { event: AgentRunEvent; showHeader: boolean };
 
@@ -40,4 +40,12 @@ export function partitionAttachments(uploads: Upload[]): RunAttachments {
     images: uploads.filter((upload) => upload.kind === "image"),
     files: uploads.filter((upload) => upload.kind !== "image" && upload !== audio),
   };
+}
+
+/** Finished runs that came before `run` in the same Claude session, oldest first. */
+export function earlierTurns(runs: readonly AgentRun[] | undefined, run: Pick<AgentRun, "id" | "sessionId" | "startedAt">): AgentRun[] {
+  if (!runs || !run.sessionId) return [];
+  return runs
+    .filter((candidate) => candidate.id !== run.id && candidate.sessionId === run.sessionId && candidate.startedAt < run.startedAt)
+    .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
 }

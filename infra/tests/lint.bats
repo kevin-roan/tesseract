@@ -7,6 +7,7 @@ load lib/common
 bash_scripts() {
   printf '%s\n' \
     "${REPO}/infra/scripts/sandbox" \
+    "${REPO}/infra/scripts/deploy-mac" \
     "${REPO}/infra/e2e/run" \
     "${REPO}/infra/e2e/web/run" \
     "${REPO}/infra/tests/run" \

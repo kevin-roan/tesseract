@@ -19,6 +19,7 @@
     "test": "bun run --filter '*' test",
     "lint": "bun run --filter '*' lint",
     "sandbox": "infra/scripts/sandbox",
+    "deploy:mac": "infra/scripts/deploy-mac",
     "e2e": "infra/e2e/run",
     "test:infra": "infra/tests/run"
   },

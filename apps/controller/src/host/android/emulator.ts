@@ -48,7 +48,7 @@ const RISK = "without it, anything with adb access to the emulator (the linked s
 export const EMULATOR_MESSAGES = {
   notIsolated: "Emulator is not isolated; start it from the app",
   exited: "The emulator exited",
-  noIsolationTools: `Emulator network isolation needs unshare (util-linux) and ip (iproute2) on the host; THEONE_EMULATOR_ISOLATION=none runs the emulator without isolation, but ${RISK}`,
+  noIsolationTools: `Emulator network isolation needs a Linux host with unshare (util-linux) and ip (iproute2); THEONE_EMULATOR_ISOLATION=none runs the emulator without isolation, but ${RISK}`,
   noUserNamespaces: (detail: string) =>
     `Emulator network isolation could not create a user and network namespace (${detail}); enable unprivileged user namespaces, or set THEONE_EMULATOR_ISOLATION=none to run without isolation, but ${RISK}`,
 } as const;

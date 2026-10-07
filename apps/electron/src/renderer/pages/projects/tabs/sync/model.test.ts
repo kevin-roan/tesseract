@@ -54,14 +54,14 @@ describe("sync model", () => {
 
   it("blocks every action while unlinked and loading", () => {
     const blockers = syncBlockers(EMPTY_SYNC_VIEW);
-    expect(blockers.pull).toBe("Not linked on this computer. Run monolith --sync in the checkout first");
-    expect(blockers.revert).toBe("Not linked on this computer. Run monolith --sync in the checkout first");
+    expect(blockers.pull).toBe("Not linked on this computer. Run tesseract --sync in the checkout first");
+    expect(blockers.revert).toBe("Not linked on this computer. Run tesseract --sync in the checkout first");
     expect(blockers.discard).toBe("Loading the sandbox changes…");
     expect(syncBlockers(view({ error: "x" })).discard).toBe("The sandbox changes couldn't be read");
   });
 
   it("follows the GTK blocker order", () => {
-    expect(syncBlockers(view({ link, changes: changes([], null) })).pull).toBe("Never pushed. Run monolith --sync in the checkout first");
+    expect(syncBlockers(view({ link, changes: changes([], null) })).pull).toBe("Never pushed. Run tesseract --sync in the checkout first");
     expect(syncBlockers(view({ link, changes: changes([]) })).pull).toBe("Nothing to sync. The host folder matches the sandbox");
     expect(syncBlockers(view({ link, changes: changes([]) })).get).toBeNull();
     expect(syncBlockers(view({ link, changes: changes([file("a")]) }), true).pull).toBe("A sync request is already in progress");
@@ -90,7 +90,7 @@ describe("sync model", () => {
   it("picks the status notice", () => {
     expect(syncNotice(EMPTY_SYNC_VIEW)?.message).toMatch(/^Not linked on this computer/);
     expect(syncNotice(view({ link, error: "down" }))).toEqual({ message: "Couldn't read sandbox changes: down", tone: "warning" });
-    expect(syncNotice(view({ link, changes: changes([], null) }))?.message).toBe("The sandbox has no push baseline yet. Run monolith --sync in /home/dev/p.");
+    expect(syncNotice(view({ link, changes: changes([], null) }))?.message).toBe("The sandbox has no push baseline yet. Run tesseract --sync in /home/dev/p.");
     expect(syncNotice(view({ link, changes: changes([]) }))).toBeNull();
   });
 

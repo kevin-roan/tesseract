@@ -38,7 +38,7 @@ export const ABOUT_LABELS = {
     install: "Install monolith command",
     installedToast: "The monolith command is installed",
     failed: (error: string) => `Couldn't install the monolith command: ${error}`,
-    usage: "monolith --help",
+    usage: "tesseract --help",
   },
   files: {
     title: "Files",

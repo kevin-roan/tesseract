@@ -26,10 +26,12 @@ export default function createStyles(theme: Theme) {
       borderRadius: DOT_SIZE / 2,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.borderStrong,
+      overflow: "hidden",
     },
-    dotFilled: {
+    dotFill: {
+      flex: 1,
+      borderRadius: DOT_SIZE / 2,
       backgroundColor: theme.colors.text,
-      borderColor: theme.colors.text,
     },
     dotError: {
       borderColor: theme.colors.danger,

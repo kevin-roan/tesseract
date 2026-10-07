@@ -37,7 +37,7 @@ const FileCard = ({ artifact, project, local, onDownload, onShare, onTaildrop, o
         subtitle={fileSubtitle(artifact, project)}
         meta={fileMeta(artifact)}
         badge={fileSourceBadge(artifact.source)}
-        onPress={local.downloaded ? onShare : onDownload}
+        onPress={local.downloaded || local.progress !== undefined ? undefined : onDownload}
         footer={
           <>
             <LocalFileActions fileName={artifact.fileName} status={local} onDownload={onDownload} onShare={onShare} />

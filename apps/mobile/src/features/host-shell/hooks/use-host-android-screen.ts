@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { GlassToolbarAction } from "@/components/glass-toolbar";
 import { useFullscreen } from "@/features/sandbox/hooks/use-fullscreen";
-import { usePageInsetsSync } from "@/features/sandbox/hooks/use-page-insets-sync";
+import { usePageImmersiveSync, usePageInsetsSync } from "@/features/sandbox/hooks/use-page-insets-sync";
 import { useWebPageSession } from "@/features/sandbox/hooks/use-web-page-session";
 import { DISPLAY_ACTIONS, PAGE_ACTIONS } from "@/features/sandbox/utils/actions";
 import { displayInsets } from "@/features/sandbox/utils/display";
@@ -64,6 +64,7 @@ export function useHostAndroidScreen() {
   const [barBottom, setBarBottom] = useState(0);
   const insets = useMemo(() => displayInsets({ barBottom, safeBottom: safeArea.bottom, fullscreen }), [barBottom, safeArea.bottom, fullscreen]);
   usePageInsetsSync(page.surfaceRef, page.connection, insets);
+  usePageImmersiveSync(page.surfaceRef, page.connection, fullscreen);
 
   const onBarLayout = useCallback((event: LayoutChangeEvent) => {
     const { y, height } = event.nativeEvent.layout;

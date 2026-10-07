@@ -10,14 +10,16 @@ import { buildTone, stateLabel } from "../../utils/states";
 
 export type BuildCardProps = {
   build: BuildJob;
+  /** Display name of the build's project; the project id stands in when omitted. */
+  projectName?: string | null;
   onPress?: () => void;
 };
 
-const BuildCard = ({ build, onPress }: BuildCardProps) => (
+const BuildCard = ({ build, projectName, onPress }: BuildCardProps) => (
   <ResourceCard
     icon={HammerIcon}
     title={buildTargetLabel(build.target)}
-    subtitle={buildSubtitle(build)}
+    subtitle={buildSubtitle(build, projectName)}
     meta={buildMeta(build)}
     badge={{ label: stateLabel(build.state), tone: buildTone(build.state) }}
     onPress={onPress}

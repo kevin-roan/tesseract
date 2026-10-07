@@ -19,9 +19,9 @@ function input(overrides: Partial<RuntimeInput>): RuntimeInput {
 }
 
 describe("packaged layout", () => {
-  it("recognises resources/bin/monolith inside an installed app", () => {
+  it("recognises resources/bin/tesseract inside an installed app", () => {
     const exists = (path: string) => path === "/opt/Monolith/resources/app.asar";
-    expect(packagedResourcesDir("/opt/Monolith/resources/bin/monolith", exists)).toBe("/opt/Monolith/resources");
+    expect(packagedResourcesDir("/opt/Monolith/resources/bin/tesseract", exists)).toBe("/opt/Monolith/resources");
     expect(packagedResourcesDir("/usr/bin/node", exists)).toBeNull();
   });
 
@@ -35,6 +35,14 @@ describe("packaged layout", () => {
     expect(appExecutableCandidates(input({ env: { MONOLITH_APP_PATH: "/custom/app" } }), null)[0]).toBe("/custom/app");
   });
 
+  it("finds a server deploy's sandbox next to its bin directory without MONOLITH_SANDBOX_CONTEXT", () => {
+    const sandboxDir = "/Users/me/.tesseract/sandbox";
+    const exists = (path: string) => path === sandboxDir || path === join(sandboxDir, "infra", "compose");
+    const runtime = createRuntime(input({ platform: "darwin", home: "/Users/me", execPath: "/Users/me/.tesseract/bin/tesseract", exists }));
+    expect(runtime.resourcesDir).toBe("/Users/me/.tesseract");
+    expect(runtime.sandboxContextDir()).toBe(sandboxDir);
+  });
+
   it("searches the override, the bundle, the source tree and the cwd ancestors for the sandbox files", () => {
     const candidates = contextDirCandidates(input({ env: { MONOLITH_SANDBOX_CONTEXT: "/ctx" } }), "/opt/Monolith/resources");
     expect(candidates.slice(0, 3)).toEqual(["/ctx", "/opt/Monolith/resources/sandbox", "/src"]);
@@ -44,7 +52,7 @@ describe("packaged layout", () => {
 });
 
 describe("installed copy sidecar", () => {
-  const copy = "/home/dev/.local/share/monolith/bin/monolith";
+  const copy = "/home/dev/.local/share/monolith/bin/tesseract";
   const sidecarFile = "/home/dev/.local/share/monolith/app.json";
   const readText = (path: string) =>
     path === sidecarFile ? JSON.stringify({ appPath: "/home/dev/Apps/Monolith.AppImage", sandboxDir: "/home/dev/.local/share/monolith/sandbox" }) : null;

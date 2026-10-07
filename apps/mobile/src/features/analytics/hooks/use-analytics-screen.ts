@@ -3,12 +3,12 @@ import { useCallback, useMemo } from "react";
 import { useSandboxClient } from "@/features/sandbox/hooks/use-sandbox-client";
 import { useSandboxRefresh } from "@/features/sandbox/hooks/use-sandbox-refresh";
 import { describeError } from "@/features/sandbox/utils/errors";
+import { useProjectNames } from "@/features/sandbox/hooks/use-project-names";
 
 import { comparisonDays, hasUsage } from "../utils/metrics";
 import { buildAnalyticsView } from "../utils/view-model";
 import { useAnalyticsNavigation } from "./use-analytics-navigation";
 import { useClaudeSessions, useUsageReport } from "./use-analytics-queries";
-import { useProjectNames } from "./use-project-names";
 import { useRange } from "./use-range";
 
 export function useAnalyticsScreen() {

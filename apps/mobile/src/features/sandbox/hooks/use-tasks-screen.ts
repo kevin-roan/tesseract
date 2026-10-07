@@ -11,6 +11,7 @@ import { useConfirmedStop } from "./use-confirmed-stop";
 import { useSandboxClient } from "./use-sandbox-client";
 import { useSandboxLink } from "./use-sandbox-events";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
+import { useProjectLabel } from "./use-project-names";
 import { useSandboxProblems } from "./use-sandbox-problems";
 import { useAgentRuns, useBuilds, useProcesses } from "./use-sandbox-queries";
 import { useSandboxRefresh } from "./use-sandbox-refresh";
@@ -22,6 +23,7 @@ export function useTasksScreen() {
   const processes = useProcesses();
   const builds = useBuilds();
   const runs = useAgentRuns();
+  const projectName = useProjectLabel();
   const stopProcess = useConfirmedStop();
   const problems = useSandboxProblems(processes.error ?? builds.error ?? runs.error);
   const { refreshing, refresh } = useSandboxRefresh();
@@ -72,6 +74,7 @@ export function useTasksScreen() {
     finished,
     finishedCount: activeWorkCount(finished),
     processPress,
+    projectName,
     stopProcess: stopProcess.stop,
     stoppingId: stopProcess.stoppingId,
     stopError: stopProcess.error ? describeError(stopProcess.error) : null,

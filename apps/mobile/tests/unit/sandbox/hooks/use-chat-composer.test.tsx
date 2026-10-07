@@ -5,6 +5,7 @@ import { sampleAgentRun, sampleProject, sampleTranscription, sampleUpload } from
 import * as ImagePicker from "expo-image-picker";
 
 import { useChatComposer } from "@/features/chat/hooks/use-chat-composer";
+import { useQueueStore } from "@/features/chat/store/queue-store";
 import { useAgentRunScreen } from "@/features/sandbox/hooks/use-agent-run-screen";
 import { useNewAgentRun } from "@/features/sandbox/hooks/use-new-agent-run";
 import { useSettingsStore } from "@/features/settings/store/settings-store";
@@ -43,6 +44,7 @@ const fake = {
   listProjects: jest.fn(),
   createUpload: jest.fn(),
   transcribe: jest.fn(),
+  listAgentRuns: jest.fn(),
 };
 const mockLibrary = ImagePicker.launchImageLibraryAsync as jest.Mock;
 const started: AgentRun = { ...sampleAgentRun, id: "run_next" };
@@ -61,6 +63,8 @@ beforeEach(() => {
   fake.listProjects.mockReset().mockResolvedValue([sampleProject]);
   fake.createUpload.mockReset().mockResolvedValue(sampleUpload);
   fake.transcribe.mockReset().mockResolvedValue(sampleTranscription);
+  fake.listAgentRuns.mockReset().mockResolvedValue([]);
+  useQueueStore.setState({ queues: {} });
   mockLibrary.mockReset().mockResolvedValue({ canceled: true, assets: null });
   resetAudio();
   resetFiles();
@@ -557,6 +561,57 @@ describe("useAgentRunScreen", () => {
     await waitFor(() =>
       expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/sandbox/agent/[id]", params: { id: started.id } }),
     );
+  });
+
+  it("queues messages sent while Claude works and sends them together once the run ends", async () => {
+    const { result, rerender } = await render();
+
+    expect(result.current.composer.locked).toBe(false);
+    await act(async () => result.current.composer.setText("also fix the header"));
+    expect(result.current.composer.canSend).toBe(true);
+    await act(async () => result.current.composer.send());
+    await act(async () => result.current.composer.setText("and the footer"));
+    await act(async () => result.current.composer.send());
+
+    expect(result.current.composer.text).toBe("");
+    expect(result.current.queued.messages.map((message) => message.prompt)).toEqual(["also fix the header", "and the footer"]);
+    expect(fake.startAgentRun).not.toHaveBeenCalled();
+
+    await act(async () => result.current.queued.onRemove(result.current.queued.messages[1]!.id));
+    await act(async () => result.current.composer.setText("one more"));
+    await act(async () => result.current.composer.send());
+
+    mockStream = { ...mockStream, run: { ...sampleAgentRun, state: "succeeded", endedAt: "2026-09-23T10:01:30.000Z" } };
+    await rerender({});
+    await waitFor(() =>
+      expect(fake.startAgentRun).toHaveBeenCalledWith({
+        prompt: "also fix the header\n\none more",
+        mode: sampleAgentRun.mode,
+        projectId: sampleAgentRun.projectId,
+        resumeSessionId: sampleAgentRun.sessionId,
+      }),
+    );
+    expect(fake.startAgentRun).toHaveBeenCalledTimes(1);
+    expect(result.current.queued.messages).toEqual([]);
+  });
+
+  it("hands queued messages back as a draft when the run is stopped", async () => {
+    const { result, rerender } = await render();
+    await act(async () => result.current.composer.setText("try another way"));
+    await act(async () => result.current.composer.send());
+
+    mockStream = { ...mockStream, run: { ...sampleAgentRun, state: "cancelled", endedAt: "2026-09-23T10:01:30.000Z" } };
+    await rerender({});
+    await waitFor(() => expect(result.current.composer.text).toBe("try another way"));
+    expect(fake.startAgentRun).not.toHaveBeenCalled();
+  });
+
+  it("shows earlier messages of the same chat above the run", async () => {
+    const earlier = { ...sampleAgentRun, id: "run_earlier", state: "succeeded" as const, startedAt: "2026-09-23T09:00:00.000Z", result: "Done." };
+    const otherChat = { ...earlier, id: "run_other", sessionId: "another-session" };
+    fake.listAgentRuns.mockResolvedValue([sampleAgentRun, otherChat, earlier]);
+    const { result } = await render();
+    await waitFor(() => expect(result.current.history.map((run) => run.id)).toEqual(["run_earlier"]));
   });
 
   it("cannot continue a finished run without a session", async () => {

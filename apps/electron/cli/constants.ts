@@ -60,3 +60,31 @@ export const REDACTED_KEYS = ["token", "tokenSealed"] as const;
 export const REDACTED_VALUE = "…";
 
 export const STATUS_MARK = { ok: "ok", warning: "warn", error: "FAIL", pending: "…" } as const;
+
+export const SERVER = {
+  serviceLabel: "dev.tesseract.host-shell",
+  systemdUnit: "tesseract-host-shell.service",
+  launchAgentDir: ["Library", "LaunchAgents"],
+  logDir: ["Library", "Logs", "Tesseract"],
+  systemdUserDir: [".config", "systemd", "user"],
+  stateFile: "server.json",
+  logFiles: { out: "host-shell.log", err: "host-shell.err.log" },
+  defaultMode: "tailscale",
+  defaultHttpsPort: 8443,
+  servicePath: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"],
+  serviceEnvKeys: ["HOME", "SHELL", "LANG", "USER"],
+  tailscaleBinary: "tailscale",
+  tailscaleFallbacks: {
+    darwin: ["/Applications/Tailscale.app/Contents/MacOS/Tailscale", "/opt/homebrew/bin/tailscale", "/usr/local/bin/tailscale"],
+    linux: ["/usr/bin/tailscale", "/usr/local/bin/tailscale"],
+  },
+  hostShellReadyMs: 15_000,
+  hostShellPollMs: 500,
+  commandTimeoutMs: 20_000,
+} as const;
+
+export const SERVER_ENV = {
+  authKey: "TS_AUTHKEY",
+  tailnetDomain: "TS_TAILNET_DOMAIN",
+  claudeToken: "CLAUDE_CODE_OAUTH_TOKEN",
+} as const;

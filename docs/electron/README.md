@@ -4,7 +4,7 @@
 Linux, macOS and Windows. It rebuilds the GTK4/libadwaita app in `apps/desktop` in Electron and adds what the GTK
 app never had: a first-run setup wizard that installs and configures Docker, builds and starts the sandbox, and
 downloads the Android emulator, system images and an AVD for the host emulator, like Android Studio's setup wizard.
-It ships one installer per OS and a standalone `monolith` command.
+It ships one installer per OS and a standalone `tesseract` command.
 
 The UI follows the GTK app pixel for pixel, which itself follows the Linear desktop app: Inter / Inter Display /
 Geist Mono, Lucide icons, graphite palette (`#09090A` window, `#121213` inset, `#1A1A1B` dialogs, `#232325`
@@ -39,7 +39,7 @@ The contract (names, ports, env vars, files, CLI, packaging) is in the
 | [preferences.md](spec/preferences.md) | the Settings dialog and `config.json` |
 | [host-android.md](spec/host-android.md) | host shell daemon control, host Android emulator, Claude accounts, speech-to-text settings |
 | [services-data.md](spec/services-data.md) | sandbox discovery, connection, polling, event stream, caches |
-| [services-sync.md](spec/services-sync.md) | sync-back, the `monolith` sync CLI, composer attachments |
+| [services-sync.md](spec/services-sync.md) | sync-back, the `tesseract` sync CLI, composer attachments |
 | [onboarding.md](spec/onboarding.md) | the setup wizard: Docker, Claude, sandbox image and stack, Android SDK / images / AVD, pairing (a design spec: the GTK app has no wizard) |
 
 ### Reference captures
@@ -66,7 +66,7 @@ apps/electron/
   src/core/        Node-only logic shared with the CLI: docker, sandbox, android, connection, host, syncback, claude, config, paths
   src/shared/      IPC contracts (src/shared/contracts/<service>.ts), routes, runtime constants (port 4545, env names)
   src/renderer/    React 19: shell/, pages/<page>/, features/<page>/, onboarding/<step>/, components/<Name>/, theme/, fixtures/
-  cli/             the `monolith` command (bun build --compile)
+  cli/             the `tesseract` command (bun build --compile)
   scripts/         snapshot, diff, cli-build, bundle-sandbox, dist, smoke, icons, check-nsis-path
   e2e/             Playwright _electron specs
   tests/           architecture and IPC contract tests
@@ -90,8 +90,8 @@ apps/electron/
   emulator uses.
 - **Host shell:** the app runs `theone-controller host serve` (bundled in `resources/bin`) as a child process,
   as the GTK app did ([host-shell runbook](../runbooks/host-shell.md)).
-- **CLI:** `monolith status | open | doctor | sandbox | android | pair | sync | config | version`, plus the GTK app's
-  `--sync`/`--pull`/`--revert`/`--sync-status` flags ([blueprint §7.1](../architecture/00-blueprint.md#71-desktop-monolith-cli-host)).
+- **CLI:** `tesseract status | open | doctor | sandbox | android | pair | sync | config | version`, plus the GTK app's
+  `--sync`/`--pull`/`--revert`/`--sync-status` flags ([blueprint §7.1](../architecture/00-blueprint.md#71-host-tesseract-cli)).
 
 ## Working on it
 
@@ -107,7 +107,7 @@ Run from `apps/electron` (root shortcuts in brackets). Never start, stop or rest
 | `bun run diff -- <a.png> <b.png> [--out diff.png] [--max <percent>]` | pixelmatch against a reference capture |
 | `bun run build` (`electron:build`) | `out/` |
 | `bun run e2e` (`electron:e2e`) | builds if stale, then the Playwright specs ([e2e-testing](../runbooks/e2e-testing.md#desktop-app-appselectron)) |
-| `bun run cli:build [-- --target linux-x64,mac-arm64 \| --all]` | `dist-cli/<os>-<arch>/{monolith,theone-controller}` |
+| `bun run cli:build [-- --target linux-x64,mac-arm64 \| --all]` | `dist-cli/<os>-<arch>/{tesseract,theone-controller}` |
 | `bun run dist [-- --platform linux\|mac\|win] [--dir] [--smoke]` (`electron:dist`) | installers in `dist/` |
 | `bun run smoke` (`electron:smoke`) | checks the built AppImage/deb |
 

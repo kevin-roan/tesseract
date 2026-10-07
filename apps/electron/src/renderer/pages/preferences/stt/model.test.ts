@@ -40,8 +40,8 @@ describe("stt preferences model", () => {
   it("describes the gemini key source", () => {
     expect(geminiSubtitle(null)).toBe("");
     expect(geminiSubtitle(sampleSttStatus)).toBe("Not set · gemini-2.5-flash");
-    expect(geminiSubtitle({ ...sampleSttStatus, gemini: { configured: true, model: "gemini-2.5-flash", source: "env" } })).toBe(
-      "GEMINI_API_KEY on the sandbox · gemini-2.5-flash",
+    expect(geminiSubtitle({ ...sampleSttStatus, gemini: { configured: true, model: "gemini-2.5-flash", source: "settings" } })).toBe(
+      "Saved from an app · gemini-2.5-flash",
     );
   });
 });

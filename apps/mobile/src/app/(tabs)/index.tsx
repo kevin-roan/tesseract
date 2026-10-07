@@ -7,6 +7,7 @@ import ChatComposer from "@/features/chat/components/chat-composer";
 import ComposerBanner from "@/features/chat/components/composer-banner";
 import HomeDrawer from "@/features/home/components/home-drawer";
 import HomeHero from "@/features/home/components/home-hero";
+import RunningTasks from "@/features/home/components/running-tasks";
 import { useHomeScreen } from "@/features/home/hooks/use-home-screen";
 import SandboxGate from "@/features/sandbox/components/sandbox-gate";
 
@@ -58,6 +59,13 @@ export default function HomeScreen() {
       }
     >
       <HomeHero />
+      <RunningTasks
+        tasks={home.running.tasks}
+        total={home.running.total}
+        onOpen={home.running.open}
+        onViewAll={home.running.viewAll}
+        testID="home-running"
+      />
       <HomeDrawer visible={home.drawer.visible} onClose={home.drawer.close} />
     </ScreenScaffold>
   );

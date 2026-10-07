@@ -16,6 +16,15 @@ export default function createStyles(theme: Theme) {
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.backgroundElement,
     },
+    rowFill: {
+      flexGrow: 1,
+    },
+    scroller: {
+      flexGrow: 0,
+    },
+    scrollContent: {
+      flexGrow: 1,
+    },
     indicator: {
       position: "absolute",
       top: inset,

@@ -22,6 +22,7 @@ export function useLocalDownloads() {
   const [sharingKey, setSharingKey] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const active = useRef(new Map<string, Promise<void>>());
+  const sharing = useRef(false);
 
   const fetchFile = useCallback((item: LocalDownload): Promise<void> => {
     const running = active.current.get(item.key);
@@ -56,6 +57,8 @@ export function useLocalDownloads() {
 
   const share = useCallback(
     async (item: LocalDownload) => {
+      if (sharing.current) return;
+      sharing.current = true;
       setError(null);
       setSharingKey(item.key);
       try {
@@ -64,7 +67,8 @@ export function useLocalDownloads() {
       } catch (cause) {
         setError(describeFileError(cause));
       } finally {
-        setSharingKey((current) => (current === item.key ? null : current));
+        sharing.current = false;
+        setSharingKey(null);
       }
     },
     [fetchFile],

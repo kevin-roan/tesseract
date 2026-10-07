@@ -33,9 +33,13 @@ export type DisplayInsetsInput = {
   fullscreen: boolean;
 };
 
-/** Space the VNC page keeps clear of native chrome, in CSS px (1pt = 1px in the WebView). */
+/**
+ * Space the page keeps clear of native chrome, in CSS px (1pt = 1px in the WebView). In full screen the
+ * stage already sits inside the safe area, so the page needs none.
+ */
 export function displayInsets({ barBottom, safeBottom, fullscreen }: DisplayInsetsInput): PageInsets {
-  return { top: fullscreen ? 0 : Math.ceil(Math.max(0, barBottom)), bottom: Math.ceil(Math.max(0, safeBottom)) };
+  if (fullscreen) return { top: 0, bottom: 0 };
+  return { top: Math.ceil(Math.max(0, barBottom)), bottom: Math.ceil(Math.max(0, safeBottom)) };
 }
 
 export function nextInputMode(mode: InputMode): InputMode {

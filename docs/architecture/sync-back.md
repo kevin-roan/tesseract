@@ -1,12 +1,12 @@
 # Sync back (sandbox → host) and get (host → sandbox)
 
-`monolith --sync` pushes a host checkout into the sandbox
+`tesseract --sync` pushes a host checkout into the sandbox
 (`POST /v1/projects/:id/sync`). `monolith --get`, run **inside the sandbox**,
 brings the host's later changes in without touching the host (§6). The sandbox is for trying changes out; once they
 are good, **sync back** copies the changed files from the sandbox into the host
 checkout. Sync back writes nothing until it has taken a snapshot, refuses to
 overwrite host edits it did not expect, and can be undone with
-`monolith --revert`.
+`tesseract --revert`.
 
 A push of a confidential project (its id is a pseudonym chosen by the desktop
 client) adds `?confidential=1`, which marks the project confidential before the
@@ -116,7 +116,7 @@ Requests are persisted in the controller database (newest 500 kept).
 State lives in `$XDG_STATE_HOME/monolith` (default `~/.local/state/monolith`):
 
 - `links.json`: `{ projectId: { hostPath, pushedAt, manifest: {path: sha256}, confidential?: true } }`,
-  written by every successful `monolith --sync` (the host manifest at push time,
+  written by every successful `tesseract --sync` (the host manifest at push time,
   same file set rules as the push, `.git` excluded). A confidential link never
   sends its `hostPath` or folder name to the controller: request results and get
   plans carry `hostPath: "REDACTED"` and error messages are redacted the same way.
@@ -127,9 +127,9 @@ State lives in `$XDG_STATE_HOME/monolith` (default `~/.local/state/monolith`):
   `manifest_before` is the `links.json` manifest hash before the pull (null: not in it).
   Keep the newest 20 snapshots per project.
 
-**Pull** (`monolith --pull` in the checkout, or a claimed `pull` request):
+**Pull** (`tesseract --pull` in the checkout, or a claimed `pull` request):
 1. Resolve the project (cwd → id as `--sync` does, or request → `links.json`).
-   Unlinked project → fail "Run monolith --sync in the checkout first".
+   Unlinked project → fail "Run tesseract --sync in the checkout first".
 2. `GET changes`; filter to `paths` if given. Nothing to do → report and exit 0.
 3. **Conflict check:** for each change, if the host file's current hash differs
    from the push-time manifest (host edited it after pushing, or created it) →
@@ -145,7 +145,7 @@ State lives in `$XDG_STATE_HOME/monolith` (default `~/.local/state/monolith`):
    entries to the new hashes (so a later pull does not flag them as conflicts).
 7. Print/return `SyncResult` (with `snapshotId`).
 
-**Revert** (`monolith --revert`, or a claimed `revert` request): take the newest
+**Revert** (`tesseract --revert`, or a claimed `revert` request): take the newest
 snapshot of the project with `reverted: false`; for each entry, if the host
 file no longer matches `after_sha256` (edited since the pull) → conflict, abort
 unless `--force` (which first copies those host edits to `displaced/`); else
@@ -160,7 +160,7 @@ host had edited before a forced pull is still a conflict. If the controller is
 unreachable the host revert still happens, with a warning that the changes will
 not be offered again.
 
-CLI (GLib options on the same `monolith` entry point, run in the checkout):
+CLI (GLib options on the same `tesseract` entry point, run in the checkout):
 `--sync [--confidential]` (push, now also records the link; a folder that is
 already linked keeps its id and confidential flag, otherwise `--confidential`
 pushes under a fresh `adjective-noun` pseudonym that no link or sandbox project
@@ -191,7 +191,7 @@ for the run's project.
 Project screen (`sandbox/projects/[id]`) gets a **Sync to host** group:
 changed-file list (A/M/D + path), host status ("Monolith on <host> · online" /
 "Desktop companion offline — the request waits until it connects" / "Not linked
-— run monolith --sync on your computer"), a primary **Sync to host** button
+— run tesseract --sync on your computer"), a primary **Sync to host** button
 (confirm sheet listing the files, optional force when the last request failed on
 conflicts), **Revert last sync**, and the recent requests with live status from
 `sync.updated`. Cancel is available while a request is pending.
@@ -227,7 +227,7 @@ the sandbox, and prints a `git pull` style summary.
 
 **Scope.** The sandbox never names a host path. A `get` request carries only the
 project id; the desktop companion claims it only for projects in its
-`links.json` (written by `monolith --sync`), reads only that checkout, with the
+`links.json` (written by `tesseract --sync`), reads only that checkout, with the
 same file set as the push (tracked + unignored files and `.git`), never follows
 a symlink out of it, and skips any path whose parent resolves outside it. A
 project never pushed (no baseline) cannot be got from (400 at create).
@@ -259,7 +259,7 @@ Synced at 2026-10-01 14:03:12 · previous sync 2026-10-01 11:40:02 (2 hours ago)
 1. `link = links.json[projectId]` (unlinked → never claimed); the checkout must exist.
 2. Host manifest now (`build_manifest`, same rules as the push) vs `link.manifest`:
    `added` / `modified` (hash differs, or the executable bit differs when
-   `link.executable` is known) / `deleted`. More than 5000 → fail ("run monolith --sync").
+   `link.executable` is known) / `deleted`. More than 5000 → fail ("run tesseract --sync").
 3. `.git` (a directory): `gitManifest` = `{ path under .git: "<size>:<mtime_ns>" }`
    for regular files, skipping `*.lock`; `changed` = new or different vs
    `link.gitManifest` (absent: everything), `deleted` = gone since.
@@ -269,7 +269,7 @@ Synced at 2026-10-01 14:03:12 · previous sync 2026-10-01 11:40:02 (2 hours ago)
    `gitManifest` and `gotAt` (`pushedAt` unchanged). Any error before or during
    `apply` → `complete` `failed` with the message.
 
-`monolith --sync` also records `executable` and `gitManifest`, so the first get
+`tesseract --sync` also records `executable` and `gitManifest`, so the first get
 after a push sends only real changes.
 
 **Controller:**

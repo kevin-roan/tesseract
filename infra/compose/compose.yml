@@ -39,10 +39,13 @@ services:
       THEONE_STT_URL: ${THEONE_STT_URL:-}
       THEONE_STT_API_KEY: ${THEONE_STT_API_KEY:-}
       THEONE_STT_MODEL: ${THEONE_STT_MODEL:-whisper-1}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       THEONE_GEMINI_STT_MODEL: ${THEONE_GEMINI_STT_MODEL:-gemini-2.5-flash}
       THEONE_WHISPER_MODELS_DIR: ${THEONE_WHISPER_MODELS_DIR:-/opt/whisper/models}
       THEONE_WHISPER_MODEL: ${THEONE_WHISPER_MODEL:-/opt/whisper/models/ggml-model.bin}
+      # Claude Code credentials for hosts whose login the bind mount below cannot carry
+      # (macOS keeps it in the keychain): `claude setup-token` on the host prints the token.
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       TZ: ${TZ:-UTC}
     volumes:
       - theone-workspace:/workspace

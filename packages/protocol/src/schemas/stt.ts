@@ -54,7 +54,7 @@ export const GeminiApiKeySchema = z
   .max(256, "The Gemini API key is too long")
   .regex(/^[\x21-\x7e]+$/, "The Gemini API key must not contain spaces or special characters");
 
-/** Any subset of the fields; `geminiApiKey: null` forgets the saved key (GEMINI_API_KEY applies again, if set). */
+/** Any subset of the fields; `geminiApiKey: null` forgets the saved key. */
 export const UpdateSttSchema = z
   .object({ profile: SttProfileSchema.optional(), geminiApiKey: GeminiApiKeySchema.nullable().optional() })
   .refine((body) => body.profile !== undefined || body.geminiApiKey !== undefined, "Nothing to update");

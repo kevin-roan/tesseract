@@ -1,7 +1,7 @@
 export const APP_ID = "dev.monolith.Desktop";
 export const APP_NAME = "Monolith";
 export const DEEP_LINK_SCHEME = "monolith";
-export const CLI_NAME = "monolith";
+export const CLI_NAME = "tesseract";
 
 export const RENDERER_DEV_HOST = "127.0.0.1";
 export const RENDERER_DEV_PORT = 4545;

@@ -31,13 +31,13 @@ describe("planCliInstall", () => {
   });
 
   it("reports the deb's /usr/bin link as installed", () => {
-    const plan = planCliInstall(linux, probe({ "/usr/bin/monolith": "/opt/Monolith/resources/bin/monolith" }));
-    expect(plan.status).toMatchObject({ state: "installed", linkPath: "/usr/bin/monolith" });
+    const plan = planCliInstall(linux, probe({ "/usr/bin/tesseract": "/opt/Monolith/resources/bin/tesseract" }));
+    expect(plan.status).toMatchObject({ state: "installed", linkPath: "/usr/bin/tesseract" });
   });
 
-  it("links ~/.local/bin/monolith when nothing is installed", () => {
+  it("links ~/.local/bin/tesseract when nothing is installed", () => {
     const plan = planCliInstall(linux, probe());
-    expect(plan).toMatchObject({ method: "symlink", copyPath: null, status: { state: "missing", linkPath: "/home/u/.local/bin/monolith", message: null } });
+    expect(plan).toMatchObject({ method: "symlink", copyPath: null, status: { state: "missing", linkPath: "/home/u/.local/bin/tesseract", message: null } });
   });
 
   it("warns when ~/.local/bin is not on PATH", () => {
@@ -46,23 +46,23 @@ describe("planCliInstall", () => {
   });
 
   it("reports a foreign command as a conflict", () => {
-    const plan = planCliInstall(linux, probe({ "/home/u/.local/bin/monolith": "/usr/local/other/monolith" }));
+    const plan = planCliInstall(linux, probe({ "/home/u/.local/bin/tesseract": "/usr/local/other/tesseract" }));
     expect(plan).toMatchObject({ method: null, status: { state: "conflict" } });
   });
 
   it("copies the binary out of an AppImage mount and detects outdated copies", () => {
     const appImage = { ...linux, appImage: true, resourcesPath: "/tmp/.mount_Monolith/resources" };
-    const copy = "/home/u/.local/share/monolith/bin/monolith";
+    const copy = "/home/u/.local/share/monolith/bin/tesseract";
     expect(planCliInstall(appImage, probe())).toMatchObject({ method: "copy", copyPath: copy, status: { state: "missing" } });
-    const links = { "/home/u/.local/bin/monolith": copy };
-    const binary = "/tmp/.mount_Monolith/resources/bin/monolith";
+    const links = { "/home/u/.local/bin/tesseract": copy };
+    const binary = "/tmp/.mount_Monolith/resources/bin/tesseract";
     expect(planCliInstall(appImage, probe(links, { [copy]: 10, [binary]: 10 })).status.state).toBe("installed");
     expect(planCliInstall(appImage, probe(links, { [copy]: 9, [binary]: 10 })).status).toMatchObject({ state: "missing", message: CLI_INSTALL_LABELS.outdated });
   });
 
   it("uses an admin prompt for /usr/local/bin on macOS", () => {
-    expect(planCliInstall(mac, probe())).toMatchObject({ method: "admin-symlink", status: { state: "missing", linkPath: "/usr/local/bin/monolith" } });
-    const installed = probe({ "/usr/local/bin/monolith": "/Applications/Monolith.app/Contents/Resources/bin/monolith" });
+    expect(planCliInstall(mac, probe())).toMatchObject({ method: "admin-symlink", status: { state: "missing", linkPath: "/usr/local/bin/tesseract" } });
+    const installed = probe({ "/usr/local/bin/tesseract": "/Applications/Monolith.app/Contents/Resources/bin/tesseract" });
     expect(planCliInstall(mac, installed).status.state).toBe("installed");
   });
 
@@ -85,9 +85,9 @@ describe("helpers", () => {
 
   it("quotes the admin script safely", () => {
     expect(appleScriptString('a "b" \\c')).toBe('"a \\"b\\" \\\\c"');
-    const script = macInstallScript("/Applications/Mono'lith.app/Contents/Resources/bin/monolith", "/usr/local/bin/monolith");
+    const script = macInstallScript("/Applications/Mono'lith.app/Contents/Resources/bin/tesseract", "/usr/local/bin/tesseract");
     expect(script).toBe(
-      `do shell script "mkdir -p '/usr/local/bin' && ln -sfn '/Applications/Mono'\\\\''lith.app/Contents/Resources/bin/monolith' '/usr/local/bin/monolith'" with administrator privileges`,
+      `do shell script "mkdir -p '/usr/local/bin' && ln -sfn '/Applications/Mono'\\\\''lith.app/Contents/Resources/bin/tesseract' '/usr/local/bin/tesseract'" with administrator privileges`,
     );
   });
 });

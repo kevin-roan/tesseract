@@ -54,7 +54,7 @@ const CaptureCard = ({ flow }: CaptureCardProps) => {
             title={TITLES[step.kind]}
             subtitle={picking ? "Where should the image come from?" : undefined}
             onBack={picking ? undefined : flow.back}
-            actions={picking ? [{ id: "close", icon: XIcon, label: "Close", onPress: flow.back }] : undefined}
+            actions={picking ? [{ id: "close", icon: XIcon, label: "Close", onPress: flow.back, bare: true }] : undefined}
           />
         </View>
         <View style={[styles.content, !picking && styles.expanded]}>

@@ -1,8 +1,8 @@
 #!/bin/sh
 APP_DIR='/opt/${sanitizedProductName}'
 EXECUTABLE='${executable}'
-CLI_LINK=/usr/bin/monolith
-CLI_TARGET="$APP_DIR/resources/bin/monolith"
+CLI_LINK=/usr/bin/tesseract
+CLI_TARGET="$APP_DIR/resources/bin/tesseract"
 
 if [ -L "$CLI_LINK" ] && { [ "$(readlink "$CLI_LINK")" = "$CLI_TARGET" ] || [ ! -e "$CLI_LINK" ]; }; then
   rm -f "$CLI_LINK"

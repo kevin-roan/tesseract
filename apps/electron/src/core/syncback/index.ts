@@ -9,7 +9,7 @@ import { SyncState } from "./state";
 
 export { SYNC_STATE, HEARTBEAT_INTERVAL_MS, EXIT } from "./constants";
 export { HttpSyncApi, type SyncApi, type ByteStream, type PushResult } from "./api";
-export { connectSandbox, connectionFor, type CliIo, type SyncConnection, type SyncEnvironment } from "./connect";
+export { connectSandbox, connectionFor, resolveConnection, type CliIo, type SyncConnection, type SyncEnvironment } from "./connect";
 export { describeError, NotConfiguredError, isAuthError } from "./describe";
 export { diffFile as diffBytes, extractMember, previewDiff, readHostFile, toContractDiff, type FileDiff as RawFileDiff } from "./diff";
 export { NotLinked, SyncBackError, SyncConflict, TooLarge } from "./errors";

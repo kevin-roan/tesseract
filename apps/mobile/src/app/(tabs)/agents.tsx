@@ -150,6 +150,7 @@ export default function AgentsScreen() {
               <TerminalCard
                 key={terminal.id}
                 terminal={terminal}
+                projectName={hub.projectName(terminal.projectId)}
                 onOpen={() => hub.nav.terminal(terminal.id)}
                 onClose={() => void hub.closeSession(terminal)}
                 closing={hub.closingId === terminal.id}
@@ -166,7 +167,7 @@ export default function AgentsScreen() {
           emptyLabel="No builds yet. Open a project to build it."
         >
           {hub.recentBuilds.map((build) => (
-            <BuildCard key={build.id} build={build} onPress={() => hub.nav.build(build.id)} />
+            <BuildCard key={build.id} build={build} projectName={hub.projectName(build.projectId)} onPress={() => hub.nav.build(build.id)} />
           ))}
         </Section>
       </MotionItem>
@@ -183,7 +184,7 @@ export default function AgentsScreen() {
           onEmptyAction={() => hub.nav.newAgentRun()}
         >
           {hub.recentRuns.map((run) => (
-            <AgentRunCard key={run.id} run={run} onPress={() => hub.nav.agentRun(run.id)} />
+            <AgentRunCard key={run.id} run={run} projectName={hub.projectName(run.projectId)} onPress={() => hub.nav.agentRun(run.id)} />
           ))}
         </Section>
       </MotionItem>

@@ -12,6 +12,7 @@ import { useSandboxClient } from "./use-sandbox-client";
 import { useSandboxLink } from "./use-sandbox-events";
 import { useOpenSite } from "./use-open-site";
 import { useProjectMenu } from "./use-project-menu";
+import { useProjectLabel } from "./use-project-names";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
 import { useSandboxProblems } from "./use-sandbox-problems";
 import { useAgentRuns, useBuilds, useListeningPorts, useProcesses, useProjects } from "./use-sandbox-queries";
@@ -25,6 +26,7 @@ export function useProjectsScreen() {
   const processes = useProcesses();
   const builds = useBuilds();
   const runs = useAgentRuns();
+  const projectName = useProjectLabel();
   const ports = useListeningPorts();
   const openSite = useOpenSite();
   const stopProcess = useConfirmedStop();
@@ -95,6 +97,7 @@ export function useProjectsScreen() {
     running,
     runningCount: activeWorkCount(running),
     processPress,
+    projectName,
     view,
     viewOptions,
     selectView: setView,

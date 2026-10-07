@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from "react";
+import { usePathname } from "expo-router";
 
 import { useBuilds } from "@/features/sandbox/hooks/use-sandbox-queries";
 import { useCancelAgentRun, useCancelBuild, useStopProcess } from "@/features/sandbox/hooks/use-sandbox-mutations";
@@ -6,7 +7,7 @@ import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navig
 import { useSettingsStore } from "@/features/settings/store/settings-store";
 
 import { useIslandStore } from "../store/island-store";
-import { capsuleTitle } from "../utils/format";
+import { capsuleTitle, islandPanelHeight, otherChats } from "../utils/format";
 import { hasLiveWork, isBuildCommand } from "../utils/state";
 import { useIslandActions } from "./use-island-actions";
 import { useIslandDispatch } from "./use-island-dispatch";
@@ -25,6 +26,7 @@ export function useIslandHost() {
   useIslandActions();
   const { attachQueuedShared } = useIslandDispatch();
   const nav = useSandboxNavigation();
+  const pathname = usePathname();
   const builds = useBuilds();
   const cancelRun = useCancelAgentRun();
   const cancelBuild = useCancelBuild();
@@ -45,11 +47,22 @@ export function useIslandHost() {
   const commandId = runId ? null : (state.commands[0]?.id ?? null);
 
   const collapse = useCallback(() => setExpanded(false), [setExpanded]);
+  /** Opening the chat already on screen only folds the island, rather than stacking a second copy of it. */
+  const openRun = useCallback(
+    (id: string) => {
+      setExpanded(false);
+      if (pathname !== `/sandbox/agent/${id}`) nav.agentRun(id);
+    },
+    [pathname, nav, setExpanded],
+  );
   const openChat = useCallback(() => {
-    setExpanded(false);
-    if (runId) nav.agentRun(runId);
-    else nav.newAgentRun();
-  }, [runId, nav, setExpanded]);
+    if (runId) openRun(runId);
+    else {
+      setExpanded(false);
+      nav.newAgentRun();
+    }
+  }, [runId, openRun, nav, setExpanded]);
+  const panelHeight = islandPanelHeight(otherChats(state.runs).length);
   const capture = useCallback(() => openCapture(), [openCapture]);
 
   const { mutate: cancelRunMutate } = cancelRun;
@@ -82,6 +95,8 @@ export function useIslandHost() {
     toggle: toggleExpanded,
     collapse,
     openChat,
+    openRun,
+    panelHeight,
     stop,
     capture,
     attachShared: attachQueuedShared,

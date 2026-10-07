@@ -20,6 +20,8 @@ export type IconButtonProps = {
   disabled?: boolean;
   tone?: Tone;
   filled?: boolean;
+  /** No fill or rim until pressed, for icons that sit on a card. */
+  bare?: boolean;
   /** `md` is the 40pt toolbar size; its hit area is extended back past the touch minimum. */
   size?: "md" | "lg";
   /** Light impact on press (native only). On by default. */
@@ -27,7 +29,7 @@ export type IconButtonProps = {
   testID?: string;
 };
 
-const IconButton = ({ icon: IconComponent, label, hint, onPress, disabled, tone, filled = false, size = "lg", haptics = true, testID }: IconButtonProps) => {
+const IconButton = ({ icon: IconComponent, label, hint, onPress, disabled, tone, filled = false, bare = false, size = "lg", haptics = true, testID }: IconButtonProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme, size), [theme, size]);
   const handlePress = useHapticPress(onPress, haptics);
@@ -35,7 +37,7 @@ const IconButton = ({ icon: IconComponent, label, hint, onPress, disabled, tone,
   const hitSlop = size === "md" ? HitSlop.sm : undefined;
   const icon = <IconComponent size={IconSize.md} color={color} weight={filled ? "fill" : "regular"} />;
 
-  if (theme.look === "graphite") {
+  if (theme.look === "graphite" || bare) {
     return (
       <PressableScale
         depth="control"
@@ -47,7 +49,7 @@ const IconButton = ({ icon: IconComponent, label, hint, onPress, disabled, tone,
         hitSlop={hitSlop}
         onPress={handlePress}
         testID={testID}
-        style={[styles.square, disabled && styles.disabled]}
+        style={[bare ? styles.bare : styles.square, disabled && styles.disabled]}
         pressedStyle={styles.pressed}
       >
         {icon}

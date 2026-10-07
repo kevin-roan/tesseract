@@ -44,8 +44,9 @@ describe("describe helpers", () => {
   });
 
   it("summarises a terminal", () => {
-    expect(terminalMeta(sampleTerminal, NOW)).toBe("80×24 · opened 10m ago");
-    expect(terminalMeta({ ...sampleTerminal, projectId: "app" }, NOW)).toBe("app · 80×24 · opened 10m ago");
+    expect(terminalMeta(sampleTerminal, undefined, NOW)).toBe("80×24 · opened 10m ago");
+    expect(terminalMeta({ ...sampleTerminal, projectId: "app" }, undefined, NOW)).toBe("app · 80×24 · opened 10m ago");
+    expect(terminalMeta({ ...sampleTerminal, projectId: "nimble-lotus" }, "Billing", NOW)).toBe("Billing · 80×24 · opened 10m ago");
   });
 
   it("shows the stage only while a build is active, and its duration", () => {
@@ -57,11 +58,13 @@ describe("describe helpers", () => {
   it("names the project and profile of a build", () => {
     expect(buildSubtitle(sampleBuild)).toBe("electron-hello · Release");
     expect(buildSubtitle({ ...sampleBuild, profile: "debug" })).toBe("electron-hello · Debug");
+    expect(buildSubtitle(sampleBuild, "Hello App")).toBe("Hello App · Release");
   });
 
   it("summarises agent runs with and without project or token usage", () => {
-    expect(agentRunMeta(sampleAgentRun, NOW)).toBe("electron-hello · 10m ago");
-    expect(agentRunMeta({ ...sampleAgentRun, projectId: null, usage: { inputTokens: 8000, outputTokens: 4300, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 12_300 } }, NOW)).toBe("No project · 10m ago · 12.3k tokens");
+    expect(agentRunMeta(sampleAgentRun, undefined, NOW)).toBe("electron-hello · 10m ago");
+    expect(agentRunMeta(sampleAgentRun, "Hello App", NOW)).toBe("Hello App · 10m ago");
+    expect(agentRunMeta({ ...sampleAgentRun, projectId: null, usage: { inputTokens: 8000, outputTokens: 4300, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 12_300 } }, null, NOW)).toBe("No project · 10m ago · 12.3k tokens");
   });
 
   it("describes artifacts", () => {

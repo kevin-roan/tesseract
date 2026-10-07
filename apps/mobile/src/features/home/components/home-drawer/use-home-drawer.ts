@@ -76,7 +76,7 @@ export function useHomeDrawer(onClose: () => void) {
     user: { name: profile?.name ?? "", photo: profile?.photo },
     onClosed,
     allChats: go(chats.list),
-    newChat: go(chats.newChat),
     openProfile: go(navigate(DRAWER_ROUTES.profile)),
+    openSettings: go(nav.settings),
   };
 }

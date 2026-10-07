@@ -27,9 +27,10 @@ export default function createStyles(theme: Theme) {
       ...Shadows.level3,
     },
     header: {
-      paddingLeft: theme.spacing.base,
-      paddingRight: theme.spacing.sm,
-      paddingBottom: theme.spacing.sm,
+      paddingTop: theme.spacing.sm,
+      paddingLeft: theme.spacing.xl,
+      paddingRight: theme.spacing.base,
+      paddingBottom: theme.spacing.base,
     },
     expanded: {
       flex: 1,

@@ -501,7 +501,7 @@ re-render from the server status either way.
 Description: "Cloud transcription for voice notes sent with the Gemini provider. The key is stored on the sandbox and
 shared with the mobile app."
 - EntryRow "API key" (password, eye toggle). Subtitle: `"<source> · <model>"` where source = "Saved from an app"
-  (`settings`) / "GEMINI_API_KEY on the sandbox" (`env`) / "Not set"; empty before load. Input never shows the stored
+  (`settings`) / "Not set"; empty before load. Input never shows the stored
   key; it is always empty after load/save. Disabled until loaded and while pending.
 - SettingsActions: "Remove saved key" (destructive; visible only when source = `settings`; disabled while pending) ·
   "Save" (primary; disabled until loaded / while pending).

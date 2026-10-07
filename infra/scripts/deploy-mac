@@ -1,0 +1,215 @@
+#!/usr/bin/env bash
+# Deploys the headless Tesseract server (sandbox stack + host shell) to a Mac over ssh.
+# Runs on the Linux dev box. Run `infra/scripts/deploy-mac --help` or `bun run deploy:mac --help`.
+# Runbook: docs/runbooks/mac-server.md
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)"
+ELECTRON_DIR="${REPO_ROOT}/apps/electron"
+CLI_DIST_DIR="${ELECTRON_DIR}/dist-cli"
+SANDBOX_BUNDLE_DIR="${ELECTRON_DIR}/build/sandbox-context"
+readonly SCRIPT_DIR REPO_ROOT ELECTRON_DIR CLI_DIST_DIR SANDBOX_BUNDLE_DIR
+readonly CLI_BIN=tesseract
+readonly CONTROLLER_BIN=theone-controller
+readonly REMOTE_ROOT='.tesseract'
+readonly SECRET_KEYS=(TS_AUTHKEY TS_TAILNET_DOMAIN CLAUDE_CODE_OAUTH_TOKEN)
+# Non-interactive ssh on macOS starts with PATH=/usr/bin:/bin:/usr/sbin:/sbin.
+readonly REMOTE_PATH='$HOME/.tesseract/bin:/opt/homebrew/bin:/usr/local/bin:$HOME/.orbstack/bin:/Applications/Docker.app/Contents/Resources/bin:/Applications/Tailscale.app/Contents/MacOS:$PATH'
+
+usage() {
+  cat << 'EOF'
+Usage: deploy-mac <ssh-host> [--arch auto|arm64|x64] [--skip-build] [-- <tesseract server install args>]
+
+Builds the macOS `tesseract` and `theone-controller` binaries and the sandbox build
+context, copies them to the Mac, and runs `tesseract server install` there.
+
+  <ssh-host>      anything `ssh` accepts (user@mac, a ~/.ssh/config alias, a tailnet name)
+  --arch ARCH     mac-arm64 (Apple silicon) or mac-x64 (Intel); default: auto (`uname -m` on the Mac)
+  --skip-build    reuse apps/electron/dist-cli/mac-<arch> and apps/electron/build/sandbox-context
+  -h, --help      show this help
+
+On the Mac:
+  ~/.tesseract/bin/{tesseract,theone-controller}   the binaries
+  ~/.tesseract/sandbox/                            the sandbox build context (compose files, Dockerfile)
+
+Secrets are read from this shell's environment and never put on a command line:
+  TS_AUTHKEY               tailscale auth key for the sandbox sidecar (first start only)
+  TS_TAILNET_DOMAIN        e.g. tail1234.ts.net
+  CLAUDE_CODE_OAUTH_TOKEN  from `claude setup-token` (the sandbox can't read the macOS keychain)
+They go to the Mac over ssh stdin into a 0600 file that is deleted before the install runs.
+
+Examples:
+  TS_AUTHKEY=tskey-... TS_TAILNET_DOMAIN=tail1234.ts.net bun run deploy:mac mac-mini
+  infra/scripts/deploy-mac mac-mini --skip-build -- --mode tailscale --hostname theone-sandbox
+EOF
+}
+
+die() {
+  printf 'deploy-mac: %s\n' "$*" >&2
+  exit 1
+}
+
+info() {
+  printf 'deploy-mac: %s\n' "$*" >&2
+}
+
+# Single-quotes a string for the remote login shell (zsh or bash).
+quote() {
+  local value=$1
+  printf "'%s'" "${value//\'/\'\\\'\'}"
+}
+
+host=""
+arch=auto
+skip_build=""
+install_args=()
+
+while (($# > 0)); do
+  case "$1" in
+    -h | --help | help)
+      usage
+      exit 0
+      ;;
+    --arch)
+      (($# >= 2)) || die "--arch needs a value"
+      arch=$2
+      shift 2
+      ;;
+    --arch=*)
+      arch=${1#--arch=}
+      shift
+      ;;
+    --skip-build)
+      skip_build=1
+      shift
+      ;;
+    --)
+      shift
+      install_args=("$@")
+      break
+      ;;
+    -*)
+      die "unknown option: $1 (see --help)"
+      ;;
+    *)
+      [[ -z "${host}" ]] || die "unexpected argument: $1 (install args go after --)"
+      host=$1
+      shift
+      ;;
+  esac
+done
+
+[[ -n "${host}" ]] || {
+  usage >&2
+  exit 2
+}
+case "${arch}" in
+  auto | arm64 | x64) ;;
+  *) die "--arch must be auto, arm64 or x64" ;;
+esac
+
+command -v ssh > /dev/null || die "ssh not found"
+command -v rsync > /dev/null || die "rsync not found"
+
+control_dir="$(mktemp -d)"
+trap 'ssh -o ControlPath="${control_dir}/cm" -O exit "${host}" > /dev/null 2>&1 || true; rm -rf "${control_dir}"' EXIT
+# One authenticated connection reused by every ssh/rsync below.
+ssh_opts=(-o ControlMaster=auto -o "ControlPath=${control_dir}/cm" -o ControlPersist=120)
+
+# Runs a bash script on the Mac with the sane PATH; extra args are passed as "$@".
+remote() {
+  local script=$1
+  shift
+  local command="export PATH=\"${REMOTE_PATH}\"; ${script}"
+  local args=""
+  for arg in "$@"; do args+=" $(quote "${arg}")"; done
+  ssh "${ssh_opts[@]}" "${host}" "/bin/bash -c $(quote "${command}") deploy-mac${args}"
+}
+
+info "checking ${host}"
+remote 'true' || die "cannot ssh to ${host}"
+[[ "$(remote 'uname -s')" == Darwin ]] || die "${host} is not a Mac (uname -s is not Darwin)"
+
+if [[ "${arch}" == auto ]]; then
+  case "$(remote 'uname -m')" in
+    arm64) arch=arm64 ;;
+    x86_64) arch=x64 ;;
+    *) die "unsupported Mac architecture; pass --arch arm64|x64" ;;
+  esac
+fi
+target="mac-${arch}"
+info "target ${target}"
+
+remote 'command -v docker > /dev/null' || die "docker not found on ${host} (install OrbStack or Docker Desktop)"
+remote 'docker info > /dev/null 2>&1' || die "docker is installed on ${host} but the engine is not running (start OrbStack or Docker Desktop)"
+remote 'command -v tailscale > /dev/null' || die "tailscale not found on ${host} (install the Tailscale app)"
+remote 'tailscale ip -4 > /dev/null 2>&1' || die "tailscale is not connected on ${host} (tailscale up)"
+
+bin_dir="${CLI_DIST_DIR}/${target}"
+if [[ -z "${skip_build}" ]]; then
+  info "building ${CLI_BIN} and ${CONTROLLER_BIN} for ${target}"
+  (cd "${REPO_ROOT}" && bun run --cwd apps/electron cli:build --target "${target}")
+  info "bundling the sandbox build context"
+  (cd "${REPO_ROOT}" && bun run --cwd apps/electron bundle:sandbox)
+fi
+for binary in "${CLI_BIN}" "${CONTROLLER_BIN}"; do
+  [[ -x "${bin_dir}/${binary}" ]] || die "missing ${bin_dir}/${binary} (run without --skip-build)"
+done
+[[ -d "${SANDBOX_BUNDLE_DIR}/infra/compose" ]] || die "missing ${SANDBOX_BUNDLE_DIR} (run without --skip-build)"
+
+info "copying to ${host}:~/${REMOTE_ROOT}"
+remote 'mkdir -p "$HOME/$1/bin" "$HOME/$1/sandbox" "$HOME/.claude"' "${REMOTE_ROOT}"
+rsync -az -e "ssh ${ssh_opts[*]}" "${bin_dir}/${CLI_BIN}" "${bin_dir}/${CONTROLLER_BIN}" "${host}:${REMOTE_ROOT}/bin/"
+rsync -az --delete -e "ssh ${ssh_opts[*]}" "${SANDBOX_BUNDLE_DIR}/" "${host}:${REMOTE_ROOT}/sandbox/"
+# Downloaded binaries are quarantined; rsync'd ones normally are not, but clear it anyway.
+remote 'xattr -dr com.apple.quarantine "$HOME/$1/bin" 2> /dev/null || true' "${REMOTE_ROOT}"
+
+secrets=""
+for key in "${SECRET_KEYS[@]}"; do
+  if [[ -n "${!key:-}" ]]; then
+    secrets+="export ${key}=$(quote "${!key}")"$'\n'
+  fi
+done
+if [[ -n "${secrets}" ]]; then
+  info "sending secrets over ssh stdin"
+  printf '%s' "${secrets}" | remote 'umask 077; cat > "$HOME/$1/secrets.env"' "${REMOTE_ROOT}"
+fi
+
+info "running ${CLI_BIN} server install on ${host}"
+install_script='
+root="$HOME/$1"
+shift
+if [[ -f "${root}/secrets.env" ]]; then
+  set -a
+  . "${root}/secrets.env"
+  set +a
+  rm -f "${root}/secrets.env"
+fi
+export MONOLITH_SANDBOX_CONTEXT="${root}/sandbox"
+exec "${root}/bin/tesseract" server install "$@"
+'
+command="export PATH=\"${REMOTE_PATH}\"; ${install_script}"
+args=" $(quote "${REMOTE_ROOT}")"
+for arg in "${install_args[@]}"; do args+=" $(quote "${arg}")"; done
+status=0
+ssh -t "${ssh_opts[@]}" "${host}" "/bin/bash -c $(quote "${command}") deploy-mac${args}" || status=$?
+remote 'rm -f "$HOME/$1/secrets.env"' "${REMOTE_ROOT}" || true
+((status == 0)) || die "tesseract server install failed on ${host} (exit ${status})"
+
+cat << EOF
+
+Deployed to ${host} (${target}).
+
+Next steps:
+  1. Put the CLI on PATH on the Mac (zsh):
+       ssh ${host} 'echo "export PATH=\"\$HOME/.tesseract/bin:\$PATH\"" >> ~/.zprofile'
+     The CLI needs MONOLITH_SANDBOX_CONTEXT=~/.tesseract/sandbox for sandbox commands:
+       ssh ${host} 'echo "export MONOLITH_SANDBOX_CONTEXT=\"\$HOME/.tesseract/sandbox\"" >> ~/.zprofile'
+  2. Set the host shell PIN (once):
+       ssh -t ${host} ~/.tesseract/bin/${CONTROLLER_BIN} host pin
+  3. Pair the phone (sandbox and host shell QR codes):
+       ssh -t ${host} 'MONOLITH_SANDBOX_CONTEXT=~/.tesseract/sandbox ~/.tesseract/bin/${CLI_BIN} server pair'
+  4. Check it:
+       ssh -t ${host} 'MONOLITH_SANDBOX_CONTEXT=~/.tesseract/sandbox ~/.tesseract/bin/${CLI_BIN} server status'
+EOF

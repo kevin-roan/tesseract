@@ -1,6 +1,6 @@
 const repr = (value: unknown) => `'${String(value)}'`;
 
-export const UNDO_HINT = "undo with monolith --revert";
+export const UNDO_HINT = "undo with tesseract --revert";
 
 export const SYNC_LABELS = {
   unsafePath: (rel: unknown) => `Refusing unsafe path ${repr(rel)}`,
@@ -11,9 +11,9 @@ export const SYNC_LABELS = {
   windowsName: (rel: string) => `Refusing path ${repr(rel)}: it is not a valid file name on this computer`,
   symlinkUnsupported: (rel: string) => `Cannot create the symlink ${rel}: this computer does not allow it`,
 
-  notLinked: (id: string) => `${id} is not linked on this computer. Run monolith --sync in the checkout first`,
-  hostMissing: (path: string) => `${path} no longer exists. Run monolith --sync in the checkout again`,
-  neverPushed: (id: string) => `${id} was never pushed. Run monolith --sync in the checkout first`,
+  notLinked: (id: string) => `${id} is not linked on this computer. Run tesseract --sync in the checkout first`,
+  hostMissing: (path: string) => `${path} no longer exists. Run tesseract --sync in the checkout again`,
+  neverPushed: (id: string) => `${id} was never pushed. Run tesseract --sync in the checkout first`,
   unknownKind: (kind: unknown, path: string) => `Unknown change kind ${repr(kind)} for ${path}`,
   conflictPull: (count: number, preview: string) =>
     `${count} file${count !== 1 ? "s" : ""} changed on the host since the last push: ${preview}`,
@@ -45,7 +45,7 @@ export const SYNC_LABELS = {
     `The sandbox did not record the revert (${error}); it will not offer those changes again`,
 
   tooMany: (what: string, root: string) =>
-    `Too many ${what} changed on the host for a get. Run monolith --sync in ${root} instead`,
+    `Too many ${what} changed on the host for a get. Run tesseract --sync in ${root} instead`,
   tooManyFiles: "files",
   tooManyGitFiles: ".git files",
   unplanned: (what: string, path: string) => `The sandbox asked for an unplanned ${what}: ${path}`,
@@ -108,41 +108,41 @@ export const DIFF_LABELS = {
 } as const;
 
 export const CLI_SYNC_LABELS = {
-  prefix: (message: string) => `monolith: ${message}`,
-  noSandbox: (error: string) => `monolith: no sandbox found: ${error}`,
-  notConnected: "monolith: no sandbox to sync with; open the app and connect first",
+  prefix: (message: string) => `tesseract: ${message}`,
+  noSandbox: (error: string) => `tesseract: no sandbox found: ${error}`,
+  notConnected: "tesseract: no sandbox to sync with; open the app and connect first",
   sealedToken: (error: string, urlVar: string, tokenVar: string) =>
-    `monolith: the app keeps the sandbox token in the system keychain, which this command cannot read, and no local sandbox was found (${error}). Set ${urlVar} and ${tokenVar} to sync with a remote sandbox`,
-  cannotDerive: (name: string) => `monolith: cannot derive a project id from ${repr(name)}`,
+    `tesseract: the app keeps the sandbox token in the system keychain, which this command cannot read, and no local sandbox was found (${error}). Set ${urlVar} and ${tokenVar} to sync with a remote sandbox`,
+  cannotDerive: (name: string) => `tesseract: cannot derive a project id from ${repr(name)}`,
   syncing: (root: string, id: string, confidential: boolean, label: string) =>
     `Syncing ${root} to ${id}${confidential ? " (confidential)" : ""} on ${label}…`,
-  syncFailed: (error: string) => `monolith: sync failed: ${error}`,
-  linkFailed: (error: string) => `monolith: pushed, but could not record the link for sync back: ${error}`,
+  syncFailed: (error: string) => `tesseract: sync failed: ${error}`,
+  linkFailed: (error: string) => `tesseract: pushed, but could not record the link for sync back: ${error}`,
   pushed: (created: boolean, path: string, count: number) =>
     `${created ? "Created" : "Updated"} ${path} (${count} entries) · linked for sync back`,
   replaced: (id: string) =>
-    `monolith: the earlier copy ${id} is still in the sandbox under its real name and is no longer linked; remove it there with: rm -rf /workspace/projects/${id}`,
+    `tesseract: the earlier copy ${id} is still in the sandbox under its real name and is no longer linked; remove it there with: rm -rf /workspace/projects/${id}`,
   linkedElsewhere: (id: string, existing: string, root: string) =>
-    `${id} is linked to ${existing}, not ${root}. Run monolith --sync here to relink it`,
+    `${id} is linked to ${existing}, not ${root}. Run tesseract --sync here to relink it`,
   listed: (path: string) => `  ${path}`,
   more: (count: number) => `  … and ${count} more`,
-  conflictHeader: (files: string, action: string) => `monolith: ${files} changed on the host since the last ${action}:`,
+  conflictHeader: (files: string, action: string) => `tesseract: ${files} changed on the host since the last ${action}:`,
   conflictPush: "Nothing was written. Re-run with --force to overwrite them (a snapshot is still taken).",
   conflictSync: "Nothing was reverted. Re-run with --force to revert anyway (copies of those host edits are kept).",
-  pullFailed: (error: string) => `monolith: pull failed: ${error}`,
-  revertFailed: (error: string) => `monolith: revert failed: ${error}`,
+  pullFailed: (error: string) => `tesseract: pull failed: ${error}`,
+  revertFailed: (error: string) => `tesseract: revert failed: ${error}`,
   planRow: (code: string, path: string, conflict: boolean) => `  ${code} ${path}${conflict ? "  (changed on host)" : ""}`,
   overwrotePull: (edits: string) => `Overwrote ${edits} (--force); the originals are in the snapshot`,
   overwroteRevert: (edits: string, dir: string | null) => `Overwrote ${edits} (--force); copies are in ${dir}`,
-  warning: (message: string) => `monolith: warning: ${message}`,
-  revertAgain: (id: string) => `Run monolith --revert again to undo snapshot ${id} too`,
+  warning: (message: string) => `tesseract: warning: ${message}`,
+  revertAgain: (id: string) => `Run tesseract --revert again to undo snapshot ${id} too`,
   status: (id: string, path: string, pushedAt: string, gotAt: string | null) =>
     `${id} ↔ ${path} · pushed ${pushedAt || "never"} · got ${gotAt || "never"}`,
-  noBaseline: "The sandbox has no push baseline yet; run monolith --sync",
+  noBaseline: "The sandbox has no push baseline yet; run tesseract --sync",
   noChanges: "No sandbox changes to pull",
   changesHeader: (count: number) => `Sandbox changes (${count}):`,
-  pullHint: "Run monolith --pull to copy them here",
-  changesFailed: (error: string) => `monolith: could not read sandbox changes: ${error}`,
+  pullHint: "Run tesseract --pull to copy them here",
+  changesFailed: (error: string) => `tesseract: could not read sandbox changes: ${error}`,
   snapshotsHeader: (count: number) => `Snapshots (${count}):`,
   noSnapshots: "No snapshots yet",
   snapshotRow: (id: string, files: string, reverted: boolean) => `  ${id}  ${files}${reverted ? "  reverted" : ""}`,

@@ -14,6 +14,7 @@ export const PAGE_MESSAGES = {
   reconnect: "theone-reconnect",
   inputMode: "theone-input-mode",
   insets: "theone-insets",
+  immersive: "theone-immersive",
   paste: "theone-paste",
 } as const;
 export type PageMessageType = (typeof PAGE_MESSAGES)[keyof typeof PAGE_MESSAGES];

@@ -66,7 +66,7 @@ describe("doctor sections", () => {
   });
 });
 
-describe("monolith doctor", () => {
+describe("tesseract doctor", () => {
   it("reports docker, image, acceleration and sdk checks", async () => {
     const result = await runCli(sandbox, ["doctor", "--json"]);
     const report = JSON.parse(result.out.join("\n"));
@@ -82,7 +82,7 @@ describe("monolith doctor", () => {
     const result = await runCli(sandbox, ["doctor", "docker", "image"]);
     expect(result.code).toBe(1);
     expect(result.out).toContain("  FAIL Check failed: docker exploded");
-    expect(result.out).toContain("  FAIL theone/sandbox:latest is not on this computer: Run monolith sandbox build (or --pull) to get it");
+    expect(result.out).toContain("  FAIL theone/sandbox:latest is not on this computer: Run tesseract sandbox build (or --pull) to get it");
     expect(result.out.at(-1)).toBe("2 problems found.");
   });
 

@@ -261,7 +261,7 @@ const GEMINI_MIME_TYPES: Record<string, string> = {
   "audio/wave": "audio/wav",
 };
 const GEMINI_KEY_ERRORS = /API_KEY_INVALID|API_KEY_EXPIRED/;
-export const GEMINI_KEY_MISSING = "Gemini API key is not set (save one in the mobile or desktop app, or set GEMINI_API_KEY)";
+export const GEMINI_KEY_MISSING = "Gemini API key is not set (save one in the mobile or desktop app, or run tesseract --gemini-key=KEY)";
 
 type GeminiResponse = { candidates?: Array<{ content?: { parts?: Array<{ text?: unknown }> } }>; promptFeedback?: { blockReason?: unknown } };
 
@@ -381,7 +381,7 @@ const isSttProfile = (value: string | null): value is SttProfile => STT_PROFILES
 /** Runs one transcription at a time (FIFO) under the selected resource profile. */
 export class TranscriptionService {
   private profile: SttProfile;
-  /** Saved from an app through `PUT /v1/stt`; wins over GEMINI_API_KEY. */
+  /** Saved from an app or `tesseract --gemini-key` through `PUT /v1/stt`. */
   private geminiKey: string | null;
   private busy = false;
   private queued = 0;
@@ -426,7 +426,7 @@ export class TranscriptionService {
       gemini: {
         configured: this.geminiApiKey() !== null,
         model: this.config.stt.geminiModel,
-        source: this.geminiKey ? "settings" : this.config.stt.geminiApiKey ? "env" : null,
+        source: this.geminiKey ? "settings" : null,
       },
     };
   }
@@ -453,7 +453,7 @@ export class TranscriptionService {
   }
 
   private geminiApiKey(): string | null {
-    return this.geminiKey ?? this.config.stt.geminiApiKey;
+    return this.geminiKey;
   }
 
   async transcribe(input: CreateTranscription): Promise<Transcription> {

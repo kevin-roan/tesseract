@@ -311,8 +311,8 @@ A resource profile keeps transcription from slowing the host. `GET /v1/stt` repo
 `PUT /v1/stt { profile }` switches it at runtime (stored in the `settings` table, key
 `stt.profile`; `THEONE_STT_PROFILE`, default `eco`, applies until then) and publishes
 `stt.updated`. The same request takes `geminiApiKey` (string to save, `null` to forget): the mobile
-and desktop apps set the Gemini key this way, stored under `stt.geminiApiKey` and preferred over
-`GEMINI_API_KEY`; `GET /v1/stt` only reports `gemini.configured` and `gemini.source`. `cpus` is `os.availableParallelism()` capped by the cgroup v2 `cpu.max` quota.
+and desktop apps (and `tesseract --gemini-key=KEY`) set the Gemini key this way, stored under `stt.geminiApiKey`
+(there is no env var for it); `GET /v1/stt` only reports `gemini.configured` and `gemini.source`. `cpus` is `os.availableParallelism()` capped by the cgroup v2 `cpu.max` quota.
 
 | Profile | Model | Threads (`-t`) | Priority |
 |---|---|---|---|
@@ -550,7 +550,7 @@ Repositories are treated as hostile input:
   repository's config gets empty `clean`/`smudge`/`process` and
   `required=false`, so listing a project never runs commands from its
   `.git/config` or attributes.
-- Children never see `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, `THEONE_STT_API_KEY` or `GEMINI_API_KEY`. This prevents
+- Children never see `THEONE_TOKEN`, `THEONE_VNC_PASSWORD` or `THEONE_STT_API_KEY`. This prevents
   accidental leaks only: code running as `dev` can still read the token file
   and the controller's `/proc/<pid>/environ` ([security-model](security-model.md#same-user-limit)).
 

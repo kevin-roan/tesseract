@@ -22,7 +22,7 @@ Decisions that need the owner's call come first.
 | Scoped tickets | `POST /v1/auth/ticket { scope }` binding a ticket to one socket or download (protocol change) | tickets open any socket or download for 60 s |
 | Web build tab bar | Fix `apps/mobile/src/components/app-tabs.web.tsx` (user-owned) as described in [mobile-app](architecture/mobile-app.md#web-build) | every tab route blank on web; native unaffected |
 | Desktop installer signing | Sign the Windows NSIS installer (Authenticode certificate, `CSC_*` / `WIN_CSC_*`) and the macOS app with a Developer ID so Gatekeeper and SmartScreen stop warning; macOS notifications also need a signed app | macOS: hardened runtime, notarization runs only when the `APPLE_*` variables are set, the dmg itself is unsigned; Windows: unsigned ([blueprint §12.5](architecture/00-blueprint.md#125-packaging-and-cli-install)) |
-| Published sandbox image | Publish `theone/sandbox` to a registry (CI job, `-DGGML_NATIVE=OFF`, multi-arch, fixed `WITH_*` sets or several tags) so the setup wizard can pull about 3 GB instead of building about 7 GB locally | the wizard and `monolith sandbox build` build locally; **Pull** appears only when `sandboxImageRef` / `MONOLITH_SANDBOX_IMAGE_REF` is set |
+| Published sandbox image | Publish `theone/sandbox` to a registry (CI job, `-DGGML_NATIVE=OFF`, multi-arch, fixed `WITH_*` sets or several tags) so the setup wizard can pull about 3 GB instead of building about 7 GB locally | the wizard and `tesseract sandbox build` build locally; **Pull** appears only when `sandboxImageRef` / `MONOLITH_SANDBOX_IMAGE_REF` is set |
 | Update feed | Host the electron-updater feed (`electron-builder.yml` → generic `https://downloads.monolith.dev/desktop`) or switch provider (GitHub releases) | URL configured, nothing published; `MONOLITH_DISABLE_UPDATES` turns checks off |
 
 
@@ -75,7 +75,7 @@ Decisions that need the owner's call come first.
 - **Done:** the Electron rebuild of the GTK app (every page, Settings, tray, deep links, command palette),
   the setup wizard (Docker install and checks, Claude login state, sandbox stack and image build with the
   `WITH_*` components, Android SDK / system image / AVD for the host emulator with KVM, WHPX or HVF checks,
-  pairing), the `monolith` CLI, installers for macOS (universal dmg), Windows (per-user NSIS) and Linux
+  pairing), the `tesseract` CLI, installers for macOS (universal dmg), Windows (per-user NSIS) and Linux
   (AppImage, deb), and the vitest + Playwright suites ([e2e-testing](runbooks/e2e-testing.md#desktop-app-appselectron)).
   Specs: [docs/electron](electron/README.md).
 - **Next:** run the wizard end to end on real macOS and Windows machines (Docker Desktop install, WSL 2,
@@ -88,6 +88,19 @@ Decisions that need the owner's call come first.
   `WITH_CHROMIUM` / `WITH_WINE` build args in the Dockerfile and `compose.yml`. Check that the image's
   `bun install --frozen-lockfile --filter @theone/controller` still works now that `apps/electron` is a workspace
   in `bun.lock` (the `controller-build` stage copies only `apps/mobile/package.json`).
+
+### Headless Mac server (production sandbox host)
+- **Why:** run the sandbox stack and the host shell on a dedicated Mac on the tailnet, without the desktop app.
+- **Done:** `tesseract server install|uninstall|status|pair` (LaunchAgent `dev.tesseract.host-shell` on macOS,
+  systemd user unit on Linux), `infra/scripts/deploy-mac` to build, copy and install from the Linux dev box,
+  macOS defaults for the host shell (emulator isolation `none`, GPU `host`, Homebrew scrcpy, the Tailscale.app
+  CLI), an arm64 sandbox image without the wine i386 layer and the x86-only Android build tools, and
+  `CLAUDE_CODE_OAUTH_TOKEN` passed to the sandbox for keychain logins
+  ([mac-server](runbooks/mac-server.md)).
+- **Next:** a first real deploy to a Mac (Apple silicon and Intel) through OrbStack and Docker Desktop;
+  a prebuilt multi-arch image in a registry so the Mac pulls instead of building; Android builds on an
+  arm64 sandbox (Google ships no arm64 Linux build-tools; options: `linux/amd64` emulation or a remote builder);
+  per-device tokens so one lost phone does not mean re-pairing everything.
 
 ## Medium term
 

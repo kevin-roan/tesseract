@@ -22,7 +22,7 @@ COPY packages/ packages/
 COPY apps/mobile/package.json apps/mobile/package.json
 COPY apps/controller/ apps/controller/
 # Only the controller's dependency graph is installed; the mobile manifest is present
-# solely so the frozen lockfile resolves.
+# solely so the frozen lockfile resolves (bun skips the other workspaces, which are not copied).
 RUN --mount=type=cache,id=theone-bun-cache,target=/root/.bun/install/cache \
     bun install --frozen-lockfile --filter @theone/controller
 RUN bun run --cwd apps/controller build \
@@ -126,17 +126,26 @@ FROM desktop AS electron
 ARG DEBIAN_FRONTEND=noninteractive
 # mono runs Squirrel.Windows tooling; without it NSIS, portable and zip targets still work.
 # electron-winstaller (Squirrel) requires a `wine64` command, which Debian's wine 10 only
-# ships under /usr/lib/wine.
+# ships under /usr/lib/wine. Wine needs the i386 packages and runs x86 Windows tools, so it
+# (and mono) is installed on amd64 only: arm64 images (Apple silicon) build Linux targets only.
 ARG WITH_MONO=true
 RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
-    dpkg --add-architecture i386 \
- && apt-get update \
- && packages=(dpkg-dev fakeroot fonts-wine libwine libwine:i386 osslsigncode rpm wine wine32:i386 wine64) \
- && if [ "${WITH_MONO}" = "true" ]; then packages+=(mono-complete); fi \
- && apt-get install -y --no-install-recommends "${packages[@]}" \
- && ln -sf /usr/lib/wine/wine64 /usr/local/bin/wine64 \
- && wine --version && wine64 --version
+    set -eux; \
+    packages=(dpkg-dev fakeroot osslsigncode rpm); \
+    if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
+      dpkg --add-architecture i386; \
+      packages+=(fonts-wine libwine libwine:i386 wine wine32:i386 wine64); \
+      if [ "${WITH_MONO}" = "true" ]; then packages+=(mono-complete); fi; \
+    else \
+      echo "wine needs amd64; skipping wine and mono on $(dpkg --print-architecture)"; \
+    fi; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends "${packages[@]}"; \
+    if command -v wine > /dev/null; then \
+      ln -sf /usr/lib/wine/wine64 /usr/local/bin/wine64; \
+      wine --version; wine64 --version; \
+    fi
 ENV WINEPREFIX=/home/dev/.wine \
     WINEARCH=win64 \
     WINEDEBUG=-all \
@@ -154,10 +163,15 @@ ENV JAVA_HOME=/opt/java/openjdk \
     ANDROID_HOME=/opt/android-sdk
 COPY --from=jdk /opt/java/openjdk /opt/java/openjdk
 # WITH_ANDROID=false still yields (empty) /opt/java/openjdk and /opt/android-sdk so the
-# COPY/ENV instructions of the android stage stay valid.
+# COPY/ENV instructions of the android stage stay valid. Google ships the Linux build-tools,
+# platform-tools and aapt2 for x86_64 only, so arm64 images get no SDK either (the android
+# stage installs Debian's adb there, which is enough to drive a linked host emulator).
 RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
-    if [ "${WITH_ANDROID}" != "true" ]; then \
+    if [ "$(dpkg --print-architecture)" != "amd64" ]; then \
+      echo "the Android SDK needs amd64; skipping it on $(dpkg --print-architecture)"; \
+    fi; \
+    if [ "${WITH_ANDROID}" != "true" ] || [ "$(dpkg --print-architecture)" != "amd64" ]; then \
       rm -rf "${JAVA_HOME}" && mkdir -p "${JAVA_HOME}" "${ANDROID_HOME}"; \
       exit 0; \
     fi; \
@@ -198,15 +212,16 @@ RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked 
 # default; WITH_WHISPER=false still yields an empty /opt/whisper so the COPY below stays valid.
 # WHISPER_MODELS lists the ggml models to download (space-separated): the STT profiles use
 # base (eco, balanced) and small (performance); ggml-model.bin links to the first one.
-# GGML_NATIVE=ON tunes for the build machine's CPU; pass WHISPER_CMAKE_ARGS=-DGGML_NATIVE=OFF
-# for an image that runs on other CPUs.
+# GGML_NATIVE=OFF keeps the binary portable (an image built on one machine, or under emulation
+# for another architecture, runs on any CPU of that architecture); pass
+# WHISPER_CMAKE_ARGS=-DGGML_NATIVE=ON to tune for the build machine's CPU instead.
 FROM ${DEBIAN_IMAGE} AS whisper
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG DEBIAN_FRONTEND=noninteractive
 ARG WITH_WHISPER=true
 ARG WHISPER_CPP_VERSION=1.7.6
 ARG WHISPER_MODELS="base small"
-ARG WHISPER_CMAKE_ARGS=-DGGML_NATIVE=ON
+ARG WHISPER_CMAKE_ARGS=-DGGML_NATIVE=OFF
 RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     mkdir -p /opt/whisper/bin /opt/whisper/models; \
@@ -238,6 +253,13 @@ ENV JAVA_HOME=/opt/java/openjdk \
     ANDROID_HOME=/opt/android-sdk \
     ANDROID_SDK_ROOT=/opt/android-sdk
 ENV PATH=${JAVA_HOME}/bin:${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools
+# No SDK off amd64 (see android-sdk): Debian's adb still links the host emulator.
+RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+    if [ "$(dpkg --print-architecture)" = "amd64" ]; then exit 0; fi; \
+    apt-get update \
+ && apt-get install -y --no-install-recommends adb \
+ && adb version
 
 FROM android AS flutter
 ARG DEV_UID

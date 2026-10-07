@@ -563,4 +563,5 @@ export const sampleSandboxAndroidStatus: SandboxAndroidStatus = {
   emulator: sampleEmulator,
   adbSerial: "127.0.0.1:15555",
   adbConnected: true,
+  shared: [{ serial: "emulator-5556", model: "sdk gphone64 x86 64", adbSerial: "127.0.0.1:15557", adbConnected: true }],
 };

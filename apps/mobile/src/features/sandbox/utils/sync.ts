@@ -62,10 +62,10 @@ export const SYNC_REQUEST_PREVIEW = 5;
 export const SYNC_CONFLICT_PREVIEW = 3;
 
 export const SYNC_COPY = {
-  neverPushed: "Run monolith --sync in the project folder on your computer",
+  neverPushed: "Run tesseract --sync in the project folder on your computer",
   upToDate: "Host is up to date",
   hostUnchanged: "No changes on your computer",
-  notLinked: "Not linked — run monolith --sync on your computer",
+  notLinked: "Not linked — run tesseract --sync on your computer",
   offline: "Desktop companion offline — the request waits until it connects",
   pending: "Waiting for Monolith on your computer…",
   inProgress: "A sync is already in progress",

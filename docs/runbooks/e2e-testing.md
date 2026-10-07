@@ -18,7 +18,7 @@ the compose files or the controller's process handling.
 CLI, UI helpers on happy-dom, lifecycle through the real entrypoint, hardening,
 and `@theone/client` against a live controller) and `@theone/mobile` (jest),
 `@monolith/electron` (vitest: a node project for `src/core`, `src/main`, `src/shared`,
-the `monolith` CLI, the build scripts and the architecture/IPC contract tests, and a happy-dom
+the `tesseract` CLI, the build scripts and the architecture/IPC contract tests, and a happy-dom
 project for the renderer; no display and no Docker needed).
 Coverage: `bun test --coverage` in a bun package, `bunx jest --coverage` in
 `apps/mobile`.
@@ -130,7 +130,7 @@ running stack doesn't skip the wizard. Docker resources created by the suites ar
 | `shell.spec.ts` | a finished setup opens the main shell; Settings from the status row; a fresh profile opens the wizard | — |
 | `preferences.spec.ts` | switching Settings pages and the theme; the speech-to-text profile; the Claude accounts of this computer | — |
 | `onboarding.spec.ts` | fresh profile → Welcome; the Docker step detects the engine and Compose; the Sandbox step shows the components and runs a simulated build (fixtures); the Android step lists packages from a local fixture repository (served over HTTP and passed in with `MONOLITH_ANDROID_REPOSITORY_URL` / `MONOLITH_ANDROID_SYSIMG_URL`), accepts the license, installs into a temporary SDK and writes the AVD; **Open Monolith** on the last step lands on the shell and is remembered; a configured connection skips the wizard and reaches the sandbox | Docker step: Docker. Android step: Linux x64. Live test: a stack |
-| `cli.spec.ts` | the compiled `monolith` (built to a temp dir, or `MONOLITH_E2E_CLI`): version and help, exit codes, `config` in a temporary HOME (token redaction), `doctor`, `android images` against the fixture repository, `sandbox status` for an empty `monolith-test-*` project and for the e2e stack, `pair`, `open` (launch recorder, `monolith://` fallback) | Docker / a stack for some tests |
+| `cli.spec.ts` | the compiled `tesseract` (built to a temp dir, or `MONOLITH_E2E_CLI`): version and help, exit codes, `config` in a temporary HOME (token redaction), `doctor`, `android images` against the fixture repository, `sandbox status` for an empty `monolith-test-*` project and for the e2e stack, `pair`, `open` (launch recorder, `monolith://` fallback) | Docker / a stack for some tests |
 | `packaging.spec.ts` | `electron-builder.yml` (CLI and sandbox context as extra resources, universal dmg, per-user NSIS with the PATH macros, AppImage + deb); the NSIS PATH macros under makensis + wine; the built AppImage contains the app, the CLI binaries and the sandbox context, its CLI reports the app version, it starts and exits with `--quit` and renders the wizard | Linux x64; wine for the NSIS test |
 | `app.spec.ts` | visual snapshots of every page, two Settings sections and the light scheme on fixtures, compared with `e2e/__snapshots__/<name>.png` (pixelmatch threshold 0.1, at most 0.5 % of pixels); live: connect from Settings, every page, overview stats, create a project, start and stop a process, a terminal running `echo hi`, shared files, the display over VNC, saving preferences | live part: a stack |
 
@@ -144,10 +144,10 @@ Tests that need something missing are skipped with the reason, not failed. Live 
 | `THEONE_E2E_URL`, `THEONE_E2E_TOKEN`, `THEONE_E2E_PROJECT`, `THEONE_E2E_ENV_FILE`, `THEONE_E2E_IMAGE` | the live stack; `bun run e2e --electron[-only]` sets them. With a kept stack (`--keep`), export them yourself: URL `http://127.0.0.1:17700`, the harness token, the printed env file |
 | `MONOLITH_UPDATE_SNAPSHOTS=1` | rewrite the baselines in `e2e/__snapshots__/` (also Playwright's `--update-snapshots`); a missing baseline is written on the first run |
 | `MONOLITH_E2E_DIST` | `stale` (default): rebuild the AppImage/deb only when sources are newer; `always`; `never` (skip the packaged-app tests when nothing is built) |
-| `MONOLITH_E2E_CLI` | path of a prebuilt `monolith` binary instead of compiling one |
+| `MONOLITH_E2E_CLI` | path of a prebuilt `tesseract` binary instead of compiling one |
 
 Related checks outside Playwright: `bun run electron:smoke` checks the built AppImage/deb (files, sandbox context
-against its manifest, update feed, `monolith --version`, deb postinst and desktop entry, a headless render of the
+against its manifest, update feed, `tesseract --version`, deb postinst and desktop entry, a headless render of the
 wizard); `bun run --cwd apps/electron check:nsis` runs the NSIS PATH macros under wine;
 `bun run --cwd apps/electron snapshot` / `diff` compare pages with `docs/electron/reference/`
 ([conventions §10](../electron/conventions.md#10-snapshot-and-diff-workflow)).

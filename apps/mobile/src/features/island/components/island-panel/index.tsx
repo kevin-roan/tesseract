@@ -13,8 +13,9 @@ import { MaxFontSizeMultiplier } from "@/theme";
 import type { IslandState } from "@/modules/theone-island";
 
 import { useIslandSummary } from "../../hooks/use-island-summary";
+import { useNow } from "../../hooks/use-now";
 import { HEADLINE_MIN_FONT_SCALE, ISLAND_PANEL_GLYPH_SIZE } from "../../utils/constants";
-import { tokensTodayLabel } from "../../utils/format";
+import { clockLabel, otherChats, tokensTodayLabel } from "../../utils/format";
 import IslandButton from "../island-button";
 import createStyles from "./styles";
 
@@ -24,7 +25,10 @@ export type IslandPanelProps = {
   hasDraft: boolean;
   stopping: boolean;
   width: number;
+  height: number;
   onOpen: () => void;
+  /** Opens one of the other running chats listed under the headline. */
+  onOpenRun: (runId: string) => void;
   onStop: () => void;
   onCapture: () => void;
   onAttach: () => void;
@@ -40,7 +44,9 @@ const IslandPanel = ({
   hasDraft,
   stopping,
   width,
+  height,
   onOpen,
+  onOpenRun,
   onStop,
   onCapture,
   onAttach,
@@ -54,9 +60,12 @@ const IslandPanel = ({
   const summary = useIslandSummary(state, sharedCount, hasDraft);
   const openRun = useHapticPress(state.runs.length > 0 ? onOpen : undefined);
   const today = tokensTodayLabel(state.usage.todayTokens);
+  const chats = otherChats(state.runs);
+  const more = summary.more - chats.length;
+  const now = useNow(chats.length > 0);
 
   return (
-    <Animated.View exiting={motion.fadeOut} style={[styles.panel, { width }, style]} testID={testID}>
+    <Animated.View exiting={motion.fadeOut} style={[styles.panel, { width, height }, style]} testID={testID}>
       <View style={styles.top}>
         <Text style={styles.meta} numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
           {state.sandboxName}
@@ -104,14 +113,39 @@ const IslandPanel = ({
             <Text style={styles.caption} numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
               {summary.caption}
             </Text>
-            {summary.more > 0 ? (
+            {more > 0 ? (
               <Text style={styles.more} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
-                +{summary.more}
+                +{more}
               </Text>
             ) : null}
           </View>
         </View>
       </PressableScale>
+
+      {chats.length > 0 ? (
+        <View style={styles.chats}>
+          {chats.map((chat) => (
+            <PressableScale
+              key={chat.id}
+              depth="control"
+              accessibilityRole="button"
+              accessibilityLabel={chat.title}
+              accessibilityHint="Opens this chat"
+              onPress={() => onOpenRun(chat.id)}
+              style={styles.chat}
+              testID={`island-chat-${chat.id}`}
+            >
+              <View style={styles.chatDot} />
+              <Text style={styles.chatTitle} numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
+                {chat.title}
+              </Text>
+              <Text style={styles.chatMeta} numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
+                {chat.project ? `${chat.project} · ${clockLabel(chat.startedAt, now)}` : clockLabel(chat.startedAt, now)}
+              </Text>
+            </PressableScale>
+          ))}
+        </View>
+      ) : null}
 
       <View style={styles.actions}>
         <IslandButton icon={CropIcon} label="Capture" onPress={onCapture} />

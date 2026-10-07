@@ -180,6 +180,7 @@ when the socket cannot be opened within 3 s.
 | `THEONE_EMULATOR_GPU` | `swiftshader_indirect` | `-gpu` |
 | `THEONE_EMULATOR_ISOLATION` | `netns` | `netns`: the emulator runs in its own user + network namespace with filtered egress (below); `none`: the old behaviour, emulator on the host network (**the guest, and so the linked sandbox, can reach the host's loopback, LAN and tailnet**) |
 | `THEONE_EMULATOR_ALLOW_NETS` | — | comma-separated CIDRs the isolated guest may reach although they are private (e.g. `192.168.1.0/24` for a LAN backend); invalid entries stop startup |
+| `THEONE_ANDROID_SHARE_EMULATORS` | `off` | `on`: the sandbox link also tunnels the host's other emulators (§2.3, "Shared host emulators") |
 | `THEONE_EMULATOR_ADB_PORT` | a free port (kept in the runtime dir across daemon restarts) | host loopback port of the adb bridge; serial `127.0.0.1:<port>` |
 
 AVDs come from `emulator -list-avds` (with `ANDROID_SDK_ROOT`/`ANDROID_HOME` set to the
@@ -303,8 +304,10 @@ never holds a host credential: it only ever sees bytes of the emulator's adbd po
 Messages (text JSON, zod-validated, discriminated on `type`):
 
 - host → sandbox: `{type:"hello", hostId, version}`, `{type:"emulator", emulator: EmulatorInfo}`
-  (on connect and on every change), `{type:"refuse", streamId, message}`, `{type:"pong"}`.
-- sandbox → host: `{type:"open", streamId}`, `{type:"ping"}` (every 20 s).
+  (on connect and on every change), `{type:"devices", devices: SharedEmulator[]}` (on connect and on
+  every change; `[]` unless sharing is on), `{type:"refuse", streamId, message}`, `{type:"pong"}`.
+- sandbox → host: `{type:"open", streamId, device?}` (`device`: a shared emulator's host serial),
+  `{type:"ping"}` (every 20 s).
 
 A newer link replaces an older one (old closed with 4000 `replaced`). While linked and the
 emulator is `running`, the controller listens on `127.0.0.1:$THEONE_ADB_TUNNEL_PORT`
@@ -331,6 +334,24 @@ stream buffers at most 4 MiB in each direction (TCP bytes before the data socket
 bytes the local adb client has not read yet); beyond that it is closed. A second data socket
 for an attached stream is closed without touching the first.
 
+**Shared host emulators** (`THEONE_ANDROID_SHARE_EMULATORS=on` on the host daemon, off by
+default). The daemon polls `adb devices -l` every 5 s (and on every emulator change) and shares
+each online `emulator-<port>` (even console port 5554-5682, at most 64) except the one already
+tunnelled as the host emulator: `SharedEmulator { serial: "emulator-<port>", model }`. A
+non-isolated emulator the daemon adopted in `netns` mode (refused above) is shared this way. The
+controller listens on `127.0.0.1:<THEONE_ADB_TUNNEL_PORT + 1 + (port − 5554)/2>` for each
+(`emulator-5554` → `15556`, `emulator-5556` → `15557`, …; `sharedEmulatorTunnelPort`) and runs
+`adb connect` on it; a listener whose port is taken is skipped (logged). Its connections send
+`open` with `device`, and the host pipes them to `127.0.0.1:<port + 1>` (refused with
+`That emulator is not shared by the host` when it is not in the current list). Same limits,
+buffers and reconnects as the host emulator's tunnel. `*-android` runs use the host emulator's
+tunnel when it is usable, else the first shared emulator (`ANDROID_SERIAL`). Emulators started
+outside the daemon normally require adb authorization: the first connection shows the "Allow USB
+debugging?" prompt on the emulator screen, and `adb devices` in the sandbox lists the serial as
+`unauthorized` until it is accepted. **Risk:** these emulators run on the host network (guest
+`10.0.2.2` is the host's `127.0.0.1`), so with sharing on the sandbox can reach the host's
+loopback services, including its unauthenticated adb server on `5037` (USB phones), LAN and tailnet.
+
 Exposure: the tunnel listener `127.0.0.1:15555` is plain adb with no authentication. In
 userspace-tailscale mode tailscaled forwards inbound tailnet TCP to loopback ports, so a
 tailnet peer your ACLs allow on that port reaches the emulator's adbd (install apps, shell,
@@ -338,7 +359,7 @@ read app data) while the tunnel is up. Grant the phone only `:443` (and `:5901`)
 [security-model.md](security-model.md#exposure-a1-a2).
 
 `SandboxAndroidStatus { linked: boolean, hostId: string | null, emulator: EmulatorInfo | null,
-adbSerial: string | null, adbConnected: boolean }` (`GET /v1/android` on the controller).
+adbSerial: string | null, adbConnected: boolean, shared: { serial, model, adbSerial, adbConnected }[] }` (`GET /v1/android` on the controller).
 
 Env on the controller: `THEONE_ADB_TUNNEL_PORT` (`15555`), `THEONE_ADB` (`adb`), `THEONE_FLUTTER` (`flutter`).
 App runs of `*-android` targets get `ANDROID_SERIAL=127.0.0.1:<port>`.

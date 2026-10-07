@@ -71,6 +71,14 @@ export function insetsMessage({ top, bottom }: PageInsets): { type: string; top:
   return { type: PAGE_MESSAGES.insets, top, bottom };
 }
 
+export function immersiveScript(immersive: boolean): string {
+  return pageCallScript("setImmersive", immersive);
+}
+
+export function immersiveMessage(immersive: boolean): { type: string; immersive: boolean } {
+  return { type: PAGE_MESSAGES.immersive, immersive };
+}
+
 export function inputModeScript(mode: InputMode): string {
   return pageCallScript("setInputMode", mode);
 }

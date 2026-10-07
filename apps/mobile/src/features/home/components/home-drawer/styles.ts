@@ -45,15 +45,23 @@ export default function createStyles(theme: Theme) {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: theme.colors.divider,
     },
-    newChat: {
+    profile: {
+      flex: 1,
       flexDirection: "row",
       alignItems: "center",
-      gap: theme.spacing.sm,
+      gap: theme.spacing.md,
       minHeight: ControlHeight.lg,
-      paddingHorizontal: theme.spacing.lg,
+    },
+    userName: {
+      flexShrink: 1,
+    },
+    settings: {
+      alignItems: "center",
+      justifyContent: "center",
+      width: ControlHeight.lg,
+      height: ControlHeight.lg,
       borderRadius: theme.radius.pill,
       borderCurve: "continuous",
-      backgroundColor: theme.colors.accent,
     },
   });
 }

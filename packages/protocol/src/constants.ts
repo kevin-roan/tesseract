@@ -16,6 +16,10 @@ export const VNC_WS_SUBPROTOCOL = "binary" as const;
 export const DEFAULT_ADB_TUNNEL_PORT = 15555;
 /** Host emulator console port; adbd listens on +1 and the serial is `emulator-<port>`. */
 export const DEFAULT_EMULATOR_PORT = 5554;
+/** Console ports an emulator can use (even, 5554-5682); the host adb serial of one is `emulator-<port>`. */
+export const EMULATOR_PORT_RANGE = { min: 5554, max: 5682 } as const;
+/** Host adb serial of a plain emulator (one the host shares with `THEONE_ANDROID_SHARE_EMULATORS`). */
+export const EMULATOR_SERIAL_PATTERN = /^emulator-(\d{4})$/;
 export const DEFAULT_EMULATOR_GPU = "swiftshader_indirect" as const;
 /** Close code of an Android link replaced by a newer one. */
 export const ANDROID_LINK_REPLACED_CLOSE_CODE = 4000;
@@ -102,8 +106,8 @@ export const STT_PROFILES = ["off", "eco", "balanced", "performance"] as const;
 export const STT_ENGINE_NAMES = ["whisper.cpp", "openai-compatible", "gemini"] as const;
 /** `native`: the controller's own engine (whisper.cpp / openai-compatible); `gemini`: Gemini first, native when it fails. */
 export const STT_PROVIDERS = ["native", "gemini"] as const;
-/** Where the Gemini key comes from: `settings` (saved from the mobile or desktop app, wins) or `env` (GEMINI_API_KEY). */
-export const GEMINI_KEY_SOURCES = ["settings", "env"] as const;
+/** Where the Gemini key comes from: `settings` (saved from the mobile or desktop app, or `tesseract --gemini-key`). */
+export const GEMINI_KEY_SOURCES = ["settings"] as const;
 export const AGENT_RUN_EVENT_KINDS = ["text", "tool_use", "tool_result", "system"] as const;
 export const LOG_STREAMS = ["stdout", "stderr", "system"] as const;
 export const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
@@ -322,6 +326,8 @@ export const LIMITS = {
   androidLinkReconnectMaxMs: 30_000,
   /** The host must open the data socket of an adb stream within this long. */
   androidStreamOpenTimeoutMs: 10_000,
+  /** Other host emulators shared over the Android link at most (one console port pair each in 5554-5682). */
+  maxSharedEmulators: 64,
   /** A screen socket buffering more than this skips frames until it drains. */
   androidScreenBackpressureBytes: 512 * 1024,
   maxAndroidTextLength: 300,

@@ -211,7 +211,7 @@ export default function ProjectScreen() {
           <Section title={PROJECT_COPY.sections.builds}>
             {detail.builds.map((build) => (
               <MotionItem key={build.id}>
-                <BuildCard build={build} onPress={() => detail.nav.build(build.id)} />
+                <BuildCard build={build} projectName={project.name} onPress={() => detail.nav.build(build.id)} />
               </MotionItem>
             ))}
           </Section>

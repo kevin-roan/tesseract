@@ -60,6 +60,7 @@ function hub(overrides: object = {}) {
     runningProcesses: [],
     stoppingId: null,
     processPress: jest.fn(() => undefined),
+    projectName: jest.fn((projectId: string | null) => projectId),
     stopProcess: jest.fn(),
     sessions: [],
     closingId: null,
@@ -345,6 +346,7 @@ describe("ProjectsScreen", () => {
       running: { processes: [], builds: [], runs: [] },
       runningCount: 0,
       processPress: jest.fn(() => undefined),
+    projectName: jest.fn((projectId: string | null) => projectId),
       view: "projects",
       viewOptions: [
         { value: "projects", label: "Projects · 0" },
@@ -487,6 +489,7 @@ describe("TasksScreen", () => {
       finished: none,
       finishedCount: 0,
       processPress: jest.fn(() => undefined),
+    projectName: jest.fn((projectId: string | null) => projectId),
       stopProcess: jest.fn(),
       stoppingId: null,
       stopError: null,
@@ -528,9 +531,13 @@ describe("TasksScreen", () => {
       finished: { processes: [{ ...sampleProcess, id: "prc_done", state: "exited" }], builds: [finishedBuild], runs: [] },
       finishedCount: 2,
       stopError: "Process is not running",
+      projectName: jest.fn(() => "Billing portal"),
     });
     mockTasks.mockReturnValue(state);
     await render(<TasksScreen />);
+
+    expect(screen.getAllByText(/^Billing portal · /).length).toBeGreaterThan(0);
+    expect(screen.queryByText(new RegExp(`^${sampleAgentRun.projectId} · `))).toBeNull();
 
     expect(screen.getByText("Process is not running")).toBeOnTheScreen();
     await fireEvent.press(screen.getByLabelText(`Stop ${sampleProcess.name}`));

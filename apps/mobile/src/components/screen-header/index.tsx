@@ -18,6 +18,7 @@ export type HeaderAction = {
   onPress: () => void;
   disabled?: boolean;
   tone?: Tone;
+  bare?: boolean;
 };
 
 export type ScreenHeaderProps = {

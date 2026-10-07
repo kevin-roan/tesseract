@@ -30,8 +30,8 @@ describe("displayInsets", () => {
     expect(displayInsets({ barBottom: 111.4, safeBottom: 34, fullscreen: false })).toEqual({ top: 112, bottom: 34 });
   });
 
-  it("gives the page the whole height in full screen but keeps the home indicator clear", () => {
-    expect(displayInsets({ barBottom: 111, safeBottom: 21, fullscreen: true })).toEqual({ top: 0, bottom: 21 });
+  it("needs no insets in full screen, where the stage already sits inside the safe area", () => {
+    expect(displayInsets({ barBottom: 111, safeBottom: 21, fullscreen: true })).toEqual({ top: 0, bottom: 0 });
   });
 
   it("never reports negative insets", () => {

@@ -10,18 +10,20 @@ import { stateLabel, terminalTone } from "../../utils/states";
 
 export type TerminalCardProps = {
   terminal: TerminalInfo;
+  /** Display name of the session's project; the project id stands in when omitted. */
+  projectName?: string | null;
   onOpen: () => void;
   onClose?: () => void;
   closing?: boolean;
 };
 
-const TerminalCard = ({ terminal, onOpen, onClose, closing = false }: TerminalCardProps) => (
+const TerminalCard = ({ terminal, projectName, onOpen, onClose, closing = false }: TerminalCardProps) => (
   <ResourceCard
     icon={terminal.kind === "claude" ? SparkleIcon : TerminalWindowIcon}
     title={terminal.title || terminalKindLabel(terminal.kind)}
     subtitle={terminal.cwd}
     monospaceSubtitle
-    meta={terminalMeta(terminal)}
+    meta={terminalMeta(terminal, projectName)}
     badge={{ label: stateLabel(terminal.state), tone: terminalTone(terminal.state) }}
     onPress={onOpen}
     footer={

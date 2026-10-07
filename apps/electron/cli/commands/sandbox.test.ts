@@ -84,7 +84,7 @@ describe("build helpers", () => {
   });
 });
 
-describe("monolith sandbox", () => {
+describe("tesseract sandbox", () => {
   it("shows the stack status by default", async () => {
     core.composeStatus.mockResolvedValue(STATUS);
     const result = await runCli(sandbox, ["sandbox", "--json"]);

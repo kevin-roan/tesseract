@@ -5,9 +5,12 @@ import {
   createId,
   LIMITS,
   parseJsonWith,
+  sharedEmulatorTunnelPort,
   type AndroidLinkSandboxMessage,
   type EmulatorInfo,
   type SandboxAndroidStatus,
+  type SandboxSharedEmulator,
+  type SharedEmulator,
 } from "@theone/protocol";
 import { run, resolveExecutable } from "../core/exec";
 import type { Logger } from "../core/logger";
@@ -34,17 +37,24 @@ export type AndroidLinkOptions = {
   reconnectIntervalMs?: number;
 };
 
-type TunnelSocket = Socket<{ streamId: string }>;
+/** `device`: the host serial of a shared emulator; null for the host emulator. */
+type TunnelData = { streamId: string; device: string | null };
+type TunnelSocket = Socket<TunnelData>;
 
 type Link = {
   session: LinkSession;
   hostId: string | null;
   emulator: EmulatorInfo | null;
+  shared: SharedEmulator[];
   ping: ReturnType<typeof setInterval>;
 };
 
+/** One sandbox loopback listener, tunnelled to the host emulator or to one shared emulator. */
+type Tunnel = { device: string | null; serial: string; listener: TCPSocketListener<TunnelData> };
+
 type Stream = {
   id: string;
+  device: string | null;
   socket: TunnelSocket;
   peer: StreamPeer | null;
   inbound: Uint8Array[];
@@ -71,13 +81,17 @@ export function adbListsDevice(output: string, serial: string): boolean {
   });
 }
 
+const MAIN_TUNNEL = "";
+const tunnelKey = (device: string | null) => device ?? MAIN_TUNNEL;
+
 /**
  * The sandbox end of the Android link (app-runs-and-emulator.md §2.3): tracks the host's
- * emulator and, while it is running, tunnels `127.0.0.1:<adbTunnelPort>` to its adbd.
+ * emulator and, while it is running, tunnels `127.0.0.1:<adbTunnelPort>` to its adbd; every
+ * other emulator the host shares gets its own port right after it (`sharedEmulatorTunnelPort`).
  */
 export class AndroidLinkService {
   private link: Link | null = null;
-  private listener: TCPSocketListener<{ streamId: string }> | null = null;
+  private readonly tunnels = new Map<string, Tunnel>();
   private readonly streams = new Map<string, Stream>();
   private queue: Promise<void> = Promise.resolve();
   private readonly pingIntervalMs: number;
@@ -98,54 +112,82 @@ export class AndroidLinkService {
     this.reconnectIntervalMs = options.reconnectIntervalMs ?? RECONNECT_INTERVAL_MS;
   }
 
+  /** The adb serial of the host emulator's tunnel. */
   get serial(): string {
     return `127.0.0.1:${this.config.adbTunnelPort}`;
+  }
+
+  /** The serial `*-android` runs use: the host emulator's tunnel, else the first shared emulator's. */
+  get runSerial(): string {
+    if (this.mainReason() === null) return this.serial;
+    return this.sharedTunnels()[0]?.serial ?? this.serial;
   }
 
   /** Why `*-android` targets cannot run now, or null when they can. */
   unavailableReason(): string | null {
     if (!resolveExecutable(this.config.adbBin)) return "adb is not installed";
+    const reason = this.mainReason();
+    return reason !== null && this.sharedTunnels().length > 0 ? null : reason;
+  }
+
+  private mainReason(): string | null {
     if (!this.link) return "Link the host Android emulator first";
     if (this.link.emulator?.state !== "running") return "Start the emulator on the host";
     if (!this.link.emulator.isolated) return "The host emulator is not isolated; start it from the app";
     return null;
   }
 
+  private sharedTunnels(): Tunnel[] {
+    return [...this.tunnels.values()].filter((tunnel) => tunnel.device !== null);
+  }
+
   async status(): Promise<SandboxAndroidStatus> {
-    const adbConnected = await this.ensureConnected();
+    const listed = await this.ensureConnected();
     const link = this.link;
+    const shared: SandboxSharedEmulator[] = [];
+    for (const device of link?.shared ?? []) {
+      const tunnel = this.tunnels.get(tunnelKey(device.serial));
+      if (tunnel) shared.push({ ...device, adbSerial: tunnel.serial, adbConnected: listed.has(tunnel.serial) });
+    }
+    const main = this.tunnels.get(MAIN_TUNNEL);
     return {
       linked: link !== null,
       hostId: link?.hostId ?? null,
       emulator: link?.emulator ?? null,
-      adbSerial: this.listener !== null ? this.serial : null,
-      adbConnected,
+      adbSerial: main ? main.serial : null,
+      adbConnected: main !== undefined && listed.has(main.serial),
+      shared,
     };
   }
 
   /**
-   * Re-runs `adb connect` while tunnelled when the adb server lost the device (e.g. it was restarted).
-   * Reconnects run on the tunnel queue and at most once per `reconnectIntervalMs`, however often status is polled.
+   * Re-runs `adb connect` for tunnels the adb server lost (e.g. it was restarted) and returns the tunnel
+   * serials adb lists as `device`. Reconnects run on the tunnel queue and at most once per
+   * `reconnectIntervalMs`, however often status is polled.
    */
-  async ensureConnected(): Promise<boolean> {
-    if (!this.listener) return false;
-    if (await this.adbListsTunnel()) return true;
+  async ensureConnected(): Promise<Set<string>> {
+    if (this.tunnels.size === 0) return new Set();
+    let listed = await this.listedTunnels();
+    if (listed.size === this.tunnels.size) return listed;
     const now = Date.now();
-    if (now - this.lastReconnectAt < this.reconnectIntervalMs) return false;
+    if (now - this.lastReconnectAt < this.reconnectIntervalMs) return listed;
     this.lastReconnectAt = now;
     const reconnect = this.queue
       .then(async () => {
-        if (this.listener && !(await this.adbListsTunnel())) await this.adb("connect");
+        const current = await this.listedTunnels();
+        for (const tunnel of this.tunnels.values()) if (!current.has(tunnel.serial)) await this.adb("connect", tunnel.serial);
       })
       .catch((error) => this.logger.warn("android tunnel reconnect failed", { error }));
     this.queue = reconnect;
     await reconnect;
-    return this.listener !== null && (await this.adbListsTunnel());
+    listed = await this.listedTunnels();
+    return listed;
   }
 
-  private async adbListsTunnel(): Promise<boolean> {
+  private async listedTunnels(): Promise<Set<string>> {
     const devices = await run([this.config.adbBin, "devices"], { timeoutMs: ADB_TIMEOUT_MS });
-    return devices.ok && adbListsDevice(devices.stdout, this.serial);
+    const serials = [...this.tunnels.values()].map((tunnel) => tunnel.serial);
+    return new Set(devices.ok ? serials.filter((serial) => adbListsDevice(devices.stdout, serial)) : []);
   }
 
   /** A host link connected; an older one is closed with 4000 `replaced`. */
@@ -158,7 +200,7 @@ export class AndroidLinkService {
       this.logger.info("android link replaced", { hostId: previous.hostId ?? undefined });
     }
     const ping = setInterval(() => this.sendLink(session, { type: "ping" }), this.pingIntervalMs);
-    this.link = { session, hostId: null, emulator: null, ping };
+    this.link = { session, hostId: null, emulator: null, shared: [], ping };
     this.reconcile();
     return session;
   }
@@ -179,6 +221,10 @@ export class AndroidLinkService {
         return;
       case "emulator":
         link.emulator = message.emulator;
+        this.reconcile();
+        return;
+      case "devices":
+        link.shared = message.devices;
         this.reconcile();
         return;
       case "refuse":
@@ -271,38 +317,56 @@ export class AndroidLinkService {
     this.queue = this.queue.then(() => this.apply()).catch((error) => this.logger.warn("android tunnel update failed", { error }));
   }
 
+  /** Tunnels wanted now, by `tunnelKey`: the host emulator while it runs, plus every shared emulator. */
+  private wantedTunnels(): Map<string, { device: string | null; port: number }> {
+    const wanted = new Map<string, { device: string | null; port: number }>();
+    const link = this.link;
+    if (this.closed || !link) return wanted;
+    if (link.emulator?.state === "running") wanted.set(MAIN_TUNNEL, { device: null, port: this.config.adbTunnelPort });
+    for (const device of link.shared) {
+      const port = sharedEmulatorTunnelPort(this.config.adbTunnelPort, device.serial);
+      if (port !== null && port <= 65_535) wanted.set(tunnelKey(device.serial), { device: device.serial, port });
+    }
+    return wanted;
+  }
+
   private async apply(): Promise<void> {
-    const wanted = !this.closed && this.link?.emulator?.state === "running";
-    if (wanted && !this.listener) {
+    const wanted = this.wantedTunnels();
+    for (const [key, tunnel] of [...this.tunnels]) {
+      if (wanted.has(key)) continue;
+      this.tunnels.delete(key);
+      for (const stream of [...this.streams.values()]) if (stream.device === tunnel.device) this.closeStream(stream.id);
+      tunnel.listener.stop(true);
+      this.logger.info("android tunnel closed", { serial: tunnel.serial, device: tunnel.device ?? undefined });
+      await this.adb("disconnect", tunnel.serial);
+    }
+    for (const [key, { device, port }] of wanted) {
+      if (this.tunnels.has(key)) continue;
+      const serial = `127.0.0.1:${port}`;
+      let listener: TCPSocketListener<TunnelData>;
       try {
-        this.listener = this.listen();
+        listener = this.listen(port, device);
       } catch (error) {
-        this.logger.warn("android tunnel listen failed", { port: this.config.adbTunnelPort, error });
-        return;
+        this.logger.warn("android tunnel listen failed", { port, device: device ?? undefined, error });
+        continue;
       }
-      this.logger.info("android tunnel listening", { serial: this.serial });
-      await this.adb("connect");
-    } else if (!wanted && this.listener) {
-      const listener = this.listener;
-      this.listener = null;
-      for (const id of [...this.streams.keys()]) this.closeStream(id);
-      listener.stop(true);
-      this.logger.info("android tunnel closed", { serial: this.serial });
-      await this.adb("disconnect");
+      this.tunnels.set(key, { device, serial, listener });
+      this.logger.info("android tunnel listening", { serial, device: device ?? undefined });
+      await this.adb("connect", serial);
     }
   }
 
-  private async adb(command: "connect" | "disconnect"): Promise<void> {
-    const result = await run([this.config.adbBin, command, this.serial], { timeoutMs: ADB_TIMEOUT_MS });
-    if (!result.ok) this.logger.warn(`adb ${command} failed`, { serial: this.serial, error: (result.stderr || result.error || result.stdout).trim() });
+  private async adb(command: "connect" | "disconnect", serial: string): Promise<void> {
+    const result = await run([this.config.adbBin, command, serial], { timeoutMs: ADB_TIMEOUT_MS });
+    if (!result.ok) this.logger.warn(`adb ${command} failed`, { serial, error: (result.stderr || result.error || result.stdout).trim() });
   }
 
-  private listen(): TCPSocketListener<{ streamId: string }> {
-    return Bun.listen<{ streamId: string }>({
+  private listen(port: number, device: string | null): TCPSocketListener<TunnelData> {
+    return Bun.listen<TunnelData>({
       hostname: "127.0.0.1",
-      port: this.config.adbTunnelPort,
+      port,
       socket: {
-        open: (socket) => this.accept(socket),
+        open: (socket) => this.accept(socket, device),
         data: (socket, chunk) => this.fromTcp(socket.data.streamId, chunk),
         drain: (socket) => this.flushOutbound(socket.data.streamId),
         close: (socket) => this.closeStream(socket.data.streamId),
@@ -312,16 +376,17 @@ export class AndroidLinkService {
     });
   }
 
-  private accept(socket: TunnelSocket): void {
+  private accept(socket: TunnelSocket, device: string | null): void {
     const link = this.link;
     const streamId = createId("adbStream");
-    socket.data = { streamId };
+    socket.data = { streamId, device };
     if (!link) {
       socket.end();
       return;
     }
     const stream: Stream = {
       id: streamId,
+      device,
       socket,
       peer: null,
       inbound: [],
@@ -337,7 +402,7 @@ export class AndroidLinkService {
       this.closeStream(streamId);
     }, this.streamOpenTimeoutMs);
     this.streams.set(streamId, stream);
-    this.sendLink(link.session, { type: "open", streamId });
+    this.sendLink(link.session, device === null ? { type: "open", streamId } : { type: "open", streamId, device });
   }
 
   private fromTcp(id: string, chunk: Uint8Array): void {

@@ -32,7 +32,7 @@ Claude runs) goes through its token-authenticated REST and WebSocket API.
 ```text
 apps/mobile/          @theone/mobile      Expo SDK 56 / React Native 0.85 / expo-router app
 apps/controller/      @theone/controller  Bun + Hono daemon that runs inside the sandbox
-apps/electron/        @monolith/electron  Monolith desktop app (Electron): setup wizard, pages, `monolith` CLI
+apps/electron/        @monolith/electron  Monolith desktop app (Electron): setup wizard, pages, `tesseract` CLI
 apps/desktop/         Monolith GTK4/libadwaita app (Python), the design reference for apps/electron
 packages/protocol/    @theone/protocol    zod schemas and types: the wire contract
 packages/client/      @theone/client      typed REST/WS client (React Native, browser, Bun)
@@ -87,8 +87,8 @@ Android Studio's) checks or installs Docker, builds and starts the sandbox with 
 (Android SDK, Flutter, Mono, Whisper), downloads the Android emulator, a system image and an AVD for the host
 emulator (KVM, WHPX or HVF), and shows the pairing QR code for the phone. Afterwards it shows the same pages as
 the phone (Overview, Agents, Projects, Files, Terminals, Display). Installers: universal `dmg`, per-user NSIS
-`exe`, `AppImage` and `deb`; each puts the `monolith` command on your PATH (`monolith status`, `doctor`,
-`sandbox up|down|build|logs|pair`, `android images|install|avd`, `sync`, `config`).
+`exe`, `AppImage` and `deb`; each puts the `tesseract` command on your PATH (`tesseract status`, `doctor`,
+`sandbox up|down|build|logs|pair`, `android images|install|avd`, `sync`, `config`, `server`). For a headless Mac sandbox see [docs/runbooks/mac-server.md](docs/runbooks/mac-server.md).
 
 ```bash
 bun run electron                      # dev mode; the renderer dev server is http://127.0.0.1:4545

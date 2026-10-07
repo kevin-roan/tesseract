@@ -7,6 +7,7 @@ export type HostApi = {
   reconnect: (ticket: string) => void;
   setInputMode?: (mode: InputMode) => void;
   setInsets?: (insets: PageInsets) => void;
+  setImmersive?: (immersive: boolean) => void;
   paste?: (text: string) => void;
 };
 
@@ -56,6 +57,9 @@ export function exposeHostApi(api: HostApi): void {
       const parsed = parseInsets(insets);
       if (parsed) api.setInsets?.(parsed);
     },
+    setImmersive: (immersive: unknown) => {
+      if (typeof immersive === "boolean") api.setImmersive?.(immersive);
+    },
     paste: (text: unknown) => {
       if (typeof text === "string" && text) api.paste?.(text);
     },
@@ -68,6 +72,7 @@ export function exposeHostApi(api: HostApi): void {
     if (message.type === HOST_MESSAGES.reconnect) theone.reconnect(message.ticket);
     else if (message.type === HOST_MESSAGES.inputMode) theone.setInputMode(message.mode);
     else if (message.type === HOST_MESSAGES.insets) theone.setInsets(message);
+    else if (message.type === HOST_MESSAGES.immersive) theone.setImmersive(message.immersive);
     else if (message.type === HOST_MESSAGES.paste) theone.paste(message.text);
   });
 }

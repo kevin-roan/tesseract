@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import Animated from "react-native-reanimated";
 
 import { ThemedText } from "@/components/themed-text";
@@ -19,16 +19,25 @@ export type SegmentedPillsProps<T> = {
   options: readonly SegmentedOption<T>[];
   value: T;
   onChange: (value: T) => void;
+  /** Scroll sideways instead of squeezing when the segments outgrow the width. */
+  scrollable?: boolean;
+  label?: string;
 };
 
 /** Soft strip of segments; a lit indicator springs under the chosen one. */
-const SegmentedPills = <T extends string | number>({ options, value, onChange }: SegmentedPillsProps<T>) => {
+const SegmentedPills = <T extends string | number>({
+  options,
+  value,
+  onChange,
+  scrollable = false,
+  label,
+}: SegmentedPillsProps<T>) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const indicator = useSegmentIndicator(options.findIndex((option) => option.value === value));
 
-  return (
-    <View style={styles.row} accessibilityRole="radiogroup">
+  const strip = (
+    <View style={[styles.row, scrollable && styles.rowFill]} accessibilityRole="radiogroup" accessibilityLabel={label}>
       {indicator.ready ? <Animated.View pointerEvents="none" style={[styles.indicator, indicator.style]} /> : null}
       {options.map((option, index) => {
         const selected = option.value === value;
@@ -56,6 +65,19 @@ const SegmentedPills = <T extends string | number>({ options, value, onChange }:
         );
       })}
     </View>
+  );
+
+  if (!scrollable) return strip;
+
+  return (
+    <ScrollView
+      horizontal
+      style={styles.scroller}
+      contentContainerStyle={styles.scrollContent}
+      showsHorizontalScrollIndicator={false}
+    >
+      {strip}
+    </ScrollView>
   );
 };
 

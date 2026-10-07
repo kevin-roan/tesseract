@@ -17,7 +17,8 @@ export const HOST_USAGE = `  theone-controller host serve [--bind <ipv4>] [--por
                                      also drives the host Android emulator (THEONE_ANDROID_SDK_ROOT, THEONE_ADB,
                                      THEONE_SCRCPY_SERVER, THEONE_SCRCPY_VERSION, THEONE_FFMPEG,
                                      THEONE_EMULATOR_PORT, THEONE_EMULATOR_GPU, THEONE_EMULATOR_ISOLATION,
-                                     THEONE_EMULATOR_ALLOW_NETS, THEONE_EMULATOR_ADB_PORT)
+                                     THEONE_EMULATOR_ALLOW_NETS, THEONE_EMULATOR_ADB_PORT,
+                                     THEONE_ANDROID_SHARE_EMULATORS=on to tunnel the host's other emulators too)
   theone-controller host pin [--stdin]
                                      set the host shell PIN (6-12 digits); ends every open session
   theone-controller host pair [--json]
@@ -110,7 +111,7 @@ function pair(args: string[], io: HostCliIo): number {
   const { values } = parseArgs({ args, options: { json: { type: "boolean", default: false } }, strict: true });
   const settings = config(io.env, {}, !io.env.THEONE_HOST_SHELL_PUBLIC_URL);
   // iOS refuses plain http to the Tailscale IP, so prefer the HTTPS name `tailscale serve` gives this daemon.
-  const url = io.env.THEONE_HOST_SHELL_PUBLIC_URL ? settings.publicUrl : (tailscaleServeUrl(settings.bind, settings.port) ?? settings.publicUrl);
+  const url = io.env.THEONE_HOST_SHELL_PUBLIC_URL ? settings.publicUrl : (tailscaleServeUrl(settings.bind, settings.port, io.env) ?? settings.publicUrl);
   const store = new HostStateStore(settings.stateDir, settings.stateFile);
   const token = store.ensureToken();
   const link = buildPairingLink({ url, token, name: settings.hostId }, HOST_PAIRING_ACTION);

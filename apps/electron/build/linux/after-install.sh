@@ -1,8 +1,10 @@
 #!/bin/sh
 APP_DIR='/opt/${sanitizedProductName}'
 EXECUTABLE='${executable}'
-CLI_LINK=/usr/bin/monolith
-CLI_TARGET="$APP_DIR/resources/bin/monolith"
+CLI_LINK=/usr/bin/tesseract
+CLI_TARGET="$APP_DIR/resources/bin/tesseract"
+LEGACY_CLI_LINK=/usr/bin/monolith
+LEGACY_CLI_TARGET="$APP_DIR/resources/bin/monolith"
 
 if type update-alternatives >/dev/null 2>&1; then
   if [ -L "/usr/bin/$EXECUTABLE" ] && [ -e "/usr/bin/$EXECUTABLE" ] && [ "$(readlink "/usr/bin/$EXECUTABLE")" != "/etc/alternatives/$EXECUTABLE" ]; then
@@ -11,6 +13,10 @@ if type update-alternatives >/dev/null 2>&1; then
   update-alternatives --install "/usr/bin/$EXECUTABLE" "$EXECUTABLE" "$APP_DIR/$EXECUTABLE" 100 || ln -sf "$APP_DIR/$EXECUTABLE" "/usr/bin/$EXECUTABLE"
 else
   ln -sf "$APP_DIR/$EXECUTABLE" "/usr/bin/$EXECUTABLE"
+fi
+
+if [ -L "$LEGACY_CLI_LINK" ] && [ "$(readlink "$LEGACY_CLI_LINK")" = "$LEGACY_CLI_TARGET" ]; then
+  rm -f "$LEGACY_CLI_LINK"
 fi
 
 if [ -x "$CLI_TARGET" ]; then

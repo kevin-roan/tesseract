@@ -32,6 +32,8 @@ type ChatComposerOptions = {
   defaultMode?: AgentRunMode | null;
   /** The user can draft but not send, e.g. while the run being continued is still working. */
   locked?: boolean;
+  /** While locked, Send hands the message here to go out later instead of refusing it. */
+  onQueue?: (prompt: string, attachmentIds: string[]) => void;
   onStarted: (run: AgentRun) => void;
 };
 
@@ -43,6 +45,7 @@ export function useChatComposer({
   resumeSessionId = null,
   defaultMode = null,
   locked = false,
+  onQueue,
   onStarted,
 }: ChatComposerOptions) {
   const [text, setText] = useState("");
@@ -72,7 +75,7 @@ export function useChatComposer({
   const asksForProject = projectId === null && chosenProjectId === undefined && !resumeSessionId;
 
   const startRun = useCallback(
-    async (prompt: string, attachmentIds: string[], targetProjectId: string | null) => {
+    async (prompt: string, attachmentIds: string[], targetProjectId: string | null, clearDraft = true) => {
       if (inFlightRef.current) return null;
       inFlightRef.current = true;
       let run: AgentRun;
@@ -87,8 +90,10 @@ export function useChatComposer({
       } finally {
         inFlightRef.current = false;
       }
-      setText("");
-      clearAttachments();
+      if (clearDraft) {
+        setText("");
+        clearAttachments();
+      }
       onStarted(run);
       return run;
     },
@@ -166,10 +171,13 @@ export function useChatComposer({
   );
   const voice = useVoiceMessage({ onReady: onVoiceReady });
 
+  /** Locked with a queue still takes messages; only a lock without one blocks sending. */
+  const queueing = locked && onQueue !== undefined;
+  const blocked = locked && !queueing;
   const trimmed = text.trim();
   const hasDraft = trimmed.length > 0 || attachments.items.length > 0;
   const canSend =
-    !locked &&
+    !blocked &&
     hasDraft &&
     trimmed.length <= LIMITS.maxPromptLength &&
     !attachments.isUploading &&
@@ -181,16 +189,28 @@ export function useChatComposer({
   const send = useCallback(() => {
     if (!canSend) return;
     const prompt = trimmed || defaultPromptFor(attachments.items);
+    if (queueing && onQueue) {
+      onQueue(prompt, attachments.uploadIds);
+      setText("");
+      clearAttachments();
+      return;
+    }
     submit(prompt, attachments.uploadIds).catch(() => undefined);
-  }, [canSend, trimmed, attachments.items, attachments.uploadIds, submit]);
+  }, [canSend, trimmed, attachments.items, attachments.uploadIds, queueing, onQueue, clearAttachments, submit]);
+
+  /** Sends what was queued while Claude worked, leaving whatever the user is drafting now in place. */
+  const sendQueued = useCallback(
+    (prompt: string, attachmentIds: string[]) => startRun(prompt, attachmentIds, projectId, false),
+    [startRun, projectId],
+  );
 
   const { start: startRecording, clearError: clearVoiceError } = voice;
   const sending = start.isPending || createProject.isPending;
   const startVoice = useCallback(() => {
-    if (sending || locked) return;
+    if (sending || blocked) return;
     clearVoiceError();
     void startRecording();
-  }, [sending, locked, clearVoiceError, startRecording]);
+  }, [sending, blocked, clearVoiceError, startRecording]);
 
   const { refresh: refreshClipboard, consume: consumeClipboard } = clipboard;
   const openSheet = useCallback(
@@ -238,8 +258,8 @@ export function useChatComposer({
   const pasteImage = useCallback(() => pickSource("clipboard"), [pickSource]);
 
   const attachOptions = useMemo(
-    () => (clipboard.hasImage ? ATTACH_OPTIONS : ATTACH_OPTIONS.filter((option) => option.id !== "clipboard")),
-    [clipboard.hasImage],
+    () => (clipboard.present ? ATTACH_OPTIONS : ATTACH_OPTIONS.filter((option) => option.id !== "clipboard")),
+    [clipboard.present],
   );
 
   const projectMenu = useMemo<MenuOption[] | null>(
@@ -292,8 +312,10 @@ export function useChatComposer({
     voice,
     primary: hasDraft ? ("send" as const) : ("mic" as const),
     canSend,
-    locked,
+    locked: blocked,
+    queueing,
     send,
+    sendQueued,
     startVoice,
     sending,
     error,

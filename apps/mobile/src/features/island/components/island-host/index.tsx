@@ -24,7 +24,7 @@ const IslandHost = () => {
   const island = useIslandHost();
   const backdrop = useBackdropFade(island.expanded);
   const drag = useIslandDrag(island.dock, island.moveTo, !island.expanded);
-  const morph = useIslandMorph(island.expanded, drag.x, drag.y, drag.lift);
+  const morph = useIslandMorph(island.expanded, drag.x, drag.y, drag.lift, island.panelHeight);
 
   return (
     <>
@@ -55,7 +55,9 @@ const IslandHost = () => {
                   hasDraft={island.hasDraft}
                   stopping={island.stopping}
                   width={morph.panelWidth}
+                  height={morph.panelHeight}
                   onOpen={island.openChat}
+                  onOpenRun={island.openRun}
                   onStop={island.stop}
                   onCapture={island.capture}
                   onAttach={island.attachShared}

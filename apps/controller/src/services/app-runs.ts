@@ -430,7 +430,7 @@ export class AppRunService {
     const port = String(run.port ?? "");
     const pm = facts.packageManager;
     const flutter = this.flutterBin() ?? this.config.flutterBin;
-    const serial = this.android.serial;
+    const serial = this.android.runSerial;
     const androidEnv: Record<string, string> = ANDROID_TARGETS.has(run.target) ? { ANDROID_SERIAL: serial } : {};
     const single = (command: Command, env: Record<string, string> = {}): SpawnPlan[] => [
       { name: `${run.target} (${RUN_TARGET_LABELS[run.target]})`, command, env: { ...androidEnv, ...env }, display: DISPLAY_TARGETS.has(run.target), port: run.port },
@@ -582,7 +582,7 @@ export class AppRunService {
       case "display":
         return { kind: "display" };
       case "android":
-        return { kind: "android", serial: this.android.serial };
+        return { kind: "android", serial: this.android.runSerial };
       case "none":
         return { kind: "none" };
     }

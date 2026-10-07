@@ -87,7 +87,7 @@ export function phaseLine(phase: BuildPhase): string {
   }
 }
 
-function hostResources(): HostResources {
+export function hostResources(): HostResources {
   return { cpus: cpus().length, memBytes: totalmem(), timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone, homeDir: homedir() };
 }
 
@@ -116,6 +116,10 @@ async function configureStack(context: CliContext, sandbox: SandboxContext): Pro
 
 async function build(context: CliContext, sandbox: SandboxContext): Promise<number> {
   await configureStack(context, sandbox);
+  return runStackBuild(context, sandbox, buildMode(context.flags));
+}
+
+export async function runStackBuild(context: CliContext, sandbox: SandboxContext, mode: BuildMode): Promise<number> {
   const progress = createProgress(context);
   let lastKind: BuildPhase["kind"] | null = null;
   const onPhase = (phase: BuildPhase) => {
@@ -130,7 +134,7 @@ async function build(context: CliContext, sandbox: SandboxContext): Promise<numb
   const onLog = (line: string) => {
     if (context.verbose) log(context, line);
   };
-  const final = await runBuild(sandbox, buildMode(context.flags), { onLog, onPhase }, context.signal);
+  const final = await runBuild(sandbox, mode, { onLog, onPhase }, context.signal);
   progress.done();
   emit(context, final, (phase) => [phaseLine(phase)]);
   if (final.kind === "done") return EXIT.ok;

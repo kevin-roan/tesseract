@@ -98,7 +98,7 @@ describe("android", () => {
   test("status round-trips", () => {
     roundTrip(HostAndroidStatusSchema, sampleHostAndroidStatus);
     roundTrip(SandboxAndroidStatusSchema, sampleSandboxAndroidStatus);
-    roundTrip(SandboxAndroidStatusSchema, { linked: false, hostId: null, emulator: null, adbSerial: null, adbConnected: false });
+    roundTrip(SandboxAndroidStatusSchema, { linked: false, hostId: null, emulator: null, adbSerial: null, adbConnected: false, shared: [] });
     rejects(HostAndroidStatusSchema, { ...sampleHostAndroidStatus, emulator: { ...sampleHostAndroidStatus.emulator, state: "booting" } });
   });
 
@@ -136,6 +136,10 @@ describe("android", () => {
     roundTrip(AndroidLinkSandboxMessageSchema, { type: "open", streamId });
     roundTrip(AndroidLinkSandboxMessageSchema, { type: "ping" });
     rejects(AndroidLinkSandboxMessageSchema, { type: "open", streamId: "prc_1" });
+    roundTrip(AndroidLinkHostMessageSchema, { type: "devices", devices: [{ serial: "emulator-5556", model: "Pixel 9" }] });
+    roundTrip(AndroidLinkSandboxMessageSchema, { type: "open", streamId, device: "emulator-5556" });
+    rejects(AndroidLinkSandboxMessageSchema, { type: "open", streamId, device: "R58M123ABC" });
+    rejects(AndroidLinkHostMessageSchema, { type: "devices", devices: [{ serial: "192.168.1.2:5555", model: null }] });
     rejects(AndroidLinkHostMessageSchema, { type: "open", streamId });
   });
 

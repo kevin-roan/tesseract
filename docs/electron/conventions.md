@@ -40,7 +40,7 @@ Everything is a **devDependency** and is bundled by Vite; `dependencies` stays e
 | `bun run diff -- a.png b.png [--out diff.png] [--threshold 0.1] [--max <percent>]` | pixelmatch; prints `mismatch: X.XX% (n of N pixels)`; exit 1 only when `--max` is exceeded |
 | `bun run build` | electron-vite build into `out/` |
 | `bun run dev` | electron-vite dev (renderer on 4545). Only when you need a live window; prefer snapshots |
-| `bun run cli:build [-- --target linux-x64,mac-arm64 \| --all] [--no-controller]` | `dist-cli/<os>-<arch>/{monolith,theone-controller}` (`os` = `linux`/`mac`/`win`) |
+| `bun run cli:build [-- --target linux-x64,mac-arm64 \| --all] [--no-controller]` | `dist-cli/<os>-<arch>/{tesseract,theone-controller}` (`os` = `linux`/`mac`/`win`) |
 | `bun run bundle:sandbox` | `build/sandbox-context/` (git-tracked build context + `manifest.json` + `build-weights.json`) |
 | `bun run dist [-- --platform linux\|mac\|win] [--dir]` | build + cli:build + bundle:sandbox + electron-builder (mac dmg universal, win nsis, linux AppImage + deb) |
 
@@ -49,7 +49,7 @@ Root shortcuts: `bun run electron`, `electron:build`, `electron:e2e`, `electron:
 Paths given to `snapshot`/`diff`: outputs resolve against `apps/electron`; inputs try `apps/electron` first, then
 the repo root (so `docs/electron/reference/x.png` works from either place).
 
-Never create a `monolith` symlink on the development machine. `app.installCli()` refuses in unpackaged builds.
+Never create a `tesseract` symlink on the development machine. `app.installCli()` refuses in unpackaged builds.
 
 ---
 
@@ -213,7 +213,7 @@ The `onboarding` controller composes `src/core/{docker,sandbox,android,claude}`;
 
 ## 5. Core modules (`src/core/<service>/`)
 
-- Pure Node TypeScript, no `electron` import, shared by main and the `monolith` CLI (compiled with Bun).
+- Pure Node TypeScript, no `electron` import, shared by main and the `tesseract` CLI (compiled with Bun).
 - Async functions; long operations take `AbortSignal` and callbacks (`onLog`, `onProgress`, `onPhase`) instead of
   emitters. Child processes: `runCommand(file, args, { timeoutMs, env, signal })` from `src/core/process`
   (`execFile`, argument arrays, never a shell). Docker CLI timeout 15 s (`DOCKER_TIMEOUT_MS`).
@@ -442,16 +442,16 @@ waits for idle, `capturePage()`s and exits. It never touches the user's config o
 
 ## 13. Packaging
 
-- `extraResources`: `dist-cli/${os}-${arch}` → `resources/bin` (`monolith`, `theone-controller`),
+- `extraResources`: `dist-cli/${os}-${arch}` → `resources/bin` (`tesseract`, `theone-controller`),
   `build/sandbox-context` → `resources/sandbox` (repo-relative layout; `contextDir` for compose/buildx, see
   `src/main/services/resources.ts`), icons, font licenses.
-- Linux deb: app at `/opt/Monolith`, launcher `monolith-desktop`, `/usr/bin/monolith` symlink to
-  `resources/bin/monolith` (postinst, only when free or ours). AppImage: `app.installCli()` copies the CLI to
-  `~/.local/share/monolith/bin/monolith` and links `~/.local/bin/monolith`; on install and every AppImage launch
+- Linux deb: app at `/opt/Monolith`, launcher `monolith-desktop`, `/usr/bin/tesseract` symlink to
+  `resources/bin/tesseract` (postinst, only when free or ours). AppImage: `app.installCli()` copies the CLI to
+  `~/.local/share/monolith/bin/tesseract` and links `~/.local/bin/tesseract`; on install and every AppImage launch
   (while the copy exists) `refreshCliSidecar` writes `~/.local/share/monolith/app.json` `{appPath, sandboxDir}` and
   syncs `resources/sandbox` to `~/.local/share/monolith/sandbox` (skipped when `.bundle-hash`, the sha256 of the
   bundle's `manifest.json`, is unchanged), so the copied CLI finds the app and the sandbox context. Windows NSIS (per-user): adds `$INSTDIR\resources\bin` to the user PATH and removes it on
-  uninstall. macOS: in-app "Install monolith command" (`app.installCli()` → admin prompt, `/usr/local/bin/monolith`).
+  uninstall. macOS: in-app "Install tesseract command" (`app.installCli()` → admin prompt, `/usr/local/bin/tesseract`).
 - The bundle manifest records the git commit and `dirty` flag; untracked files are not bundled.
 
 ## 14. Deviations from the specs (decided here)

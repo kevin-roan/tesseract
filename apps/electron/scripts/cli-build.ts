@@ -8,7 +8,7 @@ import { BUILD_TARGETS, findTarget, hostTargetId, type BuildTarget } from "./lib
 const CLI_ENTRY = join(APP_DIR, "cli", "index.ts");
 const CONTROLLER_ENTRY = join(REPO_ROOT, "apps", "controller", "src", "index.ts");
 const BINARIES = [
-  { name: "monolith", entry: CLI_ENTRY },
+  { name: "tesseract", entry: CLI_ENTRY },
   { name: "theone-controller", entry: CONTROLLER_ENTRY },
 ] as const;
 
@@ -29,7 +29,7 @@ function main(): number {
   const targets = args.flags.has("all")
     ? BUILD_TARGETS
     : (args.values.get("target") ?? hostTargetId()).split(",").map((id) => findTarget(id.trim()));
-  const binaries = args.flags.has("no-controller") ? BINARIES.filter((binary) => binary.name === "monolith") : BINARIES;
+  const binaries = args.flags.has("no-controller") ? BINARIES.filter((binary) => binary.name === "tesseract") : BINARIES;
   for (const target of targets) for (const binary of binaries) compile(target, binary.name, binary.entry);
   return 0;
 }

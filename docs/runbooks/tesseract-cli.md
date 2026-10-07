@@ -1,6 +1,6 @@
-# The `monolith` command
+# The `tesseract` command
 
-`monolith` controls Monolith from a terminal on **this computer**: Docker checks, the
+`tesseract` controls Monolith from a terminal on **this computer**: Docker checks, the
 sandbox stack, the host Android emulator, pairing, sync with the sandbox, and the app's
 settings. It is a single executable (`bun build --compile` of `apps/electron/cli`), shipped
 inside every Monolith installer, and it uses the same code, files and settings as the
@@ -15,22 +15,22 @@ Related: [onboarding.md](onboarding.md) (the same setup in the app),
 
 ## Install
 
-| How Monolith is installed | How `monolith` gets on `PATH` |
+| How Monolith is installed | How `tesseract` gets on `PATH` |
 |---|---|
-| macOS (`Monolith.app` in `/Applications`) | Settings › About › Command line › **Install monolith command**. One admin prompt; creates `/usr/local/bin/monolith` → `Monolith.app/Contents/Resources/bin/monolith`. The app must be in Applications first |
+| macOS (`Monolith.app` in `/Applications`) | Settings › About › Command line › **Install tesseract command**. One admin prompt; creates `/usr/local/bin/tesseract` → `Monolith.app/Contents/Resources/bin/tesseract`. The app must be in Applications first |
 | Windows (NSIS installer) | automatic: the installer appends `%LOCALAPPDATA%\Programs\Monolith\resources\bin` to your user `Path` (open a new terminal). Uninstalling removes it |
-| Debian / Ubuntu (`.deb`) | automatic: `/usr/bin/monolith` → `/opt/Monolith/resources/bin/monolith`, unless another `/usr/bin/monolith` already exists |
-| AppImage | Settings › About › **Install monolith command**: copies the binary to `~/.local/share/monolith/bin/monolith` and links `~/.local/bin/monolith` to it. `~/.local/bin` must be on `PATH`. On install and on every AppImage launch (while that copy exists) the app also writes `~/.local/share/monolith/app.json` (`appPath` = the AppImage, `sandboxDir`) and copies its bundled sandbox context to `~/.local/share/monolith/sandbox` (only when it changed; `.bundle-hash` marks the copied version), so the copy finds both. After updating the AppImage, About shows the copy as outdated; install again |
-| Repository checkout | `bun apps/electron/cli/index.ts <command>`, or build one with `bun run --cwd apps/electron cli:build` (→ `apps/electron/dist-cli/<os>-<arch>/monolith`) |
+| Debian / Ubuntu (`.deb`) | automatic: `/usr/bin/tesseract` → `/opt/Monolith/resources/bin/tesseract`, unless another `/usr/bin/tesseract` already exists |
+| AppImage | Settings › About › **Install tesseract command**: copies the binary to `~/.local/share/monolith/bin/tesseract` and links `~/.local/bin/tesseract` to it. `~/.local/bin` must be on `PATH`. On install and on every AppImage launch (while that copy exists) the app also writes `~/.local/share/monolith/app.json` (`appPath` = the AppImage, `sandboxDir`) and copies its bundled sandbox context to `~/.local/share/monolith/sandbox` (only when it changed; `.bundle-hash` marks the copied version), so the copy finds both. After updating the AppImage, About shows the copy as outdated; install again |
+| Repository checkout | `bun apps/electron/cli/index.ts <command>`, or build one with `bun run --cwd apps/electron cli:build` (→ `apps/electron/dist-cli/<os>-<arch>/tesseract`) |
 
 Settings › About shows whether the command is installed, where, and conflicts with another
-`monolith` on the same path.
+`tesseract` on the same path.
 
 ## Usage
 
 ```
-monolith <command> [options]          add --json for machine-readable output
-monolith help [command]               or: monolith <command> --help / -h
+tesseract <command> [options]          add --json for machine-readable output
+tesseract help [command]               or: tesseract <command> --help / -h
 ```
 
 | Global option | Meaning |
@@ -65,6 +65,7 @@ on stdout, where `code` is one of `invalid_argument`, `not_found`, `unavailable`
 | [`android`](#android) | the host Android emulator: images, install, avd create/list/start/delete |
 | [`pair`](#pair) | the pairing link and a QR code for the phone app |
 | [`sync`](#sync) | sync the current directory with the sandbox: push, pull, revert, status |
+| [`server`](#server) | run this machine as a headless sandbox host: install, uninstall, status, pair |
 | [`config`](#config) | read or change Monolith settings |
 | [`version`](#version) | print the version |
 | [`help`](#usage) | help for a command |
@@ -72,8 +73,8 @@ on stdout, where `code` is one of `invalid_argument`, `not_found`, `unavailable`
 ### status
 
 ```bash
-monolith status
-monolith status --json
+tesseract status
+tesseract status --json
 ```
 
 Never changes anything. Each part is checked independently; a part that can't be read
@@ -91,15 +92,15 @@ Config:    /home/you/.config/monolith-desktop/config.json
 ```
 
 `Sandbox` is the saved connection (with a live `/v1/health` probe), or
-`not paired (run monolith sandbox build or monolith pair)`. `Stack` is the stack the app
+`not paired (run tesseract sandbox build or tesseract pair)`. `Stack` is the stack the app
 manages (`project · image · mode`), or `not configured`. `Setup` is `complete` or
 `not finished (at <step>)`.
 
 ### open
 
 ```bash
-monolith open               # overview
-monolith open terminals     # overview | agents | projects | files | terminals | display
+tesseract open               # overview
+tesseract open terminals     # overview | agents | projects | files | terminals | display
 ```
 
 Starts the installed app with `--page <page>` (a running app comes to the front on that
@@ -113,10 +114,10 @@ installed app), then at `/opt/Monolith/monolith-desktop` (Linux),
 ### doctor
 
 ```bash
-monolith doctor                 # every section
-monolith doctor docker kvm      # only these: docker | image | kvm | sdk
-monolith doctor sdk --sdk ~/Android/Sdk
-monolith doctor --json
+tesseract doctor                 # every section
+tesseract doctor docker kvm      # only these: docker | image | kvm | sdk
+tesseract doctor sdk --sdk ~/Android/Sdk
+tesseract doctor --json
 ```
 
 | Section | Checks |
@@ -160,21 +161,21 @@ files of the bundled build context, run as `docker compose --project-name <proje
 ignored, so they can't redirect it to another stack.
 
 ```bash
-monolith sandbox                         # = status
-monolith sandbox status
-monolith sandbox up
-monolith sandbox down
-monolith sandbox down --volumes          # also deletes the volumes: the workspace, home and Tailscale state
-monolith sandbox restart                 # every service
-monolith sandbox restart sandbox         # one service
-monolith sandbox logs                    # last 200 lines
-monolith sandbox logs --tail 50 --follow # or -f; Ctrl+C stops following
-monolith sandbox build
-monolith sandbox build --with android,whisper --verbose
-monolith sandbox build --with none       # base image only
-monolith sandbox build --existing        # skip the build, start the image you have
-monolith sandbox build --pull            # download a prebuilt image (needs sandboxImageRef)
-monolith sandbox pair [--no-qr]          # same as monolith pair
+tesseract sandbox                         # = status
+tesseract sandbox status
+tesseract sandbox up
+tesseract sandbox down
+tesseract sandbox down --volumes          # also deletes the volumes: the workspace, home and Tailscale state
+tesseract sandbox restart                 # every service
+tesseract sandbox restart sandbox         # one service
+tesseract sandbox logs                    # last 200 lines
+tesseract sandbox logs --tail 50 --follow # or -f; Ctrl+C stops following
+tesseract sandbox build
+tesseract sandbox build --with android,whisper --verbose
+tesseract sandbox build --with none       # base image only
+tesseract sandbox build --existing        # skip the build, start the image you have
+tesseract sandbox build --pull            # download a prebuilt image (needs sandboxImageRef)
+tesseract sandbox pair [--no-qr]          # same as tesseract pair
 ```
 
 `status`, `up`, `down` and `restart` print the services:
@@ -186,7 +187,7 @@ sandbox  theone-sandbox-1  running  healthy
 
 `status` and `logs` also work without a saved stack (they look at the default project
 `theone`); `up`, `down` and `restart` need one (`No sandbox is configured on this computer
-yet`): run `monolith sandbox build` or the setup wizard first.
+yet`): run `tesseract sandbox build` or the setup wizard first.
 
 **`build`** runs the same steps as the wizard's Build: preflight (Docker ready, disk space,
 the Claude folder exists), `docker buildx build`, `compose up --detach`, wait for
@@ -212,19 +213,19 @@ The SDK is the one saved by the app (`androidSdkRoot`), else Monolith's default
 `install` and `avd create` also save it as the SDK for the app and later commands.
 
 ```bash
-monolith android images                          # tools and system images for this computer, API 30+
-monolith android images --all --refresh          # every API level; reload Google's list
-monolith android install 36                      # system image for API 36 + emulator + platform-tools
-monolith android install 35 36 --accept-licenses
-monolith android install emulator platform-tools
-monolith android install "system-images;android-36;google_apis;x86_64" --sdk ~/Android/Sdk
-monolith android avd list                        # also: monolith android, monolith android avd, monolith android list
-monolith android avd create                      # Monolith_API_36 from the API 36 image
-monolith android avd create Pixel_35 --image 35 --ram 4096 --cores 4 --default
-monolith android avd create Tablet_36 --device pixel_tablet --storage 16
-monolith android avd start                       # the default AVD, in the foreground
-monolith android avd start Pixel_35 --detach --headless --gpu swiftshader_indirect
-monolith android avd delete Pixel_35
+tesseract android images                          # tools and system images for this computer, API 30+
+tesseract android images --all --refresh          # every API level; reload Google's list
+tesseract android install 36                      # system image for API 36 + emulator + platform-tools
+tesseract android install 35 36 --accept-licenses
+tesseract android install emulator platform-tools
+tesseract android install "system-images;android-36;google_apis;x86_64" --sdk ~/Android/Sdk
+tesseract android avd list                        # also: tesseract android, tesseract android avd, tesseract android list
+tesseract android avd create                      # Monolith_API_36 from the API 36 image
+tesseract android avd create Pixel_35 --image 35 --ram 4096 --cores 4 --default
+tesseract android avd create Tablet_36 --device pixel_tablet --storage 16
+tesseract android avd start                       # the default AVD, in the foreground
+tesseract android avd start Pixel_35 --detach --headless --gpu swiftshader_indirect
+tesseract android avd delete Pixel_35
 ```
 
 **`images`** prints the SDK path, then the tools and system images with their size and the
@@ -262,7 +263,7 @@ checked (size and sha1) and unpacked like `sdkmanager` does. Progress:
 anyway). Name: letters, digits, `.`, `-`, `_`; default `Monolith_API_<api>`. Written to
 `~/.android/avd` (`ANDROID_AVD_HOME` / `ANDROID_USER_HOME` are honoured).
 
-`monolith android` and `monolith android avd` with no action list the AVDs, like `avd list`.
+`tesseract android` and `tesseract android avd` with no action list the AVDs, like `avd list`.
 
 **`avd start [name]`** (default: the default AVD, else the first): runs
 `emulator -avd <name> -port <free 5554…5682> -no-audio -no-boot-anim`. In the foreground it
@@ -279,9 +280,9 @@ Not available on Linux arm64 and Windows arm64 (Google publishes no emulator the
 ### pair
 
 ```bash
-monolith pair            # link + QR code in the terminal
-monolith pair --no-qr
-monolith pair --json     # {"link": "theone://pair?...", "url": ..., "name": ..., "local": ...}
+tesseract pair            # link + QR code in the terminal
+tesseract pair --no-qr
+tesseract pair --json     # {"link": "theone://pair?...", "url": ..., "name": ..., "local": ...}
 ```
 
 Reads the link from the running sandbox (`docker exec <project>-sandbox-1
@@ -297,26 +298,30 @@ behaviour as the GTK companion's `monolith` ([sync-back.md](../architecture/sync
 Run it **in the project directory**.
 
 ```bash
-monolith sync                    # = sync push: send this directory to the sandbox
-monolith sync push --confidential
-monolith sync status             # sandbox changes and sync-back snapshots
-monolith sync pull --dry-run     # what would change here
-monolith sync pull               # write the sandbox's changes here (snapshot first)
-monolith sync pull --force       # also overwrite files you edited here since the push
-monolith sync revert             # undo the last pull
-monolith sync revert --force
+tesseract sync                    # = sync push: send this directory to the sandbox
+tesseract sync push --confidential
+tesseract sync status             # sandbox changes and sync-back snapshots
+tesseract sync pull --dry-run     # what would change here
+tesseract sync pull               # write the sandbox's changes here (snapshot first)
+tesseract sync pull --force       # also overwrite files you edited here since the push
+tesseract sync revert             # undo the last pull
+tesseract sync revert --force
 ```
 
 Flag forms, the same as the GTK `monolith` and the desktop app binary:
-`monolith --sync [--confidential]`, `--pull [--dry-run] [--force]`, `--revert [--force]`,
+`tesseract --sync [--confidential]`, `--pull [--dry-run] [--force]`, `--revert [--force]`,
 `--sync-status`. `--get` only runs inside the sandbox.
+
+Gemini key for voice notes: `tesseract --gemini-key=KEY` saves it on the connected sandbox, the same
+as Preferences → Speech-to-text in the desktop app or Settings in the phone app. There is no
+`GEMINI_API_KEY` env var or `.env` entry for it.
 
 - The first push links the directory to a project id derived from its name (`--confidential`:
   a pseudonym, and the real name stays on this computer). Later commands find the project
   by the directory.
 - `pull` and `revert` refuse to overwrite files that changed on this computer since the
   push and exit `2`, listing them; `--force` overwrites. Every pull takes a snapshot first
-  (`… · snapshot <id> — undo with monolith --revert`).
+  (`… · snapshot <id> — undo with tesseract --revert`).
 - Which sandbox: the saved connection; else `MONOLITH_DESKTOP_URL` + `THEONE_TOKEN`; else
   the local sandbox found through Docker. When the app keeps the token in the system
   keychain, the CLI can't read it and uses Docker discovery; for a remote sandbox set
@@ -329,16 +334,16 @@ The app's `config.json` (shared with the GTK app on Linux). Writes are atomic, k
 unknown keys and the file stays readable only by you.
 
 ```bash
-monolith config path
-monolith config get                         # everything; the token is shown as …
-monolith config get appearance
-monolith config get token --reveal
-monolith config set appearance dark
-monolith config set zoom 1.25
-monolith config set androidSdkRoot /home/you/Android/Sdk
-monolith config set link 'theone://pair?url=...&token=...&name=...'
-monolith config unset sandboxImageRef
-monolith config set myKey '{"a":1}' --force # unknown key: value parsed as JSON when it is JSON
+tesseract config path
+tesseract config get                         # everything; the token is shown as …
+tesseract config get appearance
+tesseract config get token --reveal
+tesseract config set appearance dark
+tesseract config set zoom 1.25
+tesseract config set androidSdkRoot /home/you/Android/Sdk
+tesseract config set link 'theone://pair?url=...&token=...&name=...'
+tesseract config unset sandboxImageRef
+tesseract config set myKey '{"a":1}' --force # unknown key: value parsed as JSON when it is JSON
 ```
 
 | Key | Value |
@@ -355,16 +360,46 @@ monolith config set myKey '{"a":1}' --force # unknown key: value parsed as JSON 
 | `name` | sandbox display name |
 | `pairingUrl` | `http(s)://…` |
 | `link` | a `theone://pair?…` link: sets `url`, `token`, `name` and `pairingUrl` at once; `unset link` forgets the connection |
-| `token`, `tokenSealed` | read-only here (use `link`, `monolith pair` or the app); `get` hides them unless `--reveal` |
+| `token`, `tokenSealed` | read-only here (use `link`, `tesseract pair` or the app); `get` hides them unless `--reveal` |
 
 Other keys need `--force`.
+
+### server
+
+Runs the sandbox stack and the host shell daemon on a machine without the desktop app, for
+example a Mac that is the production sandbox host. Full walkthrough, including deploying
+from a Linux machine with `bun run deploy:mac`: [mac-server.md](mac-server.md). Contract:
+[blueprint §7.2](../architecture/00-blueprint.md#72-headless-server-tesseract-server-macos-and-linux).
+
+```bash
+tesseract server install --mode tailscale --hostname theone-sandbox \
+  --tailnet-domain tail1234.ts.net          # TS_AUTHKEY and CLAUDE_CODE_OAUTH_TOKEN from the environment
+tesseract server install --dry-run          # print what it would write and run
+tesseract server status                     # stack, controller health, host shell service, tailscale serve
+tesseract server pair                       # sandbox + host shell links and QR codes
+tesseract server uninstall                  # stop the stack and remove the host shell service
+tesseract server uninstall --volumes        # also delete the workspace and home volumes
+```
+
+| Option (`install`) | Meaning |
+|---|---|
+| `--mode` | `tailscale` (sidecar joins the tailnet, HTTPS via `tailscale serve`), `host-tailscale` or `local` |
+| `--hostname`, `--tailnet-domain`, `--authkey` | sandbox tailnet name, `<tailnet>.ts.net`, auth key (first start only); env `TS_TAILNET_DOMAIN`, `TS_AUTHKEY` |
+| `--image <ref>` / `--build [--with ...]` | pull a prebuilt image, or build one here with the given components |
+| `--claude-token <tok>` | long-lived Claude token for the sandbox (`claude setup-token`); env `CLAUDE_CODE_OAUTH_TOKEN` |
+| `--no-host-shell` | skip the host shell service |
+| `--host-https-port` | HTTPS port `tailscale serve` uses for the host shell (default `8443`) |
+
+The host shell service is a LaunchAgent (`~/Library/LaunchAgents/dev.tesseract.host-shell.plist`,
+logs in `~/Library/Logs/Tesseract/`) on macOS and the systemd user unit
+`tesseract-host-shell.service` on Linux. Set its PIN once with `theone-controller host pin`.
 
 ### version
 
 ```bash
-monolith version         # monolith 0.1.0
-monolith --version
-monolith version --json  # {"name": "monolith", "version": "0.1.0", "platform": "linux", "arch": "x64"}
+tesseract version         # tesseract 0.1.0
+tesseract --version
+tesseract version --json  # {"name": "tesseract", "version": "0.1.0", "platform": "linux", "arch": "x64"}
 ```
 
 The version is the desktop app's version.
@@ -385,7 +420,7 @@ with `Could not find the sandbox build files (infra/compose)…`.
 | `MONOLITH_USER_DATA` | app data directory (env file, downloads, Android cache) |
 | `MONOLITH_STATE_DIR` | sync state directory |
 | `MONOLITH_SANDBOX_CONTEXT` | sandbox build context directory |
-| `MONOLITH_APP_PATH` | the app executable for `monolith open` (the AppImage copy also uses `appPath` from `~/.local/share/monolith/app.json`) |
+| `MONOLITH_APP_PATH` | the app executable for `tesseract open` (the AppImage copy also uses `appPath` from `~/.local/share/monolith/app.json`) |
 | `MONOLITH_SANDBOX_IMAGE_REF` | image to pull when `sandboxImageRef` isn't set |
 | `MONOLITH_DESKTOP_URL`, `THEONE_TOKEN`, `MONOLITH_DESKTOP_NAME`, `MONOLITH_DESKTOP_PAIRING_URL` | a sandbox connection that overrides `config.json` |
 | `THEONE_ANDROID_SDK_ROOT`, `ANDROID_SDK_ROOT`, `ANDROID_HOME` | existing SDKs the app offers in the Android step |
@@ -395,7 +430,7 @@ with `Could not find the sandbox build files (infra/compose)…`.
 
 ## Troubleshooting
 
-**`monolith: command not found`**
+**`tesseract: command not found`**
 → Not installed on `PATH`. → See [Install](#install); on Windows open a new terminal; with
 the AppImage add `~/.local/bin` to `PATH`.
 
@@ -407,20 +442,20 @@ AppImage, open the app once (or install the command again from Settings › Abou
 set `MONOLITH_SANDBOX_CONTEXT` to the app's `resources/sandbox`, or run it from a checkout.
 
 **`No sandbox is configured on this computer yet`**
-→ No env file yet. → `monolith sandbox build`, or the setup wizard.
+→ No env file yet. → `tesseract sandbox build`, or the setup wizard.
 
 **`These packages need license acceptance: android-sdk-license`**
 → Expected the first time. → Read the license printed above it and add `--accept-licenses`.
 
 **`unknown package or API level: 37`**
-→ No stable Google APIs image for that API level and this CPU. → `monolith android images
+→ No stable Google APIs image for that API level and this CPU. → `tesseract android images
 --all` lists what exists.
 
-**`The emulator is not installed in <sdk>; run monolith android install emulator`**
+**`The emulator is not installed in <sdk>; run tesseract android install emulator`**
 → The AVD exists but the SDK has no emulator (another SDK). → Install it, or pass `--sdk`.
 
-**`monolith: the app keeps the sandbox token in the system keychain, which this command cannot read…`**
+**`tesseract: the app keeps the sandbox token in the system keychain, which this command cannot read…`**
 → `sync` against a remote sandbox. → Set `MONOLITH_DESKTOP_URL` and `THEONE_TOKEN`.
 
 **`monolith --get runs inside the sandbox …`**
-→ `--get` is the in-sandbox direction. → On this computer use `monolith --sync`.
+→ `--get` is the in-sandbox direction. → On this computer use `tesseract --sync`.

@@ -21,7 +21,7 @@ beforeEach(() => {
 
 afterEach(() => sandbox.cleanup());
 
-describe("monolith config", () => {
+describe("tesseract config", () => {
   it("prints the config path", async () => {
     expect((await runCli(sandbox, ["config", "path"])).out).toEqual([sandbox.configFile]);
   });

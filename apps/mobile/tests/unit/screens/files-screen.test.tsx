@@ -147,6 +147,7 @@ describe("FilesScreen", () => {
     mockFiles.mockReturnValue(saved);
     await rerender(<FilesScreen />);
     expect(screen.getAllByText("Saved")).toHaveLength(2);
+    expect(screen.queryByLabelText(/^notes\.apk, /)).toBeNull();
     await fireEvent.press(screen.getByLabelText("notes.apk is saved on this device"));
     expect(saved.download).not.toHaveBeenCalled();
   });

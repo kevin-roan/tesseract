@@ -46,6 +46,7 @@ export interface CliRuntime {
   userDataDir: string;
   androidCacheDir: string;
   resourcesDir: string | null;
+  execPath: string;
   sandboxContextDir(): string;
   sandboxContext(): Promise<SandboxContext>;
   appExecutable(): string | null;
@@ -156,6 +157,7 @@ export function createRuntime(input: RuntimeInput): CliRuntime {
     userDataDir,
     androidCacheDir: join(userDataDir, ...ANDROID_CACHE_SUBDIR),
     resourcesDir,
+    execPath: realPath(input.execPath),
     sandboxContextDir,
     sandboxContext: async () => {
       const contextDir = sandboxContextDir();

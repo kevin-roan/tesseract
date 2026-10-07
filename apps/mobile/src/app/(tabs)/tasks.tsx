@@ -77,12 +77,12 @@ export default function TasksScreen() {
               ))}
               {screen.running.builds.map((build) => (
                 <Reveal key={build.id}>
-                  <BuildCard build={build} onPress={() => screen.nav.build(build.id)} />
+                  <BuildCard build={build} projectName={screen.projectName(build.projectId)} onPress={() => screen.nav.build(build.id)} />
                 </Reveal>
               ))}
               {screen.running.runs.map((run) => (
                 <Reveal key={run.id}>
-                  <AgentRunCard run={run} onPress={() => screen.nav.agentRun(run.id)} />
+                  <AgentRunCard run={run} projectName={screen.projectName(run.projectId)} onPress={() => screen.nav.agentRun(run.id)} />
                 </Reveal>
               ))}
             </Section>
@@ -97,12 +97,12 @@ export default function TasksScreen() {
             >
               {screen.finished.runs.map((run) => (
                 <Reveal key={run.id}>
-                  <AgentRunCard run={run} onPress={() => screen.nav.agentRun(run.id)} />
+                  <AgentRunCard run={run} projectName={screen.projectName(run.projectId)} onPress={() => screen.nav.agentRun(run.id)} />
                 </Reveal>
               ))}
               {screen.finished.builds.map((build) => (
                 <Reveal key={build.id}>
-                  <BuildCard build={build} onPress={() => screen.nav.build(build.id)} />
+                  <BuildCard build={build} projectName={screen.projectName(build.projectId)} onPress={() => screen.nav.build(build.id)} />
                 </Reveal>
               ))}
               {screen.finished.processes.map((process) => (

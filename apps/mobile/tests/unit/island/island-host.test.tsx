@@ -9,9 +9,10 @@ import { useSettingsStore } from "@/features/settings/store/settings-store";
 import { __emitAction, __reset as resetIsland, startActivity } from "../../mocks/theone-island";
 import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../sandbox/helpers";
 
+let mockPathname = "/";
 const mockNav = { agentRun: jest.fn(), sandboxHub: jest.fn(), newAgentRun: jest.fn() };
 
-jest.mock("expo-router", () => ({ useIsFocused: () => true, router: { push: jest.fn(), navigate: jest.fn(), replace: jest.fn(), canGoBack: () => false, back: jest.fn() } }));
+jest.mock("expo-router", () => ({ useIsFocused: () => true, usePathname: () => mockPathname, router: { push: jest.fn(), navigate: jest.fn(), replace: jest.fn(), canGoBack: () => false, back: jest.fn() } }));
 jest.mock("react-native-safe-area-context", () => require("react-native-safe-area-context/jest/mock").default);
 jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
 jest.mock("@/features/sandbox/hooks/use-sandbox-navigation", () => ({ useSandboxNavigation: () => mockNav }));
@@ -34,6 +35,8 @@ beforeEach(() => {
   resetSandboxState();
   seedActiveSandbox();
   resetIsland();
+  mockPathname = "/";
+  for (const fn of Object.values(mockNav)) fn.mockClear();
   useIslandStore.getState().reset();
   useSettingsStore.setState({ islandPlacement: "bottomRight", liveActivity: true });
   for (const fn of Object.values(fake)) fn.mockReset();
@@ -110,6 +113,29 @@ describe("<IslandHost />", () => {
     await fireEvent.press(screen.getByLabelText("Open chat"));
     expect(mockNav.agentRun).toHaveBeenCalledWith(sampleAgentRun.id);
     expect(mockNav.sandboxHub).not.toHaveBeenCalled();
+    expect(useIslandStore.getState().expanded).toBe(false);
+  });
+
+  it("lists the other running chats and opens the one tapped", async () => {
+    const second = { ...sampleAgentRun, id: "run_second", prompt: "Fix the login screen", startedAt: "2026-01-01T00:00:00.000Z" };
+    fake.listAgentRuns.mockResolvedValue([sampleAgentRun, second]);
+    fake.listProcesses.mockResolvedValue([]);
+    await renderHost();
+    await fireEvent.press(await screen.findByTestId("island-capsule"));
+
+    expect(screen.getByText("Fix the login screen")).toBeOnTheScreen();
+    expect(screen.queryByText("+1")).toBeNull();
+    await fireEvent.press(screen.getByTestId("island-chat-run_second"));
+    expect(mockNav.agentRun).toHaveBeenCalledWith("run_second");
+    expect(useIslandStore.getState().expanded).toBe(false);
+  });
+
+  it("only folds the island when the chat is already on screen", async () => {
+    mockPathname = `/sandbox/agent/${sampleAgentRun.id}`;
+    await renderHost();
+    await fireEvent.press(await screen.findByTestId("island-capsule"));
+    await fireEvent.press(screen.getByLabelText("Open chat"));
+    expect(mockNav.agentRun).not.toHaveBeenCalled();
     expect(useIslandStore.getState().expanded).toBe(false);
   });
 

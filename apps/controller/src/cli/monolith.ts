@@ -11,9 +11,9 @@ export const MONOLITH_USAGE = `monolith (in the sandbox): run it inside /workspa
 
 Usage:
   monolith --get [--force] [--json]
-      Bring in the changes made on your computer since the last monolith --sync or --get
+      Bring in the changes made on your computer since the last tesseract --sync or --get
       (lines added and removed per file, like git pull). Only projects linked by running
-      monolith --sync on your computer can be got; nothing on your computer is changed.
+      tesseract --sync on your computer can be got; nothing on your computer is changed.
       --force   also overwrite sandbox edits to the same files (copies of them are kept)
       --json    print the finished sync request as JSON
   monolith --help`;
@@ -67,10 +67,10 @@ export function projectFromCwd(config: Config, cwd: string): string {
 }
 
 function hostProblem(id: string, changes: SyncChanges, now: number): string | null {
-  if (changes.baselineAt === null) return `${id} was never pushed from your computer: run monolith --sync in its folder there first`;
+  if (changes.baselineAt === null) return `${id} was never pushed from your computer: run tesseract --sync in its folder there first`;
   const host = changes.host;
   if (!host) return "Monolith is not connected to this sandbox: open it on your computer";
-  if (!host.linked) return `Monolith on ${host.name} has not linked ${id}: run monolith --sync in its folder there once`;
+  if (!host.linked) return `Monolith on ${host.name} has not linked ${id}: run tesseract --sync in its folder there once`;
   if (!host.online) return `Monolith on ${host.name} is offline (last seen ${formatAgo(host.lastSeenAt, now)}): open it on your computer`;
   return null;
 }
@@ -161,7 +161,7 @@ async function follow(config: Config, created: SyncRequest, output: Output, opti
 /** `monolith` inside the sandbox: only `--get` (host → sandbox) works here. */
 export async function monolith(config: Config, args: string[], output: Output, options: MonolithOptions): Promise<number> {
   const hostOnly = args.find((arg) => HOST_ONLY_FLAGS.includes(arg));
-  if (hostOnly) throw new CliError(`monolith ${hostOnly} runs on your computer, in the project's folder; in the sandbox use monolith --get`, 2);
+  if (hostOnly) throw new CliError(`tesseract ${hostOnly} runs on your computer, in the project's folder; in the sandbox use monolith --get`, 2);
   const { values } = parseArgs({
     args,
     options: {

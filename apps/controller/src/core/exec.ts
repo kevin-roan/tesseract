@@ -4,7 +4,7 @@ import { signalGroup } from "./process-group";
 export type Env = Record<string, string | undefined>;
 
 /** Secrets the controller holds that no child needs: the API is reached through the token file. */
-export const CONTROLLER_SECRET_ENV = ["THEONE_TOKEN", "THEONE_VNC_PASSWORD", "THEONE_STT_API_KEY", "GEMINI_API_KEY"] as const;
+export const CONTROLLER_SECRET_ENV = ["THEONE_TOKEN", "THEONE_VNC_PASSWORD", "THEONE_STT_API_KEY"] as const;
 
 export function childEnv(source: Env = process.env): Env {
   const env = { ...source };

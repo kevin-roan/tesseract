@@ -35,6 +35,14 @@ export default function createStyles(theme: Theme, variant: "md" | "lg") {
       justifyContent: "center",
       ...square.frame,
     },
+    bare: {
+      width: size,
+      height: size,
+      alignItems: "center",
+      justifyContent: "center",
+      borderRadius: theme.radius.sm,
+      borderCurve: "continuous",
+    },
     pressed: square.pressed,
     disabled: {
       opacity: Opacity.disabled,

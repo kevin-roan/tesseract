@@ -310,7 +310,7 @@ export class SyncBackService {
     const active = this.repos.syncRequests.where("project_id = ? AND status IN ('pending', 'claimed')", location.id)[0];
     if (active) throw conflict(`Sync request ${active.id} is already ${active.status} for project ${location.id}`);
     if (input.kind !== "revert" && !this.readBaseline(location.id)) {
-      throw badRequest(`Project ${location.id} has not been pushed yet; run monolith --sync first`);
+      throw badRequest(`Project ${location.id} has not been pushed yet; run tesseract --sync first`);
     }
     const now = nowIso();
     const request: SyncRequest = {
@@ -514,7 +514,7 @@ export class SyncBackService {
 
   private requireBaseline(projectId: string): Baseline {
     const baseline = this.readBaseline(projectId);
-    if (!baseline) throw badRequest(`Project ${projectId} has not been pushed yet; run monolith --sync first`);
+    if (!baseline) throw badRequest(`Project ${projectId} has not been pushed yet; run tesseract --sync first`);
     return baseline;
   }
 

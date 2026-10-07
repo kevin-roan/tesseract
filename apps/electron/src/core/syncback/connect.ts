@@ -41,8 +41,8 @@ async function discovered(env: NodeJS.ProcessEnv, io: CliIo, sealed: boolean): P
   return false;
 }
 
-export async function connectSandbox(environment: SyncEnvironment, io: CliIo): Promise<SyncConnection | null> {
-  if (environment.connect) return environment.connect(io);
+/** The paired sandbox from the config file, else Docker discovery; null (reason on io) when none. */
+export async function resolveConnection(environment: Omit<SyncEnvironment, "stateDir" | "cwd">, io: CliIo): Promise<ConnectionConfig | null> {
   const env = environment.env ?? process.env;
   const file = environment.configFile ?? configFilePath(currentPathEnvironment());
   const data = await readConfig(file);
@@ -53,5 +53,11 @@ export async function connectSandbox(environment: SyncEnvironment, io: CliIo): P
     io.stderr(CLI_SYNC_LABELS.notConnected);
     return null;
   }
-  return connectionFor(config);
+  return config;
+}
+
+export async function connectSandbox(environment: SyncEnvironment, io: CliIo): Promise<SyncConnection | null> {
+  if (environment.connect) return environment.connect(io);
+  const config = await resolveConnection(environment, io);
+  return config ? connectionFor(config) : null;
 }

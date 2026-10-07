@@ -34,5 +34,5 @@ export function generalHelp(commands: readonly CliCommand[]): string[] {
 }
 
 export function commandHelp(command: CliCommand): string[] {
-  return [command.summary, "", ...(command.usage ?? [`monolith ${triggerName(command)}`]).map((line) => `  ${line}`)];
+  return [command.summary, "", ...(command.usage ?? [`${CLI_LABELS.name} ${triggerName(command)}`]).map((line) => `  ${line}`)];
 }

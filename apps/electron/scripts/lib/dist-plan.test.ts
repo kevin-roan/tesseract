@@ -60,7 +60,7 @@ describe("builderArgs", () => {
 
 describe("requiredCliFiles", () => {
   it("lists the binaries electron-builder copies into resources/bin", () => {
-    expect(requiredCliFiles("win")).toEqual(["dist-cli/win-x64/monolith.exe", "dist-cli/win-x64/theone-controller.exe"]);
+    expect(requiredCliFiles("win")).toEqual(["dist-cli/win-x64/tesseract.exe", "dist-cli/win-x64/theone-controller.exe"]);
     expect(requiredCliFiles("mac")).toHaveLength(4);
   });
 });

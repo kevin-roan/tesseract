@@ -10,11 +10,11 @@ beforeEach(() => {
 
 afterEach(() => sandbox.cleanup());
 
-describe("monolith cli dispatch", () => {
+describe("tesseract cli dispatch", () => {
   it("prints help without arguments", async () => {
     const { code, out } = await runCli(sandbox, []);
     expect(code).toBe(0);
-    expect(out[0]).toMatch(/^usage: monolith/);
+    expect(out[0]).toMatch(/^usage: tesseract/);
     expect(out.join("\n")).toContain("sandbox");
     expect(out.join("\n")).toContain("--sync-status");
   });
@@ -23,13 +23,13 @@ describe("monolith cli dispatch", () => {
     const viaHelp = await runCli(sandbox, ["help", "android"]);
     const viaFlag = await runCli(sandbox, ["android", "--help"]);
     expect(viaHelp.out).toEqual(viaFlag.out);
-    expect(viaHelp.out.join("\n")).toContain("monolith android avd create");
+    expect(viaHelp.out.join("\n")).toContain("tesseract android avd create");
   });
 
   it("explains that --get runs inside the sandbox", async () => {
     const { code, err } = await runCli(sandbox, ["--get"]);
     expect(code).toBe(1);
-    expect(err[0]).toContain("on this computer use monolith --sync");
+    expect(err[0]).toContain("on this computer use tesseract --sync");
   });
 
   it("rejects unknown flags and commands", async () => {
@@ -48,10 +48,10 @@ describe("monolith cli dispatch", () => {
   });
 
   it("prints the version as text and JSON", async () => {
-    expect((await runCli(sandbox, ["version"])).out).toEqual([`monolith ${CLI_VERSION}`]);
-    expect((await runCli(sandbox, ["--version"])).out).toEqual([`monolith ${CLI_VERSION}`]);
+    expect((await runCli(sandbox, ["version"])).out).toEqual([`tesseract ${CLI_VERSION}`]);
+    expect((await runCli(sandbox, ["--version"])).out).toEqual([`tesseract ${CLI_VERSION}`]);
     const json = await runCli(sandbox, ["version", "--json"]);
-    expect(JSON.parse(json.out.join("\n"))).toEqual({ name: "monolith", version: CLI_VERSION, platform: "linux", arch: "x64" });
+    expect(JSON.parse(json.out.join("\n"))).toEqual({ name: "tesseract", version: CLI_VERSION, platform: "linux", arch: "x64" });
   });
 
   it("rejects unknown subcommands of a command", async () => {

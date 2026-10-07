@@ -128,6 +128,23 @@ describe("useFileDownload", () => {
     expect(mockFs.downloads).toEqual([]);
   });
 
+  it("ignores another share while the share sheet is open", async () => {
+    mockFs.__setFile(savedUri, "", shared.sizeBytes);
+    let close = () => {};
+    mockSharing.shareAsync.mockImplementationOnce(() => new Promise<undefined>((resolve) => (close = () => resolve(undefined))));
+    const { result } = await renderHook(() => useFileDownload(), { wrapper: createWrapper(createTestQueryClient()) });
+
+    await act(async () => result.current.share(shared));
+    await waitFor(() => expect(result.current.status(shared).sharing).toBe(true));
+    await act(async () => result.current.share(shared));
+    expect(mockSharing.shareAsync).toHaveBeenCalledTimes(1);
+
+    await act(async () => close());
+    await waitFor(() => expect(result.current.status(shared).sharing).toBe(false));
+    await act(async () => result.current.share(shared));
+    await waitFor(() => expect(mockSharing.shareAsync).toHaveBeenCalledTimes(2));
+  });
+
   it("downloads a file before sharing it", async () => {
     mockFs.__setDownload(shared.sizeBytes);
     const { result } = await renderHook(() => useFileDownload(), { wrapper: createWrapper(createTestQueryClient()) });

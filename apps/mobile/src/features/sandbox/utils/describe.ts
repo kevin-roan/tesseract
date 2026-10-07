@@ -23,8 +23,12 @@ export function processMeta(process: ProcessInfo, now: number = Date.now()): str
   ]);
 }
 
-export function terminalMeta(terminal: TerminalInfo, now: number = Date.now()): string {
-  return join([terminal.projectId, `${terminal.cols}×${terminal.rows}`, `opened ${formatRelativeTime(terminal.createdAt, now)}`]);
+export function terminalMeta(
+  terminal: TerminalInfo,
+  project: string | null = terminal.projectId,
+  now: number = Date.now(),
+): string {
+  return join([project, `${terminal.cols}×${terminal.rows}`, `opened ${formatRelativeTime(terminal.createdAt, now)}`]);
 }
 
 export function buildMeta(build: BuildJob, now: number = Date.now()): string {
@@ -36,12 +40,13 @@ export function buildMeta(build: BuildJob, now: number = Date.now()): string {
   ]);
 }
 
-export function buildSubtitle(build: BuildJob): string {
-  return join([build.projectId, buildProfileLabel(build.profile)]);
+/** `project` is the project's display name; the id stands in when it is unknown. */
+export function buildSubtitle(build: BuildJob, project: string | null = build.projectId): string {
+  return join([project, buildProfileLabel(build.profile)]);
 }
 
-export function agentRunMeta(run: AgentRun, now: number = Date.now()): string {
-  return join([run.projectId ?? "No project", formatRelativeTime(run.startedAt, now), formatUsageTokens(run.usage)]);
+export function agentRunMeta(run: AgentRun, project: string | null = run.projectId, now: number = Date.now()): string {
+  return join([project ?? "No project", formatRelativeTime(run.startedAt, now), formatUsageTokens(run.usage)]);
 }
 
 export function artifactSubtitle(artifact: Artifact): string {

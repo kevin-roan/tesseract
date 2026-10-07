@@ -88,6 +88,7 @@ export async function writeStack(
   context: SandboxContext,
   choices: SetupChoices,
   validation: ValidationContext = {},
+  secrets: Pick<EnvSecrets, "claudeOAuthToken"> = {},
 ): Promise<SandboxStackConfig> {
   const deps = sandboxDeps(context);
   const existing = await readEnvValues(context.envFile);
@@ -98,7 +99,8 @@ export async function writeStack(
   }
   const token = existing?.THEONE_TOKEN || generateToken();
   const ids = await devIds(deps, choices.hostClaudeDir);
-  await writeEnvAtomic(context.envFile, renderEnvFile(choices, ids, { token, tsAuthKey: savedAuthKey }));
+  const claudeOAuthToken = secrets.claudeOAuthToken ?? existing?.CLAUDE_CODE_OAUTH_TOKEN;
+  await writeEnvAtomic(context.envFile, renderEnvFile(choices, ids, { token, tsAuthKey: savedAuthKey, claudeOAuthToken }));
   const previous = await loadSandboxStack(context);
   const unchanged =
     previous !== null &&

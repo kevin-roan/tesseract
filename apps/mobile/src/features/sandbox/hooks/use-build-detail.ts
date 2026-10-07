@@ -13,6 +13,7 @@ import { buildTone, stateLabel } from "../utils/states";
 import { useArtifactDownload } from "./use-artifact-download";
 import { useLogStream } from "./use-log-stream";
 import { useFixWithAi } from "./use-fix-with-ai";
+import { useProjectLabel } from "./use-project-names";
 import { useCancelBuild } from "./use-sandbox-mutations";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
 import { useBuild } from "./use-sandbox-queries";
@@ -20,6 +21,7 @@ import { useBuild } from "./use-sandbox-queries";
 export function useBuildDetail(buildId: string) {
   const nav = useSandboxNavigation();
   const build = useBuild(buildId);
+  const projectName = useProjectLabel();
   const logs = useLogStream({ kind: "build", id: buildId });
   const cancelBuild = useCancelBuild();
   const downloads = useArtifactDownload();
@@ -52,7 +54,7 @@ export function useBuildDetail(buildId: string) {
     nav,
     build: data,
     title: data ? buildTargetLabel(data.target) : "Build",
-    subtitle: data ? buildSubtitle(data) : undefined,
+    subtitle: data ? buildSubtitle(data, projectName(data.projectId)) : undefined,
     meta: data ? buildMeta(data) : undefined,
     badge: data ? { label: stateLabel(data.state), tone: buildTone(data.state) } : undefined,
     active,

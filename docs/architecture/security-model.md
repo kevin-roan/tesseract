@@ -24,7 +24,7 @@ Related: [overview → trust boundaries](overview.md#trust-boundaries),
 | Project secrets and signing keys | project `.env*.local`, `/home/dev/.secrets/<project>/` | code signing identity, cloud and API access |
 | VNC password | `THEONE_VNC_PASSWORD` or generated once into `/home/dev/.vnc/password` (0600); hash in `/home/dev/.vnc/passwd`; controller copy in `/run/theone/controller.env` | view and control of the display |
 | Speech-to-text API key (optional) | `THEONE_STT_API_KEY` in `.env`, moved into `/run/theone/controller.env`; only the controller's environment | billable transcription account; voice notes are sent to `THEONE_STT_URL` |
-| Gemini API key (optional) | saved from the mobile or desktop app into the controller's `state.db` (`settings` table, data dir mode 0700; never returned by the API), or `GEMINI_API_KEY` in `.env`, moved into `/run/theone/controller.env`; only the controller | billable Google account; voice notes requested with `provider: "gemini"` are sent to Google |
+| Gemini API key (optional) | saved from the mobile or desktop app or `tesseract --gemini-key=KEY` into the controller's `state.db` (`settings` table, data dir mode 0700; never returned by the API); only the controller | billable Google account; voice notes requested with `provider: "gemini"` are sent to Google |
 | Host shell token and PIN hash (opt-in) | `~/.config/theone/host-shell/state.json` on the host (0600 in a 0700 dir), host token also in the phone's secure store | together they are a shell on the host as the user running `host serve` |
 | Android link (opt-in) | `androidLink` in the host's `state.json` (0600): the sandbox URL and the **sandbox controller token** | host token + PIN therefore also means full control of the linked sandbox; anyone with the sandbox's adb access is root in the host emulator's guest |
 | Phone uploads (attachments, voice notes) | `/workspace/.theone/uploads` (0700 dirs, 0600 files), pruned after 30 days | the user's photos, documents and recordings |
@@ -171,6 +171,11 @@ as sandbox-controlled, and what matters is what the guest can reach on the host.
 - **Not isolated.** `THEONE_EMULATOR_ISOLATION=none` (for hosts without user namespaces)
   keeps the old behaviour and its exposure. With isolation on, an emulator started outside
   the daemon is adopted for viewing only; the link refuses to tunnel it.
+- **Shared host emulators.** `THEONE_ANDROID_SHARE_EMULATORS=on` (off by default) tunnels
+  every other `emulator-<port>` the host adb lists to the linked sandbox. Those emulators are
+  not isolated, so it has the same exposure as `none`: through the guest the sandbox reaches
+  host loopback (the host adb server on `5037`, so USB phones), LAN and tailnet. Turn it on
+  only for a sandbox you trust as much as the host user.
 - **Other host-side limits.** At most 32 tunnelled adb streams, 20 new ones per second, a
   4 MiB write buffer per stream; the screen stream rejects non-H.264 video, absurd sizes and
   packets over 8 MiB; the sandbox only learns a generic emulator error (host paths stay on
@@ -309,7 +314,7 @@ console. Either step alone cuts access, and doing both is best.
 
 ### Controller hardening against its own workload
 
-- **Child environment.** `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, `THEONE_STT_API_KEY` and `GEMINI_API_KEY` are removed
+- **Child environment.** `THEONE_TOKEN`, `THEONE_VNC_PASSWORD` and `THEONE_STT_API_KEY` are removed
   from the environment of every process, build step, terminal, agent run and
   git/zip helper, and neither reaches Xvnc, openbox or GUI apps. This prevents
   accidental leaks (crash reporters, `env` in a log), nothing more.

@@ -127,11 +127,11 @@ describe("build resources", () => {
     expect(nsh).not.toContain("StrFunc");
   });
 
-  it("links /usr/bin/monolith from the deb scripts without taking over a foreign one", () => {
+  it("links /usr/bin/tesseract from the deb scripts without taking over a foreign one", () => {
     const install = read(config.deb.afterInstall);
     const remove = read(config.deb.afterRemove);
-    expect(install).toContain("CLI_LINK=/usr/bin/monolith");
-    expect(install).toContain('CLI_TARGET="$APP_DIR/resources/bin/monolith"');
+    expect(install).toContain("CLI_LINK=/usr/bin/tesseract");
+    expect(install).toContain('CLI_TARGET="$APP_DIR/resources/bin/tesseract"');
     expect(install).toContain("is not ours; leaving it alone");
     expect(install).toContain("apparmor-profile");
     expect(remove).toContain('rm -f "$CLI_LINK"');

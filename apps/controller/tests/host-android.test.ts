@@ -13,7 +13,7 @@ import {
 } from "@theone/protocol";
 import { silentLogger } from "../src/core/logger";
 import { HostConfigError, loadHostConfig, type HostConfig } from "../src/host/config";
-import { defaultGpu, loadAndroidConfig, parseScrcpyVersion, type AndroidConfig } from "../src/host/android/config";
+import { defaultGpu, defaultIsolation, loadAndroidConfig, parseScrcpyVersion, SCRCPY_SERVER_PATHS, type AndroidConfig } from "../src/host/android/config";
 import { EMULATOR_MESSAGES, EmulatorManager, parseAvdList, parseWmSize } from "../src/host/android/emulator";
 import { parseAdbDevices } from "../src/host/android/devices";
 import { HostAndroid } from "../src/host/android";
@@ -92,6 +92,7 @@ esac`,
       ip: null,
       allowNets: [],
       adbBridgePort: null,
+      shareEmulators: false,
       runtimeDir: join(dir, "run"),
       ...overrides,
     },
@@ -156,6 +157,7 @@ describe("android config", () => {
       ip: Bun.which("ip", { PATH: `${bin}:/usr/bin:/bin:/usr/sbin:/sbin` }),
       allowNets: [],
       adbBridgePort: null,
+      shareEmulators: false,
       runtimeDir: "/run/user/7/theone",
     });
     const custom = loadAndroidConfig({
@@ -171,6 +173,15 @@ describe("android config", () => {
     expect(custom).toMatchObject({ adb: fakes.adb, ffmpeg: null, scrcpyVersion: "3.3", scrcpyServer: null, emulatorPort: 5560, gpu: "host" });
   });
 
+  test("THEONE_ANDROID_SHARE_EMULATORS is an on/off switch, off by default", () => {
+    const home = makeTempDir("android-share");
+    expect(loadAndroidConfig({ HOME: home, PATH: "" }).shareEmulators).toBe(false);
+    expect(loadAndroidConfig({ HOME: home, PATH: "", THEONE_ANDROID_SHARE_EMULATORS: "on" }).shareEmulators).toBe(true);
+    expect(loadAndroidConfig({ HOME: home, PATH: "", THEONE_ANDROID_SHARE_EMULATORS: "1" }).shareEmulators).toBe(true);
+    expect(loadAndroidConfig({ HOME: home, PATH: "", THEONE_ANDROID_SHARE_EMULATORS: "off" }).shareEmulators).toBe(false);
+    expect(() => loadAndroidConfig({ HOME: home, PATH: "", THEONE_ANDROID_SHARE_EMULATORS: "maybe" })).toThrow("THEONE_ANDROID_SHARE_EMULATORS");
+  });
+
   test("uses the host GPU only when a render node can be opened", () => {
     const dri = makeTempDir("dri");
     expect(defaultGpu(join(dri, "missing"))).toBe("swiftshader_indirect");
@@ -181,6 +192,29 @@ describe("android config", () => {
     expect(defaultGpu(dri)).toBe("swiftshader_indirect");
     chmodSync(join(dri, "renderD128"), 0o600);
     expect(defaultGpu(dri)).toBe("host");
+  });
+
+  test("defaults to no isolation and the host GPU on macOS, without probing Linux tools", () => {
+    const home = makeTempDir("android-mac");
+    const config = loadAndroidConfig({ HOME: home, PATH: "/usr/bin:/bin" }, "darwin");
+    expect(config).toMatchObject({ isolation: "none", gpu: "host", unshare: null, ip: null });
+    expect(defaultGpu(join(home, "missing"), "darwin")).toBe("host");
+    expect(defaultIsolation("linux")).toBe("netns");
+    expect(defaultIsolation("darwin")).toBe("none");
+    expect(loadAndroidConfig({ HOME: home, PATH: "", THEONE_EMULATOR_GPU: "swiftshader_indirect" }, "darwin").gpu).toBe("swiftshader_indirect");
+    expect(loadAndroidConfig({ HOME: home, PATH: "", THEONE_EMULATOR_ISOLATION: "netns" }, "darwin")).toMatchObject({ isolation: "netns", unshare: null, ip: null });
+    expect(SCRCPY_SERVER_PATHS).toContain("/opt/homebrew/share/scrcpy/scrcpy-server");
+  });
+
+  test("finds the desktop app's or Android Studio's SDK on macOS", () => {
+    const home = makeTempDir("android-mac-sdk");
+    const studio = join(home, "Library", "Android", "sdk");
+    script(join(studio, "emulator", "emulator"), "exit 0");
+    expect(loadAndroidConfig({ HOME: home, PATH: "" }, "darwin").sdkRoot).toBe(studio);
+    const bundled = join(home, "Library", "Application Support", "Monolith", "android-sdk");
+    script(join(bundled, "emulator", "emulator"), "exit 0");
+    expect(loadAndroidConfig({ HOME: home, PATH: "", ANDROID_SDK_ROOT: "/opt/sdk" }, "darwin").sdkRoot).toBe(bundled);
+    expect(loadAndroidConfig({ HOME: home, PATH: "", ANDROID_SDK_ROOT: "/opt/sdk" }, "linux").sdkRoot).toBe("/opt/sdk");
   });
 
   test("rejects an emulator port the emulator would not accept", () => {
@@ -361,6 +395,7 @@ describe("isolated emulator", () => {
     const missing = manager(fakes, {}, { ...fakes.config, isolation: "netns", unshare: null, ip: null });
     expect(missing.unavailableReason()).toBe(EMULATOR_MESSAGES.noIsolationTools);
     expect(missing.unavailableReason()).toContain("THEONE_EMULATOR_ISOLATION=none");
+    expect(missing.unavailableReason()).toContain("Linux host");
     const refusing = script(join(fakes.dir, "bin", "unshare-denied"), 'echo "unshare: unshare failed: Operation not permitted" >&2; exit 1');
     const denied = manager(fakes, {}, { ...fakes.config, isolation: "netns", unshare: refusing, ip: "/usr/bin/true" });
     expect(denied.unavailableReason()).toContain("Operation not permitted");

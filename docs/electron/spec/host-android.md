@@ -487,7 +487,7 @@ available. Rows disabled while no status, unavailable, or pending. Selecting a d
 `PUT /v1/stt {profile}`; toast `Speech-to-text set to {Title}`; failure toast (6 s) `Couldn't change speech-to-text: {error}`.
 
 **Gemini** group, description `Cloud transcription for voice notes sent with the Gemini provider. The key is stored on the sandbox and shared with the mobile app.`
-Entry row `API key` (password, 320 wide), subtitle = `Saved from an app` / `GEMINI_API_KEY on the sandbox` / `Not set`
+Entry row `API key` (password, 320 wide), subtitle = `Saved from an app` / `Not set`
 plus ` · {gemini.model}`. Actions (right aligned): destructive `Remove saved key` (visible only when source is
 `settings`), primary `Save` (Enter in the field also saves). Save trims; empty → nothing. `PUT /v1/stt {geminiApiKey}`
 (null to remove). Toasts `Gemini API key saved` / `Gemini API key removed`; failure (6 s)

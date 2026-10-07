@@ -29,8 +29,8 @@ describe("about model", () => {
   });
 
   it("maps the CLI install state", () => {
-    expect(cliView({ state: "installed", binaryPath: "/b", linkPath: "/usr/local/bin/monolith", message: null })).toEqual({
-      subtitle: "On your PATH at /usr/local/bin/monolith",
+    expect(cliView({ state: "installed", binaryPath: "/b", linkPath: "/usr/local/bin/tesseract", message: null })).toEqual({
+      subtitle: "On your PATH at /usr/local/bin/tesseract",
       installed: true,
       canInstall: false,
     });

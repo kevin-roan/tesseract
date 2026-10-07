@@ -320,7 +320,7 @@ describe("pull", () => {
   }, 30_000);
 
   it("fails for an unlinked project", async () => {
-    await expect(pull(new FakeController(env.tmp), new SyncState(join(env.tmp, "empty")), PROJECT)).rejects.toThrow(/monolith --sync/);
+    await expect(pull(new FakeController(env.tmp), new SyncState(join(env.tmp, "empty")), PROJECT)).rejects.toThrow(/tesseract --sync/);
   });
 });
 
@@ -492,7 +492,7 @@ describe("cli", () => {
     expect(await runPull(environment(host, controller), io, { dryRun: false, force: true, ...ids })).toBe(EXIT.ok);
     const out = io.take().out;
     expect(out).toContain(`Pulled 3 files into ${host} (1 added, 1 modified, 1 deleted) · snapshot`);
-    expect(out).toContain("undo with monolith --revert");
+    expect(out).toContain("undo with tesseract --revert");
     await write(host, "src/app.py", "edited after the pull\n");
     expect(await runRevert(environment(host, controller), io, { force: false, ...ids })).toBe(EXIT.conflict);
     const err = io.take().err;
@@ -507,7 +507,7 @@ describe("cli", () => {
     expect(await runRevert(environment(host, null), io, { force: false, ...ids })).toBe(EXIT.error);
     io.take();
     expect(await runPull(environment(join(host, ".."), controller), io, { dryRun: false, force: false, ...ids })).toBe(EXIT.error);
-    expect(io.take().err).toContain("monolith --sync");
+    expect(io.take().err).toContain("tesseract --sync");
   });
 
   it("records the link and the host manifest on push", async () => {

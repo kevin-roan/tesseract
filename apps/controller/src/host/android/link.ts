@@ -11,6 +11,7 @@ import {
   type AndroidLinkHostMessage,
   type AndroidLinkInfo,
   type EmulatorInfo,
+  type SharedEmulator,
 } from "@theone/protocol";
 import { errorMessage } from "../../core/errors";
 import type { Logger } from "../../core/logger";
@@ -25,6 +26,10 @@ export type LinkTarget = {
   adbd: () => Endpoint;
   /** Why the current emulator must not be linked (not isolated), or null. */
   refusal: () => string | null;
+  /** Other host emulators shared with the sandbox (empty unless `THEONE_ANDROID_SHARE_EMULATORS` is on). */
+  shared: () => SharedEmulator[];
+  /** A shared emulator's adbd, or null when that serial is not shared now. */
+  sharedAdbd: (serial: string) => Endpoint | null;
 };
 
 export type LinkOptions = {
@@ -50,6 +55,7 @@ const NORMAL_CLOSURE = 1000;
 
 export const LINK_MESSAGES = {
   notRunning: "The emulator is not running",
+  notShared: "That emulator is not shared by the host",
   replaced: "Replaced by a newer link to this sandbox",
   closed: "The sandbox closed the link",
   tooManyStreams: "Too many adb streams are open",
@@ -141,6 +147,11 @@ export class AndroidLink {
     this.send({ type: "emulator", emulator: linkEmulatorView(emulator) });
   }
 
+  /** Tells the sandbox which other host emulators it may reach. */
+  sharedChanged(devices: SharedEmulator[]): void {
+    this.send({ type: "devices", devices });
+  }
+
   shutdown(): void {
     this.close();
     this.config = null;
@@ -207,13 +218,14 @@ export class AndroidLink {
       this.logger.info("android link connected", { sandbox: redactUrl(config.sandboxUrl) });
       this.send({ type: "hello", hostId: this.target.hostId, version: this.target.version });
       this.send({ type: "emulator", emulator: linkEmulatorView(this.target.emulator()) });
+      this.send({ type: "devices", devices: this.target.shared() });
     });
     socket.addEventListener("message", (event) => {
       if (generation !== this.generation || typeof event.data !== "string") return;
       const parsed = parseJsonWith(AndroidLinkSandboxMessageSchema, event.data);
       if (!parsed.ok) return;
       if (parsed.value.type === "ping") this.send({ type: "pong" });
-      else void this.openStream(config, parsed.value.streamId, generation);
+      else void this.openStream(config, parsed.value.streamId, parsed.value.device ?? null, generation);
     });
     socket.addEventListener("error", () => {
       failure ??= "Could not reach the sandbox link";
@@ -260,29 +272,45 @@ export class AndroidLink {
     return null;
   }
 
-  private async openStream(config: AndroidLinkConfig, streamId: string, generation: number): Promise<void> {
-    if (this.target.emulator().state !== "running") {
-      this.refuse(streamId, LINK_MESSAGES.notRunning);
-      return;
+  /** `device`: a shared emulator's host serial; null for the host emulator. */
+  private async openStream(config: AndroidLinkConfig, streamId: string, device: string | null, generation: number): Promise<void> {
+    let adbd: Endpoint | null;
+    if (device === null) {
+      if (this.target.emulator().state !== "running") {
+        this.refuse(streamId, LINK_MESSAGES.notRunning);
+        return;
+      }
+      const refusal = this.target.refusal();
+      if (refusal) {
+        this.refuse(streamId, refusal);
+        return;
+      }
+      adbd = this.target.adbd();
+    } else {
+      adbd = this.target.sharedAdbd(device);
+      if (!adbd) {
+        this.refuse(streamId, LINK_MESSAGES.notShared);
+        return;
+      }
     }
-    const refusal = this.target.refusal() ?? this.admit();
+    const refusal = this.admit();
     if (refusal) {
       this.refuse(streamId, refusal);
       return;
     }
     this.pendingStreams += 1;
     try {
-      await this.connectStream(config, streamId, generation);
+      await this.connectStream(config, streamId, adbd, generation);
     } finally {
       this.pendingStreams -= 1;
     }
   }
 
-  private async connectStream(config: AndroidLinkConfig, streamId: string, generation: number): Promise<void> {
+  private async connectStream(config: AndroidLinkConfig, streamId: string, adbd: Endpoint, generation: number): Promise<void> {
     let tcp: Socket;
     try {
       tcp = await new Promise<Socket>((resolve, reject) => {
-        const socket = connectTo(this.target.adbd());
+        const socket = connectTo(adbd);
         socket.pause();
         socket.once("connect", () => {
           socket.off("error", reject);

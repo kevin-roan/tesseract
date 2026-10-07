@@ -44,7 +44,7 @@ describe("describePairing", () => {
   });
 });
 
-describe("monolith pair", () => {
+describe("tesseract pair", () => {
   it("prints the link from the running sandbox", async () => {
     mocks.readPairing.mockResolvedValue(INFO);
     const result = await runCli(sandbox, ["pair", "--json"]);
@@ -76,6 +76,6 @@ describe("monolith pair", () => {
     mocks.readPairing.mockRejectedValue(new IpcError("unavailable", "no sandbox"));
     const result = await runCli(sandbox, ["pair"]);
     expect(result.code).toBe(1);
-    expect(result.err).toEqual(["monolith: no sandbox"]);
+    expect(result.err).toEqual(["tesseract: no sandbox"]);
   });
 });

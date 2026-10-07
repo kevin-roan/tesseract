@@ -73,3 +73,24 @@ export function attentionTitle(attentionCount: number): string | null {
   if (attentionCount <= 0) return null;
   return attentionCount === 1 ? "1 request needs you" : `${attentionCount} requests need you`;
 }
+
+export const ALL_INBOX_PROJECTS = "all";
+
+export type InboxProjectOption = { value: string; label: string };
+
+/** "All" plus one segment per project in the inbox, by name; empty when there is nothing to choose between. */
+export function inboxProjectOptions(
+  items: readonly Pick<InboxItem, "projectId">[],
+  names: ReadonlyMap<string, string>,
+): InboxProjectOption[] {
+  const ids = [...new Set(items.flatMap((item) => (item.projectId ? [item.projectId] : [])))];
+  if (ids.length < 2) return [];
+  const options = ids
+    .map((id) => ({ value: id, label: names.get(id) ?? id }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+  return [{ value: ALL_INBOX_PROJECTS, label: "All" }, ...options];
+}
+
+export function filterInboxByProject<T extends Pick<InboxItem, "projectId">>(items: readonly T[], projectId: string): T[] {
+  return projectId === ALL_INBOX_PROJECTS ? [...items] : items.filter((item) => item.projectId === projectId);
+}

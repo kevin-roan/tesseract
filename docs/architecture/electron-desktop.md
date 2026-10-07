@@ -6,7 +6,7 @@ app did (overview, agents, projects, files, terminals, display, settings, tray,
 sync-back, host shell) and adds what the GTK app left to the README: a setup wizard
 that installs or starts Docker, builds or pulls the sandbox image, downloads Android
 emulator packages and creates AVDs for the host emulator. It ships as one installer
-per OS with a standalone `monolith` CLI inside.
+per OS with a standalone `tesseract` CLI inside.
 
 The decision and its trade-offs are in [ADR 0010](../adr/0010-electron-desktop.md).
 Per-screen pixel specs live in [`docs/electron/spec/`](../electron/spec/), the
@@ -21,7 +21,7 @@ flowchart LR
     m["main<br/>IPC services · windows · tray · updater"]
     c["src/core<br/>pure Node: docker · sandbox · android<br/>connection · syncback · host · config"]
   end
-  cli["monolith CLI<br/>(bun --compile, resources/bin)"]
+  cli["tesseract CLI<br/>(bun --compile, resources/bin)"]
   hd["theone-controller host<br/>(host daemon, resources/bin)"]
   dk["Docker / Podman"]
   sb["sandbox container<br/>controller :7700"]
@@ -46,7 +46,7 @@ flowchart LR
 | `src/preload/index.ts` | preload (CJS, sandboxed) | The `window.monolith` bridge, nothing else |
 | `src/shared/` | everywhere | `ipc.ts` (contract aggregate + channel names), `contracts/<service>.ts`, `routes.ts`, `runtime.ts`, `defaults.ts`. No `node:*` imports |
 | `src/renderer/` | renderer (Chromium, no Node) | `app/` (providers, routes, registries, data layer, connection state, command palette, shortcuts, feedback), `shell/`, `pages/<page>/`, `features/<page>/`, `onboarding/<step>/`, `components/<Name>/`, `theme/`, `fixtures/`, `gallery/` |
-| `cli/` | `monolith` binary (Bun) | Command registry, argument parser, `commands/*.ts` that call `src/core` |
+| `cli/` | `tesseract` binary (Bun) | Command registry, argument parser, `commands/*.ts` that call `src/core` |
 | `scripts/` | Node, at build time | `snapshot`, `diff`, `cli-build`, `bundle-sandbox`, `dist`, `smoke`, `make-icons`, `check-nsis-path`, `hooks/after-sign` |
 | `e2e/` | Playwright `_electron` | `shell`, `onboarding`, `preferences`, `cli`, `packaging`, `app` (visual) specs |
 | `tests/` | vitest (node) | `architecture.test.ts` (import boundaries), `contract.test.ts` (one IPC file per service), `motion-tokens.test.ts` (TS and CSS motion tokens agree) |
@@ -83,7 +83,7 @@ sequenceDiagram
   OS->>M: launch (argv, deep link)
   M->>M: applyPathFix(PATH) · parseLaunchArgs
   alt --sync/--pull/--revert/--sync-status/--get
-    M->>OS: spawn resources/bin/monolith, exit with its code
+    M->>OS: spawn resources/bin/tesseract, exit with its code
   else normal start
     M->>M: single-instance lock · monolith:// protocol (packaged)
     M->>M: whenReady · initContext · installSecurity
@@ -259,7 +259,7 @@ app, configured from `connection.load()`:
 | caches (Android catalog) | `~/.cache/monolith-desktop`, `~/Library/Caches/Monolith`, `%LOCALAPPDATA%\Monolith\cache` | `src/core/android` |
 | Android SDK (default) | `~/.local/share/theone/android-sdk`, `~/Library/Application Support/Monolith/android-sdk`, `%LOCALAPPDATA%\Monolith\android-sdk` | `src/core/android`; an existing Android Studio SDK is offered first (`sdkCandidates`) |
 
-The app and the CLI resolve all of these through `src/core/paths`, so `monolith`
+The app and the CLI resolve all of these through `src/core/paths`, so `tesseract`
 on the command line sees exactly what the app sees. Settings changes made by the
 CLI are picked up by the app through a file watcher (`watchSettingsFile`).
 
@@ -377,7 +377,7 @@ variables from the app's environment are scrubbed before Docker runs.
 
 ## 4. CLI
 
-`monolith` is `cli/index.ts` compiled with `bun build --compile --minify` per target
+`tesseract` is `cli/index.ts` compiled with `bun build --compile --minify` per target
 (`bun run cli:build`), next to `theone-controller` (the controller compiled from
 `apps/controller`). Both go to `dist-cli/<os>-<arch>/` and ship in `resources/bin`.
 
@@ -390,6 +390,7 @@ variables from the app's environment are scrubbed before Docker runs.
 | `android images\|install\|avd list\|create\|start\|delete` | the SDK and AVDs |
 | `pair [--no-qr]` | pairing link and a terminal QR code for the phone |
 | `sync [push\|pull\|revert\|status]` and the GTK flags `--sync`, `--pull`, `--revert`, `--sync-status` | sync-back from the current directory |
+| `--gemini-key=KEY` | saves the Gemini API key for voice notes on the connected sandbox (`PUT /v1/stt`); same as Preferences → Speech-to-text |
 | `config path\|get\|set\|unset` | `config.json` (the token is redacted unless `--reveal`) |
 | `version` | the app version |
 
@@ -516,9 +517,9 @@ platform's targets, `bundle:sandbox`, then electron-builder with
 
 | OS | Artifacts | CLI on `PATH` |
 |---|---|---|
-| macOS | universal `dmg` (+ `zip` for updates), hardened runtime, entitlements, min macOS 12; notarized in `afterSign` when `MONOLITH_NOTARIZE` and Apple credentials are set | in-app "Install monolith command": admin prompt, `/usr/local/bin/monolith` → `resources/bin/monolith` (refused when the app runs translocated, outside `/Applications`) |
+| macOS | universal `dmg` (+ `zip` for updates), hardened runtime, entitlements, min macOS 12; notarized in `afterSign` when `MONOLITH_NOTARIZE` and Apple credentials are set | in-app "Install tesseract command": admin prompt, `/usr/local/bin/tesseract` → `resources/bin/tesseract` (refused when the app runs translocated, outside `/Applications`) |
 | Windows | per-user one-click NSIS (`x64`), no elevation, desktop and Start-menu shortcuts | `build/installer.nsh` adds `$INSTDIR\resources\bin` to the user `Path` and removes it on uninstall |
-| Linux | `AppImage` and `deb` (`x64`); the deb recommends `docker.io \| docker-ce` (Podman is refused by the Docker step) | deb `postinst` links `/usr/bin/monolith` only when the path is free or already ours; AppImage: in-app install copies the CLI to `~/.local/share/monolith/bin` and links `~/.local/bin/monolith`; on install and every AppImage launch `src/main/services/cli-sidecar.ts` writes `~/.local/share/monolith/app.json` `{appPath, sandboxDir}` and syncs the bundled sandbox context to `~/.local/share/monolith/sandbox` (marker `.bundle-hash`), so the copy finds the app and the context |
+| Linux | `AppImage` and `deb` (`x64`); the deb recommends `docker.io \| docker-ce` (Podman is refused by the Docker step) | deb `postinst` links `/usr/bin/tesseract` only when the path is free or already ours; AppImage: in-app install copies the CLI to `~/.local/share/monolith/bin` and links `~/.local/bin/tesseract`; on install and every AppImage launch `src/main/services/cli-sidecar.ts` writes `~/.local/share/monolith/app.json` `{appPath, sandboxDir}` and syncs the bundled sandbox context to `~/.local/share/monolith/sandbox` (marker `.bundle-hash`), so the copy finds the app and the context |
 
 `extraResources`: `dist-cli/${os}-${arch}` → `resources/bin`,
 `build/sandbox-context` → `resources/sandbox` (the git-tracked files needed to build

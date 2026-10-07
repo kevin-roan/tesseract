@@ -15,6 +15,7 @@ import { profilePerson } from "@/features/sandbox/utils/profile";
 import { homeStatus } from "../utils/status";
 import { useActiveBuild } from "./use-active-build";
 import { useDrawerState } from "./use-drawer-state";
+import { useRunningTasks } from "./use-running-tasks";
 import { useSandboxUnreachable } from "./use-sandbox-unreachable";
 
 export function useHomeScreen() {
@@ -25,6 +26,7 @@ export function useHomeScreen() {
   const build = useActiveBuild();
   const drawer = useDrawerState();
   const unreachable = useSandboxUnreachable();
+  const running = useRunningTasks();
 
   const onStarted = useCallback((run: AgentRun) => nav.agentRun(run.id), [nav]);
   const projectOptions = useProjectOptions();
@@ -45,6 +47,7 @@ export function useHomeScreen() {
     drawer,
     inbox: { unreadCount, attention, open: openInbox },
     status,
+    running,
     composer,
   };
 }

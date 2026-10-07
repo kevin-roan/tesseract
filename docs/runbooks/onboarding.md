@@ -7,7 +7,7 @@ Android emulator and a paired phone. Plan for about an hour; most of it is the f
 image build, which runs on its own.
 
 Developers building the app itself: [electron-desktop.md](electron-desktop.md). The same
-steps from a terminal: [monolith-cli.md](monolith-cli.md).
+steps from a terminal: [tesseract-cli.md](tesseract-cli.md).
 
 ## What you need
 
@@ -32,8 +32,8 @@ skipped and everything else works.
 | Debian / Ubuntu | `Monolith-<version>-amd64.deb` | `sudo apt install ./Monolith-<version>-amd64.deb` |
 | Other Linux | `Monolith-<version>-x86_64.AppImage` | `chmod +x Monolith-*.AppImage` and run it (AppImages need FUSE 2, e.g. `libfuse2`) |
 
-Every installer also ships the `monolith` command; see
-[monolith-cli.md](monolith-cli.md#install) for how it lands on your `PATH`.
+Every installer also ships the `tesseract` command; see
+[tesseract-cli.md](tesseract-cli.md#install) for how it lands on your `PATH`.
 
 ## 2. The setup wizard
 
@@ -200,7 +200,7 @@ up as **Use the existing image**.
 - **Build a new image** (default): builds from the files bundled with Monolith. The first
   build takes 20 to 60 minutes; later builds reuse the cache.
 - **Download a prebuilt image**: only when an image reference is configured (see
-  [monolith-cli.md](monolith-cli.md#config) `sandboxImageRef`); otherwise it reads
+  [tesseract-cli.md](tesseract-cli.md#config) `sandboxImageRef`); otherwise it reads
   `No prebuilt image is published yet.` A prebuilt image always includes every tool.
 - **Use the existing image**: when the image is already there.
 
@@ -347,7 +347,7 @@ Settings › About shows the settings file and app data folder (**Show in folder
 
 ## Troubleshooting
 
-Format: **symptom** → cause → fix. `monolith doctor` runs the same Docker, image,
+Format: **symptom** → cause → fix. `tesseract doctor` runs the same Docker, image,
 acceleration and SDK checks from a terminal.
 
 **Docker: `Docker isn't installed`, but it is**
@@ -406,7 +406,7 @@ cached. **Show details** shows the failing step's last lines. See also
 
 **Build: `The controller didn't answer within 3 minutes` / `The sandbox container exited`**
 → The container started but the controller didn't come up. → **Show details** has the last
-50 container log lines; `monolith sandbox logs` shows more.
+50 container log lines; `tesseract sandbox logs` shows more.
 
 **Sandbox: `TS_AUTHKEY is required for the first start in tailscale mode`**
 → Tailscale mode needs an auth key until the sidecar has logged in once. → Create a key

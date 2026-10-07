@@ -72,11 +72,11 @@ describe("avd arguments", () => {
   it("marks the default AVD", () => {
     const lines = describeAvds([{ name: "Pixel", path: "/avd/Pixel.avd", target: "android-36", abi: "x86_64" }], "Pixel");
     expect(lines[1]).toMatch(/^\*\s+Pixel\s+android-36\s+x86_64\s+\/avd\/Pixel.avd$/);
-    expect(describeAvds([], null)).toEqual(["No AVDs yet; run monolith android avd create"]);
+    expect(describeAvds([], null)).toEqual(["No AVDs yet; run tesseract android avd create"]);
   });
 });
 
-describe("monolith android avd", () => {
+describe("tesseract android avd", () => {
   let sandbox: Sandbox;
   let sdkRoot: string;
 
@@ -90,7 +90,7 @@ describe("monolith android avd", () => {
   it("explains how to install a missing system image", async () => {
     const result = await runCli(sandbox, ["android", "avd", "create", "--sdk", sdkRoot, "--image", "35"]);
     expect(result.code).toBe(1);
-    expect(result.err[0]).toContain("run monolith android install 35");
+    expect(result.err[0]).toContain("run tesseract android install 35");
   });
 
   it("prefers the installed platform directory for an API level", async () => {
@@ -113,11 +113,11 @@ describe("monolith android avd", () => {
     expect(JSON.parse(readFileSync(sandbox.configFile, "utf8"))).toEqual({ androidSdkRoot: sdkRoot });
   });
 
-  it("lists AVDs for a bare monolith android and monolith android avd", async () => {
+  it("lists AVDs for a bare tesseract android and tesseract android avd", async () => {
     for (const argv of [["android"], ["android", "avd"]]) {
       const result = await runCli(sandbox, argv);
       expect(result.code).toBe(0);
-      expect(result.out).toEqual(["No AVDs yet; run monolith android avd create"]);
+      expect(result.out).toEqual(["No AVDs yet; run tesseract android avd create"]);
     }
     const json = await runCli(sandbox, ["android", "--json"]);
     expect(JSON.parse(json.out.join("\n"))).toEqual({ default: null, avds: [] });
@@ -148,6 +148,6 @@ describe("monolith android avd", () => {
   it("fails clearly when there is no AVD to start", async () => {
     const result = await runCli(sandbox, ["android", "avd", "start", "--detach"]);
     expect(result.code).toBe(1);
-    expect(result.err[0]).toContain("monolith android avd create");
+    expect(result.err[0]).toContain("tesseract android avd create");
   });
 });

@@ -59,7 +59,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("monolith status", () => {
+describe("tesseract status", () => {
   it("collects connection, docker, stack, services and android state", async () => {
     mkdirSync(dirname(sandbox.configFile), { recursive: true });
     writeFileSync(
@@ -108,7 +108,7 @@ describe("monolith status", () => {
     });
     expect(lines).toEqual([
       "Monolith 0.1.0",
-      "Sandbox:   not paired (run monolith sandbox build or monolith pair)",
+      "Sandbox:   not paired (run tesseract sandbox build or tesseract pair)",
       "Docker:    Docker Desktop 4.40",
       "Stack:     not configured",
       "Services:  sandbox    running  healthy",

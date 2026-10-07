@@ -2,8 +2,11 @@ import type { InboxItem } from "@theone/protocol";
 import { sampleInboxItem } from "@theone/protocol/fixtures";
 
 import {
+  ALL_INBOX_PROJECTS,
   attentionTitle,
+  filterInboxByProject,
   groupInbox,
+  inboxProjectOptions,
   inboxTarget,
   isAttentionKind,
   markItemsRead,
@@ -42,6 +45,27 @@ describe("groupInbox", () => {
   it("drops empty sections", () => {
     expect(groupInbox([finished]).map((section) => section.id)).toEqual(["unread"]);
     expect(groupInbox([])).toEqual([]);
+  });
+});
+
+describe("project filter", () => {
+  const beta = item({ id: "inb_beta", projectId: "beta" });
+  const alpha = item({ id: "inb_alpha", projectId: "alpha" });
+  const loose = item({ id: "inb_loose", projectId: null });
+  const names = new Map([["alpha", "Zeta app"]]);
+
+  it("offers All plus each project by name, only when there is a choice", () => {
+    expect(inboxProjectOptions([beta, alpha, loose, alpha], names)).toEqual([
+      { value: ALL_INBOX_PROJECTS, label: "All" },
+      { value: "beta", label: "beta" },
+      { value: "alpha", label: "Zeta app" },
+    ]);
+    expect(inboxProjectOptions([alpha, loose], names)).toEqual([]);
+  });
+
+  it("keeps every item for All and only that project's items otherwise", () => {
+    expect(filterInboxByProject([beta, alpha, loose], ALL_INBOX_PROJECTS)).toEqual([beta, alpha, loose]);
+    expect(filterInboxByProject([beta, alpha, loose], "alpha")).toEqual([alpha]);
   });
 });
 

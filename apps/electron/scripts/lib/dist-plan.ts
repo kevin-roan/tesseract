@@ -80,7 +80,7 @@ export function builderArgs(plan: DistPlan, config = "electron-builder.yml"): st
   return args;
 }
 
-export const CLI_BINARIES = ["monolith", "theone-controller"] as const;
+export const CLI_BINARIES = ["tesseract", "theone-controller"] as const;
 
 export function requiredCliFiles(platform: DistPlatform): string[] {
   return CLI_TARGETS[platform].flatMap((id) => {

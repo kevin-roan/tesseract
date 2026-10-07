@@ -5,6 +5,7 @@ import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
 import Section from "@/components/section";
+import SegmentedPills from "@/components/segmented-pills";
 import { SkeletonList } from "@/components/skeleton";
 import InboxRow from "@/features/inbox/components/inbox-row";
 import { useInboxScreen } from "@/features/inbox/hooks/use-inbox-screen";
@@ -48,6 +49,15 @@ export default function InboxScreen() {
         />
       ) : (
         <>
+          {inbox.projectOptions.length > 0 ? (
+            <SegmentedPills
+              options={inbox.projectOptions}
+              value={inbox.projectFilter}
+              onChange={inbox.selectProject}
+              scrollable
+              label="Filter by project"
+            />
+          ) : null}
           {inbox.markError ? <Notice tone="danger" message={inbox.markError} /> : null}
           {inbox.sections.map((section, sectionIndex) => (
             <Section key={section.id} title={section.title} testID={`inbox-section-${section.id}`}>

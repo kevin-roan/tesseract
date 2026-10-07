@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { statSync } from "node:fs";
+import { mkdirSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   HostHealthSchema,
@@ -16,7 +16,7 @@ import {
 } from "@theone/protocol";
 import { runCli, type Output } from "../src/cli/commands";
 import { silentLogger } from "../src/core/logger";
-import { HostConfigError, loadHostConfig, servedUrl, validateBind, type HostConfig } from "../src/host/config";
+import { HostConfigError, hostToolPath, loadHostConfig, servedUrl, tailscaleBin, validateBind, type HostConfig } from "../src/host/config";
 import { startHostShell, type HostShell } from "../src/host/server";
 import { HostStateStore } from "../src/host/state";
 import { hostShellEnv } from "../src/host/terminals";
@@ -96,6 +96,28 @@ describe("bind validation", () => {
     expect(loaded.stateFile).toBe("/x/cfg/theone/host-shell/state.json");
     expect(loaded.publicUrl).toBe("http://100.100.1.2:7701");
     expect(loadHostConfig({ HOME: "/x" }, {}, false).stateDir).toBe("/x/.config/theone/host-shell");
+  });
+
+  test("defaults the shell to zsh on macOS and keeps SHELL when set", () => {
+    const bind = { THEONE_HOST_SHELL_BIND: "127.0.0.1", HOME: "/x", PATH: "" };
+    expect(loadHostConfig(bind, {}, true, "darwin").shell).toEqual(["/bin/zsh", "-l"]);
+    expect(loadHostConfig(bind, {}, true, "linux").shell).toEqual(["bash", "-l"]);
+    expect(loadHostConfig({ ...bind, SHELL: "/bin/fish" }, {}, true, "darwin").shell).toEqual(["/bin/fish", "-l"]);
+    expect(loadHostConfig(bind, {}, true, "darwin").android.isolation).toBe("none");
+  });
+
+  test("finds tailscale on PATH, Homebrew's prefixes, or inside the macOS app", () => {
+    expect(hostToolPath({ PATH: "/usr/bin:/bin" }, "darwin")).toBe("/usr/bin:/bin:/opt/homebrew/bin:/usr/local/bin");
+    expect(hostToolPath({ PATH: "/usr/bin:/bin" }, "linux")).toBe("/usr/bin:/bin");
+    expect(hostToolPath({}, "darwin")).toBe("/opt/homebrew/bin:/usr/local/bin");
+    const bin = join(makeTempDir("tailscale-bin"), "bin");
+    mkdirSync(bin, { recursive: true });
+    writeFileSync(join(bin, "tailscale"), "#!/bin/sh\n", { mode: 0o755 });
+    expect(tailscaleBin({ PATH: bin }, "linux", () => false)).toBe(join(bin, "tailscale"));
+    expect(tailscaleBin({ PATH: "" }, "linux", () => true)).toBeNull();
+    const homebrew = Bun.which("tailscale", { PATH: "/opt/homebrew/bin:/usr/local/bin" });
+    expect(tailscaleBin({ PATH: "" }, "darwin", () => true)).toBe(homebrew ?? "/Applications/Tailscale.app/Contents/MacOS/Tailscale");
+    expect(tailscaleBin({ PATH: "" }, "darwin", () => false)).toBe(homebrew);
   });
 
   test("finds the tailscale serve HTTPS url that proxies to the daemon", () => {
