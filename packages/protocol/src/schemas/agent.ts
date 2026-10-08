@@ -30,6 +30,8 @@ export const AgentRunSchema = z.object({
   mode: AgentRunModeSchema.nullable().default(null),
   attachments: z.array(UploadSchema).default([]),
   sessionId: z.string().nullable(),
+  /** Session this run resumed (`resumeSessionId`); links a follow-up to its chat even when Claude reports a new session id. */
+  resumedSessionId: z.string().nullable().optional(),
   /** Claude account the run used (its config dir holds the session); older runs have null (the primary account). */
   claudeAccountId: z.string().nullable().default(null),
   state: AgentRunStateSchema,

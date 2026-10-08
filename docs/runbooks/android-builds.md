@@ -17,6 +17,28 @@ Android SDK. The host never needs Android Studio.
   in the `android-sdk` stage).
 - Gradle caches go to `/home/dev/.gradle` (persistent).
 
+## Reuse the host's SDK and Gradle cache
+
+On a Linux x86_64 host that already has an Android SDK, let the sandbox use it instead of
+downloading NDK, CMake and dependencies again. In `infra/compose/.env`:
+
+```bash
+THEONE_HOST_ANDROID_SDK=/home/me/Android/Sdk        # $ANDROID_HOME on the host
+THEONE_HOST_GRADLE_CACHE=/home/me/.gradle/caches    # $GRADLE_USER_HOME/caches on the host
+```
+
+then `bun run sandbox up` (recreates the container; this also drops the NDK/CMake copies an
+earlier build downloaded into the image layer). Both are mounted **read-only**: the SDK at
+`/opt/android-sdk`, the Gradle cache at `/opt/gradle-ro-cache` as `GRADLE_RO_DEP_CACHE`.
+Dependencies the host has never fetched still download into `/home/dev/.gradle`.
+
+- The host SDK must contain what the project needs (e.g. `ndk;27.1.12297006`,
+  `cmake;3.22.1`, `build-tools;36.0.0` for a current Expo app). Install missing packages
+  on the host with `sdkmanager`; a build in the sandbox fails with
+  `Failed to install the following SDK components` instead of downloading them.
+- A macOS host cannot share its SDK: its binaries do not run in the Linux sandbox.
+- The project's `android/` build output and `node_modules` still live in the sandbox.
+
 ## From the phone
 
 1. Agents tab → **Projects** → the project → **Build** → `android-apk`, profile **debug** or **release**.
@@ -32,7 +54,14 @@ What the controller runs (`android-apk` recipe), in the project directory:
 <exec> expo prebuild --platform android --no-install      # only if there is no android/ directory (<exec> = npx --yes=false, pnpm exec, …)
 cd android && sh ./gradlew assembleDebug --no-daemon --console=plain  # assembleRelease for the release profile
 # collect: android/app/build/outputs/apk/**/<profile>/**/*.apk written by this build → /workspace/artifacts/
+# cleanup (always, also after a failure or cancel): delete android/build, android/app/build,
+#   android/app/.cxx and node_modules/**/<package>/android/{build,.cxx}
 ```
+
+The cleanup keeps the sandbox small: Gradle and CMake compile every React Native library's
+native code inside its package in `node_modules`, often over 10 GB per project. The price is
+that every controller build compiles from scratch. Builds you run yourself (`./gradlew`,
+`expo run:android`) are not cleaned up.
 
 The target is offered for Expo apps (an `expo` dependency plus
 `app.json`/`app.config.*`) and for projects with `android/gradlew`. The recipe
@@ -120,7 +149,7 @@ repository.
 | Symptom | Fix |
 |---|---|
 | `SDK location not found` | the image was built with `WITH_ANDROID=false` (empty `/opt/android-sdk`), or a stale `android/local.properties` points elsewhere: rebuild with Android, or set `sdk.dir=/opt/android-sdk` |
-| `Failed to install the following SDK components` | Gradle cannot write the SDK. Check `ls -ld /opt/android-sdk` (owned by `dev`) |
+| `Failed to install the following SDK components` | Gradle cannot write the SDK. With `THEONE_HOST_ANDROID_SDK` that is expected: install the package on the host (`sdkmanager --install 'ndk;…'`). Otherwise check `ls -ld /opt/android-sdk` (owned by `dev`) |
 | Build killed, `exit code 137` | out of memory: lower `org.gradle.jvmargs`, stop other processes, raise the compose memory limit |
 | `Unsupported class file major version` | wrong JDK: `java -version` must say 17; `JAVA_HOME=/opt/java/openjdk` |
 | Expo prebuild asks questions | run with `--no-install` and set `android.package` in `app.json` |

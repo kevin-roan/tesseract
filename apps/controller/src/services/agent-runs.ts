@@ -120,6 +120,7 @@ export class AgentRunService {
       mode: input.mode ?? null,
       attachments,
       sessionId: input.resumeSessionId ?? null,
+      resumedSessionId: input.resumeSessionId ?? null,
       claudeAccountId: account.id,
       state: "running",
       startedAt: nowIso(),

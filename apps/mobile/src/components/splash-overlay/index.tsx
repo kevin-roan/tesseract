@@ -4,16 +4,24 @@ import { Canvas, useFont } from "@shopify/react-native-skia";
 import { Image } from "expo-image";
 import * as SplashScreen from "expo-splash-screen";
 import Animated, { useAnimatedStyle } from "react-native-reanimated";
-import { NotoSans_700Bold } from "@expo-google-fonts/noto-sans/700Bold";
+import { Saira_300Light } from "@expo-google-fonts/saira/300Light";
 
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useSplashTimeline } from "@/hooks/use-splash-timeline";
+import { Palette } from "@/theme";
 
 import { obeliskGeometry } from "./geometry";
 import ObeliskLight from "./obelisk-light";
 import Wordmark from "./wordmark";
 
 const SPLASH = require("@/assets/images/splash.png");
+
+/** The splash image is dark in every scheme, so its inks are fixed rather than themed. */
+const INK = {
+  letters: Palette.stone[200],
+  light: Palette.clay[400],
+  rule: "rgba(255, 255, 255, 0.18)",
+};
 
 export type SplashOverlayProps = {
   /** App is ready to be shown; the overlay hands off once its intro has played. */
@@ -32,7 +40,7 @@ const SplashOverlay = ({ ready, title, onDone }: SplashOverlayProps) => {
   const { width, height } = useWindowDimensions();
   const [imageShown, setImageShown] = useState(false);
   const [fontFailed, setFontFailed] = useState(false);
-  const font = useFont(NotoSans_700Bold, Math.round(width * 0.13), () => setFontFailed(true));
+  const font = useFont(Saira_300Light, Math.round(width * 0.075), () => setFontFailed(true));
   const started = imageShown && (font !== null || fontFailed);
   const { clock, exit } = useSplashTimeline(started, ready, onDone);
   const geometry = useMemo(() => obeliskGeometry(width, height), [width, height]);
@@ -62,7 +70,7 @@ const SplashOverlay = ({ ready, title, onDone }: SplashOverlayProps) => {
       />
       {started ? (
         <Canvas style={StyleSheet.absoluteFill}>
-          <ObeliskLight geometry={geometry} clock={clock} color={colors.accentStrong} />
+          <ObeliskLight geometry={geometry} clock={clock} color={INK.light} />
           {font ? (
             <Wordmark
               font={font}
@@ -71,9 +79,9 @@ const SplashOverlay = ({ ready, title, onDone }: SplashOverlayProps) => {
               baseline={height * 0.3}
               clock={clock}
               exit={exit}
-              color={colors.textTertiary}
-              shineColor={colors.accentStrong}
-              ruleColor={colors.borderStrong}
+              color={INK.letters}
+              shineColor={INK.light}
+              ruleColor={INK.rule}
             />
           ) : null}
         </Canvas>

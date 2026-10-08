@@ -246,6 +246,12 @@ write_environment_md() {
     printf -- '- Artifacts: %s/artifacts/<project>-<platform>-<profile>-<version>.<ext>\n' "${WORKSPACE}"
     printf -- '- JAVA_HOME: %s\n' "${java_home}"
     printf -- '- ANDROID_HOME: %s (platforms: %s; build-tools: %s)\n' "${android_home}" "$(list_dir "${android_home}/platforms")" "$(list_dir "${android_home}/build-tools")"
+    if [[ -d "${android_home}" && ! -w "${android_home}" ]]; then
+      printf -- '- The Android SDK is the host'\''s, mounted read-only (ndk: %s; cmake: %s): never sdkmanager --install, ask the user to install a missing package on the host.\n' "$(list_dir "${android_home}/ndk")" "$(list_dir "${android_home}/cmake")"
+    fi
+    if [[ -n "${GRADLE_RO_DEP_CACHE:-}" ]]; then
+      printf -- '- GRADLE_RO_DEP_CACHE: %s (the host'\''s Gradle dependency cache, read-only)\n' "${GRADLE_RO_DEP_CACHE}"
+    fi
     printf -- '- WINEPREFIX: %s (WINEARCH=%s)\n' "${WINEPREFIX:-${DEV_HOME}/.wine}" "${WINEARCH:-win64}"
     printf -- '- Supervisor logs: %s/logs/supervisor/\n' "${AGENT_DIR}"
     printf '\n'

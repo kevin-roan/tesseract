@@ -64,6 +64,7 @@ ADR. Supersede it with a new one instead.
 | [mac-server.md](runbooks/mac-server.md) | deploy the headless sandbox host (stack + host shell) to a Mac on the tailnet from the Linux dev box |
 | [tesseract-cli.md](runbooks/tesseract-cli.md) | the host `tesseract` command: Docker checks, sandbox stack, host Android emulator, pairing, sync, settings, headless server |
 | [host-shell.md](runbooks/host-shell.md) | run the PIN-protected host shell daemon, pair the phone with it, use the host Android emulator |
+| [mobile-updates.md](runbooks/mobile-updates.md) | ship TheOne's own app: EAS builds vs over-the-air updates, the fingerprint runtime version, why an update does not reach the phone |
 | [android-builds.md](runbooks/android-builds.md) | build APKs/AABs, release signing, EAS, memory tuning |
 | [claude-in-sandbox.md](runbooks/claude-in-sandbox.md) | log Claude in, permission modes, SPEC as CLAUDE.md, headless runs from the phone |
 | [operations.md](runbooks/operations.md) | run several stacks, upgrade the image, back up and restore volumes, rotate the token, reset the wine prefix, resource limits, logs |

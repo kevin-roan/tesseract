@@ -124,7 +124,8 @@ from an automated agent MUST go through `flock /tmp/theone-bun-install.lock bun 
 | Claude accounts | primary account `claude` = the dir above; each `THEONE_HOST_CLAUDE_ACCOUNTS` name `<n>` adds the host's `~/.claude-<n>` (what `CLAUDE_CONFIG_DIR=~/.claude-<n> claude` uses on the host) bind-mounted at `/home/dev/.claude-<n>`, account id `claude-<n>`, global config `<dir>/.claude.json`. Live bind mounts, never copies: token refreshes by either side stay valid for both. The controller never writes into these dirs; the default account and per-project picks live in `state.db` |
 | Home | `/home/dev` (volume `<prefix>-home`: wine prefix, caches; `.claude` is the host bind mount above) |
 | Wine prefix | `/home/dev/.wine` (`WINEPREFIX`), `WINEARCH=win64`, `WINEDEBUG=-all` |
-| Android SDK | `/opt/android-sdk` (`ANDROID_HOME`, `ANDROID_SDK_ROOT`, owned by `dev`) |
+| Android SDK | `/opt/android-sdk` (`ANDROID_HOME`, `ANDROID_SDK_ROOT`, owned by `dev`); with `THEONE_HOST_ANDROID_SDK` the host's SDK, read-only, in its place |
+| Gradle read-only cache | with `THEONE_HOST_GRADLE_CACHE`: the host's Gradle `caches/` at `/opt/gradle-ro-cache` (read-only, `GRADLE_RO_DEP_CACHE`); the writable Gradle home stays `/home/dev/.gradle` |
 | Java | `/opt/java/openjdk` (Temurin 17, `JAVA_HOME`) |
 | Controller binary | `/usr/local/bin/theone-controller` (built with `bun build --compile`) |
 | Browser pages | `/ui/terminal`, `/ui/vnc` (controller), `/ui/android` (host shell daemon); their bundled assets are served at root paths (`/chunk-<hash>.js`, `.css`) |
@@ -227,6 +228,8 @@ lists. Exported shell variables win over the env file; empty counts as unset.
 | `THEONE_DISPLAY_GEOMETRY` | `1600x900` | Xvnc geometry |
 | `THEONE_HOST_CLAUDE_DIR` | `$HOME/.claude` | host dir bind-mounted at `/home/dev/.claude`: the host's Claude Max login is the sandbox's only Claude credential (`ANTHROPIC_API_KEY`/`CLAUDE_CODE_OAUTH_TOKEN` are not passed through) |
 | `THEONE_HOST_CLAUDE_ACCOUNTS` | — | extra host Claude accounts (`work personal`, or `name=/abs/path`): `infra/scripts/sandbox` writes a compose override (`${XDG_STATE_HOME:-~/.local/state}/theone/compose.<project>.claude-accounts.yml`, added to every compose call) binding each existing `~/.claude-<n>` at `/home/dev/.claude-<n>` and passing `THEONE_CLAUDE_ACCOUNTS`; missing dirs are skipped with a warning, never created |
+| `THEONE_HOST_ANDROID_SDK` | — | absolute path of a Linux x86_64 host Android SDK: adds `compose.host-android-sdk.yml`, bind-mounting it read-only at `/opt/android-sdk` over the image's. `up` refuses on a non-Linux/x86_64 host or a dir without `platform-tools/` and `platforms/` |
+| `THEONE_HOST_GRADLE_CACHE` | — | absolute path of the host Gradle user home's `caches/` (holds `modules-2/`): adds `compose.host-gradle-cache.yml`, bind-mounting it read-only at `/opt/gradle-ro-cache` with `GRADLE_RO_DEP_CACHE` set. `up` refuses without `modules-2/` |
 | `SANDBOX_CPUS` / `SANDBOX_MEMORY` / `SANDBOX_PIDS` | `4` / `8g` / `4096` | sandbox limits |
 | `DIND_CPUS` / `DIND_MEMORY` / `DIND_PIDS` | `4` / `8g` / `4096` | dind limits (cap everything it runs) |
 | `TZ` | `UTC` | sandbox time zone |
@@ -379,7 +382,7 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | POST | `/v1/artifacts/:id/taildrop` | `SendArtifact { targetId }` | `Artifact` once LocalAPI `file-put` accepted the file; 503 without the LocalAPI or when the push fails, 404 for an unknown target, 403 when tailscaled refuses |
 | GET | `/v1/ports` | — | `ListeningPorts { tailscaleIp, ports: ListeningPort[] }`: TCP ports that visible sandbox processes listen on (not the controller or VNC port), each `{ port, pid, command, processId, projectId, url, dnsUrl }`; `url` is `http://<sandbox Tailscale IPv4>:<port>`, which reaches the port over the tailnet because the userspace sidecar forwards to `127.0.0.1`; both URLs are null without Tailscale |
 | GET | `/v1/usage?days=` | — | `UsageReport { generatedAt, from, to, days, totals, daily, models, projects }` from Claude Code transcripts: `days` 1–90 (default 30) UTC days ending today, `daily` has every day oldest first (zero-filled), `models`/`projects` most tokens first; assistant messages are deduped by message id + request id (also across resumed-session files), `<synthetic>` messages are skipped, only files modified in the range are read; token counts only, no dollar cost; never fails because the directory is missing |
-| GET | `/v1/sessions?limit=&projectId=` | — | `ClaudeSession[]` (default 20, max 200), newest `lastActiveAt` first, across every Claude account (`claudeAccountId`): title (first real prompt, ≤120 chars), preview (last assistant text, ≤160), model, usage (including subagent transcripts), `source` `agent-run`/`terminal`/`cli`, `agentRunId` (newest run with the session id), `terminalId` (running Claude terminal: `$CLAUDE_CONFIG_DIR/sessions/<pid>.json`, else the newest transcript with the terminal's cwd written since it started), `active` (run running or terminal attached) |
+| GET | `/v1/sessions?limit=&projectId=` | — | `ClaudeSession[]` (default 20, max 200), newest `lastActiveAt` first, across every Claude account (`claudeAccountId`): title (first real prompt, ≤120 chars), preview (last assistant text, ≤160), model, usage (including subagent transcripts), `source` `agent-run`/`terminal`/`cli`, `agentRunId` (newest run with the session id), `terminalId` (running Claude terminal: `$CLAUDE_CONFIG_DIR/sessions/<pid>.json`, else the newest transcript with the terminal's cwd written since it started), `active` (run running or terminal attached); a session a later run resumed (`resumedSessionId`) under a new id is left out, so a chat lists once |
 | GET | `/v1/inbox?limit=&unread=` | — | `Inbox { items: InboxItem[], unreadCount, attentionCount }`, newest `updatedAt` first (default 100, max 500; `unread=1`/`true` → unread only); `attentionCount` = unread `needs_input` + `permission` |
 | POST | `/v1/inbox/read` | `MarkInboxRead { ids: InboxId[] } \| { all: true }` | `200 InboxCounts { unreadCount, attentionCount }`; unknown ids are ignored |
 | POST | `/v1/hooks/claude` | `ClaudeHookPayload` (the Claude Code hook JSON, extra fields kept) | `202`; maps `Notification`/`Stop`/`StopFailure`/`UserPromptSubmit` to inbox items (controller.md "Inbox and Claude hooks"); other events are ignored. Sent by `theone-controller hook` |
@@ -561,6 +564,7 @@ type AgentRunUsage = { inputTokens: number; outputTokens: number; cacheReadToken
 type AgentRun = { id: string; projectId: string | null; prompt: string;
                   mode: AgentRunMode | null /* null = THEONE_CLAUDE_PERMISSION_MODE */; attachments: Upload[];
                   sessionId: string | null; claudeAccountId: string | null /* null: before accounts (primary) */;
+                  resumedSessionId?: string | null /* the `resumeSessionId` it started with; links a follow-up to its chat */;
                   state: AgentRunState;
                   startedAt: string; endedAt: string | null;
                   usage: AgentRunUsage | null /* from Claude's `result` message; null until it ends */;
@@ -723,7 +727,7 @@ runs as `bash -lc` in the project dir. `install` = `<pm> install`, only when
 | `electron-linux` | `electron-builder` or `@electron-forge/cli` in deps | install → compile → `<exec> electron-builder --linux AppImage --x64 --publish never` | `<out>/*.AppImage`, `<out>/*.deb` (`<out>` = `build.directories.output`, default `dist`) |
 | `electron-windows` | same | same with `--win nsis --x64`, env `WINEPREFIX`, `WINEARCH=win64`, `WINEDEBUG=-all`, `WINEDLLOVERRIDES=mscoree,mshtml=`, `DISPLAY`; requires `wine` | `<out>/*.exe` except `*__uninstaller*` |
 | (Forge, no electron-builder) | `@electron-forge/cli` | install → compile → `<exec> electron-forge make --platform linux\|win32 --arch x64` | `out/make/**`: `*.AppImage`, `*.deb`, `*.rpm`, `linux/**/*.zip` / `*.exe`, `*.msi`, `*.appx`, `win32/**/*.zip` |
-| `android-apk` | `expo` dep + `app.json`/`app.config.*`, or `android/gradlew` | install → `<exec> expo prebuild --platform android --no-install` (only without `android/`) → `cd android && sh ./gradlew assembleDebug\|assembleRelease --no-daemon --console=plain`; env `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `JAVA_HOME`; requires `java` | `android/app/build/outputs/apk/**/<profile>/**/*.apk` |
+| `android-apk` | `expo` dep + `app.json`/`app.config.*`, or `android/gradlew` | install → `<exec> expo prebuild --platform android --no-install` (only without `android/`) → `cd android && sh ./gradlew assembleDebug\|assembleRelease --no-daemon --console=plain`; env `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `JAVA_HOME`; requires `java`. After the build (any outcome) deletes the intermediate build dirs: `android/build`, `android/app/build`, `android/app/.cxx` and every `android/build`/`android/.cxx` of a package in `node_modules` (flat, scoped and `.pnpm/*/node_modules/`), never through a symlink | `android/app/build/outputs/apk/**/<profile>/**/*.apk` |
 | `web` | `build` script and framework ≠ electron | install → `<pm> run build` | first existing dir of `dist`, `build`, `out`, `web-build`, zipped |
 | `script` | `build` script | install → `<pm> run build` | none (logs only) |
 
@@ -1076,6 +1080,7 @@ resolved settings to compose. It reads `infra/compose/.env`, or only the file gi
 | `host-tailscale` | `compose.yml` + `compose.local.yml`, `THEONE_BIND_ADDR` = host tailnet IPv4 | ports bound only on that address |
 | `local` | `compose.yml` + `compose.local.yml`, `THEONE_BIND_ADDR=127.0.0.1` | loopback only, for development/e2e tests |
 | `+tailscale-api` | tailscale: add `compose.tailscale-api-sidecar.yml`; host-tailscale/local: add `compose.tailscale-api.yml` | opt-in (`--tailscale-api`, `THEONE_TAILSCALE_LOCALAPI=1`) for `GET /v1/identity`. Sidecar: `TS_SOCKET=/var/run/tailscale/tailscaled.sock` on volume `<prefix>-tailscale-run`, mounted read-only at `/run/tailscale` in the sandbox. Host: `THEONE_TAILSCALE_HOST_SOCKET_DIR` bind-mounted read-only at `/run/tailscale`. Root in the sandbox can then reconfigure that tailscaled ([security model](security-model.md#tailscale-localapi-opt-in)) |
+| `+host-android` | add `compose.host-android-sdk.yml` (`THEONE_HOST_ANDROID_SDK`) and/or `compose.host-gradle-cache.yml` (`THEONE_HOST_GRADLE_CACHE`) | opt-in, any mode: the host's Android SDK and Gradle dependency cache, read-only, so builds do not download NDK, CMake, platforms and dependencies again ([security model](security-model.md#host-android-sdk-and-gradle-cache-opt-in)) |
 | `+dind` | add `compose.dind.yml` | privileged `docker:dind` sidecar sharing `<prefix>-workspace`; sandbox gets `DOCKER_HOST=tcp://docker:2376` + TLS certs (opt-in, [ADR 0006](../adr/0006-optional-docker-in-docker.md)) |
 
 Stacks run side by side when each has its own `THEONE_COMPOSE_PROJECT` (and thereby
@@ -1083,7 +1088,8 @@ volumes) plus its own host ports or `THEONE_HOSTNAME`.
 
 Hardening defaults: sandbox without `privileged`, no host bind mounts except the
 read-only serve config (and, with `--tailscale-api` outside tailscale mode, the read-only host
-tailscale socket directory), `cap_drop: [ALL]` + minimal `cap_add` (CHOWN, DAC_OVERRIDE,
+tailscale socket directory, and with `THEONE_HOST_ANDROID_SDK`/`THEONE_HOST_GRADLE_CACHE` the read-only
+host Android SDK and Gradle cache), `cap_drop: [ALL]` + minimal `cap_add` (CHOWN, DAC_OVERRIDE,
 FOWNER, SETUID, SETGID, KILL, AUDIT_WRITE), `shm_size: 2g`, `pids_limit`, CPU/memory
 limits from `.env`, explicit `environment` lists (no `env_file`), json-file logs
 10 MB × 3. Tailscale sidecar: userspace mode (no `/dev/net/tun`, no `NET_ADMIN`),

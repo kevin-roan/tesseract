@@ -124,3 +124,24 @@
 .syncCompact.syncCompact {
   gap: 0;
 }
+
+.running {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 24px 0;
+  padding: 8px 4px 4px;
+  border: 1px solid var(--to-border);
+  border-radius: 10px;
+}
+
+.running > :first-child {
+  padding: 0 8px;
+}
+
+.runningRows {
+  display: flex;
+  flex-direction: column;
+  max-height: 168px;
+  overflow-y: auto;
+}

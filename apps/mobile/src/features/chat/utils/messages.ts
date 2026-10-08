@@ -42,10 +42,55 @@ export function partitionAttachments(uploads: Upload[]): RunAttachments {
   };
 }
 
-/** Finished runs that came before `run` in the same Claude session, oldest first. */
-export function earlierTurns(runs: readonly AgentRun[] | undefined, run: Pick<AgentRun, "id" | "sessionId" | "startedAt">): AgentRun[] {
-  if (!runs || !run.sessionId) return [];
-  return runs
-    .filter((candidate) => candidate.id !== run.id && candidate.sessionId === run.sessionId && candidate.startedAt < run.startedAt)
-    .sort((a, b) => a.startedAt.localeCompare(b.startedAt));
+type ChainRun = Pick<AgentRun, "id" | "sessionId" | "resumedSessionId" | "startedAt">;
+
+/** The run `run` followed up on: the newest earlier run of the session it resumed. */
+export function parentRun<T extends ChainRun>(runs: readonly T[], run: ChainRun): T | null {
+  const session = run.resumedSessionId ?? run.sessionId;
+  if (!session) return null;
+  let parent: T | null = null;
+  for (const candidate of runs) {
+    if (candidate.id === run.id || candidate.sessionId !== session || candidate.startedAt >= run.startedAt) continue;
+    if (!parent || candidate.startedAt > parent.startedAt) parent = candidate;
+  }
+  return parent;
+}
+
+/** Every run the chat went through before `run`, oldest first, following each follow-up back to its parent. */
+export function earlierTurns<T extends ChainRun>(runs: readonly T[] | undefined, run: ChainRun): T[] {
+  if (!runs) return [];
+  const chain: T[] = [];
+  const seen = new Set([run.id]);
+  for (let parent = parentRun(runs, run); parent && !seen.has(parent.id); parent = parentRun(runs, parent)) {
+    seen.add(parent.id);
+    chain.push(parent);
+  }
+  return chain.reverse();
+}
+
+/** The newest run of the chat `run` belongs to, following follow-ups forward. */
+export function latestTurnOf<T extends ChainRun>(runs: readonly T[] | undefined, run: T): T {
+  if (!runs) return run;
+  let latest = run;
+  const seen = new Set([run.id]);
+  for (;;) {
+    let next: T | null = null;
+    for (const candidate of runs) {
+      if (seen.has(candidate.id) || parentRun(runs, candidate)?.id !== latest.id) continue;
+      if (!next || candidate.startedAt > next.startedAt) next = candidate;
+    }
+    if (!next) return latest;
+    seen.add(next.id);
+    latest = next;
+  }
+}
+
+/** Runs no later run followed up on, so a chat shows once, as its newest message. */
+export function latestTurns<T extends ChainRun>(runs: readonly T[]): T[] {
+  const parents = new Set<string>();
+  for (const run of runs) {
+    const parent = parentRun(runs, run);
+    if (parent) parents.add(parent.id);
+  }
+  return runs.filter((run) => !parents.has(run.id));
 }

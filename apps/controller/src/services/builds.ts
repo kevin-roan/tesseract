@@ -1,4 +1,5 @@
-import { mkdtempSync, rmSync, statSync } from "node:fs";
+import { lstatSync, mkdtempSync, rmSync, statSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { join, relative } from "node:path";
 import {
   createId,
@@ -181,6 +182,16 @@ export class BuildService {
   }
 
   private async execute(job: Job): Promise<void> {
+    const cleanups: { dir: string; patterns: string[] }[] = [];
+    const outcome = await this.build(job, (dir, patterns) => cleanups.push({ dir, patterns }));
+    for (const cleanup of cleanups) await this.cleanup(job, cleanup);
+    this.finish(job, ...outcome);
+  }
+
+  private async build(
+    job: Job,
+    onRecipe: (dir: string, cleanup: string[]) => void,
+  ): Promise<[state: BuildState, code: number | null, error: string | null]> {
     const { record, channel } = job;
     try {
       const location = this.projects.require(record.projectId);
@@ -191,6 +202,7 @@ export class BuildService {
         profile: record.profile,
         display: this.config.display,
       });
+      onRecipe(location.path, recipe.cleanup);
       const total = recipe.steps.length + (recipe.collect ? 1 : 0);
       this.update(job, { state: "running", startedAt: nowIso(), progress: 0 });
       channel.append("system", `Build started in ${location.path}`);
@@ -203,20 +215,38 @@ export class BuildService {
         if (job.cancelRequested) break;
         if (code !== 0) throw new BuildFailure(`Stage ${step.stage} failed with exit code ${code ?? "unknown"}`, code);
       }
-      if (job.cancelRequested) {
-        this.finish(job, "cancelled", null, "Cancelled");
-        return;
-      }
+      if (job.cancelRequested) return ["cancelled", null, "Cancelled"];
       if (recipe.collect) {
         this.update(job, { stage: "collect", progress: recipe.steps.length / total });
         channel.append("system", "▶ collect: gathering artifacts");
         const version = typeof facts.pkg?.version === "string" ? facts.pkg.version : "0.0.0";
         await this.collect(job, location.path, recipe.collect, version);
       }
-      this.finish(job, "succeeded", 0, null);
+      return ["succeeded", 0, null];
     } catch (error) {
-      if (job.cancelRequested) this.finish(job, "cancelled", null, "Cancelled");
-      else this.finish(job, "failed", error instanceof BuildFailure ? error.code : null, errorMessage(error));
+      if (job.cancelRequested) return ["cancelled", null, "Cancelled"];
+      return ["failed", error instanceof BuildFailure ? error.code : null, errorMessage(error)];
+    }
+  }
+
+  /** Deletes the recipe's intermediate build directories; never follows symlinks out of the project. */
+  private async cleanup(job: Job, { dir, patterns }: { dir: string; patterns: string[] }): Promise<void> {
+    const targets = new Set<string>();
+    for (const pattern of patterns) {
+      for await (const match of new Bun.Glob(pattern).scan({ cwd: dir, onlyFiles: false, dot: true, followSymlinks: false })) {
+        const path = join(dir, match);
+        const real = realpathOrNull(path);
+        if (real === path && isInside(dir, real) && lstatSync(real).isDirectory()) targets.add(real);
+      }
+    }
+    if (targets.size === 0) return;
+    job.channel.append("system", `▶ cleanup: removing ${targets.size} intermediate build director${targets.size === 1 ? "y" : "ies"}`);
+    for (const target of targets) {
+      try {
+        await rm(target, { recursive: true, force: true });
+      } catch (error) {
+        job.channel.append("system", `Could not remove ${relative(dir, target)}: ${errorMessage(error)}`);
+      }
     }
   }
 

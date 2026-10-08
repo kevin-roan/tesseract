@@ -62,6 +62,12 @@ export const SansFaces: Record<string, string> = {
   '700': 'NotoSans_700Bold',
 };
 
+/** Italic Noto Sans faces, for emphasis in reading text. */
+export const SansItalicFaces: Record<string, string> = {
+  '400': 'NotoSans_400Regular_Italic',
+  '600': 'NotoSans_600SemiBold_Italic',
+};
+
 export const DisplayFaces: Record<string, string> = {
   '400': 'Exo2_400Regular',
   '500': 'Exo2_500Medium',
@@ -96,6 +102,11 @@ export type Typeface = 'classic' | 'mono';
 /** Noto Sans face for a numeric weight, falling back to regular. */
 export function sansFor(weight: TextStyle['fontWeight']): string {
   return SansFaces[String(weight)] ?? SansFaces['400'];
+}
+
+/** Italic Noto Sans face for a numeric weight: semibold and up take the semibold italic. */
+export function sansItalicFor(weight: TextStyle['fontWeight']): string {
+  return Number(weight ?? 400) >= 600 ? SansItalicFaces['600'] : SansItalicFaces['400'];
 }
 
 /** Exo 2 face for a numeric weight, falling back to regular. */

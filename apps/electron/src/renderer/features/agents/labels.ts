@@ -165,3 +165,14 @@ export const TOKEN_LABELS = {
 export function formatLabel(template: string, values: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match));
 }
+
+export const RUNNING_WORK_LABELS = {
+  title: "Running",
+  subtitle: (count: number) => (count === 1 ? "1 task still running in this project" : `${count} tasks still running in this project`),
+  openLogs: "Open logs",
+  stopTitle: (name: string) => `Stop ${name}?`,
+  stopBody: "It keeps running after Claude finishes until you stop it.",
+  stopConfirm: "Stop",
+  cancel: "Cancel",
+  stopped: (name: string) => `Stopped ${name}`,
+} as const;

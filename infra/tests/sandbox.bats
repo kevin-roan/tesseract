@@ -197,6 +197,44 @@ last_env() {
   assert_output --partial "must be an absolute path"
 }
 
+@test "THEONE_HOST_ANDROID_SDK and THEONE_HOST_GRADLE_CACHE add their overlays" {
+  write_env THEONE_MODE=local THEONE_HOST_ANDROID_SDK=/srv/sdk
+  run "${SANDBOX}" ps
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix theone local host-android-sdk) ps"
+  : > "${STUB_LOG}"
+  write_env THEONE_MODE=local THEONE_HOST_ANDROID_SDK=/srv/sdk THEONE_HOST_GRADLE_CACHE=/srv/gradle/caches
+  run "${SANDBOX}" ps
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix theone local host-android-sdk host-gradle-cache) ps"
+  write_env THEONE_MODE=local THEONE_HOST_GRADLE_CACHE=caches
+  run "${SANDBOX}" ps
+  assert_failure 1
+  assert_output --partial "THEONE_HOST_GRADLE_CACHE=caches must be an absolute path"
+}
+
+@test "up with a host SDK or Gradle cache checks them on a Linux x86_64 host" {
+  local sdk="${BATS_TEST_TMPDIR}/sdk" cache="${BATS_TEST_TMPDIR}/caches"
+  stub uname 'case "$1" in -s) echo "${STUB_UNAME_S:-Linux}" ;; -m) echo x86_64 ;; esac'
+  mkdir -p "${sdk}" "${cache}"
+  write_env THEONE_MODE=local "THEONE_HOST_ANDROID_SDK=${sdk}" "THEONE_HOST_GRADLE_CACHE=${cache}"
+  run "${SANDBOX}" up
+  assert_failure 1
+  assert_output --partial "is not an Android SDK"
+  mkdir -p "${sdk}/platform-tools" "${sdk}/platforms"
+  run "${SANDBOX}" up
+  assert_failure 1
+  assert_output --partial "has no modules-2/"
+  mkdir -p "${cache}/modules-2"
+  STUB_UNAME_S=Darwin run "${SANDBOX}" up
+  assert_failure 1
+  assert_output --partial "needs a Linux x86_64 host"
+  assert_equal "$(calls_of docker)" ""
+  run "${SANDBOX}" up
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix theone local host-android-sdk host-gradle-cache) up --detach"
+}
+
 @test "--env-file is passed to compose and replaces infra/compose/.env" {
   write_env THEONE_MODE=tailscale THEONE_COMPOSE_PROJECT=wrong
   printf 'THEONE_MODE=local\nTHEONE_COMPOSE_PROJECT=theone-alt\n' > "${BATS_TEST_TMPDIR}/alt.env"

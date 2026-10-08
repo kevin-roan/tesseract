@@ -1,6 +1,7 @@
 import { memo, useMemo, type ReactNode } from "react";
 import { View } from "react-native";
 
+import Markdown from "@/components/markdown";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 
@@ -62,11 +63,7 @@ const MessageBubble = ({ role, text, author, timeLabel, showHeader = true, child
           </View>
         </View>
       ) : null}
-      {text ? (
-        <ThemedText variant="body" color="bubbleAssistantText" selectable>
-          {text}
-        </ThemedText>
-      ) : null}
+      {text ? <Markdown color="bubbleAssistantText">{text}</Markdown> : null}
       {children}
     </View>
   );

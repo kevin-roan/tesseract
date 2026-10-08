@@ -294,7 +294,7 @@ describe("build recipes", () => {
 
   test("script target defaults to npm and skips install without dependencies", () => {
     const recipe = resolveRecipe({ facts: facts({ buildTargets: ["script"] }), target: "script", profile: "debug", display: ":1" });
-    expect(recipe).toEqual({ steps: [{ stage: "compile", command: "npm run build" }], env: {}, requires: [], collect: null });
+    expect(recipe).toEqual({ steps: [{ stage: "compile", command: "npm run build" }], env: {}, requires: [], collect: null, cleanup: [] });
   });
 
   test("web target zips the first existing output dir", () => {

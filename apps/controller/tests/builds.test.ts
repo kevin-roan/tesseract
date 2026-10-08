@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { chmodSync, utimesSync } from "node:fs";
+import { chmodSync, existsSync, symlinkSync, utimesSync } from "node:fs";
 import { join } from "node:path";
 import { ArtifactListSchema, BuildJobSchema, LogLineListSchema, LogStreamMessageSchema, type BuildJob } from "@theone/protocol";
 import { artifactExtension, artifactFileName, sanitizeVersion, sha256File } from "../src/services/artifacts";
@@ -44,10 +44,14 @@ beforeAll(async () => {
       'echo "gradlew $*"',
       'variant="$(echo "${1#assemble}" | tr A-Z a-z)"',
       'for flavor in free paid; do mkdir -p "app/build/outputs/apk/$flavor/$variant" && echo "$flavor" > "app/build/outputs/apk/$flavor/$variant/app-$flavor-$variant.apk"; done',
+      "mkdir -p app/.cxx/x86_64 ../node_modules/.pnpm/rn@1/node_modules/rn/android/.cxx ../node_modules/@scope/lib/android/build/intermediates",
     ].join("\n"),
+    "flavors/node_modules/@scope/lib/android/src/main/Lib.kt": "class Lib\n",
+    "outside/android/build/keep.txt": "not the project's\n",
     "flavors/android/app/build/outputs/apk/free/release/stale-release.apk": "old",
     "flavors/android/app/build/outputs/apk/free/debug/app-free-debug-0.9.apk": "previous version",
   });
+  symlinkSync(join(workspace, "projects/outside"), join(workspace, "projects/flavors/node_modules/linked"));
   const lastWeek = new Date(Date.now() - 7 * 24 * 3_600_000);
   utimesSync(join(workspace, "projects/flavors/android/app/build/outputs/apk/free/debug/app-free-debug-0.9.apk"), lastWeek, lastWeek);
   t = await startTestController({
@@ -180,6 +184,20 @@ describe("artifacts", () => {
     expect(logs.map((line) => line.text)).toContain("gradlew assembleDebug --no-daemon --console=plain");
   });
 
+  test("android builds delete their intermediate build directories afterwards, inside the project only", async () => {
+    const project = join(workspace, "projects/flavors");
+    const build = await settled((await startBuild("flavors", "android-apk", "release")).id);
+    expect(build.state).toBe("succeeded");
+    expect(await Promise.all(build.artifacts.map((artifact) => Bun.file(artifact.path).text()))).toEqual(["free\n", "paid\n"]);
+    for (const dir of ["android/app/build", "android/app/.cxx", "node_modules/.pnpm/rn@1/node_modules/rn/android/.cxx", "node_modules/@scope/lib/android/build"]) {
+      expect(existsSync(join(project, dir))).toBe(false);
+    }
+    expect(existsSync(join(project, "node_modules/@scope/lib/android/src/main/Lib.kt"))).toBe(true);
+    expect(existsSync(join(workspace, "projects/outside/android/build/keep.txt"))).toBe(true);
+    const logs = LogLineListSchema.parse((await t.json("GET", `/v1/builds/${build.id}/logs`)).body);
+    expect(logs.map((line) => line.text)).toContain("▶ cleanup: removing 4 intermediate build directories");
+  });
+
   test("naming helpers", () => {
     const meta = { projectId: "hello", buildId: null, platform: "windows", profile: "release" as const, version: "1.0.0-beta.1" };
     expect(artifactFileName(meta, ".exe", 1)).toBe("hello-windows-release-1.0.0-beta.1.exe");
@@ -254,6 +272,8 @@ describe("recipes", () => {
       "cd android && sh ./gradlew assembleRelease --no-daemon --console=plain",
     ]);
     expect(recipe.collect).toMatchObject({ platform: "android", root: "android/app/build/outputs/apk", patterns: ["**/release/**/*.apk"] });
+    expect(recipe.cleanup).toContain("node_modules/.pnpm/*/node_modules/*/android/.cxx");
+    expect(recipe.cleanup).toContain("android/app/build");
   });
 
   test("android with a native project skips prebuild and never leaves a Gradle daemon", () => {

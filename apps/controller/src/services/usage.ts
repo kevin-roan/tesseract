@@ -28,7 +28,7 @@ export type SessionSources = {
 };
 
 type AccountFile = TranscriptFile & { accountId: string };
-type Links = { runs: Map<string, AgentRun>; terminals: Map<string, string> };
+type Links = { runs: Map<string, AgentRun>; terminals: Map<string, string>; resumed: Set<string> };
 
 const DAY_MS = 86_400_000;
 const PARSE_CONCURRENCY = 8;
@@ -118,6 +118,7 @@ export class UsageService {
     const sessions: ClaudeSession[] = [];
     for (const file of main) {
       if (sessions.length >= limit) break;
+      if (links.resumed.has(file.sessionId)) continue;
       const transcript = await this.load(file);
       const projectId = this.projectOf(transcript.cwd);
       if (query.projectId !== undefined && projectId !== query.projectId) continue;
@@ -191,13 +192,15 @@ export class UsageService {
   }
 
   /**
-   * Newest agent run per session id, and the session each running Claude terminal works on:
+   * Newest agent run per session id, the sessions a follow-up resumed under a new id, and the session each running Claude terminal works on:
    * Claude Code's `<config>/sessions/<pid>.json` when present, else the newest transcript with
    * the terminal's cwd written since the terminal started that no other terminal or live run claims.
    */
   private async links(main: TranscriptFile[]): Promise<Links> {
     const runs = new Map<string, AgentRun>();
+    const resumed = new Set<string>();
     for (const run of this.sources.runs()) {
+      if (run.resumedSessionId && run.sessionId && run.resumedSessionId !== run.sessionId) resumed.add(run.resumedSessionId);
       if (!run.sessionId) continue;
       const known = runs.get(run.sessionId);
       if (!known || run.startedAt > known.startedAt) runs.set(run.sessionId, run);
@@ -229,7 +232,7 @@ export class UsageService {
         break;
       }
     }
-    return { runs, terminals };
+    return { runs, terminals, resumed };
   }
 
   private async sessionOfPid(pid: number): Promise<string | null> {

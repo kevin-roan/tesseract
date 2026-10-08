@@ -93,8 +93,8 @@ export const SplashMotion = {
   intro: Durations.slowest * 2.5,
   /** Overlay fade and image push once the app is ready. */
   exit: Durations.slower,
-  /** Delay between wordmark letters, as a fraction of the intro. */
-  letterStagger: 0.045,
+  /** Delay per step out from the middle wordmark letter, as a fraction of the intro. */
+  letterStagger: 0.07,
   /** How long one letter takes to settle, as a fraction of the intro. */
-  letterSettle: 0.38,
+  letterSettle: 0.45,
 } as const;

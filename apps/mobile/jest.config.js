@@ -1,5 +1,11 @@
+const { transformIgnorePatterns } = require("jest-expo/jest-preset");
+
 module.exports = {
   preset: "jest-expo",
+  transformIgnorePatterns: [
+    transformIgnorePatterns[0].replace("(?!(", "(?!(marked|github-slugger|"),
+    ...transformIgnorePatterns.slice(1),
+  ],
   setupFiles: ["<rootDir>/tests/mocks/reanimated-setup.js", "react-native-gesture-handler/jestSetup"],
   moduleNameMapper: {
     "\\.css$": "<rootDir>/tests/mocks/style-mock.js",

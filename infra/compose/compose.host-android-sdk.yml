@@ -1,0 +1,14 @@
+# Opt-in (THEONE_HOST_ANDROID_SDK=/abs/path): the host's Linux x86_64 Android SDK, read-only,
+# in place of the image's /opt/android-sdk, so NDK, CMake and platforms already on the host
+# are not downloaded again into the container layer. Gradle cannot install missing SDK
+# packages into it: install them on the host (sdkmanager). Trade-off:
+# docs/architecture/security-model.md.
+services:
+  sandbox:
+    volumes:
+      - type: bind
+        source: ${THEONE_HOST_ANDROID_SDK:?THEONE_HOST_ANDROID_SDK is not set}
+        target: /opt/android-sdk
+        read_only: true
+        bind:
+          create_host_path: false

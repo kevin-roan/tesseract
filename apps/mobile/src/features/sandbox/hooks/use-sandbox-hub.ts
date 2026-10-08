@@ -5,6 +5,7 @@ import type { ActionTileItem } from "@/components/action-tile-row";
 import type { ChoiceOption } from "@/components/choice-group";
 import type { HeaderAction } from "@/components/screen-header";
 import type { StatItem } from "@/components/stat-grid";
+import { latestTurns } from "@/features/chat/utils/messages";
 import { confirm } from "@/lib/confirm";
 
 import { useSandboxStore } from "../store/sandbox-store";
@@ -170,7 +171,7 @@ export function useSandboxHub() {
     closeSession,
     recentBuilds: newestFirst(builds.data ?? [], (build) => build.createdAt, LIST_PREVIEW_LIMIT),
     buildsLoading: builds.isLoading,
-    recentRuns: newestFirst(runs.data ?? [], (run) => run.startedAt, LIST_PREVIEW_LIMIT),
+    recentRuns: newestFirst(latestTurns(runs.data ?? []), (run) => run.startedAt, LIST_PREVIEW_LIMIT),
     runsLoading: runs.isLoading,
     refreshing,
     refresh,

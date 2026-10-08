@@ -67,7 +67,7 @@ function RootNavigator() {
           {paired ? <UpdatePrompt /> : null}
         </ThemeProvider>
       ) : null}
-      {splashDone ? null : <SplashOverlay ready={ready} title="Monolith" onDone={finishSplash} />}
+      {splashDone ? null : <SplashOverlay ready={ready} title="Tesseract" onDone={finishSplash} />}
     </>
   );
 }

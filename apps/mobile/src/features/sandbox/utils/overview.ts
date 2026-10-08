@@ -8,6 +8,7 @@ import {
 } from "@theone/protocol";
 
 import type { AvatarPerson } from "@/components/avatar-stack";
+import { latestTurns } from "@/features/chat/utils/messages";
 
 import type { ActiveWork, ProjectActivity, ProjectCardModel } from "../types";
 import { newestFirst } from "./collections";
@@ -52,7 +53,7 @@ export function finishedWork({ processes = [], builds = [], runs = [] }: WorkSou
       limit,
     ),
     runs: newestFirst(
-      runs.filter((run) => isFinalAgentRunState(run.state)),
+      latestTurns(runs).filter((run) => isFinalAgentRunState(run.state)),
       (run) => run.endedAt ?? run.startedAt,
       limit,
     ),

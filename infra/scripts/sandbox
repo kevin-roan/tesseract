@@ -31,6 +31,10 @@ Modes (default: $THEONE_MODE, then THEONE_MODE in the env file, then tailscale):
                    Sandbox root can then control that tailscaled (docs/architecture/security-model.md)
   --env-file PATH  read the configuration from PATH instead of infra/compose/.env
 
+Host Android toolchain (Linux x86_64 hosts), mounted read-only so builds reuse it:
+  THEONE_HOST_ANDROID_SDK=/abs/sdk      replaces the image's /opt/android-sdk
+  THEONE_HOST_GRADLE_CACHE=/abs/caches  the host Gradle caches/ dir, as GRADLE_RO_DEP_CACHE
+
 Extra Claude Code accounts (THEONE_HOST_CLAUDE_ACCOUNTS="work personal", or name=/abs/path)
 are bind-mounted at /home/dev/.claude-<name> like ~/.claude, through an override written to
 ${XDG_STATE_HOME:-~/.local/state}/theone/compose.<project>.claude-accounts.yml.
@@ -116,6 +120,8 @@ volume_prefix=""
 controller_port=""
 vnc_port=""
 host_socket_dir=""
+host_android_sdk=""
+host_gradle_cache=""
 compose_files=()
 readonly CLAUDE_ACCOUNT_PATTERN='^[a-z0-9][a-z0-9_-]{0,31}$'
 
@@ -282,6 +288,18 @@ resolve_mode() {
       compose_files+=(-f "${COMPOSE_DIR}/compose.tailscale-api.yml")
     fi
   fi
+  host_android_sdk="$(config_value THEONE_HOST_ANDROID_SDK)"
+  if [[ -n "${host_android_sdk}" ]]; then
+    [[ "${host_android_sdk}" == /* ]] || die "THEONE_HOST_ANDROID_SDK=${host_android_sdk} must be an absolute path"
+    export THEONE_HOST_ANDROID_SDK="${host_android_sdk}"
+    compose_files+=(-f "${COMPOSE_DIR}/compose.host-android-sdk.yml")
+  fi
+  host_gradle_cache="$(config_value THEONE_HOST_GRADLE_CACHE)"
+  if [[ -n "${host_gradle_cache}" ]]; then
+    [[ "${host_gradle_cache}" == /* ]] || die "THEONE_HOST_GRADLE_CACHE=${host_gradle_cache} must be an absolute path"
+    export THEONE_HOST_GRADLE_CACHE="${host_gradle_cache}"
+    compose_files+=(-f "${COMPOSE_DIR}/compose.host-gradle-cache.yml")
+  fi
 }
 
 yaml_string() {
@@ -365,10 +383,26 @@ check_tailscale_api() {
     || die "--tailscale-api: no tailscaled socket at ${host_socket_dir}/tailscaled.sock (set THEONE_TAILSCALE_HOST_SOCKET_DIR)"
 }
 
+# The SDK's binaries (aapt2, NDK toolchains, cmake) run inside the Linux x86_64 sandbox, so a
+# macOS or arm64 host SDK cannot be shared.
+check_host_android() {
+  if [[ -n "${host_android_sdk}" ]]; then
+    [[ "$(uname -s)" == Linux && "$(uname -m)" == x86_64 ]] \
+      || die "THEONE_HOST_ANDROID_SDK needs a Linux x86_64 host (its SDK binaries run in the sandbox)"
+    [[ -d "${host_android_sdk}/platform-tools" && -d "${host_android_sdk}/platforms" ]] \
+      || die "THEONE_HOST_ANDROID_SDK=${host_android_sdk} is not an Android SDK (no platform-tools/ or platforms/)"
+  fi
+  if [[ -n "${host_gradle_cache}" ]]; then
+    [[ -d "${host_gradle_cache}/modules-2" ]] \
+      || die "THEONE_HOST_GRADLE_CACHE=${host_gradle_cache} has no modules-2/ (use the caches/ directory of the host's Gradle user home)"
+  fi
+}
+
 cmd_up() {
   local hostname
   check_tailscale_config
   check_tailscale_api
+  check_host_android
   compose up --detach "$@"
   if [[ -n "${tailscale_api}" ]]; then
     info "tailscale LocalAPI shared with the sandbox (root in the sandbox can reconfigure that tailscaled)"

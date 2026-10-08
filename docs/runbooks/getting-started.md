@@ -116,6 +116,7 @@ bun run android          # expo run:android: builds and installs the dev client 
 #     JS-only changes ship with: bun run update:development | update:preview | update:production --message "…"
 #     (these pin APP_VARIANT; a bare `eas update` picks up .env.development, gets the dev
 #     fingerprint and never reaches preview/production builds)
+#     native changes need a new build first: see docs/runbooks/mobile-updates.md
 cd ../.. && bun run mobile   # Metro for the dev client
 ```
 

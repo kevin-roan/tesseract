@@ -4,7 +4,7 @@ import { isFinalAgentRunState, type AgentRun } from "@theone/protocol";
 import type { HeaderAction } from "@/components/screen-header";
 import { useChatComposer } from "@/features/chat/hooks/use-chat-composer";
 import { combineQueued, useQueuedMessages, useQueueStore } from "@/features/chat/store/queue-store";
-import { earlierTurns, lastText } from "@/features/chat/utils/messages";
+import { earlierTurns, lastText, latestTurnOf } from "@/features/chat/utils/messages";
 import { mergeDraftText } from "@/features/island/utils/shared";
 import { modelLabel, toTranscript } from "@/features/chat/utils/transcript";
 import { confirm } from "@/lib/confirm";
@@ -61,6 +61,11 @@ export function useAgentRunScreen(runId: string) {
   const runs = useAgentRuns();
   /** Earlier messages of the same chat, so the run reads as the whole conversation rather than its last turn. */
   const history = useMemo(() => (run ? earlierTurns(runs.data, run) : []), [runs.data, run]);
+  const latestId = useMemo(() => (run ? latestTurnOf(runs.data, run).id : null), [runs.data, run]);
+  const { replaceWithAgentRun } = nav;
+  useEffect(() => {
+    if (latestId && latestId !== runId) replaceWithAgentRun(latestId);
+  }, [latestId, runId, replaceWithAgentRun]);
 
   /** Once the run ends, whatever was queued goes out as the next message; a stopped run hands it back as a draft. */
   const { sendQueued, setText } = composer;

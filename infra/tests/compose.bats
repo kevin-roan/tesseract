@@ -120,3 +120,12 @@ q() {
   assert_equal "$(q "${variant}" '[.services.sandbox.volumes[] | .target] | (index("/home/dev") < index("/home/dev/.claude-work"))')" "true"
   assert_equal "$(q local '.services.sandbox.environment | has("THEONE_CLAUDE_ACCOUNTS")')" "false"
 }
+
+@test "host android: the host SDK and Gradle cache are read-only bind mounts, off by default" {
+  local variant=local-host-android
+  assert_equal "$(q "${variant}" '[.services.sandbox.volumes[] | select(.target | startswith("/opt/")) | "\(.type) \(.source)->\(.target) ro=\(.read_only) create=\(.bind.create_host_path)"] | join(",")')" \
+    "bind /srv/android-sdk->/opt/android-sdk ro=true create=false,bind /srv/gradle/caches->/opt/gradle-ro-cache ro=true create=false"
+  assert_equal "$(q "${variant}" '.services.sandbox.environment.GRADLE_RO_DEP_CACHE')" "/opt/gradle-ro-cache"
+  assert_equal "$(q local '[.services.sandbox.volumes[] | select(.target | startswith("/opt/"))] | length')" "0"
+  assert_equal "$(q local '.services.sandbox.environment | has("GRADLE_RO_DEP_CACHE")')" "false"
+}

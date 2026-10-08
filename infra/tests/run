@@ -125,6 +125,12 @@ EOF
     "${REPO_ROOT}/infra/scripts/sandbox" --env-file "${env_file}" --mode local config --format json \
     > "${rendered}/local-claude-accounts.json" 2> /dev/null \
     || die "sandbox --mode local config with THEONE_HOST_CLAUDE_ACCOUNTS failed"
+  env -i PATH="${PATH}" HOME="${HOME}" ${DOCKER_HOST:+DOCKER_HOST="${DOCKER_HOST}"} \
+    ${DOCKER_CONFIG:+DOCKER_CONFIG="${DOCKER_CONFIG}"} ${DOCKER_CONTEXT:+DOCKER_CONTEXT="${DOCKER_CONTEXT}"} \
+    THEONE_HOST_ANDROID_SDK=/srv/android-sdk THEONE_HOST_GRADLE_CACHE=/srv/gradle/caches \
+    "${REPO_ROOT}/infra/scripts/sandbox" --env-file "${env_file}" --mode local config --format json \
+    > "${rendered}/local-host-android.json" \
+    || die "sandbox --mode local config with THEONE_HOST_ANDROID_SDK failed"
 }
 
 mounts() {

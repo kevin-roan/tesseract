@@ -7,6 +7,7 @@ import { RunTimeline } from "../timeline";
 import { ConversationHeader } from "./ConversationHeader";
 import { ConversationNotices } from "./ConversationNotices";
 import { FollowUpComposer } from "./FollowUpComposer";
+import { RunningWork } from "./RunningWork";
 import type { ConversationViewProps } from "./types";
 import { useConversation } from "./use-conversation";
 import styles from "./Conversation.module.css";
@@ -50,6 +51,7 @@ export function ConversationView(props: ConversationViewProps) {
           <EmptyState title={CONVERSATION_LABELS.loading} loading />
         )}
       </Crossfade>
+      <RunningWork projectId={run?.projectId} />
       <FollowUpComposer
         value={composer.value}
         onChange={composer.onChange}

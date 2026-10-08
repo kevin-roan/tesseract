@@ -19,6 +19,8 @@ export type Recipe = {
   env: Record<string, string>;
   collect: CollectSpec | null;
   requires: string[];
+  /** Directory globs (project-relative) deleted after the build, whatever its outcome. */
+  cleanup: string[];
 };
 
 export type RecipeContext = {
@@ -32,6 +34,16 @@ export type RecipeContext = {
 const ANDROID_SDK_DEFAULT = "/opt/android-sdk";
 const JAVA_HOME_DEFAULT = "/opt/java/openjdk";
 const WEB_OUTPUT_DIRS = ["dist", "build", "out", "web-build"];
+// Gradle and CMake write the native build of every React Native library into its package in
+// node_modules (gigabytes per project). The APK is copied to the artifacts first, so all of it
+// goes; the next build compiles from scratch.
+const ANDROID_PACKAGES = ["node_modules/*", "node_modules/@*/*", "node_modules/.pnpm/*/node_modules/*", "node_modules/.pnpm/*/node_modules/@*/*"];
+const ANDROID_CLEANUP = [
+  "android/build",
+  "android/app/build",
+  "android/app/.cxx",
+  ...ANDROID_PACKAGES.flatMap((dir) => [`${dir}/android/build`, `${dir}/android/.cxx`]),
+];
 
 // npx treats a bare `--no` as an option taking a value: it would swallow the binary name.
 const PM_EXEC: Record<PackageManager, string> = {
@@ -98,6 +110,7 @@ function electronRecipe(context: RecipeContext, pm: PackageManager, windows: boo
       steps,
       env,
       requires,
+      cleanup: [],
       collect: {
         kind: "files",
         platform: TARGET_PLATFORM[windows ? "electron-windows" : "electron-linux"],
@@ -117,6 +130,7 @@ function electronRecipe(context: RecipeContext, pm: PackageManager, windows: boo
     steps,
     env,
     requires,
+    cleanup: [],
     collect: {
       kind: "files",
       platform: TARGET_PLATFORM[windows ? "electron-windows" : "electron-linux"],
@@ -139,6 +153,7 @@ function androidRecipe(context: RecipeContext, pm: PackageManager): Recipe {
     steps,
     env: androidEnv(context.env ?? process.env),
     requires: ["java"],
+    cleanup: ANDROID_CLEANUP,
     collect: {
       kind: "files",
       platform: TARGET_PLATFORM["android-apk"],
@@ -168,6 +183,7 @@ export function resolveRecipe(context: RecipeContext): Recipe {
         steps: [...installStep(facts, pm), { stage: "compile", command: `${pm} run build` }],
         env: {},
         requires: [],
+        cleanup: [],
         collect: { kind: "zip", platform: TARGET_PLATFORM.web, candidates: WEB_OUTPUT_DIRS },
       };
     case "script":
@@ -175,6 +191,7 @@ export function resolveRecipe(context: RecipeContext): Recipe {
         steps: [...installStep(facts, pm), { stage: "compile", command: `${pm} run build` }],
         env: {},
         requires: [],
+        cleanup: [],
         collect: null,
       };
   }

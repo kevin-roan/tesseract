@@ -2,6 +2,7 @@ import { memo, useMemo, type ReactNode } from "react";
 import { View } from "react-native";
 
 import Avatar from "@/components/avatar";
+import Markdown from "@/components/markdown";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { AvatarSize } from "@/theme";
@@ -35,11 +36,7 @@ const PromptCard = ({ author, text, timeLabel, children, testID }: PromptCardPro
         ) : null}
       </View>
       {children}
-      {text ? (
-        <ThemedText variant="body" color="bubbleUserText" selectable>
-          {text}
-        </ThemedText>
-      ) : null}
+      {text ? <Markdown color="bubbleUserText">{text}</Markdown> : null}
     </View>
   );
 };

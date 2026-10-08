@@ -207,6 +207,9 @@ const MIGRATIONS: readonly string[] = [
   ALTER TABLE push_devices ADD COLUMN device_id TEXT;
   CREATE INDEX push_devices_device_id ON push_devices (device_id);
   `,
+  `
+  ALTER TABLE agent_runs ADD COLUMN resumed_session_id TEXT;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

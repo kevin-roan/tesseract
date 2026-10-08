@@ -145,6 +145,13 @@ update the app/image ([pairing](pairing-mobile.md#re-pairing)).
 triggers are nested too deep for expo-router's `TabList`. Native builds are
 unaffected. → See [mobile-app.md](../architecture/mobile-app.md#web-build).
 
+**`eas update` published, but the installed app does not get it ("This is the latest update")**
+→ The runtime version is a native fingerprint. A native change since the build
+(a native package, a config plugin option) gave the update a different runtime
+version than the app shows under **Settings → About**. → Make a new EAS build
+and install it; check with `eas fingerprint:compare` before publishing
+([mobile-updates.md](mobile-updates.md)).
+
 **Terminal or Display screens are blank in Expo Go**
 → `react-native-webview`/`expo-camera` versions in Expo Go differ from the app.
 → Use a development build ([mobile-app.md](../architecture/mobile-app.md#dev-build-requirement)).

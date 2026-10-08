@@ -247,6 +247,18 @@ viewer in `tailscale` mode. Identity data is informational: nothing in the contr
 authorises on it, and a caller that already holds the token can fake serve headers from
 loopback.
 
+### Host Android SDK and Gradle cache (opt-in)
+
+`THEONE_HOST_ANDROID_SDK` and `THEONE_HOST_GRADLE_CACHE` bind-mount the host's Android SDK
+and Gradle `caches/` into the sandbox **read-only**, so builds reuse what the host already
+downloaded. The sandbox cannot change either (`EROFS`, even as root: the mount is read-only
+in the container's mount namespace and the sandbox lacks `SYS_ADMIN` to remount it), so the
+host's own builds never run SDK binaries or cached jars the sandbox planted. What it can do is
+**read** them: everything in that SDK and cache, which normally holds only public packages
+and dependencies. Do not point the Gradle cache at a Gradle home that also holds
+`gradle.properties` with signing passwords or tokens: mount its `caches/` directory only,
+which the script requires (`modules-2/` must be in it).
+
 ### Docker-in-Docker (opt-in)
 
 `compose.dind.yml` adds a **privileged** `docker:dind` sidecar and gives the

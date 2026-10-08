@@ -10,7 +10,7 @@ jest.mock("expo-splash-screen", () => ({ preventAutoHideAsync: jest.fn(), hideAs
 
 describe("<SplashOverlay />", () => {
   it("keeps the native splash until its own image is on screen", async () => {
-    await render(<SplashOverlay ready={false} title="Monolith" onDone={jest.fn()} />);
+    await render(<SplashOverlay ready={false} title="Tesseract" onDone={jest.fn()} />);
     expect(SplashScreen.hideAsync).not.toHaveBeenCalled();
     await fireEvent(screen.getByTestId("splash-image", { includeHiddenElements: true }), "display");
     expect(SplashScreen.hideAsync).toHaveBeenCalledTimes(1);
