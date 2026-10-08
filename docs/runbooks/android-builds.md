@@ -23,8 +23,8 @@ On a Linux x86_64 host that already has an Android SDK, let the sandbox use it i
 downloading NDK, CMake and dependencies again. In `infra/compose/.env`:
 
 ```bash
-THEONE_HOST_ANDROID_SDK=/home/me/Android/Sdk        # $ANDROID_HOME on the host
-THEONE_HOST_GRADLE_CACHE=/home/me/.gradle/caches    # $GRADLE_USER_HOME/caches on the host
+TESSERACT_HOST_ANDROID_SDK=/home/me/Android/Sdk        # $ANDROID_HOME on the host
+TESSERACT_HOST_GRADLE_CACHE=/home/me/.gradle/caches    # $GRADLE_USER_HOME/caches on the host
 ```
 
 then `bun run sandbox up` (recreates the container; this also drops the NDK/CMake copies an
@@ -86,7 +86,7 @@ cd android
 ./gradlew --stop                              # free memory afterwards
 ```
 
-Prefer the controller build (`theone-controller api POST /v1/builds '{"projectId":"myapp","target":"android-apk","profile":"release"}'`,
+Prefer the controller build (`tesseract-controller api POST /v1/builds '{"projectId":"myapp","target":"android-apk","profile":"release"}'`,
 see [SPEC §8.2](../../SPEC.md#82-local-api)) for deliverables: it survives disconnects and produces the named, hashed artifact.
 
 ## Release signing
@@ -149,7 +149,7 @@ repository.
 | Symptom | Fix |
 |---|---|
 | `SDK location not found` | the image was built with `WITH_ANDROID=false` (empty `/opt/android-sdk`), or a stale `android/local.properties` points elsewhere: rebuild with Android, or set `sdk.dir=/opt/android-sdk` |
-| `Failed to install the following SDK components` | Gradle cannot write the SDK. With `THEONE_HOST_ANDROID_SDK` that is expected: install the package on the host (`sdkmanager --install 'ndk;…'`). Otherwise check `ls -ld /opt/android-sdk` (owned by `dev`) |
+| `Failed to install the following SDK components` | Gradle cannot write the SDK. With `TESSERACT_HOST_ANDROID_SDK` that is expected: install the package on the host (`sdkmanager --install 'ndk;…'`). Otherwise check `ls -ld /opt/android-sdk` (owned by `dev`) |
 | Build killed, `exit code 137` | out of memory: lower `org.gradle.jvmargs`, stop other processes, raise the compose memory limit |
 | `Unsupported class file major version` | wrong JDK: `java -version` must say 17; `JAVA_HOME=/opt/java/openjdk` |
 | Expo prebuild asks questions | run with `--no-install` and set `android.package` in `app.json` |

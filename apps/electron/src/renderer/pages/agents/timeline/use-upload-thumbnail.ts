@@ -1,12 +1,12 @@
-import type { TheOneClient } from "@theone/client";
-import type { Upload } from "@theone/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import type { Upload } from "@tesseract/protocol";
 import { ipcFetch, useApiQuery } from "../../../app/data";
 import { isFixtureMode } from "../../../app/runtime";
 import { fixtureFetch } from "../../../fixtures/fetch";
 
 const objectUrls = new Map<string, string>();
 
-async function loadThumbnail(client: TheOneClient, upload: Upload, signal: AbortSignal): Promise<string> {
+async function loadThumbnail(client: TesseractClient, upload: Upload, signal: AbortSignal): Promise<string> {
   const cached = objectUrls.get(upload.id);
   if (cached) return cached;
   const url = await client.uploadContentUrl(upload.id, { signal });

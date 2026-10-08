@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { ApiError, NetworkError, TheOneClient } from "@theone/client";
-import { sampleProject, sampleStatus } from "@theone/protocol/fixtures";
+import { ApiError, NetworkError, TesseractClient } from "@tesseract/client";
+import { sampleProject, sampleStatus } from "@tesseract/protocol/fixtures";
 
 import { useSandboxHub } from "@/features/sandbox/hooks/use-sandbox-hub";
 import { useConnectionStore } from "@/features/sandbox/store/connection-store";
@@ -10,7 +10,7 @@ import { TEST_SANDBOX, createTestQueryClient, createWrapper, resetSandboxState, 
 
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) };
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   get router() {
@@ -18,7 +18,7 @@ jest.mock("expo-router", () => ({
   },
 }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const BUILD = HUB_ACTIONS.find((action) => action.id === "build");
 const fake = {
   status: jest.fn(),

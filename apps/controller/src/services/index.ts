@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { LIMITS } from "@theone/protocol";
+import { LIMITS } from "@tesseract/protocol";
 import { TicketStore } from "../auth/tickets";
 import { mirrorTokenToFile, resolveToken, type TokenSource } from "../auth/token";
 import { ensureDirectories, localApiUrl, type Config } from "../config";
@@ -107,9 +107,9 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
   if (resolved.source === "generated") logger.info("generated a new API token", { file: config.tokenFile });
   if (resolved.source === "env") {
     try {
-      if (mirrorTokenToFile(config, resolved.token)) logger.info("stored THEONE_TOKEN in the token file", { file: config.tokenFile });
+      if (mirrorTokenToFile(config, resolved.token)) logger.info("stored TESSERACT_TOKEN in the token file", { file: config.tokenFile });
     } catch (error) {
-      logger.warn("could not store THEONE_TOKEN in the token file; in-sandbox CLI calls need it", { file: config.tokenFile, error });
+      logger.warn("could not store TESSERACT_TOKEN in the token file; in-sandbox CLI calls need it", { file: config.tokenFile, error });
     }
   }
 

@@ -1,4 +1,4 @@
-import type { DisplayStatus } from "@theone/protocol";
+import type { DisplayStatus } from "@tesseract/protocol";
 
 export type DisplayMode = "offline" | "loading" | "error" | "no_display" | "preview" | "viewer";
 

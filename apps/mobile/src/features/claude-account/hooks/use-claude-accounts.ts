@@ -1,4 +1,4 @@
-import type { ClaudeAccountList, SetDefaultClaudeAccount, SetProjectClaudeAccount } from "@theone/protocol";
+import type { ClaudeAccountList, SetDefaultClaudeAccount, SetProjectClaudeAccount } from "@tesseract/protocol";
 
 import { storeProject } from "@/features/sandbox/api/cache";
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";

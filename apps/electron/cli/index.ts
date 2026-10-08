@@ -1,3 +1,4 @@
+import { migrateLegacyInstall } from "../src/core/legacy";
 import { firstSubcommand, parseArgs } from "./args";
 import { GLOBAL_FLAGS } from "./constants";
 import { commandHelp, generalHelp } from "./help";
@@ -75,10 +76,20 @@ export async function main(argv: string[], options: MainOptions = {}): Promise<n
     cwd: options.cwd ?? process.cwd(),
     env: options.env ?? process.env,
     io,
-    runtime: options.runtime ?? createRuntime(currentRuntimeInput()),
+    runtime: options.runtime ?? installedRuntime(io),
     signal: options.signal ?? new AbortController().signal,
   };
   return command.run(context);
+}
+
+function installedRuntime(io: CliIo): CliRuntime {
+  const runtime = createRuntime(currentRuntimeInput());
+  try {
+    migrateLegacyInstall(runtime.paths).messages.forEach((line) => io.stderr(line));
+  } catch (error) {
+    io.stderr(error instanceof Error ? error.message : String(error));
+  }
+  return runtime;
 }
 
 function interruptSignal(): AbortSignal {

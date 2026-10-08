@@ -8,7 +8,7 @@ import { APP_DIR, REPO_ROOT, resolveInput } from "./lib/paths.ts";
 
 const MAPPING_DIR = join(APP_DIR, "scripts", "parity");
 const REFERENCE_DIR = join(REPO_ROOT, "docs", "electron", "reference");
-const OUTPUT_DIR = "/tmp/monolith-parity";
+const OUTPUT_DIR = "/tmp/tesseract-parity";
 const DEFAULT_SCENARIO = "gtk-parity";
 const DEFAULT_JOBS = 3;
 const SNAPSHOT_ATTEMPTS = 3;

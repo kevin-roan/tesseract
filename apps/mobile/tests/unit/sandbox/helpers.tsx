@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { Identity, ListeningPort } from "@theone/protocol";
-import { sampleProcess, sampleProject } from "@theone/protocol/fixtures";
+import type { Identity, ListeningPort } from "@tesseract/protocol";
+import { sampleProcess, sampleProject } from "@tesseract/protocol/fixtures";
 
 import { clearSandboxClients } from "@/features/sandbox/api/client";
 import { useConnectionStore } from "@/features/sandbox/store/connection-store";
@@ -27,11 +27,11 @@ export const TEST_SITE: ListeningPort = {
   processId: sampleProcess.id,
   projectId: sampleProject.id,
   url: "http://100.116.96.29:5173",
-  dnsUrl: "http://theone-sandbox.tail1234.ts.net:5173",
+  dnsUrl: "http://tesseract-sandbox.tail1234.ts.net:5173",
 };
 
 export const TEST_IDENTITY: Identity = {
-  sandboxId: "theone-sandbox",
+  sandboxId: "tesseract-sandbox",
   tailscale: {
     available: true,
     source: "localapi",
@@ -51,8 +51,8 @@ export const TEST_IDENTITY: Identity = {
     },
     owner: { id: "u2", loginName: "grace@example.com", displayName: "Grace Hopper", profilePicUrl: null },
     node: {
-      hostName: "theone-sandbox",
-      dnsName: "theone-sandbox.tail1234.ts.net.",
+      hostName: "tesseract-sandbox",
+      dnsName: "tesseract-sandbox.tail1234.ts.net.",
       os: "linux",
       tailscaleIps: ["100.64.0.1"],
       online: true,
@@ -61,7 +61,7 @@ export const TEST_IDENTITY: Identity = {
 };
 
 export const NO_TAILSCALE: Identity = {
-  sandboxId: "theone-sandbox",
+  sandboxId: "tesseract-sandbox",
   tailscale: {
     available: false,
     source: "none",

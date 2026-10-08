@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { chmodSync } from "node:fs";
 import { join } from "node:path";
-import { createId, type AppRun, type ProcessInfo } from "@theone/protocol";
+import { createId, type AppRun, type ProcessInfo } from "@tesseract/protocol";
 import type { Config } from "../../src/config";
 import type { EventHub } from "../../src/core/events";
 import { silentLogger } from "../../src/core/logger";

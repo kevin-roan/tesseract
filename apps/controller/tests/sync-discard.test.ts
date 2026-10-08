@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, lstatSync, readdirSync, readFileSync, readlinkSync, rmSync, statSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { SyncChangesSchema, SyncDiscardResultSchema, SyncRequestSchema, type SyncChanges, type SyncDiscardResult } from "@theone/protocol";
+import { SyncChangesSchema, SyncDiscardResultSchema, SyncRequestSchema, type SyncChanges, type SyncDiscardResult } from "@tesseract/protocol";
 import { makeTempDir, removeTempDirs, startTestController, TEST_TOKEN, writeFiles, type TestController } from "./helpers";
 
 let t: TestController;

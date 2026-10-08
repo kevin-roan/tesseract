@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { TheOneClient } from "@theone/client";
+import type { TesseractClient } from "@tesseract/client";
 
 import { originOf } from "@/lib/url";
 
@@ -10,7 +10,7 @@ import { useSandboxClient } from "./use-sandbox-client";
 
 export type PageTarget = {
   key: readonly unknown[];
-  client: TheOneClient | null;
+  client: TesseractClient | null;
   origin: string | null;
 };
 
@@ -25,7 +25,7 @@ export type PageUrl = {
 export function usePageUrl(
   page: PageKind,
   id: string | null,
-  build: (client: TheOneClient) => Promise<string>,
+  build: (client: TesseractClient) => Promise<string>,
   enabled = true,
   target?: PageTarget,
 ): PageUrl {

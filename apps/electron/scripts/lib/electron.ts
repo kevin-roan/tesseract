@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 const require = createRequire(import.meta.url);
 
-export const SANDBOX_PREFIX = "monolith-test-";
+export const SANDBOX_PREFIX = "tesseract-test-";
 
 export function electronBinary(): string {
   return require("electron") as string;
@@ -28,11 +28,11 @@ export function isolatedProfile(extraEnv: NodeJS.ProcessEnv = {}): IsolatedProfi
   writeFileSync(join(dir, "seed.json"), "{}\n");
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    MONOLITH_FIXTURES: "1",
-    MONOLITH_SNAPSHOT: "1",
-    MONOLITH_USER_DATA: join(dir, "user-data"),
-    MONOLITH_DESKTOP_CONFIG: configFile,
-    MONOLITH_STATE_DIR: join(dir, "state"),
+    TESSERACT_FIXTURES: "1",
+    TESSERACT_SNAPSHOT: "1",
+    TESSERACT_USER_DATA: join(dir, "user-data"),
+    TESSERACT_DESKTOP_CONFIG: configFile,
+    TESSERACT_STATE_DIR: join(dir, "state"),
     XDG_CACHE_HOME: join(dir, "cache"),
     ELECTRON_ENABLE_LOGGING: "0",
     ...extraEnv,

@@ -1,4 +1,4 @@
-import type { AgentRun, StartAgentRun } from "@theone/protocol";
+import type { AgentRun, StartAgentRun } from "@tesseract/protocol";
 import { useCallback, useState } from "react";
 import { describeError } from "../../../app/connection";
 import { useApiClient } from "../../../app/data";

@@ -1,4 +1,4 @@
-import { normalizeBaseUrl, parsePairingLink } from "@theone/protocol";
+import { normalizeBaseUrl, parsePairingLink } from "@tesseract/protocol";
 import type { ConnectionConfig, DiscoveryResult } from "../../shared/contracts/connection";
 import type { ConfigData } from "../config";
 import {

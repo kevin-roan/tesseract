@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { PROTOCOL_VERSION } from "@theone/protocol";
-import { sampleDisplay, sampleHealth, sampleProcess, sampleStatus, sampleStatusEvent, sampleTicket } from "@theone/protocol/fixtures";
+import { PROTOCOL_VERSION } from "@tesseract/protocol";
+import { sampleDisplay, sampleHealth, sampleProcess, sampleStatus, sampleStatusEvent, sampleTicket } from "@tesseract/protocol/fixtures";
 import {
   AbortError,
   ApiError,
@@ -15,8 +15,8 @@ import {
   protocolVersionMismatch,
   resolveFetch,
   resolveWebSocket,
-  TheOneClient,
-  TheOneError,
+  TesseractClient,
+  TesseractError,
   TimeoutError,
   type FetchLike,
   type HttpRequestInit,
@@ -47,7 +47,7 @@ function clientWith(handler: (call: Call) => HttpResponse | Promise<HttpResponse
     calls.push({ url, init });
     return handler({ url, init });
   };
-  return { client: new TheOneClient({ baseUrl: BASE, token: TOKEN, fetch, timeoutMs }), calls };
+  return { client: new TesseractClient({ baseUrl: BASE, token: TOKEN, fetch, timeoutMs }), calls };
 }
 
 const failure = (promise: Promise<unknown>) =>
@@ -86,7 +86,7 @@ describe("request construction", () => {
   });
 
   test("defaults", () => {
-    const client = new TheOneClient({ baseUrl: BASE, token: TOKEN, fetch: async () => response(200, "") });
+    const client = new TesseractClient({ baseUrl: BASE, token: TOKEN, fetch: async () => response(200, "") });
     expect(client.timeoutMs).toBe(DEFAULT_TIMEOUT_MS);
     expect(client.authHeaders()).toEqual({ Authorization: `Bearer ${TOKEN}` });
     expect(DEFAULT_EVENTS_IDLE_TIMEOUT_MS).toBeGreaterThan(2 * 25_000);
@@ -246,7 +246,7 @@ describe("timeouts and aborts", () => {
   });
 
   test("a synchronously throwing fetch becomes NetworkError", async () => {
-    const client = new TheOneClient({
+    const client = new TesseractClient({
       baseUrl: BASE,
       token: TOKEN,
       fetch: () => {
@@ -282,7 +282,7 @@ describe("url helpers", () => {
   });
 
   test("wsUrl keeps a base path prefix", () => {
-    const client = new TheOneClient({ baseUrl: "https://host/proxy/", token: TOKEN, fetch: async () => response(200, "") });
+    const client = new TesseractClient({ baseUrl: "https://host/proxy/", token: TOKEN, fetch: async () => response(200, "") });
     expect(client.wsUrl("/v1/events", "a b")).toBe("wss://host/proxy/v1/events?ticket=a%20b");
     expect(client.httpUrl("/v1/health")).toBe("https://host/proxy/v1/health");
   });
@@ -297,7 +297,7 @@ describe("streams without a WebSocket", () => {
   test("openEvents reports a missing implementation and closes", async () => {
     (globalThis as { WebSocket?: unknown }).WebSocket = undefined;
     const { client } = clientWith(() => response(200, JSON.stringify(sampleTicket)));
-    const errors: TheOneError[] = [];
+    const errors: TesseractError[] = [];
     const states: string[] = [];
     const connection = client.openEvents({
       onEvent: () => undefined,
@@ -315,7 +315,7 @@ describe("streams without a WebSocket", () => {
 describe("errors module", () => {
   test("class hierarchy and names", () => {
     const api = new ApiError(404, "not_found", "missing");
-    expect(api).toBeInstanceOf(TheOneError);
+    expect(api).toBeInstanceOf(TesseractError);
     expect(api).toBeInstanceOf(Error);
     expect(api.name).toBe("ApiError");
     const version = new ProtocolVersionError("/v1/health", 2, 1);
@@ -327,7 +327,7 @@ describe("errors module", () => {
     const cause = new Error("root");
     expect(new ProtocolError("/p", "bad", { cause }).cause).toBe(cause);
     expect(new NetworkError("n", { cause }).cause).toBe(cause);
-    expect(new TheOneError("t", { cause }).name).toBe("TheOneError");
+    expect(new TesseractError("t", { cause }).name).toBe("TesseractError");
     expect(new AbortError("/p").message).toBe("Request to /p was aborted");
   });
 

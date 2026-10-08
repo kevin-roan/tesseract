@@ -11,11 +11,11 @@ export const PAGE_MESSAGES = {
   vncAction: "vnc-action",
   androidState: "android-state",
   androidNeedTicket: "android-need-ticket",
-  reconnect: "theone-reconnect",
-  inputMode: "theone-input-mode",
-  insets: "theone-insets",
-  immersive: "theone-immersive",
-  paste: "theone-paste",
+  reconnect: "tesseract-reconnect",
+  inputMode: "tesseract-input-mode",
+  insets: "tesseract-insets",
+  immersive: "tesseract-immersive",
+  paste: "tesseract-paste",
 } as const;
 export type PageMessageType = (typeof PAGE_MESSAGES)[keyof typeof PAGE_MESSAGES];
 
@@ -27,7 +27,7 @@ export type PageState = (typeof PAGE_STATES)[number];
 export const INPUT_MODES = ["trackpad", "touch"] as const;
 export type InputMode = (typeof INPUT_MODES)[number];
 
-/** Payload of `theone-insets`: CSS px the app's floating chrome covers at the top and bottom of the page. */
+/** Payload of `tesseract-insets`: CSS px the app's floating chrome covers at the top and bottom of the page. */
 export type PageInsets = { top: number; bottom: number };
 
 /** Values of `action` in `vnc-action` messages. */

@@ -2,20 +2,20 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Page, TestInfo } from "@playwright/test";
-import { TheOneClient } from "@theone/client";
+import { TesseractClient } from "@tesseract/client";
 import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 import { COMPLETED_ONBOARDING } from "./app";
 
 export const SNAPSHOT_DIR = join(dirname(fileURLToPath(import.meta.url)), "__snapshots__");
-export const UPDATE_SNAPSHOTS_ENV = "MONOLITH_UPDATE_SNAPSHOTS";
+export const UPDATE_SNAPSHOTS_ENV = "TESSERACT_UPDATE_SNAPSHOTS";
 export const PIXEL_THRESHOLD = 0.1;
 export const MAX_MISMATCH_PERCENT = 0.5;
 export const LIVE_TIMEOUT_MS = 30_000;
 export const OFFLINE_URL = "http://127.0.0.1:9";
-export const OFFLINE_TOKEN = "monolith-test-offline-token";
-export const LIVE_SANDBOX_NAME = "theone-e2e";
-export const TEST_PREFIX = "monolith-e2e";
+export const OFFLINE_TOKEN = "tesseract-test-offline-token";
+export const LIVE_SANDBOX_NAME = "tesseract-e2e";
+export const TEST_PREFIX = "tesseract-e2e";
 export const SNAPSHOT_CLOCK = "2026-10-07T09:00:00.000Z";
 export const SNAPSHOT_ENV = { TZ: "UTC", LANG: "en_US.UTF-8" } as const;
 
@@ -26,20 +26,20 @@ export interface LiveStack {
 }
 
 interface IdleWindow {
-  __monolithIdle?: () => Promise<boolean>;
+  __tesseractIdle?: () => Promise<boolean>;
   location: { hash: string };
 }
 
 export function liveStack(): LiveStack | null {
-  const url = process.env.THEONE_E2E_URL?.trim();
-  const token = process.env.THEONE_E2E_TOKEN?.trim();
+  const url = process.env.TESSERACT_E2E_URL?.trim();
+  const token = process.env.TESSERACT_E2E_TOKEN?.trim();
   if (!url || !token) return null;
-  return { url, token, project: process.env.THEONE_E2E_PROJECT?.trim() || LIVE_SANDBOX_NAME };
+  return { url, token, project: process.env.TESSERACT_E2E_PROJECT?.trim() || LIVE_SANDBOX_NAME };
 }
 
 export function assertTestStack(stack: LiveStack): void {
-  if (!stack.project.startsWith("theone-e2e")) {
-    throw new Error(`THEONE_E2E_PROJECT must start with theone-e2e (got ${stack.project}); refusing to mutate another sandbox`);
+  if (!stack.project.startsWith("tesseract-e2e")) {
+    throw new Error(`TESSERACT_E2E_PROJECT must start with tesseract-e2e (got ${stack.project}); refusing to mutate another sandbox`);
   }
 }
 
@@ -47,8 +47,8 @@ export function connectionConfig(url: string, token: string, name = LIVE_SANDBOX
   return { ...COMPLETED_ONBOARDING, url, token, name };
 }
 
-export function apiClient(stack: LiveStack): TheOneClient {
-  return new TheOneClient({ baseUrl: stack.url, token: stack.token, timeoutMs: LIVE_TIMEOUT_MS });
+export function apiClient(stack: LiveStack): TesseractClient {
+  return new TesseractClient({ baseUrl: stack.url, token: stack.token, timeoutMs: LIVE_TIMEOUT_MS });
 }
 
 export function uniqueName(kind: string): string {
@@ -56,7 +56,7 @@ export function uniqueName(kind: string): string {
 }
 
 export async function waitIdle(window: Page): Promise<void> {
-  await window.evaluate(() => (globalThis as unknown as IdleWindow).__monolithIdle?.());
+  await window.evaluate(() => (globalThis as unknown as IdleWindow).__tesseractIdle?.());
 }
 
 export async function goTo(window: Page, route: string): Promise<void> {
@@ -74,7 +74,7 @@ export async function stillWindow(window: Page): Promise<void> {
   await waitIdle(window);
 }
 
-export async function readTerminalOutput(client: TheOneClient, id: string, timeoutMs = LIVE_TIMEOUT_MS): Promise<string> {
+export async function readTerminalOutput(client: TesseractClient, id: string, timeoutMs = LIVE_TIMEOUT_MS): Promise<string> {
   const chunks: string[] = [];
   const connection = client.openTerminal(id, { onOutput: (data) => chunks.push(data) });
   const deadline = Date.now() + timeoutMs;

@@ -29,7 +29,7 @@ describe("DoneStep", () => {
     expect(await screen.findByText("Docker Engine 29.8.1")).toBeTruthy();
     expect(screen.getByTestId("summary-android").getAttribute("data-status")).toBe("done");
     fireEvent.click(screen.getByRole("switch"));
-    fireEvent.click(screen.getByRole("button", { name: "Open Monolith" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open Tesseract" }));
     await waitFor(() => expect(finish).toHaveBeenCalledWith(false));
     await waitFor(() => expect(openMain).toHaveBeenCalled());
     expect(await screen.findByTestId("main-page")).toBeTruthy();

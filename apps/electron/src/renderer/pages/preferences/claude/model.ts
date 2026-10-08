@@ -1,4 +1,4 @@
-import type { ClaudeAccountList, ClaudeAccountProfile, ClaudeAuthStatus } from "@theone/protocol";
+import type { ClaudeAccountList, ClaudeAccountProfile, ClaudeAuthStatus } from "@tesseract/protocol";
 import type { HostClaudeSettings, HostClaudeState } from "../../../../shared/contracts/claude";
 import type { RadioChoice } from "../../../components/RadioRows";
 import type { PropertyListItem } from "../shared/PropertyList";

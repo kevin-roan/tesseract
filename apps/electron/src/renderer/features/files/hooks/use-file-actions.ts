@@ -1,5 +1,5 @@
-import type { TheOneClient } from "@theone/client";
-import type { Artifact, BuildOutput } from "@theone/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import type { Artifact, BuildOutput } from "@tesseract/protocol";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { describeError } from "../../../app/connection";
 import { useApiClient } from "../../../app/data";
@@ -138,7 +138,7 @@ export function useFileActions(report: (message: string) => void, onDeleted: (id
   );
 
   const openUrl = useCallback(
-    (resolve: (api: TheOneClient) => Promise<string>, missing: string | null) => {
+    (resolve: (api: TesseractClient) => Promise<string>, missing: string | null) => {
       if (!client) return;
       resolve(client)
         .then((url) => ipc.app.openExternal(url))

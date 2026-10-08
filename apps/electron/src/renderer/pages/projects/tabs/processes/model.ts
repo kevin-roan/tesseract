@@ -1,4 +1,4 @@
-import type { ListeningPort, ProcessCommand, ProcessInfo, Project, StartProcess } from "@theone/protocol";
+import type { ListeningPort, ProcessCommand, ProcessInfo, Project, StartProcess } from "@tesseract/protocol";
 import type { RecordStatus } from "../../../../components/RecordRow";
 import { elapsedSeconds, formatDuration, formatRelativeTime, joinMeta } from "../../../../features/projects/format";
 import { isLiveProcess, prefersDisplay } from "../../../../features/projects/model";

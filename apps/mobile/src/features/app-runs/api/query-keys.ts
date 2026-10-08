@@ -1,4 +1,4 @@
-import type { AppRunFilter } from "@theone/protocol";
+import type { AppRunFilter } from "@tesseract/protocol";
 
 const filterKey = (filter?: AppRunFilter): AppRunFilter => (filter?.projectId ? { projectId: filter.projectId } : {});
 

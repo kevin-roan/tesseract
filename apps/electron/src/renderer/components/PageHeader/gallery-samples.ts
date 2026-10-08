@@ -1,7 +1,7 @@
 export const PAGE_HEADER_SAMPLES = {
   rootTitle: "Overview",
   parent: "Projects",
-  child: "monolith",
+  child: "tesseract",
   childAlt: "hybrid-pos",
   refresh: "Refresh",
   more: "More",

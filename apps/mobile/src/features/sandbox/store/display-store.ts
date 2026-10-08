@@ -1,4 +1,4 @@
-import { INPUT_MODES, type InputMode } from "@theone/protocol";
+import { INPUT_MODES, type InputMode } from "@tesseract/protocol";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

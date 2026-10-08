@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { BrowserStatusSchema, type TailnetNode } from "@theone/protocol";
+import { BrowserStatusSchema, type TailnetNode } from "@tesseract/protocol";
 import { loadConfig } from "../src/config";
 import { BrowserService, isLocalHost, parseDevToolsTargets, phoneUrlFor, tailnetHostOf } from "../src/services/browser";
 import type { IdentityService } from "../src/services/identity";
@@ -77,7 +77,7 @@ describe("BrowserService", () => {
   let devtools: ReturnType<typeof Bun.serve>;
   const identity = (node: TailnetNode | null) => ({ selfNode: async () => node }) as unknown as IdentityService;
   const service = (port: number, node: TailnetNode | null) =>
-    new BrowserService(loadConfig({ THEONE_WORKSPACE: "/workspace", THEONE_TOKEN: TEST_TOKEN, THEONE_CHROMIUM_DEBUG_PORT: String(port) }), identity(node));
+    new BrowserService(loadConfig({ TESSERACT_WORKSPACE: "/workspace", TESSERACT_TOKEN: TEST_TOKEN, TESSERACT_CHROMIUM_DEBUG_PORT: String(port) }), identity(node));
 
   beforeAll(() => {
     devtools = Bun.serve({

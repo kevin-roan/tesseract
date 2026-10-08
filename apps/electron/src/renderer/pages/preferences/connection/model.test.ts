@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { connectionStatusRows, formFromConfig, readConnectionForm } from "./model";
 
-const config = { apiUrl: "http://172.22.0.2:7700", token: "secret", name: "theone-sandbox", pairingUrl: null, source: "docker" as const };
+const config = { apiUrl: "http://172.22.0.2:7700", token: "secret", name: "tesseract-sandbox", pairingUrl: null, source: "docker" as const };
 
 describe("connection preferences model", () => {
   it("normalizes the form", () => {
@@ -20,7 +20,7 @@ describe("connection preferences model", () => {
   });
 
   it("fills the form from a config", () => {
-    expect(formFromConfig(config)).toEqual({ apiUrl: config.apiUrl, token: "secret", name: "theone-sandbox", pairingUrl: "" });
+    expect(formFromConfig(config)).toEqual({ apiUrl: config.apiUrl, token: "secret", name: "tesseract-sandbox", pairingUrl: "" });
     expect(formFromConfig(null).apiUrl).toBe("");
   });
 
@@ -28,7 +28,7 @@ describe("connection preferences model", () => {
     const rows = connectionStatusRows({ status: "online", errorMessage: null, health: null, config, configFile: "/tmp/config.json" });
     expect(rows).toEqual({
       badge: { label: "Online", tone: "success" },
-      statusSubtitle: "theone-sandbox",
+      statusSubtitle: "tesseract-sandbox",
       sourceTitle: "Source: Docker discovery",
       sourceSubtitle: "Config file: /tmp/config.json",
       discovering: false,

@@ -94,7 +94,7 @@ export const BLOCKED_V6 = cidrs(["::/96", "64:ff9b::/96", "64:ff9b:1::/48", "100
 /** Host loopback and unspecified addresses: never reachable, whatever the allowlist says (the host adb server lives there). */
 const NEVER_ALLOWED = cidrs(["0.0.0.0/8", "127.0.0.0/8", "::/96"]);
 
-/** `THEONE_EMULATOR_ALLOW_NETS`: comma-separated CIDRs; returns the invalid entry as an error. */
+/** `TESSERACT_EMULATOR_ALLOW_NETS`: comma-separated CIDRs; returns the invalid entry as an error. */
 export function parseAllowNets(text: string | undefined): { ok: true; value: Cidr[] } | { ok: false; error: string } {
   const value: Cidr[] = [];
   for (const entry of (text ?? "").split(",").map((part) => part.trim())) {

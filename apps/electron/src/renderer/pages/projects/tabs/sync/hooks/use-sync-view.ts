@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import type { TheOneClient } from "@theone/client";
+import type { TesseractClient } from "@tesseract/client";
 import { useCallback, useEffect, useRef } from "react";
 import { describeError } from "../../../../../app/connection";
 import { DATA_KEYS, useApiClient, useApiQuery } from "../../../../../app/data";
@@ -10,7 +10,7 @@ import { useSyncBackState } from "./use-syncback-state";
 
 export const syncViewKey = (projectId: string) => ["projects", projectId, SYNC_QUERY_KEY] as const;
 
-export async function loadSyncView(client: TheOneClient, projectId: string, signal?: AbortSignal): Promise<SyncView> {
+export async function loadSyncView(client: TesseractClient, projectId: string, signal?: AbortSignal): Promise<SyncView> {
   const [links, snapshots] = await Promise.all([
     ipc.syncback.links().catch(() => []),
     ipc.syncback.snapshots(projectId).catch(() => []),

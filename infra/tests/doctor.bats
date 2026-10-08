@@ -1,17 +1,17 @@
 #!/usr/bin/env bats
-# theone-doctor with every probe stubbed; the VNC check talks to a fake RFB server on
+# tesseract-doctor with every probe stubbed; the VNC check talks to a fake RFB server on
 # 127.0.0.1.
 
 load lib/common
 
-DOCTOR="${ROOTFS_BIN}/theone-doctor"
+DOCTOR="${ROOTFS_BIN}/tesseract-doctor"
 
 setup() {
-  unset_theone_env
+  unset_tesseract_env
   unset JAVA_HOME ANDROID_HOME WINEPREFIX
   setup_stubs
-  export HOME="${BATS_TEST_TMPDIR}/home" THEONE_WORKSPACE="${BATS_TEST_TMPDIR}/workspace"
-  mkdir -p "${HOME}/.wine" "${THEONE_WORKSPACE}"
+  export HOME="${BATS_TEST_TMPDIR}/home" TESSERACT_WORKSPACE="${BATS_TEST_TMPDIR}/workspace"
+  mkdir -p "${HOME}/.wine" "${TESSERACT_WORKSPACE}"
   touch "${HOME}/.wine/system.reg"
   mkdir -p "${HOME}/.claude"
   echo '{"claudeAiOauth":{"subscriptionType":"max"}}' > "${HOME}/.claude/.credentials.json"
@@ -55,7 +55,7 @@ while True:
     [[ -s "${port_file}" ]] && break
     sleep 0.05
   done
-  export THEONE_VNC_PORT="$(< "${port_file}")"
+  export TESSERACT_VNC_PORT="$(< "${port_file}")"
 }
 
 with_sdk() {
@@ -73,12 +73,12 @@ row() {
 
 @test "a healthy sandbox passes every check" {
   with_sdk
-  THEONE_PORT=7711 run "${DOCTOR}"
+  TESSERACT_PORT=7711 run "${DOCTOR}"
   assert_success
   assert_line --index 0 "$(printf '%-15s %-6s %s' CHECK STATUS DETAIL)"
   assert_line "$(row display PASS ":1 1600x900")"
   assert_line "$(row window-manager PASS "openbox on :1")"
-  assert_line "$(row vnc PASS "127.0.0.1:${THEONE_VNC_PORT} RFB 003.008")"
+  assert_line "$(row vnc PASS "127.0.0.1:${TESSERACT_VNC_PORT} RFB 003.008")"
   assert_line "$(row controller PASS "http://127.0.0.1:7711 v1.2.3")"
   assert_line "$(row supervisor PASS "controller,openbox,wine-init,xvnc ok")"
   assert_line "$(row wine PASS "wine-10.0, prefix ${HOME}/.wine")"
@@ -89,20 +89,20 @@ row() {
   assert_line "$(row java PASS 'openjdk version "17.0.12" 2024-07-16')"
   assert_line "$(row adb PASS "Android Debug Bridge version 1.0.41")"
   assert_line "$(row docker SKIP "no DOCKER_HOST (start the stack with --dind)")"
-  assert_line "$(row disk PASS "50 GiB free on ${THEONE_WORKSPACE}")"
-  assert_line "$(row workspace PASS "${THEONE_WORKSPACE} writable by $(id -un)")"
+  assert_line "$(row disk PASS "50 GiB free on ${TESSERACT_WORKSPACE}")"
+  assert_line "$(row workspace PASS "${TESSERACT_WORKSPACE} writable by $(id -un)")"
   assert_line "$(row home PASS "${HOME} writable by $(id -un)")"
   assert_line "16 checks, 0 failed, 0 warnings"
   assert_equal "$(calls_of curl)" "-fsS --max-time 5 http://127.0.0.1:7711/v1/health"
   assert_equal "$(calls_of xdpyinfo)" "-display :1"
-  run find "${THEONE_WORKSPACE}" "${HOME}" -name '.theone-doctor.*'
+  run find "${TESSERACT_WORKSPACE}" "${HOME}" -name '.tesseract-doctor.*'
   assert_output ""
 }
 
 @test "without an X display: display fails, window manager warns, exit 1" {
   stub xdpyinfo 'exit 1'
   stub xprop 'exit 1'
-  THEONE_DISPLAY=:5 run "${DOCTOR}"
+  TESSERACT_DISPLAY=:5 run "${DOCTOR}"
   assert_failure 1
   assert_line "$(row display FAIL "cannot open X display :5 (supervisorctl status xvnc)")"
   assert_line "$(row window-manager WARN "no EWMH window manager on :5 (supervisorctl status openbox)")"
@@ -122,12 +122,12 @@ row() {
   RFB_PID=""
   run "${DOCTOR}"
   assert_failure 1
-  assert_line "$(row vnc FAIL "no RFB server on 127.0.0.1:${THEONE_VNC_PORT}")"
+  assert_line "$(row vnc FAIL "no RFB server on 127.0.0.1:${TESSERACT_VNC_PORT}")"
 
   start_rfb_server "SSH-2.0-OpenSSH"
   run "${DOCTOR}"
   assert_failure 1
-  assert_line "$(row vnc FAIL "no RFB server on 127.0.0.1:${THEONE_VNC_PORT}")"
+  assert_line "$(row vnc FAIL "no RFB server on 127.0.0.1:${TESSERACT_VNC_PORT}")"
 }
 
 @test "controller fails with curl's first error line" {
@@ -147,7 +147,7 @@ row() {
   stub supervisorctl 'printf "%s\n" "controller  STARTING" "xvnc        RUNNING   pid 9"'
   run "${DOCTOR}"
   assert_success
-  assert_line "$(row supervisor WARN "still starting: controller (run theone-doctor again in a few seconds)")"
+  assert_line "$(row supervisor WARN "still starting: controller (run tesseract-doctor again in a few seconds)")"
 }
 
 @test "supervisor: stopped programs fail even though supervisorctl exits non-zero" {
@@ -219,17 +219,17 @@ row() {
   assert_line "$(row claude-auth PASS "logged in (${HOME}/.claude/.credentials.json)")"
 }
 
-@test "claude-auth: every extra account in THEONE_CLAUDE_ACCOUNTS is checked on its own mount" {
+@test "claude-auth: every extra account in TESSERACT_CLAUDE_ACCOUNTS is checked on its own mount" {
   mkdir -p "${HOME}/.claude-work" "${HOME}/.claude-personal"
   echo '{"claudeAiOauth":{"accessToken":"x"}}' > "${HOME}/.claude-work/.credentials.json"
   echo '{}' > "${HOME}/.claude-personal/.credentials.json"
-  THEONE_CLAUDE_ACCOUNTS=work,personal,gone,Bad run "${DOCTOR}"
+  TESSERACT_CLAUDE_ACCOUNTS=work,personal,gone,Bad run "${DOCTOR}"
   assert_success
   assert_line "$(row claude-auth PASS "logged in (${HOME}/.claude/.credentials.json)")"
   assert_line "$(row claude-auth:work PASS "logged in (${HOME}/.claude-work/.credentials.json)")"
   assert_line "$(row claude-auth:personal WARN "not authenticated: log in with 'CLAUDE_CONFIG_DIR=~/.claude-personal claude' (Claude Max) on the host")"
-  assert_line "$(row claude-auth:gone WARN "${HOME}/.claude-gone is not mounted (THEONE_HOST_CLAUDE_ACCOUNTS on the host)")"
-  assert_line "$(row claude-auth:Bad WARN "invalid account name in THEONE_CLAUDE_ACCOUNTS")"
+  assert_line "$(row claude-auth:gone WARN "${HOME}/.claude-gone is not mounted (TESSERACT_HOST_CLAUDE_ACCOUNTS on the host)")"
+  assert_line "$(row claude-auth:Bad WARN "invalid account name in TESSERACT_CLAUDE_ACCOUNTS")"
 
   run "${DOCTOR}"
   refute_output --partial "claude-auth:"
@@ -258,23 +258,23 @@ row() {
 @test "disk: under 2 GiB fails, under 10 GiB warns" {
   STUB_DF_KB=$((1 * 1024 * 1024 + 5)) run "${DOCTOR}"
   assert_failure 1
-  assert_line "$(row disk FAIL "1 GiB free on ${THEONE_WORKSPACE}")"
+  assert_line "$(row disk FAIL "1 GiB free on ${TESSERACT_WORKSPACE}")"
 
   STUB_DF_KB=$((2 * 1024 * 1024)) run "${DOCTOR}"
   assert_success
-  assert_line "$(row disk WARN "2 GiB free on ${THEONE_WORKSPACE}")"
+  assert_line "$(row disk WARN "2 GiB free on ${TESSERACT_WORKSPACE}")"
 
   STUB_DF_KB=$((10 * 1024 * 1024)) run "${DOCTOR}"
-  assert_line "$(row disk PASS "10 GiB free on ${THEONE_WORKSPACE}")"
-  assert_equal "$(calls_of df | tail -n 1)" "-Pk ${THEONE_WORKSPACE}"
+  assert_line "$(row disk PASS "10 GiB free on ${TESSERACT_WORKSPACE}")"
+  assert_equal "$(calls_of df | tail -n 1)" "-Pk ${TESSERACT_WORKSPACE}"
 }
 
 @test "writable: a missing workspace fails" {
-  rm -rf "${THEONE_WORKSPACE}"
+  rm -rf "${TESSERACT_WORKSPACE}"
   stub df 'printf "h\n/dev/x 1 1 52428800 1%% /\n"'
   run "${DOCTOR}"
   assert_failure 1
-  assert_line "$(row workspace FAIL "${THEONE_WORKSPACE} not writable by $(id -un)")"
+  assert_line "$(row workspace FAIL "${TESSERACT_WORKSPACE} not writable by $(id -un)")"
 }
 
 @test "warnings alone never fail the run" {

@@ -1,7 +1,7 @@
 import { Text } from "react-native";
 import { act, render, screen } from "@testing-library/react-native";
 import { useQueryClient } from "@tanstack/react-query";
-import { ApiError } from "@theone/client";
+import { ApiError } from "@tesseract/client";
 import { useFonts } from "expo-font";
 
 import RootLayout from "@/app/_layout";

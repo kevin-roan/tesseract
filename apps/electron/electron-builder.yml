@@ -1,7 +1,7 @@
-appId: dev.monolith.Desktop
-productName: Monolith
+appId: dev.tesseract.Desktop
+productName: Tesseract
 artifactName: ${productName}-${version}-${arch}.${ext}
-copyright: Copyright © 2026 Monolith
+copyright: Copyright © 2026 Tesseract
 directories:
   output: dist
   buildResources: build
@@ -14,8 +14,8 @@ asar: true
 npmRebuild: false
 nodeGypRebuild: false
 extraMetadata:
-  name: monolith-desktop
-  desktopName: dev.monolith.Desktop.desktop
+  name: tesseract-desktop
+  desktopName: dev.tesseract.Desktop.desktop
 afterSign: ./scripts/hooks/after-sign.ts
 electronFuses:
   runAsNode: false
@@ -36,11 +36,11 @@ extraResources:
     to: licenses
     filter: ["LICENSE-*"]
 protocols:
-  - name: Monolith
-    schemes: [monolith]
+  - name: Tesseract
+    schemes: [tesseract]
 publish:
   provider: generic
-  url: https://downloads.monolith.dev/desktop
+  url: https://downloads.tesseract.dev/desktop
   useMultipleRangeRequest: false
 generateUpdatesFilesForAllChannels: true
 mac:
@@ -58,7 +58,7 @@ mac:
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
-    NSMicrophoneUsageDescription: Monolith records voice notes for Claude when you ask it to.
+    NSMicrophoneUsageDescription: Tesseract records voice notes for Claude when you ask it to.
     LSApplicationCategoryType: public.app-category.developer-tools
 dmg:
   sign: false
@@ -76,7 +76,7 @@ dmg:
       path: /Applications
 win:
   icon: build/icon.ico
-  executableName: Monolith
+  executableName: Tesseract
   target:
     - target: nsis
       arch: [x64]
@@ -87,24 +87,24 @@ nsis:
   runAfterFinish: true
   createDesktopShortcut: true
   createStartMenuShortcut: true
-  shortcutName: Monolith
-  uninstallDisplayName: Monolith
+  shortcutName: Tesseract
+  uninstallDisplayName: Tesseract
   deleteAppDataOnUninstall: false
   include: build/installer.nsh
   installerIcon: build/icon.ico
   uninstallerIcon: build/icon.ico
 linux:
   icon: build/icons
-  executableName: monolith-desktop
+  executableName: tesseract-desktop
   syncDesktopName: true
-  maintainer: Monolith <desktop@monolith.dev>
-  vendor: Monolith
+  maintainer: Tesseract <desktop@tesseract.dev>
+  vendor: Tesseract
   category: Development
   synopsis: Claude Code and builds in a sandbox, followed from your phone
-  description: Monolith runs Claude Code, builds and Android emulators in a Docker sandbox and lets you follow them from your phone.
+  description: Tesseract runs Claude Code, builds and Android emulators in a Docker sandbox and lets you follow them from your phone.
   desktop:
     entry:
-      Name: Monolith
+      Name: Tesseract
       Keywords: claude;docker;sandbox;android;
   target:
     - target: AppImage
@@ -114,7 +114,8 @@ linux:
 appImage:
   artifactName: ${productName}-${version}-${arch}.${ext}
 deb:
-  packageName: monolith-desktop
+  packageName: tesseract-desktop
+  fpm: ["--replaces=monolith-desktop", "--conflicts=monolith-desktop"]
   packageCategory: devel
   priority: optional
   depends: ["libgtk-3-0", "libnotify4", "libnss3", "libxss1", "libxtst6", "xdg-utils", "libatspi2.0-0", "libuuid1", "libsecret-1-0"]

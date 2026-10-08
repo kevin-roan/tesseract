@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import type { Artifact, BuildOutput } from "@theone/protocol";
-import { sampleArtifact } from "@theone/protocol/fixtures";
+import type { Artifact, BuildOutput } from "@tesseract/protocol";
+import { sampleArtifact } from "@tesseract/protocol/fixtures";
 
 import FilesScreen from "@/app/files";
 import { FILES_VIEWS, SOURCE_FILTERS } from "@/features/files/utils/filters";

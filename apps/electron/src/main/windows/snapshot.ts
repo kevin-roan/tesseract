@@ -6,7 +6,7 @@ import { createLogger } from "../../core/log";
 import { baseWindowOptions, loadRoute, trackSnapshotWindow } from "./manager";
 
 const log = createLogger("snapshot");
-const IDLE_SCRIPT = "window.__monolithIdle ? window.__monolithIdle() : Promise.resolve(false)";
+const IDLE_SCRIPT = "window.__tesseractIdle ? window.__tesseractIdle() : Promise.resolve(false)";
 
 function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return Promise.race([promise, new Promise<T>((resolve) => setTimeout(() => resolve(fallback), ms))]);

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import type { IslandState } from "@/modules/theone-island";
+import type { IslandState } from "@/modules/tesseract-island";
 
 import { islandSummary } from "../utils/format";
 import { useNow } from "./use-now";

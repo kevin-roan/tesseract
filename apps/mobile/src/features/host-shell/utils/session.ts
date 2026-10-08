@@ -1,4 +1,4 @@
-import type { HostLockStatus } from "@theone/protocol";
+import type { HostLockStatus } from "@tesseract/protocol";
 
 import type { HostSessionState, LockLine } from "../types";
 

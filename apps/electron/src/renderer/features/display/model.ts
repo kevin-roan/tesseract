@@ -1,4 +1,4 @@
-import type { DisplayStatus, DisplayWindow } from "@theone/protocol";
+import type { DisplayStatus, DisplayWindow } from "@tesseract/protocol";
 import type { IconName } from "../../theme/icons";
 import type { Tone } from "../../theme/colors";
 import {

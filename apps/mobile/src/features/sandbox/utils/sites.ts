@@ -1,4 +1,4 @@
-import type { ListeningPort } from "@theone/protocol";
+import type { ListeningPort } from "@tesseract/protocol";
 
 import type { SegmentedOption } from "@/components/segmented-pills";
 

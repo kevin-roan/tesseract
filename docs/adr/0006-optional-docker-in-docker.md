@@ -17,14 +17,14 @@ runs unrelated containers.
 - Docker is **off by default**. The sandbox image contains the Docker CLI and
   compose plugin but no daemon.
 - The compose overlay `infra/compose/compose.dind.yml` (enabled with
-  `bun run sandbox up --dind` or `THEONE_DIND=1` in `.env`) adds a `docker` service from the official
+  `bun run sandbox up --dind` or `TESSERACT_DIND=1` in `.env`) adds a `docker` service from the official
   `docker:dind` image. It is **privileged**, because dind cannot run
   otherwise. Its API is reachable only on the compose network, at
   `tcp://docker:2376` with mutual TLS. The client certificates live in the
-  `theone-dind-certs` volume, mounted read-only into the sandbox at
+  `tesseract-dind-certs` volume, mounted read-only into the sandbox at
   `/certs/client`. The sandbox gets `DOCKER_HOST`, `DOCKER_TLS_VERIFY=1` and
-  `DOCKER_CERT_PATH`. Images and containers live in `theone-dind-data`.
-- The `theone-workspace` volume is mounted at `/workspace` in the dind
+  `DOCKER_CERT_PATH`. Images and containers live in `tesseract-dind-data`.
+- The `tesseract-workspace` volume is mounted at `/workspace` in the dind
   container too, so `docker run -v /workspace/projects/app:/app` and compose
   bind mounts from a project resolve to the same files.
 - The host Docker socket is never mounted.
@@ -67,5 +67,5 @@ runs unrelated containers.
 
 - dind is an overlay file selected by the operator CLI, not a compose profile.
 - Its volumes follow the stack's volume prefix (`<prefix>-dind-certs`,
-  `<prefix>-dind-data`, default `theone-*`), and `DIND_CPUS`/`DIND_MEMORY`/
+  `<prefix>-dind-data`, default `tesseract-*`), and `DIND_CPUS`/`DIND_MEMORY`/
   `DIND_PIDS` cap everything it runs.

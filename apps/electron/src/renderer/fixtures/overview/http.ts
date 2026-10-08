@@ -1,5 +1,5 @@
-import { routePatterns } from "@theone/protocol";
-import { sampleHealth } from "@theone/protocol/fixtures";
+import { routePatterns } from "@tesseract/protocol";
+import { sampleHealth } from "@tesseract/protocol/fixtures";
 import { currentScenario } from "../scenario";
 import { defineHttpFixtures, reply } from "../types";
 import { isGtkParity } from "../shell/parity";

@@ -1,12 +1,12 @@
-# TheOne sandbox
+# Tesseract sandbox
 
-The user follows this sandbox from the TheOne app on their phone and desktop.
+The user follows this sandbox from the Tesseract app on their phone and desktop.
 
 When you produce a deliverable they will want on those devices (an APK/AAB, an installer, a zip,
 a report, exported media), share it once the build or export has succeeded:
 
 ```bash
-theone-controller share <file> --note "<one line: what it is and what changed>"
+tesseract-controller share <file> --note "<one line: what it is and what changed>"
 ```
 
 - Share final outputs only, not intermediate files, logs or build caches.

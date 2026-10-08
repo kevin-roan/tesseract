@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from monolith_desktop.config.discovery import (
+from tesseract_desktop.config.discovery import (
     ContainerNetwork,
     DiscoveryError,
     candidate_api_urls,
@@ -12,14 +12,14 @@ from monolith_desktop.config.discovery import (
     parse_pair_json,
     sandbox_container,
 )
-from monolith_desktop.config.model import ConnectionConfig
-from monolith_desktop.config.storage import load_env_config, load_file_config, save_file_config
+from tesseract_desktop.config.model import ConnectionConfig
+from tesseract_desktop.config.storage import load_env_config, load_file_config, save_file_config
 
 TOKEN = "q3Jx0mZ8yWv1_bT7-kLp2sR4nC6dE9fG0hI1jK2lM3n"
 PAIR_OUTPUT = json.dumps({
-    "link": f"theone://pair?url=https%3A%2F%2Ftheone-sandbox.tail1.ts.net&token={TOKEN}&name=theone-sandbox",
-    "url": "https://theone-sandbox.tail1.ts.net",
-    "name": "theone-sandbox",
+    "link": f"tesseract://pair?url=https%3A%2F%2Ftesseract-sandbox.tail1.ts.net&token={TOKEN}&name=tesseract-sandbox",
+    "url": "https://tesseract-sandbox.tail1.ts.net",
+    "name": "tesseract-sandbox",
 })
 
 
@@ -31,26 +31,26 @@ def inspect_json(ports=None, networks=None, mode="bridge"):
 
 
 def test_container_name_follows_compose_project():
-    assert sandbox_container({}) == "theone-sandbox-1"
-    assert sandbox_container({"THEONE_COMPOSE_PROJECT": "e2e"}) == "e2e-sandbox-1"
+    assert sandbox_container({}) == "tesseract-sandbox-1"
+    assert sandbox_container({"TESSERACT_COMPOSE_PROJECT": "e2e"}) == "e2e-sandbox-1"
 
 
 def test_parse_pair_json_extracts_token():
     info = parse_pair_json("warning: noise\n" + PAIR_OUTPUT + "\n")
-    assert (info.url, info.token, info.name) == ("https://theone-sandbox.tail1.ts.net", TOKEN, "theone-sandbox")
+    assert (info.url, info.token, info.name) == ("https://tesseract-sandbox.tail1.ts.net", TOKEN, "tesseract-sandbox")
 
 
 def test_parse_pair_json_rejects_garbage():
     with pytest.raises(DiscoveryError):
         parse_pair_json("not json")
     with pytest.raises(DiscoveryError):
-        parse_pair_json(json.dumps({"link": "theone://pair?url=x"}))
+        parse_pair_json(json.dumps({"link": "tesseract://pair?url=x"}))
 
 
 def test_parse_inspect_ports_networks_and_mode():
     net = parse_inspect(inspect_json(
         {"7700/tcp": [{"HostIp": "127.0.0.1", "HostPort": "7700"}], "5901/tcp": [{"HostIp": "", "HostPort": "5901"}]},
-        {"theone_default": {"IPAddress": "172.22.0.2"}},
+        {"tesseract_default": {"IPAddress": "172.22.0.2"}},
         "container:abc123",
     ))
     assert net == ContainerNetwork((("127.0.0.1", "7700"),), ("172.22.0.2",), "abc123")
@@ -61,18 +61,18 @@ def test_container_network_follows_shared_namespace():
 
     def runner(args, _timeout):
         calls.append(list(args))
-        if args[1] == "theone-sandbox-1":
+        if args[1] == "tesseract-sandbox-1":
             return inspect_json(mode="container:sidecar")
         return inspect_json(networks={"n": {"IPAddress": "172.22.0.2"}})
 
-    net = container_network("theone-sandbox-1", runner)
+    net = container_network("tesseract-sandbox-1", runner)
     assert net.addresses == ("172.22.0.2",)
     assert calls[1] == ["inspect", "sidecar"]
 
 
 def test_candidate_urls_order_and_dedupe():
     net = ContainerNetwork((("0.0.0.0", "7710"), ("100.64.0.9", "7700")), ("172.22.0.2",))
-    urls = candidate_api_urls("https://sb.tail1.ts.net", net, {"THEONE_BIND_ADDR": "100.64.0.9"})
+    urls = candidate_api_urls("https://sb.tail1.ts.net", net, {"TESSERACT_BIND_ADDR": "100.64.0.9"})
     assert urls == [
         "http://127.0.0.1:7710",
         "http://100.64.0.9:7700",
@@ -89,9 +89,9 @@ def test_discover_prefers_reachable_local_address():
     result = discover_docker({}, runner, lambda url, _t: url == "http://172.22.0.2:7700")
     assert result.reachable
     assert result.config.api_url == "http://172.22.0.2:7700"
-    assert result.config.pairing_url == "https://theone-sandbox.tail1.ts.net"
+    assert result.config.pairing_url == "https://tesseract-sandbox.tail1.ts.net"
     assert result.config.token == TOKEN
-    assert result.config.pairing_link().startswith("theone://pair?url=https%3A%2F%2Ftheone-sandbox")
+    assert result.config.pairing_link().startswith("tesseract://pair?url=https%3A%2F%2Ftesseract-sandbox")
 
 
 def test_discover_falls_back_to_pairing_url_when_nothing_answers():
@@ -102,8 +102,8 @@ def test_discover_falls_back_to_pairing_url_when_nothing_answers():
 
     result = discover_docker({}, runner, lambda _url, _t: False)
     assert not result.reachable
-    assert result.config.api_url == "https://theone-sandbox.tail1.ts.net"
-    assert [url for url, _ in result.tried][-1] == "https://theone-sandbox.tail1.ts.net"
+    assert result.config.api_url == "https://tesseract-sandbox.tail1.ts.net"
+    assert [url for url, _ in result.tried][-1] == "https://tesseract-sandbox.tail1.ts.net"
 
 
 def test_file_config_round_trip(tmp_path):
@@ -127,6 +127,6 @@ def test_invalid_file_config_is_ignored(tmp_path):
 
 def test_env_config():
     assert load_env_config({}) is None
-    config = load_env_config({"MONOLITH_DESKTOP_URL": "http://127.0.0.1:7700/v1", "THEONE_TOKEN": TOKEN})
+    config = load_env_config({"TESSERACT_DESKTOP_URL": "http://127.0.0.1:7700/v1", "TESSERACT_TOKEN": TOKEN})
     assert config.api_url == "http://127.0.0.1:7700"
     assert config.source == "env"

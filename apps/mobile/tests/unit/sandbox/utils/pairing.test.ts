@@ -1,4 +1,4 @@
-import { buildPairingLink } from "@theone/protocol";
+import { buildPairingLink } from "@tesseract/protocol";
 
 import {
   draftFromSearchParams,
@@ -13,14 +13,14 @@ const TOKEN = "q1W2e3R4t5Y6u7I8o9P0a1S2d3F4g5H6j7K8l9Z0x1C";
 describe("validatePairingDraft", () => {
   it("normalizes a valid draft", () => {
     const result = validatePairingDraft({
-      url: " https://theone-sandbox.tail1234.ts.net/v1/ ",
+      url: " https://tesseract-sandbox.tail1234.ts.net/v1/ ",
       token: ` ${TOKEN} `,
       name: "  Laptop sandbox ",
     });
 
     expect(result).toEqual({
       ok: true,
-      value: { baseUrl: "https://theone-sandbox.tail1234.ts.net", token: TOKEN, name: "Laptop sandbox" },
+      value: { baseUrl: "https://tesseract-sandbox.tail1234.ts.net", token: TOKEN, name: "Laptop sandbox" },
     });
   });
 
@@ -56,19 +56,19 @@ describe("pairing links", () => {
     });
   });
 
-  it("explains codes that are not Monolith links", () => {
+  it("explains codes that are not Tesseract links", () => {
     const result = parsePairingText("https://example.com");
-    expect(result).toEqual({ ok: false, message: expect.stringContaining("theone://pair") });
+    expect(result).toEqual({ ok: false, message: expect.stringContaining("tesseract://pair") });
   });
 
   it("surfaces protocol errors for broken links", () => {
-    const result = parsePairingText("theone://pair?url=http%3A%2F%2Fhost");
+    const result = parsePairingText("tesseract://pair?url=http%3A%2F%2Fhost");
     expect(result).toEqual({ ok: false, message: "Pairing link has no token" });
   });
 
   it("detects pasted links", () => {
     expect(isPairingLink(`  ${link}`)).toBe(true);
-    expect(isPairingLink("THEONE://pair?url=x")).toBe(true);
+    expect(isPairingLink("TESSERACT://pair?url=x")).toBe(true);
     expect(isPairingLink("https://host")).toBe(false);
   });
 });
@@ -90,8 +90,8 @@ describe("draftFromSearchParams", () => {
 
 describe("fallbackSandboxName", () => {
   it("prefers the typed name, then the sandbox id, then the hostname", () => {
-    expect(fallbackSandboxName(" Mine ", "theone-sandbox", "sandbox")).toBe("Mine");
-    expect(fallbackSandboxName("", "theone-sandbox", "sandbox")).toBe("theone-sandbox");
+    expect(fallbackSandboxName(" Mine ", "tesseract-sandbox", "sandbox")).toBe("Mine");
+    expect(fallbackSandboxName("", "tesseract-sandbox", "sandbox")).toBe("tesseract-sandbox");
     expect(fallbackSandboxName("", "", "sandbox")).toBe("sandbox");
     expect(fallbackSandboxName("", "", "")).toBe("Sandbox");
   });

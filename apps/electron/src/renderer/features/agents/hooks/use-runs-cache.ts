@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 import { useMemo } from "react";
 import { DATA_KEYS, useApiClient } from "../../../app/data";
 import { AGENTS_QUERY_KEYS } from "../constants";

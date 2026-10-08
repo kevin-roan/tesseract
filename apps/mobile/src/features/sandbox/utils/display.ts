@@ -1,4 +1,4 @@
-import { INPUT_MODES, type DisplayStatus, type InputMode } from "@theone/protocol";
+import { INPUT_MODES, type DisplayStatus, type InputMode } from "@tesseract/protocol";
 
 import type { DisplayOutage, PageInsets } from "../types";
 
@@ -8,14 +8,14 @@ export function displayOutage(status: DisplayStatus | undefined): DisplayOutage 
     return {
       reason: "display",
       title: "The display is not running",
-      message: `The sandbox reports no X server on ${status.display}, so there is nothing to show. Run \`theone-doctor\` inside the sandbox, then check again.`,
+      message: `The sandbox reports no X server on ${status.display}, so there is nothing to show. Run \`tesseract-doctor\` inside the sandbox, then check again.`,
     };
   }
   if (!status.vnc.available) {
     return {
       reason: "vnc",
       title: "VNC is not running",
-      message: `The display ${status.display} is up, but nothing answers on VNC port ${status.vnc.port}. Run \`theone-doctor\` inside the sandbox, then check again.`,
+      message: `The display ${status.display} is up, but nothing answers on VNC port ${status.vnc.port}. Run \`tesseract-doctor\` inside the sandbox, then check again.`,
     };
   }
   return null;

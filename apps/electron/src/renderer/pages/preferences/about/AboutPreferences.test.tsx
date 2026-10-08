@@ -30,27 +30,27 @@ describe("AboutPreferences", () => {
     const download = vi.fn(() => updateState(SETTINGS_SCENARIOS.updateDownloading));
     restores.push(overrideIpcFixtures({ updates: { state: () => updateState(SETTINGS_SCENARIOS.updateAvailable), download } }));
     render();
-    expect(await screen.findByText("Monolith 0.4.0 is available")).toBeTruthy();
+    expect(await screen.findByText("Tesseract 0.4.0 is available")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: ABOUT_LABELS.updates.download }));
     await waitFor(() => expect(download).toHaveBeenCalledTimes(1));
     expect(await screen.findByRole("progressbar")).toBeTruthy();
   });
 
-  it("installs the monolith command", async () => {
+  it("installs the tesseract command", async () => {
     const installCli = vi.fn(() => cliStatus(SETTINGS_SCENARIOS.cliInstalled));
     restores.push(overrideIpcFixtures({ app: { cliStatus: () => cliStatus(SETTINGS_SCENARIOS.cliMissing), installCli } }));
     render();
     fireEvent.click(await screen.findByRole("button", { name: ABOUT_LABELS.cli.install }));
     await waitFor(() => expect(installCli).toHaveBeenCalledTimes(1));
-    expect(await screen.findByText("On your PATH at /usr/bin/monolith")).toBeTruthy();
+    expect(await screen.findByText("On your PATH at /usr/bin/tesseract")).toBeTruthy();
   });
 
   it("lists the app files", async () => {
     const showItemInFolder = vi.fn(() => undefined);
     restores.push(overrideIpcFixtures({ app: { showItemInFolder } }));
     render();
-    expect(await screen.findByText("/home/dev/.config/monolith-desktop/config.json")).toBeTruthy();
+    expect(await screen.findByText("/home/dev/.config/tesseract-desktop/config.json")).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: ABOUT_LABELS.files.show })[0]!);
-    expect(showItemInFolder).toHaveBeenCalledWith("/home/dev/.config/monolith-desktop/config.json");
+    expect(showItemInFolder).toHaveBeenCalledWith("/home/dev/.config/tesseract-desktop/config.json");
   });
 });

@@ -2,11 +2,11 @@ import UIKit
 import UniformTypeIdentifiers
 
 private enum ShareContract {
-  static let appGroup = "group.com.kevinbpract.theone"
-  static let sharedNotification = "com.kevinbpract.theone.island.shared"
+  static let appGroup = "group.com.kevinroan.tesseract"
+  static let sharedNotification = "com.kevinroan.tesseract.island.shared"
   static let inboxDirectory = "shared-inbox"
   static let manifestFile = "manifest.json"
-  static let openURL = URL(string: "theone://island/share")!
+  static let openURL = URL(string: "tesseract://island/share")!
 }
 
 private struct InboxItem: Codable {
@@ -27,7 +27,7 @@ final class ShareViewController: UIViewController {
     super.viewDidLoad()
     view.backgroundColor = UIColor.systemBackground
     let label = UILabel()
-    label.text = "Sending to Monolith…"
+    label.text = "Sending to Tesseract…"
     label.font = UIFont.preferredFont(forTextStyle: .body)
     label.textColor = UIColor.secondaryLabel
     label.translatesAutoresizingMaskIntoConstraints = false

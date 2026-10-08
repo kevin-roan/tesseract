@@ -1,4 +1,4 @@
-import { LIMITS } from "@theone/protocol";
+import { LIMITS } from "@tesseract/protocol";
 
 export const MAX_UPLOAD_BYTES = LIMITS.maxUploadBytes;
 export const MAX_ATTACHMENTS = LIMITS.maxRunAttachments;

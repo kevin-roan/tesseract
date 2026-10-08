@@ -106,10 +106,10 @@ describe("package rows", () => {
 
 describe("virtual device form", () => {
   it("validates names", () => {
-    expect(validateAvdName("Monolith_API_36", [])).toBeNull();
+    expect(validateAvdName("Tesseract_API_36", [])).toBeNull();
     expect(validateAvdName("  ", [])).toBe("Enter a name");
     expect(validateAvdName("my device", [])).toBe("Use only letters, digits, dots, dashes and underscores");
-    expect(validateAvdName("Monolith_API_36", AVDS)).toBe("An AVD named Monolith_API_36 already exists");
+    expect(validateAvdName("Tesseract_API_36", AVDS)).toBe("An AVD named Tesseract_API_36 already exists");
   });
 
   it("derives memory and cores from the host", () => {
@@ -142,10 +142,10 @@ describe("virtual device form", () => {
 describe("sdk choices", () => {
   it("lists candidates and appends the new SDK unless it already exists", () => {
     const choices = sdkChoices(CANDIDATES, SDK_ROOT);
-    expect(choices.map((choice) => choice.title)).toEqual(["Android Studio SDK", "Install a new SDK for Monolith"]);
+    expect(choices.map((choice) => choice.title)).toEqual(["Android Studio SDK", "Install a new SDK for Tesseract"]);
     expect(choices[0]?.subtitle).toBe("/home/dev/Android/Sdk · emulator 36.1.9 · 2 system images");
-    const existing = sdkChoices([{ path: SDK_ROOT, source: "monolith-default", emulatorRevision: "37.2.12", systemImages: 1 }], SDK_ROOT);
-    expect(existing.map((choice) => choice.title)).toEqual(["Monolith SDK"]);
+    const existing = sdkChoices([{ path: SDK_ROOT, source: "tesseract-default", emulatorRevision: "37.2.12", systemImages: 1 }], SDK_ROOT);
+    expect(existing.map((choice) => choice.title)).toEqual(["Tesseract SDK"]);
   });
 });
 
@@ -165,12 +165,12 @@ describe("step state", () => {
     const items = queueItems(
       packages,
       { kind: "installing", pkg: "emulator", index: 1, count: 3, stage: "downloading", received: 174_827_086, total: 349_654_172, bytesPerSecond: 18_200_000 },
-      "Monolith_API_36",
+      "Tesseract_API_36",
     );
     expect(items.map((item) => item.state)).toEqual(["done", "active", "queued", "queued"]);
     expect(items[1]).toMatchObject({ label: "Android Emulator 37.2.12", progress: 0.5, detail: "175 MB of 350 MB · 18.2 MB/s" });
-    expect(items[3]?.label).toBe("Virtual device Monolith_API_36");
-    const done = queueItems(packages, { kind: "done", sdkRoot: SDK_ROOT, avd: "Monolith_API_36", warnings: [] }, "Monolith_API_36");
+    expect(items[3]?.label).toBe("Virtual device Tesseract_API_36");
+    const done = queueItems(packages, { kind: "done", sdkRoot: SDK_ROOT, avd: "Tesseract_API_36", warnings: [] }, "Tesseract_API_36");
     expect(done.every((item) => item.state === "done")).toBe(true);
     const verifying = queueItems(packages, { kind: "installing", pkg: "platform-tools", index: 0, count: 3, stage: "verifying", received: 0, total: 0, bytesPerSecond: null }, null);
     expect(verifying[0]).toMatchObject({ progress: null, detail: "Verifying…" });

@@ -1,4 +1,4 @@
-import type { AgentRun, AgentRunEvent, Upload } from "@theone/protocol";
+import type { AgentRun, AgentRunEvent, Upload } from "@tesseract/protocol";
 import { TEXT_JOINER, TIMELINE_EVENT_KINDS } from "./constants";
 
 export type TimelineItemKind = "prompt" | "text" | "tool" | "system" | "outcome";

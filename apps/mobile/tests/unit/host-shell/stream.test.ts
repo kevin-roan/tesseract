@@ -1,4 +1,4 @@
-import { DEFAULT_ANDROID_STREAM, type AndroidDevice, type AndroidStreamSettings } from "@theone/protocol";
+import { DEFAULT_ANDROID_STREAM, type AndroidDevice, type AndroidStreamSettings } from "@tesseract/protocol";
 
 import { stepValue } from "@/components/list-group";
 import { STREAM_HOST_EMULATOR, STREAM_VIEWER_SIZE } from "@/features/host-shell/utils/constants";

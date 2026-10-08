@@ -1,5 +1,5 @@
-import { ApiError, NetworkError, ProtocolError, ProtocolVersionError } from "@theone/client";
-import type { HostLockStatus } from "@theone/protocol";
+import { ApiError, NetworkError, ProtocolError, ProtocolVersionError } from "@tesseract/client";
+import type { HostLockStatus } from "@tesseract/protocol";
 
 import { PIN_KEYS, pinDotCount, pinKeyId, pinKeyLabel } from "@/components/pin-pad/utils/keys";
 import { describeHostError, hostIssueFor, isPinMissing, isPinRejected, isSessionLost } from "@/features/host-shell/utils/errors";
@@ -81,15 +81,15 @@ describe("session timing", () => {
 });
 
 describe("host pairing links", () => {
-  it("parses theone://host links", () => {
-    const parsed = parseHostPairingText("theone://host?url=http%3A%2F%2F100.64.0.1%3A7701&token=abc&name=desk");
+  it("parses tesseract://host links", () => {
+    const parsed = parseHostPairingText("tesseract://host?url=http%3A%2F%2F100.64.0.1%3A7701&token=abc&name=desk");
     expect(parsed).toEqual({ ok: true, draft: { url: "http://100.64.0.1:7701", token: "abc", name: "desk" } });
   });
 
   it("refuses sandbox pairing links and other schemes", () => {
-    const sandbox = parseHostPairingText("theone://pair?url=http%3A%2F%2F127.0.0.1%3A7700&token=abc");
+    const sandbox = parseHostPairingText("tesseract://pair?url=http%3A%2F%2F127.0.0.1%3A7700&token=abc");
     expect(sandbox.ok).toBe(false);
-    if (!sandbox.ok) expect(sandbox.message).toContain("theone://host");
+    if (!sandbox.ok) expect(sandbox.message).toContain("tesseract://host");
     expect(parseHostPairingText("https://example.com").ok).toBe(false);
   });
 

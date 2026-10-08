@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
+import { TesseractClient } from "@tesseract/client";
 import type { QueryClient } from "@tanstack/react-query";
 import {
   sampleAgentRun,
@@ -9,7 +9,7 @@ import {
   sampleStatus,
   sampleStatusEvent,
   sampleTerminal,
-} from "@theone/protocol/fixtures";
+} from "@tesseract/protocol/fixtures";
 
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
 import { useSandboxHub } from "@/features/sandbox/hooks/use-sandbox-hub";
@@ -23,7 +23,7 @@ import { TEST_SANDBOX, createTestQueryClient, createWrapper, resetSandboxState, 
 
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) };
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   get router() {
@@ -32,7 +32,7 @@ jest.mock("expo-router", () => ({
 }));
 jest.mock("@/lib/confirm", () => ({ confirm: jest.fn() }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const mockConfirm = confirm as jest.Mock;
 const SECOND: PairedSandbox = { ...TEST_SANDBOX, id: "sbx_second", name: "Second" };
 const fake = {

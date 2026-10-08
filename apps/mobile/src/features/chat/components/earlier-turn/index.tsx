@@ -1,6 +1,6 @@
 import { memo, useMemo } from "react";
 import { View } from "react-native";
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";

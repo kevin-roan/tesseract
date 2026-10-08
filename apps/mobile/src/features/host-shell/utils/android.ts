@@ -5,7 +5,7 @@ import {
   type EmulatorInfo,
   type EmulatorState,
   type HostAndroidStatus,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import type { Tone } from "@/lib/tone";
 

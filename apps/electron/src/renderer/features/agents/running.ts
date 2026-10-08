@@ -1,4 +1,4 @@
-import { isFinalBuildState, type BuildJob, type ProcessInfo } from "@theone/protocol";
+import { isFinalBuildState, type BuildJob, type ProcessInfo } from "@tesseract/protocol";
 import { isLiveProcess } from "../projects/model";
 
 export interface RunningWork {

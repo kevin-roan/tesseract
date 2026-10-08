@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { AppRunAction, RunTarget } from "@theone/protocol";
+import type { AppRunAction, RunTarget } from "@tesseract/protocol";
 
 import { useHostNavigation } from "@/features/host-shell/hooks/use-host-navigation";
 import { describeError } from "@/features/sandbox/utils/errors";

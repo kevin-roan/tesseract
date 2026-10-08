@@ -1,4 +1,4 @@
-import type { ClaudeSession } from "@theone/protocol";
+import type { ClaudeSession } from "@tesseract/protocol";
 
 import { formatRelativeTime } from "@/features/sandbox/utils/format";
 

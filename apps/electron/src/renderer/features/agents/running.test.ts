@@ -1,4 +1,4 @@
-import type { BuildJob, ProcessInfo } from "@theone/protocol";
+import type { BuildJob, ProcessInfo } from "@tesseract/protocol";
 import { describe, expect, it } from "vitest";
 import { runningCount, runningWork } from "./running";
 

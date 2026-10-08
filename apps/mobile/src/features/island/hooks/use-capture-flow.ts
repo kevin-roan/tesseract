@@ -5,7 +5,7 @@ import { pickFromLibrary } from "@/features/attachments/services/pickers";
 import type { PickedFile } from "@/features/attachments/types";
 import { describeError } from "@/features/sandbox/utils/errors";
 
-import { canCaptureScreen, captureScreen, cropImage, recognizeText, type CropRect } from "@/modules/theone-island";
+import { canCaptureScreen, captureScreen, cropImage, recognizeText, type CropRect } from "@/modules/tesseract-island";
 
 import { captureImageFromFile } from "../services/image-size";
 import { useIslandStore } from "../store/island-store";

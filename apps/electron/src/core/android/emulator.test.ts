@@ -62,7 +62,7 @@ describe.runIf(posix)("EmulatorController", () => {
 
   function create(states: EmulatorState[], logs: string[] = []): EmulatorController {
     controller = new EmulatorController((state) => states.push(state), {
-      paths: testPaths(join(dir, "home"), { PATH: process.env.PATH, THEONE_HOST_SHELL_TOKEN: "secret" }),
+      paths: testPaths(join(dir, "home"), { PATH: process.env.PATH, TESSERACT_HOST_SHELL_TOKEN: "secret" }),
       onLog: (line) => logs.push(line),
       bootPollMs: 20,
       stopGraceMs: 500,
@@ -72,18 +72,18 @@ describe.runIf(posix)("EmulatorController", () => {
   }
 
   it("starts, waits for boot_completed and stops", async () => {
-    await script(join(sdk, "emulator", "emulator"), 'echo "args: $*"; echo "sdk: $ANDROID_SDK_ROOT token: ${THEONE_HOST_SHELL_TOKEN:-none}"; exec sleep 30');
+    await script(join(sdk, "emulator", "emulator"), 'echo "args: $*"; echo "sdk: $ANDROID_SDK_ROOT token: ${TESSERACT_HOST_SHELL_TOKEN:-none}"; exec sleep 30');
     const states: EmulatorState[] = [];
     const logs: string[] = [];
     const emulator = create(states, logs);
-    const started = await emulator.start(sdk, "Monolith_API_36");
-    expect(started).toMatchObject({ kind: "starting", avd: "Monolith_API_36" });
+    const started = await emulator.start(sdk, "Tesseract_API_36");
+    expect(started).toMatchObject({ kind: "starting", avd: "Tesseract_API_36" });
     await expect(emulator.start(sdk, "Other")).rejects.toMatchObject({ code: "unavailable" });
     await waitFor(states, "running");
-    expect(emulator.state()).toEqual({ kind: "running", avd: "Monolith_API_36", serial: "emulator-5554" });
-    expect(logs).toContain("args: -avd Monolith_API_36 -port 5554 -no-audio -no-boot-anim");
+    expect(emulator.state()).toEqual({ kind: "running", avd: "Tesseract_API_36", serial: "emulator-5554" });
+    expect(logs).toContain("args: -avd Tesseract_API_36 -port 5554 -no-audio -no-boot-anim");
     expect(logs).toContain(`sdk: ${sdk} token: none`);
-    expect(emulator.runningAvd()).toBe("Monolith_API_36");
+    expect(emulator.runningAvd()).toBe("Tesseract_API_36");
     expect(await emulator.stop()).toEqual({ kind: "stopped" });
     expect(states.map((state) => state.kind)).toEqual(["starting", "running", "stopping", "stopped"]);
   });
@@ -94,7 +94,7 @@ describe.runIf(posix)("EmulatorController", () => {
     await script(join(sdk, "emulator", "emulator"), `echo $$ > "${marker}.pid"; exec sleep 30`);
     const states: EmulatorState[] = [];
     const emulator = create(states);
-    await emulator.start(sdk, "Monolith_API_36");
+    await emulator.start(sdk, "Tesseract_API_36");
     await waitFor(states, "running");
     expect(await emulator.stop()).toEqual({ kind: "stopped" });
     expect((await readFile(marker, "utf8")).trim()).toBe("-s emulator-5554 emu kill");

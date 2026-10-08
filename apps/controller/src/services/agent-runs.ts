@@ -10,7 +10,7 @@ import {
   type DeleteAgentRuns,
   type StartAgentRun,
   type Upload,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { badRequest, notFound, unavailable } from "../core/errors";
 import { childEnv, resolveExecutable } from "../core/exec";
 import { LineSplitter } from "../core/line-splitter";
@@ -141,7 +141,7 @@ export class AgentRunService {
     try {
       proc = Bun.spawn([claude, ...argv], {
         cwd,
-        env: { ...env, ...account.env, THEONE_AGENT_RUN_ID: run.id },
+        env: { ...env, ...account.env, TESSERACT_AGENT_RUN_ID: run.id },
         stdin: "pipe",
         stdout: "pipe",
         stderr: "pipe",

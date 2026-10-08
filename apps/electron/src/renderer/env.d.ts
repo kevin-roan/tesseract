@@ -1,9 +1,9 @@
-import type { MonolithBridge } from "../shared/ipc";
+import type { TesseractBridge } from "../shared/ipc";
 
 declare global {
   interface Window {
-    monolith?: MonolithBridge;
-    __monolithIdle?: () => Promise<boolean>;
+    tesseract?: TesseractBridge;
+    __tesseractIdle?: () => Promise<boolean>;
   }
 }
 

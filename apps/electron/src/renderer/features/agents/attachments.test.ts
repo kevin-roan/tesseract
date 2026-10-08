@@ -1,4 +1,4 @@
-import { LIMITS } from "@theone/protocol";
+import { LIMITS } from "@tesseract/protocol";
 import { describe, expect, it } from "vitest";
 import { admitFiles, bytesToBase64, draftKey, isBlocked, mimeTypeOf, promptWithAttachments, uploadIds, uploadKindOf, uploadName, type DraftAttachment } from "./attachments";
 

@@ -1,4 +1,4 @@
-import type { TokenUsage, UsageDay, UsageReport } from "@theone/protocol";
+import type { TokenUsage, UsageDay, UsageReport } from "@tesseract/protocol";
 
 import type { Delta } from "../types";
 

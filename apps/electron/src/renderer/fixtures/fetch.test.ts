@@ -1,14 +1,14 @@
-import { TheOneClient } from "@theone/client";
+import { TesseractClient } from "@tesseract/client";
 import { describe, expect, it } from "vitest";
 import { fixtureFetch } from "./fetch";
 
-const client = new TheOneClient({ baseUrl: "http://127.0.0.1:7700", token: "fixture", fetch: fixtureFetch });
+const client = new TesseractClient({ baseUrl: "http://127.0.0.1:7700", token: "fixture", fetch: fixtureFetch });
 
 describe("fixture fetch", () => {
   it("serves protocol fixtures through the real client", async () => {
     expect((await client.health()).ok).toBe(true);
     expect((await client.listProjects()).length).toBeGreaterThan(0);
-    expect((await client.getProject("monolith")).id).toBe("monolith");
+    expect((await client.getProject("tesseract")).id).toBe("tesseract");
   });
 
   it("answers unknown routes with a typed 404", async () => {

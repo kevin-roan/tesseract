@@ -1,5 +1,5 @@
 import { useQuery, type QueryKey, type UseQueryResult } from "@tanstack/react-query";
-import type { TheOneClient } from "@theone/client";
+import type { TesseractClient } from "@tesseract/client";
 import { useIsFocused } from "expo-router";
 
 import { sandboxKeys } from "../api/query-keys";
@@ -12,7 +12,7 @@ export type SandboxQueryOptions = {
 
 export function useSandboxQuery<T>(
   key: (sandboxId: string) => QueryKey,
-  fetcher: (client: TheOneClient, signal: AbortSignal) => Promise<T>,
+  fetcher: (client: TesseractClient, signal: AbortSignal) => Promise<T>,
   options: SandboxQueryOptions & { initialData?: (sandboxId: string) => T | undefined } = {},
 ): UseQueryResult<T, Error> {
   const { sandbox, client } = useSandboxClient();

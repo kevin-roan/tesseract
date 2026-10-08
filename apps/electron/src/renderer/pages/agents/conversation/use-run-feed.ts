@@ -1,4 +1,4 @@
-import type { AgentRun, AgentRunEvent } from "@theone/protocol";
+import type { AgentRun, AgentRunEvent } from "@tesseract/protocol";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useApiClient } from "../../../app/data";
 import { describeError } from "../../../app/connection";

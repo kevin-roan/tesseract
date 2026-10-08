@@ -10,7 +10,7 @@ import {
   type Inbox,
   type InboxItem,
   type ServerEvent,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { runCli, type Output } from "../src/cli/commands";
 import { EventHub } from "../src/core/events";
 import { silentLogger } from "../src/core/logger";
@@ -219,8 +219,8 @@ describe("HTTP and CLI", () => {
     const workspace = makeTempDir("inbox");
     writeFiles(workspace, { "projects/app/src/.keep": "" });
     const claude = installFakeClaude(makeTempDir("bin"));
-    t = await startTestController({ workspace, env: { THEONE_CLAUDE_BIN: claude } });
-    env = { THEONE_WORKSPACE: workspace, THEONE_HOST: "127.0.0.1", THEONE_PORT: String(t.controller.url.port), THEONE_TOKEN: TEST_TOKEN };
+    t = await startTestController({ workspace, env: { TESSERACT_CLAUDE_BIN: claude } });
+    env = { TESSERACT_WORKSPACE: workspace, TESSERACT_HOST: "127.0.0.1", TESSERACT_PORT: String(t.controller.url.port), TESSERACT_TOKEN: TEST_TOKEN };
   });
 
   afterAll(async () => {
@@ -236,7 +236,7 @@ describe("HTTP and CLI", () => {
       cwd,
       notification_type: "permission_prompt",
       message: "Claude needs your permission to use Bash",
-      theone_terminal_id: "trm_notlive",
+      tesseract_terminal_id: "trm_notlive",
     });
     expect(response.status).toBe(202);
     const event = await socket.waitFor<ServerEvent>((message) => message.type === "inbox.updated");
@@ -317,27 +317,27 @@ describe("HTTP and CLI", () => {
     await waitFor(async () => !(await inbox("?unread=1")).items.some((entry) => entry.id === pending?.id));
   });
 
-  test("theone-controller hook forwards stdin with the terminal id and prints nothing", async () => {
+  test("tesseract-controller hook forwards stdin with the terminal id and prints nothing", async () => {
     const terminal = (await t.json<{ id: string }>("POST", "/v1/terminals", { kind: "shell", cols: 80, rows: 24 })).body;
     const output = capture();
     const payload = { hook_event_name: "Notification", session_id: "sess-cli", notification_type: "idle_prompt", message: "waiting" };
-    const code = await runCli(["hook"], { env: { ...env, THEONE_TERMINAL_ID: terminal.id }, output, readStdin: async () => JSON.stringify(payload) });
+    const code = await runCli(["hook"], { env: { ...env, TESSERACT_TERMINAL_ID: terminal.id }, output, readStdin: async () => JSON.stringify(payload) });
     expect(code).toBe(0);
     expect(output.lines).toEqual([]);
     expect((await bySession("sess-cli"))[0]).toMatchObject({ kind: "needs_input", terminalId: terminal.id });
     await t.json("DELETE", `/v1/terminals/${terminal.id}`);
   });
 
-  test("theone-controller hook exits 0 quickly when the controller is down or the input is bad", async () => {
+  test("tesseract-controller hook exits 0 quickly when the controller is down or the input is bad", async () => {
     const server = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
     const downPort = String(server.port);
     server.stop(true);
     const cases: Array<{ env: Record<string, string | undefined>; stdin: () => Promise<string> }> = [
-      { env: { ...env, THEONE_PORT: downPort }, stdin: async () => '{"hook_event_name":"Stop"}' },
-      { env: { ...env, THEONE_TOKEN: undefined, THEONE_TOKEN_FILE: "/nonexistent/token" }, stdin: async () => '{"hook_event_name":"Stop"}' },
+      { env: { ...env, TESSERACT_PORT: downPort }, stdin: async () => '{"hook_event_name":"Stop"}' },
+      { env: { ...env, TESSERACT_TOKEN: undefined, TESSERACT_TOKEN_FILE: "/nonexistent/token" }, stdin: async () => '{"hook_event_name":"Stop"}' },
       { env, stdin: async () => "not json" },
       { env, stdin: async () => "[1]" },
-      { env: { ...env, THEONE_PORT: "banana" }, stdin: async () => "{}" },
+      { env: { ...env, TESSERACT_PORT: "banana" }, stdin: async () => "{}" },
       { env, stdin: () => new Promise<string>(() => {}) },
       { env, stdin: async () => Promise.reject(new Error("closed")) },
     ];
@@ -352,7 +352,7 @@ describe("HTTP and CLI", () => {
 
   test("the compiled entry point exits 0 with no output when nothing listens", async () => {
     const proc = Bun.spawn([process.execPath, join(import.meta.dir, "..", "src", "index.ts"), "hook"], {
-      env: { ...process.env, THEONE_HOST: "127.0.0.1", THEONE_PORT: "1", THEONE_TOKEN: TEST_TOKEN, THEONE_WORKSPACE: makeTempDir("cli-ws") },
+      env: { ...process.env, TESSERACT_HOST: "127.0.0.1", TESSERACT_PORT: "1", TESSERACT_TOKEN: TEST_TOKEN, TESSERACT_WORKSPACE: makeTempDir("cli-ws") },
       stdin: new TextEncoder().encode('{"hook_event_name":"Stop","session_id":"x"}'),
       stdout: "pipe",
       stderr: "pipe",

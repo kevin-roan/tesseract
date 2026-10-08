@@ -1,8 +1,8 @@
 import { Linking } from "react-native";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { ApiError, TheOneClient } from "@theone/client";
-import type { Artifact, BuildOutput, TaildropTargets } from "@theone/protocol";
-import { sampleArtifact, sampleProject } from "@theone/protocol/fixtures";
+import { ApiError, TesseractClient } from "@tesseract/client";
+import type { Artifact, BuildOutput, TaildropTargets } from "@tesseract/protocol";
+import { sampleArtifact, sampleProject } from "@tesseract/protocol/fixtures";
 
 import { useFileDownload } from "@/features/files/hooks/use-file-download";
 import { useFilesScreen } from "@/features/files/hooks/use-files-screen";
@@ -17,7 +17,7 @@ import { TEST_SANDBOX, createTestQueryClient, createWrapper, resetSandboxState, 
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: jest.fn(() => true) };
 let mockParams: Record<string, string> = {};
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   useLocalSearchParams: () => mockParams,
@@ -27,7 +27,7 @@ jest.mock("expo-router", () => ({
 }));
 jest.mock("@/lib/confirm", () => ({ confirm: jest.fn() }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const mockConfirm = confirm as jest.Mock;
 const SID = TEST_SANDBOX.id;
 

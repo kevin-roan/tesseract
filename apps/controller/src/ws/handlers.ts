@@ -9,7 +9,7 @@ import {
   type LogStreamMessage,
   type ServerEvent,
   type TerminalServerMessage,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import type { Services } from "../services";
 import { EVENTS_TOPIC, type WsData } from "./types";
 

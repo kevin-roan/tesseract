@@ -1,6 +1,6 @@
 # Spec: services and data layer (sandbox discovery, connection, polling, caches)
 
-Status: survey of the GTK app (`apps/desktop/monolith_desktop`) for the Electron rebuild
+Status: survey of the GTK app (`apps/desktop/tesseract_desktop`) for the Electron rebuild
 (`apps/electron`). This describes behaviour and contracts only; no UI layout lives here
 except the few strings and numbers the services produce. All numbers are taken from the
 Python source. Strings in `"..."` are user-facing and must be copied verbatim.
@@ -11,7 +11,7 @@ Python sources: `config/{discovery,model,storage}.py`, `pairing.py`, `poller.py`
 `util/{format,text,markdown}.py`, plus `store.py`, `strings.py`, `context.py`, `sync.py`
 for wiring.
 
-TypeScript to reuse: `@theone/client` (`packages/client/src`) and `@theone/protocol`
+TypeScript to reuse: `@tesseract/client` (`packages/client/src`) and `@tesseract/protocol`
 (`packages/protocol/src`). Use them directly; most of the Python here is a hand port of
 them.
 
@@ -25,11 +25,11 @@ them.
 | `config/storage.py` (config.json) | **main process** | file IO; expose `config:read`, `config:save`, `config:clear`, `settings:get/set` |
 | `services/metrics.py` cache file | **main process** for read/write of `metrics.json`; sampling logic can live in the renderer |
 | `syncback/*` (links.json, file trees, tar) | **main process** (fs + tar) |
-| `ControllerClient` HTTP | renderer **or** main. Renderer `fetch` to `http://127.0.0.1:7700` is cross-origin from `http://localhost:4545`; the controller must allow CORS or the calls go through main. Recommended: create `TheOneClient` in the renderer with a `fetch` that proxies through IPC to main (`net.fetch`), so no CORS dependency and the token never needs CSP exceptions. |
+| `ControllerClient` HTTP | renderer **or** main. Renderer `fetch` to `http://127.0.0.1:7700` is cross-origin from `http://localhost:4545`; the controller must allow CORS or the calls go through main. Recommended: create `TesseractClient` in the renderer with a `fetch` that proxies through IPC to main (`net.fetch`), so no CORS dependency and the token never needs CSP exceptions. |
 | `EventStream` (WebSocket) | renderer, `client.openEvents()` with the global `WebSocket` (WS is not subject to CORS; the ticket is in the query) |
 | `AppStore` observables | a renderer store (zustand or React context + `useSyncExternalStore`) |
 | `Poller` | a `usePoller` hook (section 5) |
-| `api/tasks.run_async` thread pool (8 workers, `monolith-io`) | not needed; everything is `async` |
+| `api/tasks.run_async` thread pool (8 workers, `tesseract-io`) | not needed; everything is `async` |
 
 ---
 
@@ -46,37 +46,37 @@ them.
 
 | Variable | Meaning | Default |
 |---|---|---|
-| `MONOLITH_DESKTOP_URL` | controller API URL | – |
-| `THEONE_TOKEN` | bearer token (both URL and token must be set, else env config is ignored) | – |
-| `MONOLITH_DESKTOP_NAME` | display name | – |
-| `MONOLITH_DESKTOP_PAIRING_URL` | URL phones should use | – |
-| `MONOLITH_DESKTOP_CONFIG` | absolute path overriding the config file | – |
+| `TESSERACT_DESKTOP_URL` | controller API URL | – |
+| `TESSERACT_TOKEN` | bearer token (both URL and token must be set, else env config is ignored) | – |
+| `TESSERACT_DESKTOP_NAME` | display name | – |
+| `TESSERACT_DESKTOP_PAIRING_URL` | URL phones should use | – |
+| `TESSERACT_DESKTOP_CONFIG` | absolute path overriding the config file | – |
 | `XDG_CONFIG_HOME` | base for config dir | `~/.config` |
 | `XDG_CACHE_HOME` | base for metrics cache | `~/.cache` |
 | `XDG_STATE_HOME` | base for sync-back state | `~/.local/state` |
-| `THEONE_COMPOSE_PROJECT` | compose project name | `theone` |
-| `THEONE_CONTROLLER_HOST_PORT` | published controller port on the host | `7700` |
-| `THEONE_BIND_ADDR` | host bind address of the published port | – |
+| `TESSERACT_COMPOSE_PROJECT` | compose project name | `tesseract` |
+| `TESSERACT_CONTROLLER_HOST_PORT` | published controller port on the host | `7700` |
+| `TESSERACT_BIND_ADDR` | host bind address of the published port | – |
 
 Env config is built via the same `from_json` as the file (`source = "env"`).
 
 ### 2.3 Docker discovery (`discover_docker`)
 
-Constants: project `theone`, service `sandbox`, controller port `7700`, exec user `dev`,
-binary `theone-controller`, docker command timeout **15 s**, health probe timeout **2 s**,
+Constants: project `tesseract`, service `sandbox`, controller port `7700`, exec user `dev`,
+binary `tesseract-controller`, docker command timeout **15 s**, health probe timeout **2 s**,
 protocol version **1**.
 
-1. Container name: `` `${project}-sandbox-1` `` (e.g. `theone-sandbox-1`).
+1. Container name: `` `${project}-sandbox-1` `` (e.g. `tesseract-sandbox-1`).
 2. Locate `docker` on `PATH`. If missing: error `"docker is not installed on this machine"`.
    (Electron: also try `podman`, and on macOS/Windows the Docker Desktop CLI paths; GTK only
    looks for `docker`.)
-3. Run `docker exec -u dev <container> theone-controller pair --json` (timeout 15 s).
+3. Run `docker exec -u dev <container> tesseract-controller pair --json` (timeout 15 s).
    - Failure text: last non-empty line of stderr (or stdout), else
      `` `docker ${args[0]} failed (${code})` ``; timeout → `` `docker ${args[0]} timed out` ``.
    - Parse stdout **from the last line backwards**; the first line that is a JSON object
      with a string `link` wins. `link` is parsed with `parsePairingLink`; on failure error
      `` `controller printed an invalid pairing link: ${error}` ``. If none:
-     `"theone-controller pair --json printed no pairing link"`.
+     `"tesseract-controller pair --json printed no pairing link"`.
    - Result: `url` = normalized `data.url` if valid else the link's url; `token` from the
      link; `name` = `data.name` if non-empty string else the link's name.
 4. `docker inspect <container>` (errors here are swallowed → no network info):
@@ -88,8 +88,8 @@ protocol version **1**.
 5. Candidate URLs, in order, de-duplicated after `normalizeBaseUrl`:
    1. each published binding: `http://<host>:<HostPort>` where host is `127.0.0.1` when
       the bind is `""`, `0.0.0.0`, `::` or `[::]`; IPv6 binds get brackets.
-   2. if `THEONE_BIND_ADDR` set: `http://<bind>:<THEONE_CONTROLLER_HOST_PORT|7700>`
-   3. `http://127.0.0.1:<THEONE_CONTROLLER_HOST_PORT|7700>`
+   2. if `TESSERACT_BIND_ADDR` set: `http://<bind>:<TESSERACT_CONTROLLER_HOST_PORT|7700>`
+   3. `http://127.0.0.1:<TESSERACT_CONTROLLER_HOST_PORT|7700>`
    4. each container IP: `http://<ip>:7700`
    5. the pairing URL (usually the tailnet `https://…ts.net`)
 6. Probe each in order, sequentially: `GET <url>/v1/health`, `Accept: application/json`,
@@ -111,13 +111,13 @@ The onboarding wizard (separate spec) creates the stack; after it finishes it sh
 the same discovery and then **save** the result to the config file so later launches skip
 discovery.
 
-### 2.4 Pairing links (`pairing.py` = `@theone/protocol` `pairing.ts`/`url.ts`)
+### 2.4 Pairing links (`pairing.py` = `@tesseract/protocol` `pairing.ts`/`url.ts`)
 
 Identical semantics; use `buildPairingLink`, `parsePairingLink`, `normalizeBaseUrl`,
-`toWebSocketUrl`, `isValidToken` from `@theone/protocol`.
+`toWebSocketUrl`, `isValidToken` from `@tesseract/protocol`.
 
-- Format: `theone://pair?url=<enc>&token=<enc>&name=<enc>` (`name` omitted when empty).
-  Host shell uses action `host` (`theone://host?…`).
+- Format: `tesseract://pair?url=<enc>&token=<enc>&name=<enc>` (`name` omitted when empty).
+  Host shell uses action `host` (`tesseract://host?…`).
 - Token: `^[\x21-\x7e]{1,1024}$`. Name: trimmed, cut to 64 UTF-16 units, trimmed again.
 - Parsing strips **all** whitespace first, scheme/action case-insensitive, optional third
   slash and trailing slash, fragment ignored, first occurrence of a query key wins.
@@ -128,8 +128,8 @@ Identical semantics; use `buildPairingLink`, `parsePairingLink`, `normalizeBaseU
   `"URL must not contain credentials"`, `"URL host is missing or invalid"`,
   `"URL port must be between 1 and 65535"`,
   `"URL path must not contain spaces, control characters or backslashes"`;
-  link errors `"Pairing link is empty"`, `"Pairing link must start with theone://"`,
-  `"Pairing link must be theone://pair?…"`, `"Pairing link has no url"`,
+  link errors `"Pairing link is empty"`, `"Pairing link must start with tesseract://"`,
+  `"Pairing link must be tesseract://pair?…"`, `"Pairing link has no url"`,
   `"Pairing link has no token"`, `"Pairing token is invalid"`; builder throws
   `` `Invalid pairing url: ${msg}` `` / `"Invalid pairing token"`.
 - The phone pairing QR encodes `config.pairingLink()` = link built from
@@ -160,13 +160,13 @@ files. Keep key names, formats and merge behaviour exactly.
 
 ### 3.1 `config.json` (connection + app settings)
 
-- Path: `$MONOLITH_DESKTOP_CONFIG` if set, else `${XDG_CONFIG_HOME:-~/.config}/monolith-desktop/config.json`.
-  - On macOS/Windows the GTK app does not run; still use `~/.config/monolith-desktop/config.json`
+- Path: `$TESSERACT_DESKTOP_CONFIG` if set, else `${XDG_CONFIG_HOME:-~/.config}/tesseract-desktop/config.json`.
+  - On macOS/Windows the GTK app does not run; still use `~/.config/tesseract-desktop/config.json`
     on Linux, and `app.getPath("userData")/config.json` elsewhere **unless**
-    `XDG_CONFIG_HOME`/`MONOLITH_DESKTOP_CONFIG` is set. Document the chosen path in
+    `XDG_CONFIG_HOME`/`TESSERACT_DESKTOP_CONFIG` is set. Document the chosen path in
     Preferences (`"Config file: {path}"`).
-- Legacy migration at startup: if `<base>/monolith-desktop` does not exist and
-  `<base>/theone-desktop` is a directory, rename it. Ignore errors.
+- Legacy migration at startup: if `<base>/tesseract-desktop` does not exist and
+  `<base>/tesseract-desktop` is a directory, rename it. Ignore errors.
 - Format: pretty JSON, **2-space indent, trailing newline**, written atomically
   (`config.tmp` with mode `0600`, then rename). Dir created with mode `0700`.
 - Read: any IO/JSON error or non-object → `{}`.
@@ -191,7 +191,7 @@ files. Keep key names, formats and merge behaviour exactly.
 
 ### 3.2 `metrics.json` (resource history cache)
 
-- Path: `${XDG_CACHE_HOME:-~/.cache}/monolith-desktop/metrics.json` (Electron on
+- Path: `${XDG_CACHE_HOME:-~/.cache}/tesseract-desktop/metrics.json` (Electron on
   macOS/Windows: `app.getPath("cache")`-style equivalent; Linux must use this path).
 - Format (compact JSON, no spaces):
   `{"version":1,"sandboxes":{"<sandboxId>":[[t,cores,load1,load5,load15,memUsed,memTotal,diskUsed,diskTotal,gap],…]}}`
@@ -206,12 +206,12 @@ files. Keep key names, formats and merge behaviour exactly.
 
 ### 3.3 Sync-back state (`links.json`)
 
-- Dir: `${XDG_STATE_HOME:-~/.local/state}/monolith/` containing `links.json`,
+- Dir: `${XDG_STATE_HOME:-~/.local/state}/tesseract/` containing `links.json`,
   `snapshots/`, `locks/` (flock files `.links` and `<projectId>`), keeps 20 snapshots.
 - `links.json`: `{ "<projectId>": { "hostPath", "pushedAt", "manifest": {path: sha256},
   "executable"?: string[], "gitManifest"?: {…}, "gotAt"?: string, "confidential"?: true } }`,
   2-space indent + newline, mode `0600`, atomic write.
-- Shared with the `monolith` CLI. Full detail belongs to the sync-back spec; the Electron
+- Shared with the `tesseract` CLI. Full detail belongs to the sync-back spec; the Electron
   main process must use the same files and the same lock names so CLI and app don't race.
 
 ---
@@ -270,13 +270,13 @@ Inbox badge counts: `GET /v1/inbox?limit=1` on online transition and on every `h
 
 Gateway fallbacks (when body empty): 502 `"HTTP 502 from the proxy in front of the controller: the controller is not answering behind it."`,
 503 `"HTTP 503: the controller is unavailable."`, 504 `"HTTP 504 from the proxy in front of the controller: the controller timed out."`.
-`@theone/client`'s `toApiError` falls back to `statusText` instead; to match GTK, map
+`@tesseract/client`'s `toApiError` falls back to `statusText` instead; to match GTK, map
 empty-body 502/503/504 to these strings in the Electron `describeError`.
 
-Mapping to `@theone/client` error classes: `ApiError` → `ApiError`; `RequestTimeout` →
+Mapping to `@tesseract/client` error classes: `ApiError` → `ApiError`; `RequestTimeout` →
 `TimeoutError`; `NetworkError` → `NetworkError`; `ProtocolVersionError` →
 `ProtocolVersionError`; `ProtocolError` → `ProtocolError`; `NotConfigured` → app-level
-error. **Difference:** `@theone/client` `isAuthError` also treats `forbidden` (403) as
+error. **Difference:** `@tesseract/client` `isAuthError` also treats `forbidden` (403) as
 auth; GTK only 401/`unauthorized`. Use a local check (`status === 401 || code === "unauthorized"`)
 for the `unauthorized` state to match GTK.
 
@@ -367,8 +367,8 @@ visible, connection and workspace pollers refresh immediately. Electron: drive
 page pollers stop when their page is not mounted.
 
 HTTP timeouts: default 15 s; Taildrop send 120 s; uploads (create + content) 120 s;
-sync upload/export/discard/plan/apply 600 s. `User-Agent: monolith-desktop/0.1` (Electron:
-`monolith-electron/<version>`; nothing on the server depends on it).
+sync upload/export/discard/plan/apply 600 s. `User-Agent: tesseract-desktop/0.1` (Electron:
+`tesseract-electron/<version>`; nothing on the server depends on it).
 
 ### 5.3 Event stream (`api/events.py`, `api/socket.py` = `client.openEvents`)
 
@@ -388,7 +388,7 @@ sync upload/export/discard/plan/apply 600 s. `User-Agent: monolith-desktop/0.1` 
   `project.deleted`, `agent.updated`, `agent.deleted`, `terminal.updated`,
   `sync.updated`, `sync.changed`. Pages subscribe to others (`process.updated`,
   `build.updated`, `artifact.*`, `stt.updated`, `app.updated`, `status`).
-- The `@theone/client` stream validates frames with zod; invalid frames are reported and
+- The `@tesseract/client` stream validates frames with zod; invalid frames are reported and
   skipped (GTK silently passes them on). Fine.
 
 ---
@@ -479,10 +479,10 @@ Electron: keep the history in the renderer store, persist through IPC to main
 
 ---
 
-## 9. Endpoint map: Python `ControllerClient` → `@theone/client` `TheOneClient`
+## 9. Endpoint map: Python `ControllerClient` → `@tesseract/client` `TesseractClient`
 
 All paths are under `/v1`. "Used by" = GTK caller. ✅ = exists with same semantics,
-⚠ = exists with a different signature, ❌ = missing in `@theone/client`.
+⚠ = exists with a different signature, ❌ = missing in `@tesseract/client`.
 
 | Python method | HTTP | TS method | |
 |---|---|---|---|
@@ -572,7 +572,7 @@ Defined in Python paths but no client method (GTK uses the host shell client els
 `/android/emulator`, `/android/link`, `/host/unlock` → TS has `startEmulator`,
 `stopEmulator`, `linkSandbox`, `unlinkSandbox`, `HostShellClient.unlock`.
 
-Missing in `@theone/client` that Electron needs (request in deps_needed):
+Missing in `@tesseract/client` that Electron needs (request in deps_needed):
 1. `syncProject(id, body: Uint8Array | Blob, {confidential?}) → {project, created}` (gzip
    upload, 201 = created).
 2. `syncGetPlan(requestId, plan)`.

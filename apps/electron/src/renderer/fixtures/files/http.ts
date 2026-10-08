@@ -1,4 +1,4 @@
-import { routePatterns, type Artifact, type BuildOutput, type TaildropTargets } from "@theone/protocol";
+import { routePatterns, type Artifact, type BuildOutput, type TaildropTargets } from "@tesseract/protocol";
 import { GTK_PARITY } from "../projects/parity";
 import { currentScenario } from "../scenario";
 import { defineHttpFixtures, FixtureReply, reply, type HttpFixtureRequest } from "../types";
@@ -13,12 +13,12 @@ export const SCENARIOS = {
   gtkParity: GTK_PARITY,
 } as const;
 
-const GTK_PARITY_IDS: Readonly<Record<string, string>> = { monolith: "theone-mobile", "hybrid-pos": "brave-hare" };
+const GTK_PARITY_IDS: Readonly<Record<string, string>> = { tesseract: "tesseract-mobile", "hybrid-pos": "brave-hare" };
 
 const rest = routePatterns.rest;
 const MINUTE_MS = 60_000;
 const DAY_MS = 86_400_000;
-const FILE_TEXT = "Monolith fixture file\n";
+const FILE_TEXT = "Tesseract fixture file\n";
 const FILE_SHA256 = "2aaeddbad27a79c2d8a1a4db43cf4fbed3d0aa0df732c9344df8f947330f0186";
 
 const ago = (ms: number) => new Date(Date.now() - ms).toISOString();
@@ -59,7 +59,7 @@ function artifacts(): Artifact[] {
 function outputs(): BuildOutput[] {
   return [
     {
-      projectId: "monolith",
+      projectId: "tesseract",
       path: "apps/mobile/android/app/build/outputs/apk/release/app-release.apk",
       fileName: "app-release.apk",
       sizeBytes: 103_076_250,
@@ -67,7 +67,7 @@ function outputs(): BuildOutput[] {
       modifiedAt: ago(DAY_MS + 2 * 3_600_000),
     },
     {
-      projectId: "monolith",
+      projectId: "tesseract",
       path: "apps/mobile/android/app/build/outputs/native-debug-symbols/release/native-debug-symbols.zip",
       fileName: "native-debug-symbols.zip",
       sizeBytes: 13_946_061,

@@ -16,7 +16,7 @@ export const SIDEBAR_SAMPLE = {
   newProject: "New project",
   search: "Search conversations",
   compose: "New conversation (Ctrl+N)",
-  statusTitle: "theone-sandbox",
+  statusTitle: "tesseract-sandbox",
   statusDetail: "Online · Live",
   statusTooltip: "Connection settings",
   pageTitle: "Overview",
@@ -40,7 +40,7 @@ export const NAV_COUNT_SAMPLES: Readonly<Record<string, number>> = { agents: 3 }
 
 export const PROJECT_SAMPLES: readonly SidebarProjectItem[] = [
   { id: "streaxfit", name: "streaxfit", tint: 5, confidential: true, running: 0, runs: [] },
-  { id: "monolith", name: "monolith", tint: 1, running: 0, runs: [] },
+  { id: "tesseract", name: "tesseract", tint: 1, running: 0, runs: [] },
   { id: "hybrid-pos", name: "hybrid-pos", tint: 3, running: 0, runs: [] },
   { id: "sante-production", name: "sante-production", tint: 7, running: 0, runs: [] },
   { id: null, name: "No project", tint: null, running: 0, runs: [] },
@@ -48,8 +48,8 @@ export const PROJECT_SAMPLES: readonly SidebarProjectItem[] = [
 
 export const ACTIVE_PROJECT_SAMPLES: readonly SidebarProjectItem[] = [
   {
-    id: "monolith",
-    name: "monolith",
+    id: "tesseract",
+    name: "tesseract",
     tint: 1,
     running: 2,
     runs: [

@@ -1,4 +1,4 @@
-import type { BrowserTab } from "@theone/protocol";
+import type { BrowserTab } from "@tesseract/protocol";
 
 import { browserSummary, tabShare, tabTitle } from "@/features/sandbox/utils/browser";
 

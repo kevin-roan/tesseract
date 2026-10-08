@@ -1,5 +1,5 @@
-import type { AgentRun, ClaudeSession } from "@theone/protocol";
-import { sampleAgentRun, sampleClaudeSession } from "@theone/protocol/fixtures";
+import type { AgentRun, ClaudeSession } from "@tesseract/protocol";
+import { sampleAgentRun, sampleClaudeSession } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import { sessionMeta, sessionStatus, sessionTarget, sessionTitle } from "./model";
 

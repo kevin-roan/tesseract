@@ -6,7 +6,7 @@ import type {
   Project,
   SandboxStatus,
   TailscaleUser,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import type { ProfileStat } from "@/components/profile-hero";
 import { formatTokens } from "@/features/home/utils/tokens";

@@ -5,18 +5,18 @@
 
 ## Context
 
-The desktop companion (`apps/desktop`, "Monolith", app id `dev.monolith.Desktop`) is
+The desktop companion (`apps/desktop`, "Tesseract", app id `dev.tesseract.Desktop`) is
 a Python GTK4/libadwaita app. It works well on a Linux desktop, but:
 
 - It does not ship on macOS or Windows. GTK4 + libadwaita + PyGObject have no
   practical one-file installer there; the app is a Python package
-  (`monolith-desktop`) installed from a checkout.
+  (`tesseract-desktop`) installed from a checkout.
 - Setting up a computer is manual. The user installs Docker, edits `.env`, runs
   `infra/scripts/sandbox`, installs the Android SDK and creates an AVD for the host
   emulator ([app-runs-and-emulator.md](../architecture/app-runs-and-emulator.md))
   by following runbooks. There is no guided first run.
 - Its logic is a Python copy of what already exists in TypeScript: the controller
-  protocol and client (`@theone/protocol`, `@theone/client`) are shared by the
+  protocol and client (`@tesseract/protocol`, `@tesseract/client`) are shared by the
   controller and the phone app, while the desktop reimplements them.
 - The sync commands (`--sync`, `--pull`, `--revert`, `--sync-status`) are flags of
   the Python app itself, so they only exist where the app was installed from source.
@@ -29,14 +29,14 @@ which follows the Linear desktop app pixel for pixel.
 ## Decision
 
 - **Electron** (pinned to 44.5.1) in a new workspace `apps/electron`
-  (`@monolith/electron`), built with electron-vite, with a React 19 renderer and a
+  (`@tesseract/electron`), built with electron-vite, with a React 19 renderer and a
   Node main process. The GTK app stays in the repository until the Electron app
   replaces it; both read the same `config.json` keys and sync-back state.
 - **Shared Node core.** Docker, sandbox, Android SDK, onboarding, connection,
   sync-back and host-daemon logic live in `src/core/` as plain Node TypeScript with
-  no `electron` import. The main process and the `monolith` CLI (compiled with
+  no `electron` import. The main process and the `tesseract` CLI (compiled with
   `bun build --compile` and shipped in `resources/bin`) both use it. The renderer
-  uses `@theone/client` like the phone app.
+  uses `@tesseract/client` like the phone app.
 - **Typed IPC.** One contract per service in `src/shared/contracts/`, derived
   channel names, results as `{ ok, value | error }`, a sandboxed preload that only
   forwards known channels, and handlers that accept only the app's own frames.
@@ -66,8 +66,8 @@ The full design is in [electron-desktop.md](../architecture/electron-desktop.md)
   CLI on `PATH` (deb symlink, NSIS user `PATH`, in-app install on macOS and for the
   AppImage) and self-updates through electron-updater.
 - First run is a wizard instead of runbooks. The runbooks remain valid for
-  headless servers and for anyone who prefers the shell; `monolith sandbox …`,
-  `monolith android …` and `monolith doctor` cover the same steps from a terminal.
+  headless servers and for anyone who prefers the shell; `tesseract sandbox …`,
+  `tesseract android …` and `tesseract doctor` cover the same steps from a terminal.
 - The desktop and the phone now share the client, the protocol types and their
   fixtures. A protocol change is typechecked against both.
 - Installers are large: Electron itself (~100 MB per architecture, a universal macOS

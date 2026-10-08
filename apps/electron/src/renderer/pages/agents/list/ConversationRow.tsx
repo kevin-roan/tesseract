@@ -1,4 +1,4 @@
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 import { motion } from "motion/react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import { Text } from "../../../components/Text";

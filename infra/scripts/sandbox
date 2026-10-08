@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Operator CLI for the TheOne sandbox stack (compose project "theone" unless
-# THEONE_COMPOSE_PROJECT says otherwise).
+# Operator CLI for the Tesseract sandbox stack (compose project "tesseract" unless
+# TESSERACT_COMPOSE_PROJECT says otherwise).
 # Run `infra/scripts/sandbox help` or `bun run sandbox help`.
 set -euo pipefail
 
@@ -10,6 +10,13 @@ COMPOSE_DIR="${REPO_ROOT}/infra/compose"
 DOCKERFILE="${REPO_ROOT}/infra/docker/sandbox/Dockerfile"
 readonly SCRIPT_DIR REPO_ROOT COMPOSE_DIR DOCKERFILE
 readonly SERVICE=sandbox
+# The product was renamed (theone/TheOne and Monolith became Tesseract). Older deployments
+# keep working: see migrate_env_file, import_legacy_environment and migrate_legacy_stack.
+readonly DEFAULT_PROJECT=tesseract
+readonly LEGACY_PROJECT=theone
+readonly LEGACY_ENV_PREFIXES="THEONE MONOLITH"
+# tailscale-run is left out: it only holds tailscaled's runtime socket.
+readonly LEGACY_VOLUME_SUFFIXES="workspace home tailscale dind-certs dind-data"
 
 usage() {
   cat << 'EOF'
@@ -17,27 +24,27 @@ Usage: sandbox [--mode tailscale|host-tailscale|local] [--dind] [--tailscale-api
                [--env-file <path>] <command> [args]
        (the options may also follow the command)
 
-Modes (default: $THEONE_MODE, then THEONE_MODE in the env file, then tailscale):
-  tailscale        tailscale sidecar joins the tailnet; https://<THEONE_HOSTNAME>.<TS_TAILNET_DOMAIN>
+Modes (default: $TESSERACT_MODE, then TESSERACT_MODE in the env file, then tailscale):
+  tailscale        tailscale sidecar joins the tailnet; https://<TESSERACT_HOSTNAME>.<TS_TAILNET_DOMAIN>
   host-tailscale   ports 7700/5901 bound on the host's tailscale IPv4 (`tailscale ip -4`
-                   unless THEONE_BIND_ADDR is set)
+                   unless TESSERACT_BIND_ADDR is set)
   local            ports 7700/5901 bound on 127.0.0.1 only
-                   (host ports: THEONE_CONTROLLER_HOST_PORT, THEONE_VNC_HOST_PORT)
-  --dind           add the privileged docker:dind sidecar (also: THEONE_DIND=1)
+                   (host ports: TESSERACT_CONTROLLER_HOST_PORT, TESSERACT_VNC_HOST_PORT)
+  --dind           add the privileged docker:dind sidecar (also: TESSERACT_DIND=1)
   --tailscale-api  share the tailscaled LocalAPI socket with the sandbox so GET /v1/identity
-                   can name the tailnet user (also: THEONE_TAILSCALE_LOCALAPI=1): the
+                   can name the tailnet user (also: TESSERACT_TAILSCALE_LOCALAPI=1): the
                    sidecar's socket in tailscale mode, the host's
-                   (THEONE_TAILSCALE_HOST_SOCKET_DIR, default /var/run/tailscale) otherwise.
+                   (TESSERACT_TAILSCALE_HOST_SOCKET_DIR, default /var/run/tailscale) otherwise.
                    Sandbox root can then control that tailscaled (docs/architecture/security-model.md)
   --env-file PATH  read the configuration from PATH instead of infra/compose/.env
 
 Host Android toolchain (Linux x86_64 hosts), mounted read-only so builds reuse it:
-  THEONE_HOST_ANDROID_SDK=/abs/sdk      replaces the image's /opt/android-sdk
-  THEONE_HOST_GRADLE_CACHE=/abs/caches  the host Gradle caches/ dir, as GRADLE_RO_DEP_CACHE
+  TESSERACT_HOST_ANDROID_SDK=/abs/sdk      replaces the image's /opt/android-sdk
+  TESSERACT_HOST_GRADLE_CACHE=/abs/caches  the host Gradle caches/ dir, as GRADLE_RO_DEP_CACHE
 
-Extra Claude Code accounts (THEONE_HOST_CLAUDE_ACCOUNTS="work personal", or name=/abs/path)
+Extra Claude Code accounts (TESSERACT_HOST_CLAUDE_ACCOUNTS="work personal", or name=/abs/path)
 are bind-mounted at /home/dev/.claude-<name> like ~/.claude, through an override written to
-${XDG_STATE_HOME:-~/.local/state}/theone/compose.<project>.claude-accounts.yml.
+${XDG_STATE_HOME:-~/.local/state}/tesseract/compose.<project>.claude-accounts.yml.
 
 Commands:
   up [--build] [compose up args]   start the stack in the background
@@ -47,10 +54,10 @@ Commands:
   shell                            login shell as dev inside the sandbox
   pair [--json]                    print the pairing link and QR code for the mobile app
   status                           container state and controller status
-  doctor                           run theone-doctor inside the sandbox
+  doctor                           run tesseract-doctor inside the sandbox
   build [--target <stage>]         build the image (stages: base, desktop, electron,
                                    android, sandbox; non-default stages are tagged
-                                   theone/sandbox:<stage>)
+                                   tesseract/sandbox:<stage>)
   ps                               list the stack's containers
   config                           print the resolved compose configuration (includes
                                    the secrets from .env: do not paste it anywhere)
@@ -58,8 +65,17 @@ Commands:
 
 Configuration lives in infra/compose/.env (copy infra/compose/.env.example); exported
 variables win over the file. Stacks run side by side when each has its own
-THEONE_COMPOSE_PROJECT (volumes: THEONE_VOLUME_PREFIX, default the project name) and
-its own THEONE_CONTROLLER_HOST_PORT/THEONE_VNC_HOST_PORT or THEONE_HOSTNAME.
+TESSERACT_COMPOSE_PROJECT (volumes: TESSERACT_VOLUME_PREFIX, default the project name) and
+its own TESSERACT_CONTROLLER_HOST_PORT/TESSERACT_VNC_HOST_PORT or TESSERACT_HOSTNAME.
+
+Upgrading from theone/Monolith: every command first renames THEONE_*/MONOLITH_* keys of the
+env file to TESSERACT_* (the original is kept as <env file>.legacy-backup; old default
+project, volume prefix and image values become the tesseract ones, the hostname is kept);
+exported legacy variables are used under their new name. `up` on the default project then
+tags theone/sandbox:latest as tesseract/sandbox:latest when only the old image exists,
+stops a running "theone" project (`docker compose -p theone down`, volumes kept) and
+copies each theone-<name> volume to a missing tesseract-<name> volume once (old volumes
+are kept). TESSERACT_SKIP_LEGACY_MIGRATION=1 skips the docker part.
 EOF
 }
 
@@ -198,44 +214,44 @@ check_bind_addr() {
   local addr=$1
   case "${addr}" in
     0.0.0.0 | :: | "[::]" | "*")
-      die "THEONE_BIND_ADDR=${addr} would publish the sandbox on every host interface; use the host's tailscale IPv4"
+      die "TESSERACT_BIND_ADDR=${addr} would publish the sandbox on every host interface; use the host's tailscale IPv4"
       ;;
   esac
   if ! is_ipv4 "${addr}" || [[ "${addr}" == 0.* ]]; then
-    die "THEONE_BIND_ADDR=${addr} is not an IPv4 address of this host; use the host's tailscale IPv4"
+    die "TESSERACT_BIND_ADDR=${addr} is not an IPv4 address of this host; use the host's tailscale IPv4"
   fi
 }
 
 # Resolved once and exported so compose interpolates exactly what this script reports.
 resolve_stack() {
-  project="$(config_value THEONE_COMPOSE_PROJECT)"
-  project="${project:-theone}"
+  project="$(config_value TESSERACT_COMPOSE_PROJECT)"
+  project="${project:-tesseract}"
   [[ "${project}" =~ ^[a-z0-9][a-z0-9_-]*$ ]] \
-    || die "THEONE_COMPOSE_PROJECT=${project} is not a valid compose project name (lowercase letters, digits, '-' and '_')"
-  volume_prefix="$(config_value THEONE_VOLUME_PREFIX)"
+    || die "TESSERACT_COMPOSE_PROJECT=${project} is not a valid compose project name (lowercase letters, digits, '-' and '_')"
+  volume_prefix="$(config_value TESSERACT_VOLUME_PREFIX)"
   volume_prefix="${volume_prefix:-${project}}"
   [[ "${volume_prefix}" =~ ^[A-Za-z0-9][A-Za-z0-9_.-]*$ ]] \
-    || die "THEONE_VOLUME_PREFIX=${volume_prefix} is not a valid volume name prefix"
-  controller_port="$(config_value THEONE_CONTROLLER_HOST_PORT)"
+    || die "TESSERACT_VOLUME_PREFIX=${volume_prefix} is not a valid volume name prefix"
+  controller_port="$(config_value TESSERACT_CONTROLLER_HOST_PORT)"
   controller_port="${controller_port:-7700}"
-  require_port THEONE_CONTROLLER_HOST_PORT "${controller_port}"
-  vnc_port="$(config_value THEONE_VNC_HOST_PORT)"
+  require_port TESSERACT_CONTROLLER_HOST_PORT "${controller_port}"
+  vnc_port="$(config_value TESSERACT_VNC_HOST_PORT)"
   vnc_port="${vnc_port:-5901}"
-  require_port THEONE_VNC_HOST_PORT "${vnc_port}"
-  export THEONE_COMPOSE_PROJECT="${project}" THEONE_VOLUME_PREFIX="${volume_prefix}" \
-    THEONE_CONTROLLER_HOST_PORT="${controller_port}" THEONE_VNC_HOST_PORT="${vnc_port}"
+  require_port TESSERACT_VNC_HOST_PORT "${vnc_port}"
+  export TESSERACT_COMPOSE_PROJECT="${project}" TESSERACT_VOLUME_PREFIX="${volume_prefix}" \
+    TESSERACT_CONTROLLER_HOST_PORT="${controller_port}" TESSERACT_VNC_HOST_PORT="${vnc_port}"
 }
 
 resolve_mode() {
   local command=$1
-  mode="${mode:-$(config_value THEONE_MODE)}"
+  mode="${mode:-$(config_value TESSERACT_MODE)}"
   mode="${mode:-tailscale}"
-  dind="${dind:-$(config_value THEONE_DIND)}"
+  dind="${dind:-$(config_value TESSERACT_DIND)}"
   case "${dind}" in
     1 | true | yes) dind=1 ;;
     *) dind="" ;;
   esac
-  tailscale_api="${tailscale_api:-$(config_value THEONE_TAILSCALE_LOCALAPI)}"
+  tailscale_api="${tailscale_api:-$(config_value TESSERACT_TAILSCALE_LOCALAPI)}"
   case "${tailscale_api}" in
     1 | true | yes) tailscale_api=1 ;;
     *) tailscale_api="" ;;
@@ -248,25 +264,25 @@ resolve_mode() {
       ;;
     host-tailscale)
       local bind_addr
-      bind_addr="$(config_value THEONE_BIND_ADDR)"
+      bind_addr="$(config_value TESSERACT_BIND_ADDR)"
       if [[ -z "${bind_addr}" ]] && command -v tailscale > /dev/null 2>&1; then
         bind_addr="$(tailscale ip -4 2> /dev/null | head -n 1 || true)"
       fi
       if [[ -z "${bind_addr}" ]]; then
         case "${command}" in
           up | config)
-            die "could not determine the host tailscale IPv4: start tailscale on the host or set THEONE_BIND_ADDR"
+            die "could not determine the host tailscale IPv4: start tailscale on the host or set TESSERACT_BIND_ADDR"
             ;;
         esac
         # Only up/config use the address; down, logs, shell … must work while tailscale is down.
         bind_addr=127.0.0.1
       fi
       check_bind_addr "${bind_addr}"
-      export THEONE_BIND_ADDR="${bind_addr}"
+      export TESSERACT_BIND_ADDR="${bind_addr}"
       compose_files+=(-f "${COMPOSE_DIR}/compose.local.yml")
       ;;
     local)
-      export THEONE_BIND_ADDR=127.0.0.1
+      export TESSERACT_BIND_ADDR=127.0.0.1
       compose_files+=(-f "${COMPOSE_DIR}/compose.local.yml")
       ;;
     *)
@@ -280,24 +296,24 @@ resolve_mode() {
     if [[ "${mode}" == tailscale ]]; then
       compose_files+=(-f "${COMPOSE_DIR}/compose.tailscale-api-sidecar.yml")
     else
-      host_socket_dir="$(config_value THEONE_TAILSCALE_HOST_SOCKET_DIR)"
+      host_socket_dir="$(config_value TESSERACT_TAILSCALE_HOST_SOCKET_DIR)"
       host_socket_dir="${host_socket_dir:-/var/run/tailscale}"
       [[ "${host_socket_dir}" == /* ]] \
-        || die "THEONE_TAILSCALE_HOST_SOCKET_DIR=${host_socket_dir} must be an absolute path"
-      export THEONE_TAILSCALE_HOST_SOCKET_DIR="${host_socket_dir}"
+        || die "TESSERACT_TAILSCALE_HOST_SOCKET_DIR=${host_socket_dir} must be an absolute path"
+      export TESSERACT_TAILSCALE_HOST_SOCKET_DIR="${host_socket_dir}"
       compose_files+=(-f "${COMPOSE_DIR}/compose.tailscale-api.yml")
     fi
   fi
-  host_android_sdk="$(config_value THEONE_HOST_ANDROID_SDK)"
+  host_android_sdk="$(config_value TESSERACT_HOST_ANDROID_SDK)"
   if [[ -n "${host_android_sdk}" ]]; then
-    [[ "${host_android_sdk}" == /* ]] || die "THEONE_HOST_ANDROID_SDK=${host_android_sdk} must be an absolute path"
-    export THEONE_HOST_ANDROID_SDK="${host_android_sdk}"
+    [[ "${host_android_sdk}" == /* ]] || die "TESSERACT_HOST_ANDROID_SDK=${host_android_sdk} must be an absolute path"
+    export TESSERACT_HOST_ANDROID_SDK="${host_android_sdk}"
     compose_files+=(-f "${COMPOSE_DIR}/compose.host-android-sdk.yml")
   fi
-  host_gradle_cache="$(config_value THEONE_HOST_GRADLE_CACHE)"
+  host_gradle_cache="$(config_value TESSERACT_HOST_GRADLE_CACHE)"
   if [[ -n "${host_gradle_cache}" ]]; then
-    [[ "${host_gradle_cache}" == /* ]] || die "THEONE_HOST_GRADLE_CACHE=${host_gradle_cache} must be an absolute path"
-    export THEONE_HOST_GRADLE_CACHE="${host_gradle_cache}"
+    [[ "${host_gradle_cache}" == /* ]] || die "TESSERACT_HOST_GRADLE_CACHE=${host_gradle_cache} must be an absolute path"
+    export TESSERACT_HOST_GRADLE_CACHE="${host_gradle_cache}"
     compose_files+=(-f "${COMPOSE_DIR}/compose.host-gradle-cache.yml")
   fi
 }
@@ -310,28 +326,32 @@ yaml_string() {
   printf '"%s"' "${value}"
 }
 
+state_dir() {
+  local dir=${XDG_STATE_HOME:-}
+  [[ "${dir}" == /* ]] || dir="${HOME}/.local/state"
+  printf '%s/tesseract' "${dir}"
+}
+
 claude_accounts_override() {
-  local state_dir=${XDG_STATE_HOME:-}
-  [[ "${state_dir}" == /* ]] || state_dir="${HOME}/.local/state"
-  printf '%s/theone/compose.%s.claude-accounts.yml' "${state_dir}" "${project}"
+  printf '%s/compose.%s.claude-accounts.yml' "$(state_dir)" "${project}"
 }
 
 # Extra host Claude Code dirs are shared like ~/.claude, never copied: a copy would fork
 # the OAuth refresh token and log the host out. Missing dirs are skipped, never created.
 resolve_claude_accounts() {
   local raw entries=() entry name path seen=" " names=() paths=() i override tmp
-  raw="$(config_value THEONE_HOST_CLAUDE_ACCOUNTS)"
+  raw="$(config_value TESSERACT_HOST_CLAUDE_ACCOUNTS)"
   read -r -a entries <<< "${raw//,/ }"
   for entry in ${entries[@]+"${entries[@]}"}; do
     name="${entry%%=*}"
     path="${HOME}/.claude-${name}"
     [[ "${entry}" != *=* ]] || path="${entry#*=}"
     [[ "${name}" =~ ${CLAUDE_ACCOUNT_PATTERN} ]] \
-      || die "THEONE_HOST_CLAUDE_ACCOUNTS: invalid account name '${name}' (lowercase letters, digits, '-' and '_', at most 32)"
-    [[ "${seen}" != *" ${name} "* ]] || die "THEONE_HOST_CLAUDE_ACCOUNTS: account '${name}' is listed twice"
+      || die "TESSERACT_HOST_CLAUDE_ACCOUNTS: invalid account name '${name}' (lowercase letters, digits, '-' and '_', at most 32)"
+    [[ "${seen}" != *" ${name} "* ]] || die "TESSERACT_HOST_CLAUDE_ACCOUNTS: account '${name}' is listed twice"
     seen+="${name} "
     [[ "${path}" == /* && "${path}" != *[[:cntrl:]]* ]] \
-      || die "THEONE_HOST_CLAUDE_ACCOUNTS: ${name}=${path} is not an absolute path"
+      || die "TESSERACT_HOST_CLAUDE_ACCOUNTS: ${name}=${path} is not an absolute path"
     if [[ ! -d "${path}" ]]; then
       info "warning: Claude account '${name}' skipped: ${path} is not a directory"
       continue
@@ -345,7 +365,7 @@ resolve_claude_accounts() {
   mkdir -p "${override%/*}"
   tmp="$(mktemp "${override}.XXXXXX")"
   {
-    printf 'services:\n  %s:\n    environment:\n      THEONE_CLAUDE_ACCOUNTS: %s\n    volumes:\n' \
+    printf 'services:\n  %s:\n    environment:\n      TESSERACT_CLAUDE_ACCOUNTS: %s\n    volumes:\n' \
       "${SERVICE}" "$(yaml_string "$(IFS=,; printf '%s' "${names[*]}")")"
     for i in "${!names[@]}"; do
       printf '      - type: bind\n        source: %s\n        target: %s\n        bind:\n          create_host_path: false\n' \
@@ -354,6 +374,175 @@ resolve_claude_accounts() {
   } > "${tmp}"
   mv -f "${tmp}" "${override}"
   compose_files+=(-f "${override}")
+}
+
+# Renames THEONE_*/MONOLITH_* keys of the env file to TESSERACT_* when that key is absent,
+# keeping values (except the old defaults theone/monolith of COMPOSE_PROJECT and
+# VOLUME_PREFIX and theone/sandbox:latest of IMAGE, which become the tesseract ones),
+# comments and order; THEONE_ wins over MONOLITH_ for the same name. The
+# original is saved next to it first. Runs before anything reads the configuration.
+migrate_env_file() {
+  local file=${env_file} tmp renamed backup
+  [[ -f "${file}" ]] || return 0
+  grep -qE "^[[:space:]]*(export[[:space:]]+)?(${LEGACY_ENV_PREFIXES// /|})_[A-Za-z0-9_]*=" "${file}" || return 0
+  tmp="$(mktemp "${TMPDIR:-/tmp}/tesseract-env.XXXXXX")"
+  renamed="$(awk -v out="${tmp}" -v prefixes="${LEGACY_ENV_PREFIXES}" '
+    function key_of(line) {
+      sub(/^[[:space:]]*/, "", line)
+      sub(/^export[[:space:]]+/, "", line)
+      if (match(line, /^[A-Za-z_][A-Za-z0-9_]*=/)) return substr(line, 1, RLENGTH - 1)
+      return ""
+    }
+    BEGIN { n = split(prefixes, legacy, " ") }
+    FNR == NR { k = key_of($0); if (k != "") present[k] = 1; next }
+    {
+      line = $0
+      k = key_of(line)
+      for (i = 1; k != "" && i <= n; i++) {
+        p = legacy[i] "_"
+        if (substr(k, 1, length(p)) != p) continue
+        rest = substr(k, length(p) + 1)
+        target = "TESSERACT_" rest
+        if (target in present) break
+        # an earlier legacy prefix with the same name wins
+        for (j = 1; j < i; j++) if ((legacy[j] "_" rest) in present) break
+        if (j < i) break
+        match(line, /^[[:space:]]*(export[[:space:]]+)?/)
+        head = substr(line, 1, RLENGTH) target "="
+        value = substr(line, RLENGTH + length(k) + 2)
+        # Old defaults move to the new names; anything else (and the hostname) is kept.
+        if ((rest == "COMPOSE_PROJECT" || rest == "VOLUME_PREFIX") \
+          && value ~ /^["\047]?(theone|monolith)["\047]?[[:space:]]*(#.*)?$/)
+          sub(/theone|monolith/, "tesseract", value)
+        else if (rest == "IMAGE" && value ~ /^["\047]?(theone|monolith)\/sandbox:latest["\047]?[[:space:]]*(#.*)?$/)
+          sub(/(theone|monolith)\/sandbox:latest/, "tesseract/sandbox:latest", value)
+        line = head value
+        if (!(k in done)) { done[k] = 1; printf "%s%s -> %s", (count++ ? ", " : ""), k, target }
+        break
+      }
+      print line > out
+    }' "${file}" "${file}")" || {
+    rm -f -- "${tmp}"
+    die "could not read ${file}"
+  }
+  if [[ -z "${renamed}" ]]; then
+    rm -f -- "${tmp}"
+    return 0
+  fi
+  [[ -w "${file}" ]] || {
+    rm -f -- "${tmp}"
+    die "${file} has legacy keys (${renamed}) but is not writable; rename them to TESSERACT_* by hand"
+  }
+  backup="${file}.legacy-backup"
+  [[ ! -e "${backup}" ]] || backup="${file}.legacy-backup.$(date +%Y%m%d%H%M%S)"
+  cp -p -- "${file}" "${backup}"
+  # Rewritten in place: keeps the file's mode, owner and any symlink pointing at it.
+  cat -- "${tmp}" > "${file}"
+  rm -f -- "${tmp}"
+  info "renamed legacy keys in ${file}: ${renamed} (original saved as ${backup})"
+}
+
+# Exported THEONE_*/MONOLITH_* variables count as their TESSERACT_* name unless that is set.
+import_legacy_environment() {
+  local name prefix earlier rest target
+  for name in $(compgen -e); do
+    for prefix in ${LEGACY_ENV_PREFIXES}; do
+      [[ "${name}" == "${prefix}_"?* ]] || continue
+      rest="${name#"${prefix}_"}"
+      target="TESSERACT_${rest}"
+      [[ -z "${!target+x}" ]] || break
+      for earlier in ${LEGACY_ENV_PREFIXES}; do
+        [[ "${earlier}" != "${prefix}" ]] || break
+        earlier="${earlier}_${rest}"
+        [[ -z "${!earlier+x}" ]] || continue 3
+      done
+      export "${target}=${!name}"
+      info "using ${name} as ${target} (rename it in your environment)"
+      break
+    done
+  done
+}
+
+# The image that copies the volumes: one already present locally if possible.
+copy_image() {
+  local image
+  for image in "$(config_value TESSERACT_IMAGE)" tesseract/sandbox:latest theone/sandbox:latest \
+    busybox:latest alpine:latest debian:trixie-slim; do
+    if [[ -n "${image}" ]] && docker image inspect "${image}" > /dev/null 2>&1; then
+      printf '%s' "${image}"
+      return
+    fi
+  done
+  printf 'alpine:latest'
+}
+
+# Stops a running stack of the legacy default project: it would hold the host ports and
+# the same tailscale node. Volumes are kept (never -v).
+stop_legacy_project() {
+  local running dir status=0
+  running="$(docker ps --filter "label=com.docker.compose.project=${LEGACY_PROJECT}" --format '{{.Names}}' 2> /dev/null || true)"
+  [[ -n "${running}" ]] || return 0
+  info "stopping the legacy compose project '${LEGACY_PROJECT}' ($(printf '%s' "${running}" | paste -sd ' ' -)) so it does not clash with '${project}'; its volumes are kept"
+  # From an empty directory, so no compose file there joins in.
+  dir="$(mktemp -d "${TMPDIR:-/tmp}/tesseract-legacy.XXXXXX")"
+  (cd "${dir}" && env -u COMPOSE_FILE -u COMPOSE_PROJECT_NAME docker compose --project-name "${LEGACY_PROJECT}" down) || status=$?
+  rmdir -- "${dir}" 2> /dev/null || true
+  ((status == 0)) || die "could not stop the legacy project (docker compose -p ${LEGACY_PROJECT} down failed)"
+}
+
+# Copies theone-<name> into a missing tesseract-<name> once (a marker in the state dir keeps a
+# later `down -v` from bringing the old data back). Only for the default names: an explicit
+# TESSERACT_COMPOSE_PROJECT/TESSERACT_VOLUME_PREFIX (e.g. "theone" carried over from the old
+# env file) keeps using its own volumes.
+migrate_legacy_volumes() {
+  local marker suffix legacy target image="" copied=() renamed_node=""
+  marker="$(state_dir)/legacy-volumes.${volume_prefix}.migrated"
+  [[ ! -e "${marker}" ]] || return 0
+  for suffix in ${LEGACY_VOLUME_SUFFIXES}; do
+    legacy="${LEGACY_PROJECT}-${suffix}"
+    target="${volume_prefix}-${suffix}"
+    ! docker volume inspect "${target}" > /dev/null 2>&1 || continue
+    docker volume inspect "${legacy}" > /dev/null 2>&1 || continue
+    [[ -n "${image}" ]] || image="$(copy_image)"
+    info "copying volume ${legacy} to ${target} with ${image} (${legacy} is kept)"
+    docker volume create --label "com.docker.compose.project=${project}" \
+      --label "com.docker.compose.volume=tesseract-${suffix}" "${target}" > /dev/null \
+      || die "could not create volume ${target}"
+    if ! docker run --rm --network none --user 0:0 --entrypoint /bin/sh \
+      -v "${legacy}:/from:ro" -v "${target}:/to" "${image}" -c 'cp -a /from/. /to/'; then
+      docker volume rm "${target}" > /dev/null 2>&1 || true
+      die "copying ${legacy} to ${target} failed (${target} removed again, ${legacy} untouched)"
+    fi
+    copied+=("${legacy}")
+    [[ "${suffix}" != tailscale ]] || renamed_node=1
+  done
+  mkdir -p "${marker%/*}"
+  : > "${marker}"
+  ((${#copied[@]} > 0)) || return 0
+  if [[ -n "${renamed_node}" && -z "$(config_value TESSERACT_HOSTNAME)" ]]; then
+    info "the tailnet node keeps its identity but is now named tesseract-sandbox; set TESSERACT_HOSTNAME=theone-sandbox to keep the old URL, or re-pair the phone (sandbox pair)"
+  fi
+  info "once the new stack works, the old volumes can be removed with: docker volume rm ${copied[*]}"
+}
+
+# An image built before the rename serves until the next build.
+tag_legacy_image() {
+  local image
+  image="$(config_value TESSERACT_IMAGE)"
+  [[ "${image:-tesseract/sandbox:latest}" == tesseract/sandbox:latest ]] || return 0
+  ! docker image inspect tesseract/sandbox:latest > /dev/null 2>&1 || return 0
+  docker image inspect theone/sandbox:latest > /dev/null 2>&1 || return 0
+  info "tagging the existing theone/sandbox:latest image as tesseract/sandbox:latest"
+  docker tag theone/sandbox:latest tesseract/sandbox:latest || die "docker tag failed"
+}
+
+migrate_legacy_stack() {
+  [[ -z "${TESSERACT_SKIP_LEGACY_MIGRATION:-}" ]] || return 0
+  [[ "${project}" == "${DEFAULT_PROJECT}" ]] || return 0
+  tag_legacy_image
+  stop_legacy_project
+  [[ "${volume_prefix}" == "${DEFAULT_PROJECT}" ]] || return 0
+  migrate_legacy_volumes
 }
 
 compose() {
@@ -371,6 +560,11 @@ check_tailscale_config() {
   [[ "${mode}" == tailscale ]] || return 0
   [[ -n "$(config_value TS_TAILNET_DOMAIN)" ]] \
     || die "TS_TAILNET_DOMAIN is required in tailscale mode (e.g. tail1234.ts.net, see infra/compose/.env.example)"
+}
+
+# After migrate_legacy_stack: a copied tailscale volume already holds the node state.
+check_tailscale_authkey() {
+  [[ "${mode}" == tailscale ]] || return 0
   if [[ -z "$(config_value TS_AUTHKEY)" ]] \
     && ! docker volume inspect "${volume_prefix}-tailscale" > /dev/null 2>&1; then
     die "TS_AUTHKEY is required for the first start in tailscale mode (see infra/compose/.env.example)"
@@ -380,7 +574,7 @@ check_tailscale_config() {
 check_tailscale_api() {
   [[ -n "${tailscale_api}" && "${mode}" != tailscale ]] || return 0
   [[ -S "${host_socket_dir}/tailscaled.sock" ]] \
-    || die "--tailscale-api: no tailscaled socket at ${host_socket_dir}/tailscaled.sock (set THEONE_TAILSCALE_HOST_SOCKET_DIR)"
+    || die "--tailscale-api: no tailscaled socket at ${host_socket_dir}/tailscaled.sock (set TESSERACT_TAILSCALE_HOST_SOCKET_DIR)"
 }
 
 # The SDK's binaries (aapt2, NDK toolchains, cmake) run inside the Linux x86_64 sandbox, so a
@@ -388,13 +582,13 @@ check_tailscale_api() {
 check_host_android() {
   if [[ -n "${host_android_sdk}" ]]; then
     [[ "$(uname -s)" == Linux && "$(uname -m)" == x86_64 ]] \
-      || die "THEONE_HOST_ANDROID_SDK needs a Linux x86_64 host (its SDK binaries run in the sandbox)"
+      || die "TESSERACT_HOST_ANDROID_SDK needs a Linux x86_64 host (its SDK binaries run in the sandbox)"
     [[ -d "${host_android_sdk}/platform-tools" && -d "${host_android_sdk}/platforms" ]] \
-      || die "THEONE_HOST_ANDROID_SDK=${host_android_sdk} is not an Android SDK (no platform-tools/ or platforms/)"
+      || die "TESSERACT_HOST_ANDROID_SDK=${host_android_sdk} is not an Android SDK (no platform-tools/ or platforms/)"
   fi
   if [[ -n "${host_gradle_cache}" ]]; then
     [[ -d "${host_gradle_cache}/modules-2" ]] \
-      || die "THEONE_HOST_GRADLE_CACHE=${host_gradle_cache} has no modules-2/ (use the caches/ directory of the host's Gradle user home)"
+      || die "TESSERACT_HOST_GRADLE_CACHE=${host_gradle_cache} has no modules-2/ (use the caches/ directory of the host's Gradle user home)"
   fi
 }
 
@@ -403,16 +597,18 @@ cmd_up() {
   check_tailscale_config
   check_tailscale_api
   check_host_android
+  migrate_legacy_stack
+  check_tailscale_authkey
   compose up --detach "$@"
   if [[ -n "${tailscale_api}" ]]; then
     info "tailscale LocalAPI shared with the sandbox (root in the sandbox can reconfigure that tailscaled)"
   fi
   case "${mode}" in
     tailscale)
-      hostname="$(config_value THEONE_HOSTNAME)"
-      info "controller: https://${hostname:-theone-sandbox}.$(config_value TS_TAILNET_DOMAIN)  VNC: ${hostname:-theone-sandbox}:5901"
+      hostname="$(config_value TESSERACT_HOSTNAME)"
+      info "controller: https://${hostname:-tesseract-sandbox}.$(config_value TS_TAILNET_DOMAIN)  VNC: ${hostname:-tesseract-sandbox}:5901"
       ;;
-    *) info "controller: http://${THEONE_BIND_ADDR}:${controller_port}  VNC: ${THEONE_BIND_ADDR}:${vnc_port}" ;;
+    *) info "controller: http://${TESSERACT_BIND_ADDR}:${controller_port}  VNC: ${TESSERACT_BIND_ADDR}:${vnc_port}" ;;
   esac
   info "pair the mobile app with: sandbox pair"
 }
@@ -439,14 +635,14 @@ cmd_build() {
   if [[ "${target}" == sandbox ]]; then
     compose build ${args[@]+"${args[@]}"} "${SERVICE}"
   else
-    docker build -f "${DOCKERFILE}" --target "${target}" -t "theone/sandbox:${target}" ${args[@]+"${args[@]}"} "${REPO_ROOT}"
+    docker build -f "${DOCKERFILE}" --target "${target}" -t "tesseract/sandbox:${target}" ${args[@]+"${args[@]}"} "${REPO_ROOT}"
   fi
 }
 
 cmd_status() {
   compose ps
   if [[ -n "$(compose ps --status running --quiet "${SERVICE}" 2> /dev/null)" ]]; then
-    compose exec -T -u dev "${SERVICE}" theone-controller status
+    compose exec -T -u dev "${SERVICE}" tesseract-controller status
   fi
 }
 
@@ -465,6 +661,8 @@ main() {
   esac
 
   command -v docker > /dev/null 2>&1 || die "docker is not installed"
+  migrate_env_file
+  import_legacy_environment
   resolve_stack
   resolve_mode "${command}"
   resolve_claude_accounts
@@ -480,12 +678,12 @@ main() {
       ;;
     pair)
       require_running
-      compose exec -u dev "${SERVICE}" theone-controller pair "$@"
+      compose exec -u dev "${SERVICE}" tesseract-controller pair "$@"
       ;;
     status) cmd_status ;;
     doctor)
       require_running
-      compose exec -u dev "${SERVICE}" theone-doctor "$@"
+      compose exec -u dev "${SERVICE}" tesseract-doctor "$@"
       ;;
     build) cmd_build "$@" ;;
     ps) compose ps "$@" ;;

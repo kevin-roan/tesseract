@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 
 import { describeError } from "../utils/errors";
 import { useStartAgentRun } from "./use-sandbox-mutations";

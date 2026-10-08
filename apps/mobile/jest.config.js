@@ -10,7 +10,7 @@ module.exports = {
   moduleNameMapper: {
     "\\.css$": "<rootDir>/tests/mocks/style-mock.js",
     "^@/assets/(.*)$": "<rootDir>/assets/$1",
-    "^@/modules/theone-island$": "<rootDir>/tests/mocks/theone-island.ts",
+    "^@/modules/tesseract-island$": "<rootDir>/tests/mocks/tesseract-island.ts",
     "^@/modules/(.*)$": "<rootDir>/modules/$1",
     "^@/(.*)$": "<rootDir>/src/$1",
     "^expo-secure-store$": "<rootDir>/tests/mocks/expo-secure-store.ts",

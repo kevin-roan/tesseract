@@ -23,7 +23,7 @@ import {
 let tmp: string;
 
 beforeEach(async () => {
-  tmp = await mkdtemp(join(tmpdir(), "monolith-test-attachments-"));
+  tmp = await mkdtemp(join(tmpdir(), "tesseract-test-attachments-"));
 });
 
 afterEach(async () => {

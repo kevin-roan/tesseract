@@ -1,4 +1,4 @@
-import type { DisplayWindow } from "@theone/protocol";
+import type { DisplayWindow } from "@tesseract/protocol";
 
 import { windowDetail, windowTitle } from "@/features/sandbox/utils/windows";
 

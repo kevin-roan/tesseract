@@ -5,13 +5,13 @@ import { appleScriptString, macInstallScript, pathContains, planCliInstall, type
 const linux: CliEnvironment = {
   platform: "linux",
   packaged: true,
-  resourcesPath: "/opt/Monolith/resources",
+  resourcesPath: "/opt/Tesseract/resources",
   home: "/home/u",
   pathEnv: "/usr/bin:/home/u/.local/bin",
   appImage: false,
   inApplicationsFolder: true,
 };
-const mac: CliEnvironment = { ...linux, platform: "darwin", resourcesPath: "/Applications/Monolith.app/Contents/Resources", home: "/Users/u" };
+const mac: CliEnvironment = { ...linux, platform: "darwin", resourcesPath: "/Applications/Tesseract.app/Contents/Resources", home: "/Users/u" };
 
 function probe(links: Record<string, string> = {}, sizes: Record<string, number> = {}): CliProbe {
   return {
@@ -31,7 +31,7 @@ describe("planCliInstall", () => {
   });
 
   it("reports the deb's /usr/bin link as installed", () => {
-    const plan = planCliInstall(linux, probe({ "/usr/bin/tesseract": "/opt/Monolith/resources/bin/tesseract" }));
+    const plan = planCliInstall(linux, probe({ "/usr/bin/tesseract": "/opt/Tesseract/resources/bin/tesseract" }));
     expect(plan.status).toMatchObject({ state: "installed", linkPath: "/usr/bin/tesseract" });
   });
 
@@ -50,19 +50,26 @@ describe("planCliInstall", () => {
     expect(plan).toMatchObject({ method: null, status: { state: "conflict" } });
   });
 
+  it("replaces links left by the Monolith app", () => {
+    const fromDeb = planCliInstall(linux, probe({ "/home/u/.local/bin/tesseract": "/home/u/.local/share/monolith/bin/tesseract" }));
+    expect(fromDeb).toMatchObject({ method: "symlink", status: { state: "missing" } });
+    const fromMac = planCliInstall(mac, probe({ "/usr/local/bin/tesseract": "/Applications/Monolith.app/Contents/Resources/bin/tesseract" }));
+    expect(fromMac).toMatchObject({ method: "admin-symlink", status: { state: "missing" } });
+  });
+
   it("copies the binary out of an AppImage mount and detects outdated copies", () => {
-    const appImage = { ...linux, appImage: true, resourcesPath: "/tmp/.mount_Monolith/resources" };
-    const copy = "/home/u/.local/share/monolith/bin/tesseract";
+    const appImage = { ...linux, appImage: true, resourcesPath: "/tmp/.mount_Tesseract/resources" };
+    const copy = "/home/u/.local/share/tesseract/bin/tesseract";
     expect(planCliInstall(appImage, probe())).toMatchObject({ method: "copy", copyPath: copy, status: { state: "missing" } });
     const links = { "/home/u/.local/bin/tesseract": copy };
-    const binary = "/tmp/.mount_Monolith/resources/bin/tesseract";
+    const binary = "/tmp/.mount_Tesseract/resources/bin/tesseract";
     expect(planCliInstall(appImage, probe(links, { [copy]: 10, [binary]: 10 })).status.state).toBe("installed");
     expect(planCliInstall(appImage, probe(links, { [copy]: 9, [binary]: 10 })).status).toMatchObject({ state: "missing", message: CLI_INSTALL_LABELS.outdated });
   });
 
   it("uses an admin prompt for /usr/local/bin on macOS", () => {
     expect(planCliInstall(mac, probe())).toMatchObject({ method: "admin-symlink", status: { state: "missing", linkPath: "/usr/local/bin/tesseract" } });
-    const installed = probe({ "/usr/local/bin/tesseract": "/Applications/Monolith.app/Contents/Resources/bin/tesseract" });
+    const installed = probe({ "/usr/local/bin/tesseract": "/Applications/Tesseract.app/Contents/Resources/bin/tesseract" });
     expect(planCliInstall(mac, installed).status.state).toBe("installed");
   });
 
@@ -71,8 +78,8 @@ describe("planCliInstall", () => {
   });
 
   it("checks PATH on Windows", () => {
-    const win: CliEnvironment = { ...linux, platform: "win32", resourcesPath: "C:\\Users\\u\\AppData\\Local\\Programs\\Monolith\\resources" };
-    expect(planCliInstall({ ...win, pathEnv: "C:\\Windows;c:\\users\\u\\appdata\\local\\programs\\monolith\\resources\\bin\\" }, probe()).status.state).toBe("installed");
+    const win: CliEnvironment = { ...linux, platform: "win32", resourcesPath: "C:\\Users\\u\\AppData\\Local\\Programs\\Tesseract\\resources" };
+    expect(planCliInstall({ ...win, pathEnv: "C:\\Windows;c:\\users\\u\\appdata\\local\\programs\\tesseract\\resources\\bin\\" }, probe()).status.state).toBe("installed");
     expect(planCliInstall({ ...win, pathEnv: "C:\\Windows" }, probe()).status).toMatchObject({ state: "unsupported", message: CLI_INSTALL_LABELS.windowsMissing });
   });
 });

@@ -1,24 +1,24 @@
-export const APP_ID = "dev.monolith.Desktop";
-export const APP_NAME = "Monolith";
-export const DEEP_LINK_SCHEME = "monolith";
+export const APP_ID = "dev.tesseract.Desktop";
+export const APP_NAME = "Tesseract";
+export const DEEP_LINK_SCHEME = "tesseract";
 export const CLI_NAME = "tesseract";
 
 export const RENDERER_DEV_HOST = "127.0.0.1";
 export const RENDERER_DEV_PORT = 4545;
 
 export const ENV = {
-  fixtures: "MONOLITH_FIXTURES",
-  snapshot: "MONOLITH_SNAPSHOT",
-  config: "MONOLITH_DESKTOP_CONFIG",
-  stateDir: "MONOLITH_STATE_DIR",
-  userData: "MONOLITH_USER_DATA",
-  log: "MONOLITH_DESKTOP_LOG",
+  fixtures: "TESSERACT_FIXTURES",
+  snapshot: "TESSERACT_SNAPSHOT",
+  config: "TESSERACT_DESKTOP_CONFIG",
+  stateDir: "TESSERACT_STATE_DIR",
+  userData: "TESSERACT_USER_DATA",
+  log: "TESSERACT_DESKTOP_LOG",
   rendererUrl: "ELECTRON_RENDERER_URL",
-  controllerCommand: "MONOLITH_CONTROLLER_COMMAND",
+  controllerCommand: "TESSERACT_CONTROLLER_COMMAND",
 } as const;
 
-export const RUNTIME_ARG = "--monolith-runtime=";
-export const SNAPSHOT_ARG = "--monolith-snapshot=";
+export const RUNTIME_ARG = "--tesseract-runtime=";
+export const SNAPSHOT_ARG = "--tesseract-snapshot=";
 
 export type Platform = "linux" | "darwin" | "win32";
 export type Appearance = "system" | "light" | "dark";

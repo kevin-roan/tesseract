@@ -1,4 +1,4 @@
-import { sampleAgentRun, sampleProcess, sampleTerminal, sampleUsageReport } from "@theone/protocol/fixtures";
+import { sampleAgentRun, sampleProcess, sampleTerminal, sampleUsageReport } from "@tesseract/protocol/fixtures";
 
 import { homeStats } from "@/features/home/utils/stats";
 import { cachedPercent, formatCount, formatTokens, splitCells, tokenSplit } from "@/features/home/utils/tokens";

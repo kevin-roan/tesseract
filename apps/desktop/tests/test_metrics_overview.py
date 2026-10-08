@@ -1,5 +1,5 @@
-from monolith_desktop.pages.overview import model
-from monolith_desktop.services.metrics import Sample
+from tesseract_desktop.pages.overview import model
+from tesseract_desktop.services.metrics import Sample
 
 
 def sample(t: float, load1: float, gap: bool = False) -> Sample:

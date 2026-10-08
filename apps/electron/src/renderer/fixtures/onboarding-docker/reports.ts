@@ -158,7 +158,7 @@ export const SCENARIO_LOGS: Record<string, string[]> = {
   [DOCKER_SCENARIOS.installing]: [
     "Downloading https://get.docker.com",
     "sha256 3b1f0c6e4f2d9a7c5e8b1d2f4a6c8e0b2d4f6a8c0e2b4d6f8a0c2e4b6d8f0a2c  get-docker.sh",
-    "$ pkexec sh /home/dev/.config/Monolith/downloads/get-docker.sh",
+    "$ pkexec sh /home/dev/.config/Tesseract/downloads/get-docker.sh",
     "# Executing docker install script, commit: 4c94a56999e10efcf48c5b8e3f6afea464f9108e",
   ],
   [DOCKER_SCENARIOS.starting]: ["$ pkexec systemctl start docker.service", "Waiting for the engine (7s)"],

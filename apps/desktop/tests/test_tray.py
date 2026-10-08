@@ -7,10 +7,10 @@ gi = pytest.importorskip("gi")
 gi.require_version("Gio", "2.0")
 from gi.repository import Gio, GLib  # noqa: E402
 
-from monolith_desktop import APP_ID  # noqa: E402
-from monolith_desktop.store import ConnectionState  # noqa: E402
-from monolith_desktop.tray import tooltip  # noqa: E402
-from monolith_desktop.tray.sni import (  # noqa: E402
+from tesseract_desktop import APP_ID  # noqa: E402
+from tesseract_desktop.store import ConnectionState  # noqa: E402
+from tesseract_desktop.tray import tooltip  # noqa: E402
+from tesseract_desktop.tray.sni import (  # noqa: E402
     ITEM_PATH,
     MENU_PATH,
     WATCHER_NAME,
@@ -57,7 +57,7 @@ def test_icon_pixmaps_are_argb_in_network_order(tmp_path):
 
 
 def test_tooltip_shows_the_connection_status():
-    assert tooltip(ConnectionState(status="online")) == "Monolith · Online"
+    assert tooltip(ConnectionState(status="online")) == "Tesseract · Online"
 
 
 def connect(address):
@@ -138,9 +138,9 @@ def test_registers_with_the_watcher_and_serves_icon_and_menu(buses):
         assert spin(lambda: clicked and toggled)
         assert clicked == ["quit"]
 
-        item.set_tooltip("Monolith · Online")
+        item.set_tooltip("Tesseract · Online")
         tip = call(panel, item.bus_name, ITEM_PATH, "org.freedesktop.DBus.Properties", "Get", GLib.Variant("(ss)", ("org.kde.StatusNotifierItem", "ToolTip")), "(v)")[0]
-        assert tip[2:] == ("Monolith", "Monolith · Online")
+        assert tip[2:] == ("Tesseract", "Tesseract · Online")
     finally:
         item.stop()
 

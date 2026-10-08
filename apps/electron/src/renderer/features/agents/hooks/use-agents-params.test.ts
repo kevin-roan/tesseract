@@ -12,9 +12,9 @@ describe("agents navigation params", () => {
 
   it("opens the new view and starts immediately with send", () => {
     const start = vi.fn();
-    applyAgentsParams({ prompt: "Fix it", send: true, projectId: "monolith", attachmentIds: ["upl_1"] }, start);
-    expect(useAgentsUi.getState()).toMatchObject({ view: "new", draft: { prompt: "Fix it", projectId: "monolith" } });
-    expect(start).toHaveBeenCalledWith({ prompt: "Fix it", projectId: "monolith", attachmentIds: ["upl_1"] });
+    applyAgentsParams({ prompt: "Fix it", send: true, projectId: "tesseract", attachmentIds: ["upl_1"] }, start);
+    expect(useAgentsUi.getState()).toMatchObject({ view: "new", draft: { prompt: "Fix it", projectId: "tesseract" } });
+    expect(start).toHaveBeenCalledWith({ prompt: "Fix it", projectId: "tesseract", attachmentIds: ["upl_1"] });
   });
 
   it("recognises one-shot send params", () => {
@@ -26,8 +26,8 @@ describe("agents navigation params", () => {
 
   it("prefills the new view without sending", () => {
     const start = vi.fn();
-    applyAgentsParams({ projectId: "monolith" }, start);
-    expect(useAgentsUi.getState()).toMatchObject({ view: "new", draft: { prompt: "", projectId: "monolith" } });
+    applyAgentsParams({ projectId: "tesseract" }, start);
+    expect(useAgentsUi.getState()).toMatchObject({ view: "new", draft: { prompt: "", projectId: "tesseract" } });
     expect(start).not.toHaveBeenCalled();
   });
 

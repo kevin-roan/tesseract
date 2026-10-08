@@ -1,4 +1,4 @@
-# Electron app conventions (`apps/electron`, package `@monolith/electron`)
+# Electron app conventions (`apps/electron`, package `@tesseract/electron`)
 
 Read this before you touch `apps/electron`. It is the contract between the ~35 agents that build the app in
 parallel. The specs in `docs/electron/spec/` say *what* to build; this file says *where* and *how*. When a spec
@@ -18,7 +18,7 @@ and `AGENTS.md` (never start/stop the Expo server on 8081, the user's sandbox, o
 | Renderer dev server | `http://127.0.0.1:4545`, `strictPort` (dev **and** preview). Never use Electron/Vite default ports |
 | UI | React 19.2.3 (pinned to the mobile app's version, do not bump), react-router 7 (hash router), @tanstack/react-query 5, zustand 5, motion 14 (`motion/react`), lucide-react **1.52.0** (pinned, matches the GTK glyphs) |
 | Rich widgets | @xterm/xterm 6 + addon-fit / web-links / unicode11, @novnc/novnc 1.7, qrcode, react-markdown + remark-gfm |
-| Node side | yaml, tar, semver, yauzl (zip with modes + symlinks), zod 4, `@theone/protocol`, `@theone/client` |
+| Node side | yaml, tar, semver, yauzl (zip with modes + symlinks), zod 4, `@tesseract/protocol`, `@tesseract/client` |
 | Tests | vitest 5 (node + happy-dom projects), @testing-library/react, Playwright 1.63 (`_electron`) |
 | Packaging | electron-builder 26 + electron-updater 6; `bun build --compile` for the CLI |
 
@@ -40,7 +40,7 @@ Everything is a **devDependency** and is bundled by Vite; `dependencies` stays e
 | `bun run diff -- a.png b.png [--out diff.png] [--threshold 0.1] [--max <percent>]` | pixelmatch; prints `mismatch: X.XX% (n of N pixels)`; exit 1 only when `--max` is exceeded |
 | `bun run build` | electron-vite build into `out/` |
 | `bun run dev` | electron-vite dev (renderer on 4545). Only when you need a live window; prefer snapshots |
-| `bun run cli:build [-- --target linux-x64,mac-arm64 \| --all] [--no-controller]` | `dist-cli/<os>-<arch>/{tesseract,theone-controller}` (`os` = `linux`/`mac`/`win`) |
+| `bun run cli:build [-- --target linux-x64,mac-arm64 \| --all] [--no-controller]` | `dist-cli/<os>-<arch>/{tesseract,tesseract-controller}` (`os` = `linux`/`mac`/`win`) |
 | `bun run bundle:sandbox` | `build/sandbox-context/` (git-tracked build context + `manifest.json` + `build-weights.json`) |
 | `bun run dist [-- --platform linux\|mac\|win] [--dir]` | build + cli:build + bundle:sandbox + electron-builder (mac dmg universal, win nsis, linux AppImage + deb) |
 
@@ -131,9 +131,9 @@ export type DockerContract = DefineContract<{
 - Arguments and results must be structured-clonable: plain objects, arrays, strings, numbers, booleans, `null`.
   No classes, functions, `Date` (use ISO strings or epoch ms), `Map`/`Set` (use records/arrays), `undefined`
   in arrays. Binary data travels as base64 strings.
-- Channels: invoke `monolith:<service>:<method>`, event `monolith:<service>:event:<event>`. Never hand-write
+- Channels: invoke `tesseract:<service>:<method>`, event `tesseract:<service>:event:<event>`. Never hand-write
   channel strings; use `invokeChannel`/`eventChannel`.
-- Types shared with the controller come from `@theone/protocol` (`import type`). Do not redeclare them.
+- Types shared with the controller come from `@tesseract/protocol` (`import type`). Do not redeclare them.
 - Adding a method: add it to the contract, then implement it in `src/main/ipc/<service>.ts` (typecheck forces the
   handler map to be complete), then add a fixture if the renderer calls it in fixture mode.
 - Adding a whole new service: report it; only the foundation edits `IpcContract`/`SERVICE_NAMES`.
@@ -190,7 +190,7 @@ Wrap calls in hooks (react-query `useQuery`/`useMutation`, or a zustand store fe
 | `window` | state, minimize, toggleMaximize, close, setFullscreen, zoom(-1\|0\|1), openOnboarding(step?), openMain | `state` (maximized, fullscreen, focused, visible, zoom, systemDark) |
 | `tray` | state, setStatus(label) | `state` |
 | `updates` | state, check, download, install | `state` |
-| `http` | request(id, req) → base64 body, abort(id) — the renderer's `@theone/client` fetch goes through this (`net.fetch`, no CORS) | — |
+| `http` | request(id, req) → base64 body, abort(id) — the renderer's `@tesseract/client` fetch goes through this (`net.fetch`, no CORS) | — |
 | `connection` | load, save, forget (config.json read-modify-write), discover (docker discovery) | `changed` |
 | `docker` | check, phase, install, start, cancel, log | `report`, `phase`, `log` |
 | `sandbox` | defaults, validate, save (env file), stack, existing, build(mode), cancel, phase, up, down, status, logs, pairing | `phase`, `status`, `log` |
@@ -226,7 +226,7 @@ The `onboarding` controller composes `src/core/{docker,sandbox,android,claude}`;
 - Stubs throw `NotImplementedError("<service>.<method>")`; replace them, keep the exported signatures (other units
   call them). Changing a signature that another unit uses = report it.
 - Unit tests next to the code: `src/core/<service>/*.test.ts` (vitest, node env). Use temp dirs prefixed
-  `monolith-test-`.
+  `tesseract-test-`.
 
 ---
 
@@ -248,7 +248,7 @@ Query flags usable on any route: `?fixtures` (fixture mode in a plain browser), 
   `usePageParams()` (`{ params, at }`; `at` changes on every navigation, so re-run `open(params)` on it).
   Sub-views use the splat (`#/projects/<projectId>`) and `useParams()`.
 - `usePreferencesRoute()` → `{ open, section, openPreferences(id?), closePreferences() }`.
-- App commands from main (`tray`, deep links `monolith://<page>?…`, notifications) are handled by
+- App commands from main (`tray`, deep links `tesseract://<page>?…`, notifications) are handled by
   `useAppCommands()` in the shell; extra handlers: `registerCommandHandler(fn)` (return `true` when handled).
 - Page header: `usePageHeader({ parent, title, actions })` from `shell/` sets the breadcrumb and the header widgets.
 
@@ -270,7 +270,7 @@ footer buttons with `<OnboardingFooter start={…} end={…} />` (portal into th
 ### 6.3 Data layer
 
 - `useConnectionSnapshot()` (config from `connection.load`, kept fresh by `connection:changed`),
-  `useApiClient()` → a cached `TheOneClient` (fetch through IPC, or fixtures), `useApiQuery(key, (client, signal) =>
+  `useApiClient()` → a cached `TesseractClient` (fetch through IPC, or fixtures), `useApiQuery(key, (client, signal) =>
   client.listProjects({ signal }), options)` (key is namespaced by base URL).
 - The connection state machine, workspace store, polling (`usePoller`), event stream and formatting helpers
   (services-data.md §4–§10) belong to `features/connection`, `features/workspace`, `lib`-style modules inside
@@ -282,18 +282,18 @@ footer buttons with `<OnboardingFooter start={…} end={…} />` (portal into th
 
 ### 6.4 Fixture mode
 
-On when `MONOLITH_FIXTURES=1` (main passes it to the renderer), when the URL has `?fixtures`, in snapshots, in
+On when `TESSERACT_FIXTURES=1` (main passes it to the renderer), when the URL has `?fixtures`, in snapshots, in
 vitest, and always in a plain browser (no preload bridge).
 
-- HTTP: `@theone/client` uses `fixtureFetch`, which matches `{ method, path, respond }` routes. `path` is a
-  `routePatterns.rest.*` string from `@theone/protocol` (`:id` segments become `params`), or a RegExp. Return a
+- HTTP: `@tesseract/client` uses `fixtureFetch`, which matches `{ method, path, respond }` routes. `path` is a
+  `routePatterns.rest.*` string from `@tesseract/protocol` (`:id` segments become `params`), or a RegExp. Return a
   value (200 JSON), `undefined` (204), or `reply(status, body)`. Unmatched → 404 `{error:{code:"not_found"}}`.
 - WebSockets: `FixtureSocket` opens immediately and sends the frames of the matching socket fixture
   (`/v1/events` sends `hello`).
 - IPC: fixture methods replace the real bridge per method; methods without a fixture fall through to the bridge
   (so window controls still work in Electron), or reject with `unavailable` in a browser.
 - Order: `fixtures/<area>/` beats `fixtures/base/`. `base/` holds the shared world (projects `streaxfit`
-  (confidential), `monolith`, `hybrid-pos`, `sante-production`, sandbox `theone-sandbox`). Put page data in
+  (confidential), `tesseract`, `hybrid-pos`, `sante-production`, sandbox `tesseract-sandbox`). Put page data in
   `fixtures/<page>/`, never edit `base/` (report additions instead).
 - States: read `currentScenario()` / `isScenario("offline")` inside `respond` to switch data, then snapshot
   `--route "/overview?scenario=offline"`. Document your scenario names at the top of your `fixtures/<area>/http.ts`
@@ -303,7 +303,7 @@ vitest, and always in a plain browser (no preload bridge).
 
 ### 6.5 Idle
 
-Snapshots wait for `window.__monolithIdle()`: fonts loaded, no react-query fetch/mutation, no finite running
+Snapshots wait for `window.__tesseractIdle()`: fonts loaded, no react-query fetch/mutation, no finite running
 animation for 300 ms, then two frames. Do not start finite animations in a loop; infinite ones (spinner, pulse,
 shimmer) are ignored. Snapshot windows run with reduced motion, so entry animations are skipped.
 
@@ -389,7 +389,7 @@ Reuse before you build: a page that needs a variant asks the component owner (op
 ## 10. Snapshot and diff workflow
 
 1. Add fixtures for the state you want (`fixtures/<area>/`, optional `?scenario=`).
-2. `bun run snapshot -- --route /projects/monolith --out .snapshots/projects-detail.png` (dark) and `--light`.
+2. `bun run snapshot -- --route /projects/tesseract --out .snapshots/projects-detail.png` (dark) and `--light`.
    Default size 1024×768 = the reference captures. Wizard: `--route /onboarding/docker --width 880 --height 620`.
    Single component: `--route /gallery/status-badge`. Settings: `--route "/overview?preferences=stt"`.
 3. `bun run diff -- .snapshots/projects-detail.png docs/electron/reference/page-projects-core-detail.png --out
@@ -400,8 +400,8 @@ Reuse before you build: a page that needs a variant asks the component owner (op
 
 How it works: the script builds when `out/` is older than the sources, then starts Electron with
 `--ozone-platform=headless --ozone-override-screen-size=…` on Linux (nothing appears on screen), a temporary
-profile (`MONOLITH_USER_DATA`, `MONOLITH_DESKTOP_CONFIG`, `MONOLITH_STATE_DIR` under `$TMPDIR/monolith-test-*`),
-`MONOLITH_FIXTURES=1`, and `--monolith-snapshot=<json>`; main opens one hidden window with the exact content size,
+profile (`TESSERACT_USER_DATA`, `TESSERACT_DESKTOP_CONFIG`, `TESSERACT_STATE_DIR` under `$TMPDIR/tesseract-test-*`),
+`TESSERACT_FIXTURES=1`, and `--tesseract-snapshot=<json>`; main opens one hidden window with the exact content size,
 waits for idle, `capturePage()`s and exits. It never touches the user's config or sandbox.
 
 ## 11. Tests
@@ -410,23 +410,23 @@ waits for idle, `capturePage()`s and exits. It never touches the user's config o
 - Unit (renderer, happy-dom): `src/renderer/**/*.test.{ts,tsx}`; use `renderWithProviders`/`renderRoutes` from
   `src/renderer/test/render.tsx`. CSS modules are non-scoped in tests (class names = source names).
 - E2E: `e2e/<area>.spec.ts` with `launchApp({ config, env })` from `e2e/app.ts` (isolated profile, fixtures on,
-  headless on Linux, always `close()` in `afterEach`). Pass `env: { MONOLITH_FIXTURES: "0" }` for real-service
-  tests. Docker resources in tests: compose project/containers/volumes/images prefixed `monolith-test-` (or the
-  e2e harness's `theone-e2e`), removed afterwards. Never stop or mutate the user's `theone` stack or the daemon on
-  7701; e2e host-shell runs use `THEONE_HOST_SHELL_PORT=<free>`, `THEONE_HOST_SHELL_DIR=<tmp>`,
+  headless on Linux, always `close()` in `afterEach`). Pass `env: { TESSERACT_FIXTURES: "0" }` for real-service
+  tests. Docker resources in tests: compose project/containers/volumes/images prefixed `tesseract-test-` (or the
+  e2e harness's `tesseract-e2e`), removed afterwards. Never stop or mutate the user's `tesseract` stack or the daemon on
+  7701; e2e host-shell runs use `TESSERACT_HOST_SHELL_PORT=<free>`, `TESSERACT_HOST_SHELL_DIR=<tmp>`,
   `--bind 127.0.0.1`.
 - Everything in `bun run test` must pass with no display and no Docker.
 
 ## 12. Main process notes
 
 - Startup (`src/main/index.ts`): PATH fix (`applyPathFix`), single-instance lock (skipped when
-  `MONOLITH_SNAPSHOT=1` or in snapshot mode), `monolith://` protocol, config migration, settings, IPC registry,
+  `TESSERACT_SNAPSHOT=1` or in snapshot mode), `tesseract://` protocol, config migration, settings, IPC registry,
   then the first-run decision (`decideFirstRun` in `src/core/onboarding`: completed or configured → main window,
   else Docker discovery with a 2.5 s timeout (`adoptDiscoveredSandbox` in `src/main/services/commands.ts`: a healthy
   sandbox is saved as the connection and `completeOnboardingFromDiscovery` marks onboarding complete, onboarding.md
-  §3.4; `MONOLITH_DISABLE_DISCOVERY=1` turns it off), else the wizard window at the saved step). Then sandbox autostart
+  §3.4; `TESSERACT_DISABLE_DISCOVERY=1` turns it off), else the wizard window at the saved step). Then sandbox autostart
   (`src/main/services/autostart.ts` over `src/core/sandbox/autostart.ts`; also with `--hidden`): `compose up -d` for a
-  Monolith-created stack when `sandboxAutostart` is on and it is stopped; Docker unreachable → one notification. On a
+  Tesseract-created stack when `sandboxAutostart` is on and it is stopped; Docker unreachable → one notification. On a
   packaged Linux AppImage it also refreshes the CLI sidecar (`src/main/services/cli-sidecar.ts`, §13). Flags:
   `--hidden`, `--page <id>`, `--quit`, `--debug`.
 - Windows (`src/main/windows/manager.ts`): main 1240×800 (min 360×480), wizard 880×620 (min 760×560), frameless;
@@ -436,20 +436,20 @@ waits for idle, `capturePage()`s and exits. It never touches the user's config o
 - Electron 44 specifics: the `clipboard` module is main-only and Promise/MIME based (`ClipboardItem`) — the
   attachments unit implements `clipboardHasImage`/`pasteImage` against the 44 API; macOS notifications need a
   signed app; `net.fetch` is used for the HTTP proxy.
-- Config file: `$MONOLITH_DESKTOP_CONFIG`, else `~/.config/monolith-desktop/config.json` on Linux (shared with the
+- Config file: `$TESSERACT_DESKTOP_CONFIG`, else `~/.config/tesseract-desktop/config.json` on Linux (shared with the
   GTK app), else `<userData>/config.json`. Keys stay GTK-compatible; new Electron keys: `onboarding`,
   `sandboxStack`, `androidSdkRoot`, `androidAvd`, `sandboxAutostart`, `sandboxImageRef`.
 
 ## 13. Packaging
 
-- `extraResources`: `dist-cli/${os}-${arch}` → `resources/bin` (`tesseract`, `theone-controller`),
+- `extraResources`: `dist-cli/${os}-${arch}` → `resources/bin` (`tesseract`, `tesseract-controller`),
   `build/sandbox-context` → `resources/sandbox` (repo-relative layout; `contextDir` for compose/buildx, see
   `src/main/services/resources.ts`), icons, font licenses.
-- Linux deb: app at `/opt/Monolith`, launcher `monolith-desktop`, `/usr/bin/tesseract` symlink to
+- Linux deb: app at `/opt/Tesseract`, launcher `tesseract-desktop`, `/usr/bin/tesseract` symlink to
   `resources/bin/tesseract` (postinst, only when free or ours). AppImage: `app.installCli()` copies the CLI to
-  `~/.local/share/monolith/bin/tesseract` and links `~/.local/bin/tesseract`; on install and every AppImage launch
-  (while the copy exists) `refreshCliSidecar` writes `~/.local/share/monolith/app.json` `{appPath, sandboxDir}` and
-  syncs `resources/sandbox` to `~/.local/share/monolith/sandbox` (skipped when `.bundle-hash`, the sha256 of the
+  `~/.local/share/tesseract/bin/tesseract` and links `~/.local/bin/tesseract`; on install and every AppImage launch
+  (while the copy exists) `refreshCliSidecar` writes `~/.local/share/tesseract/app.json` `{appPath, sandboxDir}` and
+  syncs `resources/sandbox` to `~/.local/share/tesseract/sandbox` (skipped when `.bundle-hash`, the sha256 of the
   bundle's `manifest.json`, is unchanged), so the copied CLI finds the app and the sandbox context. Windows NSIS (per-user): adds `$INSTDIR\resources\bin` to the user PATH and removes it on
   uninstall. macOS: in-app "Install tesseract command" (`app.installCli()` → admin prompt, `/usr/local/bin/tesseract`).
 - The bundle manifest records the git commit and `dirty` flag; untracked files are not bundled.

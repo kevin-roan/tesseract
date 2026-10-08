@@ -1,5 +1,5 @@
-import { ApiError } from "@theone/client";
-import type { DisplayStatus } from "@theone/protocol";
+import { ApiError } from "@tesseract/client";
+import type { DisplayStatus } from "@tesseract/protocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RfbChannel, RfbCredentials, RfbLike, RfbOptions } from "./rfb-types";
 import { VncSession, type SessionDeps } from "./session";
@@ -126,8 +126,8 @@ describe("VncSession", () => {
     expect(opened).toEqual(["t1"]);
     expect(rfb.options).toEqual({ wsProtocols: ["binary"], shared: true });
     expect(rfb).toMatchObject({ scaleViewport: true, clipViewport: false, resizeSession: false, showDotCursor: false, compressionLevel: 1, qualityLevel: 9 });
-    rfb.serverInit(1600, 900, "TheOne theone-sandbox");
-    expect(session.state).toMatchObject({ phase: "connected", width: 1600, height: 900, name: "TheOne theone-sandbox", attempt: 0, error: null });
+    rfb.serverInit(1600, 900, "Tesseract tesseract-sandbox");
+    expect(session.state).toMatchObject({ phase: "connected", width: 1600, height: 900, name: "Tesseract tesseract-sandbox", attempt: 0, error: null });
   });
 
   it("sends the status password on credentialsrequired", async () => {

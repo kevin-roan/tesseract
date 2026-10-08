@@ -1,4 +1,4 @@
-import { LOG_LEVELS } from "@theone/protocol";
+import { LOG_LEVELS } from "@tesseract/protocol";
 import { errorMessage } from "./errors";
 
 export type LogLevel = (typeof LOG_LEVELS)[number];

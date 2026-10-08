@@ -1,10 +1,10 @@
 import { useCallback } from "react";
-import { BuildIdSchema, ProcessIdSchema } from "@theone/protocol";
+import { BuildIdSchema, ProcessIdSchema } from "@tesseract/protocol";
 
 import { useCancelAgentRun, useCancelBuild, useStopProcess } from "@/features/sandbox/hooks/use-sandbox-mutations";
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
 
-import { takeSharedItems, type IslandAction, type SharedItem } from "@/modules/theone-island";
+import { takeSharedItems, type IslandAction, type SharedItem } from "@/modules/tesseract-island";
 
 import { useIslandStore } from "../store/island-store";
 import { seedFromSharedItems } from "../utils/shared";

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, jest, spyOn, test } from "bun:test";
 import { z } from "zod";
-import type { Ticket } from "@theone/protocol";
+import type { Ticket } from "@tesseract/protocol";
 import {
   ApiError,
   computeBackoffDelay,
@@ -9,7 +9,7 @@ import {
   NetworkError,
   ProtocolError,
   SocketSession,
-  TheOneError,
+  TesseractError,
   TimeoutError,
   type CloseInfo,
   type ConnectionState,
@@ -88,14 +88,14 @@ interface Setup {
   createTicket?: () => Promise<Ticket>;
   getWebSocket?: () => SocketConstructor | null;
   handshake?: boolean;
-  fatal?: (text: string) => TheOneError | null;
+  fatal?: (text: string) => TesseractError | null;
   onState?: (state: ConnectionState, session: SocketSession<Message, Outgoing>) => void;
   onClose?: (info: CloseInfo, session: SocketSession<Message, Outgoing>) => void;
 }
 
 function setup(config: Setup = {}) {
   const states: ConnectionState[] = [];
-  const errors: TheOneError[] = [];
+  const errors: TesseractError[] = [];
   const closes: CloseInfo[] = [];
   const messages: Message[] = [];
   let tickets = 0;
@@ -302,7 +302,7 @@ describe("SocketSession frames", () => {
   });
 
   test("a fatal frame ends the stream for good", async () => {
-    const fatal = new TheOneError("fatal");
+    const fatal = new TesseractError("fatal");
     const { session, errors } = setup({
       options: { reconnect: true },
       fatal: (text) => (text.includes("boom") ? fatal : null),

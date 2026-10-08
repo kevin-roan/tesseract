@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { buildPairingLink } from "@theone/protocol";
+import { buildPairingLink } from "@tesseract/protocol";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runCli, tempSandbox, type Sandbox } from "../testing";
 

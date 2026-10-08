@@ -11,13 +11,13 @@ describe("page bridge contract", () => {
   test("message names are unique and page-prefixed", () => {
     const names = Object.values(PAGE_MESSAGES);
     expect(new Set(names).size).toBe(names.length);
-    for (const name of names) expect(name).toMatch(/^(terminal-(state|need-ticket)|vnc-(state|need-ticket|action)|android-(state|need-ticket)|theone-[a-z-]+)$/);
-    expect(PAGE_MESSAGES.reconnect).toBe("theone-reconnect");
-    expect(PAGE_MESSAGES.inputMode).toBe("theone-input-mode");
-    expect(PAGE_MESSAGES.insets).toBe("theone-insets");
+    for (const name of names) expect(name).toMatch(/^(terminal-(state|need-ticket)|vnc-(state|need-ticket|action)|android-(state|need-ticket)|tesseract-[a-z-]+)$/);
+    expect(PAGE_MESSAGES.reconnect).toBe("tesseract-reconnect");
+    expect(PAGE_MESSAGES.inputMode).toBe("tesseract-input-mode");
+    expect(PAGE_MESSAGES.insets).toBe("tesseract-insets");
     expect(PAGE_MESSAGES.vncAction).toBe("vnc-action");
     expect(INPUT_MODES).toEqual(["trackpad", "touch"]);
-    expect(PAGE_MESSAGES.paste).toBe("theone-paste");
+    expect(PAGE_MESSAGES.paste).toBe("tesseract-paste");
     expect(VNC_ACTIONS).toEqual(["browser", "paste"]);
   });
 

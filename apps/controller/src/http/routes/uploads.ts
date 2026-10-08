@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { CreateTranscriptionSchema, CreateUploadSchema, routePatterns, UpdateSttSchema } from "@theone/protocol";
+import { CreateTranscriptionSchema, CreateUploadSchema, routePatterns, UpdateSttSchema } from "@tesseract/protocol";
 import type { Services } from "../../services";
 import { fileResponse } from "../file-response";
 import { disableIdleTimeout } from "../idle-timeout";

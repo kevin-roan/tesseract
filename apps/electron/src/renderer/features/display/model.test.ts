@@ -1,4 +1,4 @@
-import type { DisplayStatus } from "@theone/protocol";
+import type { DisplayStatus } from "@tesseract/protocol";
 import { describe, expect, it } from "vitest";
 import {
   backoffDelay,
@@ -83,8 +83,8 @@ describe("fitGeometry", () => {
 
 describe("metaText", () => {
   it("joins resolution, scale and desktop name", () => {
-    const state = session({ phase: "connected", width: 1600, height: 900, name: "TheOne theone-sandbox" });
-    expect(metaText("viewer", state, ready, 710 / 1600)).toBe("1600×900 · 44% · TheOne theone-sandbox");
+    const state = session({ phase: "connected", width: 1600, height: 900, name: "Tesseract tesseract-sandbox" });
+    expect(metaText("viewer", state, ready, 710 / 1600)).toBe("1600×900 · 44% · Tesseract tesseract-sandbox");
   });
 
   it("skips the scale while not connected and uses the status size before ServerInit", () => {
@@ -169,7 +169,7 @@ describe("backoffDelay", () => {
 
 describe("helpers", () => {
   it("names screenshots with the local timestamp", () => {
-    expect(screenshotFileName(new Date(2026, 9, 7, 9, 5, 3))).toBe("monolith-display-20261007-090503.png");
+    expect(screenshotFileName(new Date(2026, 9, 7, 9, 5, 3))).toBe("tesseract-display-20261007-090503.png");
   });
 
   it("sniffs png and svg bytes", () => {

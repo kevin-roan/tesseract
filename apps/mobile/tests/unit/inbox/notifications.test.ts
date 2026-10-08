@@ -1,6 +1,6 @@
 import { AppState } from "react-native";
 import * as Notifications from "expo-notifications";
-import { sampleInboxItem } from "@theone/protocol/fixtures";
+import { sampleInboxItem } from "@tesseract/protocol/fixtures";
 
 jest.mock("expo-notifications", () => ({
   AndroidImportance: { HIGH: 4 },

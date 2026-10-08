@@ -1,4 +1,4 @@
-import type { AppRunAction, StartAppRun } from "@theone/protocol";
+import type { AppRunAction, StartAppRun } from "@tesseract/protocol";
 
 import { useSandboxMutation } from "@/features/sandbox/hooks/use-sandbox-mutations";
 

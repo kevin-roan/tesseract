@@ -1,6 +1,6 @@
-import type { ProcessInfo, Project } from "@theone/protocol";
+import type { ProcessInfo, Project } from "@tesseract/protocol";
 import { useCallback, useState, type ChangeEvent } from "react";
-import type { TheOneClient } from "@theone/client";
+import type { TesseractClient } from "@tesseract/client";
 import { describeError } from "../../../../../app/connection";
 import { useFormState, useResetOnOpen, useSubmitAction } from "../../../../../components/FormDialog";
 import { RUN_LABELS } from "../../../../../features/projects/labels";
@@ -12,7 +12,7 @@ import { KIT_LABELS } from "../../kit";
 
 export interface RunCommandInput {
   project: Project;
-  client: TheOneClient | null;
+  client: TesseractClient | null;
   open: boolean;
   onStarted(process: ProcessInfo): void;
   onClose(): void;

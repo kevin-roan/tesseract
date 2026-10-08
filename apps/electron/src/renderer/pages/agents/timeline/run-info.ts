@@ -1,4 +1,4 @@
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 import { CONTINUES_TITLE_LIMIT } from "../../../features/agents/constants";
 import { formatRelativeTime, formatTokens, joinMeta } from "../../../features/agents/format";
 import { CONVERSATION_LABELS, formatLabel } from "../../../features/agents/labels";

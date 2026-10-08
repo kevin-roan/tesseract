@@ -7,7 +7,7 @@ import {
   type SandboxStatus,
   type StatusEvent,
   type TerminalInfo,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import { buildProfileLabel } from "./labels";
 import { capitalize, elapsedSeconds, formatBytes, formatDuration, formatRelativeTime, formatUptime, formatUsageTokens } from "./format";

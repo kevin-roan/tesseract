@@ -1,4 +1,4 @@
-import { LIMITS, PROJECT_ID_MAX_LENGTH, projectIdFromName } from "@theone/protocol";
+import { LIMITS, PROJECT_ID_MAX_LENGTH, projectIdFromName } from "@tesseract/protocol";
 
 import { PROJECTS_ROOT } from "@/features/sandbox/utils/constants";
 

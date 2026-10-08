@@ -1,4 +1,4 @@
-import type { AgentRun, BuildJob, ClaudeAccountList, GitDetails, ProcessInfo, Project } from "@theone/protocol";
+import type { AgentRun, BuildJob, ClaudeAccountList, GitDetails, ProcessInfo, Project } from "@tesseract/protocol";
 import type { SemanticColor } from "../../theme/colors";
 import { BRANCH_CHARS, PROJECTS_ICONS, PROJECT_TABS } from "./constants";
 import { CONFIDENTIAL_LABEL, GIT_LABELS, TAB_LABELS } from "./labels";

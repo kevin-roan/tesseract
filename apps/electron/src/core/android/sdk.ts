@@ -124,7 +124,7 @@ export async function describeSdk(path: string, source: SdkCandidate["source"], 
 
 export async function findSdkCandidates(paths: PathEnvironment): Promise<SdkCandidate[]> {
   const sources: [SdkCandidate["source"], string | undefined][] = [
-    ["THEONE_ANDROID_SDK_ROOT", paths.env.THEONE_ANDROID_SDK_ROOT],
+    ["TESSERACT_ANDROID_SDK_ROOT", paths.env.TESSERACT_ANDROID_SDK_ROOT],
     ["ANDROID_SDK_ROOT", paths.env.ANDROID_SDK_ROOT],
     ["ANDROID_HOME", paths.env.ANDROID_HOME],
     ["studio-default", studioSdkRoot(paths)],
@@ -140,7 +140,7 @@ export async function findSdkCandidates(paths: PathEnvironment): Promise<SdkCand
     seen.add(path);
     candidates.push(await describeSdk(path, source, paths.platform));
   }
-  candidates.push(await describeSdk(defaultRoot, "monolith-default", paths.platform));
+  candidates.push(await describeSdk(defaultRoot, "tesseract-default", paths.platform));
   return candidates;
 }
 

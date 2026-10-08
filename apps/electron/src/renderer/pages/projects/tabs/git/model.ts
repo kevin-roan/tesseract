@@ -1,4 +1,4 @@
-import type { GitCommit, GitDetails, GitFileStatus, Project } from "@theone/protocol";
+import type { GitCommit, GitDetails, GitFileStatus, Project } from "@tesseract/protocol";
 import type { Tone } from "../../../../theme/colors";
 import { formatRelativeTime, joinMeta } from "../../../../features/projects/format";
 import { SHORT_SHA_LENGTH, UNKNOWN_GIT_CODE } from "./constants";

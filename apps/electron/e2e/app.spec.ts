@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { expect, test, type Page } from "@playwright/test";
-import type { TheOneClient } from "@theone/client";
-import type { Project } from "@theone/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import type { Project } from "@tesseract/protocol";
 import { launchApp, type LaunchedApp } from "./app";
 import {
   apiClient,
@@ -43,7 +43,7 @@ const SNAPSHOT_ROUTES: readonly SnapshotRoute[] = [
   { name: "overview", route: "/overview", ready: (w) => w.getByRole("heading", { name: "Resources" }) },
   { name: "agents", route: "/agents", ready: (w) => w.getByRole("main") },
   { name: "projects", route: "/projects", ready: (w) => w.getByRole("tablist", { name: "Project filter" }) },
-  { name: "projects-detail", route: "/projects/monolith", ready: (w) => w.getByRole("tablist", { name: "Project sections" }) },
+  { name: "projects-detail", route: "/projects/tesseract", ready: (w) => w.getByRole("tablist", { name: "Project sections" }) },
   { name: "files", route: "/files", ready: (w) => w.getByRole("tablist", { name: "Files view" }) },
   { name: "terminals", route: "/terminals", ready: (w) => w.getByRole("listbox", { name: "Sessions" }) },
   { name: "display", route: "/display", ready: (w) => w.getByRole("toolbar", { name: "Display controls" }) },
@@ -61,7 +61,7 @@ async function useLightScheme(window: Page): Promise<void> {
   await expect(dialog).toBeHidden();
 }
 
-const PROCESS_COMMAND = "printf 'hello from monolith e2e\\n' > e2e-notes.txt && exec sleep 600";
+const PROCESS_COMMAND = "printf 'hello from tesseract e2e\\n' > e2e-notes.txt && exec sleep 600";
 const NOTES_FILE = "e2e-notes.txt";
 
 test.describe("visual snapshots (fixtures)", () => {
@@ -94,11 +94,11 @@ test.describe("visual snapshots (fixtures)", () => {
 
 test.describe("live controller", () => {
   const stack = liveStack();
-  test.skip(!stack, "THEONE_E2E_URL and THEONE_E2E_TOKEN are not set (run against the infra/e2e stack)");
+  test.skip(!stack, "TESSERACT_E2E_URL and TESSERACT_E2E_TOKEN are not set (run against the infra/e2e stack)");
   test.describe.configure({ mode: "serial", timeout: 120_000 });
 
   let launched: LaunchedApp;
-  let client: TheOneClient;
+  let client: TesseractClient;
   let project: Project | null = null;
   const terminalIds: string[] = [];
   const artifactIds: string[] = [];
@@ -110,7 +110,7 @@ test.describe("live controller", () => {
     assertTestStack(stack);
     client = apiClient(stack);
     await client.health();
-    launched = await launchApp({ config: connectionConfig(OFFLINE_URL, OFFLINE_TOKEN), env: { MONOLITH_FIXTURES: "0" } });
+    launched = await launchApp({ config: connectionConfig(OFFLINE_URL, OFFLINE_TOKEN), env: { TESSERACT_FIXTURES: "0" } });
   });
 
   test.afterAll(async () => {
@@ -146,7 +146,7 @@ test.describe("live controller", () => {
     await window.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
     await expect(sidebar().getByRole("button", { name: /Online/ })).toBeVisible({ timeout: LIVE_TIMEOUT_MS });
-    const saved = JSON.parse(readFileSync(launched.profile.env.MONOLITH_DESKTOP_CONFIG!, "utf8")) as Record<string, unknown>;
+    const saved = JSON.parse(readFileSync(launched.profile.env.TESSERACT_DESKTOP_CONFIG!, "utf8")) as Record<string, unknown>;
     expect(saved.url).toBe(stack!.url);
   });
 
@@ -289,7 +289,7 @@ test.describe("live controller", () => {
     await dialog.getByRole("button", { name: "Save & connect" }).click();
     await expect(window.getByText("Connection saved").first()).toBeVisible();
     await expect
-      .poll(() => (JSON.parse(readFileSync(launched.profile.env.MONOLITH_DESKTOP_CONFIG!, "utf8")) as Record<string, unknown>).name)
+      .poll(() => (JSON.parse(readFileSync(launched.profile.env.TESSERACT_DESKTOP_CONFIG!, "utf8")) as Record<string, unknown>).name)
       .toBe(renamed);
     await window.keyboard.press("Escape");
     await expect(dialog).toBeHidden();

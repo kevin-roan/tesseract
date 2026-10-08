@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { ANDROID_KEYS } from "@theone/protocol";
+import { ANDROID_KEYS } from "@tesseract/protocol";
 import { controlBytes, toVideoPoint } from "../src/host/android/screen";
 import {
   ANDROID_KEYCODES,

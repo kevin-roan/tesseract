@@ -1,4 +1,4 @@
-import { ApiError, NetworkError, ProtocolError, ProtocolVersionError, TimeoutError } from "@theone/client";
+import { ApiError, NetworkError, ProtocolError, ProtocolVersionError, TimeoutError } from "@tesseract/client";
 import { RETRYABLE_API_STATUSES } from "./constants";
 import { ERROR_MESSAGES, GATEWAY_MESSAGES, GATEWAY_STATUS_TEXT } from "./labels";
 import type { ConnectionStatus } from "./types";

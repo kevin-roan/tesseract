@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { AgentRunDetailSchema, AgentRunSchema, AgentStreamMessageSchema, UploadSchema, type AgentRun, type AgentRunEvent, type AgentStreamMessage } from "@theone/protocol";
+import { AgentRunDetailSchema, AgentRunSchema, AgentStreamMessageSchema, UploadSchema, type AgentRun, type AgentRunEvent, type AgentStreamMessage } from "@tesseract/protocol";
 import { AgentStreamParser, summarizeToolInput } from "../src/services/agent-stream";
 import { claudeArgs } from "../src/services/agent-runs";
 import { installFakeClaude, labelledPid, makeTempDir, processGone, removeTempDirs, startTestController, waitFor, writeFiles, type TestController } from "./helpers";
@@ -17,7 +17,7 @@ beforeAll(async () => {
   const workspace = makeTempDir("agent");
   writeFiles(workspace, { "projects/app/.keep": "", "projects/morning-cat/.keep": "" });
   const claude = installFakeClaude(makeTempDir("bin"));
-  t = await startTestController({ workspace, env: { THEONE_CLAUDE_BIN: claude, THEONE_CLAUDE_PERMISSION_MODE: "acceptEdits" } });
+  t = await startTestController({ workspace, env: { TESSERACT_CLAUDE_BIN: claude, TESSERACT_CLAUDE_PERMISSION_MODE: "acceptEdits" } });
 });
 
 afterAll(async () => {
@@ -154,7 +154,7 @@ describe("headless runs", () => {
     }, 10_000);
     expect(done).toMatchObject({ state: "succeeded", mode: "plan", attachments: [image, voice] });
     const texts = done.events.flatMap((event) => (event.kind === "text" ? [event.text] : []));
-    const uploadsDir = join(t.workspace, ".theone", "uploads");
+    const uploadsDir = join(t.workspace, ".tesseract", "uploads");
     expect(texts.find((text) => text.startsWith("args:"))).toBe(`args: -p --output-format stream-json --verbose --permission-mode plan --add-dir ${uploadsDir}`);
     const stdin = `${prompt}\n\nAttached files (read them with the Read tool):\n- ${image.path} (image/png)`;
     expect(texts).toContain(`prompt length ${stdin.length}`);

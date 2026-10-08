@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { Socket, TCPSocketListener } from "bun";
-import { DisplayStatusSchema, ErrorBodySchema } from "@theone/protocol";
+import { DisplayStatusSchema, ErrorBodySchema } from "@tesseract/protocol";
 import { probeRfb, probeTcp } from "../src/core/net";
 import { parseDimensions, x11Socket } from "../src/services/display";
 import { removeTempDirs, startTestController, upgradeStatus, WsClient, type TestController } from "./helpers";
@@ -30,7 +30,7 @@ beforeAll(async () => {
       },
     },
   });
-  t = await startTestController({ env: { THEONE_VNC_PORT: String(echo.port), THEONE_VNC_PASSWORD: "s3cret" } });
+  t = await startTestController({ env: { TESSERACT_VNC_PORT: String(echo.port), TESSERACT_VNC_PASSWORD: "s3cret" } });
 });
 
 afterAll(async () => {
@@ -118,7 +118,7 @@ describe("RFB probe", () => {
 
   test("a port that accepts TCP but does not speak RFB reports VNC unavailable", async () => {
     const silent = fakeServer(() => {});
-    const other = await startTestController({ env: { THEONE_VNC_PORT: String(silent.port), THEONE_VNC_PASSWORD: "s3cret" } });
+    const other = await startTestController({ env: { TESSERACT_VNC_PORT: String(silent.port), TESSERACT_VNC_PASSWORD: "s3cret" } });
     try {
       const status = DisplayStatusSchema.parse((await other.json("GET", "/v1/display")).body);
       expect(status.vnc).toEqual({ available: false, port: silent.port, password: "s3cret" });
@@ -173,7 +173,7 @@ describe("VNC bridge", () => {
   });
 
   test("answers 503 when nothing listens on the VNC port", async () => {
-    const other = await startTestController({ env: { THEONE_VNC_PORT: "1" } });
+    const other = await startTestController({ env: { TESSERACT_VNC_PORT: "1" } });
     try {
       const result = await upgradeStatus(`${other.wsBase}/v1/display/vnc?ticket=${await other.ticket()}`, "binary");
       expect(result.status).toBe(503);

@@ -40,7 +40,7 @@ import { DEFAULT_ANDROID_STREAM } from "./constants";
 const TS = "2026-09-23T10:00:00.000Z";
 const LATER = "2026-09-23T10:05:00.000Z";
 
-export const sampleHealth: Health = { ok: true, version: "0.1.0", protocolVersion: 1, sandboxId: "theone-sandbox" };
+export const sampleHealth: Health = { ok: true, version: "0.1.0", protocolVersion: 1, sandboxId: "tesseract-sandbox" };
 
 export const sampleTicket: Ticket = { ticket: "tkt_4d2c9b1e0f3a", expiresAt: "2026-09-23T10:01:00.000Z" };
 
@@ -54,7 +54,7 @@ export const sampleDisplay: DisplayStatus = {
 };
 
 export const sampleStatus: SandboxStatus = {
-  sandboxId: "theone-sandbox",
+  sandboxId: "tesseract-sandbox",
   hostname: "sandbox",
   version: "0.1.0",
   startedAt: TS,
@@ -129,7 +129,7 @@ export const sampleClaudeAccountList: ClaudeAccountList = {
 };
 
 export const sampleIdentity: Identity = {
-  sandboxId: "theone-sandbox",
+  sandboxId: "tesseract-sandbox",
   tailscale: {
     available: true,
     source: "localapi",
@@ -282,7 +282,7 @@ export const sampleUpload: Upload = {
   mimeType: "image/png",
   kind: "image",
   sizeBytes: 48_213,
-  path: "/workspace/.theone/uploads/upl_a1s2d3f4g5/screenshot.png",
+  path: "/workspace/.tesseract/uploads/upl_a1s2d3f4g5/screenshot.png",
   createdAt: TS,
 };
 
@@ -543,7 +543,7 @@ export const sampleAndroidLink: AndroidLinkInfo = {
 export const sampleHostAndroidStatus: HostAndroidStatus = {
   available: true,
   reason: null,
-  sdkRoot: "/home/me/.local/share/theone/android-sdk",
+  sdkRoot: "/home/me/.local/share/tesseract/android-sdk",
   isolation: "netns",
   avds: ["Pixel_8_API_35"],
   scrcpy: true,

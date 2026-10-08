@@ -1,5 +1,5 @@
-import { isApiError } from "@theone/client";
-import type { ClaudeAccountList, ClaudeAccountProfile } from "@theone/protocol";
+import { isApiError } from "@tesseract/client";
+import type { ClaudeAccountList, ClaudeAccountProfile } from "@tesseract/protocol";
 
 import type { MenuOption } from "@/components/menu-sheet";
 import { capitalize, pluralize } from "@/features/sandbox/utils/format";

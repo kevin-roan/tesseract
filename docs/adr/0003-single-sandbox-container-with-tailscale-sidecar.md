@@ -13,7 +13,7 @@ interact: an Electron app built by Claude runs on the display that VNC shows.
 
 ## Decision
 
-- A single long-lived **`sandbox`** container (compose project `theone`)
+- A single long-lived **`sandbox`** container (compose project `tesseract`)
   holds the whole development environment, supervised by supervisord.
   Projects share it. Per-project containers are a roadmap item.
 - A **`tailscale`** sidecar (official `tailscale/tailscale` image) runs in
@@ -27,7 +27,7 @@ interact: an Electron app built by Claude runs on the display that VNC shows.
 - Default mode publishes **no host ports**. `host-tailscale` mode (ports
   bound on the host's existing tailnet IP) and `local` mode (127.0.0.1) are
   alternatives selected by compose overlays.
-- State lives in named volumes (`theone-workspace`, `theone-home`, plus the
+- State lives in named volumes (`tesseract-workspace`, `tesseract-home`, plus the
   sidecar's Tailscale state), so the image can be replaced at any time.
 
 ## Consequences
@@ -63,9 +63,9 @@ interact: an Electron app built by Claude runs on the display that VNC shows.
 
 ## Implementation notes (2026-09-23)
 
-- The compose project and volume names are `theone` / `theone-*` by default and
-  configurable (`THEONE_COMPOSE_PROJECT`, `THEONE_VOLUME_PREFIX`), so further
+- The compose project and volume names are `tesseract` / `tesseract-*` by default and
+  configurable (`TESSERACT_COMPOSE_PROJECT`, `TESSERACT_VOLUME_PREFIX`), so further
   stacks (the e2e suite, a second sandbox) can run next to the default one.
   The single-sandbox decision per stack is unchanged.
-- Local-mode host ports are configurable (`THEONE_CONTROLLER_HOST_PORT`,
-  `THEONE_VNC_HOST_PORT`); `host-tailscale` accepts only an IPv4 bind address.
+- Local-mode host ports are configurable (`TESSERACT_CONTROLLER_HOST_PORT`,
+  `TESSERACT_VNC_HOST_PORT`); `host-tailscale` accepts only an IPv4 bind address.

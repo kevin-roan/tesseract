@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
-import { computeBackoffDelay, type TheOneClient } from "@theone/client";
-import type { VncAction } from "@theone/protocol";
+import { computeBackoffDelay, type TesseractClient } from "@tesseract/client";
+import type { VncAction } from "@tesseract/protocol";
 
 import type { WebSurfaceHandle } from "@/components/web-surface/types";
 
@@ -26,7 +26,7 @@ type RetryState = { attempts: number; timer: ReturnType<typeof setTimeout> | nul
 export function useWebPageSession(
   page: PageKind,
   id: string | null,
-  build: (client: TheOneClient) => Promise<string>,
+  build: (client: TesseractClient) => Promise<string>,
   enabled = true,
   onAction?: (action: VncAction) => void,
   target?: PageTarget,

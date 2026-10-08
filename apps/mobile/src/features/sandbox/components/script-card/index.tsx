@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowUpRightIcon, BookmarkSimpleIcon, CaretDownIcon, CaretUpIcon, MonitorIcon, PlayIcon, SparkleIcon, StopIcon, TerminalIcon } from "phosphor-react-native";
-import type { ProcessInfo } from "@theone/protocol";
+import type { ProcessInfo } from "@tesseract/protocol";
 
 import ActionButton from "@/components/action-button";
 import Chip from "@/components/chip";

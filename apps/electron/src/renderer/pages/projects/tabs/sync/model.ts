@@ -1,4 +1,4 @@
-import type { SyncChanges, SyncDiscardResult, SyncFileChange, SyncRequest, SyncResult } from "@theone/protocol";
+import type { SyncChanges, SyncDiscardResult, SyncFileChange, SyncRequest, SyncResult } from "@tesseract/protocol";
 import type { HostChange, SnapshotSummary, SyncLinkSummary } from "../../../../../shared/contracts/syncback";
 import type { Tone } from "../../../../theme/colors";
 import { formatBytes, formatRelativeTime } from "../../../../features/projects/format";

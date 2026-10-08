@@ -1,6 +1,6 @@
 import { existsSync, statSync } from "node:fs";
 import { join } from "node:path";
-import type { ClaudeAccountList, ClaudeAccountProfile } from "@theone/protocol";
+import type { ClaudeAccountList, ClaudeAccountProfile } from "@tesseract/protocol";
 import type { ClaudeAccountDir, Config } from "../config";
 import { badRequest, notFound, unavailable } from "../core/errors";
 import type { Repositories } from "../db/repositories";

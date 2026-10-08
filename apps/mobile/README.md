@@ -1,10 +1,10 @@
-# theone
+# tesseract
 
 An [Expo](https://expo.dev) app (SDK 56) using [expo-router](https://docs.expo.dev/router/introduction/) for file-based routing.
 
 ## Getting started
 
-This app is the `@theone/mobile` workspace of the TheOne monorepo; install from the
+This app is the `@tesseract/mobile` workspace of the Tesseract monorepo; install from the
 repository root with bun:
 
 ```bash

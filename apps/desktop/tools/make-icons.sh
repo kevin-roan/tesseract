@@ -3,7 +3,7 @@
 # margin (Linux icon proportions), at every hicolor size. Rerun after the mobile icon changes.
 set -euo pipefail
 
-readonly APP_ID="dev.monolith.Desktop"
+readonly APP_ID="dev.tesseract.Desktop"
 readonly DESKTOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly SOURCE="${DESKTOP_DIR}/../mobile/assets/images/icon.png"
 readonly HICOLOR="${DESKTOP_DIR}/data/icons/hicolor"

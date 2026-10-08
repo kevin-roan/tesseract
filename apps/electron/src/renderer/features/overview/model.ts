@@ -1,4 +1,4 @@
-import type { SandboxStatus } from "@theone/protocol";
+import type { SandboxStatus } from "@tesseract/protocol";
 import { sandboxName, seriesPoints, seriesStats, type ConnectionState, type InboxCounts, type MetricsSample } from "../../app/connection";
 import type { KeyValueEntry } from "../../components/KeyValueList";
 import type { ChartSeries, ChartThreshold } from "../../components/TimeSeriesChart";

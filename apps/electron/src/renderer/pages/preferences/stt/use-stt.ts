@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { SttProfile, SttStatus, UpdateStt } from "@theone/protocol";
+import type { SttProfile, SttStatus, UpdateStt } from "@tesseract/protocol";
 import { useCallback, useState } from "react";
 import { describeError } from "../../../app/connection";
 import { sandboxErrorMessage } from "../shared/format";

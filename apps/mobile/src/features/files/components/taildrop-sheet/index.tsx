@@ -1,5 +1,5 @@
 import { DeviceMobileIcon, WarningIcon } from "phosphor-react-native";
-import type { TaildropTarget } from "@theone/protocol";
+import type { TaildropTarget } from "@tesseract/protocol";
 
 import EmptyState from "@/components/empty-state";
 import GlassSheet from "@/components/glass-sheet";

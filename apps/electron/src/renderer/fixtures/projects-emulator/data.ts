@@ -1,5 +1,5 @@
-import type { AppRun, HostAndroidStatus, RunTargetInfo } from "@theone/protocol";
-import { sampleAndroidLink, sampleEmulator, sampleHostAndroidStatus } from "@theone/protocol/fixtures";
+import type { AppRun, HostAndroidStatus, RunTargetInfo } from "@tesseract/protocol";
+import { sampleAndroidLink, sampleEmulator, sampleHostAndroidStatus } from "@tesseract/protocol/fixtures";
 import type { HostShellState } from "../../../shared/contracts/hostShell";
 
 const HOUR_MS = 3_600_000;
@@ -20,7 +20,7 @@ export const FIXTURE_RUN_TARGETS: Readonly<Record<string, RunTargetInfo[]>> = {
   streaxfit: [androidTarget("expo-android", false, "Start the emulator on the host"), webTarget],
   "sante-production": [androidTarget("expo-android", true, null)],
   "hybrid-pos": [{ ...webTarget, target: "electron-dev", label: "Electron", viewer: "display" }],
-  monolith: [webTarget],
+  tesseract: [webTarget],
 };
 
 export function liveAndroidRun(projectId: string): AppRun {
@@ -43,7 +43,7 @@ export function liveAndroidRun(projectId: string): AppRun {
 
 export const hostState: HostShellState = {
   status: "running",
-  pairing: { link: "theone://pair?fixture", url: "http://127.0.0.1:7701", name: "workstation", pinSet: true },
+  pairing: { link: "tesseract://pair?fixture", url: "http://127.0.0.1:7701", name: "workstation", pinSet: true },
   error: null,
   log: [],
   autostart: true,
@@ -60,7 +60,7 @@ export const hostAndroid: HostAndroidStatus = {
 
 export const PARITY_RUN_TARGETS: Readonly<Record<string, RunTargetInfo[]>> = {
   "nimble-lotus": FIXTURE_RUN_TARGETS.streaxfit!,
-  "theone-mobile": [androidTarget("expo-android", false, "Start the emulator on the host"), webTarget],
+  "tesseract-mobile": [androidTarget("expo-android", false, "Start the emulator on the host"), webTarget],
   "sante-production": FIXTURE_RUN_TARGETS["sante-production"]!,
   "brave-hare": FIXTURE_RUN_TARGETS["hybrid-pos"]!,
 };

@@ -4,28 +4,28 @@
 
 | Path | Purpose |
 | --- | --- |
-| `modules/theone-island/index.ts`, `src/types.ts` | JS API and the `IslandState` / `IslandAction` / `SharedItem` types shared with the controller. |
-| `modules/theone-island/ios/` | Expo module `TheoneIsland` (Swift): starts/updates/ends the Live Activity, emits push tokens, drains the action queue, app-window capture, crop, Vision OCR, reads the shared inbox. |
+| `modules/tesseract-island/index.ts`, `src/types.ts` | JS API and the `IslandState` / `IslandAction` / `SharedItem` types shared with the controller. |
+| `modules/tesseract-island/ios/` | Expo module `TesseractIsland` (Swift): starts/updates/ends the Live Activity, emits push tokens, drains the action queue, app-window capture, crop, Vision OCR, reads the shared inbox. |
 | `targets/island/` | Widget extension (`@bacons/apple-targets`, iOS 17): `IslandLiveActivity` (lock screen + Dynamic Island UI), `StopRunIntent` / `CaptureIntent`, `IslandWidgetBundle`. |
 | `targets/share/` | Share extension (iOS 16.4): `ShareViewController` writes shared images/text/URLs/files into the app-group inbox and opens the app. |
 | `plugins/with-island/` | Config plugin: `NSSupportsLiveActivities`, `NSSupportsLiveActivitiesFrequentUpdates`, app-group entitlement (iOS) and `android.js` (Android). |
 
-`IslandAttributes.swift` is duplicated in `modules/theone-island/ios/` and `targets/island/` on purpose (a pod and an extension cannot share sources); keep both copies byte-identical, `ContentState` mirrors `IslandState` key for key.
+`IslandAttributes.swift` is duplicated in `modules/tesseract-island/ios/` and `targets/island/` on purpose (a pod and an extension cannot share sources); keep both copies byte-identical, `ContentState` mirrors `IslandState` key for key.
 
 ## App-group contract
 
-App group: `group.com.kevinbpract.theone`.
+App group: `group.com.kevinroan.tesseract`.
 
-- Action queue: `UserDefaults(suiteName:)` key `island.actions` holds a JSON string with an array of `{ action: "stop" | "capture" | "open" | "share", runId?: string }`. Intents in the widget append to it and post the Darwin notification `com.kevinbpract.theone.island.action`. The module drains the queue and emits `onIslandAction` per item when JS is listening; otherwise items stay until `drainActions()`.
-- Shared inbox: `<container>/shared-inbox/` with the copied files and `manifest.json` (array of `{ id, kind, file, text, name, mimeType, sizeBytes, createdAt }`). The share extension posts `com.kevinbpract.theone.island.shared`; the module emits `onSharedItems { count }`. `takeSharedItems()` copies files into `Caches/shared/` and deletes the inbox.
+- Action queue: `UserDefaults(suiteName:)` key `island.actions` holds a JSON string with an array of `{ action: "stop" | "capture" | "open" | "share", runId?: string }`. Intents in the widget append to it and post the Darwin notification `com.kevinroan.tesseract.island.action`. The module drains the queue and emits `onIslandAction` per item when JS is listening; otherwise items stay until `drainActions()`.
+- Shared inbox: `<container>/shared-inbox/` with the copied files and `manifest.json` (array of `{ id, kind, file, text, name, mimeType, sizeBytes, createdAt }`). The share extension posts `com.kevinroan.tesseract.island.shared`; the module emits `onSharedItems { count }`. `takeSharedItems()` copies files into `Caches/shared/` and deletes the inbox.
 - Push tokens: `onPushToken { kind: "activity", token, activityId }` after `startActivity`, and `{ kind: "push-to-start", token, activityId: null }` on iOS 17.2+. The controller sends the same `IslandState` JSON as the APNs `content-state`.
 
 ## Deep links emitted by the extensions
 
-- `theone://island/open` (tap on the activity, "Open" without a running run)
-- `theone://island/run/<runId>` ("Open" with a running run)
-- `theone://island/capture` ("Capture" button)
-- `theone://island/share` (share extension after writing the inbox)
+- `tesseract://island/open` (tap on the activity, "Open" without a running run)
+- `tesseract://island/run/<runId>` ("Open" with a running run)
+- `tesseract://island/capture` ("Capture" button)
+- `tesseract://island/share` (share extension after writing the inbox)
 
 ## Screen capture
 
@@ -40,11 +40,11 @@ eas build --profile development --platform ios
 ```
 
 The development profile sets `APP_VARIANT=development`, which gives the app, the
-share extension and the widget the bundle ids `com.kevinbpract.theone.dev`,
+share extension and the widget the bundle ids `com.kevinroan.tesseract.dev`,
 `.dev.share` and `.dev.island`, so the dev client installs next to the production
-app. Both variants share the app group `group.com.kevinbpract.theone`. For Live
-Activity pushes to the dev build set `THEONE_APNS_BUNDLE_ID=com.kevinbpract.theone.dev`
-and `THEONE_APNS_ENV=sandbox` on the controller.
+app. Both variants share the app group `group.com.kevinroan.tesseract`. For Live
+Activity pushes to the dev build set `TESSERACT_APNS_BUNDLE_ID=com.kevinroan.tesseract.dev`
+and `TESSERACT_APNS_ENV=sandbox` on the controller.
 
 `ios/` is generated (`npx expo prebuild`), never edit it by hand.
 
@@ -89,7 +89,7 @@ commands are non-final builds (`Build <target>`) followed by active processes, u
 on mount and whenever the app returns to the foreground. `useIslandDispatch` maps actions: `stop` → cancel the run,
 `open` → `nav.agentRun(id)` or the Agents hub, `capture` → capture sheet, `share` → shared items into the attach flow.
 The routes `src/app/island/[action].tsx` and `src/app/island/run/[id].tsx` dispatch the same actions and immediately
-`router.back()` / `router.replace("/")`, so `theone://island/*` never leaves a blank screen.
+`router.back()` / `router.replace("/")`, so `tesseract://island/*` never leaves a blank screen.
 
 ### Store contract (`useIslandStore`)
 
@@ -122,4 +122,4 @@ composer), a project (`nav.newAgentRun(projectId)`) or a recent chat (`/chats/[i
 ### Tests
 
 `tests/unit/island/`: `state.test.ts`, `crop.test.ts`, `island-store.test.ts`, `island-host.test.tsx`. The native
-module is mapped to `tests/mocks/theone-island.ts` (`__emitAction`, `__emitSharedItems`, `__queueActions`, `__reset`).
+module is mapped to `tests/mocks/tesseract-island.ts` (`__emitAction`, `__emitSharedItems`, `__queueActions`, `__reset`).

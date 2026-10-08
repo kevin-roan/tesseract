@@ -1,4 +1,4 @@
-import type { Artifact } from "@theone/protocol";
+import type { Artifact } from "@tesseract/protocol";
 import { RecordRow } from "../../components/RecordRow";
 import { artifactMeta, artifactNote, fileIcon, sourceBadge } from "../../features/files/model";
 import { useArtifactRowActions } from "../../features/files/hooks/use-row-actions";

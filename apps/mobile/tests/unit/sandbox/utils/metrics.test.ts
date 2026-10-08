@@ -1,4 +1,4 @@
-import { sampleStatus } from "@theone/protocol/fixtures";
+import { sampleStatus } from "@tesseract/protocol/fixtures";
 
 import {
   appendSample,

@@ -1,7 +1,7 @@
 import { ListGroup } from "../../../../components/GroupBand";
 import { KeyedList } from "../../../../components/KeyedList";
 import { RecordRow } from "../../../../components/RecordRow";
-import type { ProcessInfo, Project } from "@theone/protocol";
+import type { ProcessInfo, Project } from "@tesseract/protocol";
 import type { TabHost } from "../../../../features/projects/hooks/use-tab-host";
 import { useProcessesTab } from "./hooks/use-processes-tab";
 import { FollowerPanel, TabConfirm, TabStack } from "../kit";

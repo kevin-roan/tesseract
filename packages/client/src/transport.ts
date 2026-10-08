@@ -48,7 +48,7 @@ export function resolveFetch(custom?: FetchLike): FetchLike {
   if (custom) return custom;
   return (url, init) => {
     const globalFetch = (globalThis as { fetch?: FetchLike }).fetch;
-    if (!globalFetch) throw new TypeError("No fetch implementation available; pass `fetch` to TheOneClient");
+    if (!globalFetch) throw new TypeError("No fetch implementation available; pass `fetch` to TesseractClient");
     return globalFetch(url, init);
   };
 }

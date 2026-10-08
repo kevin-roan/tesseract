@@ -1,5 +1,5 @@
 import { TerminalWindowIcon } from "phosphor-react-native";
-import type { TerminalInfo } from "@theone/protocol";
+import type { TerminalInfo } from "@tesseract/protocol";
 
 import ActionButton from "@/components/action-button";
 import EmptyState from "@/components/empty-state";

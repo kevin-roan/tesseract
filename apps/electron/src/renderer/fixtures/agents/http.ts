@@ -1,6 +1,6 @@
-import type { AgentRun, InboxItem } from "@theone/protocol";
-import { routePatterns } from "@theone/protocol";
-import { sampleClaudeSession, sampleInbox } from "@theone/protocol/fixtures";
+import type { AgentRun, InboxItem } from "@tesseract/protocol";
+import { routePatterns } from "@tesseract/protocol";
+import { sampleClaudeSession, sampleInbox } from "@tesseract/protocol/fixtures";
 import { currentScenario } from "../scenario";
 import { PARITY_GATES } from "../shell/gates";
 import { GTK_PARITY, isGtkParity, pending } from "../shell/parity";

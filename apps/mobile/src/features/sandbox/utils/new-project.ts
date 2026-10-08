@@ -4,7 +4,7 @@ import {
   LIMITS,
   projectIdFromName,
   type CreateProject,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import type { Tone } from "@/lib/tone";
 

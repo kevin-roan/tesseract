@@ -1,4 +1,4 @@
-import { LIMITS, type AgentRun, type ClaudeSession, type DeleteAgentRuns, type InboxItem, type Project } from "@theone/protocol";
+import { LIMITS, type AgentRun, type ClaudeSession, type DeleteAgentRuns, type InboxItem, type Project } from "@tesseract/protocol";
 import type { Tone } from "../../theme/colors";
 import type { IconName } from "../../theme/icons";
 import {

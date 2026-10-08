@@ -9,7 +9,7 @@ import {
   type ProcessInfo,
   type ServerEventType,
   type TerminalInfo,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";
 import type { Repositories } from "../db/repositories";
@@ -53,7 +53,7 @@ export function renderRuntime(snapshot: RuntimeSnapshot): string {
   const lines = [
     "# Runtime state",
     "",
-    "Written by theone-controller on every change. Read-only: edits are overwritten.",
+    "Written by tesseract-controller on every change. Read-only: edits are overwritten.",
     `Updated ${snapshot.generatedAt} · controller ${snapshot.version} · sandbox ${snapshot.sandboxId} · API ${snapshot.apiUrl}`,
     "",
     "## Display",

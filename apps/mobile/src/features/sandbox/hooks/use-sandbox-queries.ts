@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ProjectFilter, StatusEvent } from "@theone/protocol";
+import type { ProjectFilter, StatusEvent } from "@tesseract/protocol";
 
 import { sandboxKeys } from "../api/query-keys";
 import { PORTS_REFRESH_INTERVAL_MS, STATUS_REFRESH_INTERVAL_MS, WINDOWS_REFRESH_INTERVAL_MS } from "../utils/constants";

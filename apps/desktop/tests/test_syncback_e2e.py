@@ -1,4 +1,4 @@
-"""Sync back end to end: a real controller (`bun apps/controller/src/index.ts serve`) and the real `monolith` CLI.
+"""Sync back end to end: a real controller (`bun apps/controller/src/index.ts serve`) and the real `tesseract` CLI.
 
 Skipped when bun, git, tar, the repo's node_modules or PyGObject are missing. Everything lives in temp dirs:
 the controller workspace, XDG_STATE_HOME/XDG_CONFIG_HOME/HOME of the CLI, and the host checkouts.
@@ -30,10 +30,10 @@ pytestmark = pytest.mark.skipif(
 )
 pytest.importorskip("gi")
 
-from monolith_desktop.api.client import ControllerClient  # noqa: E402
-from monolith_desktop.api.errors import ApiError  # noqa: E402
-from monolith_desktop.syncback.requests import claimable, handle_request  # noqa: E402
-from monolith_desktop.syncback.state import SyncState  # noqa: E402
+from tesseract_desktop.api.client import ControllerClient  # noqa: E402
+from tesseract_desktop.api.errors import ApiError  # noqa: E402
+from tesseract_desktop.syncback.requests import claimable, handle_request  # noqa: E402
+from tesseract_desktop.syncback.state import SyncState  # noqa: E402
 
 
 def free_port() -> int:
@@ -47,22 +47,22 @@ class Env:
         self.root = root
         self.url = f"http://127.0.0.1:{port}"
         self.projects = root / "ws" / "projects"
-        self.state = SyncState(root / "state" / "monolith")
+        self.state = SyncState(root / "state" / "tesseract")
         self.client = ControllerClient(self.url, TOKEN)
         self.cli_env = {
             "PATH": os.environ.get("PATH", ""),
             "HOME": str(root / "home"),
             "XDG_STATE_HOME": str(root / "state"),
             "XDG_CONFIG_HOME": str(root / "config"),
-            "MONOLITH_DESKTOP_URL": self.url,
-            "THEONE_TOKEN": TOKEN,
+            "TESSERACT_DESKTOP_URL": self.url,
+            "TESSERACT_TOKEN": TOKEN,
             "PYTHONPATH": str(DESKTOP),
             "LANG": "C.UTF-8",
         }
 
     def cli(self, cwd: Path, *args: str) -> subprocess.CompletedProcess:
         return subprocess.run(
-            [sys.executable, "-m", "monolith_desktop", *args], cwd=cwd, env=self.cli_env, capture_output=True, text=True, timeout=60
+            [sys.executable, "-m", "tesseract_desktop", *args], cwd=cwd, env=self.cli_env, capture_output=True, text=True, timeout=60
         )
 
     def http(self, method: str, path: str, body: object | None = None) -> tuple[int, object]:
@@ -91,16 +91,16 @@ def e2e(tmp_path_factory):
     env = {
         "PATH": os.environ.get("PATH", ""),
         "HOME": str(root / "home"),
-        "THEONE_WORKSPACE": str(root / "ws"),
-        "THEONE_HOST": "127.0.0.1",
-        "THEONE_PORT": str(port),
-        "THEONE_TOKEN": TOKEN,
-        "THEONE_VNC_PORT": "1",
-        "THEONE_DISPLAY": ":987",
-        "THEONE_CLAUDE_BIN": "/nonexistent/claude",
-        "THEONE_PUSH_URL": "off",
-        "THEONE_STT_ENGINE": "none",
-        "THEONE_TAILSCALE_SOCKET": str(root / "no-tailscale.sock"),
+        "TESSERACT_WORKSPACE": str(root / "ws"),
+        "TESSERACT_HOST": "127.0.0.1",
+        "TESSERACT_PORT": str(port),
+        "TESSERACT_TOKEN": TOKEN,
+        "TESSERACT_VNC_PORT": "1",
+        "TESSERACT_DISPLAY": ":987",
+        "TESSERACT_CLAUDE_BIN": "/nonexistent/claude",
+        "TESSERACT_PUSH_URL": "off",
+        "TESSERACT_STT_ENGINE": "none",
+        "TESSERACT_TAILSCALE_SOCKET": str(root / "no-tailscale.sock"),
         "CLAUDE_CONFIG_DIR": str(root / "home" / ".claude"),
     }
     log = open(root / "controller.log", "wb")

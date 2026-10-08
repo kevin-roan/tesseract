@@ -1,6 +1,6 @@
-import { ApiError } from "@theone/client";
-import type { HostAndroidStatus, RunTargetInfo } from "@theone/protocol";
-import { sampleAppRun, sampleHostAndroidStatus } from "@theone/protocol/fixtures";
+import { ApiError } from "@tesseract/client";
+import type { HostAndroidStatus, RunTargetInfo } from "@tesseract/protocol";
+import { sampleAppRun, sampleHostAndroidStatus } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import type { HostShellState } from "../../../../../shared/contracts/hostShell";
 import { confirmSteps, displayButton, emulatorReady, hostBlocker, hostUnlocked, isLinkedTo, planEmulator } from "./model";
@@ -60,7 +60,7 @@ describe("display button", () => {
       "Build the app in apps/mobile and install it on the host Android emulator",
     );
     expect(displayButton([target({ available: false, reason: "Start the emulator on the host" })], [], "expo").tooltip).toBe(
-      "Start the emulator on the host. Monolith starts and links the emulator on this computer first",
+      "Start the emulator on the host. Tesseract starts and links the emulator on this computer first",
     );
     expect(displayButton([target({ available: false, reason: "No SDK" })], [], "expo").tooltip).toBe("No SDK");
   });
@@ -69,8 +69,8 @@ describe("display button", () => {
 describe("host checks", () => {
   it("blocks on the host shell state", () => {
     expect(hostBlocker(host({ status: "stopped" }))).toMatch(/^The host shell isn't running/);
-    expect(hostBlocker(host({ status: "starting" }))).toMatch(/^Monolith is still reading/);
-    expect(hostBlocker(host({ pairing: null }))).toMatch(/^Monolith is still reading/);
+    expect(hostBlocker(host({ status: "starting" }))).toMatch(/^Tesseract is still reading/);
+    expect(hostBlocker(host({ pairing: null }))).toMatch(/^Tesseract is still reading/);
     expect(hostBlocker(host({ pairing: { link: "", url: "", name: "", pinSet: false } }))).toMatch(/^Set a host shell PIN/);
     expect(hostBlocker(host())).toBeNull();
   });
@@ -91,7 +91,7 @@ describe("plan", () => {
   it("is blocked when the host can't help", () => {
     expect(planEmulator(status({ available: false, reason: "No SDK" }), SANDBOX).blocked).toBe("No SDK");
     expect(planEmulator(status({}, { state: "unavailable" }), SANDBOX).blocked).toBe("The host can't run the Android emulator");
-    expect(planEmulator(status({ isolation: "none" }), SANDBOX).blocked).toMatch(/THEONE_EMULATOR_ISOLATION=none/);
+    expect(planEmulator(status({ isolation: "none" }), SANDBOX).blocked).toMatch(/TESSERACT_EMULATOR_ISOLATION=none/);
     expect(planEmulator(status({}, { state: "stopping" }), SANDBOX).blocked).toBe("The emulator is stopping; try again in a moment");
     expect(planEmulator(status({ avds: [] }, { state: "stopped", avd: null }), SANDBOX).blocked).toMatch(/no Android virtual device/);
   });

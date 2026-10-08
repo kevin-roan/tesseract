@@ -1,6 +1,6 @@
 import { Platform } from "react-native";
 import * as Device from "expo-device";
-import { PushPlatformSchema } from "@theone/protocol";
+import { PushPlatformSchema } from "@tesseract/protocol";
 
 import { getSandboxClient } from "@/features/sandbox/api/client";
 import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";

@@ -7,7 +7,7 @@ export type LogLevel = (typeof LEVELS)[number];
 
 const REDACTIONS: [RegExp, string][] = [
   [/(TS_AUTHKEY=)\S+/g, "$1…"],
-  [/(THEONE_TOKEN=)\S+/g, "$1…"],
+  [/(TESSERACT_TOKEN=)\S+/g, "$1…"],
   [/([?&#]token=)[^&\s]+/g, "$1…"],
   [/tskey-[A-Za-z0-9-]+/g, "…"],
   [/(Bearer\s+)\S+/gi, "$1…"],

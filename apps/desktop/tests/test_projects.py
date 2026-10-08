@@ -1,8 +1,8 @@
 import pytest
 
-from monolith_desktop.api.errors import ApiError
-from monolith_desktop.pages.projects import model
-from monolith_desktop.util.format import parse_iso
+from tesseract_desktop.api.errors import ApiError
+from tesseract_desktop.pages.projects import model
+from tesseract_desktop.util.format import parse_iso
 
 NOW = parse_iso("2026-09-28T12:00:00Z")
 
@@ -356,20 +356,20 @@ def _request(kind, status, result=None):
 
 
 def _link():
-    from monolith_desktop.syncback.state import Link
+    from tesseract_desktop.syncback.state import Link
 
     return Link("demo", "/home/me/demo", PUSHED)
 
 
 def _snapshot(reverted=False):
-    from monolith_desktop.syncback.state import Snapshot
+    from tesseract_desktop.syncback.state import Snapshot
 
     return Snapshot("snap1", "demo", "/home/me/demo", PUSHED, [], reverted=reverted)
 
 
 def test_client_discards_sandbox_changes(monkeypatch):
-    from monolith_desktop.api.client import ControllerClient
-    from monolith_desktop.api.paths import rest
+    from tesseract_desktop.api.client import ControllerClient
+    from tesseract_desktop.api.paths import rest
 
     client = ControllerClient("http://sandbox:1", "token")
     sent = []
@@ -450,7 +450,7 @@ def test_sync_waiting_flags_each_direction_with_changes():
 
 
 def test_load_sync_view_reads_changes_for_unlinked_projects(tmp_path):
-    from monolith_desktop.syncback.state import SyncState
+    from tesseract_desktop.syncback.state import SyncState
 
     class Client:
         def sync_changes(self, project_id):

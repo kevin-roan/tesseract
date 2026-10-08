@@ -5,7 +5,7 @@ import { badRequest } from "../core/errors";
 import { childEnv } from "../core/exec";
 import { countLineChanges, isBinary, splitLines } from "../core/line-diff";
 import { realpathOrNull } from "../core/paths";
-import type { SyncFileMode, SyncFileStat, SyncGetChange, SyncGetPlan } from "@theone/protocol";
+import type { SyncFileMode, SyncFileStat, SyncGetChange, SyncGetPlan } from "@tesseract/protocol";
 
 export const GIT_DIR = ".git";
 /** Conflict entry for a sandbox repository whose HEAD moved since the last sync. */
@@ -135,7 +135,7 @@ export async function checkStaged(dir: string, expected: ReadonlyMap<string, str
         throw badRequest(`Refusing symlink ${member} -> ${target}: it points outside the project`);
       }
     }
-    if (sha256 !== null && entry.sha256 !== sha256) throw badRequest(`${member} changed on the host during the sync; run monolith --get again`);
+    if (sha256 !== null && entry.sha256 !== sha256) throw badRequest(`${member} changed on the host during the sync; run tesseract --get again`);
   }
 }
 
@@ -204,7 +204,7 @@ async function plannedSteps(input: GetApplyInput): Promise<Step[]> {
       }
       continue;
     }
-    if (!input.upload.has(change.path)) throw badRequest(`${change.path} changed in the sandbox during the sync; run monolith --get again`);
+    if (!input.upload.has(change.path)) throw badRequest(`${change.path} changed in the sandbox during the sync; run tesseract --get again`);
     const staged = join(input.staged, change.path);
     const incoming = await probe(staged);
     if (incoming?.type === "file") incoming.executable = change.executable;

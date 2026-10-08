@@ -1,4 +1,4 @@
-import type { SyncFileChange, SyncRequest } from "@theone/protocol";
+import type { SyncFileChange, SyncRequest } from "@tesseract/protocol";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { ListGroup } from "../../../../components/GroupBand";
 import { KeyedList } from "../../../../components/KeyedList";

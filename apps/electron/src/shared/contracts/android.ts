@@ -12,7 +12,7 @@ export type AndroidHostSupport =
 
 export interface SdkCandidate {
   path: string;
-  source: "THEONE_ANDROID_SDK_ROOT" | "ANDROID_SDK_ROOT" | "ANDROID_HOME" | "studio-default" | "monolith-default";
+  source: "TESSERACT_ANDROID_SDK_ROOT" | "ANDROID_SDK_ROOT" | "ANDROID_HOME" | "studio-default" | "tesseract-default";
   emulatorRevision: string | null;
   systemImages: number;
 }

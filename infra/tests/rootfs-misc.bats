@@ -1,41 +1,41 @@
 #!/usr/bin/env bats
-# theone-controller-run, theone-wine-init, /etc/profile.d/theone.sh, /etc/chromium.d/theone and the Claude Code managed settings and memory.
+# tesseract-controller-run, tesseract-wine-init, /etc/profile.d/tesseract.sh, /etc/chromium.d/tesseract and the Claude Code managed settings and memory.
 
 load lib/common
 
 setup() {
-  unset_theone_env
+  unset_tesseract_env
   setup_stubs
   export HOME="${BATS_TEST_TMPDIR}/home"
   mkdir -p "${HOME}"
 }
 
 teardown() {
-  if [[ -n "${THEONE_TEST_CONTAINER:-}" ]]; then
-    rm -f /usr/local/bin/theone-controller /run/theone/controller.env
+  if [[ -n "${TESSERACT_TEST_CONTAINER:-}" ]]; then
+    rm -f /usr/local/bin/tesseract-controller /run/tesseract/controller.env
   fi
 }
 
-# theone-controller-run hard-codes /run/theone and /usr/local/bin: only inside the
+# tesseract-controller-run hard-codes /run/tesseract and /usr/local/bin: only inside the
 # throwaway test container.
 require_container() {
-  [[ -n "${THEONE_TEST_CONTAINER:-}" ]] || skip "writes /run/theone and /usr/local/bin (set THEONE_TEST_CONTAINER=1 in a throwaway container)"
-  [[ ! -e /usr/local/bin/theone-controller ]] || skip "a real theone-controller is installed"
-  mkdir -p /run/theone
-  cat > /usr/local/bin/theone-controller << 'EOF'
+  [[ -n "${TESSERACT_TEST_CONTAINER:-}" ]] || skip "writes /run/tesseract and /usr/local/bin (set TESSERACT_TEST_CONTAINER=1 in a throwaway container)"
+  [[ ! -e /usr/local/bin/tesseract-controller ]] || skip "a real tesseract-controller is installed"
+  mkdir -p /run/tesseract
+  cat > /usr/local/bin/tesseract-controller << 'EOF'
 #!/usr/bin/env bash
 printf 'args=%s\n' "$*"
-printf 'password=[%s]\n' "${THEONE_VNC_PASSWORD-unset}"
-printf 'token=[%s]\n' "${THEONE_TOKEN-unset}"
-bash -c 'printf "exported=[%s]\n" "${THEONE_VNC_PASSWORD-unset}"'
+printf 'password=[%s]\n' "${TESSERACT_VNC_PASSWORD-unset}"
+printf 'token=[%s]\n' "${TESSERACT_TOKEN-unset}"
+bash -c 'printf "exported=[%s]\n" "${TESSERACT_VNC_PASSWORD-unset}"'
 EOF
-  chmod +x /usr/local/bin/theone-controller
+  chmod +x /usr/local/bin/tesseract-controller
 }
 
-@test "controller-run: execs theone-controller serve without an env file" {
+@test "controller-run: execs tesseract-controller serve without an env file" {
   require_container
-  rm -f /run/theone/controller.env
-  run "${ROOTFS_BIN}/theone-controller-run"
+  rm -f /run/tesseract/controller.env
+  run "${ROOTFS_BIN}/tesseract-controller-run"
   assert_success
   assert_output "args=serve
 password=[unset]
@@ -47,10 +47,10 @@ exported=[unset]"
   require_container
   local password=$'p a$s\'"`x' token='tok;en $(id)'
   {
-    printf 'THEONE_VNC_PASSWORD=%q\n' "${password}"
-    printf 'THEONE_TOKEN=%q\n' "${token}"
-  } > /run/theone/controller.env
-  run "${ROOTFS_BIN}/theone-controller-run"
+    printf 'TESSERACT_VNC_PASSWORD=%q\n' "${password}"
+    printf 'TESSERACT_TOKEN=%q\n' "${token}"
+  } > /run/tesseract/controller.env
+  run "${ROOTFS_BIN}/tesseract-controller-run"
   assert_success
   assert_output "args=serve
 password=[${password}]
@@ -61,17 +61,17 @@ exported=[${password}]"
 @test "controller-run: an unreadable env file is skipped" {
   require_container
   [[ "$(id -u)" == 0 ]] || skip "needs root to hide the file from dev"
-  printf 'THEONE_TOKEN=x\n' > /run/theone/controller.env
-  chmod 0600 /run/theone/controller.env
-  chmod 0755 /usr/local/bin/theone-controller
-  run runuser -u dev -- env HOME=/tmp "${ROOTFS_BIN}/theone-controller-run"
+  printf 'TESSERACT_TOKEN=x\n' > /run/tesseract/controller.env
+  chmod 0600 /run/tesseract/controller.env
+  chmod 0755 /usr/local/bin/tesseract-controller
+  run runuser -u dev -- env HOME=/tmp "${ROOTFS_BIN}/tesseract-controller-run"
   assert_success
   assert_line "token=[unset]"
 }
 
 @test "wine-init: does nothing when wine is not installed" {
   stub wineboot
-  PATH="${STUB_BIN}" run /bin/bash "${ROOTFS_BIN}/theone-wine-init"
+  PATH="${STUB_BIN}" run /bin/bash "${ROOTFS_BIN}/tesseract-wine-init"
   assert_success
   assert_output "wine is not installed; nothing to do"
   assert_equal "$(calls)" ""
@@ -82,7 +82,7 @@ exported=[${password}]"
   stub wineboot
   mkdir -p "${HOME}/.wine"
   touch "${HOME}/.wine/system.reg"
-  run "${ROOTFS_BIN}/theone-wine-init"
+  run "${ROOTFS_BIN}/tesseract-wine-init"
   assert_success
   assert_output "wine prefix ready: ${HOME}/.wine"
   assert_equal "$(calls)" ""
@@ -92,7 +92,7 @@ exported=[${password}]"
   stub wine
   stub wineboot 'printf "%s\n" "${WINEDLLOVERRIDES}" > "${BATS_TEST_TMPDIR}/overrides"'
   stub wineserver
-  WINEPREFIX="${BATS_TEST_TMPDIR}/prefix" WINEARCH=win32 run "${ROOTFS_BIN}/theone-wine-init"
+  WINEPREFIX="${BATS_TEST_TMPDIR}/prefix" WINEARCH=win32 run "${ROOTFS_BIN}/tesseract-wine-init"
   assert_success
   assert_output "creating wine prefix ${BATS_TEST_TMPDIR}/prefix (WINEARCH=win32)
 wine prefix created: ${BATS_TEST_TMPDIR}/prefix"
@@ -105,19 +105,19 @@ wineserver -w"
   stub wine
   stub wineboot 'exit 5'
   stub wineserver
-  run "${ROOTFS_BIN}/theone-wine-init"
+  run "${ROOTFS_BIN}/tesseract-wine-init"
   assert_failure 5
   assert_output "creating wine prefix ${HOME}/.wine (WINEARCH=win64)"
   assert_equal "$(calls_of wineserver)" ""
 }
 
-# --- /etc/profile.d/theone.sh (POSIX sh) --------------------------------------
+# --- /etc/profile.d/tesseract.sh (POSIX sh) --------------------------------------
 
 profile() {
   run env -i HOME="${HOME}" PATH="${BASE_PATH:-/usr/bin:/bin}" ${JAVA_HOME:+JAVA_HOME="${JAVA_HOME}"} \
     ${ANDROID_HOME:+ANDROID_HOME="${ANDROID_HOME}"} ${DISPLAY:+DISPLAY="${DISPLAY}"} \
-    ${THEONE_DISPLAY:+THEONE_DISPLAY="${THEONE_DISPLAY}"} ${THEONE_DATA_DIR:+THEONE_DATA_DIR="${THEONE_DATA_DIR}"} \
-    sh ${SH_FLAGS:-} -c ". '${ROOTFS}/etc/profile.d/theone.sh'; $1"
+    ${TESSERACT_DISPLAY:+TESSERACT_DISPLAY="${TESSERACT_DISPLAY}"} ${TESSERACT_DATA_DIR:+TESSERACT_DATA_DIR="${TESSERACT_DATA_DIR}"} \
+    sh ${SH_FLAGS:-} -c ". '${ROOTFS}/etc/profile.d/tesseract.sh'; $1"
 }
 
 @test "profile: puts ~/.local/bin and ~/.bun/bin first" {
@@ -133,12 +133,12 @@ profile() {
 
 @test "profile: is idempotent and never duplicates PATH entries" {
   BASE_PATH="/usr/bin:${HOME}/.bun/bin:/opt/sdk/platform-tools:/bin" JAVA_HOME=/opt/jdk ANDROID_HOME=/opt/sdk \
-    profile ". '${ROOTFS}/etc/profile.d/theone.sh'; echo \"\${PATH}\""
+    profile ". '${ROOTFS}/etc/profile.d/tesseract.sh'; echo \"\${PATH}\""
   assert_output "${HOME}/.local/bin:/opt/jdk/bin:/usr/bin:${HOME}/.bun/bin:/opt/sdk/platform-tools:/bin:/opt/sdk/cmdline-tools/latest/bin"
 }
 
 @test "profile: exports PATH and removes its helper functions" {
-  profile 'sh -c "echo \"\${PATH}\""; command -v theone_path_prepend || echo gone; command -v theone_path_append || echo gone'
+  profile 'sh -c "echo \"\${PATH}\""; command -v tesseract_path_prepend || echo gone; command -v tesseract_path_append || echo gone'
   assert_output "${HOME}/.local/bin:${HOME}/.bun/bin:/usr/bin:/bin
 gone
 gone"
@@ -151,29 +151,29 @@ gone"
   SH_FLAGS=-i profile 'echo "display=${DISPLAY-unset}"'
   assert_output --partial "display=:1"
 
-  THEONE_DISPLAY=:3 SH_FLAGS=-i profile 'echo "display=${DISPLAY}"; sh -c "echo child=\${DISPLAY}"'
+  TESSERACT_DISPLAY=:3 SH_FLAGS=-i profile 'echo "display=${DISPLAY}"; sh -c "echo child=\${DISPLAY}"'
   assert_line --partial "display=:3"
   assert_line --partial "child=:3"
 
-  DISPLAY=:9 THEONE_DISPLAY=:3 SH_FLAGS=-i profile 'echo "display=${DISPLAY}"'
+  DISPLAY=:9 TESSERACT_DISPLAY=:3 SH_FLAGS=-i profile 'echo "display=${DISPLAY}"'
   assert_output --partial "display=:9"
 }
 
 @test "profile: never exports a Claude token" {
-  export THEONE_DATA_DIR="${BATS_TEST_TMPDIR}/data"
-  mkdir -p "${THEONE_DATA_DIR}"
-  printf 'sk-ant-oat01-stored\n' > "${THEONE_DATA_DIR}/claude-oauth-token"
+  export TESSERACT_DATA_DIR="${BATS_TEST_TMPDIR}/data"
+  mkdir -p "${TESSERACT_DATA_DIR}"
+  printf 'sk-ant-oat01-stored\n' > "${TESSERACT_DATA_DIR}/claude-oauth-token"
   profile 'echo "token=${CLAUDE_CODE_OAUTH_TOKEN-unset}"'
   assert_output "token=unset"
 }
 
-# --- /etc/chromium.d/theone (Chromium flags; DevTools endpoint for GET /v1/display/browser) ---
+# --- /etc/chromium.d/tesseract (Chromium flags; DevTools endpoint for GET /v1/display/browser) ---
 
 @test "chromium: exposes DevTools on loopback with a non-default profile" {
-  run env -i HOME=/home/dev CHROMIUM_FLAGS=--existing sh -c '. "$1"; printf "%s\n" "${CHROMIUM_FLAGS}"' chromium "${ROOTFS}/etc/chromium.d/theone"
+  run env -i HOME=/home/dev CHROMIUM_FLAGS=--existing sh -c '. "$1"; printf "%s\n" "${CHROMIUM_FLAGS}"' chromium "${ROOTFS}/etc/chromium.d/tesseract"
   assert_success
-  assert_output "--existing --no-sandbox --password-store=basic --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=/home/dev/.config/chromium-theone"
-  run env -i HOME=/home/dev THEONE_CHROMIUM_DEBUG_PORT=9333 sh -c '. "$1"; printf "%s\n" "${CHROMIUM_FLAGS}"' chromium "${ROOTFS}/etc/chromium.d/theone"
+  assert_output "--existing --no-sandbox --password-store=basic --remote-debugging-address=127.0.0.1 --remote-debugging-port=9222 --user-data-dir=/home/dev/.config/chromium-tesseract"
+  run env -i HOME=/home/dev TESSERACT_CHROMIUM_DEBUG_PORT=9333 sh -c '. "$1"; printf "%s\n" "${CHROMIUM_FLAGS}"' chromium "${ROOTFS}/etc/chromium.d/tesseract"
   assert_output --partial "--remote-debugging-port=9333 "
 }
 
@@ -186,11 +186,11 @@ MANAGED_SETTINGS="${ROOTFS}/etc/claude-code/managed-settings.json"
   assert_success
 }
 
-@test "claude settings: Notification, Stop, StopFailure and UserPromptSubmit run theone-controller hook" {
+@test "claude settings: Notification, Stop, StopFailure and UserPromptSubmit run tesseract-controller hook" {
   run jq -r '.hooks | keys | join(" ")' "${MANAGED_SETTINGS}"
   assert_output "Notification Stop StopFailure UserPromptSubmit"
   run jq -r '[.hooks[][] | select(has("matcher") | not) | .hooks[] | "\(.type) \(.command) \(.timeout)"] | unique | join("\n")' "${MANAGED_SETTINGS}"
-  assert_output "command /usr/local/bin/theone-controller hook 5"
+  assert_output "command /usr/local/bin/tesseract-controller hook 5"
   run jq -r '[.hooks[] | length] | unique | join(" ")' "${MANAGED_SETTINGS}"
   assert_output "1"
 }
@@ -198,7 +198,7 @@ MANAGED_SETTINGS="${ROOTFS}/etc/claude-code/managed-settings.json"
 @test "claude settings: the image puts the rootfs and the controller where the hooks expect them" {
   local dockerfile="${REPO}/infra/docker/sandbox/Dockerfile"
   grep -qx 'COPY infra/docker/sandbox/rootfs/ /' "${dockerfile}"
-  grep -q ' /usr/local/bin/theone-controller$' "${dockerfile}"
+  grep -q ' /usr/local/bin/tesseract-controller$' "${dockerfile}"
 }
 
 # --- /etc/claude-code/CLAUDE.md (managed memory: share deliverables with the app) ---
@@ -206,18 +206,18 @@ MANAGED_SETTINGS="${ROOTFS}/etc/claude-code/managed-settings.json"
 @test "claude memory: CLAUDE.md tells Claude to share deliverables with a command the controller has" {
   local memory="${ROOTFS}/etc/claude-code/CLAUDE.md"
   [[ -s "${memory}" ]]
-  grep -q 'theone-controller share <file> --note' "${memory}"
-  grep -q 'theone-controller share <file> \[--project <id>\] \[--name <name>\] \[--note <text>\]' "${REPO}/apps/controller/src/cli/commands.ts"
+  grep -q 'tesseract-controller share <file> --note' "${memory}"
+  grep -q 'tesseract-controller share <file> \[--project <id>\] \[--name <name>\] \[--note <text>\]' "${REPO}/apps/controller/src/cli/commands.ts"
 }
 
 # --- /etc/claude-code/.claude/skills/send-file (managed /send-file skill) ---
 
 SEND_FILE="${ROOTFS}/etc/claude-code/.claude/skills/send-file"
 
-@test "send-file: SKILL.md is named send-file and shares with theone-controller share" {
+@test "send-file: SKILL.md is named send-file and shares with tesseract-controller share" {
   run sed -n '2p' "${SEND_FILE}/SKILL.md"
   assert_output "name: send-file"
-  grep -q 'theone-controller share "<file>" --note' "${SEND_FILE}/SKILL.md"
+  grep -q 'tesseract-controller share "<file>" --note' "${SEND_FILE}/SKILL.md"
   grep -qF '${CLAUDE_SKILL_DIR}/find-files' "${SEND_FILE}/SKILL.md"
 }
 
@@ -257,9 +257,9 @@ SEND_FILE="${ROOTFS}/etc/claude-code/.claude/skills/send-file"
 
 @test "claude memory: the image prepends SPEC.md to the managed CLAUDE.md, never ~/.claude" {
   local dockerfile="${REPO}/infra/docker/sandbox/Dockerfile"
-  grep -qx 'COPY SPEC.md /etc/theone/SPEC.md' "${dockerfile}"
-  grep -qF '{ cat /etc/theone/SPEC.md; printf '"'"'\n'"'"'; cat /etc/claude-code/CLAUDE.md; }' "${dockerfile}"
-  run grep -n '\.claude' "${ROOTFS}/usr/local/bin/theone-entrypoint"
+  grep -qx 'COPY SPEC.md /etc/tesseract/SPEC.md' "${dockerfile}"
+  grep -qF '{ cat /etc/tesseract/SPEC.md; printf '"'"'\n'"'"'; cat /etc/claude-code/CLAUDE.md; }' "${dockerfile}"
+  run grep -n '\.claude' "${ROOTFS}/usr/local/bin/tesseract-entrypoint"
   assert_output --partial 'prune'
   refute_output --partial 'CLAUDE.md'
 }

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { InboxCounts, MarkInboxRead } from "@theone/protocol";
+import type { InboxCounts, MarkInboxRead } from "@tesseract/protocol";
 
 import { useSandboxClient } from "@/features/sandbox/hooks/use-sandbox-client";
 import { useSandboxQuery } from "@/features/sandbox/hooks/use-sandbox-query";

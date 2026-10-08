@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import type { ProcessInfo, TerminalInfo } from "@theone/protocol";
+import type { ProcessInfo, TerminalInfo } from "@tesseract/protocol";
 
 import type { ActionTileItem } from "@/components/action-tile-row";
 import type { ChoiceOption } from "@/components/choice-group";

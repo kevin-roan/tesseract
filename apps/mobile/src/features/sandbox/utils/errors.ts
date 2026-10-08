@@ -6,7 +6,7 @@ import {
   ProtocolVersionError,
   TimeoutError,
   isAuthError,
-} from "@theone/client";
+} from "@tesseract/client";
 
 import type { SandboxIssue } from "../types";
 

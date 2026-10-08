@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { TerminalInfo } from "@theone/protocol";
+import type { TerminalInfo } from "@tesseract/protocol";
 
 import { TERMINAL_DEFAULT_SIZE } from "@/features/sandbox/utils/constants";
 

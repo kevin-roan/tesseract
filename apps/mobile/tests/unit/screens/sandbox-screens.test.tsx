@@ -13,7 +13,7 @@ import {
   sampleProject,
   sampleSyncChanges,
   sampleSyncRequest,
-} from "@theone/protocol/fixtures";
+} from "@tesseract/protocol/fixtures";
 
 import PairScreen from "@/app/pair";
 import AgentRunScreen from "@/app/sandbox/agent/[id]";
@@ -629,7 +629,7 @@ describe("ProjectScreen", () => {
     actionError: null,
     notice: null,
     dismissNotice: jest.fn(),
-    host: "Monolith on workstation · online",
+    host: "Tesseract on workstation · online",
     empty: null,
     changes: sampleSyncChanges.changes,
     summary: "3 files · 1 added · 1 modified · 1 deleted",
@@ -860,7 +860,7 @@ describe("ProjectScreen", () => {
     await render(<ProjectScreen />);
 
     expect(screen.getByTestId("project-sync")).toBeOnTheScreen();
-    expect(screen.getByText("Monolith on workstation · online")).toBeOnTheScreen();
+    expect(screen.getByText("Tesseract on workstation · online")).toBeOnTheScreen();
     expect(screen.getByText(sync.summary)).toBeOnTheScreen();
     expect(screen.getByLabelText("added src/new-file.ts")).toBeOnTheScreen();
     expect(screen.getByText(/^Synced 3 files/)).toBeOnTheScreen();

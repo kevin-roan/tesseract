@@ -4,7 +4,7 @@ import { useUsage } from "@/features/home/hooks/use-usage";
 import { useActiveSandbox } from "@/features/sandbox/hooks/use-sandbox-client";
 import { useAgentRuns, useBuilds, useProcesses, useProjects } from "@/features/sandbox/hooks/use-sandbox-queries";
 
-import type { IslandState } from "@/modules/theone-island";
+import type { IslandState } from "@/modules/tesseract-island";
 
 import { USAGE_DAYS } from "../utils/constants";
 import { islandState } from "../utils/state";

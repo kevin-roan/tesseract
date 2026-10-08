@@ -19,7 +19,7 @@ function setup(options: { scrcpy?: boolean; exit?: { code: number; stderr?: stri
     isExecutable: (path) => options.scrcpy !== false && path === "/usr/bin/scrcpy",
   };
   const viewer = new EmulatorViewer({
-    env: () => ({ PATH: "/usr/bin", THEONE_ADB: "/sdk/platform-tools/adb" }),
+    env: () => ({ PATH: "/usr/bin", TESSERACT_ADB: "/sdk/platform-tools/adb" }),
     platform: "linux",
     files,
     earlyExitMs: options.exit ? EXIT_WINDOW_MS : OPEN_WINDOW_MS,
@@ -40,7 +40,7 @@ function setup(options: { scrcpy?: boolean; exit?: { code: number; stderr?: stri
   return { viewer, calls };
 }
 
-const REQUEST = { serial: "127.0.0.1:41555", title: "monolith · Android emulator" };
+const REQUEST = { serial: "127.0.0.1:41555", title: "tesseract · Android emulator" };
 
 describe("EmulatorViewer", () => {
   it("opens scrcpy once with the GTK arguments and the SDK adb", async () => {

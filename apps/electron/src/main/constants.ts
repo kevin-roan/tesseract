@@ -7,16 +7,17 @@ export const ONBOARDING_LOG_FLUSH_MS = 100;
 
 export const UPDATE_FIRST_CHECK_DELAY_MS = 60_000;
 export const UPDATE_CHECK_INTERVAL_MS = 6 * 60 * 60 * 1000;
-export const UPDATES_DISABLED_ENV = "MONOLITH_DISABLE_UPDATES";
+export const UPDATES_DISABLED_ENV = "TESSERACT_DISABLE_UPDATES";
 export const LINUX_PACKAGE_TYPE_FILE = "package-type";
 
 export const CLI_INSTALL_TIMEOUT_MS = 120_000;
 export const CLI_MAC_LINK_DIR = "/usr/local/bin";
 export const CLI_DEB_LINK_DIR = "/usr/bin";
 export const CLI_USER_LINK_DIR = [".local", "bin"] as const;
-export const CLI_USER_DATA_DIR = [".local", "share", "monolith"] as const;
+export const CLI_USER_DATA_DIR = [".local", "share", "tesseract"] as const;
 export const CLI_USER_COPY_DIR = [...CLI_USER_DATA_DIR, "bin"] as const;
 export const CLI_INSTALL_SIDECAR = "app.json";
+export const LEGACY_CLI_TARGETS: readonly RegExp[] = [/\/Monolith\.app\//, /^\/opt\/Monolith\//, /\/\.local\/share\/(monolith|theone)\/bin\//];
 export const CLI_STABLE_SANDBOX_DIR = "sandbox";
 export const BUNDLED_SANDBOX_DIR = "sandbox";
 export const SANDBOX_MANIFEST = "manifest.json";

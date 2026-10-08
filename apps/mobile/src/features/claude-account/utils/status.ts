@@ -1,4 +1,4 @@
-import type { ClaudeAuthMethod, ClaudeAuthStatus } from "@theone/protocol";
+import type { ClaudeAuthMethod, ClaudeAuthStatus } from "@tesseract/protocol";
 
 import type { StatusBadgeProps } from "@/components/status-badge";
 import { capitalize, formatRelativeTime } from "@/features/sandbox/utils/format";

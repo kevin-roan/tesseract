@@ -1,7 +1,7 @@
 import { act, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react-native";
 import { AppState, type AppStateStatus } from "react-native";
-import { TheOneClient } from "@theone/client";
-import { sampleUpload } from "@theone/protocol/fixtures";
+import { TesseractClient } from "@tesseract/client";
+import { sampleUpload } from "@tesseract/protocol/fixtures";
 
 import AttachmentTray from "@/features/attachments/components/attachment-tray";
 import { base64FromDataUrl } from "@/features/attachments/utils/files";
@@ -13,10 +13,10 @@ import { __reset as resetFiles, files } from "../../mocks/expo-file-system";
 import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../sandbox/helpers";
 import { chatComposerState } from "./fixtures";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const fake = { createUpload: jest.fn() };
 const PNG = "iVBORw0KGgo=";
 const optionIds = (options: { id: string }[]) => options.map((option) => option.id);

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { AppRunListSchema, AppRunSchema, RunTargetListSchema, type AppRun, type LogLine, type RunTargetInfo } from "@theone/protocol";
+import { AppRunListSchema, AppRunSchema, RunTargetListSchema, type AppRun, type LogLine, type RunTargetInfo } from "@tesseract/protocol";
 import { packageExecCommand, packageScriptCommand } from "../src/services/app-runs";
 import { detectProject, detectRunTargetSources, pnpmWorkspacePackages } from "../src/services/project-detect";
 import { installFixture, makeTempDir, removeTempDirs, startTestController, waitFor, writeFiles, type TestController } from "./helpers";
@@ -59,7 +59,7 @@ beforeAll(async () => {
   }
   t = await startTestController({
     workspace,
-    env: { THEONE_FLUTTER: installFixture(bin, "fake-flutter.sh", "flutter") },
+    env: { TESSERACT_FLUTTER: installFixture(bin, "fake-flutter.sh", "flutter") },
     controller: { appRuns: { readyPollMs: 50 } },
   });
 });

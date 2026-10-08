@@ -1,6 +1,6 @@
 import { readFileSync, statfsSync } from "node:fs";
 import { availableParallelism, freemem, loadavg, totalmem } from "node:os";
-import type { SandboxCounts, SandboxResources, SandboxStatus } from "@theone/protocol";
+import type { SandboxCounts, SandboxResources, SandboxStatus } from "@tesseract/protocol";
 import type { Config } from "../config";
 import type { DisplayService } from "./display";
 import type { ToolService } from "./tools";

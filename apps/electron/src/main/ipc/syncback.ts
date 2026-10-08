@@ -1,7 +1,7 @@
 import { unwatchFile, watchFile } from "node:fs";
 import { hostname } from "node:os";
 import { Notification } from "electron";
-import { ApiError, NetworkError, TimeoutError, type StreamConnection } from "@theone/client";
+import { ApiError, NetworkError, TimeoutError, type StreamConnection } from "@tesseract/client";
 import { readConfig } from "../../core/config";
 import { createLogger } from "../../core/log";
 import { stateDir } from "../../core/paths";

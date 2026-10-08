@@ -1,6 +1,6 @@
 import { createRef } from "react";
 import { renderHook } from "@testing-library/react-native";
-import type { InputMode } from "@theone/protocol";
+import type { InputMode } from "@tesseract/protocol";
 
 import type { WebSurfaceHandle } from "@/components/web-surface/types";
 import { useDisplayPageSync } from "@/features/sandbox/hooks/use-display-page-sync";

@@ -4,7 +4,7 @@ import { LOG_TAIL_LINES } from "./constants";
 import { HOST_SHELL_LABELS } from "./labels";
 import { logText, pinButtonLabel, pinSubtitle, serveChecked, serveLocked, serveSubtitle } from "./model";
 
-const pairing = { link: "theone://host?x", url: "https://host.ts.net:8443", name: "host", pinSet: true };
+const pairing = { link: "tesseract://host?x", url: "https://host.ts.net:8443", name: "host", pinSet: true };
 
 function state(patch: Partial<HostShellState>): HostShellState {
   return { status: "stopped", pairing, error: null, log: [], autostart: false, sessionExpiresAt: null, ...patch };
@@ -17,7 +17,7 @@ describe("host shell model", () => {
     expect(serveSubtitle(state({ status: "running" }))).toBe("Running · https://host.ts.net:8443");
     expect(serveSubtitle(state({ status: "running", pairing: null }))).toBe("Running");
     expect(serveSubtitle(state({ status: "stopping" }))).toBe("Stopping…");
-    expect(serveSubtitle(state({ status: "external" }))).toBe("Running outside Monolith · https://host.ts.net:8443");
+    expect(serveSubtitle(state({ status: "external" }))).toBe("Running outside Tesseract · https://host.ts.net:8443");
     expect(serveSubtitle(state({ status: "failed", error: "boom" }))).toBe("Failed: boom");
   });
 

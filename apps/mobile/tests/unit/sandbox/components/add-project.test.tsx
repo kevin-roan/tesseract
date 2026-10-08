@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import type { LogLine } from "@theone/protocol";
+import type { LogLine } from "@tesseract/protocol";
 import { FolderPlusIcon, HammerIcon, MonitorIcon } from "phosphor-react-native";
 
 import ActionTile from "@/components/action-tile";

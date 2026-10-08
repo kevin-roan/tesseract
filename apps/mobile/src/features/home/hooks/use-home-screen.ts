@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { router, type Href } from "expo-router";
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 
 import { useChatComposer } from "@/features/chat/hooks/use-chat-composer";
 import { useProjectOptions } from "@/features/chat/hooks/use-project-options";

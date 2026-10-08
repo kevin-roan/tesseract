@@ -1,4 +1,4 @@
-import type { SyncRequest } from "@theone/protocol";
+import type { SyncRequest } from "@tesseract/protocol";
 import type { DefineContract } from "../ipc-types";
 
 export type SyncKind = "pull" | "revert" | "get";

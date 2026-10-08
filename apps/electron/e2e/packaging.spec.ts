@@ -37,8 +37,8 @@ const noLinks: CliProbe = { realpath: () => null, size: () => null };
 const packagedEnv = (overrides: Partial<CliEnvironment>): CliEnvironment => ({
   platform: "linux",
   packaged: true,
-  resourcesPath: "/opt/Monolith/resources",
-  home: "/home/monolith",
+  resourcesPath: "/opt/Tesseract/resources",
+  home: "/home/tesseract",
   pathEnv: "",
   appImage: false,
   inApplicationsFolder: true,
@@ -52,25 +52,25 @@ test.describe("electron-builder config", () => {
     expect(pairs).toContainEqual(SANDBOX_EXTRA_RESOURCE);
     expect(config.asar).toBe(true);
     expect(requiredCliFiles("mac")).toEqual([
-      "dist-cli/mac-x64/monolith",
-      "dist-cli/mac-x64/theone-controller",
-      "dist-cli/mac-arm64/monolith",
-      "dist-cli/mac-arm64/theone-controller",
+      "dist-cli/mac-x64/tesseract",
+      "dist-cli/mac-x64/tesseract-controller",
+      "dist-cli/mac-arm64/tesseract",
+      "dist-cli/mac-arm64/tesseract-controller",
     ]);
-    expect(requiredCliFiles("win")).toEqual(["dist-cli/win-x64/monolith.exe", "dist-cli/win-x64/theone-controller.exe"]);
-    expect(requiredCliFiles("linux")).toEqual(["dist-cli/linux-x64/monolith", "dist-cli/linux-x64/theone-controller"]);
+    expect(requiredCliFiles("win")).toEqual(["dist-cli/win-x64/tesseract.exe", "dist-cli/win-x64/tesseract-controller.exe"]);
+    expect(requiredCliFiles("linux")).toEqual(["dist-cli/linux-x64/tesseract", "dist-cli/linux-x64/tesseract-controller"]);
   });
 
   test("declares a universal macOS dmg with an Applications link and in-app CLI install", () => {
     expect(config.mac.target).toContainEqual({ target: "dmg", arch: ["universal"] });
     expect(config.mac.hardenedRuntime).toBe(true);
     expect(config.dmg.contents).toContainEqual(expect.objectContaining({ type: "link", path: "/Applications" }));
-    const plan = planCliInstall(packagedEnv({ platform: "darwin", resourcesPath: "/Applications/Monolith.app/Contents/Resources" }), noLinks);
+    const plan = planCliInstall(packagedEnv({ platform: "darwin", resourcesPath: "/Applications/Tesseract.app/Contents/Resources" }), noLinks);
     expect(plan.method).toBe("admin-symlink");
     expect(plan.status).toMatchObject({
       state: "missing",
-      binaryPath: "/Applications/Monolith.app/Contents/Resources/bin/monolith",
-      linkPath: "/usr/local/bin/monolith",
+      binaryPath: "/Applications/Tesseract.app/Contents/Resources/bin/tesseract",
+      linkPath: "/usr/local/bin/tesseract",
     });
   });
 
@@ -79,9 +79,9 @@ test.describe("electron-builder config", () => {
     expect(config.nsis).toMatchObject({ oneClick: true, perMachine: false, allowElevation: false, include: "build/installer.nsh" });
     const script = readFileSync(join(APP_DIR, config.nsis.include), "utf8");
     for (const marker of NSIS_PATH_MARKERS) expect(script).toContain(marker);
-    const resources = "C:\\Users\\me\\AppData\\Local\\Programs\\Monolith\\resources";
+    const resources = "C:\\Users\\me\\AppData\\Local\\Programs\\Tesseract\\resources";
     const installed = planCliInstall(packagedEnv({ platform: "win32", resourcesPath: resources, pathEnv: `C:\\Windows;${resources}\\bin` }), noLinks);
-    expect(installed.status).toMatchObject({ state: "installed", binaryPath: `${resources}\\bin\\monolith.exe` });
+    expect(installed.status).toMatchObject({ state: "installed", binaryPath: `${resources}\\bin\\tesseract.exe` });
     const missing = planCliInstall(packagedEnv({ platform: "win32", resourcesPath: resources, pathEnv: "C:\\Windows" }), noLinks);
     expect(missing.status.state).toBe("unsupported");
     expect(NSIS_CLI_DIR.endsWith("resources\\bin")).toBe(true);
@@ -90,12 +90,12 @@ test.describe("electron-builder config", () => {
   test("declares the Linux AppImage and deb with CLI links", () => {
     expect(config.linux.target.map(({ target }) => target)).toEqual(expect.arrayContaining(["AppImage", "deb"]));
     const postinst = readFileSync(join(APP_DIR, config.deb.afterInstall), "utf8");
-    expect(postinst).toContain("CLI_LINK=/usr/bin/monolith");
+    expect(postinst).toContain("CLI_LINK=/usr/bin/tesseract");
     expect(readFileSync(join(APP_DIR, config.deb.afterRemove), "utf8")).toContain('rm -f "$CLI_LINK"');
-    const appImage = planCliInstall(packagedEnv({ appImage: true, resourcesPath: "/tmp/.mount_Monolith/resources" }), noLinks);
+    const appImage = planCliInstall(packagedEnv({ appImage: true, resourcesPath: "/tmp/.mount_Tesseract/resources" }), noLinks);
     expect(appImage.method).toBe("copy");
-    expect(appImage.copyPath).toBe("/home/monolith/.local/share/monolith/bin/monolith");
-    expect(appImage.status.linkPath).toBe("/home/monolith/.local/bin/monolith");
+    expect(appImage.copyPath).toBe("/home/tesseract/.local/share/tesseract/bin/tesseract");
+    expect(appImage.status.linkPath).toBe("/home/tesseract/.local/bin/tesseract");
   });
 
   test("NSIS PATH macros add and remove the CLI directory under makensis + wine", () => {
@@ -123,7 +123,7 @@ test.describe("Linux AppImage", () => {
       const result = runDist();
       if (result.status !== 0) throw new Error(`dist failed: ${describeRun(result)}`);
     }
-    test.skip(!existsSync(appImage), `no AppImage at ${appImage} (MONOLITH_E2E_DIST=never)`);
+    test.skip(!existsSync(appImage), `no AppImage at ${appImage} (TESSERACT_E2E_DIST=never)`);
     profile = isolatedProfile();
     const extracted = extractAppImage(appImage, profile.dir, profile.env);
     if (!extracted) throw new Error(`could not extract ${appImage}`);
@@ -153,8 +153,8 @@ test.describe("Linux AppImage", () => {
     expect(feed.provider).toBe("generic");
   });
 
-  test("bundled monolith CLI reports the app version", () => {
-    const result = run(join(root, "resources/bin/monolith"), ["--version"], { env: profile?.env, timeout: QUIT_TIMEOUT_MS });
+  test("bundled tesseract CLI reports the app version", () => {
+    const result = run(join(root, "resources/bin/tesseract"), ["--version"], { env: profile?.env, timeout: QUIT_TIMEOUT_MS });
     expect(result.status, describeRun(result)).toBe(0);
     expect(parseCliVersion(result.stdout)).toBe(version);
   });

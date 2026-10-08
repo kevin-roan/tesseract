@@ -12,9 +12,9 @@ const state = vi.hoisted(() => ({
 
 vi.mock("electron", () => ({ app: {}, Notification: {}, BrowserWindow: { getAllWindows: () => [] } }));
 vi.mock("../context", () => ({
-  mainContext: () => ({ configFile: "/tmp/monolith-test/config.json", isTest: state.isTest, fixtures: state.fixtures }),
+  mainContext: () => ({ configFile: "/tmp/tesseract-test/config.json", isTest: state.isTest, fixtures: state.fixtures }),
 }));
-vi.mock("./resources", () => ({ sandboxContext: () => ({ contextDir: "/ctx", envFile: "/tmp/monolith-test/.env", env: {} }) }));
+vi.mock("./resources", () => ({ sandboxContext: () => ({ contextDir: "/ctx", envFile: "/tmp/tesseract-test/.env", env: {} }) }));
 vi.mock("./settings", () => ({ currentSettings: () => ({ sandboxAutostart: state.enabled }) }));
 vi.mock("./notifications", () => ({
   showNotification: (notification: { id?: string; title: string }) => {
@@ -51,7 +51,7 @@ beforeEach(() => {
 
 describe("sandbox autostart at launch", () => {
   it("runs once in the background with the saved setting and streams log lines", async () => {
-    state.outcome = { kind: "started", project: "monolith-test", status: { configured: true, project: "monolith-test", services: [] } };
+    state.outcome = { kind: "started", project: "tesseract-test", status: { configured: true, project: "tesseract-test", services: [] } };
     const { startSandboxAutostart } = await load();
     const first = startSandboxAutostart();
     expect(startSandboxAutostart()).toBe(first);
@@ -60,7 +60,7 @@ describe("sandbox autostart at launch", () => {
     expect(vi.mocked(sandbox.runAutostart).mock.calls[0]?.[1]).toBe(true);
     expect(state.events).toEqual([
       ["log", "Starting"],
-      ["status", { configured: true, project: "monolith-test", services: [] }],
+      ["status", { configured: true, project: "tesseract-test", services: [] }],
     ]);
     expect(state.notifications).toEqual([]);
   });
@@ -84,7 +84,7 @@ describe("sandbox autostart at launch", () => {
   it("notifies once when Docker isn't reachable or compose fails", async () => {
     const { reportAutostart } = await load();
     reportAutostart({ kind: "skip", reason: "docker-unreachable", detail: "Cannot connect" });
-    reportAutostart({ kind: "failed", project: "monolith-test", message: "port is already allocated" });
+    reportAutostart({ kind: "failed", project: "tesseract-test", message: "port is already allocated" });
     reportAutostart({ kind: "skip", reason: "not-managed" });
     expect(state.notifications.map((notification) => notification.title)).toEqual([
       sandbox.SANDBOX_LABELS.autostart.dockerTitle,

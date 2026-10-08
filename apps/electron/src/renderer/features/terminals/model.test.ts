@@ -1,4 +1,4 @@
-import type { TerminalInfo } from "@theone/protocol";
+import type { TerminalInfo } from "@tesseract/protocol";
 import { describe, expect, it } from "vitest";
 import {
   bannerFor,
@@ -53,7 +53,7 @@ const key = (overrides: Partial<KeyLike>): KeyLike => ({
 describe("terminals model", () => {
   it("parses navigation params", () => {
     expect(parseOpen({ terminalId: "trm_1" })).toEqual({ type: "attach", terminalId: "trm_1" });
-    expect(parseOpen({ kind: "claude", projectId: "monolith" })).toEqual({ type: "launch", kind: "claude", projectId: "monolith" });
+    expect(parseOpen({ kind: "claude", projectId: "tesseract" })).toEqual({ type: "launch", kind: "claude", projectId: "tesseract" });
     expect(parseOpen({ kind: "shell", projectId: "" })).toEqual({ type: "launch", kind: "shell", projectId: null });
     expect(parseOpen({ kind: "python" })).toBeNull();
     expect(parseOpen(null)).toBeNull();

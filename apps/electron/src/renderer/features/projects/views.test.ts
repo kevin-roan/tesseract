@@ -1,5 +1,5 @@
-import { ApiError } from "@theone/client";
-import type { GitDetails, ProcessInfo, Project, RunTargetInfo } from "@theone/protocol";
+import { ApiError } from "@tesseract/client";
+import type { GitDetails, ProcessInfo, Project, RunTargetInfo } from "@tesseract/protocol";
 import { describe, expect, it } from "vitest";
 import { detailChips, detailTabs } from "./detail-view";
 import { displayButton } from "./emulator";
@@ -7,9 +7,9 @@ import { connectionState, listView, noMatchState } from "./list-view";
 import { pseudonym } from "./pseudonym";
 
 const base: Project = {
-  id: "theone-mobile",
-  name: "monolith",
-  path: "/workspace/projects/theone-mobile",
+  id: "tesseract-mobile",
+  name: "tesseract",
+  path: "/workspace/projects/tesseract-mobile",
   framework: "node",
   packageManager: "bun",
   scripts: [],
@@ -64,7 +64,7 @@ describe("listView", () => {
     const view = listView({ ...input, projects: [base, other], processes: [running] });
     expect(view.counts).toEqual({ all: 2, active: 1, idle: 1 });
     expect(view.groups.map((group) => group.id)).toEqual(["all"]);
-    expect(view.groups[0]?.cards.map((card) => card.id)).toEqual(["other", "theone-mobile"]);
+    expect(view.groups[0]?.cards.map((card) => card.id)).toEqual(["other", "tesseract-mobile"]);
     const grouped = listView({ ...input, projects: [base, other], processes: [running], grouped: true });
     expect(grouped.groups.map((group) => [group.id, group.title])).toEqual([
       ["running", "Running"],
@@ -144,7 +144,7 @@ describe("displayButton", () => {
     const run = { target: "expo-android", state: "ready" } as never;
     expect(displayButton([androidTarget], [run], "node").label).toBe("Show emulator");
     const fixable = { ...androidTarget, available: false, reason: "Start the emulator on the host" };
-    expect(displayButton([fixable], [], "expo").tooltip).toBe("Start the emulator on the host. Monolith starts and links the emulator on this computer first");
+    expect(displayButton([fixable], [], "expo").tooltip).toBe("Start the emulator on the host. Tesseract starts and links the emulator on this computer first");
     expect(displayButton([{ ...fixable, reason: "Other" }], [], "expo").tooltip).toBe("Other");
   });
 });

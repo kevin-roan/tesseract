@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { LogLineListSchema, ProcessInfoSchema, ProcessLogStreamMessageSchema, type LogLine, type ProcessInfo } from "@theone/protocol";
+import { LogLineListSchema, ProcessInfoSchema, ProcessLogStreamMessageSchema, type LogLine, type ProcessInfo } from "@tesseract/protocol";
 import { LineSplitter } from "../src/core/line-splitter";
 import { LogStore } from "../src/core/log-store";
 import { silentLogger } from "../src/core/logger";

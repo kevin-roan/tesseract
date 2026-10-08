@@ -1,4 +1,4 @@
-import type { AgentRun, AgentRunDetail, AgentRunEvent, Upload } from "@theone/protocol";
+import type { AgentRun, AgentRunDetail, AgentRunEvent, Upload } from "@tesseract/protocol";
 import { fixtureAgentRuns, fixtureArchivedRuns, fixtureRunningRun } from "../agents/data";
 
 const LOADED_AT = Date.now();
@@ -30,7 +30,7 @@ const upload = (id: string, name: string, sizeBytes: number, createdAt: string):
   mimeType: "image/png",
   kind: "image",
   sizeBytes,
-  path: `/workspace/.theone/uploads/${id}/${name}`,
+  path: `/workspace/.tesseract/uploads/${id}/${name}`,
   createdAt,
 });
 
@@ -53,7 +53,7 @@ const runningStart = at(2 * MINUTE + 14 * SECOND);
 export const conversationPreviousRun: AgentRun = {
   ...base,
   id: "run_conv_previous",
-  projectId: "monolith",
+  projectId: "tesseract",
   prompt: "what if the host machine is mac os, can we still run the android emulator there and keep the same flow?",
   sessionId: CONVERSATION_SESSIONS.architecture,
   state: "succeeded",
@@ -66,7 +66,7 @@ export const conversationPreviousRun: AgentRun = {
 export const conversationDoneRun: AgentRun = {
   ...base,
   id: "run_conv_done",
-  projectId: "monolith",
+  projectId: "tesseract",
   prompt: "yes write this down to artiftecutre",
   sessionId: CONVERSATION_SESSIONS.architecture,
   state: "succeeded",
@@ -81,7 +81,7 @@ const failedUpload = upload("upl_conv_failed", "projects-screen.png", 412_000, f
 export const conversationFailedRun: AgentRun = {
   ...base,
   id: "run_conv_failed",
-  projectId: "monolith",
+  projectId: "tesseract",
   prompt: "in the projects screen the card is not up to the mark, check the screenshot and fix the layout",
   attachments: [failedUpload],
   sessionId: CONVERSATION_SESSIONS.failed,
@@ -98,7 +98,7 @@ const cancelledUpload = upload("upl_conv_cancelled", "notification-sheet.png", 2
 export const conversationCancelledRun: AgentRun = {
   ...base,
   id: "run_conv_cancelled",
-  projectId: "monolith",
+  projectId: "tesseract",
   prompt: "Take a look at this image.",
   attachments: [cancelledUpload],
   sessionId: CONVERSATION_SESSIONS.cancelled,
@@ -135,7 +135,7 @@ const sessionStarted = (seq: number, ts: string): AgentRunEvent => ({
   kind: "system",
   seq,
   ts,
-  text: "Session started (model claude-opus-5-5, cwd /workspace/projects/theone-mobile)",
+  text: "Session started (model claude-opus-5-5, cwd /workspace/projects/tesseract-mobile)",
 });
 
 const DONE_TEXT = `Written to \`docs/architecture/host-platforms.md\`. Summary of what it covers:
@@ -152,9 +152,9 @@ I didn't change \`00-blueprint.md\`, which already has uncommitted edits of your
 
 const doneEvents: AgentRunEvent[] = [
   sessionStarted(0, doneStart),
-  { kind: "tool_use", seq: 1, ts: doneStart, tool: "Read", summary: "/workspace/projects/monolith/docs/architecture/app-runs-and-emulator.md" },
+  { kind: "tool_use", seq: 1, ts: doneStart, tool: "Read", summary: "/workspace/projects/tesseract/docs/architecture/app-runs-and-emulator.md" },
   { kind: "tool_result", seq: 2, ts: doneStart, tool: "Read", isError: false, summary: "Read 412 lines" },
-  { kind: "tool_use", seq: 3, ts: doneStart, tool: "Write", summary: "/workspace/projects/monolith/docs/architecture/host-platforms.md" },
+  { kind: "tool_use", seq: 3, ts: doneStart, tool: "Write", summary: "/workspace/projects/tesseract/docs/architecture/host-platforms.md" },
   { kind: "tool_result", seq: 4, ts: doneStart, tool: "Write", isError: false, summary: "File created successfully" },
   { kind: "text", seq: 5, ts: doneStart, text: DONE_TEXT },
   { kind: "system", seq: 6, ts: doneStart, text: "Run finished in 92.6 s, 6 turns, 327,230 tokens" },

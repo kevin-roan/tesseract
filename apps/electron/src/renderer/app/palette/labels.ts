@@ -30,7 +30,7 @@ export const PALETTE_LABELS = {
   zoomOut: "Zoom out",
   zoomReset: "Reset zoom",
   closeWindow: "Close window",
-  quit: "Quit Monolith",
+  quit: "Quit Tesseract",
   keywords: {
     newConversation: ["agent", "claude", "chat", "ask"],
     refresh: ["reload", "poll", "health"],

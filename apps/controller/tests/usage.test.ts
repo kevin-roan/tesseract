@@ -8,7 +8,7 @@ import {
   type ClaudeSession,
   type TerminalInfo,
   type UsageReport,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { loadConfig } from "../src/config";
 import { listTranscripts, refreshTranscript, type TranscriptFile } from "../src/services/transcripts";
 import { UsageService, type SessionSources } from "../src/services/usage";
@@ -192,7 +192,7 @@ describe("UsageService", () => {
 
   function setup(sources: Partial<SessionSources> = {}) {
     const root = makeTempDir("claude");
-    const config = loadConfig({ THEONE_WORKSPACE: workspace, THEONE_TOKEN: TEST_TOKEN, CLAUDE_CONFIG_DIR: root });
+    const config = loadConfig({ TESSERACT_WORKSPACE: workspace, TESSERACT_TOKEN: TEST_TOKEN, CLAUDE_CONFIG_DIR: root });
     const service = new UsageService(config, { runs: () => [], terminals: () => [], ...sources }, () => NOW);
     return { root, service };
   }

@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 
 import type { ChoiceOption } from "@/components/choice-group";
 import { useChatComposer } from "@/features/chat/hooks/use-chat-composer";

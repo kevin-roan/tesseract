@@ -1,5 +1,5 @@
-import { ApiError } from "@theone/client";
-import type { AppRun, RunTargetInfo } from "@theone/protocol";
+import { ApiError } from "@tesseract/client";
+import type { AppRun, RunTargetInfo } from "@tesseract/protocol";
 import { describeError } from "../../app/connection";
 import { ANDROID_FRAMEWORKS, ANDROID_VIEWER, LIVE_APP_RUN_STATES, NOT_FOUND_STATUS } from "./constants";
 import { DETAIL_LABELS, EMULATOR_LABELS, HOST_FIXABLE_REASONS } from "./labels";

@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
+import { TesseractClient } from "@tesseract/client";
 import {
   sampleAgentRun,
   sampleBuild,
@@ -8,7 +8,7 @@ import {
   sampleInbox,
   sampleProject,
   sampleUsageReport,
-} from "@theone/protocol/fixtures";
+} from "@tesseract/protocol/fixtures";
 
 import { useChatsScreen } from "@/features/chats/hooks/use-chats-screen";
 import { useResumeChat } from "@/features/chats/hooks/use-resume-chat";
@@ -19,7 +19,7 @@ import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSand
 
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) };
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   get router() {
@@ -27,7 +27,7 @@ jest.mock("expo-router", () => ({
   },
 }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const fake = {
   usage: jest.fn(),
   sessions: jest.fn(),

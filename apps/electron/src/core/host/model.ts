@@ -1,4 +1,4 @@
-import { ApiError, NetworkError, TimeoutError } from "@theone/client";
+import { ApiError, NetworkError, TimeoutError } from "@tesseract/client";
 import type { HostPairing, HostShellState } from "../../shared/contracts/hostShell";
 import { IpcError, type IpcErrorCode } from "../../shared/ipc-types";
 import { ERROR_PREFIX, HEALTH_PATH, HOST_SERVICE_NAME, HOST_SHELL, SESSION_REQUIRED, VIEWER } from "./constants";

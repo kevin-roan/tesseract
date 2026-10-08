@@ -1,6 +1,6 @@
 export const DISCOVERY_MESSAGES = {
   noDocker: "docker is not installed on this machine",
-  noPairingLink: "theone-controller pair --json printed no pairing link",
+  noPairingLink: "tesseract-controller pair --json printed no pairing link",
   invalidPairingLink: (error: string) => `controller printed an invalid pairing link: ${error}`,
   invalidInspect: "docker inspect printed invalid JSON",
   found: (name: string, url: string) => `Found ${name} at ${url}`,

@@ -4,14 +4,14 @@ export const SMOKE_ROUTE = "/onboarding/welcome";
 export const SMOKE_SIZE = { width: 880, height: 620 } as const;
 export const SMOKE_TIMEOUT_MS = 60_000;
 
-export const APP_EXECUTABLE = "monolith-desktop";
+export const APP_EXECUTABLE = "tesseract-desktop";
 
 export const PACKAGED_FILES = [
   { path: APP_EXECUTABLE, executable: true },
   { path: "resources/app.asar", executable: false },
   { path: "resources/app-update.yml", executable: false },
   { path: "resources/bin/tesseract", executable: true },
-  { path: "resources/bin/theone-controller", executable: true },
+  { path: "resources/bin/tesseract-controller", executable: true },
   { path: "resources/sandbox/manifest.json", executable: false },
   { path: "resources/sandbox/build-weights.json", executable: false },
   { path: "resources/sandbox/infra/docker/sandbox/Dockerfile", executable: false },
@@ -20,26 +20,26 @@ export const PACKAGED_FILES = [
   { path: "resources/licenses/LICENSE-inter", executable: false },
 ] as const;
 
-export const DESKTOP_ENTRY = "usr/share/applications/dev.monolith.Desktop.desktop";
+export const DESKTOP_ENTRY = "usr/share/applications/dev.tesseract.Desktop.desktop";
 
 export const DEB_FILES = [
-  "opt/Monolith/monolith-desktop",
-  "opt/Monolith/resources/bin/tesseract",
-  "opt/Monolith/resources/app.asar",
-  "opt/Monolith/resources/apparmor-profile",
+  "opt/Tesseract/tesseract-desktop",
+  "opt/Tesseract/resources/bin/tesseract",
+  "opt/Tesseract/resources/app.asar",
+  "opt/Tesseract/resources/apparmor-profile",
   DESKTOP_ENTRY,
 ] as const;
 
-export const DEB_POSTINST_MARKERS = ["APP_DIR='/opt/Monolith'", "CLI_LINK=/usr/bin/tesseract", 'CLI_TARGET="$APP_DIR/resources/bin/tesseract"'] as const;
+export const DEB_POSTINST_MARKERS = ["APP_DIR='/opt/Tesseract'", "CLI_LINK=/usr/bin/tesseract", 'CLI_TARGET="$APP_DIR/resources/bin/tesseract"'] as const;
 
 export const DESKTOP_ENTRY_LINES = [
-  "Exec=/opt/Monolith/monolith-desktop %U",
-  "StartupWMClass=dev.monolith.Desktop",
-  "MimeType=x-scheme-handler/monolith;",
+  "Exec=/opt/Tesseract/tesseract-desktop %U",
+  "StartupWMClass=dev.tesseract.Desktop",
+  "MimeType=x-scheme-handler/tesseract;",
 ] as const;
 
 export function artifactName(version: string, ext: "AppImage" | "deb"): string {
-  return ext === "AppImage" ? `Monolith-${version}-x86_64.AppImage` : `Monolith-${version}-amd64.deb`;
+  return ext === "AppImage" ? `Tesseract-${version}-x86_64.AppImage` : `Tesseract-${version}-amd64.deb`;
 }
 
 export function parseCliVersion(output: string): string | null {

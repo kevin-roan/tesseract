@@ -1,7 +1,7 @@
 import pytest
 
-from monolith_desktop.vnc.framebuffer import Framebuffer, Rect, union
-from monolith_desktop.vnc.input import (
+from tesseract_desktop.vnc.framebuffer import Framebuffer, Rect, union
+from tesseract_desktop.vnc.input import (
     KEY_COMBOS,
     XK_ALT_L,
     XK_CONTROL_L,
@@ -97,7 +97,7 @@ def test_union_of_damage():
 def test_large_raw_update_in_chunks(chunk):
     import struct
 
-    from monolith_desktop.vnc.protocol import Encoding
+    from tesseract_desktop.vnc.protocol import Encoding
     from test_vnc_client import connected, rect, update
 
     client, _, events = connected(64, 48)

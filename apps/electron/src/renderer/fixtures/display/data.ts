@@ -1,5 +1,5 @@
-import type { DisplayStatus, DisplayWindow } from "@theone/protocol";
-import { sampleDisplay } from "@theone/protocol/fixtures";
+import type { DisplayStatus, DisplayWindow } from "@tesseract/protocol";
+import { sampleDisplay } from "@tesseract/protocol/fixtures";
 import { GTK_PARITY } from "../projects/parity";
 import { currentScenario } from "../scenario";
 import type { FixtureVncAuth } from "./vnc-server";
@@ -22,8 +22,8 @@ export const FIXTURE_DISPLAY_ERROR = "The controller could not read the display 
 
 export const fixtureWindows: DisplayWindow[] = [
   { id: "0x1a00003", title: "about:blank - Chromium", app: "Chromium", pid: 412, active: true, minimized: false },
-  { id: "0x2200004", title: "dev@sandbox: /workspace/monolith", app: "XTerm", pid: 977, active: false, minimized: false },
-  { id: "0x2400002", title: "monolith (Flutter Linux)", app: "monolith", pid: 1204, active: false, minimized: true },
+  { id: "0x2200004", title: "dev@sandbox: /workspace/tesseract", app: "XTerm", pid: 977, active: false, minimized: false },
+  { id: "0x2400002", title: "tesseract (Flutter Linux)", app: "tesseract", pid: 1204, active: false, minimized: true },
   { id: "0x2600007", title: "   ", app: null, pid: null, active: false, minimized: false },
 ];
 

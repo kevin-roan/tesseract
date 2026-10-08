@@ -49,7 +49,7 @@ afterEach(() => {
 });
 
 function setup() {
-  const dir = mkdtempSync(join(tmpdir(), "monolith-test-docker-dl-"));
+  const dir = mkdtempSync(join(tmpdir(), "tesseract-test-docker-dl-"));
   dirs.push(dir);
   const phases: DockerPhase[] = [];
   const logs: string[] = [];
@@ -120,7 +120,7 @@ describe("downloadVerified", () => {
   it("turns an abort into a cancelled error", async () => {
     const controller = new AbortController();
     controller.abort();
-    const dir = mkdtempSync(join(tmpdir(), "monolith-test-docker-dl-"));
+    const dir = mkdtempSync(join(tmpdir(), "tesseract-test-docker-dl-"));
     dirs.push(dir);
     const runtime = createRuntime({ downloadsDir: dir, signal: controller.signal });
     await expect(downloadVerified(runtime, request())).rejects.toMatchObject({ code: "cancelled", message: "Installation cancelled" });

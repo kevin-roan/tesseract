@@ -1,4 +1,4 @@
-import type { AgentRunEvent } from "@theone/protocol";
+import type { AgentRunEvent } from "@tesseract/protocol";
 
 import { isRunSummary } from "./messages";
 

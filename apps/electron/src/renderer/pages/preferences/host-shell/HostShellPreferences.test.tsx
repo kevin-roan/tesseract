@@ -7,7 +7,7 @@ import { renderRoutes } from "../../../test/render";
 import HostShellPreferences from "./HostShellPreferences";
 
 const restores: (() => void)[] = [];
-const EXTERNAL = "Running outside Monolith · https://archlinux.tail511d9d.ts.net:8443";
+const EXTERNAL = "Running outside Tesseract · https://archlinux.tail511d9d.ts.net:8443";
 
 skipMotionDuringTests();
 
@@ -45,7 +45,7 @@ describe("HostShellPreferences", () => {
     restores.push(overrideIpcFixtures({ hostShell: { setAutostart } }));
     render();
     await screen.findByText(EXTERNAL);
-    fireEvent.click(switchFor("Start with Monolith"));
+    fireEvent.click(switchFor("Start with Tesseract"));
     await waitFor(() => expect(setAutostart).toHaveBeenCalledWith(true));
   });
 

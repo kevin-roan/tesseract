@@ -1,4 +1,4 @@
-import { sampleClaudeAccountList, sampleClaudeAuthStatus } from "@theone/protocol/fixtures";
+import { sampleClaudeAccountList, sampleClaudeAuthStatus } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import type { HostClaudeState } from "../../../../shared/contracts/claude";
 import { accountChoices, formatExpiry, hostAccountRows, hostAccountSubtitle, methodLabel, sandboxAuthRows, sandboxDescription, settingsSummary } from "./model";

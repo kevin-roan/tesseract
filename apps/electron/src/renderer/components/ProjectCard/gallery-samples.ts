@@ -16,9 +16,9 @@ export const PROJECT_GALLERY_CARDS: readonly ProjectCardModel[] = [
     tags: ["Web bundle", "Build script"],
   },
   {
-    id: "monolith",
-    title: "monolith",
-    subtitle: "Node · bun · theone-mobile",
+    id: "tesseract",
+    title: "tesseract",
+    subtitle: "Node · bun · tesseract-mobile",
     activity: { label: "Idle", tone: "neutral" },
     branch: "main",
     dirty: { label: "Uncommitted changes", tone: "warning" },

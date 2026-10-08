@@ -1,7 +1,7 @@
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { emulatorConsolePort, sharedEmulatorTunnelPort, type AndroidDevice, type SharedEmulator } from "@theone/protocol";
+import { emulatorConsolePort, sharedEmulatorTunnelPort, type AndroidDevice, type SharedEmulator } from "@tesseract/protocol";
 import { silentLogger } from "../src/core/logger";
 import type { AndroidConfig } from "../src/host/android/config";
 import { SharedEmulators, shareableEmulators } from "../src/host/android/shared";
@@ -95,7 +95,7 @@ describe("shared emulators", () => {
     expect(shared.endpoint("emulator-5556")).toBeNull();
   });
 
-  test("shares nothing while THEONE_ANDROID_SHARE_EMULATORS is off", async () => {
+  test("shares nothing while TESSERACT_ANDROID_SHARE_EMULATORS is off", async () => {
     const fakes = fakeAdb();
     fakes.devices(["emulator-5556\tdevice"]);
     const shared = new SharedEmulators({ ...fakes.config, shareEmulators: false }, () => null, silentLogger, { pollMs: 50 });

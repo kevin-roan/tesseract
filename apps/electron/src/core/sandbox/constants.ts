@@ -1,12 +1,12 @@
 import type { ReachabilityMode, SandboxComponent, WhisperModel } from "../../shared/contracts/sandbox";
 
-export const DEFAULT_PROJECT = "theone";
-export const DEFAULT_IMAGE = "theone/sandbox:latest";
+export const DEFAULT_PROJECT = "tesseract";
+export const DEFAULT_IMAGE = "tesseract/sandbox:latest";
 export const DEFAULT_CONTROLLER_PORT = 7700;
 export const DEFAULT_VNC_PORT = 5901;
 export const DEFAULT_FLUTTER_VERSION = "3.47.5";
 export const DEFAULT_CLAUDE_CODE_VERSION = "latest";
-export const DEFAULT_HOSTNAME = "theone-sandbox";
+export const DEFAULT_HOSTNAME = "tesseract-sandbox";
 export const DEFAULT_MODE: ReachabilityMode = "local";
 export const LOCAL_BIND_ADDR = "127.0.0.1";
 export const DEFAULT_TIME_ZONE = "UTC";
@@ -39,9 +39,9 @@ export const FAILURE_VERTEX_LOG_TAIL = 20;
 export const DEFAULT_LOG_TAIL = 200;
 export const TOKEN_BYTES = 32;
 
-export const SCRUBBED_ENV_PREFIXES = ["THEONE_"] as const;
+export const SCRUBBED_ENV_PREFIXES = ["TESSERACT_"] as const;
 export const SCRUBBED_ENV_NAMES = ["COMPOSE_PROJECT_NAME", "COMPOSE_FILE", "COMPOSE_PROFILES"] as const;
-export const SANDBOX_IMAGE_REF_ENV = "MONOLITH_SANDBOX_IMAGE_REF";
+export const SANDBOX_IMAGE_REF_ENV = "TESSERACT_SANDBOX_IMAGE_REF";
 
 export const COMPOSE_DIR = ["infra", "compose"] as const;
 export const DOCKERFILE = ["infra", "docker", "sandbox", "Dockerfile"] as const;
@@ -57,7 +57,7 @@ export const COMPOSE_FILES = {
 } as const;
 export const TAILSCALE_HOST_SOCKET_DIR = "/var/run/tailscale";
 export const TAILSCALE_SOCKET = "tailscaled.sock";
-export const STATE_SUBDIR = "theone";
+export const STATE_SUBDIR = "tesseract";
 
 export const LABELS = {
   project: "com.docker.compose.project",

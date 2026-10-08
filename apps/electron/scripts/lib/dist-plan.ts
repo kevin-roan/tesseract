@@ -15,7 +15,7 @@ export const CLI_TARGETS: Record<DistPlatform, readonly string[]> = {
   win: ["win-x64"],
 };
 
-export const DIST_ENV = { updateUrl: "MONOLITH_UPDATE_URL", channel: "MONOLITH_UPDATE_CHANNEL" } as const;
+export const DIST_ENV = { updateUrl: "TESSERACT_UPDATE_URL", channel: "TESSERACT_UPDATE_CHANNEL" } as const;
 
 export interface DistPlan {
   platform: DistPlatform;
@@ -80,7 +80,7 @@ export function builderArgs(plan: DistPlan, config = "electron-builder.yml"): st
   return args;
 }
 
-export const CLI_BINARIES = ["tesseract", "theone-controller"] as const;
+export const CLI_BINARIES = ["tesseract", "tesseract-controller"] as const;
 
 export function requiredCliFiles(platform: DistPlatform): string[] {
   return CLI_TARGETS[platform].flatMap((id) => {

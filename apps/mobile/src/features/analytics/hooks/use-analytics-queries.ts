@@ -1,6 +1,6 @@
 import { keepPreviousData, useQuery, type QueryKey } from "@tanstack/react-query";
-import type { TheOneClient } from "@theone/client";
-import { LIMITS } from "@theone/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import { LIMITS } from "@tesseract/protocol";
 import { useIsFocused } from "expo-router";
 
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
@@ -10,7 +10,7 @@ import { analyticsKeys } from "../api/query-keys";
 
 function useAnalyticsQuery<T>(
   key: (sandboxId: string) => QueryKey,
-  fetcher: (client: TheOneClient, signal: AbortSignal) => Promise<T>,
+  fetcher: (client: TesseractClient, signal: AbortSignal) => Promise<T>,
   enabled = true,
 ) {
   const { sandbox, client } = useSandboxClient();

@@ -5,7 +5,7 @@ import { parse } from "yaml";
 import { APP_DIR, REPO_ROOT } from "../scripts/lib/paths.ts";
 import { artifactName } from "../scripts/lib/smoke.ts";
 
-export const DIST_MODE_ENV = "MONOLITH_E2E_DIST";
+export const DIST_MODE_ENV = "TESSERACT_E2E_DIST";
 export type DistMode = "always" | "stale" | "never";
 
 export const DIST_TIMEOUT_MS = 30 * 60_000;
@@ -33,12 +33,12 @@ export const DIST_WORKSPACE_INPUTS = ["packages/protocol/src", "packages/client/
 
 export const NSIS_CLI_DIR = "$INSTDIR\\resources\\bin";
 export const NSIS_PATH_MARKERS = [
-  `!define MONOLITH_CLI_DIR "${NSIS_CLI_DIR}"`,
+  `!define TESSERACT_CLI_DIR "${NSIS_CLI_DIR}"`,
   "!macro customInstall",
   'Push "add"',
   "!macro customUnInstall",
   'Push "remove"',
-  'WriteRegExpandStr HKCU "${MONOLITH_ENV_KEY}" "${MONOLITH_PATH_VALUE}"',
+  'WriteRegExpandStr HKCU "${TESSERACT_ENV_KEY}" "${TESSERACT_PATH_VALUE}"',
   "WM_SETTINGCHANGE",
 ] as const;
 
@@ -129,7 +129,7 @@ export function isExecutable(path: string): boolean {
 
 export function quitEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const next = { ...env };
-  delete next.MONOLITH_SNAPSHOT;
+  delete next.TESSERACT_SNAPSHOT;
   return next;
 }
 

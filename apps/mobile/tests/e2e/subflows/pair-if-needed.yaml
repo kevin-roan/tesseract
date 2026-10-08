@@ -1,4 +1,4 @@
-appId: com.kevinbpract.theone
+appId: com.kevinroan.tesseract
 ---
 - runFlow:
     when:
@@ -16,14 +16,14 @@ appId: com.kevinbpract.theone
       - extendedWaitUntil:
           visible: "Or enter it by hand"
           timeout: 10000
-      - tapOn: "https://theone-sandbox.your-tailnet.ts.net"
-      - inputText: ${THEONE_URL}
+      - tapOn: "https://tesseract-sandbox.your-tailnet.ts.net"
+      - inputText: ${TESSERACT_URL}
       - hideKeyboard
       - scrollUntilVisible:
           element: "Pairing token"
           direction: DOWN
       - tapOn: "Pairing token"
-      - inputText: ${THEONE_TOKEN}
+      - inputText: ${TESSERACT_TOKEN}
       - hideKeyboard
       - scrollUntilVisible:
           element: "Pair sandbox"

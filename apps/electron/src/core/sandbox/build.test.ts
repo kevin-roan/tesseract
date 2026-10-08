@@ -15,7 +15,7 @@ const GIB = 1024 ** 3;
 function choices(overrides: Partial<SetupChoices> = {}): SetupChoices {
   return {
     ...defaultChoices({ cpus: 8, memBytes: 16 * GIB, timeZone: "UTC", homeDir: stack.dir }, null),
-    project: "monolith-test-build",
+    project: "tesseract-test-build",
     controllerPort: 7811,
     vncPort: 5911,
     hostClaudeDir: join(stack.dir, "claude"),
@@ -38,7 +38,7 @@ function happyDocker(): FakeDocker {
   return new FakeDocker()
     .onRun((args) => (args[0] === "inspect" ? ok(JSON.stringify({ Status: "running", Health: { Status: "starting" } })) : undefined))
     .onRun((args) => (args[0] === "image" && args[1] === "inspect" ? ok("sha256:img\n") : undefined))
-    .onRun((args) => (args[0] === "ps" ? ok("monolith-test-build-sandbox-1\trunning\tUp 1 second\tsandbox\n") : undefined))
+    .onRun((args) => (args[0] === "ps" ? ok("tesseract-test-build-sandbox-1\trunning\tUp 1 second\tsandbox\n") : undefined))
     .onStream((args, options) => {
       if (args[0] !== "buildx") return undefined;
       rawjson.forEach((line) => options.onStderr?.(line));
@@ -55,14 +55,14 @@ describe("writeStack", () => {
     const text = readFileSync(context.envFile, "utf8");
     const values = parseEnvFile(text);
     expect(values).toMatchObject({
-      THEONE_MODE: "local",
-      THEONE_BIND_ADDR: "127.0.0.1",
-      THEONE_COMPOSE_PROJECT: "monolith-test-build",
+      TESSERACT_MODE: "local",
+      TESSERACT_BIND_ADDR: "127.0.0.1",
+      TESSERACT_COMPOSE_PROJECT: "tesseract-test-build",
       WITH_FLUTTER: "false",
       WITH_WHISPER: "true",
-      THEONE_HOST_CLAUDE_DIR: join(stack.dir, "claude"),
+      TESSERACT_HOST_CLAUDE_DIR: join(stack.dir, "claude"),
     });
-    expect(values.THEONE_TOKEN).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    expect(values.TESSERACT_TOKEN).toMatch(/^[A-Za-z0-9_-]{43}$/);
     if (process.platform !== "win32") {
       expect(statSync(context.envFile).mode & 0o777).toBe(0o600);
       expect(statSync(dirname(context.envFile)).mode & 0o777).toBe(0o700);
@@ -70,16 +70,16 @@ describe("writeStack", () => {
     }
     expect(saved).toEqual({
       envFile: context.envFile,
-      project: "monolith-test-build",
+      project: "tesseract-test-build",
       mode: "local",
-      image: "theone/sandbox:latest",
+      image: "tesseract/sandbox:latest",
       builtAt: null,
       components: ["android", "whisper"],
     });
     expect(config().sandboxStack).toEqual(saved);
 
     await writeStack(context, choices({ components: ["android", "whisper"], cpus: 2 }));
-    expect(parseEnvFile(readFileSync(context.envFile, "utf8")).THEONE_TOKEN).toBe(values.THEONE_TOKEN);
+    expect(parseEnvFile(readFileSync(context.envFile, "utf8")).TESSERACT_TOKEN).toBe(values.TESSERACT_TOKEN);
   });
 
   it("keeps the saved auth key, hides it from savedChoices and rejects invalid choices", async () => {
@@ -98,17 +98,17 @@ describe("writeStack", () => {
     const context = stack.context(new FakeDocker().deps());
     expect(await currentStack(context)).toBeNull();
     mkdirSync(dirname(context.envFile), { recursive: true });
-    writeFileSync(context.envFile, "THEONE_MODE=local\nTHEONE_COMPOSE_PROJECT=monolith-test-x\nWITH_MONO=false\n");
-    expect(await currentStack(context)).toMatchObject({ project: "monolith-test-x", mode: "local", components: ["android", "flutter", "whisper"] });
+    writeFileSync(context.envFile, "TESSERACT_MODE=local\nTESSERACT_COMPOSE_PROJECT=tesseract-test-x\nWITH_MONO=false\n");
+    expect(await currentStack(context)).toMatchObject({ project: "tesseract-test-x", mode: "local", components: ["android", "flutter", "whisper"] });
   });
 });
 
 describe("buildArgs", () => {
   it("passes exactly the compose build args, labels and the bundled context", () => {
     const args = buildArgs(
-      parseEnvFile("THEONE_IMAGE=theone/sandbox:latest\nDEV_UID=1001\nWITH_MONO=false\nWHISPER_MODELS=\"base small\"\n"),
+      parseEnvFile("TESSERACT_IMAGE=tesseract/sandbox:latest\nDEV_UID=1001\nWITH_MONO=false\nWHISPER_MODELS=\"base small\"\n"),
       "/ctx",
-      "theone",
+      "tesseract",
     );
     expect(args.slice(0, 10)).toEqual([
       "buildx",
@@ -120,13 +120,13 @@ describe("buildArgs", () => {
       "sandbox",
       "--load",
       "--tag",
-      "theone/sandbox:latest",
+      "tesseract/sandbox:latest",
     ]);
     expect(args).toContain("DEV_UID=1001");
     expect(args).toContain("DEV_GID=1000");
     expect(args).toContain("WITH_MONO=false");
     expect(args).toContain("WHISPER_MODELS=base small");
-    expect(args).toContain("com.docker.compose.project=theone");
+    expect(args).toContain("com.docker.compose.project=tesseract");
     expect(args.at(-1)).toBe("/ctx");
   });
 });
@@ -154,12 +154,12 @@ describe("runBuild", () => {
 
     const up = docker.streams.find((call) => call.args[0] === "compose");
     expect(up?.args.slice(-2)).toEqual(["up", "--detach"]);
-    expect(up?.env?.THEONE_COMPOSE_PROJECT).toBe("monolith-test-build");
-    expect(up?.env?.THEONE_BIND_ADDR).toBe("127.0.0.1");
+    expect(up?.env?.TESSERACT_COMPOSE_PROJECT).toBe("tesseract-test-build");
+    expect(up?.env?.TESSERACT_BIND_ADDR).toBe("127.0.0.1");
 
     const saved = config();
-    const token = parseEnvFile(readFileSync(context.envFile, "utf8")).THEONE_TOKEN;
-    expect(saved).toMatchObject({ url: "http://127.0.0.1:7811", token, name: "theone-sandbox" });
+    const token = parseEnvFile(readFileSync(context.envFile, "utf8")).TESSERACT_TOKEN;
+    expect(saved).toMatchObject({ url: "http://127.0.0.1:7811", token, name: "tesseract-sandbox" });
     expect((saved.sandboxStack as { builtAt: string }).builtAt).toBe(new Date(1_000_000).toISOString());
   });
 
@@ -288,7 +288,7 @@ describe("runBuild", () => {
       return { code: 0 };
     });
     const context = await prepared(docker);
-    writeFileSync(context.configFile as string, JSON.stringify({ ...config(), sandboxImageRef: "ghcr.io/theone/sandbox:0.1.0" }));
+    writeFileSync(context.configFile as string, JSON.stringify({ ...config(), sandboxImageRef: "ghcr.io/tesseract/sandbox:0.1.0" }));
     const result = await runBuild(
       { ...context, deps: docker.deps({ platform: "linux" }), env: { ...context.env, DOCKER_HOST: "tcp://127.0.0.1:1" } },
       "pull",
@@ -296,7 +296,7 @@ describe("runBuild", () => {
       new AbortController().signal,
     );
     expect(result.kind).toBe("done");
-    expect(docker.streams.find((call) => call.args[0] === "pull")?.args).toEqual(["pull", "ghcr.io/theone/sandbox:0.1.0"]);
-    expect(docker.calls.find((call) => call.args[0] === "tag")?.args).toEqual(["tag", "ghcr.io/theone/sandbox:0.1.0", "theone/sandbox:latest"]);
+    expect(docker.streams.find((call) => call.args[0] === "pull")?.args).toEqual(["pull", "ghcr.io/tesseract/sandbox:0.1.0"]);
+    expect(docker.calls.find((call) => call.args[0] === "tag")?.args).toEqual(["tag", "ghcr.io/tesseract/sandbox:0.1.0", "tesseract/sandbox:latest"]);
   });
 });

@@ -1,4 +1,4 @@
-import { routePatterns } from "@theone/protocol";
+import { routePatterns } from "@tesseract/protocol";
 import { defineHttpFixtures, FixtureReply, reply } from "../types";
 import { DISPLAY_SCENARIOS, FIXTURE_DISPLAY_ERROR, scenarioDisplayStatus, scenarioWindows } from "./data";
 import { sceneSvg } from "./scene";

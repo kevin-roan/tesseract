@@ -1,7 +1,7 @@
 export const HOST_LABELS = {
   notInCheckout: (entry: string, variable: string) => `The controller is not in this checkout (${entry}); set ${variable}`,
   bunMissing: "Bun is not installed or not on PATH; install it from bun.sh",
-  bundledMissing: (path: string) => `The bundled controller is missing (${path}); reinstall Monolith`,
+  bundledMissing: (path: string) => `The bundled controller is missing (${path}); reinstall Tesseract`,
   emptyOverride: (variable: string) => `${variable} is empty`,
   cliTimeout: "The controller did not answer in time",
   noPairing: "The controller printed no pairing link",

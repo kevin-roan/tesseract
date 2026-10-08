@@ -1,4 +1,4 @@
-import type { ClaudeSession } from "@theone/protocol";
+import type { ClaudeSession } from "@tesseract/protocol";
 import { useCallback } from "react";
 import { useNavigateTo } from "../../../../../app/navigation";
 import { sessionTarget } from "../model";

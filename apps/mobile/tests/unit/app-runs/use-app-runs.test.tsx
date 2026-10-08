@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
-import type { AppRun, RunTargetInfo } from "@theone/protocol";
-import { sampleAppRun } from "@theone/protocol/fixtures";
+import { TesseractClient } from "@tesseract/client";
+import type { AppRun, RunTargetInfo } from "@tesseract/protocol";
+import { sampleAppRun } from "@tesseract/protocol/fixtures";
 
 import { useAppRuns } from "@/features/app-runs/hooks/use-app-runs";
 
@@ -9,7 +9,7 @@ import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSand
 
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: jest.fn(() => true) };
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   get router() {
@@ -17,7 +17,7 @@ jest.mock("expo-router", () => ({
   },
 }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const fake = { listRunTargets: jest.fn(), listAppRuns: jest.fn(), startAppRun: jest.fn(), appRunAction: jest.fn() };
 const PROJECT = "streaxfit";
 const expoAndroid: RunTargetInfo = {

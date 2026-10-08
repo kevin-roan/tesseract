@@ -1,9 +1,9 @@
 export const DISCOVERY = {
-  project: "theone",
+  project: "tesseract",
   service: "sandbox",
   controllerPort: 7700,
   execUser: "dev",
-  binary: "theone-controller",
+  binary: "tesseract-controller",
   dockerTimeoutMs: 15_000,
   healthTimeoutMs: 2_000,
   startupTimeoutMs: 2_500,
@@ -11,10 +11,10 @@ export const DISCOVERY = {
 } as const;
 
 export const DISCOVERY_ENV = {
-  project: "THEONE_COMPOSE_PROJECT",
-  hostPort: "THEONE_CONTROLLER_HOST_PORT",
-  bindAddr: "THEONE_BIND_ADDR",
-  disabled: "MONOLITH_DISABLE_DISCOVERY",
+  project: "TESSERACT_COMPOSE_PROJECT",
+  hostPort: "TESSERACT_CONTROLLER_HOST_PORT",
+  bindAddr: "TESSERACT_BIND_ADDR",
+  disabled: "TESSERACT_DISABLE_DISCOVERY",
 } as const;
 
 export const CONTAINER_CLIS = ["docker", "podman"] as const;

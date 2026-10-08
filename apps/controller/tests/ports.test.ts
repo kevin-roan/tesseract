@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { ListeningPortsSchema, ProcessInfoSchema, type ListeningPort, type ProcessInfo, type TailnetNode } from "@theone/protocol";
+import { ListeningPortsSchema, ProcessInfoSchema, type ListeningPort, type ProcessInfo, type TailnetNode } from "@tesseract/protocol";
 import { loadConfig } from "../src/config";
 import { listListeningPorts } from "../src/core/ports";
 import type { IdentityService } from "../src/services/identity";
@@ -72,7 +72,7 @@ describe("projectForCwd", () => {
 });
 
 describe("PortService", () => {
-  const config = loadConfig({ THEONE_WORKSPACE: "/workspace", THEONE_PORT: "8787", THEONE_VNC_PORT: "5901", THEONE_TOKEN: TEST_TOKEN });
+  const config = loadConfig({ TESSERACT_WORKSPACE: "/workspace", TESSERACT_PORT: "8787", TESSERACT_VNC_PORT: "5901", TESSERACT_TOKEN: TEST_TOKEN });
   const tracked = { id: "prc_tracked000001", projectId: "site" } as ProcessInfo;
   const processes = { ownerOf: (member: { pgid: number }) => (member.pgid === 100 ? tracked : null) } as unknown as ProcessService;
   const identity = (node: TailnetNode | null) => ({ selfNode: async () => node }) as unknown as IdentityService;
@@ -131,7 +131,7 @@ describe("GET /v1/ports", () => {
     });
     const workspace = makeTempDir("ports");
     writeFiles(workspace, { "projects/site/README.md": "site\n", "projects/blog/README.md": "blog\n" });
-    t = await startTestController({ workspace, env: { THEONE_TAILSCALE_SOCKET: socket } });
+    t = await startTestController({ workspace, env: { TESSERACT_TAILSCALE_SOCKET: socket } });
   });
 
   afterAll(async () => {

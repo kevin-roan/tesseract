@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from "react";
-import type { InputMode } from "@theone/protocol";
+import type { InputMode } from "@tesseract/protocol";
 
 import type { WebSurfaceHandle } from "@/components/web-surface/types";
 

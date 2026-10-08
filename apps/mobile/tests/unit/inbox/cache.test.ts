@@ -1,5 +1,5 @@
-import type { Inbox } from "@theone/protocol";
-import { sampleInbox, sampleInboxItem } from "@theone/protocol/fixtures";
+import type { Inbox } from "@tesseract/protocol";
+import { sampleInbox, sampleInboxItem } from "@tesseract/protocol/fixtures";
 
 import { sessionKeys } from "@/features/chats/api/query-keys";
 import { storeInboxEvent, storeInboxRead } from "@/features/inbox/api/cache";

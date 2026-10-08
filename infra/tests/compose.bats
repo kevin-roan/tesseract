@@ -5,7 +5,7 @@
 load lib/common
 
 setup() {
-  RENDERED="${THEONE_TEST_COMPOSE_DIR:-}"
+  RENDERED="${TESSERACT_TEST_COMPOSE_DIR:-}"
   [[ -n "${RENDERED}" && -d "${RENDERED}" ]] || skip "no rendered configs (run through infra/tests/run on a host with docker)"
 }
 
@@ -13,35 +13,35 @@ q() {
   jq -r "$2" "${RENDERED}/$1.json"
 }
 
-@test "local: ports are published on 127.0.0.1 only, whatever THEONE_BIND_ADDR says" {
+@test "local: ports are published on 127.0.0.1 only, whatever TESSERACT_BIND_ADDR says" {
   assert_equal "$(q local '[.services.sandbox.ports[].host_ip] | unique | join(",")')" "127.0.0.1"
   assert_equal "$(q local '[.services.sandbox.ports[] | "\(.published)->\(.target)"] | join(",")')" "17710->7700,15910->5901"
-  assert_equal "$(q local '.services.sandbox.environment.THEONE_PUBLIC_URL')" "http://127.0.0.1:17710"
+  assert_equal "$(q local '.services.sandbox.environment.TESSERACT_PUBLIC_URL')" "http://127.0.0.1:17710"
   assert_equal "$(q local '.services | keys | join(",")')" "sandbox"
 }
 
 @test "host-tailscale: ports are published on the configured tailscale address only" {
   assert_equal "$(q host-tailscale '[.services.sandbox.ports[].host_ip] | unique | join(",")')" "100.64.0.1"
-  assert_equal "$(q host-tailscale '.services.sandbox.environment.THEONE_PUBLIC_URL')" "http://100.64.0.1:17710"
+  assert_equal "$(q host-tailscale '.services.sandbox.environment.TESSERACT_PUBLIC_URL')" "http://100.64.0.1:17710"
 }
 
 @test "tailscale: nothing is published on the host and the sandbox shares the sidecar's network" {
   assert_equal "$(q tailscale '[.services[].ports // [] | length] | add')" "0"
   assert_equal "$(q tailscale '.services.sandbox.network_mode')" "service:tailscale"
   assert_equal "$(q tailscale '.services.sandbox.hostname // "none"')" "none"
-  assert_equal "$(q tailscale '.services.sandbox.environment.THEONE_PUBLIC_URL')" "https://theone-test.tail.ts.net"
-  assert_equal "$(q tailscale '.services.tailscale.environment.TS_HOSTNAME')" "theone-test"
+  assert_equal "$(q tailscale '.services.sandbox.environment.TESSERACT_PUBLIC_URL')" "https://tesseract-test.tail.ts.net"
+  assert_equal "$(q tailscale '.services.tailscale.environment.TS_HOSTNAME')" "tesseract-test"
   assert_equal "$(q tailscale '[.services.tailscale.volumes[] | select(.target == "/config") | .read_only] | .[0]')" "true"
 }
 
 @test "tailscale: secrets only reach the container that needs them" {
   assert_equal "$(q tailscale '.services.tailscale.environment.TS_AUTHKEY')" "tskey-auth-test"
   assert_equal "$(q tailscale '.services.sandbox.environment | has("TS_AUTHKEY")')" "false"
-  assert_equal "$(q tailscale '.services.tailscale.environment | has("THEONE_TOKEN") or has("THEONE_VNC_PASSWORD")')" "false"
+  assert_equal "$(q tailscale '.services.tailscale.environment | has("TESSERACT_TOKEN") or has("TESSERACT_VNC_PASSWORD")')" "false"
   assert_equal "$(q tailscale '.services.sandbox.environment | has("ANTHROPIC_API_KEY") or has("CLAUDE_CODE_OAUTH_TOKEN")')" "false"
 }
 
-@test "volumes follow THEONE_VOLUME_PREFIX in every mode" {
+@test "volumes follow TESSERACT_VOLUME_PREFIX in every mode" {
   local variant
   for variant in local host-tailscale tailscale local-dind tailscale-dind host-tailscale-tsapi tailscale-tsapi; do
     run q "${variant}" '[.volumes[].name] | sort | join(",")'
@@ -52,7 +52,7 @@ q() {
       local-dind) assert_output "vt-dind-certs,vt-dind-data,vt-home,vt-workspace" ;;
       *) assert_output "vt-home,vt-workspace" ;;
     esac
-    assert_equal "$(q "${variant}" '.name')" "theone-test-config"
+    assert_equal "$(q "${variant}" '.name')" "tesseract-test-config"
   done
 }
 
@@ -87,16 +87,16 @@ q() {
 @test "tailscale-api (host): the host socket directory is mounted read-only, nothing else" {
   assert_equal "$(q host-tailscale-tsapi '[.services.sandbox.volumes[] | select(.type == "bind" and .target != "/home/dev/.claude")] | length')" "1"
   assert_equal "$(q host-tailscale-tsapi '.services.sandbox.volumes[] | select(.type == "bind" and .target != "/home/dev/.claude") | "\(.source)->\(.target) ro=\(.read_only)"')" "/srv/tailscale->/run/tailscale ro=true"
-  assert_equal "$(q host-tailscale-tsapi '.services.sandbox.environment.THEONE_TAILSCALE_SOCKET')" "/run/tailscale/tailscaled.sock"
+  assert_equal "$(q host-tailscale-tsapi '.services.sandbox.environment.TESSERACT_TAILSCALE_SOCKET')" "/run/tailscale/tailscaled.sock"
   assert_equal "$(q host-tailscale '[.services.sandbox.volumes[] | select(.target == "/run/tailscale")] | length')" "0"
-  assert_equal "$(q host-tailscale '.services.sandbox.environment | has("THEONE_TAILSCALE_SOCKET")')" "false"
+  assert_equal "$(q host-tailscale '.services.sandbox.environment | has("TESSERACT_TAILSCALE_SOCKET")')" "false"
 }
 
 @test "tailscale-api (sidecar): the socket volume is shared, read-only for the sandbox" {
   assert_equal "$(q tailscale-tsapi '.services.tailscale.environment.TS_SOCKET')" "/var/run/tailscale/tailscaled.sock"
-  assert_equal "$(q tailscale-tsapi '.services.tailscale.volumes[] | select(.target == "/var/run/tailscale") | .source')" "theone-tailscale-run"
-  assert_equal "$(q tailscale-tsapi '.services.sandbox.volumes[] | select(.target == "/run/tailscale") | "\(.source) ro=\(.read_only)"')" "theone-tailscale-run ro=true"
-  assert_equal "$(q tailscale-tsapi '.services.sandbox.environment.THEONE_TAILSCALE_SOCKET')" "/run/tailscale/tailscaled.sock"
+  assert_equal "$(q tailscale-tsapi '.services.tailscale.volumes[] | select(.target == "/var/run/tailscale") | .source')" "tesseract-tailscale-run"
+  assert_equal "$(q tailscale-tsapi '.services.sandbox.volumes[] | select(.target == "/run/tailscale") | "\(.source) ro=\(.read_only)"')" "tesseract-tailscale-run ro=true"
+  assert_equal "$(q tailscale-tsapi '.services.sandbox.environment.TESSERACT_TAILSCALE_SOCKET')" "/run/tailscale/tailscaled.sock"
   assert_equal "$(q tailscale-tsapi '[.services.sandbox.volumes[] | select(.type == "bind" and .target != "/home/dev/.claude")] | length')" "0"
   assert_equal "$(q tailscale '.services.tailscale.environment | has("TS_SOCKET")')" "false"
 }
@@ -113,12 +113,12 @@ q() {
 
 @test "claude accounts: each extra host Claude dir is a live bind mount at /home/dev/.claude-<name>" {
   local variant=local-claude-accounts
-  assert_equal "$(q "${variant}" '.services.sandbox.environment.THEONE_CLAUDE_ACCOUNTS')" "work,other"
+  assert_equal "$(q "${variant}" '.services.sandbox.environment.TESSERACT_CLAUDE_ACCOUNTS')" "work,other"
   assert_equal "$(q "${variant}" '[.services.sandbox.volumes[] | select(.target | startswith("/home/dev/.claude-")) | "\(.type) \(.source | split("/") | last)->\(.target) ro=\(.read_only // false) create=\(.bind.create_host_path)"] | join(",")')" \
     "bind claude-work->/home/dev/.claude-work ro=false create=false,bind claude-other->/home/dev/.claude-other ro=false create=false"
   assert_equal "$(q "${variant}" '.services.sandbox.volumes[] | select(.target == "/home/dev/.claude") | .source')" "/srv/claude"
   assert_equal "$(q "${variant}" '[.services.sandbox.volumes[] | .target] | (index("/home/dev") < index("/home/dev/.claude-work"))')" "true"
-  assert_equal "$(q local '.services.sandbox.environment | has("THEONE_CLAUDE_ACCOUNTS")')" "false"
+  assert_equal "$(q local '.services.sandbox.environment | has("TESSERACT_CLAUDE_ACCOUNTS")')" "false"
 }
 
 @test "host android: the host SDK and Gradle cache are read-only bind mounts, off by default" {

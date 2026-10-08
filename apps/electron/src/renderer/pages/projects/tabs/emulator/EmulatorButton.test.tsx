@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import type { RunTargetInfo } from "@theone/protocol";
+import type { RunTargetInfo } from "@tesseract/protocol";
 import { MotionGlobalConfig } from "motion/react";
 import { describe, expect, it, vi } from "vitest";
 import { overrideIpcFixtures } from "../../../../fixtures";

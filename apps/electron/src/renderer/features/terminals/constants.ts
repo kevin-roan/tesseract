@@ -1,4 +1,4 @@
-import type { TerminalKind } from "@theone/protocol";
+import type { TerminalKind } from "@tesseract/protocol";
 import type { IconName } from "../../theme/icons";
 import type { Tone } from "../../theme/colors";
 import type { ConnectionStatus } from "../../app/connection";

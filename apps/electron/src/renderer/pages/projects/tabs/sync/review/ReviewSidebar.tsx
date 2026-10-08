@@ -1,4 +1,4 @@
-import type { SyncFileChange } from "@theone/protocol";
+import type { SyncFileChange } from "@tesseract/protocol";
 import type { KeyboardEvent } from "react";
 import { Notice } from "../../../../../components/Notice";
 import { SearchField } from "../../../../../components/SearchField";

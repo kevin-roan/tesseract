@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { TerminalInfoSchema, TerminalListSchema, TerminalServerMessageSchema, type TerminalInfo } from "@theone/protocol";
+import { TerminalInfoSchema, TerminalListSchema, TerminalServerMessageSchema, type TerminalInfo } from "@tesseract/protocol";
 import { groupMembers } from "../src/core/process-group";
 import { trimScrollback } from "../src/services/terminals";
 import {

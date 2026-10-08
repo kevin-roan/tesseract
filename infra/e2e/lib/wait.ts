@@ -1,5 +1,5 @@
-import type { StreamConnection } from "@theone/client";
-import type { ServerEvent } from "@theone/protocol";
+import type { StreamConnection } from "@tesseract/client";
+import type { ServerEvent } from "@tesseract/protocol";
 import { client, SECONDS } from "./env";
 
 export function delay(ms: number): Promise<void> {

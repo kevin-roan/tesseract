@@ -35,7 +35,7 @@ export function isValidToken(token: string): boolean {
 }
 
 /**
- * Builds `theone://pair?url=…&token=…&name=…` (or `theone://host?…` for the host shell).
+ * Builds `tesseract://pair?url=…&token=…&name=…` (or `tesseract://host?…` for the host shell).
  * Throws TypeError when the url or token is unusable.
  */
 export function buildPairingLink(payload: PairingPayload, action: PairingAction = PAIRING_ACTION): string {
@@ -46,7 +46,7 @@ export function buildPairingLink(payload: PairingPayload, action: PairingAction 
   return `${PAIRING_SCHEME}://${action}${query}`;
 }
 
-/** Parses a `theone://pair?…` (or `theone://host?…`) link. Whitespace anywhere in the input (QR/paste line breaks) is ignored. */
+/** Parses a `tesseract://pair?…` (or `tesseract://host?…`) link. Whitespace anywhere in the input (QR/paste line breaks) is ignored. */
 export function parsePairingLink(input: string, action: PairingAction = PAIRING_ACTION): PairingParseResult {
   const compact = input.replace(/\s+/g, "");
   if (!compact) return fail("empty", "Pairing link is empty");

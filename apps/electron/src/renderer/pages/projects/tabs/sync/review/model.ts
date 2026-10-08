@@ -1,4 +1,4 @@
-import type { SyncFileChange } from "@theone/protocol";
+import type { SyncFileChange } from "@tesseract/protocol";
 import type { FileDiff, FileDiffLine } from "../../../../../../shared/contracts/syncback";
 import { formatBytes } from "../../../../../features/projects/format";
 import { KIND_ORDER, MAX_PREVIEW_BYTES, MIDDLE_ELLIPSIS_TAIL } from "../constants";

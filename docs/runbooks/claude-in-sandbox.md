@@ -20,7 +20,7 @@ or the mount is missing: check `ls -la ~/.claude/.credentials.json` inside
 
 This host Claude Max login is the only supported authentication: the stack
 passes no API key or long-lived token (`ANTHROPIC_API_KEY`,
-`CLAUDE_CODE_OAUTH_TOKEN`) into the sandbox. `theone-doctor` reports the
+`CLAUDE_CODE_OAUTH_TOKEN`) into the sandbox. `tesseract-doctor` reports the
 result as `claude-auth` (PASS when `~/.claude/.credentials.json` holds a
 `claudeAiOauth` login).
 
@@ -40,11 +40,11 @@ Check with `claude --version` and `claude -p "say ok"`.
 
 | Where | Mode | Why |
 |---|---|---|
-| Headless runs (`POST /v1/agent/runs`) | `THEONE_CLAUDE_PERMISSION_MODE`, default `bypassPermissions` | nobody can answer tool prompts in a background run; the container is the boundary |
+| Headless runs (`POST /v1/agent/runs`) | `TESSERACT_CLAUDE_PERMISSION_MODE`, default `bypassPermissions` | nobody can answer tool prompts in a background run; the container is the boundary |
 | Claude terminal (`kind: "claude"`) | Claude's own default (asks before tools), unless you pass flags or change settings | you are watching and can approve |
 
 To make headless runs stricter, give the controller a different mode, e.g.
-`THEONE_CLAUDE_PERMISSION_MODE=acceptEdits` (edits allowed; shell commands
+`TESSERACT_CLAUDE_PERMISSION_MODE=acceptEdits` (edits allowed; shell commands
 need approval, which nobody can give in a headless run, so they are denied).
 Set it in `infra/compose/.env` (compose passes it to the sandbox) and run
 `bun run sandbox up`; the controller reads it at start. Alternatively, keep
@@ -84,14 +84,14 @@ Background: [security-model.md](../architecture/security-model.md#claude-with-by
 
 When a run ends, anything it left running in the background (`npm run dev &`)
 is stopped and listed as a `system` event. Servers that should keep running
-must be started as controller processes (`theone-controller api POST
+must be started as controller processes (`tesseract-controller api POST
 /v1/processes …`), which SPEC tells Claude to do. Without credentials a run
 fails within about a second with "Not logged in · Please run /login".
 
 The same API from a shell, e.g. from a laptop on the tailnet:
 
 ```bash
-BASE=https://theone-sandbox.tail1234.ts.net; TOKEN=…   # from `bun run sandbox pair`
+BASE=https://tesseract-sandbox.tail1234.ts.net; TOKEN=…   # from `bun run sandbox pair`
 curl -fsS -X POST "$BASE/v1/agent/runs" -H "Authorization: Bearer $TOKEN" \
   -H 'Content-Type: application/json' \
   -d '{"projectId":"electron-hello","prompt":"Build the Windows installer and smoke-test it under wine"}'
@@ -99,7 +99,7 @@ curl -fsS -X POST "$BASE/v1/agent/runs" -H "Authorization: Bearer $TOKEN" \
 
 What a good headless run looks like (per SPEC): reads `.agent/` memory,
 emits `started`, starts long work as controller builds or processes (through
-`theone-controller api`, never `curl` with the token), verifies,
+`tesseract-controller api`, never `curl` with the token), verifies,
 updates `CURRENT_TASK.md`, emits `done`, and ends with the final report.
 If it needs confirmation (for example deleting data), it ends with `blocked`
 and a question. Answer by continuing the run.

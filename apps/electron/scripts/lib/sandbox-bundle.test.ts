@@ -3,7 +3,7 @@ import { hasCrlf, manifestMismatches, needsLf } from "./sandbox-bundle.ts";
 
 describe("sandbox bundle checks", () => {
   it("requires LF line endings for files the Linux image executes", () => {
-    expect(needsLf("infra/docker/sandbox/rootfs/usr/local/bin/theone-start")).toBe(true);
+    expect(needsLf("infra/docker/sandbox/rootfs/usr/local/bin/tesseract-start")).toBe(true);
     expect(needsLf("infra/docker/sandbox/Dockerfile")).toBe(true);
     expect(needsLf("apps/controller/scripts/run.sh")).toBe(true);
     expect(needsLf("apps/controller/src/index.ts")).toBe(false);

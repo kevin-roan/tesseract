@@ -1,4 +1,4 @@
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 import { memo } from "react";
 import { AssistantMessage, OutcomeCard, outcomeFor, SystemLine, ToolCallCard, UserBubble } from "../../../components/Timeline";
 import { formatRelativeTime } from "../../../features/agents/format";

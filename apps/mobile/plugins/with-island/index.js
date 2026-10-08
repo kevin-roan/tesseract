@@ -1,6 +1,6 @@
 const { withEntitlementsPlist, withInfoPlist } = require("expo/config-plugins");
 
-const APP_GROUP = "group.com.kevinbpract.theone";
+const APP_GROUP = "group.com.kevinroan.tesseract";
 const APP_GROUPS_KEY = "com.apple.security.application-groups";
 
 const withIslandIos = (config) => {

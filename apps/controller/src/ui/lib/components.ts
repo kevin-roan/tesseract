@@ -1,4 +1,4 @@
-import type { PageState } from "@theone/protocol/bridge";
+import type { PageState } from "@tesseract/protocol/bridge";
 import { keepFocus } from "./dom";
 import type { KeyDefinition, KeyId } from "./config";
 

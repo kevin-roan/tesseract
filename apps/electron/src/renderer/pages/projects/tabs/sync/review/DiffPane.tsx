@@ -1,4 +1,4 @@
-import type { SyncFileChange } from "@theone/protocol";
+import type { SyncFileChange } from "@tesseract/protocol";
 import { AnimatePresence, motion } from "motion/react";
 import { useLayoutEffect, useRef } from "react";
 import { Text } from "../../../../../components/Text";

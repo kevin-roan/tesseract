@@ -1,4 +1,4 @@
-import type { DisplayStatus } from "@theone/protocol";
+import type { DisplayStatus } from "@tesseract/protocol";
 import { ERROR_MESSAGES } from "../../../app/connection/labels";
 import { VNC_COMPRESSION_LEVEL, VNC_QUALITY_LEVEL, VNC_WS_PROTOCOLS } from "../constants";
 import { SESSION_ERRORS } from "../labels";

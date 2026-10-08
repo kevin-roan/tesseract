@@ -12,7 +12,7 @@ import {
   SandboxStatusSchema,
   ServerEventSchema,
   type ServerEvent,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { runCli, type Output } from "../src/cli/commands";
 import { makeTempDir, removeTempDirs, startTestController, TEST_TOKEN, waitFor, writeFiles, type TestController } from "./helpers";
 
@@ -51,18 +51,18 @@ async function callApi(args: string[], options: { stdin?: string; raw?: boolean;
 }
 
 beforeAll(async () => {
-  t = await startTestController({ env: { THEONE_VNC_PASSWORD: VNC_PASSWORD } });
+  t = await startTestController({ env: { TESSERACT_VNC_PASSWORD: VNC_PASSWORD } });
   writeFiles(t.workspace, {
     "projects/webapp/package.json": JSON.stringify({ name: "webapp", version: "1.2.3", scripts: { build: "mkdir -p dist && echo '<p>hi</p>' > dist/index.html" } }),
     "projects/webapp/bun.lock": "{}",
   });
   env = {
-    THEONE_WORKSPACE: t.workspace,
-    THEONE_HOST: "127.0.0.1",
-    THEONE_PORT: String(t.controller.url.port),
-    THEONE_TOKEN: TEST_TOKEN,
-    THEONE_PUBLIC_URL: "https://theone-sandbox.tail1234.ts.net",
-    THEONE_SANDBOX_ID: "test-sandbox",
+    TESSERACT_WORKSPACE: t.workspace,
+    TESSERACT_HOST: "127.0.0.1",
+    TESSERACT_PORT: String(t.controller.url.port),
+    TESSERACT_TOKEN: TEST_TOKEN,
+    TESSERACT_PUBLIC_URL: "https://tesseract-sandbox.tail1234.ts.net",
+    TESSERACT_SANDBOX_ID: "test-sandbox",
   };
 });
 
@@ -76,7 +76,7 @@ test("pair prints a parseable deep link and a QR code", async () => {
   expect(await runCli(["pair", "--json"], { env, output: json })).toBe(0);
   const { link } = JSON.parse(json.stdout[0] ?? "{}") as { link: string };
   const parsed = parsePairingLink(link);
-  expect(parsed.ok && parsed.value).toEqual({ url: "https://theone-sandbox.tail1234.ts.net", token: TEST_TOKEN, name: "test-sandbox" });
+  expect(parsed.ok && parsed.value).toEqual({ url: "https://tesseract-sandbox.tail1234.ts.net", token: TEST_TOKEN, name: "test-sandbox" });
 
   const human = capture();
   expect(await runCli(["pair"], { env, output: human })).toBe(0);
@@ -94,7 +94,7 @@ test("status calls the local API", async () => {
   expect(JSON.parse(json.stdout[0] ?? "{}")).toMatchObject({ sandboxId: "test-sandbox", display: { vnc: { password: "***" } } });
   expect(json.stdout[0]).not.toContain(VNC_PASSWORD);
   const denied = capture();
-  expect(await runCli(["status"], { env: { ...env, THEONE_TOKEN: "wrong-token" }, output: denied })).toBe(1);
+  expect(await runCli(["status"], { env: { ...env, TESSERACT_TOKEN: "wrong-token" }, output: denied })).toBe(1);
   expect(denied.stderr[0]).toContain("unauthorized");
 });
 
@@ -112,7 +112,7 @@ test("emit publishes a status event", async () => {
 
 test("token prints and rotates the token file", async () => {
   const workspace = makeTempDir("cli-token");
-  const fileEnv = { THEONE_WORKSPACE: workspace };
+  const fileEnv = { TESSERACT_WORKSPACE: workspace };
   const first = capture();
   expect(await runCli(["token"], { env: fileEnv, output: first })).toBe(0);
   const original = first.stdout[0] ?? "";
@@ -130,12 +130,12 @@ test("token prints and rotates the token file", async () => {
 test("usage, version and unknown commands", async () => {
   const help = capture();
   expect(await runCli(["--help"], { env, output: help })).toBe(0);
-  expect(help.stdout[0]).toContain("theone-controller pair");
+  expect(help.stdout[0]).toContain("tesseract-controller pair");
   expect(await runCli(["--version"], { env, output: capture() })).toBe(0);
   expect(await runCli(["launch-rockets"], { env, output: capture() })).toBe(2);
   const bad = capture();
-  expect(await runCli(["status"], { env: { ...env, THEONE_PORT: "99999" }, output: bad })).toBe(1);
-  expect(bad.stderr[0]).toContain("THEONE_PORT");
+  expect(await runCli(["status"], { env: { ...env, TESSERACT_PORT: "99999" }, output: bad })).toBe(1);
+  expect(bad.stderr[0]).toContain("TESSERACT_PORT");
 });
 
 describe("api", () => {
@@ -176,7 +176,7 @@ describe("api", () => {
     const started = await callApi(["POST", "/v1/processes", JSON.stringify({ projectId: "webapp", command: `echo ${TEST_TOKEN}` })]);
     expect(started.code).toBe(0);
     expect(ProcessInfoSchema.parse(JSON.parse(started.stdout[0] ?? "")).command).toBe("echo ***");
-    const denied = await callApi(["GET", "/v1/status"], { env: { ...env, THEONE_TOKEN: "wrong-token" } });
+    const denied = await callApi(["GET", "/v1/status"], { env: { ...env, TESSERACT_TOKEN: "wrong-token" } });
     expect(denied.code).toBe(1);
     expect(ErrorBodySchema.parse(JSON.parse(denied.stderr[0] ?? "")).error.code).toBe("unauthorized");
   });
@@ -247,7 +247,7 @@ describe("api", () => {
       expect(result.stdout).toEqual([]);
       expect(result.stderr[0]).toContain(message);
     }
-    const noToken = await callApi(["GET", "/v1/health"], { env: { THEONE_WORKSPACE: makeTempDir("cli-api"), THEONE_PORT: env.THEONE_PORT ?? "" } });
+    const noToken = await callApi(["GET", "/v1/health"], { env: { TESSERACT_WORKSPACE: makeTempDir("cli-api"), TESSERACT_PORT: env.TESSERACT_PORT ?? "" } });
     expect(noToken.code).toBe(1);
     expect(noToken.stderr[0]).toContain("No API token");
   });

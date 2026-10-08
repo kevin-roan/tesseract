@@ -7,19 +7,19 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../../.." && pwd -P)"
 readonly SCRIPT_DIR REPO_ROOT
-readonly REMOTE_DIR=/tmp/theone-e2e-web
+readonly REMOTE_DIR=/tmp/tesseract-e2e-web
 readonly APP_PORT=8081
-readonly PLAYWRIGHT_VERSION="${THEONE_E2E_PLAYWRIGHT_VERSION:-1}"
+readonly PLAYWRIGHT_VERSION="${TESSERACT_E2E_PLAYWRIGHT_VERSION:-1}"
 
 usage() {
   cat << 'EOF'
 Usage: infra/e2e/web/run [--export-dir DIR] [--out DIR]
 
 Needs a running e2e stack: run it through `infra/e2e/run --web`, or start one with
-`infra/e2e/run --keep` and export THEONE_E2E_PROJECT and THEONE_E2E_TOKEN.
+`infra/e2e/run --keep` and export TESSERACT_E2E_PROJECT and TESSERACT_E2E_TOKEN.
 
   --export-dir DIR  use an existing `expo export --platform web` output instead of exporting
-  --out DIR         where the screenshots go (default /tmp/theone-e2e-web-shots)
+  --out DIR         where the screenshots go (default /tmp/tesseract-e2e-web-shots)
 EOF
 }
 
@@ -33,7 +33,7 @@ die() {
 }
 
 export_dir=""
-out_dir=/tmp/theone-e2e-web-shots
+out_dir=/tmp/tesseract-e2e-web-shots
 while (($# > 0)); do
   case "$1" in
     --export-dir)
@@ -53,9 +53,9 @@ while (($# > 0)); do
   shift
 done
 
-readonly PROJECT="${THEONE_E2E_PROJECT:?THEONE_E2E_PROJECT is not set}"
-readonly TOKEN="${THEONE_E2E_TOKEN:?THEONE_E2E_TOKEN is not set}"
-[[ "${PROJECT}" == theone-e2e* ]] || die "THEONE_E2E_PROJECT=${PROJECT} must start with theone-e2e"
+readonly PROJECT="${TESSERACT_E2E_PROJECT:?TESSERACT_E2E_PROJECT is not set}"
+readonly TOKEN="${TESSERACT_E2E_TOKEN:?TESSERACT_E2E_TOKEN is not set}"
+[[ "${PROJECT}" == tesseract-e2e* ]] || die "TESSERACT_E2E_PROJECT=${PROJECT} must start with tesseract-e2e"
 
 container="$(docker ps -q --filter "label=com.docker.compose.project=${PROJECT}" --filter label=com.docker.compose.service=sandbox | head -n1)"
 [[ -n "${container}" ]] || die "no running sandbox container for ${PROJECT}"
@@ -72,7 +72,7 @@ cleanup() {
 trap cleanup EXIT
 
 if [[ -z "${export_dir}" ]]; then
-  local_tmp="$(mktemp -d "${TMPDIR:-/tmp}/theone-e2e-web-export.XXXXXX")"
+  local_tmp="$(mktemp -d "${TMPDIR:-/tmp}/tesseract-e2e-web-export.XXXXXX")"
   export_dir="${local_tmp}/app"
   log "exporting apps/mobile for web"
   (cd "${REPO_ROOT}/apps/mobile" && CI=1 bunx expo export --platform web --output-dir "${export_dir}" > "${local_tmp}/export.log" 2>&1) \
@@ -100,10 +100,10 @@ docker exec -u dev "${container}" bash -c \
 log "driving the web app"
 status=0
 docker exec -u dev -w "${REMOTE_DIR}" \
-  -e THEONE_WEB_APP="http://127.0.0.1:${APP_PORT}" \
-  -e THEONE_WEB_CONTROLLER=http://127.0.0.1:7700 \
-  -e THEONE_WEB_TOKEN="${TOKEN}" \
-  -e THEONE_WEB_OUT="${REMOTE_DIR}/shots" \
+  -e TESSERACT_WEB_APP="http://127.0.0.1:${APP_PORT}" \
+  -e TESSERACT_WEB_CONTROLLER=http://127.0.0.1:7700 \
+  -e TESSERACT_WEB_TOKEN="${TOKEN}" \
+  -e TESSERACT_WEB_OUT="${REMOTE_DIR}/shots" \
   "${container}" node drive.mjs || status=$?
 
 mkdir -p -- "${out_dir}"

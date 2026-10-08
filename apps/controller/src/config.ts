@@ -1,8 +1,9 @@
 import { chmodSync, mkdirSync } from "node:fs";
 import { homedir, hostname as osHostname, tmpdir } from "node:os";
-import { isAbsolute, join, resolve } from "node:path";
-import { CLAUDE_ACCOUNT_NAME_PATTERN, CLAUDE_PRIMARY_ACCOUNT_ID, DEFAULT_ADB_TUNNEL_PORT, DEFAULT_PORT, isValidToken, parseBaseUrl, STT_PROFILES, type SttProfile } from "@theone/protocol";
+import { dirname, isAbsolute, join, resolve } from "node:path";
+import { CLAUDE_ACCOUNT_NAME_PATTERN, CLAUDE_PRIMARY_ACCOUNT_ID, DEFAULT_ADB_TUNNEL_PORT, DEFAULT_PORT, isValidToken, parseBaseUrl, STT_PROFILES, type SttProfile } from "@tesseract/protocol";
 import { isLogLevel, type LogLevel } from "./core/logger";
+import { adoptLegacyPath } from "./core/paths";
 import type { Env } from "./core/exec";
 
 export type Config = {
@@ -32,7 +33,7 @@ export type Config = {
   /** Claude Code's global config: `$CLAUDE_CONFIG_DIR/.claude.json` when the variable is set, else `$HOME/.claude.json`. */
   claudeGlobalConfig: string;
   claudeEnvAuth: { oauthToken: boolean; apiKey: boolean };
-  /** The primary account (`claudeConfigDir`) first, then one per `THEONE_CLAUDE_ACCOUNTS` name. */
+  /** The primary account (`claudeConfigDir`) first, then one per `TESSERACT_CLAUDE_ACCOUNTS` name. */
   claudeAccounts: ClaudeAccountDir[];
   tailscaleSocket: string;
   sandboxId: string;
@@ -107,7 +108,7 @@ const HOST_PATTERN = /^[A-Za-z0-9.:[\]-]+$/;
 const STT_MODEL_PATTERN = /^[\w.:/-]{1,128}$/;
 const APNS_ID_PATTERN = /^[A-Za-z0-9]{1,64}$/;
 const BUNDLE_ID_PATTERN = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
-const DEFAULT_APNS_BUNDLE_ID = "com.kevinbpract.theone";
+const DEFAULT_APNS_BUNDLE_ID = "com.kevinroan.tesseract";
 
 function read(env: Env, name: string): string | undefined {
   const value = env[name]?.trim();
@@ -147,27 +148,27 @@ function httpUrl(env: Env, name: string): string | null {
 }
 
 function sttConfig(env: Env): SttConfig {
-  const engine = read(env, "THEONE_STT_ENGINE") ?? "whisper.cpp";
+  const engine = read(env, "TESSERACT_STT_ENGINE") ?? "whisper.cpp";
   if (!STT_ENGINES.includes(engine as SttEngineSetting)) {
-    throw new ConfigError(`THEONE_STT_ENGINE must be ${STT_ENGINES.join(", ")} (got "${engine}")`);
+    throw new ConfigError(`TESSERACT_STT_ENGINE must be ${STT_ENGINES.join(", ")} (got "${engine}")`);
   }
-  const profile = read(env, "THEONE_STT_PROFILE") ?? "eco";
+  const profile = read(env, "TESSERACT_STT_PROFILE") ?? "eco";
   if (!STT_PROFILES.includes(profile as SttProfile)) {
-    throw new ConfigError(`THEONE_STT_PROFILE must be ${STT_PROFILES.join(", ")} (got "${profile}")`);
+    throw new ConfigError(`TESSERACT_STT_PROFILE must be ${STT_PROFILES.join(", ")} (got "${profile}")`);
   }
-  const model = read(env, "THEONE_STT_MODEL") ?? "whisper-1";
-  if (!STT_MODEL_PATTERN.test(model)) throw new ConfigError(`THEONE_STT_MODEL is not a valid model name (got "${model}")`);
-  const geminiModel = read(env, "THEONE_GEMINI_STT_MODEL") ?? "gemini-2.5-flash";
-  if (!STT_MODEL_PATTERN.test(geminiModel)) throw new ConfigError(`THEONE_GEMINI_STT_MODEL is not a valid model name (got "${geminiModel}")`);
-  const whisperModel = read(env, "THEONE_WHISPER_MODEL");
+  const model = read(env, "TESSERACT_STT_MODEL") ?? "whisper-1";
+  if (!STT_MODEL_PATTERN.test(model)) throw new ConfigError(`TESSERACT_STT_MODEL is not a valid model name (got "${model}")`);
+  const geminiModel = read(env, "TESSERACT_GEMINI_STT_MODEL") ?? "gemini-2.5-flash";
+  if (!STT_MODEL_PATTERN.test(geminiModel)) throw new ConfigError(`TESSERACT_GEMINI_STT_MODEL is not a valid model name (got "${geminiModel}")`);
+  const whisperModel = read(env, "TESSERACT_WHISPER_MODEL");
   return {
     engine: engine as SttEngineSetting,
     profile: profile as SttProfile,
-    whisperBin: read(env, "THEONE_WHISPER_BIN") ?? "whisper-cli",
-    whisperModelsDir: absolutePath(env, "THEONE_WHISPER_MODELS_DIR", "/opt/whisper/models"),
-    whisperModel: whisperModel === undefined ? null : absolutePath(env, "THEONE_WHISPER_MODEL", whisperModel),
-    url: httpUrl(env, "THEONE_STT_URL"),
-    apiKey: read(env, "THEONE_STT_API_KEY") ?? null,
+    whisperBin: read(env, "TESSERACT_WHISPER_BIN") ?? "whisper-cli",
+    whisperModelsDir: absolutePath(env, "TESSERACT_WHISPER_MODELS_DIR", "/opt/whisper/models"),
+    whisperModel: whisperModel === undefined ? null : absolutePath(env, "TESSERACT_WHISPER_MODEL", whisperModel),
+    url: httpUrl(env, "TESSERACT_STT_URL"),
+    apiKey: read(env, "TESSERACT_STT_API_KEY") ?? null,
     model,
     geminiModel,
   };
@@ -177,40 +178,40 @@ const DEFAULT_PUSH_URL = "https://exp.host/--/api/v2/push/send";
 
 function pushConfig(env: Env): PushConfig {
   return {
-    url: read(env, "THEONE_PUSH_URL") === "off" ? null : (httpUrl(env, "THEONE_PUSH_URL") ?? DEFAULT_PUSH_URL),
-    accessToken: read(env, "THEONE_EXPO_ACCESS_TOKEN") ?? null,
+    url: read(env, "TESSERACT_PUSH_URL") === "off" ? null : (httpUrl(env, "TESSERACT_PUSH_URL") ?? DEFAULT_PUSH_URL),
+    accessToken: read(env, "TESSERACT_EXPO_ACCESS_TOKEN") ?? null,
   };
 }
 
 function apnsConfig(env: Env): ApnsConfig {
-  const keyFileRaw = read(env, "THEONE_APNS_KEY_FILE");
-  const keyFile = keyFileRaw === undefined ? null : absolutePath(env, "THEONE_APNS_KEY_FILE", keyFileRaw);
-  const ids = { THEONE_APNS_KEY_ID: read(env, "THEONE_APNS_KEY_ID") ?? null, THEONE_APNS_TEAM_ID: read(env, "THEONE_APNS_TEAM_ID") ?? null };
+  const keyFileRaw = read(env, "TESSERACT_APNS_KEY_FILE");
+  const keyFile = keyFileRaw === undefined ? null : absolutePath(env, "TESSERACT_APNS_KEY_FILE", keyFileRaw);
+  const ids = { TESSERACT_APNS_KEY_ID: read(env, "TESSERACT_APNS_KEY_ID") ?? null, TESSERACT_APNS_TEAM_ID: read(env, "TESSERACT_APNS_TEAM_ID") ?? null };
   for (const [name, value] of Object.entries(ids)) {
     if (value !== null && !APNS_ID_PATTERN.test(value)) throw new ConfigError(`${name} must be 1-64 letters or digits (got "${value}")`);
   }
-  const bundleId = read(env, "THEONE_APNS_BUNDLE_ID") ?? DEFAULT_APNS_BUNDLE_ID;
-  if (!BUNDLE_ID_PATTERN.test(bundleId)) throw new ConfigError(`THEONE_APNS_BUNDLE_ID is not a valid bundle id (got "${bundleId}")`);
-  const environment = read(env, "THEONE_APNS_ENV") ?? "production";
+  const bundleId = read(env, "TESSERACT_APNS_BUNDLE_ID") ?? DEFAULT_APNS_BUNDLE_ID;
+  if (!BUNDLE_ID_PATTERN.test(bundleId)) throw new ConfigError(`TESSERACT_APNS_BUNDLE_ID is not a valid bundle id (got "${bundleId}")`);
+  const environment = read(env, "TESSERACT_APNS_ENV") ?? "production";
   if (!APNS_ENVIRONMENTS.includes(environment as ApnsEnvironment)) {
-    throw new ConfigError(`THEONE_APNS_ENV must be ${APNS_ENVIRONMENTS.join(" or ")} (got "${environment}")`);
+    throw new ConfigError(`TESSERACT_APNS_ENV must be ${APNS_ENVIRONMENTS.join(" or ")} (got "${environment}")`);
   }
-  const values = { THEONE_APNS_KEY_FILE: keyFile, ...ids };
+  const values = { TESSERACT_APNS_KEY_FILE: keyFile, ...ids };
   const set = Object.entries(values).filter(([, value]) => value !== null).map(([name]) => name);
   if (set.length > 0 && set.length < 3) {
     const missing = Object.keys(values).filter((name) => !set.includes(name));
     throw new ConfigError(`${set.join(", ")} need ${missing.join(" and ")} as well (Live Activity pushes)`);
   }
-  return { enabled: set.length === 3, keyFile, keyId: ids.THEONE_APNS_KEY_ID, teamId: ids.THEONE_APNS_TEAM_ID, bundleId, environment: environment as ApnsEnvironment };
+  return { enabled: set.length === 3, keyFile, keyId: ids.TESSERACT_APNS_KEY_ID, teamId: ids.TESSERACT_APNS_TEAM_ID, bundleId, environment: environment as ApnsEnvironment };
 }
 
 function claudeAccountDirs(env: Env, home: string, primary: ClaudeAccountDir): ClaudeAccountDir[] {
-  const names = (read(env, "THEONE_CLAUDE_ACCOUNTS") ?? "")
+  const names = (read(env, "TESSERACT_CLAUDE_ACCOUNTS") ?? "")
     .split(/[\s,]+/)
     .filter(Boolean);
   const accounts = [primary];
   for (const name of new Set(names)) {
-    if (!CLAUDE_ACCOUNT_NAME_PATTERN.test(name)) throw new ConfigError(`THEONE_CLAUDE_ACCOUNTS has an invalid account name (got "${name}")`);
+    if (!CLAUDE_ACCOUNT_NAME_PATTERN.test(name)) throw new ConfigError(`TESSERACT_CLAUDE_ACCOUNTS has an invalid account name (got "${name}")`);
     const configDir = join(home, `.claude-${name}`);
     accounts.push({ id: `${CLAUDE_PRIMARY_ACCOUNT_ID}-${name}`, configDir, globalConfig: join(configDir, ".claude.json"), env: { CLAUDE_CONFIG_DIR: configDir } });
   }
@@ -223,35 +224,35 @@ function shellCommand(env: Env): string[] {
 }
 
 export function loadConfig(env: Env = process.env): Config {
-  const host = read(env, "THEONE_HOST") ?? "0.0.0.0";
-  if (!HOST_PATTERN.test(host)) throw new ConfigError(`THEONE_HOST is not a valid bind address (got "${host}")`);
-  const port = parsePort(env, "THEONE_PORT", DEFAULT_PORT, true);
-  const workspace = absolutePath(env, "THEONE_WORKSPACE", "/workspace");
+  const host = read(env, "TESSERACT_HOST") ?? "0.0.0.0";
+  if (!HOST_PATTERN.test(host)) throw new ConfigError(`TESSERACT_HOST is not a valid bind address (got "${host}")`);
+  const port = parsePort(env, "TESSERACT_PORT", DEFAULT_PORT, true);
+  const workspace = absolutePath(env, "TESSERACT_WORKSPACE", "/workspace");
   const agentDir = join(workspace, ".agent");
-  const dataDir = absolutePath(env, "THEONE_DATA_DIR", join(agentDir, "controller"));
-  const tokenFile = absolutePath(env, "THEONE_TOKEN_FILE", join(dataDir, "token"));
+  const dataDir = absolutePath(env, "TESSERACT_DATA_DIR", join(agentDir, "controller"));
+  const tokenFile = absolutePath(env, "TESSERACT_TOKEN_FILE", join(dataDir, "token"));
 
-  const tokenFromEnv = read(env, "THEONE_TOKEN") ?? null;
+  const tokenFromEnv = read(env, "TESSERACT_TOKEN") ?? null;
   if (tokenFromEnv !== null && !isValidToken(tokenFromEnv)) {
-    throw new ConfigError("THEONE_TOKEN must be 1-1024 printable ASCII characters without spaces");
+    throw new ConfigError("TESSERACT_TOKEN must be 1-1024 printable ASCII characters without spaces");
   }
 
-  const publicUrlInput = read(env, "THEONE_PUBLIC_URL") ?? `http://127.0.0.1:${port || DEFAULT_PORT}`;
+  const publicUrlInput = read(env, "TESSERACT_PUBLIC_URL") ?? `http://127.0.0.1:${port || DEFAULT_PORT}`;
   const publicUrl = parseBaseUrl(publicUrlInput);
-  if (!publicUrl.ok) throw new ConfigError(`THEONE_PUBLIC_URL is invalid: ${publicUrl.error.message}`);
+  if (!publicUrl.ok) throw new ConfigError(`TESSERACT_PUBLIC_URL is invalid: ${publicUrl.error.message}`);
 
-  const display = read(env, "THEONE_DISPLAY") ?? ":1";
-  if (!DISPLAY_PATTERN.test(display)) throw new ConfigError(`THEONE_DISPLAY must look like ":1" (got "${display}")`);
+  const display = read(env, "TESSERACT_DISPLAY") ?? ":1";
+  if (!DISPLAY_PATTERN.test(display)) throw new ConfigError(`TESSERACT_DISPLAY must look like ":1" (got "${display}")`);
 
-  const claudePermissionMode = read(env, "THEONE_CLAUDE_PERMISSION_MODE") ?? "bypassPermissions";
+  const claudePermissionMode = read(env, "TESSERACT_CLAUDE_PERMISSION_MODE") ?? "bypassPermissions";
   if (!PERMISSION_MODE_PATTERN.test(claudePermissionMode)) {
-    throw new ConfigError(`THEONE_CLAUDE_PERMISSION_MODE is not a valid mode name (got "${claudePermissionMode}")`);
+    throw new ConfigError(`TESSERACT_CLAUDE_PERMISSION_MODE is not a valid mode name (got "${claudePermissionMode}")`);
   }
 
-  const logLevel = read(env, "THEONE_LOG_LEVEL") ?? "info";
-  if (!isLogLevel(logLevel)) throw new ConfigError(`THEONE_LOG_LEVEL must be debug, info, warn or error (got "${logLevel}")`);
+  const logLevel = read(env, "TESSERACT_LOG_LEVEL") ?? "info";
+  if (!isLogLevel(logLevel)) throw new ConfigError(`TESSERACT_LOG_LEVEL must be debug, info, warn or error (got "${logLevel}")`);
 
-  const corsOrigins = (read(env, "THEONE_CORS_ORIGINS") ?? "*")
+  const corsOrigins = (read(env, "TESSERACT_CORS_ORIGINS") ?? "*")
     .split(",")
     .map((origin) => origin.trim())
     .filter(Boolean);
@@ -266,36 +267,36 @@ export function loadConfig(env: Env = process.env): Config {
     workspace,
     projectsDir: join(workspace, "projects"),
     artifactsDir: join(workspace, "artifacts"),
-    uploadsDir: join(workspace, ".theone", "uploads"),
+    uploadsDir: join(workspace, ".tesseract", "uploads"),
     agentDir,
     dataDir,
-    trashDir: join(tmpdir(), "theone-deleted-projects"),
+    trashDir: join(tmpdir(), "tesseract-deleted-projects"),
     logsDir: join(dataDir, "logs"),
     dbPath: join(dataDir, "state.db"),
     tokenFromEnv,
     tokenFile,
     publicUrl: publicUrl.value,
     display,
-    vncHost: read(env, "THEONE_VNC_HOST") ?? "127.0.0.1",
-    vncPort: parsePort(env, "THEONE_VNC_PORT", 5901, false),
-    vncPassword: read(env, "THEONE_VNC_PASSWORD") ?? null,
-    chromiumDebugPort: parsePort(env, "THEONE_CHROMIUM_DEBUG_PORT", 9222, false),
-    claudeBin: read(env, "THEONE_CLAUDE_BIN") ?? "claude",
+    vncHost: read(env, "TESSERACT_VNC_HOST") ?? "127.0.0.1",
+    vncPort: parsePort(env, "TESSERACT_VNC_PORT", 5901, false),
+    vncPassword: read(env, "TESSERACT_VNC_PASSWORD") ?? null,
+    chromiumDebugPort: parsePort(env, "TESSERACT_CHROMIUM_DEBUG_PORT", 9222, false),
+    claudeBin: read(env, "TESSERACT_CLAUDE_BIN") ?? "claude",
     claudePermissionMode,
     claudeConfigDir,
     claudeGlobalConfig,
     claudeEnvAuth: { oauthToken: read(env, "CLAUDE_CODE_OAUTH_TOKEN") !== undefined, apiKey: read(env, "ANTHROPIC_API_KEY") !== undefined },
     claudeAccounts: claudeAccountDirs(env, home, { id: CLAUDE_PRIMARY_ACCOUNT_ID, configDir: claudeConfigDir, globalConfig: claudeGlobalConfig, env: {} }),
-    tailscaleSocket: absolutePath(env, "THEONE_TAILSCALE_SOCKET", "/run/tailscale/tailscaled.sock"),
-    sandboxId: read(env, "THEONE_SANDBOX_ID") ?? hostname,
+    tailscaleSocket: absolutePath(env, "TESSERACT_TAILSCALE_SOCKET", "/run/tailscale/tailscaled.sock"),
+    sandboxId: read(env, "TESSERACT_SANDBOX_ID") ?? hostname,
     hostname,
     logLevel,
     corsOrigins: corsOrigins.length ? corsOrigins : ["*"],
     shell: shellCommand(env),
-    ffmpegBin: read(env, "THEONE_FFMPEG_BIN") ?? "ffmpeg",
-    adbBin: read(env, "THEONE_ADB") ?? "adb",
-    adbTunnelPort: parsePort(env, "THEONE_ADB_TUNNEL_PORT", DEFAULT_ADB_TUNNEL_PORT, false),
-    flutterBin: read(env, "THEONE_FLUTTER") ?? "flutter",
+    ffmpegBin: read(env, "TESSERACT_FFMPEG_BIN") ?? "ffmpeg",
+    adbBin: read(env, "TESSERACT_ADB") ?? "adb",
+    adbTunnelPort: parsePort(env, "TESSERACT_ADB_TUNNEL_PORT", DEFAULT_ADB_TUNNEL_PORT, false),
+    flutterBin: read(env, "TESSERACT_FLUTTER") ?? "flutter",
     stt: sttConfig(env),
     push: pushConfig(env),
     apns: apnsConfig(env),
@@ -303,6 +304,7 @@ export function loadConfig(env: Env = process.env): Config {
 }
 
 export function ensureDirectories(config: Config): void {
+  adoptLegacyPath(join(config.workspace, ".theone"), dirname(config.uploadsDir));
   for (const dir of [config.workspace, config.projectsDir, config.artifactsDir, config.agentDir]) {
     mkdirSync(dir, { recursive: true });
   }

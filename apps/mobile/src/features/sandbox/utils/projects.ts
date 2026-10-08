@@ -8,7 +8,7 @@ import {
   type ProcessCommand,
   type ProcessInfo,
   type Project,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import type { Tone } from "@/lib/tone";
 

@@ -1,4 +1,4 @@
-import type { SyncAck } from "@theone/protocol";
+import type { SyncAck } from "@tesseract/protocol";
 import { createLogger } from "../log";
 import type { SyncApi } from "./api";
 import { SyncBackError, SyncConflict, errorMessage } from "./errors";

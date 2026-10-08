@@ -5,10 +5,10 @@ export const CONNECTION_KEYS = ["url", "token", "name", "pairingUrl"] as const;
 export const LEGACY_URL_KEY = "apiUrl";
 
 export const CONNECTION_ENV = {
-  url: "MONOLITH_DESKTOP_URL",
-  token: "THEONE_TOKEN",
-  name: "MONOLITH_DESKTOP_NAME",
-  pairingUrl: "MONOLITH_DESKTOP_PAIRING_URL",
+  url: "TESSERACT_DESKTOP_URL",
+  token: "TESSERACT_TOKEN",
+  name: "TESSERACT_DESKTOP_NAME",
+  pairingUrl: "TESSERACT_DESKTOP_PAIRING_URL",
 } as const;
 
 function text(value: unknown): string | null {

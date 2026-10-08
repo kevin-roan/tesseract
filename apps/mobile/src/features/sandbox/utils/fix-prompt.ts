@@ -1,4 +1,4 @@
-import type { AppRun, BuildJob, LogLine, ProcessInfo } from "@theone/protocol";
+import type { AppRun, BuildJob, LogLine, ProcessInfo } from "@tesseract/protocol";
 
 import { cleanLogText } from "@/components/log-view/lines";
 

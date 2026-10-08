@@ -10,14 +10,14 @@ describe("trayMenuTemplate", () => {
   it("matches the GTK tray menu order", () => {
     const labels = trayMenuTemplate(actions(), { updateReady: null }).map((item) => item.label ?? item.type);
     expect(labels).toEqual([
-      "Open Monolith",
+      "Open Tesseract",
       "Hide Window",
       "Refresh",
       "Pair a device…",
       "Pair this computer…",
       "Preferences",
       "separator",
-      "Quit Monolith",
+      "Quit Tesseract",
     ]);
   });
 
@@ -43,8 +43,8 @@ describe("trayMenuTemplate", () => {
 
 describe("tray platform rules", () => {
   it("formats the tooltip with the connection status", () => {
-    expect(TRAY_LABELS.tooltip("Online")).toBe("Monolith · Online");
-    expect(TRAY_LABELS.tooltip("")).toBe("Monolith");
+    expect(TRAY_LABELS.tooltip("Online")).toBe("Tesseract · Online");
+    expect(TRAY_LABELS.tooltip("")).toBe("Tesseract");
   });
 
   it("prefers a template icon on macOS", () => {

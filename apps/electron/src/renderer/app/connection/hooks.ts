@@ -1,5 +1,5 @@
-import type { TheOneClient } from "@theone/client";
-import type { SandboxStatus, ServerEventType } from "@theone/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import type { SandboxStatus, ServerEventType } from "@tesseract/protocol";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useStore } from "zustand";
 import type { ConnectionInput, ConnectionSnapshot, DiscoveryResult } from "../../../shared/contracts/connection";
@@ -66,7 +66,7 @@ export function useConnectionActions(): ConnectionActions {
   );
 }
 
-export function useConnectionClient(): TheOneClient | null {
+export function useConnectionClient(): TesseractClient | null {
   const config = useConnectionState((state) => state.config);
   return useMemo(() => (config ? createApiClient(config) : null), [config]);
 }

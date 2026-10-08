@@ -1,6 +1,6 @@
 import { chmod, mkdir, readFile, rm, stat, symlink, unlink, utimes, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { NetworkError } from "@theone/client";
+import { NetworkError } from "@tesseract/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runStatus } from "./cli";
 import { EXIT } from "./constants";
@@ -206,7 +206,7 @@ describe("get", () => {
     controller.beforeApply = () => unlink(join(host, "src/new/feature.py"));
     const handled = await runGet();
     expect(handled.ok).toBe(false);
-    expect(handled.message).toContain("src/new/feature.py changed during the sync, run monolith --get again");
+    expect(handled.message).toContain("src/new/feature.py changed during the sync, run tesseract --get again");
     expect(controller.completed).toEqual([[handled.request.id, "failed"]]);
   });
 

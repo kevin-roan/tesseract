@@ -7,7 +7,7 @@ import { readConfig, updateConfig } from "./store";
 
 const dirs: string[] = [];
 const tempFile = () => {
-  const dir = mkdtempSync(join(tmpdir(), "monolith-test-config-"));
+  const dir = mkdtempSync(join(tmpdir(), "tesseract-test-config-"));
   dirs.push(dir);
   return join(dir, "nested", "config.json");
 };
@@ -32,7 +32,7 @@ describe("config store", () => {
   });
 
   it("prefers the file over the environment and accepts the legacy apiUrl key", () => {
-    const env = { MONOLITH_DESKTOP_URL: "http://env:7700", THEONE_TOKEN: "envtoken" };
+    const env = { TESSERACT_DESKTOP_URL: "http://env:7700", TESSERACT_TOKEN: "envtoken" };
     expect(initialConnection({ apiUrl: "http://file:7700", token: "f" }, env)?.source).toBe("file");
     expect(initialConnection({}, env)).toMatchObject({ apiUrl: "http://env:7700", source: "env" });
     expect(initialConnection({}, {})).toBeNull();

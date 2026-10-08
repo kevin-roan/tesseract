@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { restPaths } from "@theone/protocol";
+import { restPaths } from "@tesseract/protocol";
 
 import { useSandboxClient } from "@/features/sandbox/hooks/use-sandbox-client";
 

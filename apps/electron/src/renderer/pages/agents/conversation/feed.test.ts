@@ -1,5 +1,5 @@
-import type { AgentRunHandlers, StreamConnection } from "@theone/client";
-import type { AgentRun, AgentRunDetail } from "@theone/protocol";
+import type { AgentRunHandlers, StreamConnection } from "@tesseract/client";
+import type { AgentRun, AgentRunDetail } from "@tesseract/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { mergeRun, RunFeed, type FeedClient, type FeedTimers } from "./feed";
 

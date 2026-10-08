@@ -1,4 +1,4 @@
-import { HOST_PAIRING_ACTION, PAIRING_SCHEME, parsePairingLink } from "@theone/protocol";
+import { HOST_PAIRING_ACTION, PAIRING_SCHEME, parsePairingLink } from "@tesseract/protocol";
 
 import type { LinkParseResult } from "@/features/sandbox/utils/pairing";
 

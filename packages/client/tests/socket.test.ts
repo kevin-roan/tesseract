@@ -1,18 +1,18 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import type { Server, ServerWebSocket } from "bun";
-import { LIMITS } from "@theone/protocol";
-import { sampleAgentRun, sampleBuild, sampleLogLine, sampleStatusEvent } from "@theone/protocol/fixtures";
+import { LIMITS } from "@tesseract/protocol";
+import { sampleAgentRun, sampleBuild, sampleLogLine, sampleStatusEvent } from "@tesseract/protocol/fixtures";
 import {
   ApiError,
   computeBackoffDelay,
   NetworkError,
   ProtocolError,
   ProtocolVersionError,
-  TheOneClient,
+  TesseractClient,
   type CloseInfo,
   type ConnectionState,
   type TerminalConnection,
-  type TheOneError,
+  type TesseractError,
 } from "../src/index";
 
 const TOKEN = "ws-test-token";
@@ -29,7 +29,7 @@ interface Behaviour {
 }
 
 interface Harness {
-  client: TheOneClient;
+  client: TesseractClient;
   issued: string[];
   connections: Conn[];
   received: Array<{ conn: Conn; data: unknown }>;
@@ -94,7 +94,7 @@ function startServer(behaviour: Behaviour): Harness {
   });
 
   const harness: Harness = {
-    client: new TheOneClient({ baseUrl: `http://127.0.0.1:${server.port}`, token: TOKEN }),
+    client: new TesseractClient({ baseUrl: `http://127.0.0.1:${server.port}`, token: TOKEN }),
     issued,
     connections,
     received,
@@ -116,7 +116,7 @@ async function waitFor(predicate: () => boolean, timeoutMs = 3_000): Promise<voi
 }
 
 const send = (ws: Socket, message: unknown) => ws.send(JSON.stringify(message));
-const hello = { type: "hello", protocolVersion: 1, sandboxId: "theone-sandbox" };
+const hello = { type: "hello", protocolVersion: 1, sandboxId: "tesseract-sandbox" };
 const fast = { minDelayMs: 10, maxDelayMs: 40 };
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const ABNORMAL_CLOSURE = 1006;
@@ -159,7 +159,7 @@ describe("events stream", () => {
       },
     });
     const events: string[] = [];
-    const errors: TheOneError[] = [];
+    const errors: TesseractError[] = [];
     const states: ConnectionState[] = [];
     const connection = harness.client.openEvents({
       onEvent: (event) => events.push(event.type),
@@ -220,7 +220,7 @@ describe("events stream", () => {
     const harness = startServer({ open: (ws) => send(ws, hello) });
     const originalWsUrl = harness.client.wsUrl.bind(harness.client);
     harness.client.wsUrl = (path, ticket) => originalWsUrl(path, rejectNext-- > 0 ? "forged" : ticket);
-    const errors: TheOneError[] = [];
+    const errors: TesseractError[] = [];
     let opened = false;
     const connection = harness.client.openEvents(
       { onEvent: (event) => (opened ||= event.type === "hello"), onError: (error) => errors.push(error) },
@@ -234,7 +234,7 @@ describe("events stream", () => {
 
   test("stops when the ticket endpoint rejects the token", async () => {
     const harness = startServer({ ticketStatus: 401 });
-    const errors: TheOneError[] = [];
+    const errors: TesseractError[] = [];
     const states: ConnectionState[] = [];
     harness.client.openEvents(
       { onEvent: () => undefined, onError: (error) => errors.push(error), onStateChange: (state) => states.push(state) },
@@ -254,7 +254,7 @@ describe("events stream", () => {
         send(ws, { type: "status", event: sampleStatusEvent });
       },
     });
-    const errors: TheOneError[] = [];
+    const errors: TesseractError[] = [];
     const states: ConnectionState[] = [];
     const events: string[] = [];
     harness.client.openEvents(
@@ -279,7 +279,7 @@ describe("events stream", () => {
         send(ws, { type: "status", event: sampleStatusEvent });
       },
     });
-    const errors: TheOneError[] = [];
+    const errors: TesseractError[] = [];
     const events: string[] = [];
     const connection = harness.client.openEvents({ onEvent: (event) => events.push(event.type), onError: (error) => errors.push(error) }, fast);
     await waitFor(() => events.length === 2);
@@ -298,7 +298,7 @@ describe("events stream", () => {
       },
     });
     let hellos = 0;
-    const errors: TheOneError[] = [];
+    const errors: TesseractError[] = [];
     const connection = harness.client.openEvents(
       { onEvent: () => (hellos += 1), onError: (error) => errors.push(error) },
       { ...fast, idleTimeoutMs: 60 },
@@ -318,7 +318,7 @@ describe("events stream", () => {
       },
     });
     const closes: CloseInfo[] = [];
-    const errors: TheOneError[] = [];
+    const errors: TesseractError[] = [];
     let hellos = 0;
     let statuses = 0;
     const connection = harness.client.openEvents(
@@ -485,7 +485,7 @@ describe("log and agent streams", () => {
       },
     });
     const lines: number[] = [];
-    const errors: TheOneError[] = [];
+    const errors: TesseractError[] = [];
     let exit: number | null | undefined;
     const connection = harness.client.openProcessLogs(
       "prc_1",

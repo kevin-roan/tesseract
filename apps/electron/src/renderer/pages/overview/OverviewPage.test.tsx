@@ -49,9 +49,9 @@ describe("OverviewPage", () => {
 
   it("renders the sandbox status, resources and lists", async () => {
     renderPage();
-    expect(await screen.findByRole("heading", { level: 1, name: "theone-sandbox" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 1, name: "tesseract-sandbox" })).toBeTruthy();
     expect(screen.getByText("Online")).toBeTruthy();
-    expect(screen.getByText("up 7h 46m · theone-sandbox · v0.1.0")).toBeTruthy();
+    expect(screen.getByText("up 7h 46m · tesseract-sandbox · v0.1.0")).toBeTruthy();
     expect(screen.getByText("11.99")).toBeTruthy();
     expect(screen.getByText("of 8 GB")).toBeTruthy();
     expect(screen.getByText("of 100 GB · /workspace")).toBeTruthy();

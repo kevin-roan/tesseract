@@ -1,5 +1,5 @@
-import type { AppRun, HostAndroidStatus, RunTargetInfo } from "@theone/protocol";
-import { sampleAppRun, sampleHostAndroidStatus, sampleSandboxAndroidStatus } from "@theone/protocol/fixtures";
+import type { AppRun, HostAndroidStatus, RunTargetInfo } from "@tesseract/protocol";
+import { sampleAppRun, sampleHostAndroidStatus, sampleSandboxAndroidStatus } from "@tesseract/protocol/fixtures";
 import { describe, expect, it, vi } from "vitest";
 import { IpcError } from "../../../../../shared/ipc-types";
 import { hostAndroid, HostRequestError, prepareEmulator, runOnEmulator, type HostAndroid, type SandboxApi, type Timing } from "./launcher";

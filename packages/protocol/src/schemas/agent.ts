@@ -26,7 +26,7 @@ export const AgentRunSchema = z.object({
   id: AgentRunIdSchema,
   projectId: ProjectIdSchema.nullable(),
   prompt: z.string(),
-  /** Permission mode the run was started with; null means the controller default (`THEONE_CLAUDE_PERMISSION_MODE`). */
+  /** Permission mode the run was started with; null means the controller default (`TESSERACT_CLAUDE_PERMISSION_MODE`). */
   mode: AgentRunModeSchema.nullable().default(null),
   attachments: z.array(UploadSchema).default([]),
   sessionId: z.string().nullable(),

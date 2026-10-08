@@ -9,7 +9,7 @@ import { useAppTheme } from "@/hooks/use-app-theme";
 import { useHapticPress } from "@/hooks/use-haptic-press";
 import { MaxFontSizeMultiplier } from "@/theme";
 
-import type { IslandState } from "@/modules/theone-island";
+import type { IslandState } from "@/modules/tesseract-island";
 
 import { useIslandSummary } from "../../hooks/use-island-summary";
 import { ISLAND_CAPSULE_GLYPH_SIZE } from "../../utils/constants";

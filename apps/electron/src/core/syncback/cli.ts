@@ -1,6 +1,6 @@
 import { basename } from "node:path";
-import { projectIdFromName, type SyncChanges } from "@theone/protocol";
-import { ApiError, TheOneError } from "@theone/client";
+import { projectIdFromName, type SyncChanges } from "@tesseract/protocol";
+import { ApiError, TesseractError } from "@tesseract/client";
 import { connectSandbox, type CliIo, type SyncEnvironment } from "./connect";
 import { EXIT, KIND_CODES, MAX_LISTED, UNKNOWN_KIND_CODE } from "./constants";
 import { NotLinked, SyncBackError, SyncConflict, errorMessage } from "./errors";
@@ -40,7 +40,7 @@ function reportConflicts(conflicts: string[], action: Action, io: CliIo): number
 }
 
 function isExpected(error: unknown): boolean {
-  return error instanceof SyncBackError || error instanceof TheOneError || (error instanceof Error && "code" in error);
+  return error instanceof SyncBackError || error instanceof TesseractError || (error instanceof Error && "code" in error);
 }
 
 function printPlan(outcome: PullOutcome, io: CliIo): void {

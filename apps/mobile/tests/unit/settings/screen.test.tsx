@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { sampleSttStatus } from "@theone/protocol/fixtures";
+import { sampleSttStatus } from "@tesseract/protocol/fixtures";
 
 import SettingsScreen from "@/app/settings";
 import { APPEARANCE_OPTIONS, INPUT_MODE_OPTIONS, ISLAND_PLACEMENT_OPTIONS, LIVE_ACTIVITY_OPTIONS } from "@/features/settings/utils/constants";
@@ -28,7 +28,7 @@ function state(stt: object = {}) {
     hub: { title: "Sandbox hub", subtitle: "devbox", open: jest.fn() },
     claude: { title: "Claude accounts", subtitle: "dev@example.com", open: jest.fn() },
     host: { title: "Host shell", subtitle: "Not paired", open: jest.fn() },
-    about: { title: "About Monolith", subtitle: "Version 1.0.0 · production", open: jest.fn() },
+    about: { title: "About Tesseract", subtitle: "Version 1.0.0 · production", open: jest.fn() },
     appearance: { options: APPEARANCE_OPTIONS, selectedId: "dark", select: jest.fn() },
     inputMode: { options: INPUT_MODE_OPTIONS, selectedId: "trackpad", select: jest.fn() },
     islandPlacement: { options: ISLAND_PLACEMENT_OPTIONS, selectedId: "bottomRight", select: jest.fn() },

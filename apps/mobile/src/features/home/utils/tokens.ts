@@ -1,4 +1,4 @@
-import type { TokenUsage } from "@theone/protocol";
+import type { TokenUsage } from "@tesseract/protocol";
 
 const TOKEN_UNITS = ["", "k", "M", "B", "T"] as const;
 

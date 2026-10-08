@@ -1,4 +1,4 @@
-import type { TerminalInfo } from "@theone/protocol";
+import type { TerminalInfo } from "@tesseract/protocol";
 import { useCallback, useMemo, useRef } from "react";
 import { useApiClient } from "../../../app/data";
 import { showToast } from "../../../components/Toast";

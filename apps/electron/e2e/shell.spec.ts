@@ -30,5 +30,5 @@ test("opens the setup wizard on a fresh profile", async () => {
   launched = await launchApp({ config: {} });
   const { window } = launched;
   await expect(window).toHaveURL(/#\/onboarding\/welcome/);
-  await expect(window.getByText("Welcome to Monolith").first()).toBeVisible();
+  await expect(window.getByText("Welcome to Tesseract").first()).toBeVisible();
 });

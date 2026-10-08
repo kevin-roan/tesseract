@@ -1,7 +1,7 @@
 import { createRef } from "react";
 import { Linking } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import type { AgentRunEvent, GitDetails } from "@theone/protocol";
+import type { AgentRunEvent, GitDetails } from "@tesseract/protocol";
 import {
   sampleAgentRun,
   sampleArtifact,
@@ -10,7 +10,7 @@ import {
   sampleProcess,
   sampleProject,
   sampleTerminal,
-} from "@theone/protocol/fixtures";
+} from "@tesseract/protocol/fixtures";
 
 import type { WebSurfaceHandle } from "@/components/web-surface";
 import AgentEvent from "@/features/sandbox/components/agent-event";

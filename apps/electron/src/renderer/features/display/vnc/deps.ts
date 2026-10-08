@@ -1,5 +1,5 @@
-import { ApiError, type TheOneClient } from "@theone/client";
-import { wsPaths } from "@theone/protocol";
+import { ApiError, type TesseractClient } from "@tesseract/client";
+import { wsPaths } from "@tesseract/protocol";
 import { describeError, isUnauthorizedError } from "../../../app/connection";
 import { isFixtureMode } from "../../../app/runtime";
 import { scenarioVncChannel } from "../../../fixtures/display/vnc-server";
@@ -13,7 +13,7 @@ function isAuthError(error: unknown): boolean {
   return isUnauthorizedError(error) || (error instanceof ApiError && error.status === FORBIDDEN);
 }
 
-export function sessionDepsFor(client: TheOneClient | null): SessionDeps | null {
+export function sessionDepsFor(client: TesseractClient | null): SessionDeps | null {
   if (!client) return null;
   const fixtures = isFixtureMode();
   return {

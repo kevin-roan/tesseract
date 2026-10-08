@@ -1,4 +1,4 @@
-import type { AgentRun, ClaudeSession, InboxItem } from "@theone/protocol";
+import type { AgentRun, ClaudeSession, InboxItem } from "@tesseract/protocol";
 import type { MenuSections } from "../../../components/ActionMenu";
 import { ATTENTION_LABELS, CONVERSATION_LABELS, MANAGE_LABELS } from "../../../features/agents/labels";
 import type { Tone } from "../../../theme/colors";

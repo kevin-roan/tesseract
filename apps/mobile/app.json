@@ -1,28 +1,29 @@
 {
   "expo": {
-    "name": "Monolith",
-    "slug": "theone",
+    "name": "Tesseract",
+    "slug": "tesseract",
     "version": "1.0.0",
     "runtimeVersion": {
       "policy": "fingerprint"
     },
     "updates": {
-      "url": "https://u.expo.dev/f0f303e2-80d2-4dd4-823e-4eceecc84735",
-      "fallbackToCacheTimeout": 0
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/58203c4d-5325-4b45-881e-9d2755d88806"
     },
     "orientation": "default",
     "icon": "./assets/images/icon.png",
-    "scheme": "theone",
+    "scheme": "tesseract",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.kevinbpract.theone",
+      "bundleIdentifier": "com.kevinroan.tesseract",
       "appleTeamId": "K26L46GQQ8",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
         "com.apple.security.application-groups": [
-          "group.com.kevinbpract.theone"
+          "group.com.kevinroan.tesseract",
+          "group.com.kevinroan.tesseract"
         ]
       }
     },
@@ -37,9 +38,14 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.CAMERA"
       ],
-      "package": "com.kevinbpract.theone"
+      "package": "com.kevinroan.tesseract"
     },
     "web": {
       "output": "static",
@@ -109,7 +115,7 @@
         {
           "url": "https://sentry.io/",
           "organization": "syncboard",
-          "project": "monolith"
+          "project": "tesseract"
         }
       ],
       "./plugins/with-island",
@@ -122,9 +128,35 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "f0f303e2-80d2-4dd4-823e-4eceecc84735"
+        "build": {
+          "experimental": {
+            "ios": {
+              "appExtensions": [
+                {
+                  "bundleIdentifier": "com.kevinroan.tesseract.share",
+                  "targetName": "share",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.kevinroan.tesseract"
+                    ]
+                  }
+                },
+                {
+                  "bundleIdentifier": "com.kevinroan.tesseract.island",
+                  "targetName": "island",
+                  "entitlements": {
+                    "com.apple.security.application-groups": [
+                      "group.com.kevinroan.tesseract"
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "projectId": "58203c4d-5325-4b45-881e-9d2755d88806"
       }
     },
-    "owner": "kevinroan"
+    "owner": "streaxfit"
   }
 }

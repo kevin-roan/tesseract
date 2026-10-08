@@ -1,4 +1,4 @@
-import type { Artifact, BuildOutput } from "@theone/protocol";
+import type { Artifact, BuildOutput } from "@tesseract/protocol";
 import { useCallback, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { describeError, usePoller, useServerEvent, useWindowVisible } from "../../../app/connection";

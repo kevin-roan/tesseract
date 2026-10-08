@@ -1,9 +1,10 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { userInfo } from "node:os";
 import { dirname, join } from "node:path";
-import { HOST_SHELL_PORT } from "@theone/protocol";
+import { HOST_SHELL_PORT } from "@tesseract/protocol";
 import { isDockerReady, phaseFromReport, probeDocker } from "../../src/core/docker";
 import { CONTROLLER_BINARY } from "../../src/core/host";
+import { LEGACY_LABELS, migrateEnvFile, migrateLegacyStack } from "../../src/core/legacy";
 import { runCommand, commandError, type CommandResult } from "../../src/core/process";
 import {
   composeDown,
@@ -99,7 +100,11 @@ function run(context: CliContext, file: string, args: readonly string[], env: No
 }
 
 async function runRequired(context: CliContext, command: ServiceCommand, env?: NodeJS.ProcessEnv): Promise<CommandResult> {
-  const result = await run(context, command.file, command.args, env);
+  let result = await run(context, command.file, command.args, env);
+  for (let attempt = 0; result.code !== 0 && attempt < (command.retries ?? 0) && !context.signal.aborted; attempt += 1) {
+    await new Promise((resolve) => setTimeout(resolve, SERVER.retryDelayMs));
+    result = await run(context, command.file, command.args, env);
+  }
   if (result.code !== 0 && !command.optional) {
     throw new IpcError("unavailable", LABELS.commandFailed(commandLine(command), commandError(command.file, command.args, result)));
   }
@@ -179,7 +184,7 @@ function previewEnv(envText: string): string[] {
     .filter((line) => line && !/^DEV_(UID|GID)=/.test(line))
     .map((line) => {
       const [key] = line.split("=", 1);
-      const secret = key === "THEONE_TOKEN" || key === "TS_AUTHKEY" || key === SERVER_ENV.claudeToken;
+      const secret = key === "TESSERACT_TOKEN" || key === "TS_AUTHKEY" || key === SERVER_ENV.claudeToken;
       return `  ${secret && !line.endsWith("=") ? `${key}=${REDACTED_VALUE}` : line}`;
     });
 }
@@ -214,6 +219,10 @@ async function install(context: CliContext): Promise<number> {
   const options = serverOptions(context);
   const { platform } = context.runtime;
   const sandbox = await context.runtime.sandboxContext();
+  if (!options.dryRun) {
+    const backup = migrateEnvFile(sandbox.envFile);
+    if (backup) log(context, LEGACY_LABELS.envMigrated(sandbox.envFile, backup));
+  }
   const report = await probeDocker({ env: context.env, signal: context.signal }).catch(() => null);
   const problem = dockerProblem(report, platform);
   if (problem && !options.dryRun) throw new IpcError("unavailable", LABELS.dockerNotReady(problem));
@@ -227,9 +236,13 @@ async function install(context: CliContext): Promise<number> {
   const base = await savedChoices(sandbox, defaultChoices(hostResources(), report));
   const choices = installChoices(base, options, ip);
   const existing = await readEnvValues(sandbox.envFile);
+  const volumePrefix = existing?.TESSERACT_VOLUME_PREFIX || choices.project;
+  if (!options.dryRun) {
+    const target = { project: choices.project, volumePrefix, image: choices.image, env: context.env, hostEnv: context.env };
+    await migrateLegacyStack({ run: runCommand }, target, (line) => log(context, line));
+  }
   const volumeExists =
-    choices.mode === "tailscale" &&
-    (await tailscaleVolumeExists({ run: runCommand }, context.env, existing?.THEONE_VOLUME_PREFIX || choices.project));
+    choices.mode === "tailscale" && (await tailscaleVolumeExists({ run: runCommand }, context.env, volumePrefix));
   const issues = validateChoices(choices, { savedAuthKey: Boolean(existing?.TS_AUTHKEY), tailscaleVolumeExists: volumeExists });
   if (issues.length > 0) usageError(issues.map((issue) => `${issue.field}: ${issue.message}`).join("\n"));
 
@@ -314,7 +327,7 @@ async function printPairing(context: CliContext, controller: readonly string[] |
   }
   const qr = !context.flags.has("no-qr");
   const color = Boolean(context.io.color);
-  const controllerName = controller ? controller.join(" ") : "theone-controller";
+  const controllerName = controller ? controller.join(" ") : "tesseract-controller";
   emit(context, { sandbox, host, errors }, () => [
     ...(host && !host.pinSet ? [LABELS.nextSteps, LABELS.setPin(controllerName), ""] : []),
     `${LABELS.sandboxHeading}:`,

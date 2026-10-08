@@ -1,4 +1,4 @@
-import { sampleUsageReport } from "@theone/protocol/fixtures";
+import { sampleUsageReport } from "@tesseract/protocol/fixtures";
 
 import {
   busiestCell,

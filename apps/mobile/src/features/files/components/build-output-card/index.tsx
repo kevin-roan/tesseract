@@ -1,4 +1,4 @@
-import type { BuildOutput } from "@theone/protocol";
+import type { BuildOutput } from "@tesseract/protocol";
 import Animated from "react-native-reanimated";
 
 import ResourceCard from "@/components/resource-card";

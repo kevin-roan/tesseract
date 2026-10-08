@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { ApiError, HostShellClient } from "@theone/client";
+import { ApiError, HostShellClient } from "@tesseract/client";
 
 import { useHostUnlock } from "@/features/host-shell/hooks/use-host-unlock";
 import { useHostSessionStore } from "@/features/host-shell/store/host-session-store";
@@ -7,7 +7,7 @@ import { useHostStore } from "@/features/host-shell/store/host-store";
 
 import { createTestQueryClient, createWrapper } from "../sandbox/helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), HostShellClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), HostShellClient: jest.fn() }));
 
 const MockClient = HostShellClient as unknown as jest.Mock;
 const fake = { lockStatus: jest.fn(), unlock: jest.fn(), sessionClient: jest.fn(() => ({})) };

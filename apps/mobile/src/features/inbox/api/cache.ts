@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { Inbox, InboxCounts } from "@theone/protocol";
+import type { Inbox, InboxCounts } from "@tesseract/protocol";
 
 import { sessionKeys } from "@/features/chats/api/query-keys";
 

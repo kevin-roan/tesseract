@@ -1,5 +1,5 @@
-import type { TheOneClient } from "@theone/client";
-import type { AppRun, Artifact, BuildJob, ClaudeAccountList, ClaudeSession, GitDetails, ProcessInfo, Project, RunTargetInfo } from "@theone/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import type { AppRun, Artifact, BuildJob, ClaudeAccountList, ClaudeSession, GitDetails, ProcessInfo, Project, RunTargetInfo } from "@tesseract/protocol";
 import { SESSION_LIMIT } from "./constants";
 import { projectArtifacts, projectBuilds, projectProcesses } from "./model";
 
@@ -25,7 +25,7 @@ async function settle<T>(promise: Promise<T>): Promise<{ value: T; error: null }
   }
 }
 
-export async function fetchDetailSnapshot(client: TheOneClient, id: string, signal: AbortSignal): Promise<DetailSnapshot> {
+export async function fetchDetailSnapshot(client: TesseractClient, id: string, signal: AbortSignal): Promise<DetailSnapshot> {
   const options = { signal };
   const filter = { projectId: id };
   const projectRequest = client.getProject(id, options);

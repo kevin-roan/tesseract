@@ -1,5 +1,5 @@
-import type { LogLine } from "@theone/protocol";
-import { sampleAppRun, sampleBuild, sampleProcess } from "@theone/protocol/fixtures";
+import type { LogLine } from "@tesseract/protocol";
+import { sampleAppRun, sampleBuild, sampleProcess } from "@tesseract/protocol/fixtures";
 
 import {
   FIX_LOG_TAIL,
@@ -40,7 +40,7 @@ describe("failurePrompt", () => {
   });
 
   it("describes a failed app run with its target, folder and error", () => {
-    const run = { ...sampleAppRun, target: "expo-android", dir: "apps/mobile", state: "failed" as const, error: "No Android device found" };
+    const run = { ...sampleAppRun, target: "expo-android" as const, dir: "apps/mobile", state: "failed" as const, error: "No Android device found" };
     const prompt = failurePrompt(appRunFailure(run, "Android emulator", [line(1, "at resolveDevice.js:23:10")]));
     expect(prompt).toContain("Running the app on Android emulator (`expo-android` in `apps/mobile`) failed");
     expect(prompt).toContain("Error: No Android device found");

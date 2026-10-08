@@ -1,15 +1,15 @@
 import { fireEvent, screen } from "@testing-library/react";
-import type { ClaudeSession } from "@theone/protocol";
-import { sampleAgentRun, sampleClaudeSession } from "@theone/protocol/fixtures";
+import type { ClaudeSession } from "@tesseract/protocol";
+import { sampleAgentRun, sampleClaudeSession } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import { renderTab } from "../kit/testing";
 import { ConversationsTab } from "./ConversationsTab";
 
-const session = (patch: Partial<ClaudeSession>): ClaudeSession => ({ ...sampleClaudeSession, projectId: "monolith", ...patch });
+const session = (patch: Partial<ClaudeSession>): ClaudeSession => ({ ...sampleClaudeSession, projectId: "tesseract", ...patch });
 
 describe("ConversationsTab", () => {
   it("shows the zero count and empty label", () => {
-    renderTab(<ConversationsTab projectId="monolith" sessions={[]} runs={[]} />);
+    renderTab(<ConversationsTab projectId="tesseract" sessions={[]} runs={[]} />);
     expect(screen.getByText("No chats about this project yet.")).toBeTruthy();
     expect(screen.getByText("0")).toBeTruthy();
     expect(screen.getByRole("button", { name: "New chat" })).toBeTruthy();
@@ -18,7 +18,7 @@ describe("ConversationsTab", () => {
   it("renders sessions with run states and open actions only when there is a target", () => {
     renderTab(
       <ConversationsTab
-        projectId="monolith"
+        projectId="tesseract"
         sessions={[
           session({ sessionId: "s1", title: "Fix the  build", agentRunId: "r1", terminalId: null }),
           session({ sessionId: "s2", title: null, agentRunId: null, terminalId: null, active: false }),

@@ -1,4 +1,4 @@
-import { LIMITS } from "@theone/protocol";
+import { LIMITS } from "@tesseract/protocol";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { describeError } from "../../../app/connection";
 import { useApiClient } from "../../../app/data";

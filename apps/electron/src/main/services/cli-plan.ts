@@ -2,7 +2,7 @@ import { posix, win32 } from "node:path";
 import type { CliInstallStatus } from "../../shared/contracts/app";
 import type { Platform } from "../../shared/runtime";
 import { CLI_NAME } from "../../shared/runtime";
-import { CLI_DEB_LINK_DIR, CLI_MAC_LINK_DIR, CLI_USER_COPY_DIR, CLI_USER_LINK_DIR } from "../constants";
+import { CLI_DEB_LINK_DIR, CLI_MAC_LINK_DIR, CLI_USER_COPY_DIR, CLI_USER_LINK_DIR, LEGACY_CLI_TARGETS } from "../constants";
 import { CLI_INSTALL_LABELS } from "../labels";
 
 export interface CliEnvironment {
@@ -52,6 +52,10 @@ function plan(value: CliInstallStatus, method: CliInstallMethod | null = null, c
   return { status: value, method, copyPath };
 }
 
+export function isLegacyCli(target: string | null): boolean {
+  return target !== null && LEGACY_CLI_TARGETS.some((pattern) => pattern.test(target));
+}
+
 function linuxPlan(env: CliEnvironment, binary: string, probe: CliProbe): CliPlan {
   const deb = posix.join(CLI_DEB_LINK_DIR, CLI_NAME);
   const binaryTarget = probe.realpath(binary) ?? binary;
@@ -69,7 +73,7 @@ function linuxPlan(env: CliEnvironment, binary: string, probe: CliProbe): CliPla
     }
     return plan(status("installed", binary, link, onPath));
   }
-  if (current === null) return plan(status("missing", binary, link, onPath), method, copyPath);
+  if (current === null || isLegacyCli(current)) return plan(status("missing", binary, link, onPath), method, copyPath);
   return plan(status("conflict", binary, link, CLI_INSTALL_LABELS.conflict(link)));
 }
 
@@ -79,7 +83,7 @@ function macPlan(env: CliEnvironment, binary: string, probe: CliProbe): CliPlan 
   const binaryTarget = probe.realpath(binary) ?? binary;
   if (current === binaryTarget) return plan(status("installed", binary, link));
   if (!env.inApplicationsFolder) return plan(status("unsupported", binary, link, CLI_INSTALL_LABELS.translocated));
-  if (current === null) return plan(status("missing", binary, link), "admin-symlink");
+  if (current === null || isLegacyCli(current)) return plan(status("missing", binary, link), "admin-symlink");
   return plan(status("conflict", binary, link, CLI_INSTALL_LABELS.conflict(link)));
 }
 

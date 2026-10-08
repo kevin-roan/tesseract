@@ -1,4 +1,4 @@
-import type { CloseInfo, ConnectionState, StreamConnection, StreamOptions } from "@theone/client";
+import type { CloseInfo, ConnectionState, StreamConnection, StreamOptions } from "@tesseract/client";
 
 import { STREAM_RECONNECT_LIMIT } from "../utils/constants";
 

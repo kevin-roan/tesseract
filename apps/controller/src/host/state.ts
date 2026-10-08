@@ -1,5 +1,5 @@
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { DEFAULT_ANDROID_STREAM, UpdateAndroidStreamSchema, type AndroidStreamSettings, type UpdateAndroidStream } from "@theone/protocol";
+import { DEFAULT_ANDROID_STREAM, UpdateAndroidStreamSchema, type AndroidStreamSettings, type UpdateAndroidStream } from "@tesseract/protocol";
 import { generateToken } from "../auth/token";
 
 export type AndroidLinkConfig = { sandboxUrl: string; token: string };

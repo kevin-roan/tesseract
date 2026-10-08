@@ -1,7 +1,7 @@
 import type { PageSection } from "../../shared/routes";
 
 export const SHELL_LABELS = {
-  appName: "Monolith",
+  appName: "Tesseract",
   search: "Search conversations",
   compose: "New conversation (Ctrl+N)",
   projects: "Projects",
@@ -23,13 +23,13 @@ export const SHELL_LABELS = {
     pair: "Pair a device…",
     pairHost: "Pair this computer…",
     rediscover: "Rediscover Sandbox",
-    about: "About Monolith",
+    about: "About Tesseract",
     quit: "Quit",
   },
   about: {
-    title: "About Monolith",
+    title: "About Tesseract",
     version: (version: string) => `Version ${version}`,
-    comments: "Monitor and control the Monolith sandbox from the host, pair phones and keep an eye on this machine.",
+    comments: "Monitor and control the Tesseract sandbox from the host, pair phones and keep an eye on this machine.",
     close: "Close",
   },
   conversationsUnavailable: "Conversations aren't available yet",

@@ -1,4 +1,4 @@
-import { LIMITS, type AndroidKey } from "@theone/protocol";
+import { LIMITS, type AndroidKey } from "@tesseract/protocol";
 
 /** Android `KeyEvent` codes of the keys the screen page may send. */
 export const ANDROID_KEYCODES: Record<AndroidKey, number> = {

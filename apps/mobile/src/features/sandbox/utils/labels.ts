@@ -7,7 +7,7 @@ import {
   type Framework,
   type ProcessState,
   type TerminalKind,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import type { ChoiceOption } from "@/components/choice-group";
 

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { View } from "react-native";
-import type { ClaudeSession } from "@theone/protocol";
+import type { ClaudeSession } from "@tesseract/protocol";
 
 import MotionItem from "@/components/motion-item";
 import Notice from "@/components/notice";

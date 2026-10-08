@@ -1,8 +1,8 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { AppState, Linking } from "react-native";
-import { TheOneClient } from "@theone/client";
-import type { Inbox } from "@theone/protocol";
-import { sampleArtifact, sampleInbox, sampleInboxItem, sampleProject } from "@theone/protocol/fixtures";
+import { TesseractClient } from "@tesseract/client";
+import type { Inbox } from "@tesseract/protocol";
+import { sampleArtifact, sampleInbox, sampleInboxItem, sampleProject } from "@tesseract/protocol/fixtures";
 
 import { emitInboxEvent } from "@/features/inbox/api/events";
 import { inboxKeys } from "@/features/inbox/api/query-keys";
@@ -17,7 +17,7 @@ import { TEST_SANDBOX, TEST_TOKEN, createTestQueryClient, createWrapper, resetSa
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) };
 let mockPathname = "/";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   usePathname: () => mockPathname,
@@ -33,7 +33,7 @@ jest.mock("@/features/inbox/notifications", () => ({
   subscribePushTokenChanges: jest.fn(() => () => undefined),
 }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const mockPresent = presentInboxNotification as jest.Mock;
 const mockTaps = subscribeNotificationTaps as jest.Mock;
 const mockPushToken = getExpoPushToken as jest.Mock;

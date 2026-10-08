@@ -6,7 +6,7 @@ import {
   type ProcessCommand,
   type ProcessInfo,
   type StartProcess,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { conflict, errorMessage, notFound } from "../core/errors";
 import { childEnv } from "../core/exec";
 import { LineSplitter } from "../core/line-splitter";
@@ -154,7 +154,7 @@ export class ProcessService {
           ...(spec.display ? DISPLAY_ENV : {}),
           ...spec.env,
           ...(spec.display ? { DISPLAY: this.config.display } : {}),
-          THEONE_PROCESS_ID: info.id,
+          TESSERACT_PROCESS_ID: info.id,
         },
         stdin: spec.stdin ?? "ignore",
         stdout: "pipe",

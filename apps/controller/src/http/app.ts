@@ -3,7 +3,7 @@ import { bodyLimit } from "hono/body-limit";
 import { cors } from "hono/cors";
 import { HTTPException } from "hono/http-exception";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
-import { API_PREFIX, errorBody, errorCodeForStatus, LIMITS, restPaths } from "@theone/protocol";
+import { API_PREFIX, errorBody, errorCodeForStatus, LIMITS, restPaths } from "@tesseract/protocol";
 import { HttpError } from "../core/errors";
 import type { Services } from "../services";
 import { requireAuth } from "./middleware/auth";

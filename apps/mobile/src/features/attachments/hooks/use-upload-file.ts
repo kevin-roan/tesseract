@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { LIMITS, type Upload } from "@theone/protocol";
+import { LIMITS, type Upload } from "@tesseract/protocol";
 
 import { useCreateUpload } from "@/features/sandbox/hooks/use-sandbox-mutations";
 

@@ -1,5 +1,5 @@
-import { LIMITS, type AgentRunEvent, type Upload } from "@theone/protocol";
-import { sampleUpload } from "@theone/protocol/fixtures";
+import { LIMITS, type AgentRunEvent, type Upload } from "@tesseract/protocol";
+import { sampleUpload } from "@tesseract/protocol/fixtures";
 
 import {
   admitFiles,

@@ -1,4 +1,4 @@
-import type { AgentRunUsage } from "@theone/protocol";
+import type { AgentRunUsage } from "@tesseract/protocol";
 
 import { formatTokens } from "@/features/home/utils/tokens";
 

@@ -4,7 +4,11 @@ import type { ComposeServiceStatus, ExistingSandbox, SandboxStackStatus } from "
 import { IpcError } from "../../shared/ipc-types";
 import { commandError, scrubEnv, type CommandResult } from "../process";
 import { containerName } from "../connection";
+import { migrateLegacyStack } from "../legacy/docker";
+import { migrateEnvFile } from "../legacy/env";
+import { LEGACY_LABELS } from "../legacy/labels";
 import {
+  DEFAULT_IMAGE,
   DEFAULT_LOG_TAIL,
   DEFAULT_PROJECT,
   DOCKER_TIMEOUT_MS,
@@ -36,7 +40,7 @@ function fail(name: string, args: readonly string[], result: CommandResult): nev
 
 export async function stackProject(context: SandboxContext): Promise<{ project: string; configured: boolean }> {
   const values = await readEnvValues(context.envFile);
-  return { project: values?.THEONE_COMPOSE_PROJECT || DEFAULT_PROJECT, configured: values !== null };
+  return { project: values?.TESSERACT_COMPOSE_PROJECT || DEFAULT_PROJECT, configured: values !== null };
 }
 
 export function healthFromStatus(status: string): string | null {
@@ -116,8 +120,15 @@ export async function composeUp(
   callbacks: ComposeCallbacks & { signal?: AbortSignal } = {},
 ): Promise<SandboxStackStatus> {
   const deps = sandboxDeps(context);
+  const backup = migrateEnvFile(context.envFile);
+  if (backup) callbacks.onLog?.(LEGACY_LABELS.envMigrated(context.envFile, backup));
   const stack = await resolveStack(context, "up");
   stack.warnings.forEach((line) => callbacks.onLog?.(line));
+  await migrateLegacyStack(
+    deps,
+    { project: stack.project, volumePrefix: stack.volumePrefix, image: stack.values.TESSERACT_IMAGE || DEFAULT_IMAGE, env: stack.env, hostEnv: context.env },
+    (line) => callbacks.onLog?.(line),
+  );
   await checkUpPreconditions(stack, deps);
   await runCompose(context, stack, ["up", "--detach"], callbacks);
   if (stack.mode === "tailscale") await removeAuthKey(stack.envFile);

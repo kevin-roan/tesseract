@@ -1,6 +1,6 @@
 # Architecture overview
 
-TheOne turns a Docker host into a development machine that you drive from a
+Tesseract turns a Docker host into a development machine that you drive from a
 phone. The phone never runs builds and the host never runs development
 tooling. Everything happens in one sandbox container, and a single daemon in
 that container, the controller, is the only way in.
@@ -19,7 +19,7 @@ flowchart LR
       ts["tailscale sidecar<br/>userspace, serve :443→7700, tcp :5901"]
       subgraph sandbox["sandbox container (Debian trixie)"]
         sup["supervisord"]
-        ctl["theone-controller :7700<br/>REST · WS · /ui"]
+        ctl["tesseract-controller :7700<br/>REST · WS · /ui"]
         xvnc["Xvnc :1 (rfb 5901)"]
         ob["openbox"]
         wine["wine-init (oneshot)"]
@@ -28,7 +28,7 @@ flowchart LR
       end
     end
     dind["docker:dind<br/>(optional overlay)"]
-    vol[("volumes<br/>theone-workspace<br/>theone-home")]
+    vol[("volumes<br/>tesseract-workspace<br/>tesseract-home")]
   end
   app -->|"HTTPS + WSS over WireGuard"| ts
   ts --> ctl
@@ -43,11 +43,11 @@ flowchart LR
 | Component | Location | Role |
 |---|---|---|
 | Mobile app | [`apps/mobile`](../../apps/mobile) | Remote control. Pairs with sandboxes, shows status, projects, builds, artifacts, terminals, the display and Claude runs. Holds no authoritative state. See [mobile-app.md](mobile-app.md). |
-| `@theone/protocol` | [`packages/protocol`](../../packages/protocol) | zod schemas, types, constants, URL and pairing helpers: the wire contract. See [protocol.md](protocol.md). |
-| `@theone/client` | [`packages/client`](../../packages/client) | Typed REST/WS client that runs in React Native, browsers and Bun. |
-| Controller | [`apps/controller`](../../apps/controller) → `/usr/local/bin/theone-controller` | Bun + Hono daemon inside the sandbox: API, process/PTY/build supervision, VNC bridge, `/ui` pages, `.agent/RUNTIME.md` mirror, CLI (including `api`, the agent's way to call the API). See [controller.md](controller.md). |
+| `@tesseract/protocol` | [`packages/protocol`](../../packages/protocol) | zod schemas, types, constants, URL and pairing helpers: the wire contract. See [protocol.md](protocol.md). |
+| `@tesseract/client` | [`packages/client`](../../packages/client) | Typed REST/WS client that runs in React Native, browsers and Bun. |
+| Controller | [`apps/controller`](../../apps/controller) → `/usr/local/bin/tesseract-controller` | Bun + Hono daemon inside the sandbox: API, process/PTY/build supervision, VNC bridge, `/ui` pages, `.agent/RUNTIME.md` mirror, CLI (including `api`, the agent's way to call the API). See [controller.md](controller.md). |
 | Sandbox image | [`infra/docker/sandbox`](../../infra/docker/sandbox) | Debian trixie with the desktop, wine, Node/Bun/Python, optional Android SDK and Claude Code. See [sandbox-image.md](sandbox-image.md). |
-| Compose stack | [`infra/compose`](../../infra/compose) | Project `theone` by default (`THEONE_COMPOSE_PROJECT`): `sandbox`, `tailscale` sidecar, optional `docker` (dind) overlay. See [networking-tailscale.md](networking-tailscale.md). |
+| Compose stack | [`infra/compose`](../../infra/compose) | Project `tesseract` by default (`TESSERACT_COMPOSE_PROJECT`): `sandbox`, `tailscale` sidecar, optional `docker` (dind) overlay. See [networking-tailscale.md](networking-tailscale.md). |
 | Operator CLI | [`infra/scripts/sandbox`](../../infra/scripts/sandbox) | `bun run sandbox <command>` on the host: `up`, `down`, `restart`, `logs`, `shell`, `pair`, `status`, `doctor`, `build`, `ps`, `config`, with `--mode`, `--dind` and `--env-file`. |
 | Tests | [`infra/tests`](../../infra/tests), [`infra/e2e`](../../infra/e2e) | bats suites for the infra scripts (`bun run test:infra`) and the end-to-end suite against a real stack (`bun run e2e`). See [e2e-testing](../runbooks/e2e-testing.md). |
 | Agent spec | [`SPEC.md`](../../SPEC.md) | Rules for Claude inside the sandbox, installed as `/home/dev/.claude/CLAUDE.md`. |
@@ -63,15 +63,15 @@ sequenceDiagram
   participant C as controller
   participant P as phone
   Op->>CLI: bun run sandbox pair
-  CLI->>C: docker compose exec sandbox theone-controller pair
-  C-->>Op: theone://pair?url=https://theone-sandbox.<tailnet>.ts.net&token=…&name=… + ANSI QR
+  CLI->>C: docker compose exec sandbox tesseract-controller pair
+  C-->>Op: tesseract://pair?url=https://tesseract-sandbox.<tailnet>.ts.net&token=…&name=… + ANSI QR
   P->>P: scan QR (expo-camera) or open deep link or paste
   P->>C: GET /v1/health (public, checks protocolVersion) then GET /v1/status (Bearer token)
   C-->>P: Health, SandboxStatus
   P->>P: token → expo-secure-store; sandbox added to the sandbox store and made active
 ```
 
-The pairing URL comes from `THEONE_PUBLIC_URL`. In tailscale mode that is
+The pairing URL comes from `TESSERACT_PUBLIC_URL`. In tailscale mode that is
 the MagicDNS HTTPS name. Details: [runbooks/pairing-mobile.md](../runbooks/pairing-mobile.md).
 
 ### Status and live updates
@@ -84,7 +84,7 @@ sequenceDiagram
   P->>C: POST /v1/auth/ticket (Bearer)
   P->>C: WS /v1/events?ticket=…
   C-->>P: {type:"hello"}
-  A->>C: theone-controller emit --status building … (POST /v1/events)
+  A->>C: tesseract-controller emit --status building … (POST /v1/events)
   C-->>P: {type:"status", event}
   C-->>P: {type:"build.updated", build} / process.updated / artifact.created …
   P->>P: patch or invalidate react-query caches
@@ -114,7 +114,7 @@ replay history, so after a reconnect the app refetches.
 3. noVNC (served by the controller) connects to `WS /v1/display/vnc?ticket=…`.
    The controller bridges WS frames to TCP `127.0.0.1:5901` (Xvnc). RFB VncAuth
    runs end to end inside the tunnel.
-4. Native VNC clients on the tailnet can connect to `theone-sandbox:5901`
+4. Native VNC clients on the tailnet can connect to `tesseract-sandbox:5901`
    directly. The sidecar forwards that TCP port.
 
 Details: [display-vnc.md](display-vnc.md).
@@ -157,8 +157,8 @@ specifics: [electron-windows-wine.md](electron-windows-wine.md).
    `/home/dev/.claude/CLAUDE.md` (SPEC.md) and the project's own `CLAUDE.md`.
 3. Stream messages are condensed into `AgentRunEvent`s. They are persisted,
    broadcast as `agent.updated`, and streamed on `/v1/agent/runs/:id/stream`.
-4. While it works, Claude reports milestones with `theone-controller emit`
-   and starts long work through the controller (`theone-controller api`:
+4. While it works, Claude reports milestones with `tesseract-controller emit`
+   and starts long work through the controller (`tesseract-controller api`:
    builds, `display: true` processes). Anything it merely backgrounds is
    stopped when the run ends.
 5. The run ends with `result`, token `usage` and `sessionId`. The phone can

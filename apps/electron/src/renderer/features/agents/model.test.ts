@@ -1,5 +1,5 @@
-import { LIMITS, type AgentRun, type ClaudeSession, type InboxItem } from "@theone/protocol";
-import { sampleAgentRun, sampleClaudeSession, sampleInboxItem } from "@theone/protocol/fixtures";
+import { LIMITS, type AgentRun, type ClaudeSession, type InboxItem } from "@tesseract/protocol";
+import { sampleAgentRun, sampleClaudeSession, sampleInboxItem } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import { runTitle as timelineRunTitle } from "../../pages/agents/timeline/run-info";
 import {
@@ -31,7 +31,7 @@ import { crc32, projectBadge, projectBadges, projectTint } from "./tints";
 
 const run = (patch: Partial<AgentRun>): AgentRun => ({ ...sampleAgentRun, state: "succeeded", archivedAt: null, ...patch });
 const item = (patch: Partial<InboxItem>): InboxItem => ({ ...sampleInboxItem, ...patch });
-const names = { monolith: "monolith" };
+const names = { tesseract: "tesseract" };
 
 describe("runTitle", () => {
   it("takes the first non-empty line and strips markdown noise", () => {
@@ -55,7 +55,7 @@ describe("runTitle", () => {
 describe("row meta", () => {
   it("joins project, tokens and follow-up", () => {
     const usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 396_000 };
-    expect(rowMeta(run({ projectId: "monolith", usage }), names, true)).toBe("monolith · 396k tokens · follow-up");
+    expect(rowMeta(run({ projectId: "tesseract", usage }), names, true)).toBe("tesseract · 396k tokens · follow-up");
     expect(rowMeta(run({ projectId: null, usage: { ...usage, totalTokens: 1 } }), names)).toBe("Sandbox root · 1 token");
     expect(rowMeta(run({ projectId: "other", usage: null }), names)).toBe("other");
   });
@@ -63,11 +63,11 @@ describe("row meta", () => {
   it("builds the header meta with duration and account", () => {
     const now = Date.parse("2026-09-23T10:10:00Z") / 1000;
     const meta = headerMeta(
-      run({ projectId: "monolith", startedAt: "2026-09-23T10:00:00Z", endedAt: "2026-09-23T10:01:36Z", usage: null, claudeAccountId: "claude-work" }),
+      run({ projectId: "tesseract", startedAt: "2026-09-23T10:00:00Z", endedAt: "2026-09-23T10:01:36Z", usage: null, claudeAccountId: "claude-work" }),
       names,
       now,
     );
-    expect(meta).toBe("monolith · 10m ago · 1m 36s · claude-work");
+    expect(meta).toBe("tesseract · 10m ago · 1m 36s · claude-work");
   });
 });
 
@@ -87,7 +87,7 @@ describe("follow-ups", () => {
 describe("filters", () => {
   const runs = [
     run({ id: "run_1", state: "running", prompt: "Build it", sessionId: "s1" }),
-    run({ id: "run_2", prompt: "Explain", projectId: "monolith", sessionId: "s2" }),
+    run({ id: "run_2", prompt: "Explain", projectId: "tesseract", sessionId: "s2" }),
     run({ id: "run_3", prompt: "Other", projectId: null, sessionId: "s3", error: "Boom" }),
   ];
 
@@ -181,8 +181,8 @@ describe("glyphs, badges and sessions", () => {
 
 describe("project tints", () => {
   it("matches zlib crc32", () => {
-    expect(crc32("monolith")).toBe(0x44623535);
-    expect(projectTint("monolith")).toBe(2);
+    expect(crc32("tesseract")).toBe(0x4332210d);
+    expect(projectTint("tesseract")).toBe(4);
     expect(projectTint("streaxfit")).toBe(3);
   });
 

@@ -1,7 +1,7 @@
 import { MotionGlobalConfig } from "motion/react";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { routePatterns, type AgentRun, type DeleteAgentRuns, type StartAgentRun } from "@theone/protocol";
-import { sampleAgentRun, sampleUpload } from "@theone/protocol/fixtures";
+import { routePatterns, type AgentRun, type DeleteAgentRuns, type StartAgentRun } from "@tesseract/protocol";
+import { sampleAgentRun, sampleUpload } from "@tesseract/protocol/fixtures";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ROUTES } from "../../app/routes";
 import { COMPOSER_LABELS } from "../../components/Composer/labels";
@@ -63,7 +63,7 @@ describe("AgentsPage", () => {
   it("lists conversations with meta and shows the empty detail", async () => {
     renderRoutes(ROUTES, "/agents");
     expect(await screen.findByText("yes write this down to artiftecutre", {}, SLOW)).toBeTruthy();
-    expect(screen.getByText("monolith · 327k tokens · follow-up")).toBeTruthy();
+    expect(screen.getByText("tesseract · 327k tokens · follow-up")).toBeTruthy();
     expect(screen.getByText("No conversation selected")).toBeTruthy();
   });
 
@@ -113,11 +113,11 @@ describe("AgentsPage", () => {
   it("sends one-shot params once and clears the draft afterwards", async () => {
     const starts = captureStarts();
     const router = createMemoryRouter(ROUTES, {
-      initialEntries: [{ pathname: "/agents", state: { params: { prompt: "Ship it", send: true, projectId: "monolith" }, at: 1 } }],
+      initialEntries: [{ pathname: "/agents", state: { params: { prompt: "Ship it", send: true, projectId: "tesseract" }, at: 1 } }],
     });
     renderWithProviders(<RouterProvider router={router} />);
     await waitFor(() => expect(starts).toHaveLength(1), SLOW);
-    expect(starts[0]).toMatchObject({ prompt: "Ship it", projectId: "monolith" });
+    expect(starts[0]).toMatchObject({ prompt: "Ship it", projectId: "tesseract" });
     await waitFor(() => expect(useAgentsUi.getState().view).toBe("conversation"));
     expect(useAgentsUi.getState().draft).toEqual({ prompt: "", projectId: "" });
     await waitFor(() => expect(router.state.location.state).toBeNull());

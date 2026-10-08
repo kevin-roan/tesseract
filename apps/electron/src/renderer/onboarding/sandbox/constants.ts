@@ -38,4 +38,4 @@ export const REACHABILITY_SECTION = "reachability";
 export const FOCUS_TARGET_SELECTOR = '[aria-checked="true"], [role="radio"], input, button';
 export const BUILD_STEP_ID: OnboardingStepId = "build";
 export const PREBUILT_IMAGE_PUBLISHED = false;
-export const FALLBACK_HOSTNAME = "theone-sandbox";
+export const FALLBACK_HOSTNAME = "tesseract-sandbox";

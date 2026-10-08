@@ -4,7 +4,7 @@ The MVP covers pairing, status, projects (create and clone from the phone),
 processes, terminals (shell and Claude), builds with artifacts, the display
 through VNC, and headless Claude runs, with unit, infra and end-to-end test
 suites. Several stacks can already run side by side on one host
-(`THEONE_COMPOSE_PROJECT`, `--env-file`). The items below build on it, roughly
+(`TESSERACT_COMPOSE_PROJECT`, `--env-file`). The items below build on it, roughly
 in priority order within each group. Each item names what has to change.
 Decisions that need the owner's call come first.
 
@@ -22,8 +22,8 @@ Decisions that need the owner's call come first.
 | Scoped tickets | `POST /v1/auth/ticket { scope }` binding a ticket to one socket or download (protocol change) | tickets open any socket or download for 60 s |
 | Web build tab bar | Fix `apps/mobile/src/components/app-tabs.web.tsx` (user-owned) as described in [mobile-app](architecture/mobile-app.md#web-build) | every tab route blank on web; native unaffected |
 | Desktop installer signing | Sign the Windows NSIS installer (Authenticode certificate, `CSC_*` / `WIN_CSC_*`) and the macOS app with a Developer ID so Gatekeeper and SmartScreen stop warning; macOS notifications also need a signed app | macOS: hardened runtime, notarization runs only when the `APPLE_*` variables are set, the dmg itself is unsigned; Windows: unsigned ([blueprint §12.5](architecture/00-blueprint.md#125-packaging-and-cli-install)) |
-| Published sandbox image | Publish `theone/sandbox` to a registry (CI job, `-DGGML_NATIVE=OFF`, multi-arch, fixed `WITH_*` sets or several tags) so the setup wizard can pull about 3 GB instead of building about 7 GB locally | the wizard and `tesseract sandbox build` build locally; **Pull** appears only when `sandboxImageRef` / `MONOLITH_SANDBOX_IMAGE_REF` is set |
-| Update feed | Host the electron-updater feed (`electron-builder.yml` → generic `https://downloads.monolith.dev/desktop`) or switch provider (GitHub releases) | URL configured, nothing published; `MONOLITH_DISABLE_UPDATES` turns checks off |
+| Published sandbox image | Publish `tesseract/sandbox` to a registry (CI job, `-DGGML_NATIVE=OFF`, multi-arch, fixed `WITH_*` sets or several tags) so the setup wizard can pull about 3 GB instead of building about 7 GB locally | the wizard and `tesseract sandbox build` build locally; **Pull** appears only when `sandboxImageRef` / `TESSERACT_SANDBOX_IMAGE_REF` is set |
+| Update feed | Host the electron-updater feed (`electron-builder.yml` → generic `https://downloads.tesseract.dev/desktop`) or switch provider (GitHub releases) | URL configured, nothing published; `TESSERACT_DISABLE_UPDATES` turns checks off |
 
 
 ## Near term
@@ -40,7 +40,7 @@ Decisions that need the owner's call come first.
 ### Installing artifacts on the device
 - **Android:** download the APK with a ticket URL, then hand it to the package
   installer (`expo-intent-launcher` / `ACTION_VIEW` with a content URI). The
-  user must allow "install unknown apps" for TheOne.
+  user must allow "install unknown apps" for Tesseract.
 - **iOS:** not possible for arbitrary IPAs. It needs ad hoc or TestFlight
   distribution, which depends on the remote Mac item below.
 - **Protocol:** none. The download endpoint already exists.
@@ -54,7 +54,7 @@ Decisions that need the owner's call come first.
 ### Audit log
 - Append-only `audit` table in `state.db`: timestamp, client (token id or
   ticket), method, path, target ids, result. Shown in the app, exported by
-  `theone-controller audit`. Prerequisite for multiple tokens.
+  `tesseract-controller audit`. Prerequisite for multiple tokens.
 
 ### Multiple tokens and scopes
 - Per-device tokens created at pairing, which can be listed and revoked
@@ -68,7 +68,7 @@ Decisions that need the owner's call come first.
   `WITH_ANDROID=false` exported for speed) on image or controller changes,
   uploading the harness logs. The Tailscale path is covered only by config
   rendering (`compose.bats`), not by a live tailnet.
-- The opt-in Android e2e test (`THEONE_E2E_ANDROID=1`) has not been run by the
+- The opt-in Android e2e test (`TESSERACT_E2E_ANDROID=1`) has not been run by the
   harness yet (a manual run built the APK in about 15 minutes).
 
 ### Desktop app (`apps/electron`)
@@ -86,7 +86,7 @@ Decisions that need the owner's call come first.
   macOS and Windows (Linux only today); retire `apps/desktop` once the Electron app has replaced it.
 - **Image:** Chromium and wine are part of the base image, not optional components; making them optional needs
   `WITH_CHROMIUM` / `WITH_WINE` build args in the Dockerfile and `compose.yml`. Check that the image's
-  `bun install --frozen-lockfile --filter @theone/controller` still works now that `apps/electron` is a workspace
+  `bun install --frozen-lockfile --filter @tesseract/controller` still works now that `apps/electron` is a workspace
   in `bun.lock` (the `controller-build` stage copies only `apps/mobile/package.json`).
 
 ### Headless Mac server (production sandbox host)
@@ -106,7 +106,7 @@ Decisions that need the owner's call come first.
 
 ### Multiple sandboxes per host
 - **Why:** separate machines per client or project, and different images (with or without Android).
-- **Done:** `THEONE_COMPOSE_PROJECT`, `THEONE_VOLUME_PREFIX`, `THEONE_IMAGE`, host
+- **Done:** `TESSERACT_COMPOSE_PROJECT`, `TESSERACT_VOLUME_PREFIX`, `TESSERACT_IMAGE`, host
   ports and `--env-file` let stacks run side by side
   ([operations](runbooks/operations.md#run-more-than-one-stack)); the app
   supports several paired sandboxes with one active.
@@ -133,7 +133,7 @@ Decisions that need the owner's call come first.
 ### Hardening follow-ups
 - Content-Security-Policy, `X-Content-Type-Options` and `frame-ancestors` on the
   `/ui` pages; stop delegating `clipboard-read` to the frame in the web build.
-- A confirmation step for QR pairing and for `theone://sandbox/terminal/new` links.
+- A confirmation step for QR pairing and for `tesseract://sandbox/terminal/new` links.
 - Token rotation without a controller restart.
 
 ### Claude run UX
@@ -157,7 +157,7 @@ Decisions that need the owner's call come first.
   user's own device (`adb connect <phone>:5555` with wireless debugging) and
   scrcpy on the display. That needs an outbound tailnet path from the
   sandbox, which userspace Tailscale does not provide today (for example the
-  sidecar's SOCKS5 proxy), plus an ACL grant from `tag:theone` to the device.
+  sidecar's SOCKS5 proxy), plus an ACL grant from `tag:tesseract` to the device.
 
 ### Observability
 - Metrics endpoint (build durations, queue depth, resource use), and

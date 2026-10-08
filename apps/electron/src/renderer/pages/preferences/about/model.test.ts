@@ -14,7 +14,7 @@ describe("about model", () => {
   it("maps update states to a row", () => {
     expect(updateView({ kind: "idle", checkedAt: null }, NOW)).toMatchObject({ subtitle: "Not checked yet", action: "check" });
     expect(updateView({ kind: "up-to-date", checkedAt: "2026-10-06T23:48:00Z" }, NOW)).toMatchObject({
-      subtitle: "Monolith is up to date · checked 12 min ago",
+      subtitle: "Tesseract is up to date · checked 12 min ago",
       actionLabel: "Check again",
     });
     expect(updateView({ kind: "available", version: "0.4.0", notes: "n" }, NOW)).toMatchObject({ action: "download", primary: true, notes: "n" });

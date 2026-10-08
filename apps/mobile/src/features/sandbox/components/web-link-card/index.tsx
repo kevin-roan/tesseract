@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { View } from "react-native";
 import { ArrowSquareOutIcon, GlobeIcon } from "phosphor-react-native";
-import type { ListeningPort } from "@theone/protocol";
+import type { ListeningPort } from "@tesseract/protocol";
 
 import ActionButton from "@/components/action-button";
 import ResourceCard from "@/components/resource-card";

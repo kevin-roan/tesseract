@@ -1,5 +1,5 @@
-import { ProtocolVersionError, type StreamConnection, type TheOneClient } from "@theone/client";
-import { normalizeBaseUrl, type Health, type SandboxStatus, type ServerEvent, type ServerEventOf, type ServerEventType } from "@theone/protocol";
+import { ProtocolVersionError, type StreamConnection, type TesseractClient } from "@tesseract/client";
+import { normalizeBaseUrl, type Health, type SandboxStatus, type ServerEvent, type ServerEventOf, type ServerEventType } from "@tesseract/protocol";
 import { createStore, type StoreApi } from "zustand/vanilla";
 import type { Unsubscribe } from "../../../shared/contracts/common";
 import type {
@@ -26,7 +26,7 @@ export interface ConnectionDeps {
   forget(): Promise<ConnectionSnapshot>;
   discover(): Promise<DiscoveryResult>;
   onChanged(listener: (snapshot: ConnectionSnapshot) => void): Unsubscribe;
-  createClient(config: ConnectionConfig): TheOneClient | null;
+  createClient(config: ConnectionConfig): TesseractClient | null;
   now?(): number;
   timers?: PollerTimers;
 }
@@ -54,7 +54,7 @@ function inboxCounts(value: Partial<InboxCounts>): InboxCounts {
 
 export class ConnectionController {
   readonly store: StoreApi<ConnectionState> = createStore<ConnectionState>(() => INITIAL_CONNECTION_STATE);
-  private client: TheOneClient | null = null;
+  private client: TesseractClient | null = null;
   private stream: StreamConnection | null = null;
   private streamToken: object | null = null;
   private readonly poller: Poller<[Health, SandboxStatus]>;
@@ -78,7 +78,7 @@ export class ConnectionController {
     return this.store.getState();
   }
 
-  get currentClient(): TheOneClient | null {
+  get currentClient(): TesseractClient | null {
     return this.client;
   }
 

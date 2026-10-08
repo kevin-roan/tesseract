@@ -4,7 +4,7 @@ import tarfile
 
 import pytest
 
-from monolith_desktop.syncback.diff import TooLarge, diff_file, extract_member, read_host_file
+from tesseract_desktop.syncback.diff import TooLarge, diff_file, extract_member, read_host_file
 
 
 def _archive(files: dict[str, bytes]) -> bytes:

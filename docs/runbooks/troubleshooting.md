@@ -1,7 +1,7 @@
 # Troubleshooting
 
 Format: **symptom** → cause → fix. Start with `bun run sandbox status` and
-`bun run sandbox doctor` (it runs `theone-doctor` inside the sandbox, the same
+`bun run sandbox doctor` (it runs `tesseract-doctor` inside the sandbox, the same
 command Claude can run). They cover most of the causes below.
 
 Useful places:
@@ -10,13 +10,18 @@ Useful places:
 |---|---|
 | Container logs | `bun run sandbox logs [sandbox\|tailscale\|docker] [-f]` |
 | supervisord program logs | `/workspace/.agent/logs/supervisor/{xvnc,openbox,controller,wine-init,supervisord}.log` |
-| Controller log level | `THEONE_LOG_LEVEL=debug` in `.env`, then `bun run sandbox up` |
+| Controller log level | `TESSERACT_LOG_LEVEL=debug` in `.env`, then `bun run sandbox up` |
 | Process and build logs | the app, or `/workspace/.agent/controller/logs/<id>.log` |
 | Program state | `supervisorctl status` in a sandbox shell |
 | Live state summary | `/workspace/.agent/RUNTIME.md` |
 | Tool versions | `/workspace/.agent/ENVIRONMENT.md` |
 
 ## Stack and image
+
+**After upgrading to Tesseract, the sandbox is empty, uses the old name, or the tailnet node is `tesseract-sandbox-1`**
+→ The install predates the rename: an old value in `.env`, a stale node in the Tailscale
+admin console, or a custom project/volume prefix (the volume copy is skipped then).
+→ Follow [rebrand-migration.md](rebrand-migration.md).
 
 **`bun run sandbox up --build` fails in `controller-build` with a lockfile error**
 → `bun.lock` does not match the manifests (a dependency was added without
@@ -35,7 +40,7 @@ and/or `WITH_MONO=false` in `.env` if you do not need them.
 → The entrypoint failed (for example volume ownership), or supervisord could
 not start. → `bun run sandbox logs sandbox`. To inspect the volumes without
 supervisord, start a throwaway shell (any arguments replace supervisord):
-`docker run --rm -it -v theone-workspace:/workspace -v theone-home:/home/dev theone/sandbox:latest bash`.
+`docker run --rm -it -v tesseract-workspace:/workspace -v tesseract-home:/home/dev tesseract/sandbox:latest bash`.
 
 **`sandbox doctor` warns `supervisor … still starting` right after `up`**
 → supervisord has not yet moved the controller from `STARTING` to `RUNNING`
@@ -49,14 +54,14 @@ the project name must be lowercase letters, digits, `-` and `_`. → Fix the
 value in the env file.
 
 **`sandbox up` of a second stack clashes with the first (port in use, volumes shared)**
-→ Both use the same `THEONE_COMPOSE_PROJECT` or host ports. → Give each stack
+→ Both use the same `TESSERACT_COMPOSE_PROJECT` or host ports. → Give each stack
 its own env file ([operations](operations.md#run-more-than-one-stack)).
 
 **An existing workspace still tells Claude to use `curl` with the token**
 → Agent templates are seeded only when missing, so `GLOBAL_CONTEXT.md` and
 `COMMANDS.md` from an older image remain. → Compare with
-`/etc/theone/agent-templates/` and update them; also check `~/.claude/CLAUDE.md`
-against `/etc/theone/SPEC.md`.
+`/etc/tesseract/agent-templates/` and update them; also check `~/.claude/CLAUDE.md`
+against `/etc/tesseract/SPEC.md`.
 
 **The controller does not start: "Could not read the token file"**
 → `/workspace/.agent/controller/token` exists but is empty (for example after
@@ -71,22 +76,22 @@ then `supervisorctl start controller`.
 
 ## Connectivity
 
-**The phone cannot reach `https://theone-sandbox.<tailnet>.ts.net`**
+**The phone cannot reach `https://tesseract-sandbox.<tailnet>.ts.net`**
 → One of: Tailscale on the phone is off or on another tailnet; the node never
 logged in; ACLs block it; MagicDNS is off.
 → Check `bun run sandbox logs tailscale` for the auth URL or "invalid key". Run
-`docker exec theone-tailscale-1 tailscale status` and check that the
+`docker exec tesseract-tailscale-1 tailscale status` and check that the
 node is online. In the admin console, check that the machine exists and is
 not expired, and that the ACL grants your user `tcp:443`. On the phone, open
 the Tailscale app and confirm the node is listed.
 
-**The node shows as `theone-sandbox-1` instead of `theone-sandbox`**
+**The node shows as `tesseract-sandbox-1` instead of `tesseract-sandbox`**
 → An old node with the same name still exists in the tailnet. → Delete the old
 machine in the admin console. The name frees up, and after a restart the node
-takes it. Update `THEONE_HOSTNAME` if you want a different one.
+takes it. Update `TESSERACT_HOSTNAME` if you want a different one.
 
 **The auth key was accepted once, then "needs login" after recreating**
-→ The `theone-tailscale` state volume was removed, or the key was single-use
+→ The `tesseract-tailscale` state volume was removed, or the key was single-use
 and has been consumed. → Create a new key, put it in `.env`, and run
 `bun run sandbox up`.
 
@@ -94,7 +99,7 @@ and has been consumed. → Create a new key, put it in `.env`, and run
 → HTTPS certificates are not enabled, or serve is still obtaining the first
 certificate. → Enable HTTPS in the admin console (DNS page). The first
 request after start can take several seconds. Check
-`docker exec theone-tailscale-1 tailscale serve status`.
+`docker exec tesseract-tailscale-1 tailscale serve status`.
 
 **`/v1/health` works but everything else returns 401**
 → Wrong or rotated token. → Pair again (`bun run sandbox pair`).
@@ -112,20 +117,25 @@ the process or run no longer exists (a WebSocket cannot tell a 404 from a
 network error). → Go back and reopen it from the list.
 
 **`host-tailscale` mode: the ports are not reachable**
-→ `THEONE_BIND_ADDR` is not the host's current tailnet IP, or host ACLs
+→ `TESSERACT_BIND_ADDR` is not the host's current tailnet IP, or host ACLs
 block it. → `tailscale ip -4` on the host, update `.env`, run `bun run sandbox up`.
 
 ## Pairing and the app
 
+**A pairing link or QR code opens nothing, or opens the old app**
+→ The app was renamed and has a new bundle id; links are `tesseract://pair…` now. →
+Install the Tesseract app and pair again with a fresh link
+([rebrand-migration.md §4](rebrand-migration.md#4-phone)).
+
 **The QR code does not scan**
 → The terminal font or size distorts it. → Enlarge the terminal, use
 `bun run sandbox pair` in a dark-on-light terminal, or use the printed link
-instead: open it on the phone (`theone://pair?...`) or paste it into the
+instead: open it on the phone (`tesseract://pair?...`) or paste it into the
 app's manual entry.
 
-**The pairing link URL is `https://theone-sandbox` without the tailnet domain (TLS fails)**
+**The pairing link URL is `https://tesseract-sandbox` without the tailnet domain (TLS fails)**
 → `TS_TAILNET_DOMAIN` was empty when the container was created, so
-`THEONE_PUBLIC_URL` became `https://<THEONE_HOSTNAME>.` (`sandbox up` refuses
+`TESSERACT_PUBLIC_URL` became `https://<TESSERACT_HOSTNAME>.` (`sandbox up` refuses
 to start in this state, so the stack was started some other way).
 → Set `TS_TAILNET_DOMAIN=<tailnet>.ts.net` in `.env` (shown under DNS in the
 admin console) and run `bun run sandbox up`.
@@ -169,7 +179,7 @@ then `/workspace/.agent/logs/supervisor/xvnc.log`. `supervisorctl restart xvnc o
 The launcher removes stale locks automatically.
 
 **noVNC shows "Authentication failed"**
-→ The password changed (`THEONE_VNC_PASSWORD` edited in `.env`), but the
+→ The password changed (`TESSERACT_VNC_PASSWORD` edited in `.env`), but the
 container still runs with the old environment. → `bun run sandbox up`
 recreates it, and the entrypoint rewrites both the passwd file and the
 controller's copy. `restart` alone does not re-read `.env`.
@@ -187,7 +197,7 @@ Adjust the ACL. The serve config always includes 5901.
 
 **The screen is too small to read on the phone**
 → The phone scales 1600×900 down, and the app is locked to portrait. → Zoom in
-noVNC, or set `THEONE_DISPLAY_GEOMETRY=1280x800` in `.env` and run
+noVNC, or set `TESSERACT_DISPLAY_GEOMETRY=1280x800` in `.env` and run
 `bun run sandbox up`.
 
 ## Builds
@@ -253,7 +263,7 @@ process may still be running untracked. → Find it with `ss -ltnp` or
 
 **A headless run ends immediately with an auth error**
 → The host is not logged in (the run fails within a second: "Not logged in ·
-Please run /login"; `theone-doctor` warns `claude-auth`). → Log in with `claude`
+Please run /login"; `tesseract-doctor` warns `claude-auth`). → Log in with `claude`
 (Claude Max) on the host (`~/.claude` is bind-mounted into the sandbox).
 
 **Claude ignores the SPEC rules**
@@ -273,6 +283,6 @@ inside the sandbox (it only touches the dind daemon). On the host:
 → See [e2e-testing → when it fails](e2e-testing.md#when-it-fails).
 
 **Everything is slow**
-→ CPU or memory limits are reached. → `theone-controller status`, or `htop` in a
+→ CPU or memory limits are reached. → `tesseract-controller status`, or `htop` in a
 sandbox shell. Raise `SANDBOX_CPUS`/`SANDBOX_MEMORY` in `.env` and run
 `bun run sandbox up`.

@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { parsePairingLink } from "@theone/protocol";
+import { parsePairingLink } from "@tesseract/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { stackEndpoint } from "./health";
 import { isLoopbackUrl, pairingInfo, readPairing } from "./pairing";
@@ -12,16 +12,16 @@ afterEach(() => stack?.cleanup());
 
 describe("stackEndpoint", () => {
   it("derives health candidates per mode", () => {
-    expect(stackEndpoint({ THEONE_MODE: "local", THEONE_CONTROLLER_HOST_PORT: "7811" }, {}).candidates).toEqual(["http://127.0.0.1:7811"]);
-    expect(stackEndpoint({ THEONE_MODE: "host-tailscale", THEONE_BIND_ADDR: "100.1.2.3" }, {}).candidates).toEqual(["http://100.1.2.3:7700"]);
-    const tailnet = stackEndpoint({ THEONE_MODE: "tailscale", THEONE_HOSTNAME: "box", TS_TAILNET_DOMAIN: "t.ts.net" }, { THEONE_TOKEN: "x" });
-    expect(tailnet).toMatchObject({ candidates: ["https://box.t.ts.net"], pairingUrl: "https://box.t.ts.net", container: "theone-sandbox-1" });
-    expect(tailnet.env.THEONE_TOKEN).toBeUndefined();
+    expect(stackEndpoint({ TESSERACT_MODE: "local", TESSERACT_CONTROLLER_HOST_PORT: "7811" }, {}).candidates).toEqual(["http://127.0.0.1:7811"]);
+    expect(stackEndpoint({ TESSERACT_MODE: "host-tailscale", TESSERACT_BIND_ADDR: "100.1.2.3" }, {}).candidates).toEqual(["http://100.1.2.3:7700"]);
+    const tailnet = stackEndpoint({ TESSERACT_MODE: "tailscale", TESSERACT_HOSTNAME: "box", TS_TAILNET_DOMAIN: "t.ts.net" }, { TESSERACT_TOKEN: "x" });
+    expect(tailnet).toMatchObject({ candidates: ["https://box.t.ts.net"], pairingUrl: "https://box.t.ts.net", container: "tesseract-sandbox-1" });
+    expect(tailnet.env.TESSERACT_TOKEN).toBeUndefined();
   });
 });
 
 describe("pairing", () => {
-  it("builds a theone://pair link and flags loopback URLs", () => {
+  it("builds a tesseract://pair link and flags loopback URLs", () => {
     const info = pairingInfo({ apiUrl: "http://127.0.0.1:7700", token: "tok", name: "box", pairingUrl: null });
     expect(info.local).toBe(true);
     expect(parsePairingLink(info.link)).toEqual({ ok: true, value: { url: "http://127.0.0.1:7700", token: "tok", name: "box" } });
@@ -36,7 +36,7 @@ describe("pairing", () => {
     stack = tempStack();
     const context = stack.context(new FakeDocker().deps());
     mkdirSync(dirname(context.envFile), { recursive: true });
-    writeFileSync(context.envFile, "THEONE_MODE=local\nTHEONE_TOKEN=abc123\nTHEONE_HOSTNAME=box\n");
+    writeFileSync(context.envFile, "TESSERACT_MODE=local\nTESSERACT_TOKEN=abc123\nTESSERACT_HOSTNAME=box\n");
     const info = await readPairing(context);
     expect(info).toMatchObject({ url: "http://127.0.0.1:7700", name: "box", local: true });
   });
@@ -52,7 +52,7 @@ describe("pairing", () => {
 
 describe("settings", () => {
   it("reads and writes sandboxStack while preserving other keys", () => {
-    const stackConfig = { envFile: "/e", project: "theone", mode: "local" as const, image: "i", builtAt: null, components: ["mono" as const] };
+    const stackConfig = { envFile: "/e", project: "tesseract", mode: "local" as const, image: "i", builtAt: null, components: ["mono" as const] };
     const data = withSandboxStack({ zoom: 1 }, stackConfig);
     expect(data).toEqual({ zoom: 1, sandboxStack: stackConfig });
     expect(sandboxStackFromConfig(data)).toEqual(stackConfig);
@@ -61,8 +61,8 @@ describe("settings", () => {
   });
 
   it("resolves the pull ref from config, then the environment", () => {
-    expect(sandboxImageRef({ sandboxImageRef: "a/b:1" }, { MONOLITH_SANDBOX_IMAGE_REF: "c/d:2" })).toBe("a/b:1");
-    expect(sandboxImageRef({}, { MONOLITH_SANDBOX_IMAGE_REF: "c/d:2" })).toBe("c/d:2");
+    expect(sandboxImageRef({ sandboxImageRef: "a/b:1" }, { TESSERACT_SANDBOX_IMAGE_REF: "c/d:2" })).toBe("a/b:1");
+    expect(sandboxImageRef({}, { TESSERACT_SANDBOX_IMAGE_REF: "c/d:2" })).toBe("c/d:2");
     expect(sandboxImageRef({}, {})).toBeNull();
   });
 

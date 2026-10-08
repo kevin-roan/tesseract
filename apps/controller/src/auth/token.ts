@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { isValidToken } from "@theone/protocol";
+import { isValidToken } from "@tesseract/protocol";
 import type { Config } from "../config";
 
 export type TokenSource = "env" | "file" | "generated";
@@ -41,7 +41,7 @@ function writeExclusive(path: string, token: string): boolean {
   }
 }
 
-/** THEONE_TOKEN wins; otherwise the token file is read, or created (0600) when `create` is set. */
+/** TESSERACT_TOKEN wins; otherwise the token file is read, or created (0600) when `create` is set. */
 export function resolveToken(config: Config, options: { create: boolean }): ResolvedToken | null {
   if (config.tokenFromEnv) return { token: config.tokenFromEnv, source: "env" };
   const existing = readTokenFile(config.tokenFile);
@@ -77,7 +77,7 @@ function fileHolds(path: string, token: string): boolean {
 }
 
 /**
- * Children never inherit THEONE_TOKEN, so an env-configured token is also kept in the
+ * Children never inherit TESSERACT_TOKEN, so an env-configured token is also kept in the
  * token file (0600) where in-sandbox CLI calls read it. Returns whether the file changed.
  */
 export function mirrorTokenToFile(config: Config, token: string): boolean {

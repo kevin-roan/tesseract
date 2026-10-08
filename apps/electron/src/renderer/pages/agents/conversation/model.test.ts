@@ -1,4 +1,4 @@
-import type { AgentRun, ClaudeSession, InboxItem } from "@theone/protocol";
+import type { AgentRun, ClaudeSession, InboxItem } from "@tesseract/protocol";
 import { describe, expect, it, vi } from "vitest";
 import { buildNotices, followUpState, headerActions, lockedReason, menuSections, noticeItemsForRun, terminalForRun } from "./model";
 
@@ -6,7 +6,7 @@ const TS = "2026-10-07T10:00:00.000Z";
 
 const run = (overrides: Partial<AgentRun> = {}): AgentRun => ({
   id: "run_a",
-  projectId: "monolith",
+  projectId: "tesseract",
   prompt: "p",
   mode: null,
   attachments: [],

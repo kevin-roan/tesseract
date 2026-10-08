@@ -13,13 +13,13 @@ const TOKEN = "q3Jx0mZ8yWv1_bT7-kLp2sR4nC6dE9fG0hI1jK2lM3n";
 
 describe("pairing links", () => {
   test("round-trip with name", () => {
-    const link = buildPairingLink({ url: "https://theone-sandbox.tail1234.ts.net/", token: TOKEN, name: "Home rig & co" });
+    const link = buildPairingLink({ url: "https://tesseract-sandbox.tail1234.ts.net/", token: TOKEN, name: "Home rig & co" });
     expect(link).toBe(
-      `theone://pair?url=${encodeURIComponent("https://theone-sandbox.tail1234.ts.net")}&token=${TOKEN}&name=Home%20rig%20%26%20co`,
+      `tesseract://pair?url=${encodeURIComponent("https://tesseract-sandbox.tail1234.ts.net")}&token=${TOKEN}&name=Home%20rig%20%26%20co`,
     );
     expect(parsePairingLink(link)).toEqual({
       ok: true,
-      value: { url: "https://theone-sandbox.tail1234.ts.net", token: TOKEN, name: "Home rig & co" },
+      value: { url: "https://tesseract-sandbox.tail1234.ts.net", token: TOKEN, name: "Home rig & co" },
     });
   });
 
@@ -32,17 +32,17 @@ describe("pairing links", () => {
 
   test("tolerates whitespace, line breaks, case and triple slash", () => {
     const link = buildPairingLink({ url: "http://100.64.0.7:7700", token: TOKEN, name: "rig" });
-    const messy = `  \n${link.slice(0, 20)}\r\n ${link.slice(20).replace("theone", "THEONE")}\t \n`;
+    const messy = `  \n${link.slice(0, 20)}\r\n ${link.slice(20).replace("tesseract", "TESSERACT")}\t \n`;
     expect(parsePairingLink(messy)).toEqual({
       ok: true,
       value: { url: "http://100.64.0.7:7700", token: TOKEN, name: "rig" },
     });
-    const tripleSlash = link.replace("theone://pair", "TheOne:///pair/");
+    const tripleSlash = link.replace("tesseract://pair", "Tesseract:///pair/");
     expect(parsePairingLink(tripleSlash).ok).toBe(true);
   });
 
   test("normalizes the embedded url", () => {
-    const link = `theone://pair?url=${encodeURIComponent("HTTPS://Sandbox.Example.ts.net:443/v1/health?x=1")}&token=${TOKEN}`;
+    const link = `tesseract://pair?url=${encodeURIComponent("HTTPS://Sandbox.Example.ts.net:443/v1/health?x=1")}&token=${TOKEN}`;
     const parsed = parsePairingLink(link);
     expect(parsed.ok && parsed.value.url).toBe("https://sandbox.example.ts.net");
   });
@@ -51,13 +51,13 @@ describe("pairing links", () => {
     ["", "empty"],
     ["   \n", "empty"],
     [`https://example.com/pair?url=x&token=${TOKEN}`, "invalid_scheme"],
-    [`theone://connect?url=x&token=${TOKEN}`, "invalid_action"],
-    [`theone://pair?token=${TOKEN}`, "missing_url"],
-    [`theone://pair?url=ftp%3A%2F%2Fhost&token=${TOKEN}`, "invalid_url"],
-    [`theone://pair?url=%E0%A4%A&token=${TOKEN}`, "missing_url"],
-    ["theone://pair?url=http%3A%2F%2Fhost%3A7700", "missing_token"],
-    ["theone://pair?url=http%3A%2F%2Fhost%3A7700&token=", "missing_token"],
-    ["theone://pair?url=http%3A%2F%2Fhost%3A7700&token=%E2%9C%93", "invalid_token"],
+    [`tesseract://connect?url=x&token=${TOKEN}`, "invalid_action"],
+    [`tesseract://pair?token=${TOKEN}`, "missing_url"],
+    [`tesseract://pair?url=ftp%3A%2F%2Fhost&token=${TOKEN}`, "invalid_url"],
+    [`tesseract://pair?url=%E0%A4%A&token=${TOKEN}`, "missing_url"],
+    ["tesseract://pair?url=http%3A%2F%2Fhost%3A7700", "missing_token"],
+    ["tesseract://pair?url=http%3A%2F%2Fhost%3A7700&token=", "missing_token"],
+    ["tesseract://pair?url=http%3A%2F%2Fhost%3A7700&token=%E2%9C%93", "invalid_token"],
   ];
   for (const [input, code] of errorCases) {
     test(`rejects ${JSON.stringify(input)} with ${code}`, () => {
@@ -84,17 +84,17 @@ describe("pairing links", () => {
 
 describe("base urls", () => {
   const valid: Array<[string, string]> = [
-    ["https://theone-sandbox.tail1234.ts.net/", "https://theone-sandbox.tail1234.ts.net"],
+    ["https://tesseract-sandbox.tail1234.ts.net/", "https://tesseract-sandbox.tail1234.ts.net"],
     ["  http://127.0.0.1:7700//  ", "http://127.0.0.1:7700"],
     ["http://localhost:80/", "http://localhost"],
     ["https://host:8443/v1/health?x=1#frag", "https://host:8443"],
     ["https://host/ui/vnc#ticket=abc", "https://host"],
-    ["https://host/proxy/theone/v1", "https://host/proxy/theone"],
+    ["https://host/proxy/tesseract/v1", "https://host/proxy/tesseract"],
     ["https://host/videos", "https://host/videos"],
     ["http://[::1]:7700/", "http://[::1]:7700"],
     ["http://sandbox:07700", "http://sandbox:7700"],
     ["http://sandbox:", "http://sandbox"],
-    ["HTTP://Theone-Sandbox.", "http://theone-sandbox"],
+    ["HTTP://Tesseract-Sandbox.", "http://tesseract-sandbox"],
   ];
   for (const [input, expected] of valid) {
     test(`normalizes ${JSON.stringify(input)}`, () => {

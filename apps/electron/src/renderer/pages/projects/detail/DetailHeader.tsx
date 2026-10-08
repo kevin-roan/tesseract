@@ -1,4 +1,4 @@
-import type { Project } from "@theone/protocol";
+import type { Project } from "@tesseract/protocol";
 import { IconButton } from "../../../components/IconButton";
 import { Text } from "../../../components/Text";
 import { PROJECTS_ICONS } from "../../../features/projects/constants";

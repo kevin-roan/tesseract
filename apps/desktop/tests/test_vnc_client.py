@@ -4,11 +4,11 @@ import zlib
 
 import pytest
 
-from monolith_desktop.vnc.client import AuthenticationFailed, RfbClient, RfbEvents, encodings_for
-from monolith_desktop.vnc.des import des_encrypt, vnc_auth_response, vnc_key
-from monolith_desktop.vnc.framebuffer import Rect
-from monolith_desktop.vnc.protocol import BGRX, Encoding, RfbError, negotiate_version, parse_version, set_pixel_format
-from monolith_desktop.vnc.tight import encode_compact_length
+from tesseract_desktop.vnc.client import AuthenticationFailed, RfbClient, RfbEvents, encodings_for
+from tesseract_desktop.vnc.des import des_encrypt, vnc_auth_response, vnc_key
+from tesseract_desktop.vnc.framebuffer import Rect
+from tesseract_desktop.vnc.protocol import BGRX, Encoding, RfbError, negotiate_version, parse_version, set_pixel_format
+from tesseract_desktop.vnc.tight import encode_compact_length
 
 CHALLENGE = bytes(range(16))
 SERVER_FORMAT = BGRX.pack()
@@ -109,7 +109,7 @@ def test_vnc_auth_handshake_byte_by_byte():
         + bytes([2, 2, 16])
         + CHALLENGE
         + struct.pack(">I", 0)
-        + server_init(1600, 900, b"TheOne")
+        + server_init(1600, 900, b"Tesseract")
     )
     for byte in stream:
         client.feed(bytes([byte]))
@@ -121,8 +121,8 @@ def test_vnc_auth_handshake_byte_by_byte():
     count = struct.unpack(">H", sent[5][2:4])[0]
     assert list(struct.unpack(f">{count}i", sent[5][4:])) == encodings_for(None)
     assert sent[6] == struct.pack(">BBHHHH", 3, 0, 0, 0, 1600, 900)
-    assert events.calls == [("auth",), ("connected", "TheOne", 1600, 900)]
-    assert client.ready and client.name == "TheOne"
+    assert events.calls == [("auth",), ("connected", "Tesseract", 1600, 900)]
+    assert client.ready and client.name == "Tesseract"
     assert (client.framebuffer.width, client.framebuffer.height) == (1600, 900)
 
 

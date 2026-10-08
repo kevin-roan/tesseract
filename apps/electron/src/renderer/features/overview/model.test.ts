@@ -1,5 +1,5 @@
-import type { SandboxStatus } from "@theone/protocol";
-import { sampleStatus } from "@theone/protocol/fixtures";
+import type { SandboxStatus } from "@tesseract/protocol";
+import { sampleStatus } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import { INITIAL_CONNECTION_STATE, type ConnectionState, type MetricsSample } from "../../app/connection";
 import {
@@ -25,8 +25,8 @@ const NOW = Date.parse("2026-10-07T12:00:00Z") / 1000;
 
 const status: SandboxStatus = {
   ...sampleStatus,
-  sandboxId: "theone-sandbox",
-  hostname: "theone-sandbox",
+  sandboxId: "tesseract-sandbox",
+  hostname: "tesseract-sandbox",
   version: "0.1.0",
   startedAt: "2026-10-07T04:14:00Z",
   uptimeSec: 7 * 3600 + 46 * 60,
@@ -55,10 +55,10 @@ const sample = (t: number, load1: number, gapBefore = false): MetricsSample => (
 
 describe("overview model", () => {
   it("builds the header title and meta line", () => {
-    expect(overviewTitle(status, state({}))).toBe("theone-sandbox");
+    expect(overviewTitle(status, state({}))).toBe("tesseract-sandbox");
     expect(overviewTitle(null, state({ config: { apiUrl: "http://x", token: "t", name: "box", pairingUrl: null, source: "file" } }))).toBe("box");
     expect(overviewTitle(null, state({}))).toBe("Sandbox");
-    expect(overviewMeta(status)).toBe("up 7h 46m · theone-sandbox · v0.1.0");
+    expect(overviewMeta(status)).toBe("up 7h 46m · tesseract-sandbox · v0.1.0");
     expect(overviewMeta(null)).toBeNull();
   });
 

@@ -140,13 +140,13 @@ describe("host bridge", () => {
   test("exposeHostApi accepts only well-formed reconnect messages", () => {
     const reconnect = mock((_ticket: string) => {});
     exposeHostApi({ reconnect });
-    const theone = (dom as unknown as globalThis.Window).theone;
-    expect(Object.keys(theone ?? {}).sort()).toEqual(["paste", "reconnect", "setImmersive", "setInputMode", "setInsets"]);
-    theone?.setInputMode("touch");
-    theone?.setInsets({ top: 1, bottom: 2 });
-    theone?.reconnect("");
+    const tesseract = (dom as unknown as globalThis.Window).tesseract;
+    expect(Object.keys(tesseract ?? {}).sort()).toEqual(["paste", "reconnect", "setImmersive", "setInputMode", "setInsets"]);
+    tesseract?.setInputMode("touch");
+    tesseract?.setInsets({ top: 1, bottom: 2 });
+    tesseract?.reconnect("");
     expect(reconnect).not.toHaveBeenCalled();
-    theone?.reconnect("t0");
+    tesseract?.reconnect("t0");
     expect(reconnect).toHaveBeenCalledWith("t0");
     reconnect.mockClear();
     const send = (data: unknown) => dom.dispatchEvent(new dom.MessageEvent("message", { data }));
@@ -173,18 +173,18 @@ describe("host bridge", () => {
     const setInputMode = mock((_mode: string) => {});
     const setInsets = mock((_insets: { top: number; bottom: number }) => {});
     exposeHostApi({ reconnect: () => {}, setInputMode, setInsets });
-    const theone = (dom as unknown as globalThis.Window).theone;
+    const tesseract = (dom as unknown as globalThis.Window).tesseract;
     const send = (data: unknown) => dom.dispatchEvent(new dom.MessageEvent("message", { data }));
     send({ type: HOST_MESSAGES.inputMode, mode: "stylus" });
     send({ type: HOST_MESSAGES.insets, top: -4, bottom: 0 });
-    theone?.setInputMode("bogus" as never);
-    theone?.setInsets({ top: Infinity, bottom: 0 });
+    tesseract?.setInputMode("bogus" as never);
+    tesseract?.setInsets({ top: Infinity, bottom: 0 });
     expect(setInputMode).not.toHaveBeenCalled();
     expect(setInsets).not.toHaveBeenCalled();
     send({ type: HOST_MESSAGES.inputMode, mode: "touch" });
     send({ type: HOST_MESSAGES.insets, top: 88, bottom: 34 });
-    theone?.setInputMode("trackpad");
-    theone?.setInsets({ top: 10, bottom: 0 });
+    tesseract?.setInputMode("trackpad");
+    tesseract?.setInsets({ top: 10, bottom: 0 });
     expect(setInputMode.mock.calls).toEqual([["touch"], ["trackpad"]]);
     expect(setInsets.mock.calls).toEqual([[{ top: 88, bottom: 34 }], [{ top: 10, bottom: 0 }]]);
   });
@@ -192,27 +192,27 @@ describe("host bridge", () => {
   test("immersive accepts only booleans on both paths", () => {
     const setImmersive = mock((_immersive: boolean) => {});
     exposeHostApi({ reconnect: () => {}, setImmersive });
-    const theone = (dom as unknown as globalThis.Window).theone;
+    const tesseract = (dom as unknown as globalThis.Window).tesseract;
     const send = (data: unknown) => dom.dispatchEvent(new dom.MessageEvent("message", { data }));
     send({ type: HOST_MESSAGES.immersive, immersive: "yes" });
-    theone?.setImmersive(1 as never);
+    tesseract?.setImmersive(1 as never);
     expect(setImmersive).not.toHaveBeenCalled();
     send({ type: HOST_MESSAGES.immersive, immersive: true });
-    theone?.setImmersive(false);
+    tesseract?.setImmersive(false);
     expect(setImmersive.mock.calls).toEqual([[true], [false]]);
   });
 
   test("paste accepts only non-empty text on both paths", () => {
     const paste = mock((_text: string) => {});
     exposeHostApi({ reconnect: () => {}, paste });
-    const theone = (dom as unknown as globalThis.Window).theone;
+    const tesseract = (dom as unknown as globalThis.Window).tesseract;
     const send = (data: unknown) => dom.dispatchEvent(new dom.MessageEvent("message", { data }));
     send({ type: HOST_MESSAGES.paste, text: "" });
     send({ type: HOST_MESSAGES.paste, text: 42 });
-    theone?.paste(null as never);
+    tesseract?.paste(null as never);
     expect(paste).not.toHaveBeenCalled();
     send({ type: HOST_MESSAGES.paste, text: "https://api.example.com" });
-    theone?.paste("hello");
+    tesseract?.paste("hello");
     expect(paste.mock.calls).toEqual([["https://api.example.com"], ["hello"]]);
   });
 

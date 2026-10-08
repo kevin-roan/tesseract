@@ -7,7 +7,7 @@ export const SKELETON_ROWS = 3;
 export const CHEVRON_OPEN_DEG = 180;
 
 export const AVD_NAME_PATTERN = /^[A-Za-z0-9._-]+$/;
-export const AVD_NAME_PREFIX = "Monolith_API_";
+export const AVD_NAME_PREFIX = "Tesseract_API_";
 
 export const MEMORY_MB = { min: 1024, max: 8192, step: 512, small: 2048, large: 4096 } as const;
 export const LARGE_HOST_BYTES = 12 * 1024 ** 3;
@@ -51,4 +51,4 @@ export const QUERY_KEYS = {
 
 export const LICENSE_DIALOG_WIDTH = 640;
 
-export const PREFERRED_SDK_SOURCES: readonly SdkCandidate["source"][] = ["THEONE_ANDROID_SDK_ROOT", "monolith-default"];
+export const PREFERRED_SDK_SOURCES: readonly SdkCandidate["source"][] = ["TESSERACT_ANDROID_SDK_ROOT", "tesseract-default"];

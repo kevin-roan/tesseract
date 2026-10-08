@@ -13,7 +13,7 @@ import {
   type UsageQuery,
   type UsageReport,
   type UsageTotals,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import type { Config } from "../config";
 import { mapLimit } from "../core/concurrency";
 import { realpathOrNull } from "../core/paths";

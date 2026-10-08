@@ -1,4 +1,4 @@
-import { ApiError, NetworkError, ProtocolError, ProtocolVersionError, TimeoutError, isApiError } from "@theone/client";
+import { ApiError, NetworkError, ProtocolError, ProtocolVersionError, TimeoutError, isApiError } from "@tesseract/client";
 
 import type { HostIssue } from "../types";
 

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react-native";
-import type { ClaudeSession } from "@theone/protocol";
+import type { ClaudeSession } from "@tesseract/protocol";
 
 import AnalyticsScreen from "@/app/analytics";
 import ProjectAnalyticsScreen from "@/app/analytics/projects/[id]";

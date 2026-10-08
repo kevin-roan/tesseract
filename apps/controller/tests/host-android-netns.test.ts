@@ -391,14 +391,14 @@ describe("namespace helper and host bridge", () => {
 
 describe("namespace launcher", () => {
   test("brings up lo and a dummy interface, starts the helper, then execs the emulator", () => {
-    const argv = launcherArgv({ unshare: "/usr/bin/unshare", ip: "/usr/bin/ip", dir: "/run/user/1000/theone/emulator-5554", consolePort: 5554, helper: ["/usr/bin/bun", "/x/it's/index.ts"], emulator: ["/sdk/emulator/emulator", "-avd", "Pixel_5"] });
+    const argv = launcherArgv({ unshare: "/usr/bin/unshare", ip: "/usr/bin/ip", dir: "/run/user/1000/tesseract/emulator-5554", consolePort: 5554, helper: ["/usr/bin/bun", "/x/it's/index.ts"], emulator: ["/sdk/emulator/emulator", "-avd", "Pixel_5"] });
     expect(argv.slice(0, 7)).toEqual(["/usr/bin/unshare", "--user", "--map-root-user", "--net", "--", "/bin/sh", "-c"]);
-    expect(argv.slice(8)).toEqual(["theone-emulator", "/sdk/emulator/emulator", "-avd", "Pixel_5"]);
+    expect(argv.slice(8)).toEqual(["tesseract-emulator", "/sdk/emulator/emulator", "-avd", "Pixel_5"]);
     const script = argv[7] ?? "";
     expect(script).toContain('"$IP" link add dummy0 type dummy');
     expect(script).toContain('"$IP" addr add 10.254.254.1/32 dev dummy0');
     expect(script).toContain('"$IP" addr add fd00:254::1/128 dev dummy0');
-    expect(script).toContain(`'/x/it'\\''s/index.ts' 'host' 'emulator-helper' '--dir' '/run/user/1000/theone/emulator-5554' '--console-port' '5554' --parent $$`);
+    expect(script).toContain(`'/x/it'\\''s/index.ts' 'host' 'emulator-helper' '--dir' '/run/user/1000/tesseract/emulator-5554' '--console-port' '5554' --parent $$`);
     expect(script.trim().endsWith('exec "$@"')).toBe(true);
     const run = Bun.spawnSync(["sh", "-n", "-c", script]);
     expect(run.success).toBe(true);
@@ -406,7 +406,7 @@ describe("namespace launcher", () => {
 
   test("the runtime directory is private", async () => {
     const base = makeTempDir("netns-mode");
-    const dir = runtimeDir(join(base, "theone"), 5556);
+    const dir = runtimeDir(join(base, "tesseract"), 5556);
     const runtime = await IsolatedRuntime.create({
       dir,
       consolePort: 5556,
@@ -418,7 +418,7 @@ describe("namespace launcher", () => {
     cleanups.push(() => runtime.close());
     const { statSync } = await import("node:fs");
     expect(statSync(dir).mode & 0o777).toBe(0o700);
-    expect(statSync(join(base, "theone")).mode & 0o777).toBe(0o700);
+    expect(statSync(join(base, "tesseract")).mode & 0o777).toBe(0o700);
     expect(Number(readFileSync(runtimePaths(dir).adbPort, "utf8"))).toBe(Number(runtime.serial.split(":")[1]));
   });
 });

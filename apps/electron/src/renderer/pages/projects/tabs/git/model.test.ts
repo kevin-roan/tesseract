@@ -1,5 +1,5 @@
-import type { GitDetails, Project } from "@theone/protocol";
-import { sampleProject } from "@theone/protocol/fixtures";
+import type { GitDetails, Project } from "@tesseract/protocol";
+import { sampleProject } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import { commitMeta, gitFileCode, gitFileKind, gitFileTone, gitTabView, syncLabel } from "./model";
 

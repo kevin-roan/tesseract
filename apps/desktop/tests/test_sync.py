@@ -2,7 +2,7 @@ import io
 import subprocess
 import tarfile
 
-from monolith_desktop import sync
+from tesseract_desktop import sync
 
 
 def git(root, *args):

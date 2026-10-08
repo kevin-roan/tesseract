@@ -1,5 +1,5 @@
-import type { AgentRun, BuildJob, ProcessInfo, Project } from "@theone/protocol";
-import { sampleAgentRun, sampleBuild, sampleProcess, sampleProject } from "@theone/protocol/fixtures";
+import type { AgentRun, BuildJob, ProcessInfo, Project } from "@tesseract/protocol";
+import { sampleAgentRun, sampleBuild, sampleProcess, sampleProject } from "@tesseract/protocol/fixtures";
 
 import {
   activeWork,

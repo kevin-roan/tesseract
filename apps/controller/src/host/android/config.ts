@@ -1,8 +1,9 @@
 import { accessSync, constants, existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { DEFAULT_EMULATOR_GPU, DEFAULT_EMULATOR_PORT, EMULATOR_ISOLATION_MODES, type EmulatorIsolationMode } from "@theone/protocol";
+import { DEFAULT_EMULATOR_GPU, DEFAULT_EMULATOR_PORT, EMULATOR_ISOLATION_MODES, type EmulatorIsolationMode } from "@tesseract/protocol";
 import type { Env } from "../../core/exec";
+import { adoptLegacyPath } from "../../core/paths";
 import { HostConfigError, hostToolPath, validatePort } from "../config";
 import { parseAllowNets, type Cidr } from "./net-policy";
 import { runtimeBase } from "./netns";
@@ -25,7 +26,7 @@ export type AndroidConfig = {
   /** Host loopback port of the adb bridge to an isolated emulator; null picks a free one. */
   adbBridgePort: number | null;
   /**
-   * `THEONE_ANDROID_SHARE_EMULATORS`: also tunnel the other emulators the host adb lists (`emulator-<port>`, e.g. from
+   * `TESSERACT_ANDROID_SHARE_EMULATORS`: also tunnel the other emulators the host adb lists (`emulator-<port>`, e.g. from
    * Android Studio) to a linked sandbox. They run on the host network, so the sandbox can reach the host through them.
    */
   shareEmulators: boolean;
@@ -48,12 +49,20 @@ function executable(override: string | undefined, fallback: string, env: Env): s
   return which(fallback, env);
 }
 
-/** The SDK the desktop app installs, per platform; on macOS also Android Studio's default. */
+/** The SDK the desktop app installs, per platform (on macOS also under its pre-rename folder and Android Studio's default). */
 function bundledSdkRoots(home: string, platform: NodeJS.Platform): string[] {
   if (platform === "darwin") {
-    return [join(home, "Library", "Application Support", "Monolith", "android-sdk"), join(home, "Library", "Android", "sdk")];
+    const support = join(home, "Library", "Application Support");
+    return [join(support, "Tesseract", "android-sdk"), join(support, "Monolith", "android-sdk"), join(home, "Library", "Android", "sdk")];
   }
-  return [join(home, ".local", "share", "theone", "android-sdk")];
+  return [join(home, ".local", "share", "tesseract", "android-sdk")];
+}
+
+/** Linux: moves the SDK installed before the rename (`~/.local/share/theone/android-sdk`) to the current root once. */
+export function adoptLegacySdkRoot(home: string, platform: NodeJS.Platform): boolean {
+  if (platform === "darwin") return false;
+  const share = join(home, ".local", "share");
+  return adoptLegacyPath(join(share, "theone", "android-sdk"), join(share, "tesseract", "android-sdk"));
 }
 
 export function defaultSdkRoot(env: Env, platform: NodeJS.Platform = process.platform): string | null {
@@ -89,7 +98,7 @@ export function parseScrcpyVersion(output: string): string | null {
 }
 
 function scrcpyVersion(env: Env): string | null {
-  if (env.THEONE_SCRCPY_VERSION) return env.THEONE_SCRCPY_VERSION;
+  if (env.TESSERACT_SCRCPY_VERSION) return env.TESSERACT_SCRCPY_VERSION;
   const scrcpy = which("scrcpy", env);
   if (!scrcpy) return null;
   try {
@@ -113,33 +122,33 @@ export function parseSwitch(value: string | undefined): boolean | null {
 /** Never throws for a missing tool: absent ones are null and `/v1/android` reports why. */
 export function loadAndroidConfig(source: Env, platform: NodeJS.Platform = process.platform): AndroidConfig {
   const env: Env = { ...source, PATH: hostToolPath(source, platform) };
-  const sdkRoot = env.THEONE_ANDROID_SDK_ROOT || defaultSdkRoot(env, platform);
+  const sdkRoot = env.TESSERACT_ANDROID_SDK_ROOT || defaultSdkRoot(env, platform);
   const emulatorBin = sdkRoot ? join(sdkRoot, EMULATOR_BIN) : null;
-  const emulatorPort = validatePort(env.THEONE_EMULATOR_PORT ?? String(DEFAULT_EMULATOR_PORT));
+  const emulatorPort = validatePort(env.TESSERACT_EMULATOR_PORT ?? String(DEFAULT_EMULATOR_PORT));
   if (emulatorPort % 2 !== 0 || emulatorPort < 5554 || emulatorPort > 5682) {
-    throw new HostConfigError(`THEONE_EMULATOR_PORT must be an even port from 5554 to 5682, got ${emulatorPort}`);
+    throw new HostConfigError(`TESSERACT_EMULATOR_PORT must be an even port from 5554 to 5682, got ${emulatorPort}`);
   }
-  const isolation = env.THEONE_EMULATOR_ISOLATION || defaultIsolation(platform);
+  const isolation = env.TESSERACT_EMULATOR_ISOLATION || defaultIsolation(platform);
   if (!(EMULATOR_ISOLATION_MODES as readonly string[]).includes(isolation)) {
-    throw new HostConfigError(`THEONE_EMULATOR_ISOLATION must be netns or none, got ${isolation}`);
+    throw new HostConfigError(`TESSERACT_EMULATOR_ISOLATION must be netns or none, got ${isolation}`);
   }
-  const allowNets = parseAllowNets(env.THEONE_EMULATOR_ALLOW_NETS);
-  if (!allowNets.ok) throw new HostConfigError(`THEONE_EMULATOR_ALLOW_NETS: "${allowNets.error}" is not a CIDR`);
-  const adbBridgePort = env.THEONE_EMULATOR_ADB_PORT ? validatePort(env.THEONE_EMULATOR_ADB_PORT) : null;
-  if (adbBridgePort === 0) throw new HostConfigError("THEONE_EMULATOR_ADB_PORT must not be 0");
-  const shareEmulators = parseSwitch(env.THEONE_ANDROID_SHARE_EMULATORS);
-  if (shareEmulators === null) throw new HostConfigError(`THEONE_ANDROID_SHARE_EMULATORS must be on or off, got ${env.THEONE_ANDROID_SHARE_EMULATORS}`);
+  const allowNets = parseAllowNets(env.TESSERACT_EMULATOR_ALLOW_NETS);
+  if (!allowNets.ok) throw new HostConfigError(`TESSERACT_EMULATOR_ALLOW_NETS: "${allowNets.error}" is not a CIDR`);
+  const adbBridgePort = env.TESSERACT_EMULATOR_ADB_PORT ? validatePort(env.TESSERACT_EMULATOR_ADB_PORT) : null;
+  if (adbBridgePort === 0) throw new HostConfigError("TESSERACT_EMULATOR_ADB_PORT must not be 0");
+  const shareEmulators = parseSwitch(env.TESSERACT_ANDROID_SHARE_EMULATORS);
+  if (shareEmulators === null) throw new HostConfigError(`TESSERACT_ANDROID_SHARE_EMULATORS must be on or off, got ${env.TESSERACT_ANDROID_SHARE_EMULATORS}`);
   const linux = platform === "linux";
-  const scrcpyServer = env.THEONE_SCRCPY_SERVER || SCRCPY_SERVER_PATHS.find((path) => existsSync(path)) || null;
+  const scrcpyServer = env.TESSERACT_SCRCPY_SERVER || SCRCPY_SERVER_PATHS.find((path) => existsSync(path)) || null;
   return {
     sdkRoot,
     emulator: emulatorBin && existsSync(emulatorBin) ? emulatorBin : null,
-    adb: executable(env.THEONE_ADB, "adb", env),
+    adb: executable(env.TESSERACT_ADB, "adb", env),
     scrcpyServer: scrcpyServer && existsSync(scrcpyServer) ? scrcpyServer : null,
     scrcpyVersion: scrcpyVersion(env),
-    ffmpeg: executable(env.THEONE_FFMPEG, "ffmpeg", env),
+    ffmpeg: executable(env.TESSERACT_FFMPEG, "ffmpeg", env),
     emulatorPort,
-    gpu: env.THEONE_EMULATOR_GPU || defaultGpu("/dev/dri", platform),
+    gpu: env.TESSERACT_EMULATOR_GPU || defaultGpu("/dev/dri", platform),
     isolation: isolation as EmulatorIsolationMode,
     unshare: linux ? which("unshare", env) : null,
     ip: linux ? which("ip", { PATH: `${env.PATH ?? ""}:/usr/sbin:/sbin` }) : null,
@@ -155,7 +164,7 @@ export const emulatorSerial = (config: AndroidConfig) => `emulator-${config.emul
 /** The environment the emulator tools expect, pointing at the configured SDK. */
 export function sdkEnv(config: AndroidConfig, source: Env = process.env): Record<string, string> {
   const env: Record<string, string> = {};
-  for (const [name, value] of Object.entries(source)) if (value !== undefined && !name.startsWith("THEONE_HOST_SHELL_")) env[name] = value;
+  for (const [name, value] of Object.entries(source)) if (value !== undefined && !name.startsWith("TESSERACT_HOST_SHELL_")) env[name] = value;
   if (config.sdkRoot) {
     env.ANDROID_SDK_ROOT = config.sdkRoot;
     env.ANDROID_HOME = config.sdkRoot;

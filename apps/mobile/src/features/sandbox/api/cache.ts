@@ -11,7 +11,7 @@ import type {
   SyncChanges,
   SyncRequest,
   TerminalInfo,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import { storeAppRun } from "@/features/app-runs/api/cache";
 import { storeInboxEvent } from "@/features/inbox/api/cache";

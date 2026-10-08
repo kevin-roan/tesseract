@@ -1,11 +1,11 @@
 {
   "name": "electron-hello",
-  "productName": "TheOne Electron Hello",
+  "productName": "Tesseract Electron Hello",
   "version": "1.0.0",
-  "description": "Minimal Electron app used to verify Linux and Windows (wine) builds inside the TheOne sandbox",
+  "description": "Minimal Electron app used to verify Linux and Windows (wine) builds inside the Tesseract sandbox",
   "private": true,
   "license": "MIT",
-  "author": "TheOne",
+  "author": "Tesseract",
   "main": "main.js",
   "scripts": {
     "start": "electron . --no-sandbox",
@@ -17,8 +17,8 @@
     "electron-builder": "^26.15.3"
   },
   "build": {
-    "appId": "dev.theone.electron-hello",
-    "productName": "TheOne Electron Hello",
+    "appId": "dev.tesseract.electron-hello",
+    "productName": "Tesseract Electron Hello",
     "artifactName": "${name}-${os}-${arch}-${version}.${ext}",
     "directories": {
       "output": "dist"

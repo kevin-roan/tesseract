@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { LIMITS, type HostLockStatus, type HostSession } from "@theone/protocol";
+import { LIMITS, type HostLockStatus, type HostSession } from "@tesseract/protocol";
 import { tokensEqual } from "../auth/token";
 import { forbidden, HttpError, unavailable } from "../core/errors";
 import type { Logger } from "../core/logger";
@@ -92,7 +92,7 @@ export class HostAuth {
 
   private async tryUnlock(header: string | null, pin: string, remote: string | null): Promise<HostSession> {
     const state = this.requireToken(header);
-    if (!state.pinHash || !state.pinSetAt) throw unavailable("No PIN is set; run theone-controller host pin on the host");
+    if (!state.pinHash || !state.pinSetAt) throw unavailable("No PIN is set; run tesseract-controller host pin on the host");
     const now = this.now();
     if (state.lockedUntil !== null && Date.parse(state.lockedUntil) > now) {
       throw forbidden(`Too many wrong PINs; try again after ${state.lockedUntil}`);

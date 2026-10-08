@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { isFinalAgentRunState, type AgentRun } from "@theone/protocol";
+import { isFinalAgentRunState, type AgentRun } from "@tesseract/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
 import { useChatComposer } from "@/features/chat/hooks/use-chat-composer";

@@ -1,4 +1,4 @@
-import { LIMITS } from "@theone/protocol";
+import { LIMITS } from "@tesseract/protocol";
 
 export const PROJECT_RENAME_DETAIL = "Changes the name shown in the apps. The folder stays the same.";
 

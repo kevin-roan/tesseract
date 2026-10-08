@@ -1,4 +1,4 @@
-import type { SttProvider } from "@theone/protocol";
+import type { SttProvider } from "@tesseract/protocol";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

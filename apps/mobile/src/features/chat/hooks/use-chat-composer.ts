@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import { isApiError } from "@theone/client";
-import { LIMITS, projectIdFromName, type AgentRun, type AgentRunMode } from "@theone/protocol";
+import { isApiError } from "@tesseract/client";
+import { LIMITS, projectIdFromName, type AgentRun, type AgentRunMode } from "@tesseract/protocol";
 
 import type { ChoiceOption } from "@/components/choice-group";
 import type { MenuOption } from "@/components/menu-sheet/types";

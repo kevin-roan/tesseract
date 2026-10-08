@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { ApiError } from "@theone/client";
+import { ApiError } from "@tesseract/client";
 import type {
   CompleteSyncRequest,
   CreateSyncRequest,
@@ -11,7 +11,7 @@ import type {
   SyncGetPlanResponse,
   SyncHeartbeat,
   SyncRequest,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import type { ByteStream, PushResult, SyncApi } from "./api";
 import { buildManifest, type Manifest } from "./manifest";
 import { fileSource, readTar, TarWriter, type TarMember } from "./tar";
@@ -21,7 +21,7 @@ export const BASELINE_AT = "2026-09-30T20:00:00.000Z";
 export const SYNCED_AT = "2026-10-01T12:00:00.000Z";
 
 export async function tempDir(label: string): Promise<string> {
-  return mkdtemp(join(tmpdir(), `monolith-test-${label}-`));
+  return mkdtemp(join(tmpdir(), `tesseract-test-${label}-`));
 }
 
 export async function walk(root: string, base = ""): Promise<string[]> {

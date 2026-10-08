@@ -1,9 +1,9 @@
 # Shell spec: window, titlebar, sidebar, navigation, dialogs, tray
 
-This spec describes the app shell of the GTK4/libadwaita desktop app (`apps/desktop`, "Monolith", app id
-`dev.monolith.Desktop`, version `0.1.0`). Use it to rebuild the shell in React/Electron so it matches the
+This spec describes the app shell of the GTK4/libadwaita desktop app (`apps/desktop`, "Tesseract", app id
+`dev.tesseract.Desktop`, version `0.1.0`). Use it to rebuild the shell in React/Electron so it matches the
 GTK app pixel for pixel. Every number here comes from the Python source. File references point to
-`apps/desktop/monolith_desktop/`.
+`apps/desktop/tesseract_desktop/`.
 
 Scope: the window chrome, the custom titlebar and window controls, the sidebar, the navigation model,
 the command-line flags, the tray, the shell dialogs (DialogShell, FormDialog, ConfirmDialog, Pair, Host PIN,
@@ -151,7 +151,7 @@ The icons are Lucide, resolved through `theme/icons.py`. The shell uses these na
 | caret-right | `chevron-right` |
 | confidential | `lock` |
 
-The app logo is the `dev.monolith.Desktop` app icon (`data/icons/hicolor/*/apps`).
+The app logo is the `dev.tesseract.Desktop` app icon (`data/icons/hicolor/*/apps`).
 
 ### 0.5 Global interaction motion (`theme/extras/motion.py`)
 
@@ -177,7 +177,7 @@ The app logo is the `dev.monolith.Desktop` app icon (`data/icons/hicolor/*/apps`
 
 `window.py`, `theme/tokens.py`, `theme/extras/chrome.py`.
 
-- Title: `Monolith`.
+- Title: `Tesseract`.
 - Default size **1240×800**. Minimum size **360×480**.
 - The window is frameless (client-side decorations). There is no system title bar. Both the sidebar
   header and the page header act as drag regions (`-webkit-app-region: drag`, with buttons set to
@@ -334,7 +334,7 @@ The left side holds the **workspace switcher**, a menu button showing `BrandMark
   - open: `backgroundSelected`
 - `BrandMark`, with an 8 px gap:
   - the app logo at **20 px**
-  - `Monolith` in `bodyStrong` (13/20 500)
+  - `Tesseract` in `bodyStrong` (13/20 500)
   - a `chevron-down` caret at 10 px, `textSecondary`
 - Tooltip: `Main menu`.
 - Clicking opens the **main menu** popover (§3.6).
@@ -562,7 +562,7 @@ There are two sections with a separator between them:
 
 ---
 
-6. `About Monolith` (app.about)
+6. `About Tesseract` (app.about)
 7. `Quit` (app.quit)
 
 Show the accelerators on the right, in `textTertiary`, as Linear does. GTK shows them automatically for
@@ -640,7 +640,7 @@ Content, by status (`BANNER`, `services/connection_view.py`):
 - The app is single-instance (GApplication with `HANDLES_COMMAND_LINE`). Running it a second time forwards
   the argv to the primary instance. Electron: `app.requestSingleInstanceLock()` plus `second-instance`.
 - On startup, `GTK_THEME` is removed from the environment. Electron does not need this.
-- The log level comes from env `MONOLITH_DESKTOP_LOG`, default `INFO`.
+- The log level comes from env `TESSERACT_DESKTOP_LOG`, default `INFO`.
 
 | flag | arg | behaviour |
 |---|---|---|
@@ -672,7 +672,7 @@ These are the help strings as written in the code:
 - `Show sandbox changes and sync-back snapshots and exit`
 - `Runs inside the sandbox; on this computer use --sync`
 
-For Electron, `--sync/--pull/--revert/--sync-status/--get` belong in the standalone `monolith` CLI. The
+For Electron, `--sync/--pull/--revert/--sync-status/--get` belong in the standalone `tesseract` CLI. The
 Electron main process should accept `--hidden`, `--page`, `--quit` and `--debug`.
 
 Without flags, the first activation shows the window.
@@ -680,9 +680,9 @@ Without flags, the first activation shows the window.
 ### 5.1 Startup order (`do_startup`)
 
 1. Register icon paths and set the default window icon.
-2. Migrate the legacy config from `~/.config/theone-desktop` to `~/.config/monolith-desktop`.
-3. Read settings from `$XDG_CONFIG_HOME/monolith-desktop/config.json`, or the path in
-   `MONOLITH_DESKTOP_CONFIG`. This applies `zoom` and `appearance`.
+2. Migrate a config dir left by an earlier product name to `~/.config/tesseract-desktop`.
+3. Read settings from `$XDG_CONFIG_HOME/tesseract-desktop/config.json`, or the path in
+   `TESSERACT_DESKTOP_CONFIG`. This applies `zoom` and `appearance`.
 4. Install the theme.
 5. Create the store, the connection service and the `AppContext`.
 6. Install the actions and accels.
@@ -731,19 +731,19 @@ These actions have no accelerator: `show`, `toggle`, `about`, `rediscover`, `pai
 
 - On Linux, the GTK app uses the StatusNotifierItem D-Bus protocol with a dbusmenu menu. Electron's
   `Tray` covers this on all platforms.
-- Icon: `dev.monolith.Desktop` at 256 px, rendered at 22/32/48 px.
-- Title `Monolith`. Tooltip `Monolith · {status}`, where status is a connection label (§9.5). For example
-  `Monolith · Online`. It updates whenever the connection state changes.
+- Icon: `dev.tesseract.Desktop` at 256 px, rendered at 22/32/48 px.
+- Title `Tesseract`. Tooltip `Tesseract · {status}`, where status is a connection label (§9.5). For example
+  `Tesseract · Online`. It updates whenever the connection state changes.
 - **Left click (and middle click) toggles the window**: hides it if visible, otherwise shows and focuses it.
 - Menu (right click), in order:
-  1. `Open Monolith`: show the window
+  1. `Open Tesseract`: show the window
   2. `Hide Window`: hide it
   3. `Refresh`: app.refresh
   4. `Pair a device…`: app.pair
   5. `Pair this computer…`: app.pair-host
   6. `Preferences`: app.preferences
   7. separator
-  8. `Quit Monolith`: quit
+  8. `Quit Tesseract`: quit
 - Hide-on-close: while the tray is shown, closing the window only hides it, and the app keeps running.
 - If the tray host disappears while the window is hidden, the window is shown again so the app is never
   unreachable.
@@ -916,7 +916,7 @@ Sandbox panel logic, based on the connection state:
 - no config → no link, plus a warning notice `Connect to a sandbox before pairing a device.` with action
   `Set up`, which opens Preferences
 - building the link fails → danger notice `Can't build a pairing link: {error}`
-- otherwise: link = `theone://pair?...`, caption = `Sandbox {name} · {url}` (or just the url when there
+- otherwise: link = `tesseract://pair?...`, caption = `Sandbox {name} · {url}` (or just the url when there
   is no name). If the sandbox is not online, add a warning
   `The sandbox is not answering right now. The phone can pair, but it will connect once the sandbox is back.`
 
@@ -927,12 +927,12 @@ this order:
 - status `stopped` → warning `The host shell isn't running. Start it so the phone can reach this computer.`,
   action `Start`
 - status `starting` → neutral `Starting the host shell…`
-- status `external` → neutral `The host shell is running outside Monolith.`
+- status `external` → neutral `The host shell is running outside Tesseract.`
 - then:
   - no pairing yet and not failed → neutral `Reading the host shell settings…`
   - pairing loaded but no PIN → warning `No PIN is set yet. Phones need it to unlock the shell.`, action
     `Set PIN` (opens the Host PIN dialog stacked on top)
-- link = `pairing.link` (`theone://host...`), caption `Host {name} · {url}`
+- link = `pairing.link` (`tesseract://host...`), caption `Host {name} · {url}`
 
 Opening the dialog triggers `host_shell.refresh()`.
 
@@ -965,11 +965,11 @@ Opening the dialog triggers `host_shell.refresh()`.
 
 This is libadwaita's AboutDialog with:
 
-- application name `Monolith`
+- application name `Tesseract`
 - the app icon
 - version `0.1.0`
-- developer `Monolith`
-- comments `Monitor and control the Monolith sandbox from the host, pair phones and keep an eye on this machine.`
+- developer `Tesseract`
+- comments `Monitor and control the Tesseract sandbox from the host, pair phones and keep an eye on this machine.`
 
 In Electron, build a small 360 px DialogShell:
 
@@ -1099,21 +1099,21 @@ key → value:
   - rediscover `Rediscover Sandbox`
   - pair `Pair a device…`
   - pair_host `Pair this computer…`
-  - about `About Monolith`
+  - about `About Tesseract`
   - quit `Quit`
 - `TRAY`:
-  - open `Open Monolith`
+  - open `Open Tesseract`
   - hide `Hide Window`
   - refresh `Refresh`
   - pair `Pair a device…`
   - pair_host `Pair this computer…`
   - preferences `Preferences`
-  - quit `Quit Monolith`
-  - tooltip `Monolith · {status}`
+  - quit `Quit Tesseract`
+  - tooltip `Tesseract · {status}`
 - `DIALOG`: close `Close`, expand `Expand`, copy `Copy`.
 - `PAIR`:
   - title `Pair a device`
-  - instructions `Scan with the TheOne app, or open this link on the phone.`
+  - instructions `Scan with the Tesseract app, or open this link on the phone.`
   - sandbox `Sandbox {name} · {url}`
   - copy `Copy link`
   - copied `Pairing link copied`
@@ -1125,13 +1125,13 @@ key → value:
   - invalid `Can't build a pairing link: {error}`
   - tab_sandbox `Sandbox`
   - tab_host `This computer`
-  - host_instructions `Scan with the TheOne app (Host shell), or open this link on the phone.`
+  - host_instructions `Scan with the Tesseract app (Host shell), or open this link on the phone.`
   - host_caption `Host {name} · {url}`
   - host_secret `The link contains the host token: share it only with your own devices. Phones also need the PIN.`
   - host_loading `Reading the host shell settings…`
   - host_stopped `The host shell isn't running. Start it so the phone can reach this computer.`
   - host_starting `Starting the host shell…`
-  - host_external `The host shell is running outside Monolith.`
+  - host_external `The host shell is running outside Tesseract.`
   - host_failed `The host shell couldn't start: {error}`
   - host_no_pin `No PIN is set yet. Phones need it to unlock the shell.`
   - start `Start`
@@ -1161,8 +1161,8 @@ key → value:
 - `MAIN_MENU_TOOLTIP` `Main menu`. `REFRESH_TOOLTIP` `Refresh`. `ZOOM_TOAST` `Zoom {percent}%`.
 - `BANNER`, `CONNECTION_LABELS`, `EVENTS_LABELS`: see §4.4 and §9.5.
 - `ABOUT`:
-  - developer `Monolith`
-  - comments `Monitor and control the Monolith sandbox from the host, pair phones and keep an eye on this machine.`
+  - developer `Tesseract`
+  - comments `Monitor and control the Tesseract sandbox from the host, pair phones and keep an eye on this machine.`
 - `WINDOW_CONTROLS`: minimize `Minimize`, maximize `Maximize`, restore `Restore`, close `Close`.
 - `SIDEBAR`:
   - new_conversation_tooltip `New conversation (Ctrl+N)`
@@ -1231,18 +1231,18 @@ where the source uses one. The source uses ASCII `'` in "Can't" and "isn't", so 
 
 Captured with `apps/desktop/tools/snapshot.sh … --zoom 1 --width 1440 --height 900` on headless broadway.
 Broadway clamps the window to **1024×768**, and animations are off. The data is **live**: the user's
-running sandbox `theone-sandbox`, with 4 projects.
+running sandbox `tesseract-sandbox`, with 4 projects.
 
 - `shell-default.png`: dark (graphite), default page **Overview**.
   - Sidebar, about 305 px wide (stored width):
-    - header: Monolith brand with caret, search, circular compose
+    - header: Tesseract brand with caret, search, circular compose
     - "Sandbox ▾" group: Overview selected (`#232325`), then Agents, Projects, Files, Terminals, Display
       (no badge visible)
-    - "Projects ▾" group with tinted rows: streaxfit (lock icon, red wash), monolith (cyan wash),
+    - "Projects ▾" group with tinted rows: streaxfit (lock icon, red wash), tesseract (cyan wash),
       hybrid-pos (yellow wash), sante-production (purple wash), then the untinted "No project" row. All
       collapsed, none running.
     - composer with `Ask Claude...` and a `No project` dropdown
-    - status row `● theone-sandbox  Online · Live  ⚙`
+    - status row `● tesseract-sandbox  Online · Live  ⚙`
   - Content panel: page header "Overview" with min/max/close controls. The Overview body shows live
     metrics.
 - `shell-default-light.png`: the same in light (graphiteLight). Window `#F5F5F6`, panel `#FFFFFF`,
@@ -1257,7 +1257,7 @@ running sandbox `theone-sandbox`, with 4 projects.
   - white QR tile
   - instructions
   - monospace link field with the copy icon, middle-ellipsized
-  - caption `Sandbox theone-sandbox · https://theone-sandbox.tail…ts.net`
+  - caption `Sandbox tesseract-sandbox · https://tesseract-sandbox.tail…ts.net`
   - warning notice with the token text
   - footer `Done` / `Copy link` (indigo pill)
   - The backdrop dims the window. The sidebar still shows `Loading projects…`, and the status row reads

@@ -2,7 +2,7 @@ import type { AvdDeviceProfile } from "../../shared/contracts/android";
 
 export const ANDROID_REPOSITORY_URL = "https://dl.google.com/android/repository/repository2-3.xml";
 export const ANDROID_SYSIMG_URL = "https://dl.google.com/android/repository/sys-img/google_apis/sys-img2-3.xml";
-export const CATALOG_URL_ENV = { repository: "MONOLITH_ANDROID_REPOSITORY_URL", systemImages: "MONOLITH_ANDROID_SYSIMG_URL" } as const;
+export const CATALOG_URL_ENV = { repository: "TESSERACT_ANDROID_REPOSITORY_URL", systemImages: "TESSERACT_ANDROID_SYSIMG_URL" } as const;
 export const CATALOG_URL_PROTOCOLS = ["http:", "https:"] as const;
 export const XML_SUFFIX = ".xml";
 export const DEFAULT_API_LEVEL = 36;
@@ -45,7 +45,7 @@ export const LIST_AVDS_TIMEOUT_MS = 10_000;
 export const PROBE_TIMEOUT_MS = 10_000;
 export const KVM_DEVICE = "/dev/kvm";
 export const CPUINFO = "/proc/cpuinfo";
-export const ISOLATION_PROBE = ["unshare", ["--user", "--map-root-user", "--net", "--", "ip", "link", "add", "theone0", "type", "dummy"]] as const;
+export const ISOLATION_PROBE = ["unshare", ["--user", "--map-root-user", "--net", "--", "ip", "link", "add", "tesseract0", "type", "dummy"]] as const;
 export const WHPX_PROBE = [
   "powershell",
   [
@@ -106,7 +106,7 @@ export const EMU_KILL_ARGS = ["emu", "kill"] as const;
 export const TASKKILL = "taskkill";
 export const ADB_TIMEOUT_MS = 5_000;
 export const LOOPBACK = "127.0.0.1";
-export const SCRUBBED_ENV_PREFIXES = ["THEONE_HOST_SHELL_"] as const;
+export const SCRUBBED_ENV_PREFIXES = ["TESSERACT_HOST_SHELL_"] as const;
 
 export const ANDROID_VERSION_NAMES: Record<number, string> = {
   21: "5.0",

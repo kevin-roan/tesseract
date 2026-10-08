@@ -1,12 +1,12 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { sampleAgentRun, sampleProcess, sampleProject, sampleUsageReport } from "@theone/protocol/fixtures";
-import { TheOneClient } from "@theone/client";
+import { sampleAgentRun, sampleProcess, sampleProject, sampleUsageReport } from "@tesseract/protocol/fixtures";
+import { TesseractClient } from "@tesseract/client";
 
 import IslandHost from "@/features/island/components/island-host";
 import { useIslandStore } from "@/features/island/store/island-store";
 import { useSettingsStore } from "@/features/settings/store/settings-store";
 
-import { __emitAction, __reset as resetIsland, startActivity } from "../../mocks/theone-island";
+import { __emitAction, __reset as resetIsland, startActivity } from "../../mocks/tesseract-island";
 import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../sandbox/helpers";
 
 let mockPathname = "/";
@@ -14,10 +14,10 @@ const mockNav = { agentRun: jest.fn(), sandboxHub: jest.fn(), newAgentRun: jest.
 
 jest.mock("expo-router", () => ({ useIsFocused: () => true, usePathname: () => mockPathname, router: { push: jest.fn(), navigate: jest.fn(), replace: jest.fn(), canGoBack: () => false, back: jest.fn() } }));
 jest.mock("react-native-safe-area-context", () => require("react-native-safe-area-context/jest/mock").default);
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("@/features/sandbox/hooks/use-sandbox-navigation", () => ({ useSandboxNavigation: () => mockNav }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const fake = {
   listAgentRuns: jest.fn(),
   listProcesses: jest.fn(),

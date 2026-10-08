@@ -1,4 +1,4 @@
-import type { ClaudeAuthMethod } from "@theone/protocol";
+import type { ClaudeAuthMethod } from "@tesseract/protocol";
 import type { HostClaudeLogin } from "../../../../shared/contracts/claude";
 
 export const SECTION_LABELS = {

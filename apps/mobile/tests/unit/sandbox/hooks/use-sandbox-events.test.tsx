@@ -1,9 +1,9 @@
 import { AppState, type AppStateStatus } from "react-native";
 import { onlineManager } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react-native";
-import { ApiError, NetworkError, ProtocolVersionError, TheOneClient } from "@theone/client";
-import type { BuildJob, ServerEvent } from "@theone/protocol";
-import { sampleBuild, sampleStatus } from "@theone/protocol/fixtures";
+import { ApiError, NetworkError, ProtocolVersionError, TesseractClient } from "@tesseract/client";
+import type { BuildJob, ServerEvent } from "@tesseract/protocol";
+import { sampleBuild, sampleStatus } from "@tesseract/protocol/fixtures";
 
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
 import { useSandboxEvents, useSandboxIssue } from "@/features/sandbox/hooks/use-sandbox-events";
@@ -20,10 +20,10 @@ import {
   type StreamHandlers,
 } from "../helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const SID = TEST_SANDBOX.id;
 
 let handlers: StreamHandlers;
@@ -87,7 +87,7 @@ describe("useSandboxEvents", () => {
     queryClient.setQueryData(sandboxKeys.status(SID), sampleStatus);
     await renderHook(() => useSandboxEvents(), { wrapper: createWrapper(queryClient) });
 
-    await emit({ type: "hello", protocolVersion: 1, sandboxId: "theone-sandbox" });
+    await emit({ type: "hello", protocolVersion: 1, sandboxId: "tesseract-sandbox" });
 
     expect(queryClient.getQueryState(sandboxKeys.status(SID))?.isInvalidated).toBe(true);
   });
@@ -105,7 +105,7 @@ describe("useSandboxEvents", () => {
     await act(async () => handlers.onStateChange?.("closed"));
     expect(result.current).toBe("unauthorized");
 
-    await emit({ type: "hello", protocolVersion: 1, sandboxId: "theone-sandbox" });
+    await emit({ type: "hello", protocolVersion: 1, sandboxId: "tesseract-sandbox" });
     expect(result.current).toBeNull();
   });
 

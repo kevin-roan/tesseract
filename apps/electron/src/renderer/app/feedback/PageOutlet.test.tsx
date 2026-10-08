@@ -11,7 +11,7 @@ const routes = [
     element: (
       <>
         <Link to="/agents">agents</Link>
-        <Link to="/projects/monolith">project</Link>
+        <Link to="/projects/tesseract">project</Link>
         <PageOutlet />
       </>
     ),
@@ -21,7 +21,7 @@ const routes = [
 
 describe("PageOutlet", () => {
   it("keys the view by the root page so sub-views keep their view", () => {
-    expect(pageKeyOf("/projects/monolith/git")).toBe("projects");
+    expect(pageKeyOf("/projects/tesseract/git")).toBe("projects");
     expect(pageKeyOf("/")).toBe("");
   });
 

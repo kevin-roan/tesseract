@@ -7,19 +7,19 @@ controls the sandbox.
 ## The pairing link
 
 ```text
-theone://pair?url=<encoded base URL>&token=<token>&name=<label>
+tesseract://pair?url=<encoded base URL>&token=<token>&name=<label>
 ```
 
 | Part | Source |
 |---|---|
-| `url` | `THEONE_PUBLIC_URL`. tailscale mode: `https://$THEONE_HOSTNAME.$TS_TAILNET_DOMAIN`; host-tailscale/local: `http://$THEONE_BIND_ADDR:$THEONE_CONTROLLER_HOST_PORT` (default 7700) |
-| `token` | `THEONE_TOKEN` if set in `.env`, otherwise `/workspace/.agent/controller/token` (generated on first start) |
+| `url` | `TESSERACT_PUBLIC_URL`. tailscale mode: `https://$TESSERACT_HOSTNAME.$TS_TAILNET_DOMAIN`; host-tailscale/local: `http://$TESSERACT_BIND_ADDR:$TESSERACT_CONTROLLER_HOST_PORT` (default 7700) |
+| `token` | `TESSERACT_TOKEN` if set in `.env`, otherwise `/workspace/.agent/controller/token` (generated on first start) |
 | `name` | label shown in the app (defaults to the sandbox id) |
 
 ## Steps
 
 1. Make sure the phone's Tailscale app is connected to the tailnet.
-2. On the host: `bun run sandbox pair`. This runs `theone-controller pair`
+2. On the host: `bun run sandbox pair`. This runs `tesseract-controller pair`
    inside the sandbox, which prints the ANSI QR code, the link, and the
    sandbox URL. `bun run sandbox pair --json` prints `{ link, url, name }`
    for scripting (the token is inside `link`).
@@ -29,7 +29,7 @@ theone://pair?url=<encoded base URL>&token=<token>&name=<label>
    Then one of:
    - **Scan**: point the camera at the QR code (grant camera permission).
      A scanned code pairs immediately.
-   - **Deep link**: open the `theone://pair?…` link on the phone, for example
+   - **Deep link**: open the `tesseract://pair?…` link on the phone, for example
      from a note or password manager. The OS routes it to the app's `pair`
      screen with the fields filled in; tap **Pair sandbox** to confirm.
    - **Manual**: paste the whole link, or enter URL and token separately.
@@ -54,10 +54,10 @@ its token from secure storage.
 
 You need to pair again when:
 
-- the token was rotated (`theone-controller token --rotate` plus a controller
+- the token was rotated (`tesseract-controller token --rotate` plus a controller
   restart, see [operations](operations.md#rotate-the-token)): every phone gets 401 until re-paired
-- `THEONE_HOSTNAME` or `TS_TAILNET_DOMAIN` changed, which changes the URL
-- the `theone-workspace` volume was recreated, which generates a new token (unless `THEONE_TOKEN` is set)
+- `TESSERACT_HOSTNAME` or `TS_TAILNET_DOMAIN` changed, which changes the URL
+- the `tesseract-workspace` volume was recreated, which generates a new token (unless `TESSERACT_TOKEN` is set)
 
 When the sandbox rejects the stored token (401/403), the Agents tab shows
 **Pairing no longer valid** with a **Pair again** button. It opens the pair
@@ -84,6 +84,6 @@ Pairing again with the same URL updates the existing entry (new token and name).
 | "Pairing no longer valid" / "Unauthorized" | token rotated or mistyped. Run `bun run sandbox pair` again and use **Pair again** |
 | "Version mismatch" | the app and the controller speak different protocol versions. Update the app or rebuild the image |
 | `http://` URL fails ("Can't reach the sandbox" while Safari loads it) | cleartext refused by the OS (iOS ATS). Switch to tailscale mode: [tailscale-https-setup](tailscale-https-setup.md) |
-| Link URL is `https://theone-sandbox` without `.<tailnet>.ts.net` | `TS_TAILNET_DOMAIN` was empty when the container was created. Set it in `.env` and run `bun run sandbox up` |
+| Link URL is `https://tesseract-sandbox` without `.<tailnet>.ts.net` | `TS_TAILNET_DOMAIN` was empty when the container was created. Set it in `.env` and run `bun run sandbox up` |
 | Camera does not open | development build missing `expo-camera`, or permission denied in the OS settings |
-| Deep link opens nothing | the app was not built with the `theone` scheme (`app.json` → `scheme`), or you are in Expo Go |
+| Deep link opens nothing | the app was not built with the `tesseract` scheme (`app.json` → `scheme`), or you are in Expo Go |

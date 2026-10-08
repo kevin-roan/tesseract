@@ -6,7 +6,7 @@ import { appendLog, buildActive, dockerBadge, dockerReady, dockerSubtitle, image
 
 const status = (states: string[]): SandboxStackStatus => ({
   configured: true,
-  project: "theone",
+  project: "tesseract",
   services: states.map((state, index) => ({ service: `s${index}`, container: `c${index}`, state, health: null })),
 });
 
@@ -27,10 +27,10 @@ describe("sandbox settings model", () => {
     expect(stackBadge(status(["running", "running"])).label).toBe("Running");
     expect(stackBadge(status(["running", "exited"])).label).toBe("Partly running");
     expect(stackBadge(status(["exited"])).label).toBe("Stopped");
-    expect(stackSubtitle(status(["running", "running"]), null)).toBe("Compose project theone · 2 containers");
-    const stack = { envFile: "", project: "theone", mode: "local" as const, image: "theone/sandbox:latest", builtAt: null, components: [] };
-    expect(imageSubtitle(stack, () => "")).toBe("theone/sandbox:latest · not built yet");
-    expect(imageSubtitle({ ...stack, builtAt: "2026-10-04T18:12:00Z" }, () => "2 days ago")).toBe("theone/sandbox:latest · built 2 days ago");
+    expect(stackSubtitle(status(["running", "running"]), null)).toBe("Compose project tesseract · 2 containers");
+    const stack = { envFile: "", project: "tesseract", mode: "local" as const, image: "tesseract/sandbox:latest", builtAt: null, components: [] };
+    expect(imageSubtitle(stack, () => "")).toBe("tesseract/sandbox:latest · not built yet");
+    expect(imageSubtitle({ ...stack, builtAt: "2026-10-04T18:12:00Z" }, () => "2 days ago")).toBe("tesseract/sandbox:latest · built 2 days ago");
   });
 
   it("toggles components in Dockerfile order", () => {

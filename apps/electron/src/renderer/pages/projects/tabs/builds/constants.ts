@@ -1,4 +1,4 @@
-import type { BuildProfile, BuildState } from "@theone/protocol";
+import type { BuildProfile, BuildState } from "@tesseract/protocol";
 import type { Tone } from "../../../../theme/colors";
 
 export const BUILD_PROFILE_ORDER: readonly BuildProfile[] = ["debug", "release"];

@@ -33,9 +33,9 @@ describe("AndroidPreferences", () => {
     restores.push(overrideIpcFixtures({ android: { startEmulator } }));
     render();
     expect(await screen.findByText("Pixel_8_API_35")).toBeTruthy();
-    fireEvent.click(within(rowOf("Monolith_API_36")).getByRole("button", { name: "Start" }));
-    await waitFor(() => expect(startEmulator).toHaveBeenCalledWith("/home/dev/Android/Sdk", "Monolith_API_36"));
-    expect(await within(rowOf("Monolith_API_36")).findByText("Running")).toBeTruthy();
+    fireEvent.click(within(rowOf("Tesseract_API_36")).getByRole("button", { name: "Start" }));
+    await waitFor(() => expect(startEmulator).toHaveBeenCalledWith("/home/dev/Android/Sdk", "Tesseract_API_36"));
+    expect(await within(rowOf("Tesseract_API_36")).findByText("Running")).toBeTruthy();
   });
 
   it("asks before deleting a device", async () => {

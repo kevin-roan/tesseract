@@ -1,4 +1,4 @@
-import type { GitCommit, GitDetails, GitFileStatus, Project } from "@theone/protocol";
+import type { GitCommit, GitDetails, GitFileStatus, Project } from "@tesseract/protocol";
 import { useMemo } from "react";
 import { describeError } from "../../../../app/connection";
 import { ListGroup } from "../../../../components/GroupBand";

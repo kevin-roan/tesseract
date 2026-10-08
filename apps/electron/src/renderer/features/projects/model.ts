@@ -1,4 +1,4 @@
-import { ApiError } from "@theone/client";
+import { ApiError } from "@tesseract/client";
 import {
   GIT_REF_PATTERN,
   GIT_URL_PATTERN,
@@ -15,7 +15,7 @@ import {
   type ProcessInfo,
   type Project,
   type SyncChanges,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { cleanLogText } from "../../components/LogView";
 import { formatRelativeTime, joinMeta, parseTime } from "./format";
 import {

@@ -1,5 +1,5 @@
-import type { AgentRun, AgentRunDetail, ClaudeSession } from "@theone/protocol";
-import { sampleClaudeSession } from "@theone/protocol/fixtures";
+import type { AgentRun, AgentRunDetail, ClaudeSession } from "@tesseract/protocol";
+import { sampleClaudeSession } from "@tesseract/protocol/fixtures";
 import { CONVERSATION_DETAILS, conversationCancelledRun, conversationDetail, conversationFailedRun } from "../agents-conversation/data";
 import { GTK_PARITY_NOW, isParityVariant, PARITY_VARIANTS, parityAgo, parityProjectId } from "../shell/parity";
 import { fixtureAgentRuns, fixtureArchivedRuns } from "./data";
@@ -98,7 +98,7 @@ export function parityConversationDetail(id: string): AgentRunDetail | null {
 }
 
 const SESSION_COUNTS: Readonly<Record<string, number>> = {
-  "theone-mobile": 23,
+  "tesseract-mobile": 23,
   "nimble-lotus": 4,
   "brave-hare": 5,
   "sante-production": 0,

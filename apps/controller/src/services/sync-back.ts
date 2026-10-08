@@ -19,7 +19,7 @@ import {
   type SyncRequest,
   type SyncRequestStatus,
   type SyncResult,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { mapLimit } from "../core/concurrency";
 import { badRequest, conflict, HttpError, notFound } from "../core/errors";
 import { childEnv } from "../core/exec";
@@ -384,7 +384,7 @@ export class SyncBackService {
     this.sweep();
     const request = this.requireGet(id);
     const pending = this.pendingGets.get(request.id);
-    if (!pending) throw conflict(`Sync request ${request.id} has no plan (the controller restarted?); run monolith --get again`);
+    if (!pending) throw conflict(`Sync request ${request.id} has no plan (the controller restarted?); run tesseract --get again`);
     if (this.applying.has(request.id)) throw conflict(`Sync request ${request.id} is already being applied`);
     this.applying.add(request.id);
     const scratch = join(this.config.dataDir, "sync", "staging", request.id);

@@ -13,7 +13,7 @@ export const SHELL_LABELS = {
     start: "Start",
     fix: "Fix…",
     checkAgain: "Check again",
-    quit: "Quit Monolith",
+    quit: "Quit Tesseract",
   },
   details: {
     show: "Show details",

@@ -1,4 +1,4 @@
-import type { ProjectFilter } from "@theone/protocol";
+import type { ProjectFilter } from "@tesseract/protocol";
 
 import type { PageKind } from "../types";
 

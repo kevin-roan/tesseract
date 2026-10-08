@@ -21,8 +21,8 @@ describe("defaultChoices", () => {
       cpus: 4,
       memoryGb: 8,
       timeZone: "Europe/Paris",
-      project: "theone",
-      image: "theone/sandbox:latest",
+      project: "tesseract",
+      image: "tesseract/sandbox:latest",
       controllerPort: 7700,
       vncPort: 5901,
       hostClaudeDir: "/home/u/.claude",
@@ -83,9 +83,9 @@ describe("env mapping", () => {
       { token: "tok" },
     );
     expect(env).toMatchObject({
-      THEONE_MODE: "local",
-      THEONE_BIND_ADDR: "127.0.0.1",
-      THEONE_DIND: "",
+      TESSERACT_MODE: "local",
+      TESSERACT_BIND_ADDR: "127.0.0.1",
+      TESSERACT_DIND: "",
       TS_AUTHKEY: "",
       WITH_ANDROID: "true",
       WITH_FLUTTER: "false",
@@ -94,7 +94,7 @@ describe("env mapping", () => {
       WHISPER_MODELS: "base small",
       SANDBOX_MEMORY: "6g",
       DEV_GID: "1001",
-      THEONE_TOKEN: "tok",
+      TESSERACT_TOKEN: "tok",
     });
   });
 

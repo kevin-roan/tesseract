@@ -31,7 +31,7 @@ export interface Sandbox {
 }
 
 export function tempSandbox(extraEnv: NodeJS.ProcessEnv = {}): Sandbox {
-  const root = mkdtempSync(join(tmpdir(), "monolith-test-cli-"));
+  const root = mkdtempSync(join(tmpdir(), "tesseract-test-cli-"));
   const home = join(root, "home");
   const contextDir = join(root, "context");
   mkdirSync(join(contextDir, ...COMPOSE_DIR), { recursive: true });

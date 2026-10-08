@@ -1,4 +1,4 @@
-import { isFinalAgentRunState, type AgentRun, type ProcessInfo, type TerminalInfo, type UsageReport } from "@theone/protocol";
+import { isFinalAgentRunState, type AgentRun, type ProcessInfo, type TerminalInfo, type UsageReport } from "@tesseract/protocol";
 
 import { formatDay } from "@/features/analytics/utils/format";
 import { isActiveProcess } from "@/features/sandbox/utils/projects";

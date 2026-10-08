@@ -1,5 +1,5 @@
-import { routePatterns } from "@theone/protocol";
-import type { CreateTerminal } from "@theone/protocol";
+import { routePatterns } from "@tesseract/protocol";
+import type { CreateTerminal } from "@tesseract/protocol";
 import { currentScenario } from "../scenario";
 import { isGtkParity } from "../shell/parity";
 import { defineHttpFixtures, reply } from "../types";

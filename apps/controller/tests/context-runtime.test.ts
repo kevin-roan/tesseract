@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, readdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { AgentContextSchema, ProcessInfoSchema } from "@theone/protocol";
+import { AgentContextSchema, ProcessInfoSchema } from "@tesseract/protocol";
 import { makeTempDir, removeTempDirs, startTestController, waitFor, writeFiles, type TestController } from "./helpers";
 
 let t: TestController;

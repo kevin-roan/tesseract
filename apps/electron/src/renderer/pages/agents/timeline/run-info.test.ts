@@ -1,4 +1,4 @@
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 import { describe, expect, it } from "vitest";
 import { continuesLabel, formatBytes, introMeta, outcomeMeta, plainText, previousRun, projectName, runTitle, stateLabel, stateTone } from "./run-info";
 
@@ -7,7 +7,7 @@ const NOW = Date.parse("2026-10-07T17:00:00.000Z") / 1000;
 
 const run = (overrides: Partial<AgentRun> = {}): AgentRun => ({
   id: "run_a",
-  projectId: "monolith",
+  projectId: "tesseract",
   prompt: "Do it",
   mode: null,
   attachments: [],
@@ -40,7 +40,7 @@ describe("run titles", () => {
 
 describe("meta lines", () => {
   it("joins the intro meta like the GTK header", () => {
-    expect(introMeta(run(), { monolith: "monolith" }, NOW)).toBe("monolith · 7h ago · 22s · claude-work · Session e06b331b");
+    expect(introMeta(run(), { tesseract: "tesseract" }, NOW)).toBe("tesseract · 7h ago · 22s · claude-work · Session e06b331b");
     expect(introMeta(run({ projectId: null, sessionId: null, claudeAccountId: null }), {}, NOW)).toBe("Sandbox root · 7h ago · 22s");
   });
 

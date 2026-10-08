@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { DeletedProjectSchema } from "@theone/protocol";
+import { DeletedProjectSchema } from "@tesseract/protocol";
 import { makeTempDir, removeTempDirs, startTestController, TEST_TOKEN, writeFiles, type TestController } from "./helpers";
 
 let t: TestController;

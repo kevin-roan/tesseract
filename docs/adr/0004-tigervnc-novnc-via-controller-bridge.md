@@ -14,7 +14,7 @@ WebView. The only network-facing service must be the controller, with its auth.
 
 - **Xvnc** (TigerVNC) provides X display `:1` (default `1600x900`) and the RFB
   server on TCP 5901 in a single process, with VncAuth using the password in
-  `/home/dev/.vnc/passwd` (`THEONE_VNC_PASSWORD`). **openbox** is the window manager.
+  `/home/dev/.vnc/passwd` (`TESSERACT_VNC_PASSWORD`). **openbox** is the window manager.
 - The controller exposes **`/v1/display/vnc`**, a binary WebSocket ↔ TCP
   bridge to `127.0.0.1:5901`, authorized with a one-time ticket. It echoes the
   `binary` subprotocol for noVNC.

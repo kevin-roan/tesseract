@@ -1,4 +1,4 @@
-import type { DisplayWindow } from "@theone/protocol";
+import type { DisplayWindow } from "@tesseract/protocol";
 
 /** One `wmctrl -lp` row: id, desktop, pid, client machine, then the title (which may contain spaces or be empty). */
 const WMCTRL_ROW = /^(0x[0-9a-f]+)\s+(-?\d+)\s+(\d+)\s+\S+ ?(.*)$/i;

@@ -1,4 +1,4 @@
-import { BRIDGE_KEY, type MonolithBridge } from "../../shared/ipc";
+import { BRIDGE_KEY, type TesseractBridge } from "../../shared/ipc";
 import { SEARCH_PARAM } from "../../shared/routes";
 import { decodeRuntimeArg, type Appearance, type Platform, type RuntimeInfo } from "../../shared/runtime";
 
@@ -13,8 +13,8 @@ const BROWSER_FALLBACK: RuntimeInfo = {
   reducedMotion: false,
 };
 
-export function bridge(): MonolithBridge | null {
-  return (globalThis as unknown as Record<string, MonolithBridge | undefined>)[BRIDGE_KEY] ?? null;
+export function bridge(): TesseractBridge | null {
+  return (globalThis as unknown as Record<string, TesseractBridge | undefined>)[BRIDGE_KEY] ?? null;
 }
 
 function locationParams(): URLSearchParams {

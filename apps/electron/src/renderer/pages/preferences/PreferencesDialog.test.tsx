@@ -58,7 +58,7 @@ describe("PreferencesDialog", () => {
   it("opens on the requested section and switches from the nav", async () => {
     renderRoutes(routes, "/overview?preferences=appearance");
     const dialog = await screen.findByRole("dialog", { name: "Settings" });
-    expect(await within(dialog).findByText("Choose how Monolith looks on this computer.")).toBeTruthy();
+    expect(await within(dialog).findByText("Choose how Tesseract looks on this computer.")).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Appearance" }).getAttribute("aria-selected")).toBe("true");
     fireEvent.click(screen.getByRole("tab", { name: "Speech-to-text" }));
     await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("?preferences=stt"));

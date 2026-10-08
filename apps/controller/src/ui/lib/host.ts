@@ -1,4 +1,4 @@
-import { INPUT_MODES, type InputMode, type PageInsets } from "@theone/protocol/bridge";
+import { INPUT_MODES, type InputMode, type PageInsets } from "@tesseract/protocol/bridge";
 import { HOST_MESSAGES } from "./config";
 
 type HostMessage = { type: string } & Record<string, unknown>;
@@ -14,7 +14,7 @@ export type HostApi = {
 declare global {
   interface Window {
     ReactNativeWebView?: { postMessage(message: string): void };
-    theone?: Required<HostApi>;
+    tesseract?: Required<HostApi>;
   }
 }
 
@@ -41,11 +41,11 @@ export function postToHost(message: HostMessage): void {
 }
 
 /**
- * Exposes `window.theone` for injected JavaScript and accepts the same calls as framed
+ * Exposes `window.tesseract` for injected JavaScript and accepts the same calls as framed
  * postMessages. Inputs are validated either way; calls a page does not support are no-ops.
  */
 export function exposeHostApi(api: HostApi): void {
-  const theone = {
+  const tesseract = {
     reconnect: (ticket: unknown) => {
       if (typeof ticket === "string" && ticket) api.reconnect(ticket);
     },
@@ -64,15 +64,15 @@ export function exposeHostApi(api: HostApi): void {
       if (typeof text === "string" && text) api.paste?.(text);
     },
   };
-  window.theone = theone;
+  window.tesseract = tesseract;
   window.addEventListener("message", (event: MessageEvent<unknown>) => {
     const data = event.data;
     if (typeof data !== "object" || data === null) return;
     const message = data as Record<string, unknown>;
-    if (message.type === HOST_MESSAGES.reconnect) theone.reconnect(message.ticket);
-    else if (message.type === HOST_MESSAGES.inputMode) theone.setInputMode(message.mode);
-    else if (message.type === HOST_MESSAGES.insets) theone.setInsets(message);
-    else if (message.type === HOST_MESSAGES.immersive) theone.setImmersive(message.immersive);
-    else if (message.type === HOST_MESSAGES.paste) theone.paste(message.text);
+    if (message.type === HOST_MESSAGES.reconnect) tesseract.reconnect(message.ticket);
+    else if (message.type === HOST_MESSAGES.inputMode) tesseract.setInputMode(message.mode);
+    else if (message.type === HOST_MESSAGES.insets) tesseract.setInsets(message);
+    else if (message.type === HOST_MESSAGES.immersive) tesseract.setImmersive(message.immersive);
+    else if (message.type === HOST_MESSAGES.paste) tesseract.paste(message.text);
   });
 }

@@ -1,4 +1,4 @@
-import type { GitCommit, GitDetails } from "@theone/protocol";
+import type { GitCommit, GitDetails } from "@tesseract/protocol";
 
 const SUBJECTS = [
   "chore; eas updates",
@@ -59,7 +59,7 @@ export const FIXTURE_GIT: Readonly<Record<string, GitDetails>> = {
     ],
     log: commits.slice(0, 6),
   },
-  monolith: { branch: "main", ahead: 0, behind: 0, files: [], log: commits.slice(0, 3) },
+  tesseract: { branch: "main", ahead: 0, behind: 0, files: [], log: commits.slice(0, 3) },
   streaxfit: { branch: null, ahead: 0, behind: 0, files: [], log: [] },
 };
 

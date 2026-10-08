@@ -1,4 +1,4 @@
-import { normalizeBaseUrl } from "@theone/protocol";
+import { normalizeBaseUrl } from "@tesseract/protocol";
 import type { ConnectionConfig, ConnectionInput } from "../../../../shared/contracts/connection";
 import { CONNECTION_LABELS, CONNECTION_STATUS_LABELS, CONNECTION_TONES, SOURCE_LABELS, sandboxName, type ConnectionState } from "../../../app/connection";
 import type { Tone } from "../../../theme/colors";

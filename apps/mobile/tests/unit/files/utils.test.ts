@@ -1,6 +1,6 @@
-import { ApiError } from "@theone/client";
-import type { Artifact, BuildOutput, TaildropTarget } from "@theone/protocol";
-import { sampleArtifact } from "@theone/protocol/fixtures";
+import { ApiError } from "@tesseract/client";
+import type { Artifact, BuildOutput, TaildropTarget } from "@tesseract/protocol";
+import { sampleArtifact } from "@tesseract/protocol/fixtures";
 
 import {
   buildOutputFolder,

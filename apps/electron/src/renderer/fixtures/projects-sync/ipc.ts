@@ -1,4 +1,4 @@
-import type { SyncRequest } from "@theone/protocol";
+import type { SyncRequest } from "@tesseract/protocol";
 import { GTK_PARITY } from "../projects/parity";
 import { isScenario } from "../scenario";
 import { defineIpcFixtures } from "../types";

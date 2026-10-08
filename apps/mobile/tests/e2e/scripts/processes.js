@@ -1,5 +1,5 @@
-var headers = { Authorization: 'Bearer ' + THEONE_TOKEN, 'Content-Type': 'application/json' };
-var base = THEONE_URL.replace(/\/$/, '');
+var headers = { Authorization: 'Bearer ' + TESSERACT_TOKEN, 'Content-Type': 'application/json' };
+var base = TESSERACT_URL.replace(/\/$/, '');
 
 if (ACTION === 'start') {
   var res = http.post(base + '/v1/processes', {

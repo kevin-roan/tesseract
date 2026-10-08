@@ -1,16 +1,16 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
-import { sampleSttStatus } from "@theone/protocol/fixtures";
+import { TesseractClient } from "@tesseract/client";
+import { sampleSttStatus } from "@tesseract/protocol/fixtures";
 
 import { useSttSettings } from "@/features/settings/hooks/use-stt-settings";
 import { useSettingsStore } from "@/features/settings/store/settings-store";
 
 import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../sandbox/helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const fake = { stt: jest.fn(), updateStt: jest.fn() };
 
 const renderSettings = () => renderHook(() => useSttSettings(), { wrapper: createWrapper(createTestQueryClient()) });

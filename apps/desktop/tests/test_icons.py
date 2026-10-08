@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from monolith_desktop.paths import ICONS_DIR
-from monolith_desktop.theme.icons import ICONS, icon_candidates
+from tesseract_desktop.paths import ICONS_DIR
+from tesseract_desktop.theme.icons import ICONS, icon_candidates
 
 DESKTOP_DIR = Path(__file__).resolve().parents[1]
 ACTIONS_DIR = ICONS_DIR / "hicolor" / "scalable" / "actions"
-BUNDLED_PREFIXES = ("lc-", "monolith-")
+BUNDLED_PREFIXES = ("lc-", "tesseract-")
 CUSTOM_DRAWN = frozenset({"window-minimize", "window-maximize", "window-restore", "window-close"})
 SVG_NS = "{http://www.w3.org/2000/svg}"
 
@@ -34,7 +34,7 @@ def test_every_icon_leads_with_a_bundled_glyph(key):
 
 
 def test_brand_mark_stays_custom():
-    assert icon_candidates("brand")[0] == "monolith-brand-symbolic"
+    assert icon_candidates("brand")[0] == "tesseract-brand-symbolic"
 
 
 def test_every_key_keeps_a_theme_fallback():
@@ -77,7 +77,7 @@ def test_ui_code_uses_semantic_icon_keys():
     direct = re.compile(r"[\"'][a-z0-9-]+-symbolic[\"']")
     offenders = [
         str(path.relative_to(DESKTOP_DIR))
-        for path in (DESKTOP_DIR / "monolith_desktop").rglob("*.py")
+        for path in (DESKTOP_DIR / "tesseract_desktop").rglob("*.py")
         if path.name != "icons.py" and direct.search(path.read_text(encoding="utf-8"))
     ]
     assert offenders == []

@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { CreateProjectSchema, RenameProjectSchema, routePatterns, SetProjectClaudeAccountSchema } from "@theone/protocol";
+import { CreateProjectSchema, RenameProjectSchema, routePatterns, SetProjectClaudeAccountSchema } from "@tesseract/protocol";
 import type { Services } from "../../services";
 import { badRequest } from "../../core/errors";
 import { isSyncFormat } from "../../services/projects";

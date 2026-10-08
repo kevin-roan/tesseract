@@ -7,7 +7,7 @@ import type {
   LinkSandbox,
   StartEmulator,
   UpdateAndroidStream,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { watch, type FSWatcher } from "node:fs";
 import { errorMessage } from "../../core/errors";
 import type { Logger } from "../../core/logger";

@@ -1,4 +1,4 @@
-import { LIMITS, type Upload, type UploadKind } from "@theone/protocol";
+import { LIMITS, type Upload, type UploadKind } from "@tesseract/protocol";
 import { DRAFT_KEY_RANDOM_CHARS, FALLBACK_MIME_TYPE, UPLOAD_FALLBACK_NAME } from "./constants";
 import { formatBytes } from "./format";
 import { ATTACHMENT_LABELS, formatLabel } from "./labels";

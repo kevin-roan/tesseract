@@ -1,5 +1,5 @@
-import type { SandboxStatus } from "@theone/protocol";
-import { sampleDisplay, sampleStatus } from "@theone/protocol/fixtures";
+import type { SandboxStatus } from "@tesseract/protocol";
+import { sampleDisplay, sampleStatus } from "@tesseract/protocol/fixtures";
 import type { MetricsCache, MetricsRow } from "../../../shared/contracts/metrics";
 import { FIXTURE_SANDBOX } from "../base/data";
 

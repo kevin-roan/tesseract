@@ -38,7 +38,7 @@ export function nsisPathScript(includeFile: string, resultFile: string): string 
   const steps = NSIS_PATH_CASES.flatMap((step) => [
     ...setInitial(step.initial),
     `  Push "${step.action}"`,
-    "  Call MonolithUpdateUserPath",
+    "  Call TesseractUpdateUserPath",
     `  Push "${step.name}"`,
     "  Call Dump",
   ]);

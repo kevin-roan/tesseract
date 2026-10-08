@@ -1,4 +1,4 @@
-import { PushDataSchema, type InboxItem, type InboxKind, type PushData } from "@theone/protocol";
+import { PushDataSchema, type InboxItem, type InboxKind, type PushData } from "@tesseract/protocol";
 
 import { INBOX_ROUTE, PUSH_DEVICE_NAME_MAX } from "./constants";
 import { isUnread, needsAttention } from "./group";

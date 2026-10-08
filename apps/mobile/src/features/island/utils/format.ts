@@ -1,7 +1,7 @@
 import { elapsedSeconds, pluralize } from "@/features/sandbox/utils/format";
 import { formatTokens } from "@/features/home/utils/tokens";
 
-import type { IslandState } from "@/modules/theone-island";
+import type { IslandState } from "@/modules/tesseract-island";
 
 import { ISLAND_CHAT_ROW_HEIGHT, ISLAND_CHAT_ROWS_MAX, ISLAND_PANEL_HEIGHT } from "./constants";
 import { liveCount } from "./state";

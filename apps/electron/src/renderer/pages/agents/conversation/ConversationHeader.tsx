@@ -1,4 +1,4 @@
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 import { useRef, type ReactNode } from "react";
 import { ActionButton } from "../../../components/ActionButton";
 import { ActionMenu, useActionMenu, type MenuSections } from "../../../components/ActionMenu";

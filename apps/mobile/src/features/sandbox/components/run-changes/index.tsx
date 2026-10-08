@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { FlatList } from "react-native";
 import { GitDiffIcon } from "phosphor-react-native";
-import type { SyncFileChange } from "@theone/protocol";
+import type { SyncFileChange } from "@tesseract/protocol";
 
 import EmptyState from "@/components/empty-state";
 import { useAppTheme } from "@/hooks/use-app-theme";

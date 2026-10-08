@@ -1,5 +1,5 @@
-import { ApiError, type FetchLike, type HttpResponse, type TheOneClient } from "@theone/client";
-import { errorCodeForStatus, restPaths } from "@theone/protocol";
+import { ApiError, type FetchLike, type HttpResponse, type TesseractClient } from "@tesseract/client";
+import { errorCodeForStatus, restPaths } from "@tesseract/protocol";
 import { describeError } from "../../app/connection";
 import { SHA256_HEADER } from "./constants";
 import { ARTIFACT_LABELS, formatLabel } from "./labels";
@@ -27,7 +27,7 @@ export interface SaveCallbacks {
 
 export type FileSaver = (request: SaveRequest, callbacks: SaveCallbacks) => Promise<string | null>;
 
-export function downloadUrl(client: TheOneClient, source: DownloadSource): string {
+export function downloadUrl(client: TesseractClient, source: DownloadSource): string {
   return source.kind === "artifact"
     ? client.httpUrl(restPaths.artifactDownload(source.id))
     : client.httpUrl(restPaths.buildOutputDownload(source.projectId, { path: source.path }));

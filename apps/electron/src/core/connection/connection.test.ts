@@ -32,7 +32,7 @@ const fakeCipher: TokenCipher = {
 let dir = "";
 
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), "monolith-test-connection-"));
+  dir = await mkdtemp(join(tmpdir(), "tesseract-test-connection-"));
 });
 
 afterEach(async () => {
@@ -62,7 +62,7 @@ describe("config file compatibility", () => {
 
   it("falls back to environment variables", () => {
     expect(readStoredConnection({}, {}, null)).toBeNull();
-    expect(readStoredConnection({}, { MONOLITH_DESKTOP_URL: "http://127.0.0.1:7700", THEONE_TOKEN: TOKEN }, null)?.source).toBe("env");
+    expect(readStoredConnection({}, { TESSERACT_DESKTOP_URL: "http://127.0.0.1:7700", TESSERACT_TOKEN: TOKEN }, null)?.source).toBe("env");
   });
 });
 
@@ -93,7 +93,7 @@ describe("token vault", () => {
     expect(shouldSealTokens({ ...base, platform: "darwin" })).toBe(true);
     expect(shouldSealTokens({ ...base, platform: "linux" })).toBe(false);
     expect(shouldSealTokens({ ...base, platform: "win32", test: true })).toBe(false);
-    expect(shouldSealTokens({ ...base, platform: "win32", env: { MONOLITH_DESKTOP_CONFIG: "/x" } })).toBe(false);
+    expect(shouldSealTokens({ ...base, platform: "win32", env: { TESSERACT_DESKTOP_CONFIG: "/x" } })).toBe(false);
     expect(shouldSealTokens({ ...base, platform: "win32", configFile: "/other.json" })).toBe(false);
     expect(shouldSealTokens({ ...base, platform: "darwin", cipher: { ...fakeCipher, available: () => false } })).toBe(false);
   });
@@ -102,9 +102,9 @@ describe("token vault", () => {
 describe("pairing", () => {
   it("builds the phone link from the pairing URL", () => {
     const link = pairingLinkFor({ apiUrl: "http://127.0.0.1:7700", token: TOKEN, name: "rig", pairingUrl: "https://sb.ts.net" });
-    expect(link).toBe(`theone://pair?url=https%3A%2F%2Fsb.ts.net&token=${TOKEN}&name=rig`);
+    expect(link).toBe(`tesseract://pair?url=https%3A%2F%2Fsb.ts.net&token=${TOKEN}&name=rig`);
     expect(inputFromPairingLink(link)).toEqual({ ok: true, value: { apiUrl: "https://sb.ts.net", token: TOKEN, name: "rig", pairingUrl: "https://sb.ts.net" } });
-    expect(inputFromPairingLink("http://x")).toEqual({ ok: false, error: "Pairing link must start with theone://" });
+    expect(inputFromPairingLink("http://x")).toEqual({ ok: false, error: "Pairing link must start with tesseract://" });
   });
 
   it("validates connection input like Preferences", () => {

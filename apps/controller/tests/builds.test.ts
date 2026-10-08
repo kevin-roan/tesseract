@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, symlinkSync, utimesSync } from "node:fs";
 import { join } from "node:path";
-import { ArtifactListSchema, BuildJobSchema, LogLineListSchema, LogStreamMessageSchema, type BuildJob } from "@theone/protocol";
+import { ArtifactListSchema, BuildJobSchema, LogLineListSchema, LogStreamMessageSchema, type BuildJob } from "@tesseract/protocol";
 import { artifactExtension, artifactFileName, sanitizeVersion, sha256File } from "../src/services/artifacts";
 import { resolveRecipe } from "../src/services/build-recipes";
 import { detectProject } from "../src/services/project-detect";

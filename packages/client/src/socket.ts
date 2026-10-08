@@ -1,5 +1,5 @@
-import { parseJsonWith, type Schema, type Ticket } from "@theone/protocol";
-import { isAuthError, NetworkError, ProtocolError, TheOneError } from "./errors";
+import { parseJsonWith, type Schema, type Ticket } from "@tesseract/protocol";
+import { isAuthError, NetworkError, ProtocolError, TesseractError } from "./errors";
 import { SOCKET_OPEN, type SocketConstructor, type SocketLike } from "./transport";
 
 export type ConnectionState = "connecting" | "open" | "closed";
@@ -17,7 +17,7 @@ export interface ConnectionHandlers {
    */
   onStateChange?(state: ConnectionState): void;
   /** Transport failures, ticket failures and invalid frames. Never thrown. */
-  onError?(error: TheOneError): void;
+  onError?(error: TesseractError): void;
   onClose?(info: CloseInfo): void;
 }
 
@@ -67,7 +67,7 @@ export interface SocketSessionConfig<Incoming, Outgoing> {
   isHandshake?: (message: Incoming) => boolean;
   isFinal?: (message: Incoming) => boolean;
   /** Inspects a frame that failed validation; an error returned here is reported and ends the stream for good. */
-  fatalFrame?: (text: string) => TheOneError | null;
+  fatalFrame?: (text: string) => TesseractError | null;
 }
 
 type Timer = ReturnType<typeof setTimeout>;
@@ -146,7 +146,7 @@ export class SocketSession<Incoming, Outgoing> implements StreamConnection {
       ticket = await config.createTicket();
     } catch (error) {
       if (generation !== this.generation) return;
-      this.report(error instanceof TheOneError ? error : new NetworkError("Could not obtain a ticket", { cause: error }));
+      this.report(error instanceof TesseractError ? error : new NetworkError("Could not obtain a ticket", { cause: error }));
       if (isAuthError(error)) this.finish();
       else this.scheduleRetry();
       return;
@@ -155,7 +155,7 @@ export class SocketSession<Incoming, Outgoing> implements StreamConnection {
 
     const WebSocketImpl = config.getWebSocket();
     if (!WebSocketImpl) {
-      this.report(new NetworkError("No WebSocket implementation available; pass `WebSocket` to TheOneClient"));
+      this.report(new NetworkError("No WebSocket implementation available; pass `WebSocket` to TesseractClient"));
       this.finish();
       return;
     }
@@ -285,7 +285,7 @@ export class SocketSession<Incoming, Outgoing> implements StreamConnection {
     }
   }
 
-  private report(error: TheOneError): void {
+  private report(error: TesseractError): void {
     this.config.handlers.onError?.(error);
   }
 

@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "monolith-desktop"
+name = "tesseract-desktop"
 version = "0.1.0"
-description = "Monolith desktop companion: monitor and control the sandbox from the host (GTK4 + libadwaita)"
+description = "Tesseract desktop companion: monitor and control the sandbox from the host (GTK4 + libadwaita)"
 requires-python = ">=3.11"
 dependencies = ["PyGObject>=3.50", "qrcode>=7.4", "psutil>=5.9"]
 
@@ -13,10 +13,10 @@ dependencies = ["PyGObject>=3.50", "qrcode>=7.4", "psutil>=5.9"]
 test = ["pytest>=8"]
 
 [project.scripts]
-monolith-desktop = "monolith_desktop.app:main"
+tesseract-desktop = "tesseract_desktop.app:main"
 
 [tool.setuptools.packages.find]
-include = ["monolith_desktop*"]
+include = ["tesseract_desktop*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

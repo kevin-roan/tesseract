@@ -9,7 +9,7 @@ import {
   type SyncGetPlan,
   type SyncGetPlanResponse,
   type SyncRequest,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { runCli, type Output } from "../src/cli/commands";
 import { makeTempDir, removeTempDirs, startTestController, TEST_TOKEN, writeFiles, type TestController } from "./helpers";
 
@@ -389,7 +389,7 @@ describe("get: .git", () => {
   });
 });
 
-describe("monolith --get (sandbox CLI)", () => {
+describe("tesseract --get (sandbox CLI)", () => {
   let host: string;
   let env: Record<string, string>;
 
@@ -404,7 +404,7 @@ describe("monolith --get (sandbox CLI)", () => {
     host = makeTempDir("get-cli-host");
     writeFiles(host, { "src/a.ts": "a\nb\n" });
     await push("cli", host);
-    env = { THEONE_WORKSPACE: t.workspace, THEONE_HOST: "127.0.0.1", THEONE_PORT: String(t.controller.url.port), THEONE_TOKEN: TEST_TOKEN };
+    env = { TESSERACT_WORKSPACE: t.workspace, TESSERACT_HOST: "127.0.0.1", TESSERACT_PORT: String(t.controller.url.port), TESSERACT_TOKEN: TEST_TOKEN };
   });
 
   const heartbeat = (projectIds: string[]) => t.json("POST", "/v1/sync/heartbeat", { host: HOST, projects: projectIds });
@@ -427,14 +427,14 @@ describe("monolith --get (sandbox CLI)", () => {
   }
 
   const run = (args: string[], cwd: string, output: Output, extra: { signal?: AbortSignal; syncPendingTimeoutMs?: number } = {}) =>
-    runCli(["monolith", ...args], { env, output, cwd, syncPollMs: 10, ...extra });
+    runCli(["tesseract", ...args], { env, output, cwd, syncPollMs: 10, ...extra });
 
   test("prints a git pull style summary, from any folder inside the project", async () => {
     await heartbeat(["cli"]);
     writeFiles(host, { "src/a.ts": "a\nB\nc\n" });
     const output = capture();
     const [code] = await Promise.all([run(["--get"], sandbox("cli", "src"), output), serveOne([modified("src/a.ts", "a\nB\nc\n")])]);
-    expect(output.stderr.join("\n")).toContain("Waiting for Monolith on your computer");
+    expect(output.stderr.join("\n")).toContain("Waiting for Tesseract on your computer");
     expect(code).toBe(0);
     const printed = output.stdout.join("\n").split("\n");
     expect(printed[0]).toBe(`From ${HOST}:${host}`);
@@ -460,7 +460,7 @@ describe("monolith --get (sandbox CLI)", () => {
     const [code] = await Promise.all([run(["--get"], sandbox("cli", ""), output), serveOne([modified("src/a.ts", "host\n")])]);
     expect(code).toBe(2);
     expect(output.stderr.join("\n")).toContain("  src/a.ts");
-    expect(output.stderr.join("\n")).toContain("monolith --get --force");
+    expect(output.stderr.join("\n")).toContain("tesseract --get --force");
     expect(read("cli", "src/a.ts")).toBe("sandbox\n");
   });
 
@@ -468,7 +468,7 @@ describe("monolith --get (sandbox CLI)", () => {
     await heartbeat([]);
     let output = capture();
     expect(await run(["--get"], sandbox("cli", ""), output)).toBe(1);
-    expect(output.stderr.join("\n")).toContain(`Monolith on ${HOST} has not linked cli`);
+    expect(output.stderr.join("\n")).toContain(`Tesseract on ${HOST} has not linked cli`);
 
     output = capture();
     expect(await run(["--get"], t.workspace, output)).toBe(1);
@@ -480,7 +480,7 @@ describe("monolith --get (sandbox CLI)", () => {
 
     output = capture();
     expect(await run([], sandbox("cli", ""), output)).toBe(2);
-    expect(output.stdout.join("\n")).toContain("monolith --get [--force] [--json]");
+    expect(output.stdout.join("\n")).toContain("tesseract --get [--force] [--json]");
   });
 
   test("a request nobody picks up is cancelled", async () => {

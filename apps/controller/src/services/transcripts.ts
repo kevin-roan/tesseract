@@ -1,6 +1,6 @@
 import { open, readdir, stat } from "node:fs/promises";
 import { basename, join } from "node:path";
-import type { TokenUsage } from "@theone/protocol";
+import type { TokenUsage } from "@tesseract/protocol";
 import { toUtcIso } from "../core/time";
 import { truncate } from "./agent-stream";
 

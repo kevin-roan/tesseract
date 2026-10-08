@@ -1,5 +1,5 @@
-import type { AgentRun } from "@theone/protocol";
-import { sampleAgentRun } from "@theone/protocol/fixtures";
+import type { AgentRun } from "@tesseract/protocol";
+import { sampleAgentRun } from "@tesseract/protocol/fixtures";
 
 import { earlierTurns, latestTurnOf, latestTurns, parentRun } from "@/features/chat/utils/messages";
 

@@ -1,4 +1,4 @@
-import type { SocketCloseEvent, SocketLike, SocketMessageEvent } from "@theone/client";
+import type { SocketCloseEvent, SocketLike, SocketMessageEvent } from "@tesseract/client";
 import { socketFixtures } from "./registry";
 
 const CONNECTING = 0;

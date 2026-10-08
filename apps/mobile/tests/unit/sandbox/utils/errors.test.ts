@@ -5,7 +5,7 @@ import {
   ProtocolError,
   ProtocolVersionError,
   TimeoutError,
-} from "@theone/client";
+} from "@tesseract/client";
 
 import { describeError, isRetryableError, issueForError } from "@/features/sandbox/utils/errors";
 import { issueNotice } from "@/features/sandbox/utils/states";

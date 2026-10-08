@@ -1,4 +1,4 @@
-import { routePatterns, type StartBuild, type StartProcess } from "@theone/protocol";
+import { routePatterns, type StartBuild, type StartProcess } from "@tesseract/protocol";
 import { defineHttpFixtures, reply, type HttpFixtureRequest } from "../types";
 import { allBuilds, allProcesses, fixturePorts, logLines, startedBuild, startedProcess } from "./data";
 

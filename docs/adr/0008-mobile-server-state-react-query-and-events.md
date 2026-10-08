@@ -14,7 +14,7 @@ for local UI state.
 ## Decision
 
 - **Server state** lives in `@tanstack/react-query`. The `QueryClientProvider`
-  sits in the root layout. Queries call `@theone/client`. Query keys are
+  sits in the root layout. Queries call `@tesseract/client`. Query keys are
   scoped by sandbox id, so switching sandboxes never mixes caches.
 - **Live updates** come from one `/v1/events` WebSocket per *active* sandbox.
   Each `ServerEvent` carries the full object, which is patched into the

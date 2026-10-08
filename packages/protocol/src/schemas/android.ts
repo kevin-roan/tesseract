@@ -87,7 +87,7 @@ export const HostAndroidStatusSchema = z.object({
   available: z.boolean(),
   reason: z.string().nullable(),
   sdkRoot: z.string().nullable(),
-  /** `THEONE_EMULATOR_ISOLATION` of the host daemon; `none` lets the guest reach the host network. */
+  /** `TESSERACT_EMULATOR_ISOLATION` of the host daemon; `none` lets the guest reach the host network. */
   isolation: EmulatorIsolationModeSchema,
   avds: z.array(z.string()),
   scrcpy: z.boolean(),
@@ -137,7 +137,7 @@ export function sharedEmulatorTunnelPort(basePort: number, serial: string): numb
   return port === null ? null : basePort + 1 + (port - EMULATOR_PORT_RANGE.min) / 2;
 }
 
-/** An emulator running on the host outside the daemon, shared over the link (`THEONE_ANDROID_SHARE_EMULATORS`). */
+/** An emulator running on the host outside the daemon, shared over the link (`TESSERACT_ANDROID_SHARE_EMULATORS`). */
 export const SharedEmulatorSchema = z.object({
   serial: SharedEmulatorSerialSchema,
   model: z.string().nullable(),

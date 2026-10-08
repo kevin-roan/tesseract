@@ -1,5 +1,5 @@
 import { SparkleIcon } from "phosphor-react-native";
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 
 import ResourceCard from "@/components/resource-card";
 

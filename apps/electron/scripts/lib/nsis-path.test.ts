@@ -6,7 +6,7 @@ describe("NSIS PATH harness", () => {
     const script = nsisPathScript("/repo/build/installer.nsh", "/tmp/x/result.txt");
     expect(script).toContain('!include "/repo/build/installer.nsh"');
     expect(script).toContain('FileOpen $Out "Z:\\tmp\\x\\result.txt" w');
-    expect(script.match(/Call MonolithUpdateUserPath/g)).toHaveLength(NSIS_PATH_CASES.length);
+    expect(script.match(/Call TesseractUpdateUserPath/g)).toHaveLength(NSIS_PATH_CASES.length);
   });
 
   it("compares the dumped registry values", () => {

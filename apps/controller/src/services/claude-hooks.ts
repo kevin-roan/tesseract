@@ -1,4 +1,4 @@
-import { isIdOfKind, type ClaudeHookPayload, type InboxItem, type InboxKind } from "@theone/protocol";
+import { isIdOfKind, type ClaudeHookPayload, type InboxItem, type InboxKind } from "@tesseract/protocol";
 import { realpathOrNull } from "../core/paths";
 import type { Logger } from "../core/logger";
 import type { Config } from "../config";
@@ -7,9 +7,9 @@ import { snippet, type InboxService } from "./inbox";
 import { projectForCwd } from "./ports";
 import type { TerminalService } from "./terminals";
 
-/** Added to the hook JSON by `theone-controller hook` from the environment Claude Code runs in. */
-export const HOOK_TERMINAL_FIELD = "theone_terminal_id";
-export const HOOK_AGENT_RUN_FIELD = "theone_agent_run_id";
+/** Added to the hook JSON by `tesseract-controller hook` from the environment Claude Code runs in. */
+export const HOOK_TERMINAL_FIELD = "tesseract_terminal_id";
+export const HOOK_AGENT_RUN_FIELD = "tesseract_agent_run_id";
 
 const TRANSCRIPT_TAIL_BYTES = 64 * 1024;
 

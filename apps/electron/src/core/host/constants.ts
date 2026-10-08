@@ -28,8 +28,8 @@ export const HEALTH_PATH = "/v1/health";
 export const ERROR_PREFIX = /^error:\s*/i;
 
 export const CONTROLLER_ENTRY = ["apps", "controller", "src", "index.ts"] as const;
-export const CONTROLLER_PREBUILT = ["apps", "controller", "dist", "theone-controller"] as const;
-export const CONTROLLER_BINARY = "theone-controller";
+export const CONTROLLER_PREBUILT = ["apps", "controller", "dist", "tesseract-controller"] as const;
+export const CONTROLLER_BINARY = "tesseract-controller";
 export const BUNDLED_BIN_DIR = "bin";
 
 export const HOST_ARGS = {
@@ -45,11 +45,11 @@ export const SETPRIV = { binary: "setpriv", args: ["--pdeathsig", "TERM", "--"] 
 export const SESSION_REQUIRED = "pin-session";
 
 export const HOST_ENV = {
-  sdkRoot: "THEONE_ANDROID_SDK_ROOT",
-  adb: "THEONE_ADB",
-  scrcpyServer: "THEONE_SCRCPY_SERVER",
-  scrcpyVersion: "THEONE_SCRCPY_VERSION",
-  ffmpeg: "THEONE_FFMPEG",
+  sdkRoot: "TESSERACT_ANDROID_SDK_ROOT",
+  adb: "TESSERACT_ADB",
+  scrcpyServer: "TESSERACT_SCRCPY_SERVER",
+  scrcpyVersion: "TESSERACT_SCRCPY_VERSION",
+  ffmpeg: "TESSERACT_FFMPEG",
   bunInstall: "BUN_INSTALL",
   adbForScrcpy: "ADB",
 } as const;

@@ -1,6 +1,6 @@
 import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { TicketSchema } from "@theone/protocol";
+import { TicketSchema } from "@tesseract/protocol";
 import { loadConfig, type Config } from "../src/config";
 import { silentLogger } from "../src/core/logger";
 import { readProcStat } from "../src/core/proc";
@@ -14,7 +14,7 @@ const HERMETIC_SHELL = ["bash", "--noprofile", "--norc", "-i"];
 const tempDirs: string[] = [];
 
 export function makeTempDir(label = "tmp"): string {
-  const dir = mkdtempSync(join(TEMP_ROOT, `theone-controller-test-${label}-`));
+  const dir = mkdtempSync(join(TEMP_ROOT, `tesseract-controller-test-${label}-`));
   tempDirs.push(dir);
   return dir;
 }
@@ -88,23 +88,23 @@ export async function startTestController(
 ): Promise<TestController> {
   const workspace = options.workspace ?? makeTempDir("ws");
   const config = loadConfig({
-    THEONE_WORKSPACE: workspace,
-    THEONE_HOST: "127.0.0.1",
-    THEONE_PORT: "0",
-    THEONE_TOKEN: TEST_TOKEN,
-    THEONE_DISPLAY: ":987",
-    THEONE_VNC_HOST: "127.0.0.1",
-    THEONE_VNC_PORT: "1",
-    THEONE_CHROMIUM_DEBUG_PORT: "1",
-    THEONE_CLAUDE_BIN: "/nonexistent/claude",
-    THEONE_ADB: "/nonexistent/adb",
-    THEONE_FLUTTER: "/nonexistent/flutter",
-    THEONE_TAILSCALE_SOCKET: "/nonexistent/tailscaled.sock",
+    TESSERACT_WORKSPACE: workspace,
+    TESSERACT_HOST: "127.0.0.1",
+    TESSERACT_PORT: "0",
+    TESSERACT_TOKEN: TEST_TOKEN,
+    TESSERACT_DISPLAY: ":987",
+    TESSERACT_VNC_HOST: "127.0.0.1",
+    TESSERACT_VNC_PORT: "1",
+    TESSERACT_CHROMIUM_DEBUG_PORT: "1",
+    TESSERACT_CLAUDE_BIN: "/nonexistent/claude",
+    TESSERACT_ADB: "/nonexistent/adb",
+    TESSERACT_FLUTTER: "/nonexistent/flutter",
+    TESSERACT_TAILSCALE_SOCKET: "/nonexistent/tailscaled.sock",
     CLAUDE_CONFIG_DIR: join(workspace, ".claude"),
-    THEONE_SANDBOX_ID: "test-sandbox",
-    THEONE_PUSH_URL: "off",
-    THEONE_WHISPER_MODELS_DIR: join(workspace, ".whisper-models"),
-    THEONE_LOG_LEVEL: "error",
+    TESSERACT_SANDBOX_ID: "test-sandbox",
+    TESSERACT_PUSH_URL: "off",
+    TESSERACT_WHISPER_MODELS_DIR: join(workspace, ".whisper-models"),
+    TESSERACT_LOG_LEVEL: "error",
     ...options.env,
   });
   config.shell = HERMETIC_SHELL;

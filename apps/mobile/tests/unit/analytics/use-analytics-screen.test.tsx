@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
-import { sampleProject } from "@theone/protocol/fixtures";
+import { TesseractClient } from "@tesseract/client";
+import { sampleProject } from "@tesseract/protocol/fixtures";
 
 import { useAnalyticsScreen } from "@/features/analytics/hooks/use-analytics-screen";
 import { useProjectAnalytics } from "@/features/analytics/hooks/use-project-analytics";
@@ -10,13 +10,13 @@ import { datesEnding, day, emptyWeekReport, report, weekReport, weekSessions } f
 
 const mockPush = jest.fn();
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   router: { push: (...args: unknown[]) => mockPush(...args), canGoBack: () => true, back: jest.fn(), replace: jest.fn() },
 }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const fake = {
   usage: jest.fn(),
   sessions: jest.fn(),

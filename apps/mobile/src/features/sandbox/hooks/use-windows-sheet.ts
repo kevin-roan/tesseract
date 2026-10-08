@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import type { DisplayWindow } from "@theone/protocol";
+import type { DisplayWindow } from "@tesseract/protocol";
 
 import { confirm } from "@/lib/confirm";
 

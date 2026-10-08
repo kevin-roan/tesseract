@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { LIMITS, type Ticket } from "@theone/protocol";
+import { LIMITS, type Ticket } from "@tesseract/protocol";
 
 const TICKET_BYTES = 32;
 const MAX_OUTSTANDING = 10_000;

@@ -31,7 +31,7 @@ import type {
   TerminalState,
   Upload,
   UploadKind,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 type Row = Record<string, unknown>;
 type Binding = string | number | null;

@@ -2,7 +2,7 @@ import { AppState, Platform } from "react-native";
 import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
-import type { InboxItem } from "@theone/protocol";
+import type { InboxItem } from "@tesseract/protocol";
 
 import { playHaptic } from "@/lib/haptics";
 

@@ -1,5 +1,5 @@
 {
-  "name": "@theone/client",
+  "name": "@tesseract/client",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,7 +13,7 @@
     "test": "bun test"
   },
   "dependencies": {
-    "@theone/protocol": "workspace:*"
+    "@tesseract/protocol": "workspace:*"
   },
   "devDependencies": {
     "@types/bun": "^1.4.2",

@@ -1,7 +1,7 @@
 # Electron desktop app: develop, test, package, release
 
-`apps/electron` (package `@monolith/electron`, product **Monolith**, app id
-`dev.monolith.Desktop`) is the Electron rewrite of the GTK desktop companion in
+`apps/electron` (package `@tesseract/electron`, product **Tesseract**, app id
+`dev.tesseract.Desktop`) is the Electron rewrite of the GTK desktop companion in
 `apps/desktop`. It has the same pages and looks the same, and adds a setup wizard
 (Docker, sandbox image, Android emulator, Claude, pairing) and a standalone `tesseract`
 CLI. Contract for agents working on it: [docs/electron/conventions.md](../electron/conventions.md);
@@ -36,7 +36,7 @@ Run these from `apps/electron`, or use the root shortcuts in the last column.
 | `bun run e2e` | builds `out/` if stale, then Playwright `_electron` specs in `e2e/` | `bun run electron:e2e` |
 | `bun run snapshot -- …` | one headless capture of a route as PNG (below) | — |
 | `bun run diff -- a.png b.png …` | pixelmatch two PNGs (below) | — |
-| `bun run cli:build` | compiles `tesseract` and `theone-controller` with `bun build --compile` | — |
+| `bun run cli:build` | compiles `tesseract` and `tesseract-controller` with `bun build --compile` | — |
 | `bun run bundle:sandbox` | writes the sandbox build context to `build/sandbox-context/` | — |
 | `bun run dist -- …` | build + CLI + sandbox bundle + electron-builder (below) | `bun run electron:dist` |
 | `bun run smoke` | checks the built AppImage/deb (below) | `bun run electron:smoke` |
@@ -58,7 +58,7 @@ bun run electron            # from the repository root
   port. Check with `ss -ltn | grep :4545`. It never uses the Vite (5173) or other default
   ports, and it does not touch the Expo server on 8081.
 - Main accepts IPC only from `file://` and the dev server origin.
-- **Fixture mode** shows the UI with canned data and no sandbox: set `MONOLITH_FIXTURES=1`,
+- **Fixture mode** shows the UI with canned data and no sandbox: set `TESSERACT_FIXTURES=1`,
   or open `http://127.0.0.1:4545/#/overview?fixtures` in a browser (a plain browser is
   always in fixture mode, because it has no preload bridge). `?scenario=<name>` picks a
   fixture state, `?scheme=light|dark` the colour scheme.
@@ -69,32 +69,32 @@ bun run electron            # from the repository root
   (every component on its own).
 - Launch flags of the app binary: `--hidden` (start in the tray), `--page <id>`, `--quit`
   (ask a running instance to quit), `--debug` (debug logging). Log level otherwise comes
-  from `MONOLITH_DESKTOP_LOG` (`debug|info|warn|error`); logs go to stdout/stderr.
+  from `TESSERACT_DESKTOP_LOG` (`debug|info|warn|error`); logs go to stdout/stderr.
 - A dev run uses your real profile. To keep it away from your config, point it elsewhere:
-  `MONOLITH_DESKTOP_CONFIG=/tmp/m/config.json MONOLITH_USER_DATA=/tmp/m/data MONOLITH_STATE_DIR=/tmp/m/state bun run electron`.
+  `TESSERACT_DESKTOP_CONFIG=/tmp/m/config.json TESSERACT_USER_DATA=/tmp/m/data TESSERACT_STATE_DIR=/tmp/m/state bun run electron`.
 
 ### Where the app keeps its files
 
 | What | Linux | macOS | Windows |
 |---|---|---|---|
-| `config.json` (shared with the GTK app on Linux) | `~/.config/monolith-desktop/config.json` | `~/Library/Application Support/Monolith/config.json` | `%APPDATA%\Monolith\config.json` |
-| App data (`userData`) | `~/.config/Monolith` | `~/Library/Application Support/Monolith` | `%APPDATA%\Monolith` |
+| `config.json` (shared with the GTK app on Linux) | `~/.config/tesseract-desktop/config.json` | `~/Library/Application Support/Tesseract/config.json` | `%APPDATA%\Tesseract\config.json` |
+| App data (`userData`) | `~/.config/Tesseract` | `~/Library/Application Support/Tesseract` | `%APPDATA%\Tesseract` |
 | Sandbox env file | `<userData>/sandbox/.env` (0600) | same | same |
 | Downloads (Docker installer) | `<userData>/downloads/` | same | same |
 | Android package list cache | `<userData>/android/cache/` | same | same |
-| AppImage CLI copy, its `app.json` and sandbox context | `~/.local/share/monolith/{bin/monolith,app.json,sandbox/}` | — | — |
-| Sync-back state | `~/.local/state/monolith` | `~/.local/state/monolith` | `%LOCALAPPDATA%\Monolith\state` |
-| Default Android SDK | `~/.local/share/theone/android-sdk` | `~/Library/Application Support/Monolith/android-sdk` | `%LOCALAPPDATA%\Monolith\android-sdk` |
+| AppImage CLI copy, its `app.json` and sandbox context | `~/.local/share/tesseract/{bin/tesseract,app.json,sandbox/}` | — | — |
+| Sync-back state | `~/.local/state/tesseract` | `~/.local/state/tesseract` | `%LOCALAPPDATA%\Tesseract\state` |
+| Default Android SDK | `~/.local/share/tesseract/android-sdk` | `~/Library/Application Support/Tesseract/android-sdk` | `%LOCALAPPDATA%\Tesseract\android-sdk` |
 
-Overrides: `MONOLITH_DESKTOP_CONFIG`, `MONOLITH_USER_DATA`, `MONOLITH_STATE_DIR`
+Overrides: `TESSERACT_DESKTOP_CONFIG`, `TESSERACT_USER_DATA`, `TESSERACT_STATE_DIR`
 (`XDG_CONFIG_HOME` / `XDG_STATE_HOME` are honoured too). The CLI resolves the same paths.
-`MONOLITH_ANDROID_REPOSITORY_URL` / `MONOLITH_ANDROID_SYSIMG_URL` replace Google's Android
+`TESSERACT_ANDROID_REPOSITORY_URL` / `TESSERACT_ANDROID_SYSIMG_URL` replace Google's Android
 package lists (a full `.xml` URL or a base URL; `http(s)` only), and
-`MONOLITH_DISABLE_DISCOVERY=1` stops the first-run lookup of a running sandbox through Docker.
+`TESSERACT_DISABLE_DISCOVERY=1` stops the first-run lookup of a running sandbox through Docker.
 
-The AppImage copy of the CLI (`~/.local/share/monolith/bin/tesseract`) gets an `app.json`
+The AppImage copy of the CLI (`~/.local/share/tesseract/bin/tesseract`) gets an `app.json`
 (`{appPath, sandboxDir}`) and a copy of the bundled sandbox context in
-`~/.local/share/monolith/sandbox` on install and on every AppImage launch
+`~/.local/share/tesseract/sandbox` on install and on every AppImage launch
 (`src/main/services/cli-sidecar.ts`; the copy is redone only when `.bundle-hash` changes).
 
 ## Snapshot and diff workflow
@@ -105,8 +105,8 @@ so nothing appears on screen and your config and sandbox are never touched.
 
 ```bash
 cd apps/electron
-bun run snapshot -- --route /projects/monolith --out .snapshots/projects-detail.png
-bun run snapshot -- --route /projects/monolith --out .snapshots/projects-detail-light.png --light
+bun run snapshot -- --route /projects/tesseract --out .snapshots/projects-detail.png
+bun run snapshot -- --route /projects/tesseract --out .snapshots/projects-detail-light.png --light
 bun run diff -- .snapshots/projects-detail.png docs/electron/reference/page-projects-core-detail.png \
   --out .snapshots/projects-detail-diff.png
 # mismatch: 1.84% (14467 of 786432 pixels)
@@ -132,10 +132,10 @@ Input paths try `apps/electron` first and then the repository root. Different si
 compared on the common area and the rest counts as mismatch.
 
 How it works: the script starts Electron with a temporary profile under
-`$TMPDIR/monolith-test-*` (`MONOLITH_USER_DATA`, `MONOLITH_DESKTOP_CONFIG`,
-`MONOLITH_STATE_DIR`, `XDG_CACHE_HOME`), `MONOLITH_FIXTURES=1`, `MONOLITH_SNAPSHOT=1`,
+`$TMPDIR/tesseract-test-*` (`TESSERACT_USER_DATA`, `TESSERACT_DESKTOP_CONFIG`,
+`TESSERACT_STATE_DIR`, `XDG_CACHE_HOME`), `TESSERACT_FIXTURES=1`, `TESSERACT_SNAPSHOT=1`,
 device scale 1 and reduced motion. Main opens one hidden window of the exact size, waits
-for `window.__monolithIdle()` (fonts loaded, no queries or mutations running, no finite
+for `window.__tesseractIdle()` (fonts loaded, no queries or mutations running, no finite
 animation for 300 ms), calls `capturePage()`, writes the PNG and exits. The profile is
 deleted afterwards.
 
@@ -165,7 +165,7 @@ bunx vitest run --project web src/renderer/onboarding   # renderer tests under a
 Everything in `bun run test` passes without a display, without Docker and without network.
 `tests/architecture.test.ts` fails when `src/core`, `src/shared` or `cli` import `electron`,
 when the renderer imports `node:*`, `src/core` or `electron`, or when `src/shared` imports
-`node:*`. Temporary files use the `monolith-test-` prefix.
+`node:*`. Temporary files use the `tesseract-test-` prefix.
 
 ## End-to-end tests
 
@@ -173,22 +173,22 @@ when the renderer imports `node:*`, `src/core` or `electron`, or when `src/share
 bun run electron:e2e                                   # repository root
 bun run --cwd apps/electron e2e -- --grep onboarding   # one area
 infra/e2e/run --electron                               # infra suite, then the Electron suites against the same stack
-infra/e2e/run --no-build --electron-only               # only the Electron suites, reusing theone/sandbox:e2e
+infra/e2e/run --no-build --electron-only               # only the Electron suites, reusing tesseract/sandbox:e2e
 ```
 
 `bun run e2e` builds `out/` when it is stale and runs Playwright (`_electron`, one worker,
 60 s per test) on the specs in `e2e/`. Every launch uses `launchApp()` from `e2e/app.ts`: an
-isolated `monolith-test-*` profile, fixtures on unless the test passes
-`MONOLITH_FIXTURES=0`, `MONOLITH_DISABLE_DISCOVERY=1` for the onboarding specs (so a
-running `theone` stack doesn't skip the wizard), headless on Linux, a 1240×800 window, and the app is always closed
+isolated `tesseract-test-*` profile, fixtures on unless the test passes
+`TESSERACT_FIXTURES=0`, `TESSERACT_DISABLE_DISCOVERY=1` for the onboarding specs (so a
+running `tesseract` stack doesn't skip the wizard), headless on Linux, a 1240×800 window, and the app is always closed
 in `afterEach`.
 
 | Spec | Covers | Needs |
 |---|---|---|
 | `shell.spec.ts` | main shell when onboarding is complete; Settings from the status row; a fresh profile opens the wizard | — |
 | `preferences.spec.ts` | Settings sections and theme switch; speech-to-text profile; Claude accounts | — |
-| `onboarding.spec.ts` | fresh profile lands on Welcome; Docker step detects the local engine and Compose; Sandbox step components and a simulated build (fixtures); Android step lists packages from a local fixture repository (an HTTP server passed in with `MONOLITH_ANDROID_REPOSITORY_URL` / `MONOLITH_ANDROID_SYSIMG_URL`), installs into a temporary SDK and writes an AVD; Finish opens the main window and is remembered; a configured connection skips the wizard | Docker step: a reachable Docker. Android: linux-x64. Live: `THEONE_E2E_URL` |
-| `app.spec.ts` | visual baselines of every page, two Settings sections and the light scheme; live controller: connect from Settings, every page, overview stats, create a project, start/stop a process, terminal `echo hi`, shared files, VNC display, save preferences | live part: `THEONE_E2E_URL` + `THEONE_E2E_TOKEN` |
+| `onboarding.spec.ts` | fresh profile lands on Welcome; Docker step detects the local engine and Compose; Sandbox step components and a simulated build (fixtures); Android step lists packages from a local fixture repository (an HTTP server passed in with `TESSERACT_ANDROID_REPOSITORY_URL` / `TESSERACT_ANDROID_SYSIMG_URL`), installs into a temporary SDK and writes an AVD; Finish opens the main window and is remembered; a configured connection skips the wizard | Docker step: a reachable Docker. Android: linux-x64. Live: `TESSERACT_E2E_URL` |
+| `app.spec.ts` | visual baselines of every page, two Settings sections and the light scheme; live controller: connect from Settings, every page, overview stats, create a project, start/stop a process, terminal `echo hi`, shared files, VNC display, save preferences | live part: `TESSERACT_E2E_URL` + `TESSERACT_E2E_TOKEN` |
 | `cli.spec.ts` | `tesseract` compiled for this host: version/help, exit codes, `config`, `doctor`, `android images` against the fixture repository, `sandbox status`, `pair`, `open` | Docker for some cases; e2e stack for the live cases |
 | `packaging.spec.ts` | `electron-builder.yml` (CLI + sandbox context as extra resources, universal dmg, per-user NSIS with PATH, AppImage + deb with CLI links); NSIS PATH macros under wine; the AppImage contents, the bundled CLI version, `--quit`, and that the packaged app renders the wizard | linux-x64; wine for the NSIS case |
 
@@ -196,20 +196,20 @@ Environment:
 
 | Variable | Effect |
 |---|---|
-| `THEONE_E2E_URL`, `THEONE_E2E_TOKEN`, `THEONE_E2E_PROJECT`, `THEONE_E2E_ENV_FILE`, `THEONE_E2E_IMAGE` | the live stack; `infra/e2e/run --electron` sets them. The suite refuses a project that doesn't start with `theone-e2e`, so it can't mutate your `theone` stack |
-| `MONOLITH_E2E_DIST` | `stale` (default: run `dist` when the AppImage is older than its inputs, up to 30 min), `always`, or `never` (skip the AppImage cases when there is none) |
-| `MONOLITH_E2E_CLI` | path of a prebuilt `tesseract` to test instead of compiling one |
-| `MONOLITH_UPDATE_SNAPSHOTS=1` | rewrite the visual baselines in `e2e/__snapshots__/` (same as Playwright `-u`) |
+| `TESSERACT_E2E_URL`, `TESSERACT_E2E_TOKEN`, `TESSERACT_E2E_PROJECT`, `TESSERACT_E2E_ENV_FILE`, `TESSERACT_E2E_IMAGE` | the live stack; `infra/e2e/run --electron` sets them. The suite refuses a project that doesn't start with `tesseract-e2e`, so it can't mutate your `tesseract` stack |
+| `TESSERACT_E2E_DIST` | `stale` (default: run `dist` when the AppImage is older than its inputs, up to 30 min), `always`, or `never` (skip the AppImage cases when there is none) |
+| `TESSERACT_E2E_CLI` | path of a prebuilt `tesseract` to test instead of compiling one |
+| `TESSERACT_UPDATE_SNAPSHOTS=1` | rewrite the visual baselines in `e2e/__snapshots__/` (same as Playwright `-u`) |
 
 Visual baselines: rendered with `TZ=UTC`, a fixed clock, reduced motion; a test fails when
 more than **0.5 %** of the pixels differ (pixelmatch threshold 0.1). On failure
 `<name>-actual.png` and `<name>-diff.png` are written to `test-results/`. A missing
 baseline is created on the first run; review it before you commit it.
 
-Docker resources created by tests are named `monolith-test-*` or belong to the
-`theone-e2e` project and are removed afterwards. The suites never stop or change the
-`theone` stack or the host daemon on 7701 (host-shell cases use a free port, a temporary
-`THEONE_HOST_SHELL_DIR` and `--bind 127.0.0.1`).
+Docker resources created by tests are named `tesseract-test-*` or belong to the
+`tesseract-e2e` project and are removed afterwards. The suites never stop or change the
+`tesseract` stack or the host daemon on 7701 (host-shell cases use a free port, a temporary
+`TESSERACT_HOST_SHELL_DIR` and `--bind 127.0.0.1`).
 
 ## Packaging
 
@@ -224,7 +224,7 @@ bun run --cwd apps/electron dist -- --smoke            # Linux: build, then run 
 
 1. `bun run build` (skip with `--skip-build`).
 2. `scripts/cli-build.ts` for the platform's targets (skip with `--skip-cli`): `dist-cli/<os>-<arch>/tesseract` and
-   `theone-controller` (`.exe` on Windows). Targets: `linux` → `linux-x64`; `mac` → `mac-x64,mac-arm64`; `win` → `win-x64`.
+   `tesseract-controller` (`.exe` on Windows). Targets: `linux` → `linux-x64`; `mac` → `mac-x64,mac-arm64`; `win` → `win-x64`.
    Standalone: `bun run cli:build -- --target linux-x64,mac-arm64`, `--all` for every target
    (`linux-x64`, `linux-arm64`, `mac-x64`, `mac-arm64`, `win-x64`), `--no-controller` for `tesseract` only.
 3. `scripts/bundle-sandbox.ts` (skip with `--skip-sandbox`): copies the **git-tracked** files the
@@ -232,7 +232,7 @@ bun run --cwd apps/electron dist -- --smoke            # Linux: build, then run 
    `packages/**`, `apps/controller/**`, `apps/mobile/package.json`, `apps/electron/package.json`,
    `infra/docker/sandbox/**`, `infra/compose/compose*.yml`, `.env.example`, `tailscale/serve.json`) into
    `build/sandbox-context/` with their modes, and writes `manifest.json` (`gitCommit`, `dirty`,
-   `imageVersion` from `ARG THEONE_IMAGE_VERSION`, sha256 of every file) and `build-weights.json`
+   `imageVersion` from `ARG TESSERACT_IMAGE_VERSION`, sha256 of every file) and `build-weights.json`
    (progress weight per Dockerfile step). Untracked files are not bundled; uncommitted edits are,
    and set `dirty: true`. It fails on CRLF line endings in shell scripts.
 4. Checks that the CLI binaries and `manifest.json` exist, then runs electron-builder with
@@ -240,15 +240,15 @@ bun run --cwd apps/electron dist -- --smoke            # Linux: build, then run 
 5. With `--smoke`: `scripts/smoke.ts`.
 
 Other `dist` options: `--publish never|always|onTag|onTagOrDraft` (default `never`),
-`--update-url <url>` / `MONOLITH_UPDATE_URL`, `--channel <name>` / `MONOLITH_UPDATE_CHANNEL`.
+`--update-url <url>` / `TESSERACT_UPDATE_URL`, `--channel <name>` / `TESSERACT_UPDATE_CHANNEL`.
 
 | OS | Artifacts in `apps/electron/dist/` | Install layout |
 |---|---|---|
-| macOS (build on a Mac) | `Monolith-<v>-universal.dmg`, `Monolith-<v>-universal.zip` (for updates) | `Monolith.app`; hardened runtime with `build/entitlements.mac.plist` (JIT, unsigned executable memory, library validation off, microphone); minimum macOS 12 (Docker Desktop itself needs 14) |
-| Windows | `Monolith-<v>-x64.exe` (NSIS, one-click, per user, no elevation) | `%LOCALAPPDATA%\Programs\Monolith\Monolith.exe`; `build/installer.nsh` appends `$INSTDIR\resources\bin` to the **user** `Path` and removes it on uninstall (not on update) |
-| Linux | `Monolith-<v>-x86_64.AppImage`, `Monolith-<v>-amd64.deb` | deb: `/opt/Monolith/monolith-desktop`, `/usr/bin/monolith-desktop`, `/usr/bin/tesseract` → `resources/bin/tesseract` (only when that path is free or already ours; removed on uninstall), desktop entry `dev.monolith.Desktop.desktop`, `monolith://` handler. Depends on GTK 3, NSS, libsecret…; recommends `docker.io \| docker-ce` |
+| macOS (build on a Mac) | `Tesseract-<v>-universal.dmg`, `Tesseract-<v>-universal.zip` (for updates) | `Tesseract.app`; hardened runtime with `build/entitlements.mac.plist` (JIT, unsigned executable memory, library validation off, microphone); minimum macOS 12 (Docker Desktop itself needs 14) |
+| Windows | `Tesseract-<v>-x64.exe` (NSIS, one-click, per user, no elevation) | `%LOCALAPPDATA%\Programs\Tesseract\Tesseract.exe`; `build/installer.nsh` appends `$INSTDIR\resources\bin` to the **user** `Path` and removes it on uninstall (not on update) |
+| Linux | `Tesseract-<v>-x86_64.AppImage`, `Tesseract-<v>-amd64.deb` | deb: `/opt/Tesseract/tesseract-desktop`, `/usr/bin/tesseract-desktop`, `/usr/bin/tesseract` → `resources/bin/tesseract` (only when that path is free or already ours; removed on uninstall), desktop entry `dev.tesseract.Desktop.desktop`, `tesseract://` handler. Depends on GTK 3, NSS, libsecret…; recommends `docker.io \| docker-ce` |
 
-Every package carries, under `resources/`: `app.asar`, `bin/tesseract` + `bin/theone-controller`,
+Every package carries, under `resources/`: `app.asar`, `bin/tesseract` + `bin/tesseract-controller`,
 `sandbox/` (the build context above), `icons/`, `licenses/LICENSE-*` (fonts) and `app-update.yml`.
 Electron fuses: `runAsNode`, `NODE_OPTIONS` and `--inspect` are off, `onlyLoadAppFromAsar` is on.
 
@@ -257,12 +257,12 @@ Putting `tesseract` on `PATH` per OS is described in [tesseract-cli.md](tesserac
 ### Smoke checks (Linux)
 
 ```bash
-bun run electron:smoke                                   # dist/Monolith-<v>-x86_64.AppImage and the .deb
+bun run electron:smoke                                   # dist/Tesseract-<v>-x86_64.AppImage and the .deb
 node apps/electron/scripts/smoke.ts --appimage <file> --deb <file> --snapshot-out /tmp/smoke.png
 node apps/electron/scripts/smoke.ts --no-launch          # contents only, don't start the app
 ```
 
-It extracts the AppImage into a `monolith-test-*` dir and checks the packaged files and
+It extracts the AppImage into a `tesseract-test-*` dir and checks the packaged files and
 exec bits, that `resources/sandbox` matches `manifest.json`, that the update feed is a
 generic http(s) URL, that `resources/bin/tesseract --version` prints the app version, and
 then starts the packaged app headless on `/onboarding/welcome` (880×620) and checks the
@@ -282,12 +282,12 @@ logic and the desktop entry.
 
 ### Updates
 
-electron-updater with a generic provider: `https://downloads.monolith.dev/desktop` by
+electron-updater with a generic provider: `https://downloads.tesseract.dev/desktop` by
 default (`publish.url` in `electron-builder.yml`), overridable at build time with
-`--update-url`/`MONOLITH_UPDATE_URL`, channel with `--channel`/`MONOLITH_UPDATE_CHANNEL`.
+`--update-url`/`TESSERACT_UPDATE_URL`, channel with `--channel`/`TESSERACT_UPDATE_CHANNEL`.
 The app checks 60 s after start and then every 6 hours, never downloads on its own
 (Settings › About › **Download**, then **Restart to update**), and is off in unpackaged
-builds, in tests, and when `MONOLITH_DISABLE_UPDATES=1`. On Linux only the AppImage and
+builds, in tests, and when `TESSERACT_DISABLE_UPDATES=1`. On Linux only the AppImage and
 the deb update in the app.
 
 ### macOS signing and notarization
@@ -308,7 +308,7 @@ notarizes with `@electron/notarize` after signing. It picks the first complete s
 
 - No credentials → notarization is skipped with a log line.
 - A partly set group (e.g. `APPLE_ID` without `APPLE_TEAM_ID`) fails the build and names the missing variables.
-- `MONOLITH_NOTARIZE=0` skips it; `MONOLITH_NOTARIZE=1` fails the build when no credentials are set.
+- `TESSERACT_NOTARIZE=0` skips it; `TESSERACT_NOTARIZE=1` fails the build when no credentials are set.
 
 The dmg itself is not signed (`dmg.sign: false`); the app inside is.
 
@@ -329,7 +329,7 @@ by installing the new deb.
   one) holds it. Stop that process; the port is fixed on purpose.
 - Snapshot exits non-zero after 20 s: the page never became idle (a looping finite
   animation, or a query that never settles in fixture mode). Run with `--headed` and
-  `MONOLITH_DESKTOP_LOG=debug`.
+  `TESSERACT_DESKTOP_LOG=debug`.
 - `dist: missing CLI binaries (run cli:build)`: you passed `--skip-cli` without a previous
   `cli:build` for that platform's targets.
 - `CRLF line endings would break the Linux image`: a shell script in the bundle has CRLF

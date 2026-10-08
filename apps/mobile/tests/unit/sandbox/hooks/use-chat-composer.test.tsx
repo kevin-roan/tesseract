@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { ApiError, TheOneClient } from "@theone/client";
-import { LIMITS, type AgentRun } from "@theone/protocol";
-import { sampleAgentRun, sampleProject, sampleTranscription, sampleUpload } from "@theone/protocol/fixtures";
+import { ApiError, TesseractClient } from "@tesseract/client";
+import { LIMITS, type AgentRun } from "@tesseract/protocol";
+import { sampleAgentRun, sampleProject, sampleTranscription, sampleUpload } from "@tesseract/protocol/fixtures";
 import * as ImagePicker from "expo-image-picker";
 
 import { useChatComposer } from "@/features/chat/hooks/use-chat-composer";
@@ -25,7 +25,7 @@ import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSand
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) };
 let mockStream: AgentRunStream;
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   get router() {
@@ -35,7 +35,7 @@ jest.mock("expo-router", () => ({
 jest.mock("@/lib/confirm", () => ({ confirm: jest.fn() }));
 jest.mock("@/features/sandbox/hooks/use-agent-run-stream", () => ({ useAgentRunStream: () => mockStream }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const mockConfirm = confirm as jest.Mock;
 const fake = {
   startAgentRun: jest.fn(),

@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { ApiError, TheOneClient } from "@theone/client";
-import type { LogLine, ProcessInfo, Project } from "@theone/protocol";
-import { sampleProcess, sampleProject } from "@theone/protocol/fixtures";
+import { ApiError, TesseractClient } from "@tesseract/client";
+import type { LogLine, ProcessInfo, Project } from "@tesseract/protocol";
+import { sampleProcess, sampleProject } from "@tesseract/protocol/fixtures";
 
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
 import { useNewProject } from "@/features/sandbox/hooks/use-new-project";
@@ -24,7 +24,7 @@ const mockRouter = {
   canGoBack: jest.fn(() => true),
 };
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   get router() {
@@ -32,7 +32,7 @@ jest.mock("expo-router", () => ({
   },
 }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const SID = TEST_SANDBOX.id;
 const TS = "2026-09-23T10:00:00.000Z";
 const NOTES: Project = { ...sampleProject, id: "notes", name: "notes", path: "/workspace/projects/notes", git: null, buildTargets: [] };

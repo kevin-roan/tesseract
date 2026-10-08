@@ -1,4 +1,4 @@
-import { routePatterns } from "@theone/protocol";
+import { routePatterns } from "@tesseract/protocol";
 import { httpFixtures } from "../registry";
 import type { HttpFixtureRequest, HttpFixtureRoute } from "../types";
 import { isParityVariant, PARITY_VARIANTS, pending } from "./parity";

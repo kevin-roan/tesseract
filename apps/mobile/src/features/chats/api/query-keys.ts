@@ -1,4 +1,4 @@
-import type { SessionsFilter } from "@theone/protocol";
+import type { SessionsFilter } from "@tesseract/protocol";
 
 export const sessionKeys = {
   lists: (sandboxId: string) => ["sandbox", sandboxId, "sessions"] as const,

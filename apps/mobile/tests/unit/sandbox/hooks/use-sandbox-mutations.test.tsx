@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react-native";
-import { ApiError, TheOneClient } from "@theone/client";
-import type { BuildJob, ProcessInfo } from "@theone/protocol";
-import { sampleBuild, sampleProcess } from "@theone/protocol/fixtures";
+import { ApiError, TesseractClient } from "@tesseract/client";
+import type { BuildJob, ProcessInfo } from "@tesseract/protocol";
+import { sampleBuild, sampleProcess } from "@tesseract/protocol/fixtures";
 
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
 import { registerPushToken } from "@/features/inbox/api/push";
@@ -11,10 +11,10 @@ import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
 
 import { TEST_SANDBOX, createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const fake = {
   startBuild: jest.fn(),
   stopProcess: jest.fn(),

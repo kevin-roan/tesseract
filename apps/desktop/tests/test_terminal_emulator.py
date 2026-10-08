@@ -1,6 +1,6 @@
 import pytest
 
-from monolith_desktop.widgets.terminal.cells import (
+from tesseract_desktop.widgets.terminal.cells import (
     BOLD,
     DEFAULT_COLOR,
     DIM,
@@ -13,9 +13,9 @@ from monolith_desktop.widgets.terminal.cells import (
     color_rgb,
     is_truecolor,
 )
-from monolith_desktop.widgets.terminal.palette import palette_for
-from monolith_desktop.widgets.terminal.terminal import Terminal
-from monolith_desktop.widgets.terminal.width import char_width
+from tesseract_desktop.widgets.terminal.palette import palette_for
+from tesseract_desktop.widgets.terminal.terminal import Terminal
+from tesseract_desktop.widgets.terminal.width import char_width
 
 
 def make(cols: int = 10, rows: int = 5, scrollback: int = 100) -> tuple[Terminal, list[str]]:

@@ -5,7 +5,7 @@ import {
   type BuildJob,
   type ProcessInfo,
   type Project,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import type { AvatarPerson } from "@/components/avatar-stack";
 import { latestTurns } from "@/features/chat/utils/messages";

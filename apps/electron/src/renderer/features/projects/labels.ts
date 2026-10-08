@@ -1,4 +1,4 @@
-import type { BuildProfile, BuildTarget, Framework } from "@theone/protocol";
+import type { BuildProfile, BuildTarget, Framework } from "@tesseract/protocol";
 import type { ConnectionStatus } from "../../app/connection";
 import type { ActivityKind, ListTab, ProjectTabId } from "./types";
 
@@ -141,7 +141,7 @@ export const EMULATOR_LABELS = {
   show: "Show emulator",
   tooltip: "Build the app and install it on the host Android emulator",
   tooltipDir: (dir: string) => `Build the app in ${dir} and install it on the host Android emulator`,
-  tooltipSetup: (reason: string) => `${reason}. Monolith starts and links the emulator on this computer first`,
+  tooltipSetup: (reason: string) => `${reason}. Tesseract starts and links the emulator on this computer first`,
   noTarget: "No Android app was detected in this project",
   outdated: "This sandbox can't run apps on the emulator yet; update the sandbox",
   noTargets: (error: string) => `Couldn't read the project's run targets: ${error}`,

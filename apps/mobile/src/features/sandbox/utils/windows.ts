@@ -1,4 +1,4 @@
-import type { DisplayWindow } from "@theone/protocol";
+import type { DisplayWindow } from "@tesseract/protocol";
 
 export const WINDOWS_COPY = {
   title: "Open windows",

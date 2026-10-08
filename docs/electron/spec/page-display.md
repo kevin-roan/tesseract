@@ -1,7 +1,7 @@
 # Spec: Display page (VNC viewer)
 
 Status: survey of the GTK app for the Electron rebuild. Everything here comes from
-`apps/desktop/monolith_desktop/pages/display/**` and `apps/desktop/monolith_desktop/vnc/**`,
+`apps/desktop/tesseract_desktop/pages/display/**` and `apps/desktop/tesseract_desktop/vnc/**`,
 plus the shared widgets and theme tokens they use. Numbers are taken from the code and checked
 against the reference screenshots. Strings in `"..."` are user-facing: copy them exactly
 (including `…` U+2026, `×` U+00D7 and `·` U+00B7).
@@ -19,13 +19,13 @@ section `sandbox`, order `40`.
 ## 1. Reference screenshots
 
 All of these were captured headless (broadway, `--zoom 1`) against the user's **live** sandbox
-(`theone-sandbox`). The display showed Chromium maximized on `about:blank`, with its
+(`tesseract-sandbox`). The display showed Chromium maximized on `about:blank`, with its
 `--no-sandbox` warning bar. Broadway limits its virtual monitor to 1024×768, so a requested
 1440×900 render comes out at 1024×768.
 
 | File | What it shows |
 |---|---|
-| `docs/electron/reference/page-display-live.png` | Dark (graphite), 1024×768, sidebar expanded. Viewer mode, phase `connected`. Toolbar: green `"Live"` badge, meta `"1600×900 · 44% · TheOne theone-sandb…"` (ellipsized), `Fit` (checked) / `1:1` pills, windows button, view-only eye, clipboard toggle (**checked**, the default), keyboard menu button, separator, camera, globe, refresh, maximize. The stage is fit-scaled to 44% (1600×900 → 710×399), horizontally flush and vertically centered on `#09090A`. The remote cursor appears in the frame. |
+| `docs/electron/reference/page-display-live.png` | Dark (graphite), 1024×768, sidebar expanded. Viewer mode, phase `connected`. Toolbar: green `"Live"` badge, meta `"1600×900 · 44% · Tesseract tesseract-sandb…"` (ellipsized), `Fit` (checked) / `1:1` pills, windows button, view-only eye, clipboard toggle (**checked**, the default), keyboard menu button, separator, camera, globe, refresh, maximize. The stage is fit-scaled to 44% (1600×900 → 710×399), horizontally flush and vertically centered on `#09090A`. The remote cursor appears in the frame. |
 | `docs/electron/reference/page-display-live-light.png` | The same state in light (graphiteLight): toolbar `#FFFFFF`, stage `#F5F5F6`, badge dot `#2E8A5B`, checked pills/toggles `#E7E7EA`. |
 | `docs/electron/reference/page-display-compact.png` | Dark, 500×600 window (sidebar collapsed, back chevron in the header). The page is narrower than 540 sp, so it is in **compact** mode: the secondary actions (view-only, clipboard, keys, separator, screenshot, browser) are hidden and the `…` overflow menu button shows. Remaining: badge, meta (`"1600×900 · 30% · TheOn…"`), Fit, 1:1, windows, reconnect, fullscreen, more. Scale 30%. |
 
@@ -186,7 +186,7 @@ empty parts are skipped:
    the part if either value is 0 or null.
 2. Scale `"{round(scale*100)}%"`, only in viewer mode, while `connected`, when the scale is
    known (§4.1).
-3. The desktop name from ServerInit (e.g. `"TheOne theone-sandbox"`), only in viewer mode
+3. The desktop name from ServerInit (e.g. `"Tesseract tesseract-sandbox"`), only in viewer mode
    when it is non-empty.
 
 ### 3.9 Enabled actions
@@ -550,7 +550,7 @@ session, the pollers and clipboard listeners.
 
 - **Save screenshot**: `GET /v1/display/screenshot` (PNG bytes). On success, open a save
   dialog with the title `"Save a screenshot"`, the default name
-  `monolith-display-YYYYMMDD-HHMMSS.png` (local time, `%Y%m%d-%H%M%S`) and a filter
+  `tesseract-display-YYYYMMDD-HHMMSS.png` (local time, `%Y%m%d-%H%M%S`) and a filter
   `"PNG image"` (`image/png`). Cancel does nothing. On write success → toast
   `"Screenshot saved to {basename}"`. A fetch or write failure → toast
   `"Screenshot failed: {error}"`. In Electron, use `dialog.showSaveDialog` and write in main.

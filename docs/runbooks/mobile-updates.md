@@ -1,6 +1,6 @@
 # Mobile builds and over-the-air updates
 
-How TheOne's own app (`apps/mobile`) ships: native **builds** through EAS
+How Tesseract's own app (`apps/mobile`) ships: native **builds** through EAS
 Build, JS-only changes as **updates** through EAS Update. Read this before
 `eas update`, and whenever a published update does not reach the phone.
 
@@ -83,12 +83,12 @@ platform:
 
 ## Known issue: tracked Gradle output in `modules/`
 
-`modules/theone-island/android/build/` (about 1,670 `.dex` and `results.bin`
+`modules/tesseract-island/android/build/` (about 1,670 `.dex` and `results.bin`
 files) is committed. Every local Gradle build rewrites it, which can change the
 Android fingerprint without any real native change, so Android updates stop
 matching the installed build. Fix by ignoring and untracking it:
 
 ```bash
 echo 'apps/mobile/modules/*/android/build/' >> .gitignore
-git rm -r --cached apps/mobile/modules/theone-island/android/build
+git rm -r --cached apps/mobile/modules/tesseract-island/android/build
 ```

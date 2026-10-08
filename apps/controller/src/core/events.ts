@@ -1,4 +1,4 @@
-import type { ServerEvent } from "@theone/protocol";
+import type { ServerEvent } from "@tesseract/protocol";
 import type { Logger } from "./logger";
 
 export type EventListener = (event: ServerEvent) => void;

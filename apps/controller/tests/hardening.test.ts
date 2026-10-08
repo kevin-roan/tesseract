@@ -9,7 +9,7 @@ import {
   ProjectListSchema,
   TerminalInfoSchema,
   TerminalServerMessageSchema,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { loadConfig } from "../src/config";
 import { mirrorTokenToFile, readTokenFile, resolveToken } from "../src/auth/token";
 import { childEnv, CONTROLLER_SECRET_ENV } from "../src/core/exec";
@@ -19,7 +19,7 @@ import { filterDrivers, neutralConfig } from "../src/services/git";
 import { detectProject, PACKAGE_JSON_MAX_BYTES } from "../src/services/project-detect";
 import { makeTempDir, removeTempDirs, startTestController, TEST_TOKEN, waitFor, writeFiles, type TestController } from "./helpers";
 
-const SECRETS = { THEONE_TOKEN: "leaky-token-value", THEONE_VNC_PASSWORD: "leaky-vnc" };
+const SECRETS = { TESSERACT_TOKEN: "leaky-token-value", TESSERACT_VNC_PASSWORD: "leaky-vnc" };
 const saved: Record<string, string | undefined> = {};
 
 function mkfifo(path: string): void {
@@ -188,14 +188,14 @@ describe("controller secrets stay out of child environments", () => {
     }
     const bin = makeTempDir("env-bin");
     claudeBin = join(bin, "claude");
-    const result = '{"type":"result","subtype":"success","is_error":false,"result":"token=${THEONE_TOKEN:-absent} vnc=${THEONE_VNC_PASSWORD:-absent}","session_id":"s1"}';
+    const result = '{"type":"result","subtype":"success","is_error":false,"result":"token=${TESSERACT_TOKEN:-absent} vnc=${TESSERACT_VNC_PASSWORD:-absent}","session_id":"s1"}';
     writeFileSync(claudeBin, `#!/usr/bin/env bash\ncat > /dev/null\necho "${result.replaceAll('"', '\\"')}"\n`);
     chmodSync(claudeBin, 0o755);
     const workspace = makeTempDir("env-ws");
     writeFiles(workspace, {
-      "projects/app/package.json": JSON.stringify({ name: "app", scripts: { build: "echo token=${THEONE_TOKEN:-absent} vnc=${THEONE_VNC_PASSWORD:-absent}" } }),
+      "projects/app/package.json": JSON.stringify({ name: "app", scripts: { build: "echo token=${TESSERACT_TOKEN:-absent} vnc=${TESSERACT_VNC_PASSWORD:-absent}" } }),
     });
-    t = await startTestController({ workspace, env: { THEONE_CLAUDE_BIN: claudeBin } });
+    t = await startTestController({ workspace, env: { TESSERACT_CLAUDE_BIN: claudeBin } });
   });
 
   afterAll(async () => {
@@ -209,12 +209,12 @@ describe("controller secrets stay out of child environments", () => {
   const clean = "token=absent vnc=absent";
 
   test("childEnv drops exactly the controller secrets", () => {
-    expect(CONTROLLER_SECRET_ENV).toEqual(["THEONE_TOKEN", "THEONE_VNC_PASSWORD", "THEONE_STT_API_KEY"]);
-    expect(childEnv({ THEONE_TOKEN: "a", THEONE_VNC_PASSWORD: "b", THEONE_PORT: "7700", PATH: "/bin" })).toEqual({ THEONE_PORT: "7700", PATH: "/bin" });
+    expect(CONTROLLER_SECRET_ENV).toEqual(["TESSERACT_TOKEN", "TESSERACT_VNC_PASSWORD", "TESSERACT_STT_API_KEY"]);
+    expect(childEnv({ TESSERACT_TOKEN: "a", TESSERACT_VNC_PASSWORD: "b", TESSERACT_PORT: "7700", PATH: "/bin" })).toEqual({ TESSERACT_PORT: "7700", PATH: "/bin" });
   });
 
   test("processes", async () => {
-    const { body } = await t.json("POST", "/v1/processes", { projectId: "app", command: "echo token=${THEONE_TOKEN:-absent} vnc=${THEONE_VNC_PASSWORD:-absent}" });
+    const { body } = await t.json("POST", "/v1/processes", { projectId: "app", command: "echo token=${TESSERACT_TOKEN:-absent} vnc=${TESSERACT_VNC_PASSWORD:-absent}" });
     const { id } = ProcessInfoSchema.parse(body);
     const lines = await waitFor(async () => {
       const logs = LogLineListSchema.parse((await t.json("GET", `/v1/processes/${id}/logs`)).body);
@@ -240,7 +240,7 @@ describe("controller secrets stay out of child environments", () => {
         .map((message) => TerminalServerMessageSchema.parse(message))
         .map((message) => (message.type === "output" ? message.data : ""))
         .join("");
-    socket.send({ type: "input", data: "echo probe-${THEONE_TOKEN:-absent}-${THEONE_VNC_PASSWORD:-absent}-end\r" });
+    socket.send({ type: "input", data: "echo probe-${TESSERACT_TOKEN:-absent}-${TESSERACT_VNC_PASSWORD:-absent}-end\r" });
     await socket.waitFor(() => /probe-\S+-end/.test(text().replace(/echo probe[^\n]*/g, "")), 8_000);
     expect(text()).toContain("probe-absent-absent-end");
     socket.close();
@@ -259,14 +259,14 @@ describe("controller secrets stay out of child environments", () => {
 });
 
 describe("env-configured token", () => {
-  test("is stored in the token file (0600) so in-sandbox CLI calls work without THEONE_TOKEN", async () => {
+  test("is stored in the token file (0600) so in-sandbox CLI calls work without TESSERACT_TOKEN", async () => {
     const workspace = makeTempDir("token-mirror");
     const t = await startTestController({ workspace });
     try {
       const file = join(workspace, ".agent", "controller", "token");
       expect(statSync(file).mode & 0o777).toBe(0o600);
       expect(readTokenFile(file)).toBe(TEST_TOKEN);
-      const childConfig = loadConfig({ THEONE_WORKSPACE: workspace });
+      const childConfig = loadConfig({ TESSERACT_WORKSPACE: workspace });
       expect(resolveToken(childConfig, { create: false })).toEqual({ token: TEST_TOKEN, source: "file" });
     } finally {
       await t.stop();
@@ -275,7 +275,7 @@ describe("env-configured token", () => {
 
   test("mirrorTokenToFile replaces a stale or invalid file and leaves a matching one alone", () => {
     const workspace = makeTempDir("token-mirror");
-    const config = loadConfig({ THEONE_WORKSPACE: workspace, THEONE_TOKEN: "env-token-value" });
+    const config = loadConfig({ TESSERACT_WORKSPACE: workspace, TESSERACT_TOKEN: "env-token-value" });
     expect(mirrorTokenToFile(config, "env-token-value")).toBe(true);
     expect(mirrorTokenToFile(config, "env-token-value")).toBe(false);
     writeFileSync(config.tokenFile, "not a valid token\n");

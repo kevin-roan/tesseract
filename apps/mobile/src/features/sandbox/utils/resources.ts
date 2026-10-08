@@ -1,4 +1,4 @@
-import type { SandboxResources } from "@theone/protocol";
+import type { SandboxResources } from "@tesseract/protocol";
 
 import type { ResourceGauge } from "../types";
 import { clampFraction, formatBytes, formatLoad, splitBytes } from "./format";

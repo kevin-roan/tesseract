@@ -1,11 +1,11 @@
 # Base stack. Combine with exactly one reachability overlay (use infra/scripts/sandbox):
 #   tailscale:       compose.yml + compose.tailscale.yml
-#   host-tailscale:  compose.yml + compose.local.yml (THEONE_BIND_ADDR = host tailscale IP)
-#   local:           compose.yml + compose.local.yml (THEONE_BIND_ADDR = 127.0.0.1)
+#   host-tailscale:  compose.yml + compose.local.yml (TESSERACT_BIND_ADDR = host tailscale IP)
+#   local:           compose.yml + compose.local.yml (TESSERACT_BIND_ADDR = 127.0.0.1)
 # Optional: + compose.dind.yml. Variables are interpolated from ./.env (see .env.example);
-# only the ones listed below reach the sandbox. THEONE_COMPOSE_PROJECT and
-# THEONE_VOLUME_PREFIX isolate additional stacks (tests, more sandboxes) from the default one.
-name: ${THEONE_COMPOSE_PROJECT:-theone}
+# only the ones listed below reach the sandbox. TESSERACT_COMPOSE_PROJECT and
+# TESSERACT_VOLUME_PREFIX isolate additional stacks (tests, more sandboxes) from the default one.
+name: ${TESSERACT_COMPOSE_PROJECT:-tesseract}
 
 services:
   sandbox:
@@ -23,37 +23,37 @@ services:
         CLAUDE_CODE_VERSION: ${CLAUDE_CODE_VERSION:-latest}
         WITH_WHISPER: ${WITH_WHISPER:-true}
         WHISPER_MODELS: ${WHISPER_MODELS:-base small}
-    image: ${THEONE_IMAGE:-theone/sandbox:latest}
+    image: ${TESSERACT_IMAGE:-tesseract/sandbox:latest}
     hostname: sandbox
     restart: unless-stopped
     environment:
-      THEONE_SANDBOX_ID: ${THEONE_HOSTNAME:-theone-sandbox}
-      THEONE_TOKEN: ${THEONE_TOKEN:-}
-      THEONE_VNC_PASSWORD: ${THEONE_VNC_PASSWORD:-}
-      THEONE_DISPLAY_GEOMETRY: ${THEONE_DISPLAY_GEOMETRY:-1600x900}
-      THEONE_LOG_LEVEL: ${THEONE_LOG_LEVEL:-info}
-      THEONE_CLAUDE_PERMISSION_MODE: ${THEONE_CLAUDE_PERMISSION_MODE:-bypassPermissions}
-      THEONE_CORS_ORIGINS: ${THEONE_CORS_ORIGINS:-*}
-      THEONE_STT_ENGINE: ${THEONE_STT_ENGINE:-whisper.cpp}
-      THEONE_STT_PROFILE: ${THEONE_STT_PROFILE:-eco}
-      THEONE_STT_URL: ${THEONE_STT_URL:-}
-      THEONE_STT_API_KEY: ${THEONE_STT_API_KEY:-}
-      THEONE_STT_MODEL: ${THEONE_STT_MODEL:-whisper-1}
-      THEONE_GEMINI_STT_MODEL: ${THEONE_GEMINI_STT_MODEL:-gemini-2.5-flash}
-      THEONE_WHISPER_MODELS_DIR: ${THEONE_WHISPER_MODELS_DIR:-/opt/whisper/models}
-      THEONE_WHISPER_MODEL: ${THEONE_WHISPER_MODEL:-/opt/whisper/models/ggml-model.bin}
+      TESSERACT_SANDBOX_ID: ${TESSERACT_HOSTNAME:-tesseract-sandbox}
+      TESSERACT_TOKEN: ${TESSERACT_TOKEN:-}
+      TESSERACT_VNC_PASSWORD: ${TESSERACT_VNC_PASSWORD:-}
+      TESSERACT_DISPLAY_GEOMETRY: ${TESSERACT_DISPLAY_GEOMETRY:-1600x900}
+      TESSERACT_LOG_LEVEL: ${TESSERACT_LOG_LEVEL:-info}
+      TESSERACT_CLAUDE_PERMISSION_MODE: ${TESSERACT_CLAUDE_PERMISSION_MODE:-bypassPermissions}
+      TESSERACT_CORS_ORIGINS: ${TESSERACT_CORS_ORIGINS:-*}
+      TESSERACT_STT_ENGINE: ${TESSERACT_STT_ENGINE:-whisper.cpp}
+      TESSERACT_STT_PROFILE: ${TESSERACT_STT_PROFILE:-eco}
+      TESSERACT_STT_URL: ${TESSERACT_STT_URL:-}
+      TESSERACT_STT_API_KEY: ${TESSERACT_STT_API_KEY:-}
+      TESSERACT_STT_MODEL: ${TESSERACT_STT_MODEL:-whisper-1}
+      TESSERACT_GEMINI_STT_MODEL: ${TESSERACT_GEMINI_STT_MODEL:-gemini-2.5-flash}
+      TESSERACT_WHISPER_MODELS_DIR: ${TESSERACT_WHISPER_MODELS_DIR:-/opt/whisper/models}
+      TESSERACT_WHISPER_MODEL: ${TESSERACT_WHISPER_MODEL:-/opt/whisper/models/ggml-model.bin}
       # Claude Code credentials for hosts whose login the bind mount below cannot carry
       # (macOS keeps it in the keychain): `claude setup-token` on the host prints the token.
       CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       TZ: ${TZ:-UTC}
     volumes:
-      - theone-workspace:/workspace
-      - theone-home:/home/dev
+      - tesseract-workspace:/workspace
+      - tesseract-home:/home/dev
       # The host's Claude Code dir (login, settings, sessions), shared with the host user:
-      # listed after theone-home so it overlays /home/dev/.claude. It must exist on the host.
+      # listed after tesseract-home so it overlays /home/dev/.claude. It must exist on the host.
       - type: bind
-        source: ${THEONE_HOST_CLAUDE_DIR:-${HOME}/.claude}
+        source: ${TESSERACT_HOST_CLAUDE_DIR:-${HOME}/.claude}
         target: /home/dev/.claude
         bind:
           create_host_path: false
@@ -85,7 +85,7 @@ services:
         max-file: "3"
 
 volumes:
-  theone-workspace:
-    name: ${THEONE_VOLUME_PREFIX:-${THEONE_COMPOSE_PROJECT:-theone}}-workspace
-  theone-home:
-    name: ${THEONE_VOLUME_PREFIX:-${THEONE_COMPOSE_PROJECT:-theone}}-home
+  tesseract-workspace:
+    name: ${TESSERACT_VOLUME_PREFIX:-${TESSERACT_COMPOSE_PROJECT:-tesseract}}-workspace
+  tesseract-home:
+    name: ${TESSERACT_VOLUME_PREFIX:-${TESSERACT_COMPOSE_PROJECT:-tesseract}}-home

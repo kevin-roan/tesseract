@@ -1,4 +1,4 @@
-import { ApiError } from "@theone/client";
+import { ApiError } from "@tesseract/client";
 import { describeError } from "../../../app/connection";
 import { SHARED_LABELS } from "./labels";
 

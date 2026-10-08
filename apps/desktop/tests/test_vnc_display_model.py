@@ -3,9 +3,9 @@ import pytest
 gi = pytest.importorskip("gi")
 gi.require_version("Gdk", "4.0")
 
-from monolith_desktop.pages.display import model  # noqa: E402
-from monolith_desktop.store import ConnectionState  # noqa: E402
-from monolith_desktop.vnc.session import SessionState, display_ready  # noqa: E402
+from tesseract_desktop.pages.display import model  # noqa: E402
+from tesseract_desktop.store import ConnectionState  # noqa: E402
+from tesseract_desktop.vnc.session import SessionState, display_ready  # noqa: E402
 
 ONLINE = ConnectionState(status="online")
 READY = {"display": ":1", "available": True, "width": 1600, "height": 900, "vnc": {"available": True, "port": 5901, "password": "pw"}}
@@ -46,8 +46,8 @@ def test_overlay_model():
 
 
 def test_meta_text():
-    session = SessionState(phase="connected", width=1280, height=800, name="TheOne")
-    assert model.meta_text("viewer", session, READY, 0.5) == "1280×800 · 50% · TheOne"
+    session = SessionState(phase="connected", width=1280, height=800, name="Tesseract")
+    assert model.meta_text("viewer", session, READY, 0.5) == "1280×800 · 50% · Tesseract"
     assert model.meta_text("preview", SessionState(), NO_VNC, None) == "1600×900"
     assert model.meta_text("no_display", SessionState(), NO_DISPLAY, None) == ""
 

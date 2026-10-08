@@ -1,6 +1,6 @@
 # Electron desktop app (`apps/electron`)
 
-`@monolith/electron` is the desktop app ("Monolith", app id `dev.monolith.Desktop`)
+`@tesseract/electron` is the desktop app ("Tesseract", app id `dev.tesseract.Desktop`)
 that replaces the GTK4/libadwaita app in `apps/desktop`. It does everything the GTK
 app did (overview, agents, projects, files, terminals, display, settings, tray,
 sync-back, host shell) and adds what the GTK app left to the README: a setup wizard
@@ -15,18 +15,18 @@ and the GTK reference captures in [`docs/electron/reference/`](../electron/refer
 
 ```mermaid
 flowchart LR
-  subgraph desktop["Monolith (Electron 44)"]
+  subgraph desktop["Tesseract (Electron 44)"]
     r["renderer<br/>React 19 · hash router<br/>sandboxed, no Node"]
-    p["preload<br/>window.monolith bridge"]
+    p["preload<br/>window.tesseract bridge"]
     m["main<br/>IPC services · windows · tray · updater"]
     c["src/core<br/>pure Node: docker · sandbox · android<br/>connection · syncback · host · config"]
   end
   cli["tesseract CLI<br/>(bun --compile, resources/bin)"]
-  hd["theone-controller host<br/>(host daemon, resources/bin)"]
+  hd["tesseract-controller host<br/>(host daemon, resources/bin)"]
   dk["Docker / Podman"]
   sb["sandbox container<br/>controller :7700"]
   g["dl.google.com<br/>Android repository"]
-  r <-->|"invoke / events<br/>monolith:service:method"| p <--> m
+  r <-->|"invoke / events<br/>tesseract:service:method"| p <--> m
   m --> c
   cli --> c
   c -->|"docker CLI · compose · buildx"| dk --> sb
@@ -43,7 +43,7 @@ flowchart LR
 |---|---|---|
 | `src/core/<service>/` | main **and** the CLI | Pure Node TypeScript, no `electron` import: `docker`, `sandbox`, `android`, `onboarding`, `connection`, `syncback`, `host`, `claude`, `stt`, `metrics`, `attachments`, plus foundation modules `paths`, `config`, `log`, `process` |
 | `src/main/` | Electron main (ESM, Node 24) | `index.ts` (startup), `context.ts`, `app/` (args, deep links, menu, security, lifecycle, local commands), `windows/` (manager, window state, snapshot capture), `ipc/` (one file per service + `_framework/`), `services/` (settings, onboarding controller, tray, updater, CLI install, notifications, idle) |
-| `src/preload/index.ts` | preload (CJS, sandboxed) | The `window.monolith` bridge, nothing else |
+| `src/preload/index.ts` | preload (CJS, sandboxed) | The `window.tesseract` bridge, nothing else |
 | `src/shared/` | everywhere | `ipc.ts` (contract aggregate + channel names), `contracts/<service>.ts`, `routes.ts`, `runtime.ts`, `defaults.ts`. No `node:*` imports |
 | `src/renderer/` | renderer (Chromium, no Node) | `app/` (providers, routes, registries, data layer, connection state, command palette, shortcuts, feedback), `shell/`, `pages/<page>/`, `features/<page>/`, `onboarding/<step>/`, `components/<Name>/`, `theme/`, `fixtures/`, `gallery/` |
 | `cli/` | `tesseract` binary (Bun) | Command registry, argument parser, `commands/*.ts` that call `src/core` |
@@ -66,8 +66,8 @@ installer ships no `node_modules`. Aliases: `@shared`, `@core`, `@renderer`.
 | Port | Who | Notes |
 |---|---|---|
 | **4545** | renderer dev server (`bun run dev`, `preview`) | `RENDERER_DEV_HOST`/`RENDERER_DEV_PORT` in `src/shared/runtime.ts`, `strictPort: true` for both `server` and `preview`. Never Vite's 5173 or electron-vite's defaults, so it cannot collide with a project's own dev server or Expo (8081) |
-| 7700 | sandbox controller (container) | published on the host as `THEONE_CONTROLLER_HOST_PORT` (default 7700), bound to `127.0.0.1` in `local` mode |
-| 7701 | host daemon (`theone-controller host serve`) | started by the app's host shell service, see [app-runs-and-emulator.md](app-runs-and-emulator.md) |
+| 7700 | sandbox controller (container) | published on the host as `TESSERACT_CONTROLLER_HOST_PORT` (default 7700), bound to `127.0.0.1` in `local` mode |
+| 7701 | host daemon (`tesseract-controller host serve`) | started by the app's host shell service, see [app-runs-and-emulator.md](app-runs-and-emulator.md) |
 | 5554–5682 | Android emulator console/adb | first free even port in that range (`EMULATOR_PORT_RANGE`) |
 
 Packaged builds load `file://…/out/renderer/index.html` and open no port at all.
@@ -85,7 +85,7 @@ sequenceDiagram
   alt --sync/--pull/--revert/--sync-status/--get
     M->>OS: spawn resources/bin/tesseract, exit with its code
   else normal start
-    M->>M: single-instance lock · monolith:// protocol (packaged)
+    M->>M: single-instance lock · tesseract:// protocol (packaged)
     M->>M: whenReady · initContext · installSecurity
     M->>C: migrateLegacyConfigDir · loadSettings
     M->>M: registerIpc (glob src/main/ipc/*.ts, start lifecycles)
@@ -108,26 +108,26 @@ sequenceDiagram
 ```
 
 - Launch flags (`src/main/app/args.ts`): `--hidden`, `--page <id>`, `--quit`, `--debug`,
-  the sync flags above, and the internal `--monolith-snapshot=<json>`.
+  the sync flags above, and the internal `--tesseract-snapshot=<json>`.
 - `decideFirstRun` (`src/core/onboarding`) skips the wizard when `onboarding.completedAt`
-  is set or a connection is already configured (config file or `THEONE_*` env).
+  is set or a connection is already configured (config file or `TESSERACT_*` env).
   Otherwise `adoptDiscoveredSandbox` (`src/main/services/commands.ts`) runs Docker
   discovery with a 2.5 s timeout: a sandbox whose controller answers `/v1/health` is
   saved as the connection and `completeOnboardingFromDiscovery` marks onboarding complete
   (`docker`/`sandbox`/`build` done, the rest skipped), so the main window opens. Without
-  one it reopens the wizard at the persisted step. `MONOLITH_DISABLE_DISCOVERY=1` (set by
+  one it reopens the wizard at the persisted step. `TESSERACT_DISABLE_DISCOVERY=1` (set by
   the tests) turns discovery off.
 - Sandbox autostart (`src/main/services/autostart.ts` over `src/core/sandbox/autostart.ts`)
   runs at every launch, also with `--hidden`: when `sandboxAutostart` is on, it runs
-  `docker compose up -d` only for a stack Monolith created (`sandboxStack.builtAt` set, the
+  `docker compose up -d` only for a stack Tesseract created (`sandboxStack.builtAt` set, the
   app's own env file, the env file's project = `sandboxStack.project`). It skips a stack
   that already runs; when Docker is unreachable it shows one notification (click →
   Settings › Sandbox).
 - A second launch forwards its arguments to the running instance
   (`second-instance`): `--quit` quits it, `--page`/deep links navigate it, anything else
   shows the window.
-- Deep links (`monolith://<page>?…`, `monolith://preferences|settings`,
-  `monolith://onboarding|setup`) and tray/menu/notification actions become an
+- Deep links (`tesseract://<page>?…`, `tesseract://preferences|settings`,
+  `tesseract://onboarding|setup`) and tray/menu/notification actions become an
   `AppCommand` delivered to the main window as the `app:command` event.
 - Closing the main window hides it while the tray is attached (`shouldHideOnClose`);
   quitting from the tray, menu, OS shutdown or an update install really quits.
@@ -147,7 +147,7 @@ so there is no white flash. Zoom is `webContents.setZoomFactor`, persisted as
 `zoom` in settings.
 
 Each window receives a `RuntimeInfo` through `additionalArguments`
-(`--monolith-runtime=<json>`: platform, arch, version, window kind, fixtures,
+(`--tesseract-runtime=<json>`: platform, arch, version, window kind, fixtures,
 snapshot, appearance override, reduced motion), which the preload exposes as
 `runtimeArgv` and the renderer decodes once.
 
@@ -158,11 +158,11 @@ flowchart LR
   subgraph renderer
     h["hook (react-query / zustand)"] --> ipc["lib/ipc.ts<br/>typed Proxy: ipc.docker.check()"]
   end
-  ipc -->|"invoke('monolith:docker:check', …args)"| pre["preload<br/>assertChannel()"]
+  ipc -->|"invoke('tesseract:docker:check', …args)"| pre["preload<br/>assertChannel()"]
   pre --> reg["registry.ts<br/>isTrustedSender()"]
   reg --> hd["ipc/docker.ts handler"] --> core["core/docker"]
   hd -->|"{ok:true,value} | {ok:false,error}"| ipc
-  em["serviceEmitter('docker').emit('phase', …)"] -->|"monolith:docker:event:phase<br/>to every window"| pre
+  em["serviceEmitter('docker').emit('phase', …)"] -->|"tesseract:docker:event:phase<br/>to every window"| pre
   em -.->|"onServiceEvent (main-local)"| oc["OnboardingController"]
 ```
 
@@ -170,8 +170,8 @@ flowchart LR
   `type XContract = DefineContract<{ methods: {…}; events: {…} }>`. `src/shared/ipc.ts`
   aggregates them into `IpcContract` and lists `SERVICE_NAMES`; a compile-time
   assertion fails if one is missing.
-- **Channels** are derived, never hand-written: `monolith:<service>:<method>` for
-  invokes, `monolith:<service>:event:<event>` for events (`invokeChannel`,
+- **Channels** are derived, never hand-written: `tesseract:<service>:<method>` for
+  invokes, `tesseract:<service>:event:<event>` for events (`invokeChannel`,
   `eventChannel`, `parseChannel`).
 - **Handlers**: `src/main/ipc/<service>.ts` exports `defineService(service, handlers, { start })`.
   The handler map type is derived from the contract, so typecheck fails if a method is
@@ -225,7 +225,7 @@ emulator directly, without the daemon.
 
 ### 3.1 Sandbox API
 
-The renderer talks to the controller with the same `@theone/client` as the phone
+The renderer talks to the controller with the same `@tesseract/client` as the phone
 app, configured from `connection.load()`:
 
 - **REST** goes through IPC: `ipcFetch` sends `http.request(id, { url, method, headers, body })`;
@@ -235,7 +235,7 @@ app, configured from `connection.load()`:
 - **Downloads** (artifacts, build outputs) do not go through `http.request`: the
   renderer calls `files.download(id, { url, headers, suggestedName, expectedSha256 })`.
   Main shows the native save dialog, streams the body with `net.fetch` into
-  `<target>.monolith-part` while hashing it, checks the SHA-256 (the artifact's, or the
+  `<target>.tesseract-part` while hashing it, checks the SHA-256 (the artifact's, or the
   `x-content-sha256` header), and only then renames over the target, so a cancelled or
   failed download never truncates an existing file. Progress arrives as
   `files:progress` events. The display's "Save screenshot…" uses `files.saveBytes`.
@@ -253,11 +253,11 @@ app, configured from `connection.load()`:
 
 | What | Where | Owner |
 |---|---|---|
-| `config.json` | `$MONOLITH_DESKTOP_CONFIG`, else `$XDG_CONFIG_HOME/monolith-desktop/config.json` (`~/.config/…`, shared with the GTK app) on Linux, else `<userData>/config.json` | `src/core/config`: serialized read-modify-write that keeps unknown keys, atomic 0600 write. Keys stay GTK-compatible; Electron adds `onboarding`, `sandboxStack`, `sandboxImageRef`, `sandboxAutostart`, `androidSdkRoot`, `androidAvd` |
+| `config.json` | `$TESSERACT_DESKTOP_CONFIG`, else `$XDG_CONFIG_HOME/tesseract-desktop/config.json` (`~/.config/…`, shared with the GTK app) on Linux, else `<userData>/config.json` | `src/core/config`: serialized read-modify-write that keeps unknown keys, atomic 0600 write. Keys stay GTK-compatible; Electron adds `onboarding`, `sandboxStack`, `sandboxImageRef`, `sandboxAutostart`, `androidSdkRoot`, `androidAvd` |
 | sandbox env file | `<userData>/sandbox/.env` (0600) | `src/core/sandbox` |
-| sync-back state | `$XDG_STATE_HOME/monolith`, else `~/.local/state/monolith`, `%LOCALAPPDATA%\Monolith\state` on Windows | `src/core/syncback` (links, snapshots, locks; byte-compatible with the GTK app) |
-| caches (Android catalog) | `~/.cache/monolith-desktop`, `~/Library/Caches/Monolith`, `%LOCALAPPDATA%\Monolith\cache` | `src/core/android` |
-| Android SDK (default) | `~/.local/share/theone/android-sdk`, `~/Library/Application Support/Monolith/android-sdk`, `%LOCALAPPDATA%\Monolith\android-sdk` | `src/core/android`; an existing Android Studio SDK is offered first (`sdkCandidates`) |
+| sync-back state | `$XDG_STATE_HOME/tesseract`, else `~/.local/state/tesseract`, `%LOCALAPPDATA%\Tesseract\state` on Windows | `src/core/syncback` (links, snapshots, locks; byte-compatible with the GTK app) |
+| caches (Android catalog) | `~/.cache/tesseract-desktop`, `~/Library/Caches/Tesseract`, `%LOCALAPPDATA%\Tesseract\cache` | `src/core/android` |
+| Android SDK (default) | `~/.local/share/tesseract/android-sdk`, `~/Library/Application Support/Tesseract/android-sdk`, `%LOCALAPPDATA%\Tesseract\android-sdk` | `src/core/android`; an existing Android Studio SDK is offered first (`sdkCandidates`) |
 
 The app and the CLI resolve all of these through `src/core/paths`, so `tesseract`
 on the command line sees exactly what the app sees. Settings changes made by the
@@ -305,7 +305,7 @@ Windows). At startup `applyPathFix` adds the usual Docker install directories to
 because GUI apps on macOS do not inherit the shell's `PATH`.
 
 **Sandbox** (`src/core/sandbox`). The step collects `SetupChoices`: compose project
-(default `theone`), image (default `theone/sandbox:latest`), reachability mode
+(default `tesseract`), image (default `tesseract/sandbox:latest`), reachability mode
 (`local`, `tailscale`, `host-tailscale`), controller port, CPUs and memory, and the
 optional image components, which map to the Dockerfile build args:
 
@@ -332,15 +332,15 @@ rounded up to 5 GB. Chromium is part of the base `desktop` stage, not an option.
    the build.
 
 The phase (`preflight`, `building`, `pulling`, `starting`, `waiting`, `pairing`, `done`,
-`failed`, `cancelled`) is broadcast as `sandbox:phase`. `THEONE_*` and `COMPOSE_*`
+`failed`, `cancelled`) is broadcast as `sandbox:phase`. `TESSERACT_*` and `COMPOSE_*`
 variables from the app's environment are scrubbed before Docker runs.
 
 **Android** (`src/core/android`). Like Android Studio's SDK manager, without
 `sdkmanager` or a JDK:
 
 1. `loadCatalog` downloads `repository2-3.xml` and the `google_apis` `sys-img2-3.xml`
-   from `dl.google.com` (cached 6 h; `MONOLITH_ANDROID_REPOSITORY_URL` /
-   `MONOLITH_ANDROID_SYSIMG_URL` point at a mirror, a full `.xml` URL or a base URL,
+   from `dl.google.com` (cached 6 h; `TESSERACT_ANDROID_REPOSITORY_URL` /
+   `TESSERACT_ANDROID_SYSIMG_URL` point at a mirror, a full `.xml` URL or a base URL,
    `http(s)` only), and offers `emulator`, `platform-tools` and the
    system images for the host ABI (default API 36).
 2. Licences are shown in full and recorded in `<sdk>/licenses/` exactly as `sdkmanager`
@@ -358,7 +358,7 @@ variables from the app's environment are scrubbed before Docker runs.
    `pixel_8`, `medium_phone`, `pixel_tablet`; `DEVICE_PROFILE_CONFIG` gives
    `hw.device.*`, `hw.lcd.*` and `skin.name`) and internal storage (2–64 GB, default
    6 GB → `disk.dataPartition.size`). `androidSdkRoot` and `androidAvd` are saved, and
-   the host daemon gets `THEONE_ANDROID_SDK_ROOT` and `THEONE_ADB` from them, so the
+   the host daemon gets `TESSERACT_ANDROID_SDK_ROOT` and `TESSERACT_ADB` from them, so the
    **host emulator** of [app-runs-and-emulator.md](app-runs-and-emulator.md) uses this SDK.
 
 ### 3.4 Sync-back and the host daemon
@@ -369,8 +369,8 @@ variables from the app's environment are scrubbed before Docker runs.
   sync requests one at a time, and shows a notification per result (click → the
   project). It reconnects when `config.json` changes (polled every 5 s).
 - The host shell service (`src/core/host`, `src/main/ipc/hostShell.ts`) spawns
-  `theone-controller host serve` (bundled binary in packaged builds, the repo's
-  controller in development; `MONOLITH_CONTROLLER_COMMAND` overrides it), reads its
+  `tesseract-controller host serve` (bundled binary in packaged builds, the repo's
+  controller in development; `TESSERACT_CONTROLLER_COMMAND` overrides it), reads its
   pairing info, manages the PIN, token rotation and autostart, and proxies the host
   Android API (status, start/stop emulator, link the sandbox, open the viewer). On
   Linux the child gets `setpriv --pdeathsig TERM` so it dies with the app.
@@ -378,13 +378,13 @@ variables from the app's environment are scrubbed before Docker runs.
 ## 4. CLI
 
 `tesseract` is `cli/index.ts` compiled with `bun build --compile --minify` per target
-(`bun run cli:build`), next to `theone-controller` (the controller compiled from
+(`bun run cli:build`), next to `tesseract-controller` (the controller compiled from
 `apps/controller`). Both go to `dist-cli/<os>-<arch>/` and ship in `resources/bin`.
 
 | Command | Does |
 |---|---|
 | `status` | connection, Docker, stack and Android emulator at a glance |
-| `open [page]` | opens or focuses the app on a page (falls back to a `monolith://` link) |
+| `open [page]` | opens or focuses the app on a page (falls back to a `tesseract://` link) |
 | `doctor [docker\|image\|kvm\|sdk]…` | the wizard's checks, as a report |
 | `sandbox status\|up\|down\|restart\|logs\|build\|pair` | the stack (`build --with android,flutter,mono,whisper\|all\|none [--pull\|--existing]`) |
 | `android images\|install\|avd list\|create\|start\|delete` | the SDK and AVDs |
@@ -417,13 +417,13 @@ actions and old scripts that call the app with `--sync` keep working.
 
 ### 5.1 Fixtures
 
-Fixture mode is on with `MONOLITH_FIXTURES=1`, `?fixtures`, in snapshots, in vitest and
-in a plain browser (no preload). Then `@theone/client` uses `fixtureFetch` (routes keyed
-by `@theone/protocol` route patterns), sockets are `FixtureSocket`s that replay frames,
+Fixture mode is on with `TESSERACT_FIXTURES=1`, `?fixtures`, in snapshots, in vitest and
+in a plain browser (no preload). Then `@tesseract/client` uses `fixtureFetch` (routes keyed
+by `@tesseract/protocol` route patterns), sockets are `FixtureSocket`s that replay frames,
 and IPC methods can be overridden per method (`defineIpcFixtures`); methods without a
 fixture fall through to the real bridge, so window controls still work. `fixtures/base/`
-is the shared world (projects `streaxfit`, `monolith`, `hybrid-pos`,
-`sante-production`, sandbox `theone-sandbox`); `fixtures/<area>/` adds page data and
+is the shared world (projects `streaxfit`, `tesseract`, `hybrid-pos`,
+`sante-production`, sandbox `tesseract-sandbox`); `fixtures/<area>/` adds page data and
 named scenarios (`?scenario=offline`). This is what the snapshot, visual e2e and gallery
 runs render.
 
@@ -467,8 +467,8 @@ Snapshot windows always run with reduced motion, so captures are deterministic.
 
 `bun run snapshot -- --route <route> --out x.png [--light] [--width --height]` builds if
 stale, starts Electron with `--ozone-platform=headless` (nothing appears on screen), a
-temporary profile under `$TMPDIR/monolith-test-*` and fixtures on, waits for
-`window.__monolithIdle()` (fonts loaded, no queries in flight, no finite animation for
+temporary profile under `$TMPDIR/tesseract-test-*` and fixtures on, waits for
+`window.__tesseractIdle()` (fonts loaded, no queries in flight, no finite animation for
 300 ms) and writes a PNG at device scale 1. `bun run diff -- a.png b.png --out d.png`
 compares it with pixelmatch against the GTK captures in `docs/electron/reference/`
 (1024×768, zoom 1). The visual e2e spec keeps its own baselines in
@@ -482,7 +482,7 @@ terminal output), which is untrusted. The design keeps it away from Node and the
 - Every window: `sandbox: true`, `contextIsolation: true`, `nodeIntegration: false`,
   no `<webview>` (`will-attach-webview` is refused).
 - The preload exposes only `invoke`, `on`, `getPathForFile` and the runtime argv on
-  `window.monolith`, and rejects any channel that `parseChannel` does not recognise.
+  `window.tesseract`, and rejects any channel that `parseChannel` does not recognise.
 - Main answers IPC only from trusted frames: the packaged `file://…/index.html` or,
   in development, the `ELECTRON_RENDERER_URL` origin (`http://127.0.0.1:4545`).
   Anything else gets `forbidden`.
@@ -517,25 +517,25 @@ platform's targets, `bundle:sandbox`, then electron-builder with
 
 | OS | Artifacts | CLI on `PATH` |
 |---|---|---|
-| macOS | universal `dmg` (+ `zip` for updates), hardened runtime, entitlements, min macOS 12; notarized in `afterSign` when `MONOLITH_NOTARIZE` and Apple credentials are set | in-app "Install tesseract command": admin prompt, `/usr/local/bin/tesseract` → `resources/bin/tesseract` (refused when the app runs translocated, outside `/Applications`) |
+| macOS | universal `dmg` (+ `zip` for updates), hardened runtime, entitlements, min macOS 12; notarized in `afterSign` when `TESSERACT_NOTARIZE` and Apple credentials are set | in-app "Install tesseract command": admin prompt, `/usr/local/bin/tesseract` → `resources/bin/tesseract` (refused when the app runs translocated, outside `/Applications`) |
 | Windows | per-user one-click NSIS (`x64`), no elevation, desktop and Start-menu shortcuts | `build/installer.nsh` adds `$INSTDIR\resources\bin` to the user `Path` and removes it on uninstall |
-| Linux | `AppImage` and `deb` (`x64`); the deb recommends `docker.io \| docker-ce` (Podman is refused by the Docker step) | deb `postinst` links `/usr/bin/tesseract` only when the path is free or already ours; AppImage: in-app install copies the CLI to `~/.local/share/monolith/bin` and links `~/.local/bin/tesseract`; on install and every AppImage launch `src/main/services/cli-sidecar.ts` writes `~/.local/share/monolith/app.json` `{appPath, sandboxDir}` and syncs the bundled sandbox context to `~/.local/share/monolith/sandbox` (marker `.bundle-hash`), so the copy finds the app and the context |
+| Linux | `AppImage` and `deb` (`x64`); the deb recommends `docker.io \| docker-ce` (Podman is refused by the Docker step) | deb `postinst` links `/usr/bin/tesseract` only when the path is free or already ours; AppImage: in-app install copies the CLI to `~/.local/share/tesseract/bin` and links `~/.local/bin/tesseract`; on install and every AppImage launch `src/main/services/cli-sidecar.ts` writes `~/.local/share/tesseract/app.json` `{appPath, sandboxDir}` and syncs the bundled sandbox context to `~/.local/share/tesseract/sandbox` (marker `.bundle-hash`), so the copy finds the app and the context |
 
 `extraResources`: `dist-cli/${os}-${arch}` → `resources/bin`,
 `build/sandbox-context` → `resources/sandbox` (the git-tracked files needed to build
 the image: Dockerfile, rootfs, compose files, controller and protocol sources, plus
 `manifest.json` with the commit and a `dirty` flag, and `build-weights.json`), icons,
 font licences. The packaged app builds the image from `resources/sandbox`; a
-development build uses the repository itself. The `monolith://` scheme is registered
+development build uses the repository itself. The `tesseract://` scheme is registered
 by the installers.
 
 **Updates** use electron-updater against a generic feed
-(`https://downloads.monolith.dev/desktop`). Main checks 60 s after start and then
+(`https://downloads.tesseract.dev/desktop`). Main checks 60 s after start and then
 every 6 h, downloads in the background, then shows a notification and a tray item
 ("restart to update"); the update installs on quit. Updates are off in development,
-in tests, with `MONOLITH_DISABLE_UPDATES=1`, and for Linux installs that are neither
+in tests, with `TESSERACT_DISABLE_UPDATES=1`, and for Linux installs that are neither
 the AppImage nor an electron-builder package (no `resources/package-type`); those
-show "Update Monolith with your package manager".
+show "Update Tesseract with your package manager".
 
 ## 9. Tests
 
@@ -545,8 +545,8 @@ show "Update Monolith with your package manager".
 | unit (renderer) | `bun run test` | components, hooks, pages and the wizard in happy-dom with fixtures |
 | e2e | `bun run e2e` | Playwright `_electron`, headless on Linux, isolated profile: shell, wizard (real Docker detection, a simulated build, Android install from a local repository into a temporary SDK, finish), settings, CLI (exit codes, JSON, config, doctor, sandbox, pair, open), packaging (builder config, NSIS PATH macros under wine, AppImage contents and launch), visual snapshots |
 
-Docker resources created by tests use `monolith-test-` names (or the e2e harness's
-`theone-e2e` stack) and are removed afterwards; the user's `theone` stack and the
+Docker resources created by tests use `tesseract-test-` names (or the e2e harness's
+`tesseract-e2e` stack) and are removed afterwards; the user's `tesseract` stack and the
 daemon on 7701 are never touched. Host-shell e2e runs use a free port and a temporary
 directory. See [../runbooks/e2e-testing.md](../runbooks/e2e-testing.md) for the
 repository-wide suites.

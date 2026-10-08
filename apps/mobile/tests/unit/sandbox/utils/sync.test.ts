@@ -1,5 +1,5 @@
-import { LIMITS, type SyncChanges, type SyncDiscardResult, type SyncFileChange, type SyncRequest } from "@theone/protocol";
-import { sampleSyncChanges, sampleSyncRequest } from "@theone/protocol/fixtures";
+import { LIMITS, type SyncChanges, type SyncDiscardResult, type SyncFileChange, type SyncRequest } from "@tesseract/protocol";
+import { sampleSyncChanges, sampleSyncRequest } from "@tesseract/protocol/fixtures";
 
 import {
   activeSyncRequest,
@@ -92,7 +92,7 @@ describe("syncHostLabel", () => {
 
   it("describes the host's link and heartbeat", () => {
     expect(syncHostLabel(undefined)).toBeNull();
-    expect(syncHostLabel(sampleSyncChanges)).toBe("Monolith on workstation · online");
+    expect(syncHostLabel(sampleSyncChanges)).toBe("Tesseract on workstation · online");
     expect(syncHostLabel(withHost(null))).toBe(SYNC_COPY.notLinked);
     expect(syncHostLabel(withHost({ ...sampleSyncChanges.host!, linked: false }))).toBe(SYNC_COPY.notLinked);
     expect(syncHostLabel(withHost({ ...sampleSyncChanges.host!, online: false }))).toBe(SYNC_COPY.offline);

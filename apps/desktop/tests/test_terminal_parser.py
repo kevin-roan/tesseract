@@ -1,4 +1,4 @@
-from monolith_desktop.widgets.terminal.parser import Parser, int_params, parse_params
+from tesseract_desktop.widgets.terminal.parser import Parser, int_params, parse_params
 
 
 class Recorder:

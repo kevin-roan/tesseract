@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
-import type { TheOneClient } from "@theone/client";
+import type { TesseractClient } from "@tesseract/client";
 import type {
   CreateProject,
   CreateSyncRequest,
@@ -13,7 +13,7 @@ import type {
   StartProcess,
   SyncDiscard,
   UpdateStt,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import { unregisterPushToken } from "@/features/inbox/api/push";
 
@@ -41,7 +41,7 @@ import { useSandboxClient } from "./use-sandbox-client";
 type Effects<TData, TVars> = (queryClient: QueryClient, sandboxId: string, data: TData, variables: TVars) => unknown;
 
 export function useSandboxMutation<TVars, TData>(
-  run: (client: TheOneClient, variables: TVars) => Promise<TData>,
+  run: (client: TesseractClient, variables: TVars) => Promise<TData>,
   effects: Effects<TData, TVars>,
 ) {
   const { sandbox, client } = useSandboxClient();

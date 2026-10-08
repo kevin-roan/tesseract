@@ -1,4 +1,4 @@
-import type { Identity, TailnetNode, TailscaleUser } from "@theone/protocol";
+import type { Identity, TailnetNode, TailscaleUser } from "@tesseract/protocol";
 import type { Config } from "../config";
 import type { Logger } from "../core/logger";
 

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { View } from "react-native";
-import type { Upload } from "@theone/protocol";
+import type { Upload } from "@tesseract/protocol";
 
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";

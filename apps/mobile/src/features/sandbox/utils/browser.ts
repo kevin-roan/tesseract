@@ -1,4 +1,4 @@
-import type { BrowserStatus, BrowserTab } from "@theone/protocol";
+import type { BrowserStatus, BrowserTab } from "@tesseract/protocol";
 
 export type BrowserSummary =
   | { kind: "unavailable" }

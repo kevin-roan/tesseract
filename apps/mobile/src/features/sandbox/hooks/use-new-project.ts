@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { isFinalProcessState } from "@theone/protocol";
+import { isFinalProcessState } from "@tesseract/protocol";
 
 import type { CloneJob, ProjectDraft, ProjectDraftErrors, ProjectField } from "../types";
 import { describeError } from "../utils/errors";

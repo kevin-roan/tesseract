@@ -1,6 +1,6 @@
 # Project detail tabs, sync review and emulator launch
 
-Spec for rebuilding the six project-detail tabs, the "Review sync to host" dialog and the Android-emulator launch flow of the GTK app (`apps/desktop/monolith_desktop/pages/projects/`) in React/Electron. Sources: `tab_artifacts.py`, `tab_builds.py`, `tab_conversations.py`, `tab_git.py`, `tab_processes.py`, `tab_sync.py`, `sync_actions.py`, `sync_review.py`, `emulator.py`, `emulator_launch.py`, plus the shared pieces they rely on (`detail.py`, `labels.py`, `model.py`, `streams.py`, `fix_action.py`, `widgets/*`, `theme/extras/projects.py`).
+Spec for rebuilding the six project-detail tabs, the "Review sync to host" dialog and the Android-emulator launch flow of the GTK app (`apps/desktop/tesseract_desktop/pages/projects/`) in React/Electron. Sources: `tab_artifacts.py`, `tab_builds.py`, `tab_conversations.py`, `tab_git.py`, `tab_processes.py`, `tab_sync.py`, `sync_actions.py`, `sync_review.py`, `emulator.py`, `emulator_launch.py`, plus the shared pieces they rely on (`detail.py`, `labels.py`, `model.py`, `streams.py`, `fix_action.py`, `widgets/*`, `theme/extras/projects.py`).
 
 The detail header (crumb, title, property chips, quick actions) belongs to the project-detail spec. This document only covers the **Display / emulator quick-action button**, because the emulator flow drives it.
 
@@ -341,9 +341,9 @@ References:
 A vertical stack with a 16px gap:
 
 1. **Status notice** (neutral, hidden when there is no message). The first rule that matches wins:
-   - Not linked: "Not linked on this computer. Run monolith --sync in the project's checkout to link it, then changes made in the sandbox can be synced back."
+   - Not linked: "Not linked on this computer. Run tesseract --sync in the project's checkout to link it, then changes made in the sandbox can be synced back."
    - Load error (warning): "Couldn't read sandbox changes: {error}"
-   - Changes loaded but `baselineAt` is null: "The sandbox has no push baseline yet. Run monolith --sync in {path}."
+   - Changes loaded but `baselineAt` is null: "The sandbox has no push baseline yet. Run tesseract --sync in {path}."
 2. **Result notice**: shows the outcome message of a Discard, with tone success or warning. It has a "Dismiss" action that hides it, and its message is multi-line.
 3. **Summary card**, visible only when linked: padding `4px 12px`, radius 8, `1px solid border`, no background. It is a key/value list; each row has padding `4px 0` and a 12px gap, with the key on the left (`bodySmall` 12px `textSecondary`) and the value right-aligned (`bodySmall` 12px `text`, wraps up to 2 lines, selectable). Rows:
    - "Host folder": the host path
@@ -362,7 +362,7 @@ A vertical stack with a 16px gap:
 
 `SyncView = {link, changes, requests, snapshots, conflicts, error, hostFiles}`, loaded by `load_sync_view`:
 
-- `link` and `snapshots` come from **local host state** in `$XDG_STATE_HOME/monolith/` (default `~/.local/state/monolith/`): `links.json` and the snapshot files. Electron must read the same files in the main process, so the CLI (`monolith --sync`) and the app share links.
+- `link` and `snapshots` come from **local host state** in `$XDG_STATE_HOME/tesseract/` (default `~/.local/state/tesseract/`): `links.json` and the snapshot files. Electron must read the same files in the main process, so the CLI (`tesseract --sync`) and the app share links.
 - `changes = GET /v1/projects/{id}/sync/changes` returns `{baselineAt, totalBytes, changes:[{path, kind: added|modified|deleted, size?, sha256?, discardable?}], host?}`.
 - `requests = GET /v1/projects/{id}/sync/requests`, newest first.
 - If either call fails, the view keeps `link` and `snapshots`, sets `error`, and leaves `changes` null.
@@ -388,7 +388,7 @@ A vertical stack with a 16px gap:
 
 Each button is disabled when the project id is missing, while a sync/discard submission is pending, or when it has a blocker. **The blocker text becomes the tooltip.** Blockers, first match wins (`SYNC_BLOCKED`):
 
-- pull: not linked → "Not linked on this computer. Run monolith --sync in the checkout first"; changes null → "Loading the sandbox changes…" (or "The sandbox changes couldn't be read" on error); not pushed → "Never pushed. Run monolith --sync in the checkout first"; busy or in flight → "A sync request is already in progress"; no files → "Nothing to sync. The host folder matches the sandbox".
+- pull: not linked → "Not linked on this computer. Run tesseract --sync in the checkout first"; changes null → "Loading the sandbox changes…" (or "The sandbox changes couldn't be read" on error); not pushed → "Never pushed. Run tesseract --sync in the checkout first"; busy or in flight → "A sync request is already in progress"; no files → "Nothing to sync. The host folder matches the sandbox".
 - get: the same, without the no-files rule.
 - revert: not linked; busy or in flight; no revertible snapshot → "No sync to revert".
 - discard: loading/unavailable; not pushed; busy or in flight; no files → "Nothing to discard. The sandbox matches the last sync"; nothing discardable → "The sandbox has no copy of the synced versions of these files".
@@ -565,7 +565,7 @@ The Android target is the first run target with `viewer == "android"`.
 Tooltip when there is an Android target:
 
 - available: "Build the app in {dir} and install it on the host Android emulator", or without a dir "Build the app and install it on the host Android emulator"
-- not available but host-fixable: "{reason}. Monolith starts and links the emulator on this computer first"
+- not available but host-fixable: "{reason}. Tesseract starts and links the emulator on this computer first"
 - otherwise: the reason as given
 
 The button is also disabled while a launch is busy. While busy, the button label is replaced by the progress label (see §9.3). The Display button is a secondary pill, the same size as "Shell".
@@ -581,15 +581,15 @@ Host-fixable reasons (exact strings from the controller): "Link the host Android
 2. **Not available and not host-fixable**: report "Can't run on the emulator: {reason}".
 3. **Host-fixable**, so prepare the emulator with the host daemon:
    1. **Host blocker**, from the host-shell service state:
-      - stopped, stopping or failed: "The host shell isn't running, so Monolith can't start the emulator. Turn on Serve host shell in Preferences."
-      - starting, or pairing unknown: "Monolith is still reading the host shell settings; try again in a moment."
-      - no PIN set: "Set a host shell PIN in Preferences so Monolith can start the emulator."
+      - stopped, stopping or failed: "The host shell isn't running, so Tesseract can't start the emulator. Turn on Serve host shell in Preferences."
+      - starting, or pairing unknown: "Tesseract is still reading the host shell settings; try again in a moment."
+      - no PIN set: "Set a host shell PIN in Preferences so Tesseract can start the emulator."
       - When blocked, refresh the host-shell state and report the message in the danger notice with a **"Preferences"** action that opens Preferences on the `host-shell` page.
    2. **Not unlocked yet** (no host session): open the `HostUnlockDialog`, which trades the PIN for a session kept in memory (`POST /v1/host/unlock {pin}` on the host daemon). On success, retry from step 3.1.
    3. Set busy with "Checking the emulator…", then `GET /v1/android` on the **host daemon**. If that fails with an auth error, forget the session and retry from 3.1. Any other error reports "The host shell couldn't prepare the emulator: {error}".
    4. **Plan** (`plan_emulator(status, sandboxUrl)`), first match wins:
       - Status unavailable, or emulator state `unavailable`: blocked with `status.reason`, or "The host can't run the Android emulator".
-      - `isolation == "none"`: blocked with "The host shell runs with THEONE_EMULATOR_ISOLATION=none, so the sandbox may not use its emulator".
+      - `isolation == "none"`: blocked with "The host shell runs with TESSERACT_EMULATOR_ISOLATION=none, so the sandbox may not use its emulator".
       - Emulator `stopping`: blocked with "The emulator is stopping; try again in a moment".
       - Compute these flags:
         - `linked = link.configured && link.sandboxUrl` equals this sandbox URL, comparing trimmed, trailing-slash-stripped, lowercased values
@@ -602,7 +602,7 @@ Host-fixable reasons (exact strings from the controller): "Link the host Android
    5. **Confirm**:
       - If `stop` (non-isolated emulator running):
         - Title: "Restart the emulator isolated?"
-        - Body: "The running emulator was started outside Monolith, so the sandbox may not use it. Monolith stops it and starts {avd} in an isolated network."
+        - Body: "The running emulator was started outside Tesseract, so the sandbox may not use it. Tesseract stops it and starts {avd} in an isolated network."
         - Buttons: "Restart" (destructive) / "Cancel"
         - Then, if `replaces` is set, the relink confirm follows.
       - If `replaces` is set:

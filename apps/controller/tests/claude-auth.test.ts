@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { TheOneClient } from "@theone/client";
-import { ClaudeAuthStatusSchema, ClaudeImportResultSchema, LIMITS } from "@theone/protocol";
+import { TesseractClient } from "@tesseract/client";
+import { ClaudeAuthStatusSchema, ClaudeImportResultSchema, LIMITS } from "@tesseract/protocol";
 import { ensureDirectories, loadConfig, type Config } from "../src/config";
 import { silentLogger } from "../src/core/logger";
 import { ClaudeAuthService, importPathError, sanitizeSettings } from "../src/services/claude-auth";
@@ -15,8 +15,8 @@ function setup(env: Record<string, string> = {}): { config: Config; service: Cla
   const home = join(root, "home");
   mkdirSync(home, { recursive: true });
   const config = loadConfig({
-    THEONE_WORKSPACE: join(root, "ws"),
-    THEONE_CLAUDE_BIN: "/nonexistent/claude",
+    TESSERACT_WORKSPACE: join(root, "ws"),
+    TESSERACT_CLAUDE_BIN: "/nonexistent/claude",
     CLAUDE_CONFIG_DIR: join(root, "claude"),
     HOME: home,
     ...env,
@@ -34,7 +34,7 @@ describe("config", () => {
   test("global config follows CLAUDE_CONFIG_DIR only when it is set", () => {
     expect(loadConfig({ HOME: "/home/dev" }).claudeGlobalConfig).toBe("/home/dev/.claude.json");
     expect(loadConfig({ HOME: "/home/dev", CLAUDE_CONFIG_DIR: "/srv/claude" }).claudeGlobalConfig).toBe("/srv/claude/.claude.json");
-    const config = loadConfig({ THEONE_DATA_DIR: "/srv/data", CLAUDE_CODE_OAUTH_TOKEN: "x", ANTHROPIC_API_KEY: " " });
+    const config = loadConfig({ TESSERACT_DATA_DIR: "/srv/data", CLAUDE_CODE_OAUTH_TOKEN: "x", ANTHROPIC_API_KEY: " " });
     expect(config.claudeEnvAuth).toEqual({ oauthToken: true, apiKey: false });
   });
 });
@@ -135,7 +135,7 @@ describe("import", () => {
     expect(result.written).toEqual([".credentials.json"]);
     expect(readJson(path)).toEqual({ claudeAiOauth: { accessToken: "new", refreshToken: "r", expiresAt: 1, extra: true }, mcpOAuth: { srv: 1 } });
     expect(mode(path)).toBe(0o600);
-    expect(readJson(`${path}.theone-bak`)).toEqual({ claudeAiOauth: { accessToken: "old" }, mcpOAuth: { srv: 1 } });
+    expect(readJson(`${path}.tesseract-bak`)).toEqual({ claudeAiOauth: { accessToken: "old" }, mcpOAuth: { srv: 1 } });
     expect(result.status).toMatchObject({ method: "credentials" });
     expect(result.status.importedAt).not.toBeNull();
   });
@@ -152,7 +152,7 @@ describe("import", () => {
       { path: ".claude.json#primaryApiKey", reason: "not an importable account key" },
     ]);
     expect(readJson(config.claudeGlobalConfig)).toEqual({ projects: { "/workspace": { x: 1 } }, theme: "dark", oauthAccount: { emailAddress: "a@b.c" } });
-    expect(readJson(`${config.claudeGlobalConfig}.theone-bak`).theme).toBe("light");
+    expect(readJson(`${config.claudeGlobalConfig}.tesseract-bak`).theme).toBe("light");
     expect(result.status.account?.email).toBe("a@b.c");
   });
 
@@ -187,7 +187,7 @@ describe("import", () => {
       { path: "projects/a.jsonl", reason: "not an importable path" },
     ]);
     expect(readJson(join(config.claudeConfigDir, "settings.json"))).toEqual({ model: "opus" });
-    expect(readJson(join(config.claudeConfigDir, "settings.json.theone-bak"))).toEqual({ model: "sonnet" });
+    expect(readJson(join(config.claudeConfigDir, "settings.json.tesseract-bak"))).toEqual({ model: "sonnet" });
     expect(readFileSync(join(config.claudeConfigDir, "skills/deploy/SKILL.md"), "utf8")).toBe("# deploy");
     expect(result.status.settingsPresent).toBe(true);
   });
@@ -246,13 +246,13 @@ describe("import", () => {
 
 describe("over HTTP", () => {
   let t: TestController;
-  let client: TheOneClient;
+  let client: TesseractClient;
 
   beforeAll(async () => {
     const workspace = makeTempDir("claude-http");
     writeFiles(join(workspace, "projects", "app"), { "README.md": "app\n" });
     t = await startTestController({ workspace, env: { CLAUDE_CODE_OAUTH_TOKEN: "", ANTHROPIC_API_KEY: "" } });
-    client = new TheOneClient({ baseUrl: t.baseUrl, token: t.controller.services.token });
+    client = new TesseractClient({ baseUrl: t.baseUrl, token: t.controller.services.token });
   });
 
   afterAll(() => t.stop());
@@ -262,14 +262,14 @@ describe("over HTTP", () => {
     expect((await t.json("DELETE", "/v1/claude/auth/token")).status).toBe(404);
   });
 
-  test("status through @theone/client; invalid import bodies are 400", async () => {
+  test("status through @tesseract/client; invalid import bodies are 400", async () => {
     const status = await client.claudeAuth();
     expect(status).toMatchObject({ configDir: t.config.claudeConfigDir, oauthTokenFromEnv: false, sources: { oauthToken: false } });
     const bad = await t.json("POST", "/v1/claude/import", { files: [{ path: "CLAUDE.md" }] });
     expect(bad.status).toBe(400);
   });
 
-  test("import through @theone/client", async () => {
+  test("import through @tesseract/client", async () => {
     const result = await client.importClaude({
       credentials: { accessToken: "a", refreshToken: "r", expiresAt: Date.now() + 60_000, subscriptionType: "pro" },
       account: { oauthAccount: { emailAddress: "dev@example.com" } },

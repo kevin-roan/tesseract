@@ -1,6 +1,5 @@
-import { chmod, mkdir, readFile, rename, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { LEGACY_CONFIG_DIR_NAME, CONFIG_DIR_NAME } from "../paths";
 
 export type ConfigData = Record<string, unknown>;
 
@@ -38,21 +37,4 @@ export function updateConfig(file: string, mutate: (data: ConfigData) => ConfigD
   });
   queue = next.catch(() => undefined);
   return next;
-}
-
-export async function migrateLegacyConfigDir(base: string): Promise<boolean> {
-  const target = join(base, CONFIG_DIR_NAME);
-  const legacy = join(base, LEGACY_CONFIG_DIR_NAME);
-  try {
-    await stat(target);
-    return false;
-  } catch {
-    try {
-      if (!(await stat(legacy)).isDirectory()) return false;
-      await rename(legacy, target);
-      return true;
-    } catch {
-      return false;
-    }
-  }
 }

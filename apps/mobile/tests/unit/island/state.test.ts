@@ -1,4 +1,4 @@
-import { sampleAgentRun, sampleBuild, sampleProcess, sampleProject, sampleUsageReport } from "@theone/protocol/fixtures";
+import { sampleAgentRun, sampleBuild, sampleProcess, sampleProject, sampleUsageReport } from "@tesseract/protocol/fixtures";
 
 import { actionFromRoute } from "@/features/island/utils/actions";
 import { attachDestinations } from "@/features/island/utils/destinations";
@@ -6,7 +6,7 @@ import { capsuleTitle, clockLabel, islandSummary, tokensTodayLabel } from "@/fea
 import { mergeDraftText, seedFromSharedItems, splitSharedItems } from "@/features/island/utils/shared";
 import { hasLiveWork, islandState, islandUsage, liveCount, runTitle, stateSignature } from "@/features/island/utils/state";
 
-import type { SharedItem } from "@/modules/theone-island";
+import type { SharedItem } from "@/modules/tesseract-island";
 
 const SANDBOX = { id: "sbx_test", name: "Test box" };
 const NOW = Date.parse("2026-09-23T10:05:00.000Z");

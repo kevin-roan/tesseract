@@ -33,7 +33,7 @@ function RootNavigator() {
         <ThemeProvider value={navigationTheme}>
           <Stack screenOptions={{ headerShown: false, orientation: 'portrait_up' }}>
             <Stack.Protected guard={paired}>
-              <Stack.Screen name="(tabs)" options={{ animation: 'fade', title: 'Monolith' }} />
+              <Stack.Screen name="(tabs)" options={{ animation: 'fade', title: 'Tesseract' }} />
               <Stack.Screen name="sandbox/display" options={{ gestureEnabled: false, title: 'Display' }} />
               <Stack.Screen name="sandbox/preview" options={{ title: 'Preview' }} />
               <Stack.Screen name="sandbox/terminal/[id]" options={{ gestureEnabled: false, title: 'Terminal' }} />

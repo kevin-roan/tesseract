@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from "react";
 import { View } from "react-native";
 import { FolderSimpleIcon, InfoIcon } from "phosphor-react-native";
-import { LIMITS } from "@theone/protocol";
+import { LIMITS } from "@tesseract/protocol";
 
 import Chip from "@/components/chip";
 import MenuSheet from "@/components/menu-sheet";

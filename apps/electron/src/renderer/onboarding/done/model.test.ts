@@ -8,8 +8,8 @@ describe("summarize", () => {
     expect(items.map((item) => [item.id, item.detail, item.status])).toEqual([
       ["docker", "Docker Engine 29.8.1", "done"],
       ["claude", "Signed in as you@example.com", "done"],
-      ["sandbox", "theone-sandbox · https://theone-sandbox.tail1234.ts.net", "done"],
-      ["android", "Monolith_API_36", "done"],
+      ["sandbox", "tesseract-sandbox · https://tesseract-sandbox.tail1234.ts.net", "done"],
+      ["android", "Tesseract_API_36", "done"],
       ["pair", "Pairing link ready", "done"],
     ]);
   });

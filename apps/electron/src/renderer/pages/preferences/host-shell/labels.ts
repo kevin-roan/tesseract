@@ -6,7 +6,7 @@ export const HOST_SHELL_LABELS = {
   server: {
     title: "Server",
     description:
-      "Lets paired phones open a terminal on this computer over Tailscale. Monolith runs it in the background and stops it when you quit.",
+      "Lets paired phones open a terminal on this computer over Tailscale. Tesseract runs it in the background and stops it when you quit.",
   },
   serve: {
     title: "Serve host shell",
@@ -15,14 +15,14 @@ export const HOST_SHELL_LABELS = {
       starting: "Starting…",
       running: "Running",
       stopping: "Stopping…",
-      external: "Running outside Monolith",
+      external: "Running outside Tesseract",
       failed: "Failed",
     } satisfies Record<HostShellStatus, string>,
     failed: (error: string) => `Failed: ${error}`,
   },
   autostart: {
-    title: "Start with Monolith",
-    subtitle: "Start serving whenever Monolith opens",
+    title: "Start with Tesseract",
+    subtitle: "Start serving whenever Tesseract opens",
   },
   security: { title: "Security" },
   pin: {
@@ -48,7 +48,7 @@ export const HOST_SHELL_LABELS = {
   pairing: {
     title: "Pairing",
     pair: "Pair a phone",
-    pairSubtitle: "Show the theone://host link and QR code",
+    pairSubtitle: "Show the tesseract://host link and QR code",
     showQr: "Show QR…",
   },
   log: {

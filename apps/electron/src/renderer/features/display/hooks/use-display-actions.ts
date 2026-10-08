@@ -1,4 +1,4 @@
-import type { TheOneClient } from "@theone/client";
+import type { TesseractClient } from "@tesseract/client";
 import { useCallback, useMemo } from "react";
 import { describeError } from "../../../app/connection";
 import { showToast } from "../../../components/Toast";
@@ -12,7 +12,7 @@ export interface DisplayActions {
   openInBrowser(): Promise<void>;
 }
 
-export function useDisplayActions(client: TheOneClient | null): DisplayActions {
+export function useDisplayActions(client: TesseractClient | null): DisplayActions {
   const saveScreenshot = useCallback(async () => {
     if (!client) return;
     try {

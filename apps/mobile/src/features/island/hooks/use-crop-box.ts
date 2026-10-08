@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo } from "react";
 import { Gesture } from "react-native-gesture-handler";
 import { useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 
-import type { CropRect } from "@/modules/theone-island";
+import type { CropRect } from "@/modules/tesseract-island";
 
 import type { Corner, FitGeometry, Rect, Size } from "../types";
 import { CORNERS, CROP_HANDLE_SIZE } from "../utils/constants";

@@ -65,7 +65,7 @@ describe("electron-builder.yml", () => {
 
   it("builds an AppImage and a deb on Linux", () => {
     expect(config.linux.target.map((target) => target.target)).toEqual(["AppImage", "deb"]);
-    expect(config.linux.executableName).toBe("monolith-desktop");
+    expect(config.linux.executableName).toBe("tesseract-desktop");
   });
 
   it("publishes to a generic update feed", () => {
@@ -119,11 +119,11 @@ describe("build resources", () => {
 
   it("adds and removes the CLI directory from the user PATH in NSIS", () => {
     const nsh = read(config.nsis.include);
-    expect(nsh).toMatch(/!macro customInstall\s+Push "add"\s+Call MonolithUpdateUserPath/);
-    expect(nsh).toMatch(/!macro customUnInstall\s+\$\{IfNot\} \$\{isUpdated\}\s+Push "remove"\s+Call un\.MonolithUpdateUserPath/);
-    expect(nsh).toContain('!define MONOLITH_CLI_DIR "$INSTDIR\\resources\\bin"');
+    expect(nsh).toMatch(/!macro customInstall\s+Push "add"\s+Call TesseractUpdateUserPath/);
+    expect(nsh).toMatch(/!macro customUnInstall\s+\$\{IfNot\} \$\{isUpdated\}\s+Push "remove"\s+Call un\.TesseractUpdateUserPath/);
+    expect(nsh).toContain('!define TESSERACT_CLI_DIR "$INSTDIR\\resources\\bin"');
     expect(nsh).toContain("WriteRegExpandStr HKCU");
-    expect(nsh).toMatch(/!ifdef BUILD_UNINSTALLER\s+!insertmacro MONOLITH_PATH_FUNCTIONS "un\."\s+!else\s+!insertmacro MONOLITH_PATH_FUNCTIONS ""/);
+    expect(nsh).toMatch(/!ifdef BUILD_UNINSTALLER\s+!insertmacro TESSERACT_PATH_FUNCTIONS "un\."\s+!else\s+!insertmacro TESSERACT_PATH_FUNCTIONS ""/);
     expect(nsh).not.toContain("StrFunc");
   });
 

@@ -1,4 +1,4 @@
-# TheOne dock: a bottom panel on the virtual display (started from openbox's autostart).
+# Tesseract dock: a bottom panel on the virtual display (started from openbox's autostart).
 # Text buttons open a terminal or Chromium; the taskbar switches windows and restores
 # minimized ones; the clock sits on the right. Sized for a phone viewing 1600x900 scaled down.
 # Reference: https://gitlab.com/o9000/tint2/-/blob/master/doc/tint2.md

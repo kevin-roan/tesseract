@@ -1,6 +1,6 @@
 # Spec: Terminals page + terminal widget
 
-Source of truth: `apps/desktop/monolith_desktop/pages/terminals/*` and `apps/desktop/monolith_desktop/widgets/terminal/*`.
+Source of truth: `apps/desktop/tesseract_desktop/pages/terminals/*` and `apps/desktop/tesseract_desktop/widgets/terminal/*`.
 Electron target: React + xterm.js (`@xterm/xterm`, `@xterm/addon-fit`, optionally `@xterm/addon-webgl`, `@xterm/addon-unicode11`).
 All numbers are CSS px at zoom 1. Base text is 13px Inter.
 
@@ -349,7 +349,7 @@ export const XTERM_OPTIONS: ITerminalOptions = {
 - The `windowOptions` entries mirror GTK's replies to CSI 14t/16t/18t. GTK also answers:
   - DA1 `CSI ?62;22c`
   - DA2 `CSI >1;10;0c`
-  - XTVERSION `DCS >|Monolith(1.0) ST`
+  - XTVERSION `DCS >|Tesseract(1.0) ST`
   - DSR 5/6
   - DECRQM
   - OSC 10/11/12 and OSC 4 color queries, using palette colors formatted `rgb:rrrr/gggg/bbbb`

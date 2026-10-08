@@ -5,7 +5,7 @@ import {
   parseBaseUrl,
   parsePairingLink,
   type PairingPayload,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import type { PairingDraft, PairingErrors } from "../types";
 
@@ -60,7 +60,7 @@ export function parsePairingText(text: string): LinkParseResult {
   const parsed = parsePairingLink(text);
   if (parsed.ok) return { ok: true, draft: draftFromPayload(parsed.value) };
   if (parsed.error.code === "invalid_scheme") {
-    return { ok: false, message: `That code is not a Monolith pairing link (${PAIRING_SCHEME}://pair).` };
+    return { ok: false, message: `That code is not a Tesseract pairing link (${PAIRING_SCHEME}://pair).` };
   }
   return { ok: false, message: parsed.error.message };
 }

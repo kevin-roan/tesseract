@@ -9,7 +9,7 @@ import type { ConversationViewProps } from "./types";
 function renderView(props: Partial<ConversationViewProps> & { runId: string }) {
   const onSelectRun = vi.fn();
   const view = renderRoutes(
-    [{ path: "/", element: <ConversationView runs={CONVERSATION_RUNS} names={{ monolith: "monolith" }} onSelectRun={onSelectRun} {...props} /> }],
+    [{ path: "/", element: <ConversationView runs={CONVERSATION_RUNS} names={{ tesseract: "tesseract" }} onSelectRun={onSelectRun} {...props} /> }],
     "/",
   );
   return { ...view, onSelectRun };
@@ -78,7 +78,7 @@ describe("ConversationView", () => {
     renderView({ runId: conversationDoneRun.id, onManage, renderSync, compact: true });
     await screen.findByText("Finished");
     expect(screen.getByText("sync-slot")).toBeTruthy();
-    expect(renderSync).toHaveBeenLastCalledWith(expect.objectContaining({ projectId: "monolith", compact: true, running: false }));
+    expect(renderSync).toHaveBeenLastCalledWith(expect.objectContaining({ projectId: "tesseract", compact: true, running: false }));
     fireEvent.click(screen.getByRole("button", { name: "Archive" }));
     expect(onManage).toHaveBeenCalledWith("archive", expect.objectContaining({ id: conversationDoneRun.id }));
   });

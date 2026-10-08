@@ -15,8 +15,8 @@ const COMMANDS = [
   command("page:projects", "Go to Projects", "Navigation"),
   command("action:new", "New conversation", "Actions", { keywords: ["claude", "chat"] }),
   command("action:refresh", "Refresh connection", "Actions"),
-  command("project:monolith", "Open monolith", "Projects", { subtitle: "expo" }),
-  command("window:quit", "Quit Monolith", "Window"),
+  command("project:tesseract", "Open tesseract", "Projects", { subtitle: "expo" }),
+  command("window:quit", "Quit Tesseract", "Window"),
 ];
 
 const ORDER = ["Recent", "Navigation", "Projects", "Actions", "Window"];
@@ -52,7 +52,7 @@ describe("searchCommands", () => {
   });
 
   it("orders groups by their best match when searching", () => {
-    const sections = searchCommands(COMMANDS, "monolith", { groupOrder: ORDER });
+    const sections = searchCommands(COMMANDS, "tesseract", { groupOrder: ORDER });
     expect(sections.map((section) => section.group)).toEqual(["Projects", "Window"]);
     expect(searchCommands(COMMANDS, "nothing-matches")).toEqual([]);
   });

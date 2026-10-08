@@ -1,5 +1,5 @@
-import type { GitFileStatus, ProcessInfo } from "@theone/protocol";
-import { sampleProcess } from "@theone/protocol/fixtures";
+import type { GitFileStatus, ProcessInfo } from "@tesseract/protocol";
+import { sampleProcess } from "@tesseract/protocol/fixtures";
 import { REFERENCE_IDS } from "./data";
 
 export const GTK_PARITY = "gtk-parity";
@@ -12,7 +12,7 @@ const DAY = 24 * HOUR;
 const ids = REFERENCE_IDS;
 
 export const PARITY_SCRIPTS: Readonly<Record<string, string[]>> = {
-  [ids.monolith]: ["mobile", "controller", "desktop", "electron", "lint", "typecheck", "test", "format", "build", "e2e"],
+  [ids.tesseract]: ["mobile", "controller", "desktop", "electron", "lint", "typecheck", "test", "format", "build", "e2e"],
 };
 
 interface ParityRun {
@@ -39,7 +39,7 @@ const PROCESS_RUNS: Readonly<Record<string, readonly ParityRun[]>> = {
     { name: "android:assembleRelease", command: "cd apps/mobile/android && EXPO_PUBLIC_ENV=production ./gradlew assembleRelease", endedAgo: 6 * HOUR + 10 * MINUTE, ranFor: 14 * MINUTE + 58 * SECOND, exitCode: 0 },
     { name: "lint", command: "pnpm run lint", endedAgo: 2 * DAY, ranFor: 3 * SECOND, exitCode: 0 },
   ],
-  [ids.monolith]: [
+  [ids.tesseract]: [
     { name: EXPO_ANDROID, command: BUN_ANDROID, endedAgo: 5 * HOUR, ranFor: 0, exitCode: 1, port: 8081 },
     { name: EXPO_ANDROID, command: BUN_ANDROID, endedAgo: 10 * HOUR, ranFor: SECOND, exitCode: 1, port: 8081 },
     { name: "android:assembleRelease", command: "cd apps/mobile/android && APP_VARIANT=production ./gradlew assembleRelease", endedAgo: 25 * HOUR, ranFor: 29 * MINUTE + 23 * SECOND, exitCode: 0 },
@@ -82,7 +82,7 @@ export function parityProcesses(now = Date.now()): ProcessInfo[] {
 
 const CHANGED_FILES: Readonly<Record<string, number>> = {
   [ids.streaxfit]: 114,
-  [ids.monolith]: 92,
+  [ids.tesseract]: 92,
   [ids.hybrid]: 12,
 };
 

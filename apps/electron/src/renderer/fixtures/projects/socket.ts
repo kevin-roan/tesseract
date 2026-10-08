@@ -1,4 +1,4 @@
-import { wsPaths } from "@theone/protocol";
+import { wsPaths } from "@tesseract/protocol";
 import { defineSocketFixtures } from "../types";
 import { CLONE_PROCESS_ID, cloneLogFrames } from "./data";
 

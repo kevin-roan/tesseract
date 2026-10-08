@@ -3,7 +3,7 @@ import { ONBOARDING_LABELS } from "../labels";
 export const DOCKER_LABELS = {
   title: ONBOARDING_LABELS.titles.docker,
   description:
-    "The sandbox is a Docker container. Monolith needs the Docker engine running, with Compose and BuildKit.",
+    "The sandbox is a Docker container. Tesseract needs the Docker engine running, with Compose and BuildKit.",
   group: "Docker on this computer",
   checkAgain: "Check again",
   checking: "Checking…",
@@ -13,7 +13,7 @@ export const DOCKER_LABELS = {
     continue: ONBOARDING_LABELS.buttons.continue,
     cancel: ONBOARDING_LABELS.buttons.cancel,
     install: "Install",
-    quit: "Quit Monolith",
+    quit: "Quit Tesseract",
   },
   actions: {
     install: "Install…",
@@ -55,14 +55,14 @@ export const DOCKER_LABELS = {
   },
   permission: {
     message:
-      "Your user isn't in the docker group, so Monolith can't talk to the engine. Being in this group gives root-level control of this computer.",
+      "Your user isn't in the docker group, so Tesseract can't talk to the engine. Being in this group gives root-level control of this computer.",
     addMe: "Add me to the docker group",
     command: "sudo usermod -aG docker $USER",
   },
   relogin: {
     title: "Log out to finish",
     message:
-      "Log out and back in (or restart) so the docker group applies, then open Monolith again. Setup continues where you left off.",
+      "Log out and back in (or restart) so the docker group applies, then open Tesseract again. Setup continues where you left off.",
   },
   reboot: {
     title: "Restart to finish",

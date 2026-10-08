@@ -24,7 +24,7 @@ import {
   type HostHealth,
   type Schema,
   type TerminalServerMessage,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { TicketStore } from "../auth/tickets";
 import { badRequest, errorMessage, HttpError, notFound } from "../core/errors";
 import { createLogger, type Logger } from "../core/logger";
@@ -75,7 +75,7 @@ function respond(body: unknown, status = 200): Response {
 
 function fail(error: HttpError): Response {
   const headers: Record<string, string> = { ...CORS_HEADERS };
-  if (error.code === "unauthorized") headers["WWW-Authenticate"] = 'Bearer realm="theone-host"';
+  if (error.code === "unauthorized") headers["WWW-Authenticate"] = 'Bearer realm="tesseract-host"';
   return Response.json(errorBody(error.code, error.message), { status: error.status, headers });
 }
 

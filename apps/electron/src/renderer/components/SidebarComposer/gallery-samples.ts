@@ -7,6 +7,6 @@ export const SIDEBAR_GALLERY = {
 export const SIDEBAR_GALLERY_PROJECTS = [
   { id: "sante-production", name: "sante-production" },
   { id: "streaxfit", name: "streaxfit" },
-  { id: "monolith", name: "monolith" },
+  { id: "tesseract", name: "tesseract" },
   { id: "hybrid-pos", name: "hybrid-pos" },
 ] as const;

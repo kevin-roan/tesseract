@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useLocalSearchParams } from "expo-router";
 import { TerminalWindowIcon } from "phosphor-react-native";
-import type { TerminalInfo } from "@theone/protocol";
+import type { TerminalInfo } from "@tesseract/protocol";
 
 import EmptyState from "@/components/empty-state";
 import Notice from "@/components/notice";

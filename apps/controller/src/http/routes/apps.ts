@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { AppRunActionRequestSchema, routePatterns, StartAppRunSchema } from "@theone/protocol";
+import { AppRunActionRequestSchema, routePatterns, StartAppRunSchema } from "@tesseract/protocol";
 import type { Services } from "../../services";
 import { idParam, jsonBody, projectFilter } from "../validation";
 

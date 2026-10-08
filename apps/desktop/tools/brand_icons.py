@@ -15,7 +15,7 @@ from pathlib import Path
 DESKTOP_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(DESKTOP_DIR))
 
-from monolith_desktop.theme.icons import FRAMEWORK_LOGOS, LOGO_PREFIX  # noqa: E402
+from tesseract_desktop.theme.icons import FRAMEWORK_LOGOS, LOGO_PREFIX  # noqa: E402
 
 VERSION = "13.21.0"
 SOURCE = f"https://unpkg.com/simple-icons@{VERSION}/icons/{{name}}.svg"

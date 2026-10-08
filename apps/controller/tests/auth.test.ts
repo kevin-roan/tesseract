@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { statSync } from "node:fs";
 import { join } from "node:path";
-import { ErrorBodySchema, HealthSchema, SandboxStatusSchema, TicketSchema } from "@theone/protocol";
+import { ErrorBodySchema, HealthSchema, SandboxStatusSchema, TicketSchema } from "@tesseract/protocol";
 import { TicketStore } from "../src/auth/tickets";
 import { tokensEqual } from "../src/auth/token";
 import { redactUrl } from "../src/http/middleware/request-log";
@@ -149,7 +149,7 @@ describe("request validation", () => {
 describe("token file", () => {
   test("is generated with mode 0600 when no token is configured", async () => {
     const workspace = makeTempDir("token");
-    const other = await startTestController({ workspace, env: { THEONE_TOKEN: undefined } });
+    const other = await startTestController({ workspace, env: { TESSERACT_TOKEN: undefined } });
     try {
       const file = join(workspace, ".agent", "controller", "token");
       expect(statSync(file).mode & 0o777).toBe(0o600);

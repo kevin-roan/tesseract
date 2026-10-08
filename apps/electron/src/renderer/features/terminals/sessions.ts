@@ -1,5 +1,5 @@
-import type { TheOneClient } from "@theone/client";
-import type { TerminalInfo } from "@theone/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import type { TerminalInfo } from "@tesseract/protocol";
 import type { Scheme } from "../../../shared/runtime";
 import { MAX_ATTACHED, RECONNECT_DELAY_MS } from "./constants";
 import { TerminalLink } from "./link";
@@ -9,7 +9,7 @@ import type { TerminalCommand } from "./types";
 import { createXtermHost, type TerminalHost, type TerminalHostFactory } from "./xterm-host";
 
 export interface SessionContext {
-  client: TheOneClient;
+  client: TesseractClient;
   scheme: Scheme;
   openLink(url: string): void;
   readClipboard(): Promise<string>;

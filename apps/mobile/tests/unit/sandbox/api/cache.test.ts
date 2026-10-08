@@ -1,4 +1,4 @@
-import type { AgentRunDetail, BuildJob, ProcessInfo, StatusEvent, SyncRequest } from "@theone/protocol";
+import type { AgentRunDetail, BuildJob, ProcessInfo, StatusEvent, SyncRequest } from "@tesseract/protocol";
 import {
   sampleAgentRun,
   sampleAgentRunDetail,
@@ -10,7 +10,7 @@ import {
   sampleSyncChanges,
   sampleSyncRequest,
   sampleTerminal,
-} from "@theone/protocol/fixtures";
+} from "@tesseract/protocol/fixtures";
 
 import { applyServerEvent, resyncSandbox } from "@/features/sandbox/api/cache";
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";

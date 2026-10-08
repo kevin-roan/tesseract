@@ -1,4 +1,4 @@
-import { routePatterns } from "@theone/protocol";
+import { routePatterns } from "@tesseract/protocol";
 import {
   sampleAndroidLink,
   sampleArtifact,
@@ -21,7 +21,7 @@ import {
   sampleTerminal,
   sampleTicket,
   sampleUsageReport,
-} from "@theone/protocol/fixtures";
+} from "@tesseract/protocol/fixtures";
 import { defineHttpFixtures, reply } from "../types";
 import { fixtureProjects, fixtureRuns, fixtureStatus } from "./data";
 

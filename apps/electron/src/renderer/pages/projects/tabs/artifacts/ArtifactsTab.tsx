@@ -1,4 +1,4 @@
-import type { Artifact } from "@theone/protocol";
+import type { Artifact } from "@tesseract/protocol";
 import { EmptyState } from "../../../../components/EmptyState";
 import { ListGroup } from "../../../../components/GroupBand";
 import { KeyedList } from "../../../../components/KeyedList";

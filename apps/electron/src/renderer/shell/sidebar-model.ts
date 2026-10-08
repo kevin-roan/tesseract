@@ -1,4 +1,4 @@
-import type { AgentRun, Project } from "@theone/protocol";
+import type { AgentRun, Project } from "@tesseract/protocol";
 import { runTitle, runTone, workspaceState, type SidebarProjectItem, type SidebarProjectsState } from "../components/Sidebar";
 import { formatRelativeTime } from "../features/agents/format";
 import { projectBadge, projectBadges } from "../features/agents/tints";

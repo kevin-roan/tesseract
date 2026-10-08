@@ -334,7 +334,7 @@ describe("websocket messages", () => {
 
   test("server events", () => {
     const events = [
-      { type: "hello", protocolVersion: 1, sandboxId: "theone-sandbox" },
+      { type: "hello", protocolVersion: 1, sandboxId: "tesseract-sandbox" },
       { type: "ping" },
       { type: "status", event: sampleStatusEvent },
       { type: "process.updated", process: sampleProcess },

@@ -1,4 +1,4 @@
-import type { Artifact, ArtifactSource } from "@theone/protocol";
+import type { Artifact, ArtifactSource } from "@tesseract/protocol";
 
 import type { ChoiceOption } from "@/components/choice-group";
 import type { SegmentedOption } from "@/components/segmented-pills";

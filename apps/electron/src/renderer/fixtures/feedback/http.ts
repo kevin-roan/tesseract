@@ -1,5 +1,5 @@
-import { routePatterns } from "@theone/protocol";
-import { sampleHealth } from "@theone/protocol/fixtures";
+import { routePatterns } from "@tesseract/protocol";
+import { sampleHealth } from "@tesseract/protocol/fixtures";
 import { defineHttpFixtures, reply, type HttpFixtureRoute } from "../types";
 import { FEEDBACK_ERRORS, FEEDBACK_PROTOCOL_VERSION, NEVER_MATCHES, SCENARIOS, feedbackScenario } from "./scenarios";
 

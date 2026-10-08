@@ -1,4 +1,4 @@
-import type { AndroidLinkInfo, HostAndroidStatus } from "@theone/protocol";
+import type { AndroidLinkInfo, HostAndroidStatus } from "@tesseract/protocol";
 import type { HostShellState } from "../../../../../shared/contracts/hostShell";
 import { EMULATOR_LABELS } from "./labels";
 

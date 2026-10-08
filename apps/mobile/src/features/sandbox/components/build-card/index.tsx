@@ -1,5 +1,5 @@
 import { HammerIcon } from "phosphor-react-native";
-import { isFinalBuildState, type BuildJob } from "@theone/protocol";
+import { isFinalBuildState, type BuildJob } from "@tesseract/protocol";
 
 import ProgressBar from "@/components/progress-bar";
 import ResourceCard from "@/components/resource-card";

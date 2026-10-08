@@ -6,15 +6,15 @@ from pathlib import Path
 
 import pytest
 
-from monolith_desktop.api.errors import NetworkError
-from monolith_desktop.syncback import SyncState
-from monolith_desktop.syncback import get as get_module
-from monolith_desktop.syncback.cli import EXIT_ERROR, EXIT_OK, run_get_on_host, run_status
-from monolith_desktop.syncback.manifest import hash_path
-from monolith_desktop.syncback.requests import handle_request
-from monolith_desktop.syncback.state import Link
-from monolith_desktop.syncback.summary import describe_result
-from monolith_desktop.syncback.tree import collect_files, contained, git_manifest, scan_tree
+from tesseract_desktop.api.errors import NetworkError
+from tesseract_desktop.syncback import SyncState
+from tesseract_desktop.syncback import get as get_module
+from tesseract_desktop.syncback.cli import EXIT_ERROR, EXIT_OK, run_get_on_host, run_status
+from tesseract_desktop.syncback.manifest import hash_path
+from tesseract_desktop.syncback.requests import handle_request
+from tesseract_desktop.syncback.state import Link
+from tesseract_desktop.syncback.summary import describe_result
+from tesseract_desktop.syncback.tree import collect_files, contained, git_manifest, scan_tree
 
 PROJECT = "demo"
 PUSHED_AT = "2026-09-30T20:00:00.000Z"
@@ -284,7 +284,7 @@ def test_file_that_vanished_before_the_upload_fails_the_request(env):
     host_edits(host)
     controller.before_apply = lambda: (host / "src/new/feature.py").unlink()
     handled = run_get(controller, state)
-    assert not handled.ok and "src/new/feature.py changed during the sync, run monolith --get again" in handled.message
+    assert not handled.ok and "src/new/feature.py changed during the sync, run tesseract --get again" in handled.message
     assert controller.completed == [(handled.request["id"], "failed")]
 
 
@@ -293,7 +293,7 @@ def test_too_many_changes_fail_with_the_sync_advice(env, monkeypatch):
     host_edits(host)
     monkeypatch.setattr(get_module, "MAX_CHANGES", 2)
     handled = run_get(controller, state)
-    assert not handled.ok and "monolith --sync" in handled.message and controller.plans == []
+    assert not handled.ok and "tesseract --sync" in handled.message and controller.plans == []
     monkeypatch.setattr(get_module, "MAX_CHANGES", 5000)
     monkeypatch.setattr(get_module, "MAX_GIT_PATHS", 0)
     write(host, ".git/objects/cc/three", "x")
@@ -343,7 +343,7 @@ def test_old_links_without_the_get_fields_still_load(tmp_path):
 
 
 def test_run_sync_records_executable_bits_and_the_git_manifest(tmp_path, monkeypatch):
-    from monolith_desktop import sync
+    from tesseract_desktop import sync
 
     root = tmp_path / "My App"
     write(root, "index.ts", "x")
@@ -391,9 +391,9 @@ def test_status_shows_the_last_get_and_host_get_explains_itself(env, capsys):
 
 
 def test_notifications_and_labels_know_get():
-    from monolith_desktop.pages.projects.labels import SYNC_KINDS
-    from monolith_desktop.services.syncback import notification_kind
-    from monolith_desktop.strings import SYNC_BACK
+    from tesseract_desktop.pages.projects.labels import SYNC_KINDS
+    from tesseract_desktop.services.syncback import notification_kind
+    from tesseract_desktop.strings import SYNC_BACK
 
     assert SYNC_KINDS["get"] == "Sync from host"
     assert notification_kind({"kind": "get"}) == "get" and notification_kind({"kind": "other"}) == "pull"
@@ -401,7 +401,7 @@ def test_notifications_and_labels_know_get():
 
 
 def test_host_changes_lists_what_a_get_would_bring_in(tmp_path):
-    from monolith_desktop.syncback.manifest import DigestCache, build_manifest
+    from tesseract_desktop.syncback.manifest import DigestCache, build_manifest
 
     host = tmp_path / "host"
     write(host, "same.txt", "a")
@@ -422,7 +422,7 @@ def test_host_changes_is_empty_when_the_host_folder_is_missing(tmp_path):
 
 
 def test_digest_cache_rehashes_only_files_whose_stat_changed(tmp_path, monkeypatch):
-    from monolith_desktop.syncback import manifest
+    from tesseract_desktop.syncback import manifest
 
     write(tmp_path, "a.txt", "one")
     hashed = []

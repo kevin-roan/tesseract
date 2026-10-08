@@ -11,15 +11,15 @@ bash_scripts() {
     "${REPO}/infra/e2e/run" \
     "${REPO}/infra/e2e/web/run" \
     "${REPO}/infra/tests/run" \
-    "${ROOTFS_BIN}"/theone-* \
-    "${ROOTFS_BIN}/monolith" \
+    "${ROOTFS_BIN}"/tesseract-* \
+    "${ROOTFS_BIN}/tesseract" \
     "${ROOTFS}/etc/claude-code/.claude/skills/send-file/find-files"
 }
 
 sh_scripts() {
   printf '%s\n' \
-    "${ROOTFS}/etc/profile.d/theone.sh" \
-    "${ROOTFS}/etc/chromium.d/theone" \
+    "${ROOTFS}/etc/profile.d/tesseract.sh" \
+    "${ROOTFS}/etc/chromium.d/tesseract" \
     "${ROOTFS}/etc/xdg/openbox/autostart"
 }
 
@@ -59,7 +59,7 @@ sh_scripts() {
   for conf in "${ROOTFS}"/etc/supervisor/conf.d/*.conf; do
     command="$(sed -n 's/^command=\([^ ]*\).*/\1/p' "${conf}")"
     [[ -n "${command}" ]] || fail "${conf} has no command"
-    if [[ "${command}" == /usr/local/bin/theone-* && "${command}" != /usr/local/bin/theone-controller ]]; then
+    if [[ "${command}" == /usr/local/bin/tesseract-* && "${command}" != /usr/local/bin/tesseract-controller ]]; then
       assert_file_executable "${ROOTFS}${command}"
     fi
   done
@@ -75,10 +75,10 @@ sh_scripts() {
       [[ "${line#*=}" == /workspace/.agent/logs/supervisor* ]] || fail "${conf}: ${line}"
     done
   done
-  grep -q '"${AGENT_DIR}/logs/supervisor"' "${ROOTFS_BIN}/theone-entrypoint"
+  grep -q '"${AGENT_DIR}/logs/supervisor"' "${ROOTFS_BIN}/tesseract-entrypoint"
 }
 
 @test "the supervisord socket lives in the directory the entrypoint hands to dev" {
   grep -qx 'file=/run/supervisor/supervisor.sock' "${ROOTFS}/etc/supervisor/supervisord.conf"
-  grep -qx 'readonly SUPERVISOR_RUN_DIR=/run/supervisor' "${ROOTFS_BIN}/theone-entrypoint"
+  grep -qx 'readonly SUPERVISOR_RUN_DIR=/run/supervisor' "${ROOTFS_BIN}/tesseract-entrypoint"
 }

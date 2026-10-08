@@ -1,4 +1,4 @@
-import type { InboxItem } from "@theone/protocol";
+import type { InboxItem } from "@tesseract/protocol";
 import { useMemo } from "react";
 import { describeError } from "../../../app/connection";
 import { useApiClient } from "../../../app/data";

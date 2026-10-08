@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, test } from "bun:test";
-import type { TerminalConnection } from "@theone/client";
-import type { TerminalInfo } from "@theone/protocol";
+import type { TerminalConnection } from "@tesseract/client";
+import type { TerminalInfo } from "@tesseract/protocol";
 import { client, SECONDS } from "./lib/env";
 import { processesMatching } from "./lib/sandbox";
 import { delay, waitFor } from "./lib/wait";
@@ -41,8 +41,8 @@ describe("terminals", () => {
 
       const first = attach(terminal.id);
       await waitFor("terminal socket", () => first.connection.state === "open", 15 * SECONDS);
-      expect(first.connection.send("echo theone-$((6*7))\r")).toBe(true);
-      await waitFor("theone-42 in the output", () => first.output().includes("theone-42"), 20 * SECONDS);
+      expect(first.connection.send("echo tesseract-$((6*7))\r")).toBe(true);
+      await waitFor("tesseract-42 in the output", () => first.output().includes("tesseract-42"), 20 * SECONDS);
 
       expect(first.connection.resize(100, 30)).toBe(true);
       await delay(300);
@@ -57,7 +57,7 @@ describe("terminals", () => {
 
       const second = attach(terminal.id);
       await waitFor("scrollback replay", () => second.outputs.length > 0, 15 * SECONDS);
-      expect(second.outputs[0]).toContain("theone-42");
+      expect(second.outputs[0]).toContain("tesseract-42");
       second.connection.send("exit\r");
       await waitFor("shell exit", () => second.exitCode() !== undefined, 20 * SECONDS);
       expect(second.exitCode()).toBe(0);

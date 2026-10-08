@@ -1,4 +1,4 @@
-import { sampleArtifact } from "@theone/protocol/fixtures";
+import { sampleArtifact } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import { artifactsView } from "./model";
 

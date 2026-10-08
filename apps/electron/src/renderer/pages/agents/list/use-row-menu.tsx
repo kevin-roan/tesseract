@@ -1,4 +1,4 @@
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 import { useMemo } from "react";
 import { ActionMenu, useActionMenu, useContextMenu, type MenuSections } from "../../../components/ActionMenu";
 import { useRunActions } from "../../../features/agents/hooks/use-run-actions";

@@ -1,4 +1,4 @@
-import { HOST_PIN_PATTERN } from "@theone/protocol";
+import { HOST_PIN_PATTERN } from "@tesseract/protocol";
 
 import type { PinAction, PinState } from "../types";
 import { PIN_MAX_LENGTH } from "./constants";

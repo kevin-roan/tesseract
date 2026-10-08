@@ -43,9 +43,9 @@ describe("SidebarProjectRow", () => {
   it("labels real projects and the No project row", () => {
     const onOpen = vi.fn();
     const onNew = vi.fn();
-    const { rerender } = render(<SidebarProjectRow name="monolith" tint={1} running={2} onOpen={onOpen} onNew={onNew} onToggle={() => undefined} />);
-    fireEvent.click(screen.getByRole("button", { name: "Open monolith" }));
-    fireEvent.click(screen.getByRole("button", { name: "New conversation in monolith" }));
+    const { rerender } = render(<SidebarProjectRow name="tesseract" tint={1} running={2} onOpen={onOpen} onNew={onNew} onToggle={() => undefined} />);
+    fireEvent.click(screen.getByRole("button", { name: "Open tesseract" }));
+    fireEvent.click(screen.getByRole("button", { name: "New conversation in tesseract" }));
     expect(onOpen).toHaveBeenCalledOnce();
     expect(onNew).toHaveBeenCalledOnce();
     expect(screen.getByTitle("2 running").textContent).toContain("2");
@@ -78,7 +78,7 @@ describe("SidebarProjects", () => {
         labels={LABELS}
         onOpenRun={onOpenRun}
         items={[
-          { id: "monolith", name: "monolith", tint: 1, running: 1, runs: [{ id: "r1", title: "Port the sidebar", tone: "info", running: true }] },
+          { id: "tesseract", name: "tesseract", tint: 1, running: 1, runs: [{ id: "r1", title: "Port the sidebar", tone: "info", running: true }] },
           { id: "idle", name: "idle", tint: 2, running: 0, runs: [] },
         ]}
       />,

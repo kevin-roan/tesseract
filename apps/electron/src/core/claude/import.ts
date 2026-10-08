@@ -8,7 +8,7 @@ import {
   type ClaudeImportFile,
   type ClaudeImportResult,
   type ClaudeOauthCredentials,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { IpcError } from "../../shared/ipc-types";
 import { runCommand } from "../process";
 import {

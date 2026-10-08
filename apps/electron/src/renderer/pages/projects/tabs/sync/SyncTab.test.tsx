@@ -34,13 +34,13 @@ describe("SyncTab", () => {
   });
 
   it("shows requests and snapshots", async () => {
-    renderWithProviders(<SyncTab projectId="monolith" report={vi.fn()} />);
-    expect(await screen.findByText("Pulled 8 files into /home/dev/code/monolith (2 added, 5 modified, 1 deleted)")).toBeTruthy();
+    renderWithProviders(<SyncTab projectId="tesseract" report={vi.fn()} />);
+    expect(await screen.findByText("Pulled 8 files into /home/dev/code/tesseract (2 added, 5 modified, 1 deleted)")).toBeTruthy();
     expect(screen.getByText("20260923T100500Z")).toBeTruthy();
     expect(screen.getByText("Reverted")).toBeTruthy();
   });
 
-  it("explains that an unlinked project needs monolith --sync", async () => {
+  it("explains that an unlinked project needs tesseract --sync", async () => {
     renderWithProviders(<SyncTab projectId="streaxfit" report={vi.fn()} />);
     expect(await screen.findByText(/^Not linked on this computer/)).toBeTruthy();
   });

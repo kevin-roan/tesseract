@@ -2,7 +2,7 @@ from urllib.parse import quote
 
 import pytest
 
-from monolith_desktop.pairing import (
+from tesseract_desktop.pairing import (
     BaseUrlError,
     PairingError,
     PairingPayload,
@@ -19,12 +19,12 @@ TOKEN = "q3Jx0mZ8yWv1_bT7-kLp2sR4nC6dE9fG0hI1jK2lM3n"
 
 
 def test_round_trip_with_name():
-    link = build_pairing_link("https://theone-sandbox.tail1234.ts.net/", TOKEN, "Home rig & co")
+    link = build_pairing_link("https://tesseract-sandbox.tail1234.ts.net/", TOKEN, "Home rig & co")
     assert link == (
-        f"theone://pair?url={quote('https://theone-sandbox.tail1234.ts.net', safe='')}"
+        f"tesseract://pair?url={quote('https://tesseract-sandbox.tail1234.ts.net', safe='')}"
         f"&token={TOKEN}&name=Home%20rig%20%26%20co"
     )
-    assert parse_pairing_link(link) == PairingPayload("https://theone-sandbox.tail1234.ts.net", TOKEN, "Home rig & co")
+    assert parse_pairing_link(link) == PairingPayload("https://tesseract-sandbox.tail1234.ts.net", TOKEN, "Home rig & co")
 
 
 def test_round_trip_without_name_omits_key():
@@ -34,8 +34,8 @@ def test_round_trip_without_name_omits_key():
 
 
 def test_matches_controller_output_byte_for_byte():
-    link = build_pairing_link("https://theone-sandbox.tail511d9d.ts.net", "abc-_~.XYZ", "theone-sandbox")
-    assert link == "theone://pair?url=https%3A%2F%2Ftheone-sandbox.tail511d9d.ts.net&token=abc-_~.XYZ&name=theone-sandbox"
+    link = build_pairing_link("https://tesseract-sandbox.tail511d9d.ts.net", "abc-_~.XYZ", "tesseract-sandbox")
+    assert link == "tesseract://pair?url=https%3A%2F%2Ftesseract-sandbox.tail511d9d.ts.net&token=abc-_~.XYZ&name=tesseract-sandbox"
 
 
 def test_encode_uri_component_reserved_set():
@@ -45,13 +45,13 @@ def test_encode_uri_component_reserved_set():
 
 def test_tolerates_whitespace_case_and_triple_slash():
     link = build_pairing_link("http://100.64.0.7:7700", TOKEN, "rig")
-    messy = f"  \n{link[:20]}\r\n {link[20:].replace('theone', 'THEONE')}\t \n"
+    messy = f"  \n{link[:20]}\r\n {link[20:].replace('tesseract', 'TESSERACT')}\t \n"
     assert parse_pairing_link(messy) == PairingPayload("http://100.64.0.7:7700", TOKEN, "rig")
-    assert parse_pairing_link(link.replace("theone://pair", "TheOne:///pair/")).token == TOKEN
+    assert parse_pairing_link(link.replace("tesseract://pair", "Tesseract:///pair/")).token == TOKEN
 
 
 def test_normalizes_embedded_url():
-    link = f"theone://pair?url={quote('HTTPS://Sandbox.Example.ts.net:443/v1/health?x=1', safe='')}&token={TOKEN}"
+    link = f"tesseract://pair?url={quote('HTTPS://Sandbox.Example.ts.net:443/v1/health?x=1', safe='')}&token={TOKEN}"
     assert parse_pairing_link(link).url == "https://sandbox.example.ts.net"
 
 
@@ -61,13 +61,13 @@ def test_normalizes_embedded_url():
         ("", "empty"),
         ("   \n", "empty"),
         (f"https://example.com/pair?url=x&token={TOKEN}", "invalid_scheme"),
-        (f"theone://connect?url=x&token={TOKEN}", "invalid_action"),
-        (f"theone://pair?token={TOKEN}", "missing_url"),
-        (f"theone://pair?url=ftp%3A%2F%2Fhost&token={TOKEN}", "invalid_url"),
-        (f"theone://pair?url=%E0%A4%A&token={TOKEN}", "missing_url"),
-        ("theone://pair?url=http%3A%2F%2Fhost%3A7700", "missing_token"),
-        ("theone://pair?url=http%3A%2F%2Fhost%3A7700&token=", "missing_token"),
-        ("theone://pair?url=http%3A%2F%2Fhost%3A7700&token=%E2%9C%93", "invalid_token"),
+        (f"tesseract://connect?url=x&token={TOKEN}", "invalid_action"),
+        (f"tesseract://pair?token={TOKEN}", "missing_url"),
+        (f"tesseract://pair?url=ftp%3A%2F%2Fhost&token={TOKEN}", "invalid_url"),
+        (f"tesseract://pair?url=%E0%A4%A&token={TOKEN}", "missing_url"),
+        ("tesseract://pair?url=http%3A%2F%2Fhost%3A7700", "missing_token"),
+        ("tesseract://pair?url=http%3A%2F%2Fhost%3A7700&token=", "missing_token"),
+        ("tesseract://pair?url=http%3A%2F%2Fhost%3A7700&token=%E2%9C%93", "invalid_token"),
     ],
 )
 def test_rejects(text, code):
@@ -90,24 +90,24 @@ def test_long_names_are_capped():
 
 
 def test_first_param_wins():
-    link = f"theone://pair?url=http%3A%2F%2Fa&url=http%3A%2F%2Fb&token={TOKEN}&token=zzz"
+    link = f"tesseract://pair?url=http%3A%2F%2Fa&url=http%3A%2F%2Fb&token={TOKEN}&token=zzz"
     assert parse_pairing_link(link) == PairingPayload("http://a", TOKEN)
 
 
 @pytest.mark.parametrize(
     ("value", "expected"),
     [
-        ("https://theone-sandbox.tail1234.ts.net/", "https://theone-sandbox.tail1234.ts.net"),
+        ("https://tesseract-sandbox.tail1234.ts.net/", "https://tesseract-sandbox.tail1234.ts.net"),
         ("  http://127.0.0.1:7700//  ", "http://127.0.0.1:7700"),
         ("http://localhost:80/", "http://localhost"),
         ("https://host:8443/v1/health?x=1#frag", "https://host:8443"),
         ("https://host/ui/vnc#ticket=abc", "https://host"),
-        ("https://host/proxy/theone/v1", "https://host/proxy/theone"),
+        ("https://host/proxy/tesseract/v1", "https://host/proxy/tesseract"),
         ("https://host/videos", "https://host/videos"),
         ("http://[::1]:7700/", "http://[::1]:7700"),
         ("http://sandbox:07700", "http://sandbox:7700"),
         ("http://sandbox:", "http://sandbox"),
-        ("HTTP://Theone-Sandbox.", "http://theone-sandbox"),
+        ("HTTP://Tesseract-Sandbox.", "http://tesseract-sandbox"),
     ],
 )
 def test_normalizes_base_urls(value, expected):

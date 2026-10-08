@@ -5,8 +5,8 @@ describe("env file", () => {
   it("reads values like the sandbox script (last wins, export, quotes, comments)", () => {
     const text = [
       "# comment",
-      "THEONE_MODE=tailscale",
-      "  export THEONE_MODE=local",
+      "TESSERACT_MODE=tailscale",
+      "  export TESSERACT_MODE=local",
       'WHISPER_MODELS="base small" # trailing',
       "TZ='Europe/Berlin'",
       "SANDBOX_MEMORY=8g # eight gigs",
@@ -14,7 +14,7 @@ describe("env file", () => {
       "EMPTY=",
     ].join("\n");
     const values = parseEnvFile(text);
-    expect(values.THEONE_MODE).toBe("local");
+    expect(values.TESSERACT_MODE).toBe("local");
     expect(values.WHISPER_MODELS).toBe("base small");
     expect(values.TZ).toBe("Europe/Berlin");
     expect(values.SANDBOX_MEMORY).toBe("8g");
@@ -24,7 +24,7 @@ describe("env file", () => {
   });
 
   it("quotes only when needed and round-trips", () => {
-    expect(quoteEnvValue("theone/sandbox:latest")).toBe("theone/sandbox:latest");
+    expect(quoteEnvValue("tesseract/sandbox:latest")).toBe("tesseract/sandbox:latest");
     expect(quoteEnvValue("base small")).toBe('"base small"');
     expect(quoteEnvValue("C:\\Users\\me\\.claude")).toBe("'C:\\Users\\me\\.claude'");
     expect(quoteEnvValue("")).toBe("");
@@ -34,7 +34,7 @@ describe("env file", () => {
   });
 
   it("serializes in .env.example order with a trailing newline", () => {
-    const text = serializeEnv({ TZ: "UTC", THEONE_MODE: "local", THEONE_IMAGE: "x/y:z" });
-    expect(text).toBe("THEONE_MODE=local\nTHEONE_IMAGE=x/y:z\nTZ=UTC\n");
+    const text = serializeEnv({ TZ: "UTC", TESSERACT_MODE: "local", TESSERACT_IMAGE: "x/y:z" });
+    expect(text).toBe("TESSERACT_MODE=local\nTESSERACT_IMAGE=x/y:z\nTZ=UTC\n");
   });
 });

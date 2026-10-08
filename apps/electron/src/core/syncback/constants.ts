@@ -11,11 +11,11 @@ export const SYNC_STATE = {
 
 export const LINKS_LOCK = ".links";
 export const LOCK_SUFFIX = ".lock";
-export const TMP_PREFIX = ".monolith-sync-";
-export const PULL_TEMP_PREFIX = "monolith-pull-";
-export const PUSH_TEMP_PREFIX = "monolith-push-";
-export const GET_TEMP_PREFIX = "monolith-get-";
-export const DIFF_TEMP_PREFIX = "monolith-diff-";
+export const TMP_PREFIX = ".tesseract-sync-";
+export const PULL_TEMP_PREFIX = "tesseract-pull-";
+export const PUSH_TEMP_PREFIX = "tesseract-push-";
+export const GET_TEMP_PREFIX = "tesseract-get-";
+export const DIFF_TEMP_PREFIX = "tesseract-diff-";
 
 export const DIR_MODE = 0o700;
 export const STATE_FILE_MODE = 0o600;

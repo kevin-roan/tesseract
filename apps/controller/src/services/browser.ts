@@ -1,4 +1,4 @@
-import type { BrowserStatus, BrowserTab, TailnetNode } from "@theone/protocol";
+import type { BrowserStatus, BrowserTab, TailnetNode } from "@tesseract/protocol";
 import type { Config } from "../config";
 import type { IdentityService } from "./identity";
 

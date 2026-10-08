@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isFinalAgentRunState, type AgentRun, type AgentRunEvent } from "@theone/protocol";
+import { isFinalAgentRunState, type AgentRun, type AgentRunEvent } from "@tesseract/protocol";
 import { client, SECONDS } from "./lib/env";
 
 const RUN_DEADLINE_MS = 90 * SECONDS;

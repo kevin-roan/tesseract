@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { LiveActivityPushTokenSchema, PushTokenSchema, RegisterLiveActivitySchema, RegisterPushDeviceSchema, routePatterns } from "@theone/protocol";
+import { LiveActivityPushTokenSchema, PushTokenSchema, RegisterLiveActivitySchema, RegisterPushDeviceSchema, routePatterns } from "@tesseract/protocol";
 import type { Services } from "../../services";
 import { jsonBody, parseWith } from "../validation";
 

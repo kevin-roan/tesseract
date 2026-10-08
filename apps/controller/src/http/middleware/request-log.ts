@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from "hono";
-import { TICKET_PARAM } from "@theone/protocol";
+import { TICKET_PARAM } from "@tesseract/protocol";
 import type { Logger } from "../../core/logger";
 
 const SECRET_PARAMS = new Set<string>([TICKET_PARAM, "token"]);

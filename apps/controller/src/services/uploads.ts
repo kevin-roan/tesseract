@@ -1,7 +1,7 @@
 import { mkdirSync, rmSync, statSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { createId, LIMITS, type CreateUpload, type Upload, type UploadKind } from "@theone/protocol";
+import { createId, LIMITS, type CreateUpload, type Upload, type UploadKind } from "@tesseract/protocol";
 import { badRequest, notFound } from "../core/errors";
 import { isInside, realpathOrNull } from "../core/paths";
 import { nowIso } from "../core/time";

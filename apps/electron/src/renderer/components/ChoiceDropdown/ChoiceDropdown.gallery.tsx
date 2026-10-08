@@ -11,7 +11,7 @@ function ChoiceDropdownGallery() {
     <div className={styles.row}>
       <ChoiceDropdown options={PROJECT_CHOICES} value={project} onChange={setProject} tooltip={CHOICE_GALLERY_LABELS.project} />
       <ChoiceDropdown options={SOURCE_CHOICES} value={source} onChange={setSource} tooltip={CHOICE_GALLERY_LABELS.source} variant="toolbar" />
-      <ChoiceDropdown options={PROJECT_CHOICES} value="monolith" disabled tooltip={CHOICE_GALLERY_LABELS.project} />
+      <ChoiceDropdown options={PROJECT_CHOICES} value="tesseract" disabled tooltip={CHOICE_GALLERY_LABELS.project} />
     </div>
   );
 }

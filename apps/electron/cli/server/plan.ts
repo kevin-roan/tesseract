@@ -1,5 +1,5 @@
 import { dirname, join } from "node:path";
-import { HOST_SHELL_PORT } from "@theone/protocol";
+import { HOST_SHELL_PORT } from "@tesseract/protocol";
 import { CONTROLLER_BINARY, executableName, findExecutable, nodeFileProbe, splitCommand, type FileProbe } from "../../src/core/host";
 import type { BuildMode, ReachabilityMode, SandboxComponent, SetupChoices } from "../../src/shared/contracts/sandbox";
 import { ENV } from "../../src/shared/runtime";
@@ -23,6 +23,7 @@ export interface ServiceCommand {
   file: string;
   args: string[];
   optional?: boolean;
+  retries?: number;
 }
 
 export interface HostServiceInput {
@@ -144,7 +145,7 @@ function systemdQuote(value: string): string {
 export function systemdUnit(args: readonly string[], env: Record<string, string>): string {
   return [
     "[Unit]",
-    "Description=Tesseract host shell (theone-controller host serve)",
+    "Description=Tesseract host shell (tesseract-controller host serve)",
     "After=network-online.target tailscaled.service",
     "Wants=network-online.target",
     "",
@@ -176,7 +177,7 @@ export function planHostService(input: HostServiceInput): HostServicePlan {
       logDir,
       install: [
         { file: "launchctl", args: ["bootout", `${domain}/${label}`], optional: true },
-        { file: "launchctl", args: ["bootstrap", domain, file] },
+        { file: "launchctl", args: ["bootstrap", domain, file], retries: SERVER.bootstrapRetries },
         { file: "launchctl", args: ["enable", `${domain}/${label}`], optional: true },
       ],
       uninstall: [{ file: "launchctl", args: ["bootout", `${domain}/${label}`], optional: true }],

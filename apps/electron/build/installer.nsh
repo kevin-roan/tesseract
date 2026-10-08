@@ -1,12 +1,12 @@
 !include "LogicLib.nsh"
 !include "WinMessages.nsh"
 
-!define MONOLITH_ENV_KEY "Environment"
-!define MONOLITH_PATH_VALUE "Path"
-!define MONOLITH_CLI_DIR "$INSTDIR\resources\bin"
+!define TESSERACT_ENV_KEY "Environment"
+!define TESSERACT_PATH_VALUE "Path"
+!define TESSERACT_CLI_DIR "$INSTDIR\resources\bin"
 
-!macro MONOLITH_PATH_FUNCTIONS PREFIX
-  Function ${PREFIX}MonolithPathWithout
+!macro TESSERACT_PATH_FUNCTIONS PREFIX
+  Function ${PREFIX}TesseractPathWithout
     Exch $R1
     Exch
     Exch $R0
@@ -47,16 +47,16 @@
     Exch $R0
   FunctionEnd
 
-  Function ${PREFIX}MonolithPathValueExists
+  Function ${PREFIX}TesseractPathValueExists
     Push $R0
     Push $R1
     Push $R2
     StrCpy $R1 0
     StrCpy $R2 0
     ${Do}
-      EnumRegValue $R0 HKCU "${MONOLITH_ENV_KEY}" $R1
+      EnumRegValue $R0 HKCU "${TESSERACT_ENV_KEY}" $R1
       ${IfThen} $R0 == "" ${|} ${ExitDo} ${|}
-      ${If} $R0 == "${MONOLITH_PATH_VALUE}"
+      ${If} $R0 == "${TESSERACT_PATH_VALUE}"
         StrCpy $R2 1
         ${ExitDo}
       ${EndIf}
@@ -68,42 +68,42 @@
     Exch $R0
   FunctionEnd
 
-  Function ${PREFIX}MonolithUpdateUserPath
+  Function ${PREFIX}TesseractUpdateUserPath
     Exch $R1
     Push $R0
     Push $R2
     ClearErrors
-    ReadRegStr $R0 HKCU "${MONOLITH_ENV_KEY}" "${MONOLITH_PATH_VALUE}"
+    ReadRegStr $R0 HKCU "${TESSERACT_ENV_KEY}" "${TESSERACT_PATH_VALUE}"
     ${If} ${Errors}
-      Call ${PREFIX}MonolithPathValueExists
+      Call ${PREFIX}TesseractPathValueExists
       Pop $R2
       ${If} $R2 == 1
-        DetailPrint "Monolith: the user PATH could not be read, leaving it unchanged"
-        Goto monolith_path_done
+        DetailPrint "Tesseract: the user PATH could not be read, leaving it unchanged"
+        Goto tesseract_path_done
       ${EndIf}
       StrCpy $R0 ""
     ${EndIf}
     Push $R0
-    Push "${MONOLITH_CLI_DIR}"
-    Call ${PREFIX}MonolithPathWithout
+    Push "${TESSERACT_CLI_DIR}"
+    Call ${PREFIX}TesseractPathWithout
     Pop $R2
     ${If} $R1 == "add"
       ${If} $R2 == ""
-        StrCpy $R2 "${MONOLITH_CLI_DIR}"
+        StrCpy $R2 "${TESSERACT_CLI_DIR}"
       ${Else}
-        StrCpy $R2 "$R2;${MONOLITH_CLI_DIR}"
+        StrCpy $R2 "$R2;${TESSERACT_CLI_DIR}"
       ${EndIf}
     ${EndIf}
     ${If} $R2 S== $R0
-      Goto monolith_path_done
+      Goto tesseract_path_done
     ${EndIf}
     ${If} $R2 == ""
-      DeleteRegValue HKCU "${MONOLITH_ENV_KEY}" "${MONOLITH_PATH_VALUE}"
+      DeleteRegValue HKCU "${TESSERACT_ENV_KEY}" "${TESSERACT_PATH_VALUE}"
     ${Else}
-      WriteRegExpandStr HKCU "${MONOLITH_ENV_KEY}" "${MONOLITH_PATH_VALUE}" $R2
+      WriteRegExpandStr HKCU "${TESSERACT_ENV_KEY}" "${TESSERACT_PATH_VALUE}" $R2
     ${EndIf}
-    SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:${MONOLITH_ENV_KEY}" /TIMEOUT=5000
-    monolith_path_done:
+    SendMessage ${HWND_BROADCAST} ${WM_SETTINGCHANGE} 0 "STR:${TESSERACT_ENV_KEY}" /TIMEOUT=5000
+    tesseract_path_done:
     Pop $R2
     Pop $R0
     Pop $R1
@@ -111,19 +111,19 @@
 !macroend
 
 !ifdef BUILD_UNINSTALLER
-  !insertmacro MONOLITH_PATH_FUNCTIONS "un."
+  !insertmacro TESSERACT_PATH_FUNCTIONS "un."
 !else
-  !insertmacro MONOLITH_PATH_FUNCTIONS ""
+  !insertmacro TESSERACT_PATH_FUNCTIONS ""
 !endif
 
 !macro customInstall
   Push "add"
-  Call MonolithUpdateUserPath
+  Call TesseractUpdateUserPath
 !macroend
 
 !macro customUnInstall
   ${IfNot} ${isUpdated}
     Push "remove"
-    Call un.MonolithUpdateUserPath
+    Call un.TesseractUpdateUserPath
   ${EndIf}
 !macroend

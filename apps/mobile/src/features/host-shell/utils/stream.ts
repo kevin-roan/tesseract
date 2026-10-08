@@ -5,7 +5,7 @@ import {
   type AndroidStreamEncoding,
   type AndroidStreamSettings,
   type UpdateAndroidStream,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import type { MenuOption } from "@/components/menu-sheet/types";
 

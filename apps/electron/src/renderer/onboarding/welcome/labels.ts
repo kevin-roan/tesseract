@@ -3,7 +3,7 @@ import { ONBOARDING_LABELS } from "../labels";
 export const WELCOME_LABELS = {
   title: ONBOARDING_LABELS.titles.welcome,
   description:
-    "Monolith runs Claude Code and your builds in a sandbox on this computer and lets you follow them from your phone. This setup installs what it needs and takes about an hour, mostly for the first image build.",
+    "Tesseract runs Claude Code and your builds in a sandbox on this computer and lets you follow them from your phone. This setup installs what it needs and takes about an hour, mostly for the first image build.",
   getStarted: ONBOARDING_LABELS.buttons.getStarted,
   whatHappens: "What happens",
   requirements: "Requirements",
@@ -15,7 +15,7 @@ export const WELCOME_LABELS = {
       title: "Android emulator",
       subtitle: "Optional: downloads an emulator and a system image, like Android Studio",
     },
-    phone: { title: "Phone", subtitle: "Optional: pairs the TheOne app" },
+    phone: { title: "Phone", subtitle: "Optional: pairs the Tesseract app" },
   },
   checks: {
     disk: "Disk space",

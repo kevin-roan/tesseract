@@ -1,4 +1,4 @@
-import type { AndroidDevice, AndroidDeviceKind } from "@theone/protocol";
+import type { AndroidDevice, AndroidDeviceKind } from "@tesseract/protocol";
 import { run } from "../../core/exec";
 import { sdkEnv, type AndroidConfig } from "./config";
 

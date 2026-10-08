@@ -1,5 +1,5 @@
-import type { StreamConnection, TheOneClient } from "@theone/client";
-import { isFinalBuildState, type BuildJob, type LogLine as ProtocolLogLine, type ProcessInfo } from "@theone/protocol";
+import type { StreamConnection, TesseractClient } from "@tesseract/client";
+import { isFinalBuildState, type BuildJob, type LogLine as ProtocolLogLine, type ProcessInfo } from "@tesseract/protocol";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { describeError, useConnectionClient } from "../../../app/connection";
 import { useLogBuffer } from "../../../components/LogView";
@@ -33,11 +33,11 @@ function exitCodeOf(kind: FollowKind, item: Item): number | null {
   return (item as BuildJob).state === "succeeded" ? 0 : 1;
 }
 
-function fetchItem(client: TheOneClient, target: Target, signal?: AbortSignal): Promise<Item> {
+function fetchItem(client: TesseractClient, target: Target, signal?: AbortSignal): Promise<Item> {
   return target.kind === "process" ? client.getProcess(target.id, { signal }) : client.getBuild(target.id, { signal });
 }
 
-function fetchLines(client: TheOneClient, target: Target, signal?: AbortSignal): Promise<ProtocolLogLine[]> {
+function fetchLines(client: TesseractClient, target: Target, signal?: AbortSignal): Promise<ProtocolLogLine[]> {
   const query = { tail: LOG_SNAPSHOT_TAIL };
   return target.kind === "process" ? client.processLogs(target.id, query, { signal }) : client.buildLogs(target.id, query, { signal });
 }

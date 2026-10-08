@@ -11,7 +11,7 @@ const LAPTOP: PairedSandbox = { id: "sbx_laptop", name: "Laptop", baseUrl: "http
 const TAILNET: PairedSandbox = {
   id: "sbx_tailnet",
   name: "Tailnet",
-  baseUrl: "https://theone-sandbox.tail1234.ts.net",
+  baseUrl: "https://tesseract-sandbox.tail1234.ts.net",
   addedAt: "2026-09-21T10:00:00.000Z",
 };
 

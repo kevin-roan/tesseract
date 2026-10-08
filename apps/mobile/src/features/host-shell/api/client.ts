@@ -1,9 +1,9 @@
-import { HostShellClient, type TheOneClient } from "@theone/client";
+import { HostShellClient, type TesseractClient } from "@tesseract/client";
 
 import { HOST_PROBE_TIMEOUT_MS } from "../utils/constants";
 
 let cached: { baseUrl: string; token: string; client: HostShellClient } | null = null;
-let cachedSession: { client: HostShellClient; session: string; sessionClient: TheOneClient } | null = null;
+let cachedSession: { client: HostShellClient; session: string; sessionClient: TesseractClient } | null = null;
 
 export function getHostClient(baseUrl: string, token: string): HostShellClient {
   if (cached && cached.baseUrl === baseUrl && cached.token === token) return cached.client;
@@ -11,7 +11,7 @@ export function getHostClient(baseUrl: string, token: string): HostShellClient {
   return cached.client;
 }
 
-export function getHostSessionClient(client: HostShellClient, session: string): TheOneClient {
+export function getHostSessionClient(client: HostShellClient, session: string): TesseractClient {
   if (cachedSession && cachedSession.client === client && cachedSession.session === session) return cachedSession.sessionClient;
   cachedSession = { client, session, sessionClient: client.sessionClient(session) };
   return cachedSession.sessionClient;

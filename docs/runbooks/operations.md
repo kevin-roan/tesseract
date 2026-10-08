@@ -1,13 +1,13 @@
 # Operations
 
-Day-2 tasks for the operator of a TheOne host. Commands run from the
+Day-2 tasks for the operator of a Tesseract host. Commands run from the
 repository root on the host, unless marked "in the sandbox" (open a shell
 there with `bun run sandbox shell`).
 
-The compose project is `theone` (unless `THEONE_COMPOSE_PROJECT` says
-otherwise), and containers are named `theone-<service>-1` (`theone-sandbox-1`,
-`theone-tailscale-1`, `theone-docker-1`). Only touch resources whose names start
-with `theone`.
+The compose project is `tesseract` (unless `TESSERACT_COMPOSE_PROJECT` says
+otherwise), and containers are named `tesseract-<service>-1` (`tesseract-sandbox-1`,
+`tesseract-tailscale-1`, `tesseract-docker-1`). Only touch resources whose names start
+with `tesseract`.
 
 ## Run more than one stack
 
@@ -16,16 +16,16 @@ its own host ports or tailnet name. Keep one env file per stack:
 
 ```bash
 cp infra/compose/.env.example infra/compose/.env.second.local   # gitignored (.env*.local)
-# in .env.second.local: THEONE_COMPOSE_PROJECT=theone-second
-#                THEONE_CONTROLLER_HOST_PORT=27700 THEONE_VNC_HOST_PORT=25901   (local/host-tailscale)
-#                or THEONE_HOSTNAME=theone-second                                  (tailscale)
+# in .env.second.local: TESSERACT_COMPOSE_PROJECT=tesseract-second
+#                TESSERACT_CONTROLLER_HOST_PORT=27700 TESSERACT_VNC_HOST_PORT=25901   (local/host-tailscale)
+#                or TESSERACT_HOSTNAME=tesseract-second                                  (tailscale)
 bun run sandbox --env-file infra/compose/.env.second.local up
 bun run sandbox --env-file infra/compose/.env.second.local pair
 ```
 
 With `--env-file`, only that file is read (and handed to compose), so every
-command for that stack needs it. Volumes are `theone-second-*`; set
-`THEONE_VOLUME_PREFIX` to choose another prefix. `THEONE_IMAGE` selects the image
+command for that stack needs it. Volumes are `tesseract-second-*`; set
+`TESSERACT_VOLUME_PREFIX` to choose another prefix. `TESSERACT_IMAGE` selects the image
 (and the tag `sandbox build` produces).
 
 ## Upgrade the image
@@ -33,12 +33,15 @@ command for that stack needs it. Volumes are `theone-second-*`; set
 ```bash
 git pull
 bun install
-bun run sandbox up --build        # rebuilds theone/sandbox:latest and recreates changed containers
+bun run sandbox up --build        # rebuilds tesseract/sandbox:latest and recreates changed containers
 bun run sandbox status
 ```
 
-What survives: everything in the volumes (`theone-workspace`, `theone-home`,
-`theone-tailscale`, and the dind volumes if used): projects, artifacts,
+Upgrading an install from before the rename to Tesseract: see
+[rebrand-migration.md](rebrand-migration.md) first.
+
+What survives: everything in the volumes (`tesseract-workspace`, `tesseract-home`,
+`tesseract-tailscale`, and the dind volumes if used): projects, artifacts,
 `.agent/` memory, controller history and token, Claude login, wine prefix, caches.
 
 What resets: anything installed into the container layer (`sudo apt-get`,
@@ -57,8 +60,8 @@ After an upgrade:
   Whether to pin them by default is an [open decision](../roadmap.md#open-decisions).
 - Agent templates are only seeded when a file is missing, so an existing
   workspace keeps its older `GLOBAL_CONTEXT.md`/`COMMANDS.md`. Compare with
-  `/etc/theone/agent-templates/` and merge by hand if the rules changed (for
-  example the switch to `theone-controller api`).
+  `/etc/tesseract/agent-templates/` and merge by hand if the rules changed (for
+  example the switch to `tesseract-controller api`).
 - Before upgrading a real stack, `bun run e2e` checks the new image on
   loopback ([e2e-testing](e2e-testing.md)).
 - Upgrade the Tailscale sidecar with `docker pull tailscale/tailscale:stable`,
@@ -71,16 +74,16 @@ Stop writes first for a consistent `state.db` (SQLite in WAL mode):
 ```bash
 bun run sandbox down                            # volumes are kept (never add -v here: it deletes them)
 mkdir -p backups
-for v in theone-workspace theone-home theone-tailscale; do
+for v in tesseract-workspace tesseract-home tesseract-tailscale; do
   docker run --rm -v "$v":/data:ro -v "$PWD/backups":/backup debian:trixie-slim \
     tar -C /data -czf "/backup/$v-$(date -u +%Y%m%d).tgz" .
 done
 bun run sandbox up
 ```
 
-- `theone-home` contains the Claude login, `~/.secrets` and the VNC
+- `tesseract-home` contains the Claude login, `~/.secrets` and the VNC
   password, so encrypt the archive (`age`, `gpg`) or keep it on encrypted storage.
-- `theone-tailscale` contains the node key. Restoring it on another host
+- `tesseract-tailscale` contains the node key. Restoring it on another host
   clones the node identity, so do not run two copies at once.
 - To back up projects only, `git push` from the sandbox is often enough.
   Artifacts can be rebuilt.
@@ -89,7 +92,7 @@ bun run sandbox up
 
 ```bash
 bun run sandbox down
-for v in theone-workspace theone-home; do
+for v in tesseract-workspace tesseract-home; do
   docker volume create "$v"
   docker run --rm -v "$v":/data -v "$PWD/backups":/backup debian:trixie-slim \
     sh -c "cd /data && tar -xzf /backup/$v-20260923.tgz"
@@ -104,14 +107,14 @@ The entrypoint fixes ownership if the uid differs.
 Rotate after a suspected leak, a lost phone, or someone leaving a shared tailnet.
 
 ```bash
-docker exec -u dev theone-sandbox-1 theone-controller token --rotate          # writes a new token file (0600)
-docker exec -u dev theone-sandbox-1 supervisorctl restart controller          # the daemon loads the token only at start
+docker exec -u dev tesseract-sandbox-1 tesseract-controller token --rotate          # writes a new token file (0600)
+docker exec -u dev tesseract-sandbox-1 supervisorctl restart controller          # the daemon loads the token only at start
 bun run sandbox pair                                                          # re-pair each phone
 ```
 
 Restarting only the controller keeps the display, VNC and the wine prefix
 running. The controller stops its own processes, terminals, builds and agent
-runs on shutdown, so restart them afterwards if needed. If `THEONE_TOKEN` is set in `.env`, it overrides the
+runs on shutdown, so restart them afterwards if needed. If `TESSERACT_TOKEN` is set in `.env`, it overrides the
 file (the CLI warns about this, and the controller copies it into the file on
 every start): change it there and run `bun run sandbox up` instead. Phones that
 still hold the old token show "Pairing no longer valid" with **Pair again**. Afterwards, check what happened while the old
@@ -144,14 +147,14 @@ Set in `infra/compose/.env` and applied with `bun run sandbox up`:
 | `SANDBOX_PIDS` | `4096` | protects the host from fork bombs. Raise it if large test suites hit it |
 | `shm_size` | `2g` (compose) | Chromium and Electron need a large `/dev/shm` |
 
-Check usage: the app's sandbox card, `theone-controller status` in the
-sandbox, or `docker stats theone-sandbox-1` on the host.
+Check usage: the app's sandbox card, `tesseract-controller status` in the
+sandbox, or `docker stats tesseract-sandbox-1` on the host.
 
 Disk usage is not capped per volume:
 
 ```bash
-docker system df -v | grep theone                # volume sizes (host, read-only)
-docker exec -u dev theone-sandbox-1 du -sh /workspace/artifacts /workspace/projects /home/dev/.cache
+docker system df -v | grep tesseract                # volume sizes (host, read-only)
+docker exec -u dev tesseract-sandbox-1 du -sh /workspace/artifacts /workspace/projects /home/dev/.cache
 ```
 
 Clean up old artifacts with `rm /workspace/artifacts/<old files>` in the
@@ -162,14 +165,14 @@ downloads of deleted files return 404.
 
 | Log | Location | Rotation |
 |---|---|---|
-| Container stdout (entrypoint) | `bun run sandbox logs [service] [-f]` / `docker logs theone-sandbox-1` | json-file, 10 MB × 3 |
+| Container stdout (entrypoint) | `bun run sandbox logs [service] [-f]` / `docker logs tesseract-sandbox-1` | json-file, 10 MB × 3 |
 | supervisord and its programs | `/workspace/.agent/logs/supervisor/{supervisord,<program>}.log` | 5 MB × 2 (wine-init 1 MB × 1) |
 | Process and build output | `/workspace/.agent/controller/logs/<id>.log`, and the app | 5 MiB, 1 rotation |
-| Controller events | `controller.log` above (level from `THEONE_LOG_LEVEL`) | as above |
+| Controller events | `controller.log` above (level from `TESSERACT_LOG_LEVEL`) | as above |
 | Claude's scratch logs | `/workspace/.agent/logs/*.log` | per SPEC §11: 5 MiB, 2 kept, 14 days |
 | Tailscale | `bun run sandbox logs tailscale` | json-file, 10 MB × 3 |
 
-Increase verbosity temporarily with `THEONE_LOG_LEVEL=debug` in `.env` and
+Increase verbosity temporarily with `TESSERACT_LOG_LEVEL=debug` in `.env` and
 `bun run sandbox up`. `restart` does not re-read `.env`, but `up` recreates
 containers whose configuration changed.
 
@@ -180,23 +183,23 @@ privileged container on the host.
 
 ```bash
 bun run sandbox --dind up          # adds compose.dind.yml: docker:dind + DOCKER_HOST in the sandbox
-                                   # (or set THEONE_DIND=1 in .env to make it the default)
+                                   # (or set TESSERACT_DIND=1 in .env to make it the default)
 bun run sandbox up --remove-orphans   # without dind: the sandbox is recreated without DOCKER_HOST, the dind container removed
 ```
 
 `--dind` and `--mode` may go before or after the command
 (`sandbox --dind up` = `sandbox up --dind`).
 
-Images and containers built through dind live in the `theone-dind-data`
-volume (the dind daemon also mounts `theone-workspace` at `/workspace`, so bind
-mounts of project paths work). Remove it with `docker volume rm theone-dind-data`
+Images and containers built through dind live in the `tesseract-dind-data`
+volume (the dind daemon also mounts `tesseract-workspace` at `/workspace`, so bind
+mounts of project paths work). Remove it with `docker volume rm tesseract-dind-data`
 when you no longer need them.
 
 ## Remove everything
 
 ```bash
-bun run sandbox --dind down -v     # removes containers AND the theone-* volumes of the stack: destroys all data
-docker image rm theone/sandbox:latest
+bun run sandbox --dind down -v     # removes containers AND the tesseract-* volumes of the stack: destroys all data
+docker image rm tesseract/sandbox:latest
 ```
 
 Also delete the machine in the Tailscale admin console.

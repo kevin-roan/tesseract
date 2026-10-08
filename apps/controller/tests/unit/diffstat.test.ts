@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
-import type { SyncFileStat, SyncRequest } from "@theone/protocol";
+import type { SyncFileStat, SyncRequest } from "@tesseract/protocol";
 import { formatDiffstat, formatModeChanges } from "../../src/cli/diffstat";
-import { formatAgo, formatGetResult } from "../../src/cli/monolith";
+import { formatAgo, formatGetResult } from "../../src/cli/tesseract";
 import { countLineChanges, isBinary, splitLines } from "../../src/core/line-diff";
 
 const bytes = (text: string) => new TextEncoder().encode(text);
@@ -87,7 +87,7 @@ describe("diffstat", () => {
   });
 });
 
-describe("monolith --get output", () => {
+describe("tesseract --get output", () => {
   const now = Date.parse("2026-10-01T12:00:00Z");
   const request: SyncRequest = {
     id: "sync_7m3k9p2q4r",

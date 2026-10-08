@@ -14,7 +14,7 @@ function model(mode: DisplayMode, phase: SessionPhase, patch: Partial<DisplayPag
     vnc: new VncSession(null),
     host: document.createElement("div"),
     badge: badge(mode, phase),
-    meta: "1600×900 · 44% · TheOne theone-sandbox",
+    meta: "1600×900 · 44% · Tesseract tesseract-sandbox",
     enabled: enabledActions(mode, phase),
     empty: emptyModel(mode, null, null, null),
     overlay: null,
@@ -48,7 +48,7 @@ describe("DisplayToolbar", () => {
   it("shows the live badge, meta and every action in the wide layout", () => {
     renderWithProviders(<DisplayToolbar model={model("viewer", "connected")} compact={false} />);
     expect(screen.getByText("Live")).toBeTruthy();
-    expect(screen.getByText("1600×900 · 44% · TheOne theone-sandbox")).toBeTruthy();
+    expect(screen.getByText("1600×900 · 44% · Tesseract tesseract-sandbox")).toBeTruthy();
     expect(button("Sync clipboard with the sandbox").getAttribute("aria-pressed")).toBe("true");
     expect(button("Send keys").disabled).toBe(false);
     expect(screen.queryByRole("button", { name: "More actions" })).toBeNull();

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuilds the Monolith desktop companion from this checkout: icons from the mobile artwork, fresh bytecode,
+# Rebuilds the Tesseract desktop companion from this checkout: icons from the mobile artwork, fresh bytecode,
 # tests, the launcher/menu entry/icons (tools/install.sh), then restarts the running instance.
 set -euo pipefail
 
@@ -13,9 +13,9 @@ USAGE
 }
 
 readonly DESKTOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-readonly LAUNCHER="${XDG_BIN_HOME:-${HOME}/.local/bin}/monolith"
+readonly LAUNCHER="${XDG_BIN_HOME:-${HOME}/.local/bin}/tesseract"
 
-running() { pgrep -f "python3 -m monolith_desktop" > /dev/null; }
+running() { pgrep -f "python3 -m tesseract_desktop" > /dev/null; }
 
 restart_app() {
   if running; then
@@ -28,11 +28,11 @@ restart_app() {
     done
     if running; then
       echo "    did not quit in 5 s; sending SIGTERM"
-      pkill -f "python3 -m monolith_desktop" || true
+      pkill -f "python3 -m tesseract_desktop" || true
       sleep 0.5
     fi
   fi
-  echo "==> Starting Monolith"
+  echo "==> Starting Tesseract"
   setsid -f "${LAUNCHER}" > /dev/null 2>&1 < /dev/null
 }
 
@@ -64,8 +64,8 @@ main() {
   fi
 
   echo "==> Bytecode"
-  find monolith_desktop tests tools -type d -name __pycache__ -prune -exec rm -rf {} +
-  python3 -m compileall -q monolith_desktop tests
+  find tesseract_desktop tests tools -type d -name __pycache__ -prune -exec rm -rf {} +
+  python3 -m compileall -q tesseract_desktop tests
 
   if [[ "${tests}" == true ]]; then
     echo "==> Tests"

@@ -52,7 +52,7 @@ function scenarioPhase(): AndroidPhase {
   if (isScenario(ANDROID_SCENARIOS.licenses)) return { kind: "licenses", pending: LICENSE_PENDING };
   if (isScenario(ANDROID_SCENARIOS.failed)) return { kind: "failed", message: CHECKSUM_ERROR };
   if (isScenario(ANDROID_SCENARIOS.done) || isScenario(ANDROID_SCENARIOS.doneMac)) {
-    return { kind: "done", sdkRoot: SDK_ROOT, avd: "Monolith_API_36", warnings: [] };
+    return { kind: "done", sdkRoot: SDK_ROOT, avd: "Tesseract_API_36", warnings: [] };
   }
   if (isScenario(ANDROID_SCENARIOS.installing)) {
     return {

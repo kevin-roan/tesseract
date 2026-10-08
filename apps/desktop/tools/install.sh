@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Installs the Monolith desktop companion for the current user: the `monolith` launcher, the app-menu
+# Installs the Tesseract desktop companion for the current user: the `tesseract` launcher, the app-menu
 # entry and its icon (XDG user dirs). It runs from this checkout, so pulling new code needs no reinstall.
 set -euo pipefail
 
@@ -7,19 +7,19 @@ usage() {
   cat << 'USAGE'
 Usage: tools/install.sh [--autostart] [--uninstall]
 
-  (no option)   install the `monolith` command, the app-menu entry and the icon
-  --autostart   also start Monolith in the tray at login (XDG autostart: GNOME, KDE, XFCE…;
-                on Hyprland/Sway add `exec-once = monolith --hidden` to your config instead)
+  (no option)   install the `tesseract` command, the app-menu entry and the icon
+  --autostart   also start Tesseract in the tray at login (XDG autostart: GNOME, KDE, XFCE…;
+                on Hyprland/Sway add `exec-once = tesseract --hidden` to your config instead)
   --uninstall   remove everything this script installed
 USAGE
 }
 
-readonly APP_ID="dev.monolith.Desktop"
+readonly APP_ID="dev.tesseract.Desktop"
 readonly DESKTOP_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 readonly BIN_DIR="${XDG_BIN_HOME:-${HOME}/.local/bin}"
 readonly DATA_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}"
 readonly CONFIG_HOME="${XDG_CONFIG_HOME:-${HOME}/.config}"
-readonly LAUNCHER="${BIN_DIR}/monolith"
+readonly LAUNCHER="${BIN_DIR}/tesseract"
 readonly ENTRY="${DATA_HOME}/applications/${APP_ID}.desktop"
 readonly ICON_THEME="${DATA_HOME}/icons/hicolor"
 readonly ICON_SIZES=(16 22 24 32 48 64 128 256 512)
@@ -39,9 +39,9 @@ write_launcher() {
   mkdir -p "${BIN_DIR}"
   cat > "${LAUNCHER}" << EOF
 #!/usr/bin/env bash
-# Launch the Monolith desktop companion (${DESKTOP_DIR}). Keeps the caller's cwd for --sync.
+# Launch the Tesseract desktop companion (${DESKTOP_DIR}). Keeps the caller's cwd for --sync.
 export PYTHONPATH="${DESKTOP_DIR}\${PYTHONPATH:+:\$PYTHONPATH}"
-exec python3 -m monolith_desktop "\$@"
+exec python3 -m tesseract_desktop "\$@"
 EOF
   chmod 0755 "${LAUNCHER}"
 }
@@ -56,7 +56,7 @@ write_entry() {
 Actions=quit;
 
 [Desktop Action quit]
-Name=Quit Monolith
+Name=Quit Tesseract
 Exec=${LAUNCHER} --quit
 EOF
   else
@@ -90,7 +90,7 @@ install_all() {
   echo "Installed: ${LAUNCHER}, ${ENTRY}, icons in ${ICON_THEME}"
   case ":${PATH}:" in
     *":${BIN_DIR}:"*) ;;
-    *) echo "note: ${BIN_DIR} is not on PATH; add it to use 'monolith' in a terminal" ;;
+    *) echo "note: ${BIN_DIR} is not on PATH; add it to use 'tesseract' in a terminal" ;;
   esac
 }
 
@@ -98,7 +98,7 @@ uninstall_all() {
   rm -f "${LAUNCHER}" "${ENTRY}" "${AUTOSTART}"
   remove_icons
   refresh_caches
-  echo "Removed the Monolith launcher, menu entry, icon and autostart entry"
+  echo "Removed the Tesseract launcher, menu entry, icon and autostart entry"
 }
 
 main() {

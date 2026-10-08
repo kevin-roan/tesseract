@@ -1,6 +1,6 @@
 # Preferences ("Settings") window — Electron rebuild spec
 
-Source of truth: `apps/desktop/monolith_desktop/preferences/**` plus the widgets, strings, theme and services it uses
+Source of truth: `apps/desktop/tesseract_desktop/preferences/**` plus the widgets, strings, theme and services it uses
 (`widgets/preference_rows.py`, `widgets/radio_rows.py`, `widgets/dialog.py`, `widgets/badges.py`, `widgets/buttons.py`,
 `widgets/confirm_dialog.py`, `widgets/host_pin_dialog.py`, `strings.py`, `theme/extras/dialogs.py`, `theme/css.py`,
 `theme/tokens.py`, `theme/semantic.py`, `theme/palette.py`, `config/storage.py`, `services/connection.py`,
@@ -233,9 +233,9 @@ Fonts: Inter (UI), Geist Mono (log). Text selection bg `rgba(94,106,210,0.35)`.
 
 ## 4. Persistence (shared)
 
-One JSON file: `config.json` in `$XDG_CONFIG_HOME/monolith-desktop/` (default `~/.config/monolith-desktop/`), or the
-path in env `MONOLITH_DESKTOP_CONFIG`. Legacy dir `theone-desktop` is renamed on first start if the new one doesn't
-exist. Written atomically (`config.tmp` then rename), file mode 0600, dir mode 0700, `JSON.stringify(data, null, 2)`
+One JSON file: `config.json` in `$XDG_CONFIG_HOME/tesseract-desktop/` (default `~/.config/tesseract-desktop/`), or the
+path in env `TESSERACT_DESKTOP_CONFIG`. A config dir left by an earlier product name is migrated on first start if the new one
+doesn't exist ([rebrand-migration.md](../../runbooks/rebrand-migration.md)). Written atomically (`config.tmp` then rename), file mode 0600, dir mode 0700, `JSON.stringify(data, null, 2)`
 + trailing newline. Unknown keys are preserved (read-modify-write).
 
 | key | type | written by | default |
@@ -246,13 +246,13 @@ exist. Written atomically (`config.tmp` then rename), file mode 0600, dir mode 0
 | `pairingUrl` | string? | Connection › Save (omitted when empty) | — |
 | `appearance` | `"system" \| "light" \| "dark"` | Appearance | `"dark"` |
 | `zoom` | number | app zoom actions (not in Preferences) | 1.0 |
-| `host_shell_autostart` | boolean (`true` only counts if exactly `true`) | Host shell › Start with Monolith | false |
+| `host_shell_autostart` | boolean (`true` only counts if exactly `true`) | Host shell › Start with Tesseract | false |
 
-Also readable (`load_file_config`): `apiUrl` as an alias of `url`. Env config (source `env`): `MONOLITH_DESKTOP_URL` +
-`THEONE_TOKEN` (+ `MONOLITH_DESKTOP_NAME`, `MONOLITH_DESKTOP_PAIRING_URL`).
+Also readable (`load_file_config`): `apiUrl` as an alias of `url`. Env config (source `env`): `TESSERACT_DESKTOP_URL` +
+`TESSERACT_TOKEN` (+ `TESSERACT_DESKTOP_NAME`, `TESSERACT_DESKTOP_PAIRING_URL`).
 
 Electron: keep the exact schema; on Linux read/write the same path so users migrate seamlessly. On macOS/Windows use
-`app.getPath('userData')/config.json` unless `MONOLITH_DESKTOP_CONFIG` is set. All file I/O lives in the main
+`app.getPath('userData')/config.json` unless `TESSERACT_DESKTOP_CONFIG` is set. All file I/O lives in the main
 process behind IPC; the renderer never sees the file path except for display (Connection › Source row).
 Never log the token (GTK `redacted()` keeps the first 4 chars + "…").
 
@@ -327,7 +327,7 @@ Reference: `preferences-appearance.png`, `preferences-appearance-light.png` (dar
 value; light one is a forced light render, so "Dark" is still the selected radio).
 
 ### Group — "Theme"
-Description: "Choose how Monolith looks on this computer."
+Description: "Choose how Tesseract looks on this computer."
 
 RadioRows (all always available):
 | id | Title | Subtitle |
@@ -381,7 +381,7 @@ Description: "Claude Code inside the sandbox uses this computer's ~/.claude fold
 
 PropertyRows (selectable):
 - loading: one row "Status" / "Loading…"
-- offline: one row "Status" / `"<connection label with name>"` + `" — <error>"` if any (e.g. "theone-sandbox · Offline — …")
+- offline: one row "Status" / `"<connection label with name>"` + `" — <error>"` if any (e.g. "tesseract-sandbox · Offline — …")
 - error: "Status" / error text; a 404 → "This sandbox is too old for Claude sign-in. Rebuild and restart it: `bun run sandbox build` then `bun run sandbox up`." (backticks are literal)
 - loaded (`GET /v1/claude/auth`):
   | key | value |
@@ -417,19 +417,19 @@ Description: "Accounts linked into the sandbox. The default is used by projects 
 ## 8. Page: Host shell (`host-shell`)
 
 Reference: `preferences-host-shell.png`, `-light.png` — live data: the user's host daemon on 7701 is running outside the
-app, so status is "Running outside Monolith · https://archlinux.tail511d9d.ts.net:8443", the Serve switch is on but
+app, so status is "Running outside Tesseract · https://archlinux.tail511d9d.ts.net:8443", the Serve switch is on but
 disabled, PIN set, autostart off, Log collapsed.
 
 ### Group 1 — "Server" (header suffix: refresh icon button "Refresh" → probe)
-Description: "Lets paired phones open a terminal on this computer over Tailscale. Monolith runs it in the background and
+Description: "Lets paired phones open a terminal on this computer over Tailscale. Tesseract runs it in the background and
 stops it when you quit."
 - SwitchRow "Serve host shell": on = `status ∈ {running, external, starting}`; disabled when `status ∈ {stopping,
   external}`; subtitle by status:
   `stopped` "Stopped" · `starting` "Starting…" · `running` "Running · <url>" (or "Running" without pairing url) ·
-  `stopping` "Stopping…" · `external` "Running outside Monolith · <url>" · `failed` "Failed: <error>".
+  `stopping` "Stopping…" · `external` "Running outside Tesseract · <url>" · `failed` "Failed: <error>".
   User toggles: on → start the daemon (`<controller> host serve` child process, owned by the app); off → stop
   (SIGTERM, SIGKILL after 5s). Programmatic state updates must not trigger start/stop.
-- SwitchRow "Start with Monolith", subtitle "Start serving whenever Monolith opens": writes `host_shell_autostart`
+- SwitchRow "Start with Tesseract", subtitle "Start serving whenever Tesseract opens": writes `host_shell_autostart`
   to config.json immediately. At app start, if true → start, else probe.
 
 ### Group 2 — "Security"
@@ -439,7 +439,7 @@ stops it when you quit."
   dialog (§8.2).
 
 ### Group 3 — "Pairing"
-- "Pair a phone" row, subtitle "Show the theone://host link and QR code", button "Show QR…" (secondary) → the Pair
+- "Pair a phone" row, subtitle "Show the tesseract://host link and QR code", button "Show QR…" (secondary) → the Pair
   dialog on its "This computer" tab (see the pair dialog spec; not part of this page).
 - ExpanderRow "Log" (collapsed by default; no subtitle). Content: monospace (Geist Mono) 12px label, wraps,
   selectable, margins 8px top/bottom 12px left/right, last **40** lines of the daemon output joined by "\n", or
@@ -448,8 +448,8 @@ stops it when you quit."
 ### Service semantics (main process)
 - Probe = run `<controller> host pair --json` (30s timeout), parse the last `{…}` line `{link,url,name,pinSet}`, then if
   not owned: `GET <url>/v1/health` (1.5s) and treat `{ok:true, service:"host-shell"}` as `external`.
-- `<controller>` = `MONOLITH_CONTROLLER_COMMAND` (shell-split) or `bun apps/controller/src/index.ts` from the checkout;
-  in the packaged app use the bundled `monolith` CLI. Errors: "Bun is not installed or not on PATH; install it from
+- `<controller>` = `TESSERACT_CONTROLLER_COMMAND` (shell-split) or `bun apps/controller/src/index.ts` from the checkout;
+  in the packaged app use the bundled `tesseract` CLI. Errors: "Bun is not installed or not on PATH; install it from
   bun.sh", "The controller did not answer in time", "The controller printed no pairing link", CLI's last `error:` line.
 - Starting → `running` when a stdout line contains "host shell listening", then re-probe. Exit code ≠ 0 while not
   stopping → `failed` with the last error line. On app quit: SIGTERM, wait 3s, SIGKILL. Linux: wrap with
@@ -547,13 +547,13 @@ Use `motion` with tokens from the shared constants module; disable (duration 0) 
 ## 12. Reference screenshots
 
 Captured with `apps/desktop/tools/snapshot.sh <out> --zoom 1 --width 1440 --height 900 --delay 7 --prefs <id> [--light]`
-and a temporary empty `MONOLITH_DESKTOP_CONFIG` (so the app discovered the live sandbox via Docker and did not
+and a temporary empty `TESSERACT_DESKTOP_CONFIG` (so the app discovered the live sandbox via Docker and did not
 autostart anything). **Broadway clamps the window to 1024 × 768**, so the main window is 1024 × 768, not 1440 × 900;
 the Settings sheet is still its real 882 × 622 at (71, 73).
 
 | file | shows |
 |---|---|
-| `docs/electron/reference/preferences-connection.png` / `-light.png` | Connection page, live: API URL `http://172.22.0.2:7700`, masked token, name `theone-sandbox`, Rediscover + Save & connect, pairing URL (tailnet), status Online badge, Source: Docker discovery, config path `/tmp/monolith-test-prefs-cfg/config.json`; Forget row below the fold |
+| `docs/electron/reference/preferences-connection.png` / `-light.png` | Connection page, live: API URL `http://172.22.0.2:7700`, masked token, name `tesseract-sandbox`, Rediscover + Save & connect, pairing URL (tailnet), status Online badge, Source: Docker discovery, config path `/tmp/tesseract-test-prefs-cfg/config.json`; Forget row below the fold |
 | `preferences-appearance.png` / `-light.png` | Theme group with 3 radio rows, Dark checked; large empty area below |
 | `preferences-claude.png` / `-light.png` | Synthetic host accounts (`claude` expanded with 5 property rows, `claude-work` collapsed), Sandbox group header with refresh + live configDir, first Status row cut off |
 | `preferences-host-shell.png` / `-light.png` | Server (Serve on+disabled, external), Security (PIN Change…, Host token Rotate…), Pairing (Show QR…, Log collapsed) |

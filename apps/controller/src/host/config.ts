@@ -1,9 +1,10 @@
 import { existsSync } from "node:fs";
 import { hostname, homedir } from "node:os";
 import { join } from "node:path";
-import { HOST_SHELL_PORT } from "@theone/protocol";
+import { HOST_SHELL_PORT } from "@tesseract/protocol";
 import type { Env } from "../core/exec";
-import { loadAndroidConfig, type AndroidConfig } from "./android/config";
+import { adoptLegacyPath } from "../core/paths";
+import { adoptLegacySdkRoot, loadAndroidConfig, type AndroidConfig } from "./android/config";
 
 export type HostConfig = {
   bind: string;
@@ -114,10 +115,11 @@ export function tailscaleServeUrl(bind: string, port: number, env: Env = process
   }
 }
 
+const configBase = (env: Env) => env.XDG_CONFIG_HOME || join(env.HOME || homedir(), ".config");
+
 export function hostStateDir(env: Env): string {
-  if (env.THEONE_HOST_SHELL_DIR) return env.THEONE_HOST_SHELL_DIR;
-  const base = env.XDG_CONFIG_HOME || join(env.HOME || homedir(), ".config");
-  return join(base, "theone", "host-shell");
+  if (env.TESSERACT_HOST_SHELL_DIR) return env.TESSERACT_HOST_SHELL_DIR;
+  return join(configBase(env), "tesseract", "host-shell");
 }
 
 /** Bind and port are resolved only when `resolveBind` is set (serve, pair), so `pin`/`token` work without Tailscale. */
@@ -126,8 +128,8 @@ export const defaultShell = (platform: NodeJS.Platform) => (platform === "darwin
 
 export function loadHostConfig(env: Env, overrides: HostOverrides = {}, resolveBind = true, platform: NodeJS.Platform = process.platform): HostConfig {
   const stateDir = hostStateDir(env);
-  const port = validatePort(overrides.port ?? env.THEONE_HOST_SHELL_PORT ?? String(HOST_SHELL_PORT));
-  const requested = overrides.bind ?? env.THEONE_HOST_SHELL_BIND;
+  const port = validatePort(overrides.port ?? env.TESSERACT_HOST_SHELL_PORT ?? String(HOST_SHELL_PORT));
+  const requested = overrides.bind ?? env.TESSERACT_HOST_SHELL_BIND;
   let bind = "";
   if (requested !== undefined) {
     if (!requested.trim() || requested.trim() === "::") throw new HostConfigError("Refusing to listen on every interface; bind the host's Tailscale IPv4");
@@ -136,12 +138,14 @@ export function loadHostConfig(env: Env, overrides: HostOverrides = {}, resolveB
     bind = validateBind(tailscaleIpv4(env));
   }
   const home = env.HOME || homedir();
+  if (!env.TESSERACT_HOST_SHELL_DIR) adoptLegacyPath(join(configBase(env), "theone", "host-shell"), stateDir);
+  adoptLegacySdkRoot(home, platform);
   return {
     bind,
     port,
     stateDir,
     stateFile: join(stateDir, "state.json"),
-    publicUrl: env.THEONE_HOST_SHELL_PUBLIC_URL || `http://${bind}:${port}`,
+    publicUrl: env.TESSERACT_HOST_SHELL_PUBLIC_URL || `http://${bind}:${port}`,
     hostId: hostname(),
     home,
     shell: [env.SHELL || defaultShell(platform), "-l"],

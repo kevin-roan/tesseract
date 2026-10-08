@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { ServerEventSchema, type ServerEvent } from "@theone/protocol";
+import { ServerEventSchema, type ServerEvent } from "@tesseract/protocol";
 import { makeTempDir, removeTempDirs, startTestController, upgradeStatus, writeFiles, type TestController } from "./helpers";
 
 let t: TestController;

@@ -1,5 +1,5 @@
-import type { SandboxStatus } from "@theone/protocol";
-import { sampleStatus } from "@theone/protocol/fixtures";
+import type { SandboxStatus } from "@tesseract/protocol";
+import { sampleStatus } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import type { MetricsCache } from "../../../shared/contracts/metrics";
 import {

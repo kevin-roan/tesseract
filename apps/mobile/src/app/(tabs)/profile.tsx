@@ -66,7 +66,7 @@ export default function ProfileScreen() {
             tone="info"
             icon={InfoIcon}
             title="Tailscale identity not exposed"
-            message="This sandbox doesn't share who you are on the tailnet. Start it with --tailscale-api (THEONE_TAILSCALE_LOCALAPI=1) to show your Tailscale profile."
+            message="This sandbox doesn't share who you are on the tailnet. Start it with --tailscale-api (TESSERACT_TAILSCALE_LOCALAPI=1) to show your Tailscale profile."
           />
         ) : null}
         {screen.identityError ? (

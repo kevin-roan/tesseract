@@ -75,7 +75,7 @@ describe("installPackages", () => {
     sdkRoot: sdk,
     packages: ["system-images;android-36;google_apis;x86_64", "emulator", "platform-tools"],
     avd: avd
-      ? { name: "Monolith_API_36", sdkRoot: sdk, systemImage: "system-images;android-36;google_apis;x86_64", api: 36, abi: "x86_64", ramMb: 2048, cores: 2, deviceProfile: "pixel_5", storageMb: 6144 }
+      ? { name: "Tesseract_API_36", sdkRoot: sdk, systemImage: "system-images;android-36;google_apis;x86_64", api: 36, abi: "x86_64", ramMb: 2048, cores: 2, deviceProfile: "pixel_5", storageMb: 6144 }
       : null,
   });
 
@@ -108,7 +108,7 @@ describe("installPackages", () => {
     expect(stages[0]).toBe("0/3:platform-tools:downloading");
     expect(stages).toContain("1/3:emulator:verifying");
     expect(stages.at(-1)).toBe("2/3:system-images;android-36;google_apis;x86_64:extracting");
-    expect(await readFile(join(home, ".android", "avd", "Monolith_API_36.ini"), "utf8")).toContain("target=android-36");
+    expect(await readFile(join(home, ".android", "avd", "Tesseract_API_36.ini"), "utf8")).toContain("target=android-36");
   });
 
   it("skips packages that are already installed", async () => {

@@ -3,8 +3,8 @@ APP_DIR='/opt/${sanitizedProductName}'
 EXECUTABLE='${executable}'
 CLI_LINK=/usr/bin/tesseract
 CLI_TARGET="$APP_DIR/resources/bin/tesseract"
+LEGACY_APP_DIR='/opt/Monolith'
 LEGACY_CLI_LINK=/usr/bin/monolith
-LEGACY_CLI_TARGET="$APP_DIR/resources/bin/monolith"
 
 if type update-alternatives >/dev/null 2>&1; then
   if [ -L "/usr/bin/$EXECUTABLE" ] && [ -e "/usr/bin/$EXECUTABLE" ] && [ "$(readlink "/usr/bin/$EXECUTABLE")" != "/etc/alternatives/$EXECUTABLE" ]; then
@@ -15,8 +15,14 @@ else
   ln -sf "$APP_DIR/$EXECUTABLE" "/usr/bin/$EXECUTABLE"
 fi
 
-if [ -L "$LEGACY_CLI_LINK" ] && [ "$(readlink "$LEGACY_CLI_LINK")" = "$LEGACY_CLI_TARGET" ]; then
-  rm -f "$LEGACY_CLI_LINK"
+if [ -L "$LEGACY_CLI_LINK" ]; then
+  case "$(readlink "$LEGACY_CLI_LINK")" in
+    "$APP_DIR/resources/bin/monolith"|"$LEGACY_APP_DIR/resources/bin/monolith") rm -f "$LEGACY_CLI_LINK" ;;
+  esac
+fi
+
+if [ -L "$CLI_LINK" ] && [ "$(readlink "$CLI_LINK")" = "$LEGACY_APP_DIR/resources/bin/tesseract" ]; then
+  rm -f "$CLI_LINK"
 fi
 
 if [ -x "$CLI_TARGET" ]; then
@@ -25,7 +31,7 @@ if [ -x "$CLI_TARGET" ]; then
   elif [ -L "$CLI_LINK" ] && { [ "$(readlink -f "$CLI_LINK")" = "$CLI_TARGET" ] || [ ! -e "$CLI_LINK" ]; }; then
     ln -sfn "$CLI_TARGET" "$CLI_LINK"
   else
-    echo "monolith-desktop: $CLI_LINK already exists and is not ours; leaving it alone" >&2
+    echo "tesseract-desktop: $CLI_LINK already exists and is not ours; leaving it alone" >&2
   fi
 fi
 

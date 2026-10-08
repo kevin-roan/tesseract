@@ -1,4 +1,4 @@
-import { AGENT_RUN_MODES, type AgentRunMode } from "@theone/protocol";
+import { AGENT_RUN_MODES, type AgentRunMode } from "@tesseract/protocol";
 import { MapTrifoldIcon, PencilSimpleIcon, SparkleIcon, type Icon } from "phosphor-react-native";
 
 import type { MenuOption } from "@/components/menu-sheet/types";

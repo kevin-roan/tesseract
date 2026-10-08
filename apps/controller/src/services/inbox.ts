@@ -8,7 +8,7 @@ import {
   type InboxKind,
   type InboxQuery,
   type MarkInboxRead,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { nowIso } from "../core/time";
 import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";

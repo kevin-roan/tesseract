@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { PROTOCOL_VERSION } from "@theone/protocol";
+import { PROTOCOL_VERSION } from "@tesseract/protocol";
 import {
   sampleAgentRun,
   sampleAgentRunDetail,
@@ -22,7 +22,7 @@ import {
   sampleTerminal,
   sampleTicket,
   sampleUsageReport,
-} from "@theone/protocol/fixtures";
+} from "@tesseract/protocol/fixtures";
 import {
   AbortError,
   ApiError,
@@ -31,14 +31,14 @@ import {
   ProtocolVersionError,
   isProtocolVersionError,
   protocolVersionMismatch,
-  TheOneClient,
+  TesseractClient,
   TimeoutError,
   type FetchLike,
   type HttpRequestInit,
   type HttpResponse,
 } from "../src/index";
 
-const BASE = "https://theone-sandbox.tail1234.ts.net";
+const BASE = "https://tesseract-sandbox.tail1234.ts.net";
 const liveActivityToken = "ab".repeat(32);
 const sampleLiveActivityToken = {
   kind: "activity",
@@ -75,19 +75,19 @@ function fakeFetch(handler: (call: Call) => HttpResponse | Promise<HttpResponse>
 
 function clientWith(handler: (call: Call) => HttpResponse | Promise<HttpResponse>, timeoutMs?: number) {
   const fake = fakeFetch(handler);
-  return { client: new TheOneClient({ baseUrl: `${BASE}/`, token: TOKEN, fetch: fake.fetch, timeoutMs }), calls: fake.calls };
+  return { client: new TesseractClient({ baseUrl: `${BASE}/`, token: TOKEN, fetch: fake.fetch, timeoutMs }), calls: fake.calls };
 }
 
 describe("construction", () => {
   test("normalizes the base url", () => {
-    const client = new TheOneClient({ baseUrl: " https://Host:443/v1/ ", token: TOKEN, fetch: fakeFetch(() => respond(200, {})).fetch });
+    const client = new TesseractClient({ baseUrl: " https://Host:443/v1/ ", token: TOKEN, fetch: fakeFetch(() => respond(200, {})).fetch });
     expect(client.baseUrl).toBe("https://host");
     expect(client.timeoutMs).toBe(15_000);
   });
 
   test("rejects invalid urls and empty tokens", () => {
-    expect(() => new TheOneClient({ baseUrl: "host:7700", token: TOKEN })).toThrow(TypeError);
-    expect(() => new TheOneClient({ baseUrl: BASE, token: "" })).toThrow(TypeError);
+    expect(() => new TesseractClient({ baseUrl: "host:7700", token: TOKEN })).toThrow(TypeError);
+    expect(() => new TesseractClient({ baseUrl: BASE, token: "" })).toThrow(TypeError);
   });
 });
 
@@ -95,7 +95,7 @@ describe("REST endpoints", () => {
   const id = "x/y";
   const cases: Array<{
     name: string;
-    call: (client: TheOneClient) => Promise<unknown>;
+    call: (client: TesseractClient) => Promise<unknown>;
     method: string;
     path: string;
     response: unknown;
@@ -475,9 +475,9 @@ describe("error mapping", () => {
 
 describe("url helpers", () => {
   test("wsUrl switches scheme and appends the ticket", () => {
-    const secure = new TheOneClient({ baseUrl: BASE, token: TOKEN, fetch: fakeFetch(() => respond(200, {})).fetch });
-    expect(secure.wsUrl("/v1/events", "a+b/c")).toBe("wss://theone-sandbox.tail1234.ts.net/v1/events?ticket=a%2Bb%2Fc");
-    const plain = new TheOneClient({ baseUrl: "http://127.0.0.1:7700", token: TOKEN, fetch: fakeFetch(() => respond(200, {})).fetch });
+    const secure = new TesseractClient({ baseUrl: BASE, token: TOKEN, fetch: fakeFetch(() => respond(200, {})).fetch });
+    expect(secure.wsUrl("/v1/events", "a+b/c")).toBe("wss://tesseract-sandbox.tail1234.ts.net/v1/events?ticket=a%2Bb%2Fc");
+    const plain = new TesseractClient({ baseUrl: "http://127.0.0.1:7700", token: TOKEN, fetch: fakeFetch(() => respond(200, {})).fetch });
     expect(plain.wsUrl("/v1/terminals/trm_1/stream", "t")).toBe("ws://127.0.0.1:7700/v1/terminals/trm_1/stream?ticket=t");
     expect(plain.authHeaders()).toEqual({ Authorization: `Bearer ${TOKEN}` });
     expect(plain.httpUrl("/v1/display/screenshot")).toBe("http://127.0.0.1:7700/v1/display/screenshot");

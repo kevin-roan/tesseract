@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { APP_DIR, BUILD_OUTPUTS, SOURCE_INPUTS, WORKSPACE_INPUTS } from "./paths.ts";
 
-export const BUILD_LOCK_DIR = join(APP_DIR, "node_modules", ".monolith-build.lock");
+export const BUILD_LOCK_DIR = join(APP_DIR, "node_modules", ".tesseract-build.lock");
 const LOCK_STALE_MS = 10 * 60_000;
 const LOCK_POLL_MS = 250;
 const LOCK_TIMEOUT_MS = 15 * 60_000;

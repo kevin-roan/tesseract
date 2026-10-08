@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { VncAction } from "@theone/protocol";
+import type { VncAction } from "@tesseract/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
 

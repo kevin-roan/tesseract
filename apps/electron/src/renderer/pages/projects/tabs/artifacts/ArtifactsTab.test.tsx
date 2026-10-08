@@ -1,7 +1,7 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
-import { ApiError } from "@theone/client";
-import type { Artifact } from "@theone/protocol";
-import { sampleArtifact } from "@theone/protocol/fixtures";
+import { ApiError } from "@tesseract/client";
+import type { Artifact } from "@tesseract/protocol";
+import { sampleArtifact } from "@tesseract/protocol/fixtures";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetFilesStore } from "../../../../features/files/store";
 import { fakeClient, fakeHost, renderTab, type FakeClient } from "../kit/testing";
@@ -20,7 +20,7 @@ vi.mock("../../../../app/data", async (importOriginal) => ({
 
 const { ArtifactsTab } = await import("./ArtifactsTab");
 
-const artifact = (patch: Partial<Artifact>): Artifact => ({ ...sampleArtifact, projectId: "monolith", ...patch });
+const artifact = (patch: Partial<Artifact>): Artifact => ({ ...sampleArtifact, projectId: "tesseract", ...patch });
 
 describe("ArtifactsTab", () => {
   beforeEach(() => {

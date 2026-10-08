@@ -7,7 +7,7 @@ import { APP_DIR, REPO_ROOT } from "../scripts/lib/paths.ts";
 import { findTarget, hostTargetId } from "../scripts/lib/targets.ts";
 
 export const CLI_ENTRY = join(APP_DIR, "cli", "index.ts");
-export const CLI_PREBUILT_ENV = "MONOLITH_E2E_CLI";
+export const CLI_PREBUILT_ENV = "TESSERACT_E2E_CLI";
 export const CLI_BUILD_TIMEOUT_MS = 180_000;
 export const CLI_RUN_TIMEOUT_MS = 60_000;
 export const ANDROID_FIXTURES_DIR = join(APP_DIR, "src", "core", "android", "fixtures");
@@ -15,17 +15,17 @@ export const ANDROID_CATALOG = [
   { file: "repository2-3.xml", url: "https://dl.google.com/android/repository/repository2-3.xml" },
   { file: "sys-img2-3.xml", url: "https://dl.google.com/android/repository/sys-img/google_apis/sys-img2-3.xml" },
 ] as const;
-export const TEST_TOKEN = "monolith-test-token-0123456789abcdef";
+export const TEST_TOKEN = "tesseract-test-token-0123456789abcdef";
 export const UNREACHABLE_URL = "http://127.0.0.1:9";
 
 const INHERITED_OVERRIDES = [
-  "MONOLITH_DESKTOP_CONFIG",
-  "MONOLITH_USER_DATA",
-  "MONOLITH_STATE_DIR",
-  "MONOLITH_APP_PATH",
-  "MONOLITH_SANDBOX_CONTEXT",
-  "MONOLITH_FIXTURES",
-  "MONOLITH_SNAPSHOT",
+  "TESSERACT_DESKTOP_CONFIG",
+  "TESSERACT_USER_DATA",
+  "TESSERACT_STATE_DIR",
+  "TESSERACT_APP_PATH",
+  "TESSERACT_SANDBOX_CONTEXT",
+  "TESSERACT_FIXTURES",
+  "TESSERACT_SNAPSHOT",
   "XDG_CONFIG_HOME",
   "XDG_STATE_HOME",
   "XDG_CACHE_HOME",
@@ -35,9 +35,9 @@ const INHERITED_OVERRIDES = [
   "ANDROID_USER_HOME",
   "ANDROID_AVD_HOME",
   "ANDROID_EMULATOR_HOME",
-  "THEONE_TOKEN",
-  "THEONE_URL",
-  "THEONE_API_URL",
+  "TESSERACT_TOKEN",
+  "TESSERACT_URL",
+  "TESSERACT_API_URL",
   "NO_COLOR",
 ];
 
@@ -51,7 +51,7 @@ export function buildHostCli(): BuiltCli {
   if (prebuilt) return { path: prebuilt, dispose: () => undefined };
   const target = findTarget(hostTargetId());
   const dir = mkdtempSync(join(tmpdir(), `${SANDBOX_PREFIX}cli-`));
-  const path = join(dir, `monolith${target.exe}`);
+  const path = join(dir, `tesseract${target.exe}`);
   const result = spawnSync(
     "bun",
     ["build", CLI_ENTRY, "--compile", "--minify", `--target=${target.bunTarget}`, "--outfile", path],
@@ -87,8 +87,8 @@ export function createCliHome(extraEnv: NodeJS.ProcessEnv = {}): CliHome {
     USERPROFILE: home,
     APPDATA: join(home, "AppData", "Roaming"),
     LOCALAPPDATA: join(home, "AppData", "Local"),
-    MONOLITH_USER_DATA: userData,
-    MONOLITH_SANDBOX_CONTEXT: REPO_ROOT,
+    TESSERACT_USER_DATA: userData,
+    TESSERACT_SANDBOX_CONTEXT: REPO_ROOT,
     DOCKER_CONFIG: process.env.DOCKER_CONFIG ?? join(homedir(), ".docker"),
     NO_COLOR: "1",
     ...extraEnv,
@@ -97,7 +97,7 @@ export function createCliHome(extraEnv: NodeJS.ProcessEnv = {}): CliHome {
     dir,
     home,
     userData,
-    configFile: join(home, ".config", "monolith-desktop", "config.json"),
+    configFile: join(home, ".config", "tesseract-desktop", "config.json"),
     bin,
     env,
     dispose: () => rmSync(dir, { recursive: true, force: true }),
@@ -159,7 +159,7 @@ export function writeEnvFile(file: string, values: Record<string, string>): void
 
 export function isolatedStackEnv(userData: string): string {
   const file = join(userData, "sandbox", ".env");
-  writeEnvFile(file, { THEONE_COMPOSE_PROJECT: `${SANDBOX_PREFIX}absent-${process.pid}`, THEONE_CONTROLLER_HOST_PORT: "9" });
+  writeEnvFile(file, { TESSERACT_COMPOSE_PROJECT: `${SANDBOX_PREFIX}absent-${process.pid}`, TESSERACT_CONTROLLER_HOST_PORT: "9" });
   return file;
 }
 
@@ -188,9 +188,9 @@ export function dockerAvailable(): boolean {
 }
 
 export const E2E_STACK = {
-  url: process.env.THEONE_E2E_URL ?? "",
-  token: process.env.THEONE_E2E_TOKEN ?? "",
-  project: process.env.THEONE_E2E_PROJECT ?? "theone-e2e",
-  envFile: process.env.THEONE_E2E_ENV_FILE ?? "",
-  image: process.env.THEONE_E2E_IMAGE ?? "theone/sandbox:e2e",
+  url: process.env.TESSERACT_E2E_URL ?? "",
+  token: process.env.TESSERACT_E2E_TOKEN ?? "",
+  project: process.env.TESSERACT_E2E_PROJECT ?? "tesseract-e2e",
+  envFile: process.env.TESSERACT_E2E_ENV_FILE ?? "",
+  image: process.env.TESSERACT_E2E_IMAGE ?? "tesseract/sandbox:e2e",
 };

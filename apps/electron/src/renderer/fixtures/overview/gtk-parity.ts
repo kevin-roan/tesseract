@@ -1,4 +1,4 @@
-import type { SandboxStatus } from "@theone/protocol";
+import type { SandboxStatus } from "@tesseract/protocol";
 import type { MetricsCache, MetricsRow } from "../../../shared/contracts/metrics";
 import { FIXTURE_SANDBOX } from "../base/data";
 import { GTK_PARITY_NOW, parityVariant } from "../shell/parity";

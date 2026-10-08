@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { BuildOutputListSchema, restPaths, type BuildOutput } from "@theone/protocol";
+import { BuildOutputListSchema, restPaths, type BuildOutput } from "@tesseract/protocol";
 import { isBuildOutputPath } from "../src/services/build-outputs";
 import { removeTempDirs, startTestController, writeFiles, type TestController } from "./helpers";
 

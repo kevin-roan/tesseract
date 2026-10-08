@@ -4,11 +4,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 
-from monolith_desktop.api.client import ControllerClient
-from monolith_desktop.api.errors import ApiError, ProtocolError
-from monolith_desktop.api.types import parse_stt_status
-from monolith_desktop.strings import STT
-from monolith_desktop.stt import model
+from tesseract_desktop.api.client import ControllerClient
+from tesseract_desktop.api.errors import ApiError, ProtocolError
+from tesseract_desktop.api.types import parse_stt_status
+from tesseract_desktop.strings import STT
+from tesseract_desktop.stt import model
 
 PROFILES = [
     {"id": "off", "model": None, "threads": 0, "nice": 0, "available": True},

@@ -1,5 +1,5 @@
-import type { AppRun } from "@theone/protocol";
-import { sampleAppRun } from "@theone/protocol/fixtures";
+import type { AppRun } from "@tesseract/protocol";
+import { sampleAppRun } from "@tesseract/protocol/fixtures";
 
 import { appRunKeys } from "@/features/app-runs/api/query-keys";
 import { cachedAppRun } from "@/features/app-runs/api/cache";

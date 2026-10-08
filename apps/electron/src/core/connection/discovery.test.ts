@@ -13,11 +13,11 @@ import {
 import { pairingLinkFor } from "./pairing";
 
 const TOKEN = "q3Jx0mZ8yWv1_bT7-kLp2sR4nC6dE9fG0hI1jK2lM3n";
-const PAIR_URL = "https://theone-sandbox.tail1.ts.net";
+const PAIR_URL = "https://tesseract-sandbox.tail1.ts.net";
 const PAIR_OUTPUT = JSON.stringify({
-  link: `theone://pair?url=https%3A%2F%2Ftheone-sandbox.tail1.ts.net&token=${TOKEN}&name=theone-sandbox`,
+  link: `tesseract://pair?url=https%3A%2F%2Ftesseract-sandbox.tail1.ts.net&token=${TOKEN}&name=tesseract-sandbox`,
   url: PAIR_URL,
-  name: "theone-sandbox",
+  name: "tesseract-sandbox",
 });
 
 function inspectJson({ ports = {}, networks = {}, mode = "bridge" }: { ports?: object; networks?: object; mode?: string } = {}) {
@@ -26,13 +26,13 @@ function inspectJson({ ports = {}, networks = {}, mode = "bridge" }: { ports?: o
 
 describe("container naming", () => {
   it("follows the compose project", () => {
-    expect(sandboxContainer({})).toBe("theone-sandbox-1");
-    expect(sandboxContainer({ THEONE_COMPOSE_PROJECT: "e2e" })).toBe("e2e-sandbox-1");
-    expect(composeProject({ THEONE_COMPOSE_PROJECT: "" })).toBe("theone");
+    expect(sandboxContainer({})).toBe("tesseract-sandbox-1");
+    expect(sandboxContainer({ TESSERACT_COMPOSE_PROJECT: "e2e" })).toBe("e2e-sandbox-1");
+    expect(composeProject({ TESSERACT_COMPOSE_PROJECT: "" })).toBe("tesseract");
   });
 
   it("reads the stack project saved by the wizard", () => {
-    expect(stackProject({ sandboxStack: { project: "monolith" } })).toBe("monolith");
+    expect(stackProject({ sandboxStack: { project: "tesseract" } })).toBe("tesseract");
     expect(stackProject({ sandboxStack: { project: "Bad Name" } })).toBeNull();
     expect(stackProject({})).toBeNull();
   });
@@ -41,18 +41,18 @@ describe("container naming", () => {
 describe("parsePairJson", () => {
   it("extracts url, token and name from the last JSON line", () => {
     const info = parsePairJson(`warning: noise\n${PAIR_OUTPUT}\n`);
-    expect([info.url, info.token, info.name]).toEqual([PAIR_URL, TOKEN, "theone-sandbox"]);
+    expect([info.url, info.token, info.name]).toEqual([PAIR_URL, TOKEN, "tesseract-sandbox"]);
   });
 
   it("falls back to the link's url and name", () => {
-    const info = parsePairJson(JSON.stringify({ link: `theone://pair?url=http%3A%2F%2F127.0.0.1%3A7700%2Fv1&token=${TOKEN}&name=rig`, url: 5 }));
+    const info = parsePairJson(JSON.stringify({ link: `tesseract://pair?url=http%3A%2F%2F127.0.0.1%3A7700%2Fv1&token=${TOKEN}&name=rig`, url: 5 }));
     expect(info.url).toBe("http://127.0.0.1:7700");
     expect(info.name).toBe("rig");
   });
 
   it("rejects garbage", () => {
-    expect(() => parsePairJson("not json")).toThrow("theone-controller pair --json printed no pairing link");
-    expect(() => parsePairJson(JSON.stringify({ link: "theone://pair?url=x" }))).toThrow(
+    expect(() => parsePairJson("not json")).toThrow("tesseract-controller pair --json printed no pairing link");
+    expect(() => parsePairJson(JSON.stringify({ link: "tesseract://pair?url=x" }))).toThrow(
       /^controller printed an invalid pairing link: /,
     );
   });
@@ -63,7 +63,7 @@ describe("parseInspect", () => {
     const network = parseInspect(
       inspectJson({
         ports: { "7700/tcp": [{ HostIp: "127.0.0.1", HostPort: "7700" }], "5901/tcp": [{ HostIp: "", HostPort: "5901" }] },
-        networks: { theone_default: { IPAddress: "172.22.0.2" } },
+        networks: { tesseract_default: { IPAddress: "172.22.0.2" } },
         mode: "container:abc123",
       }),
     );
@@ -79,11 +79,11 @@ describe("parseInspect", () => {
     const calls: string[][] = [];
     const runner: ContainerRunner = async (args) => {
       calls.push([...args]);
-      return args[1] === "theone-sandbox-1"
+      return args[1] === "tesseract-sandbox-1"
         ? inspectJson({ mode: "container:sidecar" })
         : inspectJson({ networks: { n: { IPAddress: "172.22.0.2" } } });
     };
-    const network = await containerNetwork("theone-sandbox-1", runner);
+    const network = await containerNetwork("tesseract-sandbox-1", runner);
     expect(network.addresses).toEqual(["172.22.0.2"]);
     expect(calls[1]).toEqual(["inspect", "sidecar"]);
   });
@@ -92,7 +92,7 @@ describe("parseInspect", () => {
 describe("candidateApiUrls", () => {
   it("orders and de-duplicates the candidates", () => {
     const network = { published: [["0.0.0.0", "7710"], ["100.64.0.9", "7700"]] as [string, string][], addresses: ["172.22.0.2"], networkContainer: null };
-    expect(candidateApiUrls("https://sb.tail1.ts.net", network, { THEONE_BIND_ADDR: "100.64.0.9" })).toEqual([
+    expect(candidateApiUrls("https://sb.tail1.ts.net", network, { TESSERACT_BIND_ADDR: "100.64.0.9" })).toEqual([
       "http://127.0.0.1:7710",
       "http://100.64.0.9:7700",
       "http://127.0.0.1:7700",
@@ -103,7 +103,7 @@ describe("candidateApiUrls", () => {
 
   it("brackets IPv6 binds and honours the host port", () => {
     const network = { published: [["::1", "7800"]] as [string, string][], addresses: [], networkContainer: null };
-    expect(candidateApiUrls(null, network, { THEONE_CONTROLLER_HOST_PORT: "7800" })).toEqual([
+    expect(candidateApiUrls(null, network, { TESSERACT_CONTROLLER_HOST_PORT: "7800" })).toEqual([
       "http://[::1]:7800",
       "http://127.0.0.1:7800",
     ]);
@@ -127,14 +127,14 @@ describe("discoverDocker", () => {
       pairingUrl: PAIR_URL,
       token: TOKEN,
       source: "docker",
-      container: "theone-sandbox-1",
+      container: "tesseract-sandbox-1",
     });
-    expect(result.message).toBe("Found theone-sandbox at http://172.22.0.2:7700");
+    expect(result.message).toBe("Found tesseract-sandbox at http://172.22.0.2:7700");
     expect(result.tried).toEqual([
       ["http://127.0.0.1:7700", "unreachable"],
       ["http://172.22.0.2:7700", "ok"],
     ]);
-    expect(pairingLinkFor(result.config).startsWith("theone://pair?url=https%3A%2F%2Ftheone-sandbox")).toBe(true);
+    expect(pairingLinkFor(result.config).startsWith("tesseract://pair?url=https%3A%2F%2Ftesseract-sandbox")).toBe(true);
   });
 
   it("probes in parallel", async () => {
@@ -169,20 +169,20 @@ describe("discoverDocker", () => {
     if (!result.ok) return;
     expect(result.config.apiUrl).toBe(PAIR_URL);
     expect(result.tried.at(-1)?.[0]).toBe(PAIR_URL);
-    expect(result.message).toBe("Found theone-sandbox, but none of its addresses answered from this machine");
+    expect(result.message).toBe("Found tesseract-sandbox, but none of its addresses answered from this machine");
   });
 
   it("reports runner errors and uses the project override", async () => {
     const seen: string[] = [];
     const result = await discoverDocker({
-      env: { THEONE_COMPOSE_PROJECT: "ignored" },
-      project: "monolith-test-x",
+      env: { TESSERACT_COMPOSE_PROJECT: "ignored" },
+      project: "tesseract-test-x",
       runner: async (args) => {
         seen.push(args[3] ?? "");
         throw new DiscoveryError("docker is not installed on this machine");
       },
     });
     expect(result).toEqual({ ok: false, error: "docker is not installed on this machine" });
-    expect(seen).toEqual(["monolith-test-x-sandbox-1"]);
+    expect(seen).toEqual(["tesseract-test-x-sandbox-1"]);
   });
 });

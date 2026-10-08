@@ -7,7 +7,7 @@ import { abortableSleep, streamCommand, whichExecutable } from "./system";
 
 const dirs: string[] = [];
 const tempDir = () => {
-  const dir = mkdtempSync(join(tmpdir(), "monolith-test-docker-sys-"));
+  const dir = mkdtempSync(join(tmpdir(), "tesseract-test-docker-sys-"));
   dirs.push(dir);
   return dir;
 };
@@ -64,7 +64,7 @@ describe("streamCommand", () => {
   });
 
   it("reports a missing binary", async () => {
-    const result = await streamCommand("monolith-test-no-such-binary", []);
+    const result = await streamCommand("tesseract-test-no-such-binary", []);
     expect(result.code).toBeNull();
     expect(result.stderr).toMatch(/ENOENT/);
   });

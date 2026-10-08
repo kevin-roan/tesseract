@@ -1,4 +1,4 @@
-import { HOST_PAIRING_ACTION, PAIRING_SCHEME } from "@theone/protocol";
+import { HOST_PAIRING_ACTION, PAIRING_SCHEME } from "@tesseract/protocol";
 import {
   AndroidLogoIcon,
   ArrowSquareOutIcon,
@@ -51,7 +51,7 @@ export const HOST_QR = {
 export const HOST_PAIRING_FIELDS: PairingFieldsContent = {
   url: {
     label: "Host URL",
-    hint: "The host's Tailscale address and port, or paste a theone://host link.",
+    hint: "The host's Tailscale address and port, or paste a tesseract://host link.",
     placeholder: "http://100.64.0.1:7701",
   },
   token: {
@@ -125,7 +125,7 @@ export const ANDROID_COPY = {
     "This emulator was started outside the app, so it shares the host's network. Stop it and start it here to link a sandbox.",
   isolationOffTitle: "Network isolation is off",
   isolationOff:
-    "The host runs the emulator with THEONE_EMULATOR_ISOLATION=none, so the guest can reach the host's loopback services, LAN and tailnet. Sandbox runs will not use it.",
+    "The host runs the emulator with TESSERACT_EMULATOR_ISOLATION=none, so the guest can reach the host's loopback services, LAN and tailnet. Sandbox runs will not use it.",
   linkBlocked: "Linking is disabled while the emulator is not isolated; start it from the app.",
   unavailable: "The Android emulator is not available on this host.",
   linkStates: { none: "Not linked", connected: "Connected", connecting: "Connecting", failed: "Disconnected" },

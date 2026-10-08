@@ -1,4 +1,4 @@
-import { ApiError } from "@theone/client";
+import { ApiError } from "@tesseract/client";
 import { describe, expect, it } from "vitest";
 import { capitalize, formatUptime, joinMeta, offlineMessage, pluralize, sandboxErrorMessage } from "./format";
 
@@ -30,7 +30,7 @@ describe("preferences format helpers", () => {
   });
 
   it("appends the connection error", () => {
-    expect(offlineMessage("theone-sandbox · Offline", "refused")).toBe("theone-sandbox · Offline — refused");
+    expect(offlineMessage("tesseract-sandbox · Offline", "refused")).toBe("tesseract-sandbox · Offline — refused");
     expect(offlineMessage("Not configured", null)).toBe("Not configured");
   });
 });

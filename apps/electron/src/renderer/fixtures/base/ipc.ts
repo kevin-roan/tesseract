@@ -20,11 +20,11 @@ export default defineIpcFixtures({
     updateSettings: (patch) => ({ ...FIXTURE_SETTINGS, ...patch }),
     rendererIdle: () => undefined,
     paths: () => ({
-      configFile: "/home/dev/.config/monolith-desktop/config.json",
-      userData: "/home/dev/.config/Monolith",
-      logs: "/home/dev/.config/Monolith/logs",
-      stateDir: "/home/dev/.local/state/monolith",
-      cacheDir: "/home/dev/.cache/monolith-desktop",
+      configFile: "/home/dev/.config/tesseract-desktop/config.json",
+      userData: "/home/dev/.config/Tesseract",
+      logs: "/home/dev/.config/Tesseract/logs",
+      stateDir: "/home/dev/.local/state/tesseract",
+      cacheDir: "/home/dev/.cache/tesseract-desktop",
     }),
     cliStatus: () => ({ state: "unsupported", binaryPath: null, linkPath: null, message: null }),
   },
@@ -32,13 +32,13 @@ export default defineIpcFixtures({
     state: () => windowState,
   },
   tray: {
-    state: () => ({ attached: false, tooltip: "Monolith" }),
-    setStatus: (label) => ({ attached: false, tooltip: `Monolith · ${label}` }),
+    state: () => ({ attached: false, tooltip: "Tesseract" }),
+    setStatus: (label) => ({ attached: false, tooltip: `Tesseract · ${label}` }),
   },
   connection: {
     load: () => ({
       config: { apiUrl: FIXTURE_API_URL, token: FIXTURE_TOKEN, name: FIXTURE_SANDBOX, pairingUrl: null, source: "file" },
-      configFile: "/home/dev/.config/monolith-desktop/config.json",
+      configFile: "/home/dev/.config/tesseract-desktop/config.json",
     }),
   },
   metrics: {

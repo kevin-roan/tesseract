@@ -1,4 +1,4 @@
-from monolith_desktop.util.format import (
+from tesseract_desktop.util.format import (
     capitalize,
     elapsed_seconds,
     format_bytes,
@@ -12,7 +12,7 @@ from monolith_desktop.util.format import (
     ratio,
     split_bytes,
 )
-from monolith_desktop.util.text import clean_log_text, initials_of, log_line_kind
+from tesseract_desktop.util.text import clean_log_text, initials_of, log_line_kind
 
 NOW = 1_800_000_000.0
 
@@ -80,7 +80,7 @@ def test_text_helpers():
     assert clean_log_text("\x1b[31mred\x1b[0m\r\n") == "red"
     assert clean_log_text("progress 10%\rprogress 90%") == "progress 90%"
     assert initials_of("Ada Lovelace") == "AL"
-    assert initials_of("  theone  ") == "T"
+    assert initials_of("  tesseract  ") == "T"
     assert initials_of("") == ""
 
 

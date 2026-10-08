@@ -1,4 +1,4 @@
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 
 export const TIMELINE_EVENT_KINDS = ["text", "tool_use", "tool_result", "system"] as const;
 

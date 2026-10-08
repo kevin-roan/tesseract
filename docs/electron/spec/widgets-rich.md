@@ -1,6 +1,6 @@
 # Rich widgets: implementation spec (GTK to React/Electron)
 
-Source of truth: `apps/desktop/monolith_desktop/widgets/{markdown,code_block,log_panel,log_view,conversation,composer,sidebar_composer,project_card,desktop,resize_handle,accel_guard,lifecycle}.py`, plus the CSS they depend on in `theme/css.py`, `theme/extras/{agents,projects,sidebar,dialogs,motion}.py`, `theme/tokens.py`, `theme/typography.py`, `theme/semantic.py`, and the parser in `util/markdown.py` and `util/text.py`.
+Source of truth: `apps/desktop/tesseract_desktop/widgets/{markdown,code_block,log_panel,log_view,conversation,composer,sidebar_composer,project_card,desktop,resize_handle,accel_guard,lifecycle}.py`, plus the CSS they depend on in `theme/css.py`, `theme/extras/{agents,projects,sidebar,dialogs,motion}.py`, `theme/tokens.py`, `theme/typography.py`, `theme/semantic.py`, and the parser in `util/markdown.py` and `util/text.py`.
 
 You should be able to rebuild every widget from this file without opening the Python. All numbers are CSS px at zoom 1.0. User-facing strings are quoted verbatim. The section "GTK quirks to NOT copy" lists GTK behaviors to leave out.
 

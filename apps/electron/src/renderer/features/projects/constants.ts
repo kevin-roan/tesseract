@@ -1,4 +1,4 @@
-import type { Framework } from "@theone/protocol";
+import type { Framework } from "@tesseract/protocol";
 import type { ActivityKind, ListTab, ProjectTabId } from "./types";
 
 export const PROJECTS_ROOT = "/workspace/projects";

@@ -1,5 +1,5 @@
-import type { ClaudeAuthStatus } from "@theone/protocol";
-import { sampleClaudeAuthStatus } from "@theone/protocol/fixtures";
+import type { ClaudeAuthStatus } from "@tesseract/protocol";
+import { sampleClaudeAuthStatus } from "@tesseract/protocol/fixtures";
 
 import { claudeAccountSummary, claudeMethodLabel, claudeStatusView } from "@/features/claude-account/utils/status";
 

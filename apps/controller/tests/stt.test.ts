@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ErrorBodySchema, STT_PROFILES, SttStatusSchema, TranscriptionSchema, UploadSchema, type ServerEvent, type SttStatus, type Upload } from "@theone/protocol";
+import { ErrorBodySchema, STT_PROFILES, SttStatusSchema, TranscriptionSchema, UploadSchema, type ServerEvent, type SttStatus, type Upload } from "@tesseract/protocol";
 import { cpuQuota, profileTuning, STT_OFF_MESSAGE, type TranscriptionOptions } from "../src/services/transcriptions";
 import { installFixture, makeTempDir, removeTempDirs, startTestController, waitFor, type TestController } from "./helpers";
 
@@ -36,7 +36,7 @@ describe("speech-to-text over HTTP", () => {
   const start = () =>
     startTestController({
       workspace,
-      env: { THEONE_WHISPER_MODELS_DIR: models, THEONE_WHISPER_MODEL: fallback },
+      env: { TESSERACT_WHISPER_MODELS_DIR: models, TESSERACT_WHISPER_MODEL: fallback },
       controller: { transcription: options },
     });
   const stt = async () => SttStatusSchema.parse((await t.json("GET", "/v1/stt")).body);
@@ -109,7 +109,7 @@ describe("speech-to-text over HTTP", () => {
     expect(priorityLog().trim().split("\n")).toEqual([expect.stringMatching(/^nice -n 10 .*ffmpeg /), expect.stringMatching(/^nice -n 10 .*whisper-cli .* -t 4 /)]);
   });
 
-  test("falls back to THEONE_WHISPER_MODEL when the profile's model is missing", async () => {
+  test("falls back to TESSERACT_WHISPER_MODEL when the profile's model is missing", async () => {
     const performance = (await select("performance")).body;
     expect(performance).toMatchObject({ profile: "performance", engine: "whisper.cpp", ready: true, model: "tiny" });
     writeFileSync(fallback, "threads");
@@ -120,7 +120,7 @@ describe("speech-to-text over HTTP", () => {
     t.config.stt.whisperModel = join(models, "missing.bin");
     const unready = await stt();
     expect(unready).toMatchObject({ ready: false, engine: null, model: null });
-    expect(unready.reason).toContain(`the model ${join(models, "ggml-small.bin")} (THEONE_WHISPER_MODELS_DIR)`);
+    expect(unready.reason).toContain(`the model ${join(models, "ggml-small.bin")} (TESSERACT_WHISPER_MODELS_DIR)`);
     t.config.stt.whisperModel = fallback;
 
     writeFileSync(join(models, "ggml-small.bin"), "small model");
@@ -177,9 +177,9 @@ describe("speech-to-text over HTTP", () => {
     expect((await stt()).profile).toBe("balanced");
   });
 
-  test("the THEONE_STT_PROFILE default applies until a profile is chosen", async () => {
+  test("the TESSERACT_STT_PROFILE default applies until a profile is chosen", async () => {
     const fresh = await startTestController({
-      env: { THEONE_STT_PROFILE: "off", THEONE_WHISPER_MODELS_DIR: models },
+      env: { TESSERACT_STT_PROFILE: "off", TESSERACT_WHISPER_MODELS_DIR: models },
       controller: { transcription: options },
     });
     try {

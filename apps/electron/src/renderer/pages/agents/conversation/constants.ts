@@ -1,4 +1,4 @@
-import type { StreamOptions } from "@theone/client";
+import type { StreamOptions } from "@tesseract/client";
 
 export const FEED_POLL_INTERVAL_MS = 2500;
 export const FEED_STREAM_OPTIONS: StreamOptions = { reconnect: true };

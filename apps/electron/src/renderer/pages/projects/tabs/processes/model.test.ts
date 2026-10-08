@@ -1,5 +1,5 @@
-import type { ListeningPort, ProcessInfo } from "@theone/protocol";
-import { sampleProcess, sampleProject } from "@theone/protocol/fixtures";
+import type { ListeningPort, ProcessInfo } from "@tesseract/protocol";
+import { sampleProcess, sampleProject } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import { portUrl, processMeta, processStatus, projectPorts, scriptCommand, scriptRequest, shellWord } from "./model";
 

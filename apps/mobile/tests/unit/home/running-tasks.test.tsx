@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { sampleAgentRun } from "@theone/protocol/fixtures";
+import { sampleAgentRun } from "@tesseract/protocol/fixtures";
 
 import RunningTasks from "@/features/home/components/running-tasks";
 import { runningTasks } from "@/features/home/utils/running";

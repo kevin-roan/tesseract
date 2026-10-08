@@ -1,4 +1,4 @@
-import type { ProcessState } from "@theone/protocol";
+import type { ProcessState } from "@tesseract/protocol";
 import { PROJECTS_ICONS } from "../../../../features/projects/constants";
 import type { Tone } from "../../../../theme/colors";
 

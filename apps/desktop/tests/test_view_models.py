@@ -1,11 +1,11 @@
-from monolith_desktop.api.errors import NetworkError
-from monolith_desktop.config.model import ConnectionConfig
-from monolith_desktop.pages.overview import model
-from monolith_desktop.services.connection_view import banner_for, connection_label, connection_tone
-from monolith_desktop.store import ConnectionState, Observable
+from tesseract_desktop.api.errors import NetworkError
+from tesseract_desktop.config.model import ConnectionConfig
+from tesseract_desktop.pages.overview import model
+from tesseract_desktop.services.connection_view import banner_for, connection_label, connection_tone
+from tesseract_desktop.store import ConnectionState, Observable
 
 STATUS = {
-    "sandboxId": "theone-sandbox",
+    "sandboxId": "tesseract-sandbox",
     "hostname": "sandbox",
     "version": "0.1.0",
     "startedAt": "2026-01-01T00:00:00Z",

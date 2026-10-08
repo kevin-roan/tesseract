@@ -1,4 +1,4 @@
-import type { AgentRunState, BuildState, ProcessState, TerminalState } from "@theone/protocol";
+import type { AgentRunState, BuildState, ProcessState, TerminalState } from "@tesseract/protocol";
 
 import type { Tone } from "@/lib/tone";
 

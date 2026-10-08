@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { ApiError, TheOneClient } from "@theone/client";
-import type { ClaudeAuthStatus } from "@theone/protocol";
-import { sampleClaudeAccountList, sampleClaudeAuthStatus, sampleProject } from "@theone/protocol/fixtures";
+import { ApiError, TesseractClient } from "@tesseract/client";
+import type { ClaudeAuthStatus } from "@tesseract/protocol";
+import { sampleClaudeAccountList, sampleClaudeAuthStatus, sampleProject } from "@tesseract/protocol/fixtures";
 
 import { useClaudeAccountScreen } from "@/features/claude-account/hooks/use-claude-account-screen";
 import { useProjectClaudeAccount } from "@/features/claude-account/hooks/use-project-claude-account";
@@ -15,7 +15,7 @@ import {
 
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), canGoBack: jest.fn(() => true) };
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   get router() {
@@ -31,7 +31,7 @@ const signedOut: ClaudeAuthStatus = {
   account: null,
 };
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const fake = {
   claudeAuth: jest.fn(),
   claudeAccounts: jest.fn(),

@@ -15,9 +15,9 @@ services:
     environment:
       DOCKER_TLS_CERTDIR: /certs
     volumes:
-      - theone-dind-certs:/certs/client
-      - theone-dind-data:/var/lib/docker
-      - theone-workspace:/workspace
+      - tesseract-dind-certs:/certs/client
+      - tesseract-dind-data:/var/lib/docker
+      - tesseract-workspace:/workspace
     logging:
       driver: json-file
       options:
@@ -32,10 +32,10 @@ services:
       DOCKER_TLS_VERIFY: "1"
       DOCKER_CERT_PATH: /certs/client
     volumes:
-      - theone-dind-certs:/certs/client:ro
+      - tesseract-dind-certs:/certs/client:ro
 
 volumes:
-  theone-dind-certs:
-    name: ${THEONE_VOLUME_PREFIX:-${THEONE_COMPOSE_PROJECT:-theone}}-dind-certs
-  theone-dind-data:
-    name: ${THEONE_VOLUME_PREFIX:-${THEONE_COMPOSE_PROJECT:-theone}}-dind-data
+  tesseract-dind-certs:
+    name: ${TESSERACT_VOLUME_PREFIX:-${TESSERACT_COMPOSE_PROJECT:-tesseract}}-dind-certs
+  tesseract-dind-data:
+    name: ${TESSERACT_VOLUME_PREFIX:-${TESSERACT_COMPOSE_PROJECT:-tesseract}}-dind-data

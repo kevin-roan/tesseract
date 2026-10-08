@@ -1,5 +1,5 @@
-import type { ListeningPort } from "@theone/protocol";
-import { sampleProcess, sampleProject } from "@theone/protocol/fixtures";
+import type { ListeningPort } from "@tesseract/protocol";
+import { sampleProcess, sampleProject } from "@tesseract/protocol/fixtures";
 
 import { processSite, projectSites, siteLabel, siteUrl, sortSites } from "@/features/sandbox/utils/sites";
 

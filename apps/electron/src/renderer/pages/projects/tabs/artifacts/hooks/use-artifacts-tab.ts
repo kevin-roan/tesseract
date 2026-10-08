@@ -1,4 +1,4 @@
-import type { Artifact } from "@theone/protocol";
+import type { Artifact } from "@tesseract/protocol";
 import { useCallback, useMemo } from "react";
 import { useFileActions } from "../../../../../features/files/hooks/use-file-actions";
 import type { TabHost } from "../../../../../features/projects/hooks/use-tab-host";

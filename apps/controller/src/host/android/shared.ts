@@ -1,4 +1,4 @@
-import { emulatorConsolePort, LIMITS, type AndroidDevice, type SharedEmulator } from "@theone/protocol";
+import { emulatorConsolePort, LIMITS, type AndroidDevice, type SharedEmulator } from "@tesseract/protocol";
 import { errorMessage } from "../../core/errors";
 import type { Logger } from "../../core/logger";
 import type { AndroidConfig } from "./config";
@@ -25,7 +25,7 @@ const sameDevices = (a: SharedEmulator[], b: SharedEmulator[]) =>
 
 /**
  * Emulators running on the host outside the daemon (Android Studio, `emulator -avd …`) that the link shares
- * with the sandbox when `THEONE_ANDROID_SHARE_EMULATORS` is on. Polls `adb devices` while started.
+ * with the sandbox when `TESSERACT_ANDROID_SHARE_EMULATORS` is on. Polls `adb devices` while started.
  */
 export class SharedEmulators {
   private devices: SharedEmulator[] = [];
@@ -66,7 +66,7 @@ export class SharedEmulators {
 
   async start(): Promise<void> {
     if (!this.enabled || this.timer) return;
-    this.logger.warn("sharing host emulators with the linked sandbox (THEONE_ANDROID_SHARE_EMULATORS); they run on the host network");
+    this.logger.warn("sharing host emulators with the linked sandbox (TESSERACT_ANDROID_SHARE_EMULATORS); they run on the host network");
     this.timer = setInterval(() => void this.refresh(), this.pollMs);
     await this.refresh();
   }

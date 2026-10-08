@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { ApiError } from "@theone/client";
-import { HealthSchema, parsePairingLink, SandboxStatusSchema, wsPaths } from "@theone/protocol";
+import { ApiError } from "@tesseract/client";
+import { HealthSchema, parsePairingLink, SandboxStatusSchema, wsPaths } from "@tesseract/protocol";
 import { client, createClient, e2e, SECONDS } from "./lib/env";
 import { exec, execOk } from "./lib/sandbox";
 import { probeSocket } from "./lib/socket";
@@ -33,7 +33,7 @@ describe("health and status", () => {
 
 describe("pairing", () => {
   test("pair --json yields a link whose token authenticates", async () => {
-    const output = await execOk(["theone-controller", "pair", "--json"]);
+    const output = await execOk(["tesseract-controller", "pair", "--json"]);
     const { link } = JSON.parse(output) as { link: string };
     const parsed = parsePairingLink(link);
     if (!parsed.ok) throw new Error(`pairing link did not parse: ${parsed.error.message}`);
@@ -133,10 +133,10 @@ describe("browser pages and the VNC bridge", () => {
 
 describe("doctor", () => {
   test(
-    "theone-doctor passes",
+    "tesseract-doctor passes",
     async () => {
-      const result = await exec(["theone-doctor"]);
-      if (result.code !== 0) throw new Error(`theone-doctor exited ${result.code}\n${result.stdout}\n${result.stderr}`);
+      const result = await exec(["tesseract-doctor"]);
+      if (result.code !== 0) throw new Error(`tesseract-doctor exited ${result.code}\n${result.stdout}\n${result.stderr}`);
       expect(result.stdout).toMatch(/0 failed/);
       expect(result.stdout).not.toContain(e2e.token);
       expect(result.stdout).not.toContain(e2e.vncPassword);

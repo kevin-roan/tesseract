@@ -1,4 +1,4 @@
-import type { AgentRun, AgentRunEvent, Upload } from "@theone/protocol";
+import type { AgentRun, AgentRunEvent, Upload } from "@tesseract/protocol";
 
 export type ChatEventItem = { event: AgentRunEvent; showHeader: boolean };
 

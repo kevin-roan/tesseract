@@ -2,7 +2,7 @@ import { memo, useMemo } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { Image } from "expo-image";
 import { ArrowClockwiseIcon, XIcon } from "phosphor-react-native";
-import type { UploadKind } from "@theone/protocol";
+import type { UploadKind } from "@tesseract/protocol";
 
 import IconTile from "@/components/icon-tile";
 import PressableScale from "@/components/pressable-scale";

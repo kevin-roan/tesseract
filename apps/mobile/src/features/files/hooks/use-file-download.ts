@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
-import type { TheOneClient } from "@theone/client";
-import type { Artifact, BuildOutput } from "@theone/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import type { Artifact, BuildOutput } from "@tesseract/protocol";
 
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
 import { useSandboxClient } from "@/features/sandbox/hooks/use-sandbox-client";
@@ -10,7 +10,7 @@ import { artifactDownload, buildOutputDownload } from "../utils/local-downloads"
 import { MissingFileError } from "../utils/errors";
 import { useLocalDownloads, type LocalDownload } from "./use-local-downloads";
 
-async function fileExists(queryClient: QueryClient, client: TheOneClient, sandboxId: string, id: string): Promise<boolean> {
+async function fileExists(queryClient: QueryClient, client: TesseractClient, sandboxId: string, id: string): Promise<boolean> {
   const queryKey = sandboxKeys.artifacts(sandboxId);
   if (queryClient.getQueryData<Artifact[]>(queryKey)?.some((artifact) => artifact.id === id)) return true;
   const artifacts = await queryClient.fetchQuery({

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
-import { CreateProjectResponseSchema, GitDetailsSchema, ProjectListSchema, ProjectSchema, type Project } from "@theone/protocol";
+import { CreateProjectResponseSchema, GitDetailsSchema, ProjectListSchema, ProjectSchema, type Project } from "@tesseract/protocol";
 import { parseStatus } from "../src/services/git";
 import { detectProject } from "../src/services/project-detect";
 import { makeTempDir, removeTempDirs, startTestController, waitFor, writeFiles, type TestController } from "./helpers";

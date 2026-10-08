@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import type { AgentRun, BuildJob, DisplayStatus, ProcessInfo, TerminalInfo } from "@theone/protocol";
+import type { AgentRun, BuildJob, DisplayStatus, ProcessInfo, TerminalInfo } from "@tesseract/protocol";
 import { loadConfig, ensureDirectories, type Config } from "../../src/config";
 import { EventHub } from "../../src/core/events";
 import { createLogger, silentLogger, type LogLevel } from "../../src/core/logger";
@@ -22,7 +22,7 @@ afterEach(removeTempDirs);
 const TS = "2024-01-01T00:00:00.000Z";
 
 function workspaceConfig(env: Record<string, string> = {}): Config {
-  const config = loadConfig({ THEONE_WORKSPACE: makeTempDir("state"), THEONE_VNC_PORT: "1", THEONE_DISPLAY: ":987", ...env });
+  const config = loadConfig({ TESSERACT_WORKSPACE: makeTempDir("state"), TESSERACT_VNC_PORT: "1", TESSERACT_DISPLAY: ":987", ...env });
   ensureDirectories(config);
   return config;
 }
@@ -128,7 +128,7 @@ describe("database and repositories", () => {
     const repos = new Repositories(db);
     db.query("INSERT INTO agent_runs (id, project_id, prompt, session_id, state, started_at) VALUES ('run_old', NULL, 'p', NULL, 'succeeded', ?)").run(TS);
     expect(repos.agentRuns.get("run_old")).toMatchObject({ mode: null, attachments: [], usage: null });
-    const upload = { id: "upl_a", name: "a.png", mimeType: "image/png", kind: "image" as const, sizeBytes: 3, path: "/w/.theone/uploads/upl_a/a.png", createdAt: TS };
+    const upload = { id: "upl_a", name: "a.png", mimeType: "image/png", kind: "image" as const, sizeBytes: 3, path: "/w/.tesseract/uploads/upl_a/a.png", createdAt: TS };
     repos.uploads.save(upload);
     expect(repos.uploads.get("upl_a")).toEqual(upload);
     repos.agentRuns.save(agentRun({ id: "run_new", mode: "plan", attachments: [upload] }));
@@ -142,6 +142,7 @@ describe("database and repositories", () => {
     const legacy = new Database(path);
     legacy.run(`CREATE TABLE agent_runs (id TEXT PRIMARY KEY, project_id TEXT, prompt TEXT NOT NULL, session_id TEXT, state TEXT NOT NULL,
       started_at TEXT NOT NULL, ended_at TEXT, cost_usd REAL, result TEXT, error TEXT, archived_at TEXT, mode TEXT, attachments TEXT)`);
+    legacy.run("CREATE TABLE uploads (id TEXT PRIMARY KEY, path TEXT NOT NULL)");
     legacy.query("INSERT INTO agent_runs (id, prompt, state, started_at, cost_usd) VALUES ('run_old', 'p', 'succeeded', ?, 0.5)").run(TS);
     legacy.run("PRAGMA user_version = 6");
     legacy.close();
@@ -151,6 +152,28 @@ describe("database and repositories", () => {
     expect(columns).toEqual(expect.arrayContaining(["input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens"]));
     expect(new Repositories(db).agentRuns.get("run_old")).toMatchObject({ state: "succeeded", usage: null });
     db.close();
+  });
+
+  test("moves uploads from the pre-rename /workspace/.theone and rewrites their stored paths", () => {
+    const workspace = makeTempDir("state");
+    mkdirSync(join(workspace, ".theone", "uploads", "upl_a"), { recursive: true });
+    writeFileSync(join(workspace, ".theone", "uploads", "upl_a", "a.png"), "png");
+    const config = workspaceConfig({ TESSERACT_WORKSPACE: workspace });
+    expect(readFileSync(join(config.uploadsDir, "upl_a", "a.png"), "utf8")).toBe("png");
+    expect(existsSync(join(workspace, ".theone"))).toBe(false);
+
+    const path = join(makeTempDir("db"), "state.db");
+    const legacy = openDatabase(path);
+    const oldPath = join(workspace, ".theone", "uploads", "upl_a", "a.png");
+    const upload = { id: "upl_a", name: "a.png", mimeType: "image/png", kind: "image" as const, sizeBytes: 3, path: oldPath, createdAt: TS };
+    new Repositories(legacy).uploads.save(upload);
+    new Repositories(legacy).agentRuns.save(agentRun({ id: "run_a", attachments: [upload] }));
+    legacy.run(`PRAGMA user_version = ${SCHEMA_VERSION - 1}`);
+    legacy.close();
+    const repos = new Repositories(openDatabase(path));
+    const moved = join(config.uploadsDir, "upl_a", "a.png");
+    expect(repos.uploads.get("upl_a")?.path).toBe(moved);
+    expect(repos.agentRuns.get("run_a")?.attachments[0]?.path).toBe(moved);
   });
 
   test("round-trips every entity, upserts, filters, limits and orders newest first", () => {
@@ -482,7 +505,7 @@ describe("DisplayService", () => {
       },
     });
     try {
-      const config = workspaceConfig({ THEONE_VNC_PORT: String(rfb.port), THEONE_VNC_PASSWORD: "pw" });
+      const config = workspaceConfig({ TESSERACT_VNC_PORT: String(rfb.port), TESSERACT_VNC_PASSWORD: "pw" });
       const service = new DisplayService(config, 60_000);
       const first = await service.status();
       expect(first).toMatchObject({ display: ":987", available: false, width: null, vnc: { available: true, port: rfb.port, password: "pw" }, webPath: "/ui/vnc" });
@@ -499,7 +522,7 @@ describe("DisplayService", () => {
   });
 
   test("a display name without a local socket is probed with xdpyinfo", async () => {
-    const config = workspaceConfig({ THEONE_DISPLAY: "nonexistent-host.invalid:5" });
+    const config = workspaceConfig({ TESSERACT_DISPLAY: "nonexistent-host.invalid:5" });
     const status = await new DisplayService(config).status();
     expect(status.available).toBe(false);
     expect(status.vnc.available).toBe(false);
@@ -519,7 +542,7 @@ describe("status", () => {
   });
 
   test("StatusService combines config, display, tools and counts", async () => {
-    const config = workspaceConfig({ THEONE_SANDBOX_ID: "box" });
+    const config = workspaceConfig({ TESSERACT_SANDBOX_ID: "box" });
     const counts = { projects: 1, runningProcesses: 2, activeBuilds: 3, terminals: 4, agentRuns: 5 };
     const service = new StatusService(config, "1.2.3", new ToolService([]), { status: async () => display() } as never, () => counts);
     const status = await service.status();

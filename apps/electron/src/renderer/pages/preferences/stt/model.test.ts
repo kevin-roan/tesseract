@@ -1,4 +1,4 @@
-import { sampleSttStatus } from "@theone/protocol/fixtures";
+import { sampleSttStatus } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import { activityLabel, geminiSubtitle, profileChoices, stateLabel, statusRows } from "./model";
 

@@ -154,19 +154,19 @@ export function choicesToEnv(
   const bindAddr = choices.mode === "local" ? LOCAL_BIND_ADDR : choices.mode === "host-tailscale" ? choices.bindAddr.trim() : "";
   const tailscale = choices.mode === "tailscale";
   const values: Partial<Record<EnvKey, string>> = {
-    THEONE_MODE: choices.mode,
-    THEONE_DIND: choices.dind ? "1" : "",
-    THEONE_COMPOSE_PROJECT: choices.project,
-    THEONE_VOLUME_PREFIX: "",
-    THEONE_IMAGE: choices.image,
+    TESSERACT_MODE: choices.mode,
+    TESSERACT_DIND: choices.dind ? "1" : "",
+    TESSERACT_COMPOSE_PROJECT: choices.project,
+    TESSERACT_VOLUME_PREFIX: "",
+    TESSERACT_IMAGE: choices.image,
     TS_AUTHKEY: tailscale ? (choices.tsAuthKey.trim() || secrets.tsAuthKey || "") : "",
     TS_TAILNET_DOMAIN: tailscale ? choices.tailnetDomain.trim() : "",
-    THEONE_HOSTNAME: choices.hostname || DEFAULT_HOSTNAME,
-    THEONE_BIND_ADDR: bindAddr,
-    THEONE_CONTROLLER_HOST_PORT: String(choices.controllerPort),
-    THEONE_VNC_HOST_PORT: String(choices.vncPort),
-    THEONE_TOKEN: secrets.token,
-    THEONE_HOST_CLAUDE_DIR: choices.hostClaudeDir,
+    TESSERACT_HOSTNAME: choices.hostname || DEFAULT_HOSTNAME,
+    TESSERACT_BIND_ADDR: bindAddr,
+    TESSERACT_CONTROLLER_HOST_PORT: String(choices.controllerPort),
+    TESSERACT_VNC_HOST_PORT: String(choices.vncPort),
+    TESSERACT_TOKEN: secrets.token,
+    TESSERACT_HOST_CLAUDE_DIR: choices.hostClaudeDir,
     SANDBOX_CPUS: String(choices.cpus),
     SANDBOX_MEMORY: `${choices.memoryGb}g`,
     TZ: choices.timeZone,
@@ -187,7 +187,7 @@ function intOr(value: string | undefined, fallback: number): number {
 }
 
 export function choicesFromEnv(values: EnvValues, base: SetupChoices): SetupChoices {
-  const mode = MODES.find((candidate) => candidate === values.THEONE_MODE) ?? base.mode;
+  const mode = MODES.find((candidate) => candidate === values.TESSERACT_MODE) ?? base.mode;
   const components = COMPONENTS.filter((component) => {
     const raw = values[COMPONENT_BUILD_ARGS[component]];
     return raw === undefined || raw === "" ? base.components.includes(component) : raw === "true";
@@ -201,21 +201,21 @@ export function choicesFromEnv(values: EnvValues, base: SetupChoices): SetupChoi
     mode: mode as ReachabilityMode,
     tsAuthKey: values.TS_AUTHKEY ?? "",
     tailnetDomain: values.TS_TAILNET_DOMAIN ?? base.tailnetDomain,
-    hostname: values.THEONE_HOSTNAME || base.hostname,
-    bindAddr: mode === "host-tailscale" ? (values.THEONE_BIND_ADDR ?? base.bindAddr) : base.bindAddr,
+    hostname: values.TESSERACT_HOSTNAME || base.hostname,
+    bindAddr: mode === "host-tailscale" ? (values.TESSERACT_BIND_ADDR ?? base.bindAddr) : base.bindAddr,
     components,
     whisperModels: models.length ? models : base.whisperModels,
     flutterVersion: values.FLUTTER_VERSION || base.flutterVersion,
     cpus: intOr(values.SANDBOX_CPUS, base.cpus),
     memoryGb: memory ? intOr(memory[1], base.memoryGb) : base.memoryGb,
     timeZone: values.TZ || base.timeZone,
-    project: values.THEONE_COMPOSE_PROJECT || base.project,
-    image: values.THEONE_IMAGE || base.image,
-    controllerPort: intOr(values.THEONE_CONTROLLER_HOST_PORT, base.controllerPort),
-    vncPort: intOr(values.THEONE_VNC_HOST_PORT, base.vncPort),
+    project: values.TESSERACT_COMPOSE_PROJECT || base.project,
+    image: values.TESSERACT_IMAGE || base.image,
+    controllerPort: intOr(values.TESSERACT_CONTROLLER_HOST_PORT, base.controllerPort),
+    vncPort: intOr(values.TESSERACT_VNC_HOST_PORT, base.vncPort),
     claudeCodeVersion: values.CLAUDE_CODE_VERSION || base.claudeCodeVersion,
-    hostClaudeDir: values.THEONE_HOST_CLAUDE_DIR || base.hostClaudeDir,
-    dind: isTruthyFlag(values.THEONE_DIND),
+    hostClaudeDir: values.TESSERACT_HOST_CLAUDE_DIR || base.hostClaudeDir,
+    dind: isTruthyFlag(values.TESSERACT_DIND),
   };
 }
 

@@ -110,7 +110,7 @@ function alive(pid: number): boolean {
   }
 }
 
-/** `theone-controller host emulator-helper --dir <dir> --console-port <n> --parent <pid>`; exits with the emulator. */
+/** `tesseract-controller host emulator-helper --dir <dir> --console-port <n> --parent <pid>`; exits with the emulator. */
 export async function runEmulatorHelper(args: string[]): Promise<null> {
   const { values } = parseArgs({
     args,

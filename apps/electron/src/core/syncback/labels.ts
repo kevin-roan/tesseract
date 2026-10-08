@@ -51,7 +51,7 @@ export const SYNC_LABELS = {
   unplanned: (what: string, path: string) => `The sandbox asked for an unplanned ${what}: ${path}`,
   unplannedFile: "file",
   unplannedGitFile: ".git file",
-  vanished: (name: string) => `${name} changed during the sync, run monolith --get again`,
+  vanished: (name: string) => `${name} changed during the sync, run tesseract --get again`,
   getLeft: (status: string) => `The sandbox left the get ${status}`,
   refused: "The sandbox refused the changes",
 

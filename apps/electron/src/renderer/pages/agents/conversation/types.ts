@@ -1,4 +1,4 @@
-import type { AgentRun, ClaudeSession, InboxItem } from "@theone/protocol";
+import type { AgentRun, ClaudeSession, InboxItem } from "@tesseract/protocol";
 import type { ReactNode } from "react";
 import type { NameLookup } from "../timeline/run-info";
 import type { ManageAction, SyncReport } from "./model";

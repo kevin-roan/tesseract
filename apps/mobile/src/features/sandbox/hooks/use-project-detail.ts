@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import type { BuildProfile, BuildTarget, ProcessInfo } from "@theone/protocol";
+import type { BuildProfile, BuildTarget, ProcessInfo } from "@tesseract/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
 import { useAppRuns } from "@/features/app-runs/hooks/use-app-runs";

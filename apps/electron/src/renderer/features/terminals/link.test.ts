@@ -1,5 +1,5 @@
-import type { TerminalConnection, TerminalHandlers } from "@theone/client";
-import { NetworkError } from "@theone/client";
+import type { TerminalConnection, TerminalHandlers } from "@tesseract/client";
+import { NetworkError } from "@tesseract/client";
 import { describe, expect, it, vi } from "vitest";
 import { TerminalLink, type LinkTerminal, type LinkTimers } from "./link";
 import type { LiveSession } from "./types";

@@ -1,4 +1,4 @@
-import type { Project } from "@theone/protocol";
+import type { Project } from "@tesseract/protocol";
 import { useRef } from "react";
 import { Floating, MenuItem, useActionMenu } from "../../components/ActionMenu";
 import { Icon } from "../../components/Icon";

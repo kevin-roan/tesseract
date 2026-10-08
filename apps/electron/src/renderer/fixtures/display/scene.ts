@@ -1,6 +1,6 @@
 export const SCENE_WIDTH = 1600;
 export const SCENE_HEIGHT = 900;
-export const SCENE_NAME = "TheOne theone-sandbox";
+export const SCENE_NAME = "Tesseract tesseract-sandbox";
 
 const COLORS = {
   page: "#ffffff",

@@ -21,7 +21,7 @@ export interface LaunchOptions {
 
 export async function launchApp(options: LaunchOptions = {}): Promise<LaunchedApp> {
   const profile = isolatedProfile(options.env);
-  const configFile = profile.env.MONOLITH_DESKTOP_CONFIG ?? join(profile.dir, "config.json");
+  const configFile = profile.env.TESSERACT_DESKTOP_CONFIG ?? join(profile.dir, "config.json");
   mkdirSync(dirname(configFile), { recursive: true });
   writeFileSync(configFile, `${JSON.stringify(options.config ?? COMPLETED_ONBOARDING, null, 2)}\n`);
   const app = await _electron.launch({

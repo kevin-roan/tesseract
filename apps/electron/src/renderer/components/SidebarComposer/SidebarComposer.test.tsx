@@ -8,7 +8,7 @@ import { useProjectSelection } from "./use-project-selection";
 
 MotionGlobalConfig.skipAnimations = true;
 
-const PROJECTS = [{ id: "monolith", name: "monolith" }, { id: "alpha", name: "Alpha" }];
+const PROJECTS = [{ id: "tesseract", name: "tesseract" }, { id: "alpha", name: "Alpha" }];
 
 function Harness({ online = true, onSend }: { online?: boolean; onSend(request: SidebarComposerSend): void }) {
   const [text, setText] = useState("");
@@ -43,12 +43,12 @@ describe("SidebarComposer", () => {
     render(<Harness onSend={onSend} />);
     fireEvent.click(screen.getByRole("button", { name: SIDEBAR_COMPOSER_LABELS.projectTooltip }));
     const options = await screen.findAllByRole("option");
-    expect(options.map((option) => option.textContent)).toEqual([SIDEBAR_COMPOSER_LABELS.noProject, "Alpha", "monolith"]);
+    expect(options.map((option) => option.textContent)).toEqual([SIDEBAR_COMPOSER_LABELS.noProject, "Alpha", "tesseract"]);
     fireEvent.click(options[2] as HTMLElement);
     fireEvent.change(input(), { target: { value: "  build it " } });
     expect(sendTooltip()).toBe(SIDEBAR_COMPOSER_LABELS.send);
     fireEvent.keyDown(input(), { key: "Enter" });
-    expect(onSend).toHaveBeenCalledWith({ prompt: "build it", projectId: "monolith" });
+    expect(onSend).toHaveBeenCalledWith({ prompt: "build it", projectId: "tesseract" });
   });
 
   it("inserts newlines on Shift+Enter", () => {
@@ -67,7 +67,7 @@ describe("useProjectSelection", () => {
     expect(result.current[0]).toBe("alpha");
     rerender({ projects: [...PROJECTS].reverse() });
     expect(result.current[0]).toBe("alpha");
-    rerender({ projects: [{ id: "monolith", name: "monolith" }] });
+    rerender({ projects: [{ id: "tesseract", name: "tesseract" }] });
     expect(result.current[0]).toBeNull();
   });
 });

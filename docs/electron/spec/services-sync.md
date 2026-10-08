@@ -1,6 +1,6 @@
-# Spec: sync-back service, `monolith` sync CLI, and composer attachments
+# Spec: sync-back service, `tesseract` sync CLI, and composer attachments
 
-Sources surveyed (read-only): `apps/desktop/monolith_desktop/sync.py`,
+Sources surveyed (read-only): `apps/desktop/tesseract_desktop/sync.py`,
 `services/syncback.py`, `syncback/*.py`, `attachments/*.py`, `strings.py`
 (`SYNC_BACK`, `ATTACHMENTS`), `app.py` (CLI options), `api/client.py` and
 `api/paths.py` (sync and upload endpoints), `theme/extras/agents.py` and
@@ -8,7 +8,7 @@ Sources surveyed (read-only): `apps/desktop/monolith_desktop/sync.py`,
 (the contract, which wins on any disagreement).
 
 Scope: everything the Electron **main process** and the standalone
-**`monolith` CLI** (bun `--compile`) must reimplement in TypeScript to replace
+**`tesseract` CLI** (bun `--compile`) must reimplement in TypeScript to replace
 the Python host side of sync-back. It also covers the attachment model and chip
 UI used by the composers. The Projects page UI (Sync tab, review sheet, action
 buttons) is specified in the projects spec. Here it shows up only as a consumer
@@ -41,7 +41,7 @@ apps/electron/src/renderer/features/attachments/       model + hooks + chip/tray
 
 ## 1. Concepts
 
-- **Push** (`monolith --sync`, run on the host in a checkout): the CLI tars the
+- **Push** (`tesseract --sync`, run on the host in a checkout): the CLI tars the
   checkout, sends it to `POST /v1/projects/:id/sync`, and records a **link** in
   `links.json` (project id ↔ absolute host path, plus the host manifest at push
   time).
@@ -51,7 +51,7 @@ apps/electron/src/renderer/features/attachments/       model + hooks + chip/tray
 - **Revert**: undoes the newest unreverted pull from its snapshot, and puts the
   sandbox baseline back so the reverted changes are offered again.
 - **Get** (host → sandbox): requested from inside the sandbox
-  (`monolith --get`) or from the desktop. The host companion claims the request
+  (`tesseract --get`) or from the desktop. The host companion claims the request
   and uploads the host files changed since the last push or get.
 - **Discard**: purely controller-side (`POST sync/discard`). The host only
   calls it. See the contract §7.
@@ -64,11 +64,11 @@ apps/electron/src/renderer/features/attachments/       model + hooks + chip/tray
 
 ### 2.1 State directory
 
-Python: `state_dir() = ($XDG_STATE_HOME || ~/.local/state) + "/monolith"`.
+Python: `state_dir() = ($XDG_STATE_HOME || ~/.local/state) + "/tesseract"`.
 
 | Name | Value |
 |---|---|
-| `STATE_DIR_NAME` | `monolith` |
+| `STATE_DIR_NAME` | `tesseract` |
 | `LINKS_FILE` | `links.json` |
 | `SNAPSHOTS_DIR` | `snapshots` |
 | `SNAPSHOT_FILE` | `snapshot.json` |
@@ -82,11 +82,11 @@ Electron:
 - On Linux, use **exactly** the same path, so links that the Python app or CLI
   already created keep working.
 - On macOS and Windows there is no XDG convention. Use
-  `$XDG_STATE_HOME/monolith` if the variable is set. Otherwise use
-  `~/.local/state/monolith` on macOS (it matches Python and keeps the CLI and
-  the app in agreement) and `%LOCALAPPDATA%\Monolith\state` on Windows.
+  `$XDG_STATE_HOME/tesseract` if the variable is set. Otherwise use
+  `~/.local/state/tesseract` on macOS (it matches Python and keeps the CLI and
+  the app in agreement) and `%LOCALAPPDATA%\Tesseract\state` on Windows.
 - The CLI and the app **must** resolve the same directory. Put the resolver in
-  one shared module, and allow a `MONOLITH_STATE_DIR` override for tests.
+  one shared module, and allow a `TESSERACT_STATE_DIR` override for tests.
 - Directories are created with mode `0o700`. `links.json` and `snapshot.json`
   are written with mode `0o600`.
 
@@ -186,7 +186,7 @@ file names under `locks/`.
 
 ### 2.5 Atomic file primitives (`fsutil.py`)
 
-- `TMP_PREFIX = ".monolith-sync-"`. Temp files are always created **beside the
+- `TMP_PREFIX = ".tesseract-sync-"`. Temp files are always created **beside the
   target** (same directory), so the rename is atomic.
 - `write_atomic(target, bytes, mode=0o644)`: mkstemp in the target directory,
   write, `fchmod(mode)`, flush, `fsync`, `rename` over the target. On any
@@ -315,7 +315,7 @@ characters, which is acceptable.
 
 ---
 
-## 4. Push: `monolith --sync [--confidential]` (`sync.py`)
+## 4. Push: `tesseract --sync [--confidential]` (`sync.py`)
 
 `run_sync(cwd, confidential)`:
 
@@ -328,7 +328,7 @@ characters, which is acceptable.
    its confidential flag.
 4. Otherwise, `projectId = confidential ? null : project_id_from_name(basename(root))`.
 5. If there is no `projectId` and the push is not confidential, print to
-   stderr `` monolith: cannot derive a project id from '${root.name}' ``
+   stderr `` tesseract: cannot derive a project id from '${root.name}' ``
    and exit **1**.
 6. `connect()` (§4.2). On failure, exit 1.
 7. If there is still no `projectId` (confidential), use
@@ -349,15 +349,15 @@ characters, which is acceptable.
     **600 s** (`SYNC_TIMEOUT_S`). The response is the project JSON. Status
     `201` means created, otherwise the project was updated.
 12. On a controller or OS error, print to stderr
-    `` monolith: sync failed: ${error} `` and exit 1.
+    `` tesseract: sync failed: ${error} `` and exit 1.
 13. `state.save_link(Link(projectId, root, iso(now), tree.manifest, tree.executable, tree.git, confidential), replaces)`.
     `got_at` is reset (not carried over). On an `OSError`, print to stderr
-    `` monolith: pushed, but could not record the link for sync back: ${error} ``
+    `` tesseract: pushed, but could not record the link for sync back: ${error} ``
     and continue.
 14. Print to stdout:
     `` ${created ? "Created" : "Updated"} ${project.path} (${count} entries) · linked for sync back ``
 15. If `replaces` is set, print to stderr:
-    `` monolith: the earlier copy ${replaces} is still in the sandbox under its real name and is no longer linked; remove it there with: rm -rf /workspace/projects/${replaces} ``
+    `` tesseract: the earlier copy ${replaces} is still in the sandbox under its real name and is no longer linked; remove it there with: rm -rf /workspace/projects/${replaces} ``
 16. Exit 0.
 
 Tar details to match Python's `tarfile` (the controller extracts it):
@@ -386,9 +386,9 @@ so `toLowerCase()` is equivalent.
 1. Try the saved connection config: the app's stored connection, or the env
    config (`initial_config()`). If there is none, run Docker discovery of the
    sandbox container (`discover_docker()`). A discovery error prints
-   `` monolith: no sandbox found: ${error} `` and returns `null`.
+   `` tesseract: no sandbox found: ${error} `` and returns `null`.
 2. If the config is missing or invalid, print
-   `monolith: no sandbox to sync with; open the app and connect first` and
+   `tesseract: no sandbox to sync with; open the app and connect first` and
    return `null`.
 3. Return `{client(apiUrl, token), label: config.name || apiUrl}`.
 
@@ -400,7 +400,7 @@ as the Electron app (see the connection and onboarding spec).
 - Shuffle all `adjective-noun` pairs with a cryptographic RNG and pick the
   first pair not in `taken`.
 - If every pair is taken, use `${pairs[0]}-${n}` with `n` counting up from 2.
-- Copy the word lists verbatim from `apps/desktop/monolith_desktop/pseudonym.py`
+- Copy the word lists verbatim from `apps/desktop/tesseract_desktop/pseudonym.py`
   (66 adjectives × 66 nouns). It is the same list that `packages/protocol`
   may already have. If so, reuse it.
 
@@ -412,12 +412,12 @@ as the Electron app (see the connection and onboarding spec).
 
 1. `require_link`:
    - No link: `NotLinked`, with message
-     `` ${id} is not linked on this computer. Run monolith --sync in the checkout first ``.
-   - `hostPath` is not a directory: `` ${hostPath} no longer exists. Run monolith --sync in the checkout again ``.
+     `` ${id} is not linked on this computer. Run tesseract --sync in the checkout first ``.
+   - `hostPath` is not a directory: `` ${hostPath} no longer exists. Run tesseract --sync in the checkout again ``.
 2. `root = realpath(hostPath)`. **Take the project lock** for the rest of the
    operation.
 3. `data = GET /v1/projects/:id/sync/changes`. If `baselineAt == null`, fail
-   with `` ${id} was never pushed. Run monolith --sync in the checkout first ``.
+   with `` ${id} was never pushed. Run tesseract --sync in the checkout first ``.
 4. `changes = data.changes`. If `paths` is given, keep only the changes whose
    path is in it.
 5. `targets[path] = resolve_inside(root, path)` for every change. This throws
@@ -440,7 +440,7 @@ as the Electron app (see the connection and onboarding spec).
    - `incoming` = non-deleted paths. `deletes` = deleted paths.
    - If `incoming` is non-empty, call `POST sync/export {paths: incoming}`
      (600 s timeout). The response is a gzip tar. Extract it into a temp
-     directory with prefix `monolith-pull-` (§5.1).
+     directory with prefix `tesseract-pull-` (§5.1).
    - `written[path] = hash_path(staged)` for incoming, `null` for deletes.
    - `executable[path] = is_executable(staged)` for incoming.
    - **take_snapshot** (§5.2). If it fails, nothing has been written.
@@ -580,10 +580,10 @@ Limits: `MAX_CHANGES = 5000` and `MAX_GIT_PATHS = 200000`.
    Take the project lock.
 2. `tree = scan_tree(root, collect_files(root))`. `changes = plan_changes`.
 3. More than 5000 changes:
-   `` Too many files changed on the host for a get. Run monolith --sync in ${root} instead ``.
+   `` Too many files changed on the host for a get. Run tesseract --sync in ${root} instead ``.
 4. `git = plan_git(tree.git, link.gitManifest)`. If `max(changed, deleted)`
    exceeds 200000:
-   `` Too many .git files changed on the host for a get. Run monolith --sync in ${root} instead ``.
+   `` Too many .git files changed on the host for a get. Run tesseract --sync in ${root} instead ``.
 5. `POST /v1/sync/requests/:id/plan {hostPath: link.confidential ? "REDACTED" : root, changes, git}`
    (600 s timeout). If `response.request.status === "failed"` (conflicts),
    return that request as is. The controller has already completed it.
@@ -595,7 +595,7 @@ Limits: `MAX_CHANGES = 5000` and `MAX_GIT_PATHS = 200000`.
    with arcname `p`. Each `gitUpload` path is added as `root/.git/p` with
    arcname `.git/p`. Entries are added non-recursively, and symlinks are kept
    as symlinks. If a file is missing (ENOENT):
-   `` ${name} changed during the sync, run monolith --get again ``.
+   `` ${name} changed during the sync, run tesseract --get again ``.
 8. `POST /v1/sync/requests/:id/apply` with body `application/gzip`, an
    explicit size, and a 600 s timeout. The response is a `SyncRequest`.
 9. On `applied`:
@@ -647,13 +647,13 @@ the contract (§6 step 6).
 - `plural(n, w)` gives `` `${n} ${w}${n===1?"":"s"}` ``.
 - `breakdown(...[n, label])` joins the non-zero entries as `` `${n} ${label}` ``
   with `", "`.
-- `UNDO_HINT = "undo with monolith --revert"`.
+- `UNDO_HINT = "undo with tesseract --revert"`.
 
 | Function | Output |
 |---|---|
 | describe_pull, total 0 | `` Nothing to sync: ${hostPath} already matches the sandbox `` |
 | describe_pull, dry run | `` Would pull ${plural(total,"file")} into ${hostPath} (${counts}) `` |
-| describe_pull | `` Pulled ${plural(total,"file")} into ${hostPath} (${counts}) · snapshot ${snapshotId} — undo with monolith --revert `` |
+| describe_pull | `` Pulled ${plural(total,"file")} into ${hostPath} (${counts}) · snapshot ${snapshotId} — undo with tesseract --revert `` |
 | describe_revert | `` Reverted snapshot ${id} in ${hostPath} (${counts || "no files"}) `` (labels: restored, recreated, removed) |
 | describe_result("revert") | `` Reverted the last sync in ${hostPath} (${breakdown(modified "restored", added "recreated", deleted "removed") || "no files"}) `` |
 | describe_result("pull") | `` Pulled ${plural(a+m+d,"file")} into ${hostPath} (${breakdown(... "added","modified","deleted") || "no changes"}) `` |
@@ -814,7 +814,7 @@ Main-process helper behind `sync:diff`:
 
 ---
 
-## 11. CLI behaviour (`monolith` binary, host side)
+## 11. CLI behaviour (`tesseract` binary, host side)
 
 Options (GLib option names, ported 1:1 with the same help strings):
 
@@ -845,7 +845,7 @@ Exit codes: `EXIT_OK = 0`, `EXIT_ERROR = 1`, `EXIT_CONFLICT = 2`.
 - Use the link for `realpath(cwd)` if there is one.
 - Otherwise `id = project_id_from_name(name) || name`.
 - If `state.link(id)` exists elsewhere, throw
-  `` ${id} is linked to ${existing.hostPath}, not ${root}. Run monolith --sync here to relink it ``.
+  `` ${id} is linked to ${existing.hostPath}, not ${root}. Run tesseract --sync here to relink it ``.
 - Otherwise throw `NotLinked(id)`.
 
 `_list(paths)`: print `` `  ${p}` `` for the first 50 paths, then
@@ -853,7 +853,7 @@ Exit codes: `EXIT_OK = 0`, `EXIT_ERROR = 1`, `EXIT_CONFLICT = 2`.
 
 Conflict report (stderr), returning exit 2:
 ```
-monolith: ${plural(n,"file")} changed on the host since the last ${action}:
+tesseract: ${plural(n,"file")} changed on the host since the last ${action}:
   <paths…>
 ```
 followed by:
@@ -864,7 +864,7 @@ followed by:
 1. Resolve the link, then connect. If there is no client, exit 1.
 2. Run `pull`.
 3. A `SyncConflict` prints the conflict report and exits 2.
-4. Any other error prints `` monolith: pull failed: ${error} `` to stderr and
+4. Any other error prints `` tesseract: pull failed: ${error} `` to stderr and
    exits 1.
 5. Print `describe_pull` to stdout.
 6. Dry run: print the plan. Each line is `` `  ${code} ${path}` ``, with the
@@ -873,12 +873,12 @@ followed by:
    are conflicts and no force, also print the conflict report and exit 2.
 7. Not a dry run, with conflicts (forced): print to stdout
    `` Overwrote ${plural(n,"host edit")} (--force); the originals are in the snapshot ``.
-8. Print each warning to stderr as `` monolith: warning: ${w} ``. Exit 0.
+8. Print each warning to stderr as `` tesseract: warning: ${w} ``. Exit 0.
 
 **`--revert [--force]`**:
 1. Resolve the link, then run `revert`. It does **not** connect first.
 2. A conflict prints the report and exits 2. Any other error prints
-   `` monolith: revert failed: ${error} `` and exits 1.
+   `` tesseract: revert failed: ${error} `` and exits 1.
 3. If the baseline list is non-empty, `restore_baseline(connect_client())`.
    This connects lazily, and a failed connect prints its own message.
 4. Print `describe_revert`.
@@ -886,24 +886,24 @@ followed by:
    `` Overwrote ${plural(n,"host edit")} (--force); copies are in ${displacedDir} ``.
 6. Print the warnings.
 7. If unreverted snapshots remain, print
-   `` Run monolith --revert again to undo snapshot ${remaining[0].id} too ``.
+   `` Run tesseract --revert again to undo snapshot ${remaining[0].id} too ``.
    Exit 0.
 
 **`--sync-status`**:
-1. Resolve the link. On error, print `` monolith: ${error} `` and exit 1.
+1. Resolve the link. On error, print `` tesseract: ${error} `` and exit 1.
 2. Print
    `` ${id} ↔ ${hostPath} · pushed ${pushedAt || "never"} · got ${gotAt || "never"} ``.
 3. Connect. If there is no client, the exit code becomes 1, but continue.
    Otherwise `GET changes`:
-   - `baselineAt == null`: print `The sandbox has no push baseline yet; run monolith --sync`.
+   - `baselineAt == null`: print `The sandbox has no push baseline yet; run tesseract --sync`.
    - No changes: print `No sandbox changes to pull`.
    - Otherwise: print `` Sandbox changes (${n}): ``, then up to 50 lines
      `` `  ${code} ${path}` ``, adding `"  (changed on host)"` when
      `is_conflict` holds. A path that fails `resolve_inside` counts as a
      conflict. Then print `"  … and N more"` and
-     `Run monolith --pull to copy them here`.
+     `Run tesseract --pull to copy them here`.
    - If reading fails, print to stderr
-     `` monolith: could not read sandbox changes: ${error} `` and set the
+     `` tesseract: could not read sandbox changes: ${error} `` and set the
      exit code to 1.
 4. Snapshots: print `` Snapshots (${n}): `` or `No snapshots yet`. Then print
    `` `  ${id}  ${plural(entries,"file")}${reverted ? "  reverted" : ""}` ``
@@ -911,7 +911,7 @@ followed by:
 5. Return the code.
 
 **`--get`** on the host: print
-`monolith --get runs inside the sandbox (in /workspace/projects/<id>); on this computer use monolith --sync`
+`tesseract --get runs inside the sandbox (in /workspace/projects/<id>); on this computer use tesseract --sync`
 to stderr and exit 1.
 
 ---
@@ -1122,7 +1122,7 @@ Colors:
   - Sent uploads use the upload id, with the bytes from
     `GET /v1/uploads/:id/content` (120 s timeout).
   - In Electron, an object-URL LRU (revoke on eviction) or a main-process
-    protocol handler (`monolith-upload://<id>`) is fine.
+    protocol handler (`tesseract-upload://<id>`) is fine.
 
 **Sent attachments** (conversation messages): `upload_chip(upload, large = kind==="image")`.
 They have no remove or retry buttons, and their meta is
@@ -1153,7 +1153,7 @@ They have no remove or retry buttons, and their meta is
 2. **XDG state dir on every OS**: only correct on Linux. Use the per-OS
    resolution in §2.1, but keep Linux identical.
 3. **GLib option parsing** runs in the GUI binary (`do_handle_local_options`),
-   so `monolith --pull` imports GTK. The Electron CLI is a separate
+   so `tesseract --pull` imports GTK. The Electron CLI is a separate
    bun-compiled binary that never loads Electron for sync flags.
 4. **`Gio.Notification` id replacement**: emulate it explicitly (§9).
    `app.navigate` is a GAction, so use IPC navigation instead.

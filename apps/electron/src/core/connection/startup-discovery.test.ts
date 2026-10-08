@@ -5,10 +5,10 @@ import { discoverHealthySandbox, discoveryDisabled } from "./discovery";
 const CONFIG: ConnectionConfig = {
   apiUrl: "http://127.0.0.1:7700",
   token: "t",
-  name: "monolith-test",
+  name: "tesseract-test",
   pairingUrl: "http://127.0.0.1:7700",
   source: "docker",
-  container: "monolith-test-sandbox-1",
+  container: "tesseract-test-sandbox-1",
 };
 
 function found(outcome: "ok" | "unreachable"): DiscoveryResult {
@@ -30,17 +30,17 @@ describe("discoverHealthySandbox", () => {
       return new Promise<DiscoveryResult>(() => undefined);
     });
     const started = Date.now();
-    expect(await discoverHealthySandbox({ env: {}, project: "monolith-test-a", timeoutMs: 20, discover })).toBeNull();
+    expect(await discoverHealthySandbox({ env: {}, project: "tesseract-test-a", timeoutMs: 20, discover })).toBeNull();
     expect(Date.now() - started).toBeLessThan(1_000);
-    expect(discover.mock.calls[0]?.[0].project).toBe("monolith-test-a");
+    expect(discover.mock.calls[0]?.[0].project).toBe("tesseract-test-a");
     expect(signal?.aborted).toBe(true);
   });
 
-  it("is skipped when MONOLITH_DISABLE_DISCOVERY=1", async () => {
+  it("is skipped when TESSERACT_DISABLE_DISCOVERY=1", async () => {
     const discover = vi.fn(async () => found("ok"));
-    expect(discoveryDisabled({ MONOLITH_DISABLE_DISCOVERY: "1" })).toBe(true);
+    expect(discoveryDisabled({ TESSERACT_DISABLE_DISCOVERY: "1" })).toBe(true);
     expect(discoveryDisabled({})).toBe(false);
-    expect(await discoverHealthySandbox({ env: { MONOLITH_DISABLE_DISCOVERY: "1" }, discover })).toBeNull();
+    expect(await discoverHealthySandbox({ env: { TESSERACT_DISABLE_DISCOVERY: "1" }, discover })).toBeNull();
     expect(discover).not.toHaveBeenCalled();
   });
 });

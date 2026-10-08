@@ -1,4 +1,4 @@
-import type { Upload } from "@theone/protocol";
+import type { Upload } from "@tesseract/protocol";
 import { AttachmentChip } from "../../../components/Composer";
 import { formatBytes } from "./run-info";
 import { useUploadThumbnail } from "./use-upload-thumbnail";

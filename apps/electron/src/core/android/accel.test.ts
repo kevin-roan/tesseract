@@ -56,7 +56,7 @@ describe("checkAcceleration", () => {
     expect(report.ok).toBe(true);
     expect(report.checks.map((check) => `${check.id}:${check.status}`)).toEqual(["kvm:ok", "kvm-access:ok", "isolation:ok", "emulator:ok"]);
     expect(report.emulatorCode).toBe(0);
-    expect(fake.calls).toContain("unshare --user --map-root-user --net -- ip link add theone0 type dummy");
+    expect(fake.calls).toContain("unshare --user --map-root-user --net -- ip link add tesseract0 type dummy");
   });
 
   it("reports missing KVM with the vendor module and skips the emulator before install", async () => {

@@ -1,4 +1,4 @@
-import type { ClaudeSession, UsageReport } from "@theone/protocol";
+import type { ClaudeSession, UsageReport } from "@tesseract/protocol";
 
 import type { HeatmapGrid } from "../types";
 import { rankSessionsByTokens, sessionStartHeatmap, sessionsActiveSince } from "./activity";

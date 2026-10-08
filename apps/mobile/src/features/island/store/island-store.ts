@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import type { SharedItem } from "@/modules/theone-island";
+import type { SharedItem } from "@/modules/tesseract-island";
 
 import type { AttachDraft, CaptureSeed } from "../types";
 

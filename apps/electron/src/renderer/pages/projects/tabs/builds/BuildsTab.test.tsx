@@ -1,6 +1,6 @@
 import { act, fireEvent, screen, within } from "@testing-library/react";
-import type { BuildJob, Project } from "@theone/protocol";
-import { sampleBuild, sampleProject } from "@theone/protocol/fixtures";
+import type { BuildJob, Project } from "@tesseract/protocol";
+import { sampleBuild, sampleProject } from "@tesseract/protocol/fixtures";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeClient, fakeHost, renderTab, type FakeClient } from "../kit/testing";
 

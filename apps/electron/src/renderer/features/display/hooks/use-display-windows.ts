@@ -1,5 +1,5 @@
-import type { TheOneClient } from "@theone/client";
-import type { DisplayWindow } from "@theone/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import type { DisplayWindow } from "@tesseract/protocol";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { describeError, usePoller } from "../../../app/connection";
 import { showToast } from "../../../components/Toast";
@@ -16,7 +16,7 @@ export interface DisplayWindowsHandle {
   close(id: string, force?: boolean): Promise<boolean>;
 }
 
-export function useDisplayWindows(client: TheOneClient | null, open: boolean): DisplayWindowsHandle {
+export function useDisplayWindows(client: TesseractClient | null, open: boolean): DisplayWindowsHandle {
   const [windows, setWindows] = useState<DisplayWindow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -37,7 +37,7 @@ export function useDisplayWindows(client: TheOneClient | null, open: boolean): D
   pollerRef.current = poller;
 
   const run = useCallback(
-    async (call: (client: TheOneClient) => Promise<void>): Promise<boolean> => {
+    async (call: (client: TesseractClient) => Promise<void>): Promise<boolean> => {
       if (!client || busyRef.current) return false;
       busyRef.current = true;
       setBusy(true);

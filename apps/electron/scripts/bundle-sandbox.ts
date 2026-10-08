@@ -23,7 +23,7 @@ const INCLUDED = [
 const COMPOSE_FILE = /^infra\/compose\/compose[^/]*\.yml$/;
 const EXCLUDED = [/(^|\/)node_modules\//, /(^|\/)dist\//, /(^|\/)coverage\//, /\.tsbuildinfo$/];
 const DOCKERFILE = "infra/docker/sandbox/Dockerfile";
-const IMAGE_VERSION = /^ARG THEONE_IMAGE_VERSION=(\S+)/m;
+const IMAGE_VERSION = /^ARG TESSERACT_IMAGE_VERSION=(\S+)/m;
 const STEP_INSTRUCTION = /^(FROM|RUN|COPY|ADD|ENV|ARG|WORKDIR|USER|LABEL|SHELL|HEALTHCHECK|EXPOSE|VOLUME|ENTRYPOINT|CMD|STOPSIGNAL|ONBUILD)\b/i;
 const HEAVY_STEP = /apt-get install|sdkmanager|flutter precache|cmake|wine|bun install|npm install/;
 const HEAVY_WEIGHT = 10;

@@ -60,13 +60,13 @@ export function installParityClock(): void {
 }
 
 export const PARITY_CONNECTION = {
-  pairingUrl: "https://theone-sandbox.tail511d9d.ts.net",
+  pairingUrl: "https://tesseract-sandbox.tail511d9d.ts.net",
   token: "tk_9c2f7a1e5b3d8f60a4c1e7b2d9f3Yesk",
 } as const;
 
 export const PARITY_PROJECT_IDS: Readonly<Record<string, string>> = {
   streaxfit: "nimble-lotus",
-  monolith: "theone-mobile",
+  tesseract: "tesseract-mobile",
   "hybrid-pos": "brave-hare",
   "sante-production": "sante-production",
 };

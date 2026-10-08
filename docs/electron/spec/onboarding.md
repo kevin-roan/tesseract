@@ -1,6 +1,6 @@
 # Spec: Onboarding (setup wizard): Docker, sandbox image, Android emulator, Claude, pairing
 
-Scope: the first-run setup wizard of `apps/electron` ("Monolith", `dev.monolith.Desktop`). It works like
+Scope: the first-run setup wizard of `apps/electron` ("Tesseract", `dev.tesseract.Desktop`). It works like
 Android Studio's setup wizard and looks like Linear. It takes a machine with nothing installed to a running sandbox,
 an optional host Android emulator (SDK, system image and AVD) and a paired phone.
 
@@ -11,12 +11,12 @@ blocker `This computer has no Android virtual device; create one in Android Stud
 **design** spec. Every visual value comes from existing GTK widgets: the wizard reuses the GTK Settings dialog
 geometry (`preferences/window.py`, `theme/extras/dialogs.py`) and the Dialog/Notice/Progress widgets. Every
 operational value comes from `infra/` and the architecture docs. Strings marked *(GTK)* are verbatim from
-`monolith_desktop/strings.py`. All other strings are new, are final, and go into a labels module as written.
+`tesseract_desktop/strings.py`. All other strings are new, are final, and go into a labels module as written.
 
 Sources read: `infra/scripts/sandbox`, `infra/compose/*.yml`, `infra/compose/.env.example`,
 `infra/docker/sandbox/Dockerfile`, `.dockerignore`, `docs/runbooks/getting-started.md`,
 `docs/architecture/00-blueprint.md` §3/§4, `docs/architecture/app-runs-and-emulator.md` §2,
-`apps/desktop/monolith_desktop/{config/discovery.py,claude/host.py,widgets/*,theme/*,strings.py,preferences/window.py}`,
+`apps/desktop/tesseract_desktop/{config/discovery.py,claude/host.py,widgets/*,theme/*,strings.py,preferences/window.py}`,
 plus the live Google SDK repository XMLs, the Docker Desktop download endpoints and the Docker docs (fetched 2026-10-06).
 Companion specs: [theme.md](theme.md) (tokens, components, motion; this spec does not repeat them),
 [host-android.md](host-android.md) §3 (how the host daemon finds the SDK; the wizard's output must match it),
@@ -28,7 +28,7 @@ Companion specs: [theme.md](theme.md) (tokens, components, motion; this spec doe
 
 | Topic | Decision |
 |---|---|
-| Where | A separate frameless `BrowserWindow`, 880×620 (the GTK Settings dialog size `SETTINGS_SIZE`), min 760×560, centered. On first run it opens instead of the main window. Later it can be opened from the banner **Set Up** action, the main menu item `Set up Monolith…` and Settings › Connection. |
+| Where | A separate frameless `BrowserWindow`, 880×620 (the GTK Settings dialog size `SETTINGS_SIZE`), min 760×560, centered. On first run it opens instead of the main window. Later it can be opened from the banner **Set Up** action, the main menu item `Set up Tesseract…` and Settings › Connection. |
 | Layout | Same as the GTK Settings dialog: a 200px step rail on the window canvas and an inset content panel holding a breadcrumb header, a scrolling body and the dialog footer. |
 | Steps | `welcome` → `docker` → `claude` → `sandbox` → `build` → `android` (optional) → `pair` (optional) → `finish` |
 | Engine | Docker Engine 24+ with Compose ≥ 2.24.0 and buildx (BuildKit). Docker Desktop on macOS/Windows; Docker Engine (or Docker Desktop for Linux) on Linux. Podman is detected and refused with a reason (§5.6). |
@@ -52,7 +52,7 @@ renderer (React, wizard route)  ──IPC──>  main: OnboardingController (si
                                             ├─ SdkInstaller       ranged download, sha1, unzip (modes, symlinks)
                                             ├─ AccelCheck         emulator -accel-check, /dev/kvm, WHPX, HVF
                                             ├─ AvdWriter          <avdHome>/<name>.ini + <name>.avd/config.ini
-                                            └─ Pairing            docker exec … theone-controller pair --json
+                                            └─ Pairing            docker exec … tesseract-controller pair --json
 ```
 
 - All processes, downloads, file writes and privilege elevation run in **main**. The renderer only receives
@@ -70,7 +70,7 @@ renderer (React, wizard route)  ──IPC──>  main: OnboardingController (si
 - Long operations (install, build, SDK download) belong to main, not to the window. Closing the wizard window while one
   runs opens a confirmation (§10.4); confirming cancels the operation.
 - Every operation writes a log ring buffer of the last **200** lines (`LOG_LIMIT`, the host shell value). The
-  step's "Details" disclosure shows it. Lines are redacted: `TS_AUTHKEY`, `THEONE_TOKEN`, `token=` query values and
+  step's "Details" disclosure shows it. Lines are redacted: `TS_AUTHKEY`, `TESSERACT_TOKEN`, `token=` query values and
   `tskey-…` patterns become `…`.
 
 ---
@@ -81,7 +81,7 @@ renderer (React, wizard route)  ──IPC──>  main: OnboardingController (si
 
 - `BrowserWindow({ width: 880, height: 620, minWidth: 760, minHeight: 560, frame: false, show: false,
   backgroundColor: '#09090A', titleBarStyle: 'hidden' (macOS), trafficLightPosition: {x: 14, y: 14} })`;
-  show on `ready-to-show`. Title `Set up Monolith`. When opened from the main window it is a modal child of it.
+  show on `ready-to-show`. Title `Set up Tesseract`. When opened from the main window it is a modal child of it.
 - Root (`.to-settings-root` equivalent): background `background` `#09090A`, the whole window. In GTK the radius is 12
   because it is a sheet; for the window the radius is the OS's.
 - Two columns: **rail** (fixed 200px) | **content panel** (flex).
@@ -110,7 +110,7 @@ renderer (React, wizard route)  ──IPC──>  main: OnboardingController (si
   | `error` | `circle-alert` | `danger` `#EB5757` |
   | `warning` (done with warnings) | `triangle-alert` | `warning` `#F2C94C` |
 
-- Rail footer (pinned to the bottom, padding 8): caption `Monolith {version}` (12/16, `textTertiary`).
+- Rail footer (pinned to the bottom, padding 8): caption `Tesseract {version}` (12/16, `textTertiary`).
 
 ### 2.3 Content panel (`.to-settings-content`)
 
@@ -252,7 +252,7 @@ build:   idle ─Start─> preflight ─> building|pulling ─> starting ─> wa
 android: idle ─auto─> (unsupported | loading-catalog ─> choosing) ─Install─> licenses ─(all accepted)─> installing
                 ─> accel ─> creating-avd ─> done ──Continue──> pair         Skip ─> pair (status skipped)
 pair:    loading ─> ready | error                              Continue/Skip ─> finish
-finish:  Open Monolith ─> writes config, closes wizard, opens the main window
+finish:  Open Tesseract ─> writes config, closes wizard, opens the main window
 ```
 
 Rules:
@@ -269,11 +269,11 @@ Rules:
 ```jsonc
 "onboarding": { "version": 1, "step": "build", "statuses": { "docker": "done", … }, "completedAt": null },
 "sandboxStack": {                      // written by the sandbox step, used by SandboxStack/the CLI
-  "envFile": "<userData>/sandbox/.env", "project": "theone", "mode": "local",
-  "image": "theone/sandbox:latest", "builtAt": "2026-10-06T21:00:00Z", "components": ["android","flutter","mono","whisper"]
+  "envFile": "<userData>/sandbox/.env", "project": "tesseract", "mode": "local",
+  "image": "tesseract/sandbox:latest", "builtAt": "2026-10-06T21:00:00Z", "components": ["android","flutter","mono","whisper"]
 },
-"androidSdkRoot": "/home/u/.local/share/theone/android-sdk",   // only if not the platform default (§7.1)
-"androidAvd": "Monolith_API_36"
+"androidSdkRoot": "/home/u/.local/share/tesseract/android-sdk",   // only if not the platform default (§7.1)
+"androidAvd": "Tesseract_API_36"
 ```
 
 The build step also writes `url`, `token`, `name` and `pairingUrl` (the same keys as Connection › Save) from the pairing
@@ -285,12 +285,12 @@ At startup (shell.md §5.1, between steps 3 and 7):
 1. If `onboarding.completedAt` is set, do not open it.
 2. Else, if a connection config exists (file or env), do not open it.
 3. Else run Docker discovery (§6.7: container `<project>-sandbox-1`, where project = the saved `sandboxStack`
-   project, else `THEONE_COMPOSE_PROJECT`, else `theone`; `pair --json`, candidate probe) with a **2.5 s** overall
+   project, else `TESSERACT_COMPOSE_PROJECT`, else `tesseract`; `pair --json`, candidate probe) with a **2.5 s** overall
    timeout (`discoverHealthySandbox`, `apps/electron/src/core/connection/discovery.ts`). It counts only when a
    candidate answered `/v1/health`. Then save it as the connection and call `completeOnboardingFromDiscovery`
    (`apps/electron/src/main/services/onboarding.ts`): `onboarding.completedAt` = now, statuses
    `docker`/`sandbox`/`build` = `done`, the others `skipped`; open the main window. This covers existing users,
-   such as the GTK user's live `theone` stack. `MONOLITH_DISABLE_DISCOVERY=1` skips this step (tests; it is also
+   such as the GTK user's live `tesseract` stack. `TESSERACT_DISABLE_DISCOVERY=1` skips this step (tests; it is also
    skipped with fixtures and in test mode).
 4. Else, open the wizard and do not create the main window until it finishes.
 
@@ -300,14 +300,14 @@ The banner `No sandbox is configured on this machine yet.` / **Set Up** *(GTK)* 
 
 ## 4. Step: Welcome (`welcome`)
 
-- Rail label `Welcome`. Hero icon `sparkles`. Title `Welcome to Monolith`. Description:
-  `Monolith runs Claude Code and your builds in a sandbox on this computer and lets you follow them from your phone. This setup installs what it needs and takes about an hour, mostly for the first image build.`
+- Rail label `Welcome`. Hero icon `sparkles`. Title `Welcome to Tesseract`. Description:
+  `Tesseract runs Claude Code and your builds in a sandbox on this computer and lets you follow them from your phone. This setup installs what it needs and takes about an hour, mostly for the first image build.`
 - Group `What happens` (no description), a boxed list of read-only rows with leading 16px icons in `textSecondary`:
   1. `container` — `Docker` / `Checks Docker, or helps you install and start it`
   2. `mouse-pointer-2` — `Claude Code` / `Uses the Claude Code login of this computer`
   3. `box` — `Sandbox` / `Builds the sandbox image with the tools you pick`
   4. `smartphone` — `Android emulator` / `Optional: downloads an emulator and a system image, like Android Studio`
-  5. `qr-code` — `Phone` / `Optional: pairs the TheOne app`
+  5. `qr-code` — `Phone` / `Optional: pairs the Tesseract app`
 - Group `Requirements`: CheckRows filled from `HostInfo` (no Docker calls yet):
   - `Disk space` — `{free} free in {path}` (path = the user's home); warning below 40 GB:
     `About 40 GB is recommended (image, build cache, Android system image)`.
@@ -321,7 +321,7 @@ The banner `No sandbox is configured on this machine yet.` / **Set Up** *(GTK)* 
 ## 5. Step: Docker (`docker`)
 
 Rail `Docker`, hero icon `container`, title `Docker`, description
-`The sandbox is a Docker container. Monolith needs the Docker engine running, with Compose and BuildKit.`
+`The sandbox is a Docker container. Tesseract needs the Docker engine running, with Compose and BuildKit.`
 
 ### 5.1 PATH fix (main, once at startup)
 
@@ -447,12 +447,12 @@ a `LogDisclosure` and footer actions. Before any `--accept-license` install, a c
 - `I'll install it myself`: opens `docker_engine_docs`.
 
 **Fix…** for `permission` (Linux): a panel with the Notice (warning)
-`Your user isn't in the docker group, so Monolith can't talk to the engine. Being in this group gives root-level control of this computer.`
+`Your user isn't in the docker group, so Tesseract can't talk to the engine. Being in this group gives root-level control of this computer.`
 and the actions `Add me to the docker group` (`pkexec usermod -aG docker <user>` → needs-relogin) and a CommandBlock
 `sudo usermod -aG docker $USER`. **Needs-relogin** panel: Notice (info) title `Log out to finish`, message
-`Log out and back in (or restart) so the docker group applies, then open Monolith again. Setup continues where you left off.`
+`Log out and back in (or restart) so the docker group applies, then open Tesseract again. Setup continues where you left off.`
 with action `Log out now` (`loginctl terminate-user <user>` after a confirm; hidden when there is no `loginctl`).
-Footer primary `Quit Monolith`. **Needs-reboot** panel: same layout, title `Restart to finish`, message
+Footer primary `Quit Tesseract`. **Needs-reboot** panel: same layout, title `Restart to finish`, message
 `Windows needs a restart to finish installing {what}. Setup continues where you left off.`, action `Restart now`
 (`shutdown /r /t 0` after a confirm).
 
@@ -503,16 +503,16 @@ and `docker image inspect <image> --format '{{json .}}'` (size, `Labels["org.ope
 - Image only → under Components, a ChoiceRow pair: `Use the existing image` (`{image} · {size} · built {relative}`)
   / `Build a new image`.
 
-**Group `Reachability`** (ChoiceRows; `THEONE_MODE`):
+**Group `Reachability`** (ChoiceRows; `TESSERACT_MODE`):
 
 | id | Title | Subtitle | Extra fields when selected |
 |---|---|---|---|
-| `local` (default) | `This computer only` | `The controller listens on 127.0.0.1:{port}. Phones can't reach it; use this to try Monolith or for development.` | none |
-| `tailscale` | `Tailscale (sidecar)` | `A Tailscale container joins your tailnet as {hostname}; phones connect over HTTPS. Needs an auth key.` | FieldRows `Auth key` (password, placeholder `tskey-auth-…`, required unless the volume `<prefix>-tailscale` exists, subtitle `Used once for the first login`), `Tailnet domain` (placeholder `tail1234.ts.net`, required, regex `^[a-z0-9-]+(\.[a-z0-9-]+)+$`), `Hostname` (default `theone-sandbox`, regex `^[a-z0-9][a-z0-9-]{0,62}$`). Link `How to create an auth key` (`tailscale_keys`) |
+| `local` (default) | `This computer only` | `The controller listens on 127.0.0.1:{port}. Phones can't reach it; use this to try Tesseract or for development.` | none |
+| `tailscale` | `Tailscale (sidecar)` | `A Tailscale container joins your tailnet as {hostname}; phones connect over HTTPS. Needs an auth key.` | FieldRows `Auth key` (password, placeholder `tskey-auth-…`, required unless the volume `<prefix>-tailscale` exists, subtitle `Used once for the first login`), `Tailnet domain` (placeholder `tail1234.ts.net`, required, regex `^[a-z0-9-]+(\.[a-z0-9-]+)+$`), `Hostname` (default `tesseract-sandbox`, regex `^[a-z0-9][a-z0-9-]{0,62}$`). Link `How to create an auth key` (`tailscale_keys`) |
 | `host-tailscale` | `This computer's Tailscale` | `The ports are published on this computer's Tailscale address ({ip}).` | FieldRow `Bind address` prefilled from `tailscale ip -4` (first line). Disabled with subtitle `Tailscale isn't running on this computer` when that fails and the field is empty. Validation = `check_bind_addr` (§6.3). Recommended only on Linux: on Docker Desktop, publishing on a host Tailscale IP depends on the VM's port forwarding (open issue O5) |
 
 **Group `Tools in the image`** (ComponentRows; build args). Size estimates come from the layer sizes of the current
-`theone/sandbox:latest` (7.3 GB total):
+`tesseract/sandbox:latest` (7.3 GB total):
 
 | Row | Build arg | Subtitle | Size caption |
 |---|---|---|---|
@@ -534,12 +534,12 @@ joined by a space, in the order shown. The first one becomes `ggml-model.bin`. D
 - `Memory` — default `min(8, floor(memBytes·0.75 / GiB))` GB, range 2…`floor(memBytes/GiB)` → `SANDBOX_MEMORY=<n>g`.
 - `Time zone` — read-only subtitle with the host zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`) → `TZ`.
 
-**Expander `Advanced`** (collapsed; chevron rotates 180ms): FieldRows `Compose project` (`theone`, regex
+**Expander `Advanced`** (collapsed; chevron rotates 180ms): FieldRows `Compose project` (`tesseract`, regex
 `^[a-z0-9][a-z0-9_-]*$`; message
-`Use lowercase letters, digits, '-' and '_'` = the script's rule), `Image` (`theone/sandbox:latest`),
+`Use lowercase letters, digits, '-' and '_'` = the script's rule), `Image` (`tesseract/sandbox:latest`),
 `Controller port` (`7700`) and `VNC port` (`5901`) (`require_port`: 1–65535), `Claude Code version` (`latest`),
-`Shared Claude folder` (default `~/.claude`, read-only display + `Change…` folder picker → `THEONE_HOST_CLAUDE_DIR`),
-`Docker-in-Docker` switch (`THEONE_DIND=1`, subtitle `Adds a privileged docker:dind container; read docs/architecture/security-model.md first`).
+`Shared Claude folder` (default `~/.claude`, read-only display + `Change…` folder picker → `TESSERACT_HOST_CLAUDE_DIR`),
+`Docker-in-Docker` switch (`TESSERACT_DIND=1`, subtitle `Adds a privileged docker:dind container; read docs/architecture/security-model.md first`).
 
 Validation runs live (debounce 150 ms). `Continue` writes the env file (§6.2) and goes to `build`.
 
@@ -549,18 +549,18 @@ Written in `.env.example` order. Values are written unquoted when they match `^[
 double quotes, so the file round-trips through compose and `env_file_value()`:
 
 ```
-THEONE_MODE=<mode>
-THEONE_DIND=<1|empty>
-THEONE_COMPOSE_PROJECT=<project>
-THEONE_VOLUME_PREFIX=
-THEONE_IMAGE=<image>
+TESSERACT_MODE=<mode>
+TESSERACT_DIND=<1|empty>
+TESSERACT_COMPOSE_PROJECT=<project>
+TESSERACT_VOLUME_PREFIX=
+TESSERACT_IMAGE=<image>
 TS_AUTHKEY=<key|empty>            # tailscale only; cleared again after the first successful `up`
 TS_TAILNET_DOMAIN=<domain>
-THEONE_HOSTNAME=<hostname>
-THEONE_BIND_ADDR=<ip|empty>
-THEONE_CONTROLLER_HOST_PORT=<port>
-THEONE_VNC_HOST_PORT=<port>
-THEONE_HOST_CLAUDE_DIR=<absolute path>   # always explicit: compose's ${HOME} default is unset on Windows
+TESSERACT_HOSTNAME=<hostname>
+TESSERACT_BIND_ADDR=<ip|empty>
+TESSERACT_CONTROLLER_HOST_PORT=<port>
+TESSERACT_VNC_HOST_PORT=<port>
+TESSERACT_HOST_CLAUDE_DIR=<absolute path>   # always explicit: compose's ${HOME} default is unset on Windows
 SANDBOX_CPUS=<n>
 SANDBOX_MEMORY=<n>g
 TZ=<zone>
@@ -582,32 +582,32 @@ owner"). Use `fs.stat(claudeDir).uid/gid` when the dir exists, else the process 
 
 The port must be exact; `infra/scripts/sandbox` stays the reference implementation. Logic:
 
-- `resolveStack()`: `project = THEONE_COMPOSE_PROJECT || "theone"` (regex above);
-  `volumePrefix = THEONE_VOLUME_PREFIX || project` (regex `^[A-Za-z0-9][A-Za-z0-9_.-]*$`); ports default `7700`/`5901`,
+- `resolveStack()`: `project = TESSERACT_COMPOSE_PROJECT || "tesseract"` (regex above);
+  `volumePrefix = TESSERACT_VOLUME_PREFIX || project` (regex `^[A-Za-z0-9][A-Za-z0-9_.-]*$`); ports default `7700`/`5901`,
   `^[1-9][0-9]{0,4}$` and ≤ 65535.
 - `resolveMode()`: files = `[compose.yml]` plus
   - `tailscale` → `compose.tailscale.yml`; requires `TS_TAILNET_DOMAIN`, and `TS_AUTHKEY` unless
     `docker volume inspect <prefix>-tailscale` succeeds (script messages
     `TS_TAILNET_DOMAIN is required in tailscale mode (e.g. tail1234.ts.net, see infra/compose/.env.example)` and
     `TS_AUTHKEY is required for the first start in tailscale mode (see infra/compose/.env.example)`);
-  - `host-tailscale` → `compose.local.yml`, `THEONE_BIND_ADDR` = configured or `tailscale ip -4`; refuse
+  - `host-tailscale` → `compose.local.yml`, `TESSERACT_BIND_ADDR` = configured or `tailscale ip -4`; refuse
     `0.0.0.0`, `::`, `[::]` and `*`, anything that is not dotted IPv4 (no leading zeros, each octet ≤ 255), and `0.*`
-    (messages: `THEONE_BIND_ADDR=… would publish the sandbox on every host interface; use the host's tailscale IPv4` /
-    `THEONE_BIND_ADDR=… is not an IPv4 address of this host; use the host's tailscale IPv4`);
-  - `local` → `compose.local.yml`, `THEONE_BIND_ADDR=127.0.0.1`;
-  - `THEONE_DIND=1` → `+ compose.dind.yml`; `THEONE_TAILSCALE_LOCALAPI=1` → `compose.tailscale-api-sidecar.yml`
+    (messages: `TESSERACT_BIND_ADDR=… would publish the sandbox on every host interface; use the host's tailscale IPv4` /
+    `TESSERACT_BIND_ADDR=… is not an IPv4 address of this host; use the host's tailscale IPv4`);
+  - `local` → `compose.local.yml`, `TESSERACT_BIND_ADDR=127.0.0.1`;
+  - `TESSERACT_DIND=1` → `+ compose.dind.yml`; `TESSERACT_TAILSCALE_LOCALAPI=1` → `compose.tailscale-api-sidecar.yml`
     (tailscale mode) or `compose.tailscale-api.yml` (other modes; requires `<dir>/tailscaled.sock`). The wizard
     does not offer LocalAPI; Settings may later.
-- Extra Claude accounts (`THEONE_HOST_CLAUDE_ACCOUNTS`): the wizard leaves this empty. If set by hand, write the
+- Extra Claude accounts (`TESSERACT_HOST_CLAUDE_ACCOUNTS`): the wizard leaves this empty. If set by hand, write the
   override exactly like `resolve_claude_accounts()` to `<userData>/sandbox/compose.<project>.claude-accounts.yml`.
-  The script writes `${XDG_STATE_HOME:-~/.local/state}/theone/…`; on Linux use the script's path so the CLI and the
+  The script writes `${XDG_STATE_HOME:-~/.local/state}/tesseract/…`; on Linux use the script's path so the CLI and the
   app share it.
 - Command: `docker compose --project-name <project> --project-directory <ctx>/infra/compose --env-file <envFile> -f … <cmd>`.
-  The process env must **not** carry `THEONE_*`, `COMPOSE_PROJECT_NAME`, `COMPOSE_FILE` or `COMPOSE_PROFILES` from
+  The process env must **not** carry `TESSERACT_*`, `COMPOSE_PROJECT_NAME`, `COMPOSE_FILE` or `COMPOSE_PROFILES` from
   the user's shell (the e2e harness unsets the same names). Exported variables win over the env file in compose, and
-  the user's own `THEONE_COMPOSE_PROJECT` must not redirect the wizard. Export exactly the resolved
-  `THEONE_COMPOSE_PROJECT`, `THEONE_VOLUME_PREFIX`, `THEONE_CONTROLLER_HOST_PORT`, `THEONE_VNC_HOST_PORT` and
-  `THEONE_BIND_ADDR`, as the script does.
+  the user's own `TESSERACT_COMPOSE_PROJECT` must not redirect the wizard. Export exactly the resolved
+  `TESSERACT_COMPOSE_PROJECT`, `TESSERACT_VOLUME_PREFIX`, `TESSERACT_CONTROLLER_HOST_PORT`, `TESSERACT_VNC_HOST_PORT` and
+  `TESSERACT_BIND_ADDR`, as the script does.
 - `<ctx>` = the bundled context dir (§6.6). `compose.yml` builds with `context: ../..` relative to its own dir, and
   `compose.tailscale.yml` mounts `./tailscale`, so the bundle must keep the repo-relative layout.
 
@@ -685,7 +685,7 @@ of finished steps. Phase → `cancelled`, toast `Build cancelled; finished steps
 **plain** fallback: lines `#<n> [<stage> i/n] <cmd>` (step start), `#<n> CACHED`, `#<n> DONE <s>s`,
 `#<n> ERROR: <msg>`, `#<n> <seconds> <output>`. Same model, keyed by `<n>`.
 
-**Pull** (only when a registry ref is configured: `config.json sandboxImageRef` or env `MONOLITH_SANDBOX_IMAGE_REF`;
+**Pull** (only when a registry ref is configured: `config.json sandboxImageRef` or env `TESSERACT_SANDBOX_IMAGE_REF`;
 hidden otherwise): `docker pull <ref>`, then `docker tag <ref> <image>`. For progress, use the Engine API stream
 `POST /images/create?fromImage=<ref>` over the engine socket (from `docker context inspect` `.Endpoints.docker.Host`):
 JSON lines `{id, status: "Downloading"|"Extracting"|…, progressDetail: {current, total}}`, with fraction = Σcurrent/Σtotal
@@ -710,9 +710,9 @@ sandbox/
   apps/controller/**                     (same exclusions)
   apps/mobile/package.json               (only the manifest; Dockerfile comment: "present solely so the frozen lockfile resolves")
   infra/docker/sandbox/Dockerfile
-  infra/docker/sandbox/rootfs/**         (exec bits preserved: theone-* and monolith are chmod'ed in the Dockerfile, others are not)
+  infra/docker/sandbox/rootfs/**         (exec bits preserved: tesseract-* and tesseract are chmod'ed in the Dockerfile, others are not)
   infra/compose/compose*.yml  infra/compose/.env.example  infra/compose/tailscale/serve.json
-  build-weights.json  manifest.json      ({ gitCommit, imageVersion: THEONE_IMAGE_VERSION, files: {path: sha256} })
+  build-weights.json  manifest.json      ({ gitCommit, imageVersion: TESSERACT_IMAGE_VERSION, files: {path: sha256} })
 ```
 
 - Generate it at packaging time with a script that applies `.dockerignore`. Fail packaging if `manifest.json` doesn't
@@ -720,20 +720,20 @@ sandbox/
 - Line endings: shell scripts in `rootfs` must stay LF. Set `.gitattributes` `* text=auto eol=lf` for these paths, or
   copy bytes from git blobs, never from a Windows checkout with autocrlf.
 - Windows: Docker Desktop reads the context from the Windows path. Compose and `buildx` handle the `C:\…` paths.
-- The image label `org.opencontainers.image.version` (`THEONE_IMAGE_VERSION`, default `0.1.0`) is compared with
+- The image label `org.opencontainers.image.version` (`TESSERACT_IMAGE_VERSION`, default `0.1.0`) is compared with
   `manifest.imageVersion`. On mismatch, the main window later shows the GTK "outdated" notices with a `Rebuild`
   action that reopens this step.
 
 ### 6.7 Pairing discovery (port of GTK `config/discovery.py`, used by "Use it" and after the build)
 
-1. `docker exec -u dev <container> theone-controller pair --json`, where container = `<project>-sandbox-1`. Parse the
-   **last** stdout line that is a JSON object with a string `link` (`theone://pair?url=…&token=…&name=…`).
-   Errors: `theone-controller pair --json printed no pairing link`,
+1. `docker exec -u dev <container> tesseract-controller pair --json`, where container = `<project>-sandbox-1`. Parse the
+   **last** stdout line that is a JSON object with a string `link` (`tesseract://pair?url=…&token=…&name=…`).
+   Errors: `tesseract-controller pair --json printed no pairing link`,
    `controller printed an invalid pairing link: {error}`.
 2. `docker inspect <container>`: `NetworkSettings.Ports["7700/tcp"][]` (`HostIp`/`HostPort`) and `Networks.*.IPAddress`;
    if `HostConfig.NetworkMode` = `container:<id>` (tailscale mode), also inspect that container and merge.
 3. Candidates in order (deduplicated after URL normalization): published bindings (`0.0.0.0`/`::`/empty → `127.0.0.1`,
-   IPv6 bracketed), `http://<THEONE_BIND_ADDR>:<host port>`, `http://127.0.0.1:<host port>`,
+   IPv6 bracketed), `http://<TESSERACT_BIND_ADDR>:<host port>`, `http://127.0.0.1:<host port>`,
    `http://<container ip>:7700`, the pairing URL.
 4. The first candidate whose `/v1/health` answers (2 s timeout, `ok` and `protocolVersion` 1) becomes `url`;
    `pairingUrl` = the pair URL. Messages *(GTK)*: `Found {name} at {url}` /
@@ -761,14 +761,14 @@ host-android.md §3.2 lists "arm64 Linux". **That is wrong**: the repository has
 `linux_x64`, `darwin_x64`, `darwin_aarch64` and `windows_x64` (checked 2026-10-06).
 
 SDK root (must agree with the host daemon's resolution, host-android.md §3.1):
-- Default: Linux `~/.local/share/theone/android-sdk` (picked up by the daemon with no env), macOS
-  `~/Library/Application Support/Monolith/android-sdk`, Windows `%LOCALAPPDATA%\Monolith\android-sdk`.
-- Existing SDKs offered as ChoiceRows when they contain `emulator/emulator[.exe]`: `THEONE_ANDROID_SDK_ROOT`,
+- Default: Linux `~/.local/share/tesseract/android-sdk` (picked up by the daemon with no env), macOS
+  `~/Library/Application Support/Tesseract/android-sdk`, Windows `%LOCALAPPDATA%\Tesseract\android-sdk`.
+- Existing SDKs offered as ChoiceRows when they contain `emulator/emulator[.exe]`: `TESSERACT_ANDROID_SDK_ROOT`,
   `ANDROID_SDK_ROOT`, `ANDROID_HOME`, `~/Android/Sdk` (Linux), `~/Library/Android/sdk` (macOS),
   `%LOCALAPPDATA%\Android\Sdk` (Windows). Subtitle `{path} · emulator {rev} · {n} system images`.
-  The last row is `Install a new SDK for Monolith` with subtitle `{default path}`.
+  The last row is `Install a new SDK for Tesseract` with subtitle `{default path}`.
 - A non-default root is saved as `config.json androidSdkRoot` and passed to the host daemon as
-  `THEONE_ANDROID_SDK_ROOT`. `THEONE_ADB=<sdk>/platform-tools/adb[.exe]` is always passed (host-android.md §2.5).
+  `TESSERACT_ANDROID_SDK_ROOT`. `TESSERACT_ADB=<sdk>/platform-tools/adb[.exe]` is always passed (host-android.md §2.5).
 
 ### 7.2 Catalog (`SdkRepository`)
 
@@ -776,7 +776,7 @@ SDK root (must agree with the host daemon's resolution, host-android.md §3.1):
   `https://dl.google.com/android/repository/sys-img/google_apis/sys-img2-3.xml` (~230 KB), 30 s timeout each, with a
   cache in `<userData>/android/cache/` (ETag / If-Modified-Since). Archive URLs are relative to the XML's directory
   (`…/repository/` and `…/repository/sys-img/google_apis/`).
-- Mirrors: `MONOLITH_ANDROID_REPOSITORY_URL` and `MONOLITH_ANDROID_SYSIMG_URL` replace the two URLs
+- Mirrors: `TESSERACT_ANDROID_REPOSITORY_URL` and `TESSERACT_ANDROID_SYSIMG_URL` replace the two URLs
   (`apps/electron/src/core/android/catalog.ts`). Each takes the full `.xml` URL, or a base URL that gets the default
   file name (`repository2-3.xml`, `sys-img2-3.xml`) appended. Only `http:` and `https:` are accepted; anything else
   fails with `invalid_argument`. Archive URLs then resolve against the mirror.
@@ -807,7 +807,7 @@ Groups, top to bottom:
 2. `SDK location` (ChoiceRows from §7.1).
 3. `System image` (picker; disabled until the catalog loads; a 3-row skeleton shimmer while loading; on failure a danger
    Notice `Couldn't load Google's package list: {error}` with action `Retry`).
-4. `Virtual device` (FieldRows): `Name` (default `Monolith_API_{api}`, regex `^[A-Za-z0-9._-]+$`, unique against
+4. `Virtual device` (FieldRows): `Name` (default `Tesseract_API_{api}`, regex `^[A-Za-z0-9._-]+$`, unique against
    existing `.ini` files: `An AVD named {name} already exists`), `Device profile` (dropdown, default `pixel_5`:
    `Pixel 5 · 1080 × 2340 · 440 dpi`, `Pixel 8 · 1080 × 2400 · 420 dpi`, `Medium Phone · 1080 × 2400 · 420 dpi`,
    `Pixel Tablet · 2560 × 1600 · 320 dpi`), `Memory` (StepperRow, default 2048 MB if host RAM < 12 GB else 4096,
@@ -881,7 +881,7 @@ Before download (no emulator yet):
   `fs.access('/dev/kvm', R_OK|W_OK)`, else warning `You can't use /dev/kvm yet` with action `Add me to the kvm group`
   (`pkexec usermod -aG kvm <user>` → needs-relogin note, the same panel as §5.5) and the CommandBlock
   `sudo usermod -aG kvm $USER`.
-- Linux isolation probe (the daemon's): `unshare --user --map-root-user --net -- ip link add theone0 type dummy`.
+- Linux isolation probe (the daemon's): `unshare --user --map-root-user --net -- ip link add tesseract0 type dummy`.
   On failure: warning `Network isolation for the emulator isn't available` with the runbook fix as CommandBlocks
   `sudo sysctl -w kernel.unprivileged_userns_clone=1` and (Ubuntu 24.04+)
   `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0`, plus a note that without it the sandbox won't use the
@@ -975,10 +975,10 @@ disabled in BIOS; `11` permission (kvm group); `12`/`13` open or ioctl failed. O
   From the spec: `disk.dataPartition.size` = `storageMb` (`<n>G` when a whole number of GB, else `<n>M`),
   `hw.device.name` = the profile id, `hw.device.manufacturer` and `hw.lcd.*` from the profile table, and
   `skin.name` = `<width>x<height>`.
-  `hw.gpu.mode` is only a default: the daemon always passes `-gpu` (`THEONE_EMULATOR_GPU`, `host` when a GPU render node is usable, else `swiftshader_indirect`).
+  `hw.gpu.mode` is only a default: the daemon always passes `-gpu` (`TESSERACT_EMULATOR_GPU`, `host` when a GPU render node is usable, else `swiftshader_indirect`).
   There is no sdcard (no `mksdcard` step) and no camera/audio (the daemon runs `-no-audio`). The emulator creates
   `userdata-qemu.img` from the image's `userdata.img` on first boot. `image.sysdir.1` is relative to the SDK root, so
-  the AVD only works with this SDK root (another reason to pass `THEONE_ANDROID_SDK_ROOT`).
+  the AVD only works with this SDK root (another reason to pass `TESSERACT_ANDROID_SDK_ROOT`).
 - Verify: `<sdk>/emulator/emulator -list-avds` (env as above, 10 s) must list `<name>`; otherwise fail with
   `The emulator doesn't see the new virtual device {name}` and remove the two files.
 - Save `config.json androidAvd`. The wizard does **not** boot the emulator; the project page does
@@ -989,7 +989,7 @@ disabled in BIOS; `11` permission (kvm group); `12`/`13` open or ioctl failed. O
 - Done: a success Notice `{avd} is ready · Android {version} · {abi}` and property rows `SDK` `{root}`,
   `Emulator` `{rev}`, `AVD` `{path}`.
 - macOS/Windows: also show the warning Notice (host-android.md §3.3)
-  `On {OS} the emulator runs without network isolation, so Monolith won't connect it to the sandbox automatically. You can still run it on this computer.`
+  `On {OS} the emulator runs without network isolation, so Tesseract won't connect it to the sandbox automatically. You can still run it on this computer.`
 
 ---
 
@@ -1004,7 +1004,7 @@ Rail `Claude Code`, hero icon `mouse-pointer-2`, title `Claude Code`, descriptio
 - States → Notice + actions:
   - signed in: success Notice `Signed in as {email}` (or `Signed in`).
   - folder missing (`~/.claude` absent): warning Notice title `Claude Code isn't set up on this computer`, message
-    `Install Claude Code and sign in once with your Claude subscription, then check again. Monolith creates an empty ~/.claude now so the sandbox can start.`
+    `Install Claude Code and sign in once with your Claude subscription, then check again. Tesseract creates an empty ~/.claude now so the sandbox can start.`
     Actions `Open install guide` (`claude_code_docs`) and `Check again`. Entering the step creates `~/.claude` (mode 0700)
     if missing: compose's bind uses `create_host_path: false`, so `up` fails without it. Never create
     `~/.claude-<name>` dirs.
@@ -1021,11 +1021,11 @@ Rail `Claude Code`, hero icon `mouse-pointer-2`, title `Claude Code`, descriptio
 ## 9. Step: Pair (`pair`, optional)
 
 Rail `Phone` + `Optional`. Hero icon `qr-code`, title `Pair your phone`, description
-`Install the TheOne app and Tailscale on your phone, then scan this code in the app (Agents › Pair a sandbox).`
+`Install the Tesseract app and Tailscale on your phone, then scan this code in the app (Agents › Pair a sandbox).`
 
 - Body = the GTK `PairPanel` for the sandbox target (dialog spec in host-android.md §4.5 / pair dialog): QR 176×176
   in `.to-qr` (padding 12, radius 8, bg `#ffffff`), 4px under it; instructions
-  `Scan with the TheOne app, or open this link on the phone.` *(GTK)* (body, `textSecondary`, centered); a CopyField
+  `Scan with the Tesseract app, or open this link on the phone.` *(GTK)* (body, `textSecondary`, centered); a CopyField
   with the link (tooltip `Copy link` *(GTK)*); a caption `Sandbox {name} · {url}` *(GTK)*; notices; a warning Notice
   `The link contains the API token: share it only with your own devices.` *(GTK)*. The panel is centered,
   max-width 392 (= dialog 440 − 2×24).
@@ -1042,19 +1042,19 @@ Rail `Phone` + `Optional`. Hero icon `qr-code`, title `Pair your phone`, descrip
 ## 10. Step: Finish (`finish`)
 
 - Rail `Done`. Hero icon `circle-check` in `success` (badge bg `successMuted` `#14261C`, border none), title
-  `Monolith is ready`, description `Everything below can be changed later in Settings.`
+  `Tesseract is ready`, description `Everything below can be changed later in Settings.`
 - Summary boxed list (CheckRows, read-only, no actions): `Docker` (`{kind} {version}`), `Claude Code`
   (`Signed in as {email}` / `Not signed in`), `Sandbox` (`{name} · {url}`), `Android emulator` (`{avd}` / `Skipped`),
   `Phone` (`Paired` is not knowable; show `Pairing link ready` / `Skipped`). Skipped rows use the `circle-dashed`
   glyph.
-- Switch row `Start the sandbox when Monolith opens` (default on; writes `config.json sandboxAutostart`). At every app
+- Switch row `Start the sandbox when Tesseract opens` (default on; writes `config.json sandboxAutostart`). At every app
   start, also with `--hidden` (`apps/electron/src/core/sandbox/autostart.ts`, `src/main/services/autostart.ts`), it
-  runs `compose up -d` only for a stack Monolith created: `sandboxStack` has `builtAt`, its env file is the app's own
+  runs `compose up -d` only for a stack Tesseract created: `sandboxStack` has `builtAt`, its env file is the app's own
   `<userData>/sandbox/.env`, and that file's project matches `sandboxStack.project`. Skipped when the switch is off,
   the stack is someone else's, or the `sandbox` service already runs. Docker unreachable → one notification
   `Docker isn't running` (opens Settings › Sandbox); a failed `up` → notification `The sandbox didn't start`. Not run
   with fixtures or in test mode.
-- Footer: primary `Open Monolith` → sets `onboarding.completedAt`, closes the wizard and opens the main window (it
+- Footer: primary `Open Tesseract` → sets `onboarding.completedAt`, closes the wizard and opens the main window (it
   connects with the saved config). No Back.
 
 ### 10.4 Leaving the wizard
@@ -1095,8 +1095,8 @@ convey state) but at 1 turn/1.2 s with no easing.
 
 Step labels: `Welcome`, `Docker`, `Claude Code`, `Sandbox`, `Build`, `Android emulator`, `Phone`, `Done`;
 `Optional`; `Set up`; `Step {n} of {total}`; buttons `Get started`, `Continue`, `Back`, `Skip`, `Cancel`, `Retry`,
-`Install`, `Install…`, `Start`, `Fix…`, `Check again`, `Build`, `Use it`, `Accept and install`, `Open Monolith`,
-`Quit Monolith`, `Show details`, `Hide details`, `Copy log`, `Copy`, `Copied`. All other strings are quoted in their
+`Install`, `Install…`, `Start`, `Fix…`, `Check again`, `Build`, `Use it`, `Accept and install`, `Open Tesseract`,
+`Quit Tesseract`, `Show details`, `Hide details`, `Copy log`, `Copy`, `Copied`. All other strings are quoted in their
 sections above.
 
 | key | URL |
@@ -1133,13 +1133,13 @@ Docs URLs (not download URLs) must be checked by the e2e link test (HEAD 200 or 
 - `This computer has no Android virtual device; create one in Android Studio` → point at the wizard's Android step.
 - The outdated-sandbox notices tell users to run `` `bun run sandbox build` then `bun run sandbox up` ``. An installed
   app has no checkout: the action reopens the Build step (keep the meaning).
-- GTK `discover_docker` uses the user's ambient `THEONE_*` env (`THEONE_COMPOSE_PROJECT`, `THEONE_BIND_ADDR`, …).
+- GTK `discover_docker` uses the user's ambient `TESSERACT_*` env (`TESSERACT_COMPOSE_PROJECT`, `TESSERACT_BIND_ADDR`, …).
   The wizard uses the saved `sandboxStack` values and scrubs the ambient ones (§6.3).
 - GTK silently drops an invalid pairing URL. The wizard always shows validation inline.
 - GTK reads macOS logins as "keychain not supported" and stops there. The wizard explains the sandbox sign-in path
   instead (§8).
 - `infra/scripts/sandbox` uses bash, `${HOME}` defaults and `mktemp`. None of these work on Windows, hence the TS port
-  and the explicit `THEONE_HOST_CLAUDE_DIR`.
+  and the explicit `TESSERACT_HOST_CLAUDE_DIR`.
 - GTK's Adwaita dialog sheet has radius 12 and a dim scrim. The wizard is a real window, so it uses the OS radius and has
   no scrim.
 
@@ -1147,12 +1147,12 @@ Docs URLs (not download URLs) must be checked by the e2e link test (HEAD 200 or 
 
 ## 14. Open issues (for the owners named)
 
-- **O1 (infra):** No registry image exists (`theone/sandbox:latest` is local-only, 7.3 GB). A published image would
+- **O1 (infra):** No registry image exists (`tesseract/sandbox:latest` is local-only, 7.3 GB). A published image would
   cut setup to a 3 GB download but needs a CI job, `-DGGML_NATIVE=OFF`, multi-arch, and fixed WITH_* choices (or
   several tags). Until then the wizard only builds.
 - **O2 (infra / Dockerfile):** The `controller-build` stage copies only `apps/mobile/package.json` for the frozen
   lockfile. When `apps/electron` (a new workspace under `apps/*`) adds dependencies to `bun.lock`,
-  `bun install --frozen-lockfile --filter @theone/controller` may fail in the image build because its manifest is
+  `bun install --frozen-lockfile --filter @tesseract/controller` may fail in the image build because its manifest is
   missing. Today `apps/desktop` (in the lockfile, not copied) does not break it, so verify. If it fails, copy
   `apps/electron/package.json` too, and include it in the bundle (§6.6).
 - **O3 (architecture):** "Chromium" is not an optional component: it is installed unconditionally in the `desktop`
@@ -1176,16 +1176,16 @@ Docs URLs (not download URLs) must be checked by the e2e link test (HEAD 200 or 
 
 ---
 
-## 15. Test checklist (Electron e2e; Docker resources must use the `monolith-test-` prefix)
+## 15. Test checklist (Electron e2e; Docker resources must use the `tesseract-test-` prefix)
 
-1. Fresh profile (`MONOLITH_DESKTOP_CONFIG=/tmp/monolith-test-onb/config.json`, empty userData, `HOME` pointing at a
+1. Fresh profile (`TESSERACT_DESKTOP_CONFIG=/tmp/tesseract-test-onb/config.json`, empty userData, `HOME` pointing at a
    temp dir with no `~/.claude`) opens the wizard at `welcome`. A profile with a saved connection does not.
 2. Docker probe on the CI host: all checks green. Fake failures by putting stub `docker` scripts on PATH that print the
    stderr strings of §5.2 (permission, stopped, podman, compose 2.20) and assert the CheckRow titles and subtitles.
 3. Sandbox step: validation messages for the project name, ports, bind address (`0.0.0.0`, `010.1.1.1`, `256.1.1.1`)
    and tailnet domain. The written env file round-trips through `infra/scripts/sandbox --env-file <file> config` (Linux)
    with identical output to the TS renderer's file list.
-4. Build with project `monolith-test-onb`, image `monolith-test/sandbox:onb`, `WITH_ANDROID=false WITH_FLUTTER=false
+4. Build with project `tesseract-test-onb`, image `tesseract-test/sandbox:onb`, `WITH_ANDROID=false WITH_FLUTTER=false
    WITH_MONO=false WITH_WHISPER=false`, mode `local`, ports from a free-port finder. Assert: progress reaches 1, rawjson
    parser counts > 0 steps, health ok, `config.json` has url/token, pairing link parses. Tear down with
    `compose down -v` and `docker image rm`.

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { View } from "react-native";
 import { GitBranchIcon } from "phosphor-react-native";
-import type { GitDetails, GitSummary } from "@theone/protocol";
+import type { GitDetails, GitSummary } from "@tesseract/protocol";
 
 import MotionItem from "@/components/motion-item";
 import ResourceCard from "@/components/resource-card";

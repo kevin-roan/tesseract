@@ -1,5 +1,5 @@
 import { hostname } from "node:os";
-import { createId, LIMITS, type CreateTerminal, type TerminalInfo } from "@theone/protocol";
+import { createId, LIMITS, type CreateTerminal, type TerminalInfo } from "@tesseract/protocol";
 import { badRequest, errorMessage, notFound, unavailable } from "../core/errors";
 import type { Env } from "../core/exec";
 import type { Logger } from "../core/logger";
@@ -20,7 +20,7 @@ type Session = {
 
 const EOF_GRACE_MS = 300;
 const MAX_EXITED_SESSIONS = 20;
-const HOST_SECRET_ENV = /^THEONE_HOST_SHELL_/;
+const HOST_SECRET_ENV = /^TESSERACT_HOST_SHELL_/;
 
 export function hostShellEnv(source: Env = process.env): Env {
   const env: Env = {};

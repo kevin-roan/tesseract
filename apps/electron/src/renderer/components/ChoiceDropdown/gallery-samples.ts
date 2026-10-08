@@ -3,7 +3,7 @@ import type { ChoiceOption } from "./model";
 export const PROJECT_CHOICES: readonly ChoiceOption[] = [
   { id: "all", label: "All projects" },
   { id: "streaxfit", label: "streaxfit" },
-  { id: "monolith", label: "monolith" },
+  { id: "tesseract", label: "tesseract" },
   { id: "hybrid-pos", label: "hybrid-pos" },
   { id: "sante-production", label: "sante-production" },
 ];

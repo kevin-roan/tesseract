@@ -1,4 +1,4 @@
-import { ApiError, NetworkError, ProtocolError, ProtocolVersionError, TimeoutError } from "@theone/client";
+import { ApiError, NetworkError, ProtocolError, ProtocolVersionError, TimeoutError } from "@tesseract/client";
 import { describe, expect, it } from "vitest";
 import { describeError, isRetryable, NotConfiguredError, statusForError } from "./describe-error";
 import { connectionBanner, connectionView, statusTitle } from "./view";

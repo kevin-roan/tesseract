@@ -1,5 +1,5 @@
-import type { HostAndroidStatus } from "@theone/protocol";
-import { sampleAndroidLink, sampleEmulator, sampleHostAndroidStatus } from "@theone/protocol/fixtures";
+import type { HostAndroidStatus } from "@tesseract/protocol";
+import { sampleAndroidLink, sampleEmulator, sampleHostAndroidStatus } from "@tesseract/protocol/fixtures";
 
 import {
   androidPollInterval,

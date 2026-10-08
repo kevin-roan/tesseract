@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, webUtils, type IpcRendererEvent } from "electron";
-import { BRIDGE_KEY, parseChannel, type MonolithBridge } from "../shared/ipc";
+import { BRIDGE_KEY, parseChannel, type TesseractBridge } from "../shared/ipc";
 import type { IpcResult } from "../shared/ipc-types";
 
 function assertChannel(channel: string, event: boolean): void {
@@ -30,7 +30,7 @@ function listen(channel: string, listener: Listener): () => void {
   };
 }
 
-const bridge: MonolithBridge = {
+const bridge: TesseractBridge = {
   invoke(channel, args) {
     assertChannel(channel, false);
     return ipcRenderer.invoke(channel, ...args) as Promise<IpcResult<unknown>>;

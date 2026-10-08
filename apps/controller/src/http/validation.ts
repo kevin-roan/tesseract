@@ -1,5 +1,5 @@
 import type { Context } from "hono";
-import { isIdOfKind, LIMITS, LogTailQuerySchema, parseJson, ProjectFilterQuerySchema, validate, type IdKind, type Schema } from "@theone/protocol";
+import { isIdOfKind, LIMITS, LogTailQuerySchema, parseJson, ProjectFilterQuerySchema, validate, type IdKind, type Schema } from "@tesseract/protocol";
 import { badRequest, notFound } from "../core/errors";
 
 const ID_LABELS: Record<IdKind, string> = {

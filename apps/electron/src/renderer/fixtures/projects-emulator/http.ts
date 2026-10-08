@@ -1,6 +1,6 @@
-import type { StartAppRun } from "@theone/protocol";
-import { routePatterns } from "@theone/protocol";
-import { sampleSandboxAndroidStatus } from "@theone/protocol/fixtures";
+import type { StartAppRun } from "@tesseract/protocol";
+import { routePatterns } from "@tesseract/protocol";
+import { sampleSandboxAndroidStatus } from "@tesseract/protocol/fixtures";
 import { GTK_PARITY } from "../projects/parity";
 import { currentScenario, isScenario } from "../scenario";
 import { defineHttpFixtures, reply } from "../types";

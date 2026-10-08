@@ -7,10 +7,10 @@ import { avdHome, dataPartitionSize, defaultAvdName, defaultAvdResources, delete
 import { GIGABYTE } from "./constants";
 import { tempDir, testPaths } from "./test-support";
 
-const EXPECTED_CONFIG = `AvdId=Monolith_API_36
+const EXPECTED_CONFIG = `AvdId=Tesseract_API_36
 PlayStore.enabled=false
 abi.type=x86_64
-avd.ini.displayname=Monolith API 36
+avd.ini.displayname=Tesseract API 36
 avd.ini.encoding=UTF-8
 disk.dataPartition.size=6G
 fastboot.forceColdBoot=no
@@ -67,7 +67,7 @@ describe("AVD writer", () => {
   let home = "";
 
   const spec = (overrides: Partial<AvdSpec> = {}): AvdSpec => ({
-    name: "Monolith_API_36",
+    name: "Tesseract_API_36",
     sdkRoot: sdk,
     systemImage: "system-images;android-36;google_apis;x86_64",
     api: 36,
@@ -97,10 +97,10 @@ describe("AVD writer", () => {
   it("writes <name>.ini and config.ini exactly", async () => {
     const paths = testPaths(home);
     const info = await writeAvd(paths, spec());
-    const avdDir = join(home, ".android", "avd", "Monolith_API_36.avd");
-    expect(info).toEqual({ name: "Monolith_API_36", path: avdDir, target: "android-36", abi: "x86_64" });
-    expect(await readFile(join(home, ".android", "avd", "Monolith_API_36.ini"), "utf8")).toBe(
-      `avd.ini.encoding=UTF-8\npath=${avdDir}\npath.rel=avd/Monolith_API_36.avd\ntarget=android-36\n`,
+    const avdDir = join(home, ".android", "avd", "Tesseract_API_36.avd");
+    expect(info).toEqual({ name: "Tesseract_API_36", path: avdDir, target: "android-36", abi: "x86_64" });
+    expect(await readFile(join(home, ".android", "avd", "Tesseract_API_36.ini"), "utf8")).toBe(
+      `avd.ini.encoding=UTF-8\npath=${avdDir}\npath.rel=avd/Tesseract_API_36.avd\ntarget=android-36\n`,
     );
     expect(await readFile(join(avdDir, "config.ini"), "utf8")).toBe(EXPECTED_CONFIG);
   });
@@ -165,17 +165,17 @@ describe("AVD writer", () => {
       code: "not_found",
     });
     await writeAvd(paths, spec());
-    await expect(writeAvd(paths, spec())).rejects.toThrow("An AVD named Monolith_API_36 already exists");
+    await expect(writeAvd(paths, spec())).rejects.toThrow("An AVD named Tesseract_API_36 already exists");
   });
 
   it("removes the files when the emulator doesn't list the new AVD", async () => {
     const paths = testPaths(home);
     await expect(writeAvd(paths, spec(), { listAvds: async () => ["Other"] })).rejects.toThrow(
-      "The emulator doesn't see the new virtual device Monolith_API_36",
+      "The emulator doesn't see the new virtual device Tesseract_API_36",
     );
     expect(await listAvds(paths, sdk)).toEqual([]);
-    await writeAvd(paths, spec(), { listAvds: async () => ["Monolith_API_36"] });
-    expect((await listAvds(paths, sdk)).map((avd) => avd.name)).toEqual(["Monolith_API_36"]);
+    await writeAvd(paths, spec(), { listAvds: async () => ["Tesseract_API_36"] });
+    expect((await listAvds(paths, sdk)).map((avd) => avd.name)).toEqual(["Tesseract_API_36"]);
   });
 
   it("lists AVDs written by Android Studio and deletes them", async () => {
@@ -186,11 +186,11 @@ describe("AVD writer", () => {
     await writeFile(join(avdDir, "Pixel_5.avd", "config.ini"), "abi.type=arm64-v8a\n");
     await writeAvd(paths, spec());
     expect(await listAvds(paths, sdk)).toEqual([
-      { name: "Monolith_API_36", path: join(avdDir, "Monolith_API_36.avd"), target: "android-36", abi: "x86_64" },
       { name: "Pixel_5", path: join(avdDir, "Pixel_5.avd"), target: "android-34", abi: "arm64-v8a" },
+      { name: "Tesseract_API_36", path: join(avdDir, "Tesseract_API_36.avd"), target: "android-36", abi: "x86_64" },
     ]);
     await deleteAvd(paths, sdk, "Pixel_5");
-    expect((await listAvds(paths, sdk)).map((avd) => avd.name)).toEqual(["Monolith_API_36"]);
+    expect((await listAvds(paths, sdk)).map((avd) => avd.name)).toEqual(["Tesseract_API_36"]);
     await expect(deleteAvd(paths, sdk, "Pixel_5")).rejects.toMatchObject({ code: "not_found" });
     await expect(deleteAvd(paths, sdk, "../x")).rejects.toMatchObject({ code: "invalid_argument" });
   });
@@ -207,7 +207,7 @@ describe("AVD writer", () => {
   });
 
   it("computes the default name and resources", () => {
-    expect(defaultAvdName(36)).toBe("Monolith_API_36");
+    expect(defaultAvdName(36)).toBe("Tesseract_API_36");
     expect(defaultAvdResources(8 * GIGABYTE, 8)).toEqual({ ramMb: 2048, cores: 4 });
     expect(defaultAvdResources(32 * GIGABYTE, 2)).toEqual({ ramMb: 4096, cores: 2 });
     expect(defaultAvdResources(16 * GIGABYTE, 6)).toEqual({ ramMb: 4096, cores: 3 });

@@ -5,7 +5,7 @@ import type { SandboxContext } from "./types";
 import { planAutostart, runAutostart } from "./autostart";
 import { failed, FakeDocker, ok, readyReport, tempStack, type TempStack } from "./test-support";
 
-const PROJECT = "monolith-test-auto";
+const PROJECT = "tesseract-test-auto";
 let stack: TempStack;
 afterEach(() => stack?.cleanup());
 
@@ -14,13 +14,13 @@ function setup(docker: FakeDocker, options: { builtAt?: string | null; envFile?:
   const context = stack.context(docker.deps());
   if (options.env !== false) {
     mkdirSync(dirname(context.envFile), { recursive: true });
-    writeFileSync(context.envFile, `THEONE_MODE=local\nTHEONE_COMPOSE_PROJECT=${PROJECT}\n`);
+    writeFileSync(context.envFile, `TESSERACT_MODE=local\nTESSERACT_COMPOSE_PROJECT=${PROJECT}\n`);
   }
   const record = {
     envFile: options.envFile ?? context.envFile,
     project: options.project ?? PROJECT,
     mode: "local",
-    image: "monolith-test/sandbox:latest",
+    image: "tesseract-test/sandbox:latest",
     builtAt: options.builtAt === undefined ? "2026-10-06T00:00:00.000Z" : options.builtAt,
     components: [],
   };
@@ -32,7 +32,7 @@ function setup(docker: FakeDocker, options: { builtAt?: string | null; envFile?:
 const exited = (args: string[]) => (args[0] === "ps" ? ok(`${PROJECT}-sandbox-1\texited\tExited (0)\tsandbox\n`) : undefined);
 
 describe("planAutostart", () => {
-  it("starts a stopped stack that Monolith built", async () => {
+  it("starts a stopped stack that Tesseract built", async () => {
     const docker = new FakeDocker().onRun(exited);
     expect(await planAutostart(setup(docker), true)).toEqual({ kind: "start", project: PROJECT });
     expect(docker.calls[0]?.args).toContain(`label=com.docker.compose.project=${PROJECT}`);
@@ -48,13 +48,13 @@ describe("planAutostart", () => {
     expect(docker.calls).toHaveLength(0);
   });
 
-  it("never touches a stack Monolith didn't create", async () => {
+  it("never touches a stack Tesseract didn't create", async () => {
     const reason = { kind: "skip", reason: "not-managed" };
     expect(await planAutostart(setup(new FakeDocker(), { builtAt: null }), true)).toEqual(reason);
     stack.cleanup();
     expect(await planAutostart(setup(new FakeDocker(), { envFile: "/elsewhere/.env" }), true)).toEqual(reason);
     stack.cleanup();
-    expect(await planAutostart(setup(new FakeDocker(), { project: "theone" }), true)).toEqual(reason);
+    expect(await planAutostart(setup(new FakeDocker(), { project: "tesseract" }), true)).toEqual(reason);
     stack.cleanup();
     expect(await planAutostart(setup(new FakeDocker(), { env: false }), true)).toEqual(reason);
     stack.cleanup();

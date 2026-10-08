@@ -47,9 +47,9 @@ describe("host shell schemas", () => {
 });
 
 describe("host pairing links", () => {
-  test("round-trip through theone://host", () => {
+  test("round-trip through tesseract://host", () => {
     const link = buildPairingLink({ url: "http://100.101.102.103:7701", token: TOKEN, name: "workstation" }, HOST_PAIRING_ACTION);
-    expect(link.startsWith("theone://host?")).toBe(true);
+    expect(link.startsWith("tesseract://host?")).toBe(true);
     expect(parsePairingLink(link, HOST_PAIRING_ACTION)).toEqual({
       ok: true,
       value: { url: "http://100.101.102.103:7701", token: TOKEN, name: "workstation" },
@@ -60,6 +60,6 @@ describe("host pairing links", () => {
     const host = buildPairingLink({ url: "http://100.101.102.103:7701", token: TOKEN }, HOST_PAIRING_ACTION);
     const sandbox = buildPairingLink({ url: "http://127.0.0.1:7700", token: TOKEN });
     expect(parsePairingLink(host)).toMatchObject({ ok: false, error: { code: "invalid_action" } });
-    expect(parsePairingLink(sandbox, HOST_PAIRING_ACTION)).toMatchObject({ ok: false, error: { code: "invalid_action", message: "Pairing link must be theone://host?…" } });
+    expect(parsePairingLink(sandbox, HOST_PAIRING_ACTION)).toMatchObject({ ok: false, error: { code: "invalid_action", message: "Pairing link must be tesseract://host?…" } });
   });
 });

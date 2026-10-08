@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { ClaudeSession } from "@theone/protocol";
+import type { ClaudeSession } from "@tesseract/protocol";
 import { router } from "expo-router";
 
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";

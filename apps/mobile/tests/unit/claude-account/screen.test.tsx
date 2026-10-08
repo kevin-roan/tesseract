@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { sampleClaudeAccountList, sampleClaudeAuthStatus } from "@theone/protocol/fixtures";
+import { sampleClaudeAccountList, sampleClaudeAuthStatus } from "@tesseract/protocol/fixtures";
 
 import ClaudeAccountScreen from "@/app/sandbox/claude";
 import { claudeAccountRows } from "@/features/claude-account/utils/accounts";

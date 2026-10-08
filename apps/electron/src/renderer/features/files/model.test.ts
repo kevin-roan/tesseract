@@ -1,5 +1,5 @@
-import { ApiError } from "@theone/client";
-import type { TaildropTargets } from "@theone/protocol";
+import { ApiError } from "@tesseract/client";
+import type { TaildropTargets } from "@tesseract/protocol";
 import { describe, expect, it } from "vitest";
 import { ALL } from "./constants";
 import { formatBytes, formatRelativeTime } from "../overview/format";

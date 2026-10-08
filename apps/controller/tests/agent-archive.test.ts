@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { AgentRunBatchResultSchema, AgentRunListSchema, AgentRunSchema, ServerEventSchema, type AgentRun, type ServerEvent } from "@theone/protocol";
+import { AgentRunBatchResultSchema, AgentRunListSchema, AgentRunSchema, ServerEventSchema, type AgentRun, type ServerEvent } from "@tesseract/protocol";
 import { installFakeClaude, makeTempDir, removeTempDirs, startTestController, waitFor, writeFiles, WsClient, type TestController } from "./helpers";
 
 let t: TestController;
@@ -37,7 +37,7 @@ beforeAll(async () => {
   const workspace = makeTempDir("agent-archive");
   writeFiles(workspace, { "projects/app/.keep": "", "projects/web/.keep": "" });
   const claude = installFakeClaude(makeTempDir("bin"));
-  t = await startTestController({ workspace, env: { THEONE_CLAUDE_BIN: claude } });
+  t = await startTestController({ workspace, env: { TESSERACT_CLAUDE_BIN: claude } });
   events = await t.socket("/v1/events");
 });
 

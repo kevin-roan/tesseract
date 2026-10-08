@@ -1,4 +1,4 @@
-import { PROJECT_ID_MAX_LENGTH } from "@theone/protocol";
+import { PROJECT_ID_MAX_LENGTH } from "@tesseract/protocol";
 
 import { projectNameCandidate, projectNameFromPrompt } from "@/features/chat/utils/project-name";
 

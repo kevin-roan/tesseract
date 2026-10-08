@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { HammerIcon } from "phosphor-react-native";
-import type { BuildProfile } from "@theone/protocol";
+import type { BuildProfile } from "@tesseract/protocol";
 
 import ActionButton from "@/components/action-button";
 import ChoiceGroup from "@/components/choice-group";

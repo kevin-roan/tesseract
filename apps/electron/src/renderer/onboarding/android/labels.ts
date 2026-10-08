@@ -16,14 +16,14 @@ export const ANDROID_LABELS = {
   },
   sdk: {
     title: "SDK location",
-    description: "Reuse an Android SDK that already has the emulator, or install a new one for Monolith.",
-    installNew: "Install a new SDK for Monolith",
+    description: "Reuse an Android SDK that already has the emulator, or install a new one for Tesseract.",
+    installNew: "Install a new SDK for Tesseract",
     sources: {
-      THEONE_ANDROID_SDK_ROOT: "THEONE_ANDROID_SDK_ROOT",
+      TESSERACT_ANDROID_SDK_ROOT: "TESSERACT_ANDROID_SDK_ROOT",
       ANDROID_SDK_ROOT: "ANDROID_SDK_ROOT",
       ANDROID_HOME: "ANDROID_HOME",
       "studio-default": "Android Studio SDK",
-      "monolith-default": "Monolith SDK",
+      "tesseract-default": "Tesseract SDK",
     } satisfies Record<SdkCandidate["source"], string>,
     candidate: (path: string, emulator: string | null, images: number) =>
       [path, emulator ? `emulator ${emulator}` : "no emulator", `${images} system ${images === 1 ? "image" : "images"}`].join(" · "),
@@ -62,7 +62,7 @@ export const ANDROID_LABELS = {
   imageTitle: (api: number, version: string | null) => (version ? `Android ${version} (API ${api})` : `API ${api}`),
   avd: {
     title: "Virtual device",
-    description: "Monolith writes the device files itself, like Android Studio's device manager.",
+    description: "Tesseract writes the device files itself, like Android Studio's device manager.",
     name: "Name",
     nameHint: "Letters, digits, dots, dashes and underscores",
     nameInvalid: "Use only letters, digits, dots, dashes and underscores",
@@ -103,7 +103,7 @@ export const ANDROID_LABELS = {
   },
   queue: {
     title: "Downloads",
-    description: "Monolith downloads, verifies and unpacks each package into the SDK.",
+    description: "Tesseract downloads, verifies and unpacks each package into the SDK.",
     waiting: "Waiting",
     installed: "Installed",
     verifying: "Verifying…",
@@ -120,7 +120,7 @@ export const ANDROID_LABELS = {
     emulator: "Emulator",
     avd: "AVD",
     noIsolation: (os: string) =>
-      `On ${os} the emulator runs without network isolation, so Monolith won't connect it to the sandbox automatically. You can still run it on this computer.`,
+      `On ${os} the emulator runs without network isolation, so Tesseract won't connect it to the sandbox automatically. You can still run it on this computer.`,
     osNames: { darwin: "macOS", win32: "Windows", linux: "Linux" } as Record<string, string>,
     warningsTitle: "Finished with warnings",
   },

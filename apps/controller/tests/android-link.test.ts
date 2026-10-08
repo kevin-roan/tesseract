@@ -3,7 +3,7 @@ import type { Socket } from "bun";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { connect as netConnect } from "node:net";
 import { join } from "node:path";
-import { SandboxAndroidStatusSchema, type EmulatorInfo, type RunTargetInfo, type SandboxAndroidStatus } from "@theone/protocol";
+import { SandboxAndroidStatusSchema, type EmulatorInfo, type RunTargetInfo, type SandboxAndroidStatus } from "@tesseract/protocol";
 import { silentLogger } from "../src/core/logger";
 import { AndroidLinkService, adbListsDevice, type StreamPeer } from "../src/services/android-link";
 import { installFixture, makeTempDir, removeTempDirs, startTestController, waitFor, writeFiles, WsClient, type TestController } from "./helpers";
@@ -90,9 +90,9 @@ beforeAll(async () => {
   t = await startTestController({
     workspace,
     env: {
-      THEONE_ADB: installFixture(adbDir, "fake-adb.sh", "adb"),
-      THEONE_ADB_TUNNEL_PORT: String(tunnelPort),
-      THEONE_FLUTTER: installFixture(bin, "fake-flutter.sh", "flutter"),
+      TESSERACT_ADB: installFixture(adbDir, "fake-adb.sh", "adb"),
+      TESSERACT_ADB_TUNNEL_PORT: String(tunnelPort),
+      TESSERACT_FLUTTER: installFixture(bin, "fake-flutter.sh", "flutter"),
     },
     controller: { androidLink: { pingIntervalMs: 100, streamOpenTimeoutMs: 300, reconnectIntervalMs: 300 } },
   });

@@ -1,4 +1,4 @@
-import type { AppRunAction, AppRunState, AppViewerKind } from "@theone/protocol";
+import type { AppRunAction, AppRunState, AppViewerKind } from "@tesseract/protocol";
 import {
   AndroidLogoIcon,
   ArrowClockwiseIcon,

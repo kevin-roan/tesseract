@@ -121,7 +121,7 @@ async function installMacDesktop(runtime: DockerRuntime): Promise<DockerPhase> {
   });
   throwIfAborted(runtime, PHASE_MESSAGES.installCancelled);
   installing(runtime);
-  const mountPoint = await mkdtemp(join(tmpdir(), "monolith-docker-"));
+  const mountPoint = await mkdtemp(join(tmpdir(), "tesseract-docker-"));
   try {
     const args = osascriptAdminArgs(macInstallScript(dmg, mountPoint, runtime.host.user));
     const result = await streamLogged(runtime, "osascript", args, INSTALL_TIMEOUT_MS, LOG_MESSAGES.elevated(MAC_INSTALLER_DISPLAY));

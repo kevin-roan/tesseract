@@ -1,5 +1,5 @@
-import type { TheOneClient } from "@theone/client";
-import type { DisplayStatus } from "@theone/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import type { DisplayStatus } from "@tesseract/protocol";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { describeError, usePoller } from "../../../app/connection";
 import { STATUS_POLL_MS } from "../constants";
@@ -12,7 +12,7 @@ export interface DisplayStatusHandle {
   checkAgain(): void;
 }
 
-export function useDisplayStatus(client: TheOneClient | null, polling: boolean): DisplayStatusHandle {
+export function useDisplayStatus(client: TesseractClient | null, polling: boolean): DisplayStatusHandle {
   const [status, setStatus] = useState<DisplayStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const enabled = polling && client !== null;

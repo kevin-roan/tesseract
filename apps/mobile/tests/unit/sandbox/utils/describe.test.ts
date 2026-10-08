@@ -8,7 +8,7 @@ import {
   sampleStatus,
   sampleStatusEvent,
   sampleTerminal,
-} from "@theone/protocol/fixtures";
+} from "@tesseract/protocol/fixtures";
 
 import {
   activityTitle,

@@ -12,7 +12,7 @@ vi.mock("../../src/core/sandbox", async (importOriginal) => ({
   readPairing: mocks.readPairing,
 }));
 
-const INFO = { link: "theone://pair?url=http%3A%2F%2F100.64.0.2%3A7700&token=x", url: "http://100.64.0.2:7700", name: "studio", local: false };
+const INFO = { link: "tesseract://pair?url=http%3A%2F%2F100.64.0.2%3A7700&token=x", url: "http://100.64.0.2:7700", name: "studio", local: false };
 
 let sandbox: Sandbox;
 
@@ -39,7 +39,7 @@ describe("describePairing", () => {
       "",
       INFO.link,
       "",
-      "Scan the code with the Monolith phone app, or open the link on the phone.",
+      "Scan the code with the Tesseract phone app, or open the link on the phone.",
     ]);
   });
 });
@@ -58,7 +58,7 @@ describe("tesseract pair", () => {
     writeFileSync(sandbox.configFile, JSON.stringify({ url: "http://127.0.0.1:7700", token: "k".repeat(43), name: "laptop" }));
     const result = await runCli(sandbox, ["sandbox", "pair", "--no-qr"]);
     expect(result.code).toBe(0);
-    expect(result.out[2]).toMatch(/^theone:\/\/pair\?/);
+    expect(result.out[2]).toMatch(/^tesseract:\/\/pair\?/);
     expect(result.out.at(-1)).toContain("only works on this computer");
   });
 

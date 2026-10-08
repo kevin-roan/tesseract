@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from monolith_desktop.hostshell import stream
-from monolith_desktop.hostshell.model import HostShellError
-from monolith_desktop.hostshell.stream import StreamState, parse_stream
+from tesseract_desktop.hostshell import stream
+from tesseract_desktop.hostshell.model import HostShellError
+from tesseract_desktop.hostshell.stream import StreamState, parse_stream
 
 GENYMOTION = {"serial": "192.168.56.101:5555", "state": "device", "kind": "genymotion", "model": "Google Pixel 3", "hostEmulator": False}
 EMULATOR = {"serial": "emulator-5554", "state": "device", "kind": "emulator", "model": "sdk gphone64", "hostEmulator": True}
@@ -44,7 +44,7 @@ def test_size_and_bit_rate_conversions():
 
 
 def test_spin_row_reports_only_user_edits():
-    from monolith_desktop.widgets.preference_rows import SpinRow
+    from tesseract_desktop.widgets.preference_rows import SpinRow
 
     changes = []
     row = SpinRow("Bitrate", None, (0.5, 50.0), 0.5, changes.append, 1)
@@ -83,7 +83,7 @@ def test_page_keeps_edits_as_a_draft_until_saved():
 
     from gi.repository import Adw
 
-    from monolith_desktop.preferences import android_stream
+    from tesseract_desktop.preferences import android_stream
 
     Adw.init()
     service = FakeStreamService()

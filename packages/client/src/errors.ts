@@ -1,14 +1,14 @@
-import type { ErrorCode } from "@theone/protocol";
+import type { ErrorCode } from "@tesseract/protocol";
 
-export class TheOneError extends Error {
+export class TesseractError extends Error {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
-    this.name = "TheOneError";
+    this.name = "TesseractError";
   }
 }
 
 /** The controller answered with a non-2xx status (and usually an ErrorBody). */
-export class ApiError extends TheOneError {
+export class ApiError extends TesseractError {
   readonly status: number;
   readonly code: ErrorCode;
 
@@ -20,8 +20,8 @@ export class ApiError extends TheOneError {
   }
 }
 
-/** A payload did not match the @theone/protocol schema (server/client version drift or a bug). */
-export class ProtocolError extends TheOneError {
+/** A payload did not match the @tesseract/protocol schema (server/client version drift or a bug). */
+export class ProtocolError extends TesseractError {
   readonly path: string;
   readonly issues: string;
 
@@ -46,7 +46,7 @@ export class ProtocolVersionError extends ProtocolError {
   }
 }
 
-export class TimeoutError extends TheOneError {
+export class TimeoutError extends TesseractError {
   readonly timeoutMs: number;
 
   constructor(path: string, timeoutMs: number) {
@@ -57,7 +57,7 @@ export class TimeoutError extends TheOneError {
 }
 
 /** The request never produced an HTTP response (DNS, TLS, offline, tailnet unreachable, socket error). */
-export class NetworkError extends TheOneError {
+export class NetworkError extends TesseractError {
   constructor(message: string, options?: { cause?: unknown }) {
     super(message, options);
     this.name = "NetworkError";
@@ -65,7 +65,7 @@ export class NetworkError extends TheOneError {
 }
 
 /** The caller aborted the request through its own AbortSignal. `name` matches the DOM convention. */
-export class AbortError extends TheOneError {
+export class AbortError extends TesseractError {
   constructor(path: string) {
     super(`Request to ${path} was aborted`);
     this.name = "AbortError";

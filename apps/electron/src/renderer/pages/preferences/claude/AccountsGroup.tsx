@@ -1,4 +1,4 @@
-import type { ClaudeAccountList } from "@theone/protocol";
+import type { ClaudeAccountList } from "@tesseract/protocol";
 import { PropertyRow, SettingsGroup } from "../../../components/PreferenceRows";
 import { RadioRows } from "../../../components/RadioRows";
 import { SHARED_LABELS } from "../shared/labels";

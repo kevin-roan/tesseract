@@ -1,6 +1,6 @@
 # Spec: Overview page and Files page
 
-Source of truth (GTK app, read-only): `apps/desktop/monolith_desktop/pages/overview/**` and `pages/files/**`, plus the shared widgets they use (`widgets/stat_card.py`, `widgets/charts/*`, `widgets/list_view.py`, `widgets/record_row.py`, `widgets/feedback.py`, `widgets/section.py`, `widgets/rows.py`, `widgets/buttons.py`, `widgets/choice_dropdown.py`, `widgets/progress.py`, `widgets/badges.py`) and theme files (`theme/tokens.py`, `theme/typography.py`, `theme/semantic.py`, `theme/chart.py`, `theme/css.py`, `theme/extras/{overview,chart,projects,dialogs,motion}.py`), and `services/metrics.py`, `util/format.py`.
+Source of truth (GTK app, read-only): `apps/desktop/tesseract_desktop/pages/overview/**` and `pages/files/**`, plus the shared widgets they use (`widgets/stat_card.py`, `widgets/charts/*`, `widgets/list_view.py`, `widgets/record_row.py`, `widgets/feedback.py`, `widgets/section.py`, `widgets/rows.py`, `widgets/buttons.py`, `widgets/choice_dropdown.py`, `widgets/progress.py`, `widgets/badges.py`) and theme files (`theme/tokens.py`, `theme/typography.py`, `theme/semantic.py`, `theme/chart.py`, `theme/css.py`, `theme/extras/{overview,chart,projects,dialogs,motion}.py`), and `services/metrics.py`, `util/format.py`.
 
 This spec only covers the page content area (inside the inset content pane). The window chrome, sidebar, page header bar (title "Overview" / "Files" + header buttons + window controls) are covered by the shell spec. The one thing here that touches the header bar is the Files page's Refresh header button (see 2.1).
 
@@ -148,7 +148,7 @@ Column, gap 4.
 - Row 1 (gap 12, items centered): title (h1 24/30/600, Inter Display, text color) · StatusBadge · flexible spacer · IconButton `refresh-cw` tooltip **"Refresh"**.
   - Title: `status.sandboxId` if status, else `connection.sandbox_name`, else **"Sandbox"**.
   - Badge label = connection label without name: unconfigured "Not configured", discovering "Discovering…", connecting "Connecting…", online "Online", offline "Offline", unauthorized "Token rejected", incompatible "Incompatible". Tone: unconfigured neutral, discovering/connecting info, online success, offline danger, unauthorized/incompatible warning. (Badge is not marked `live` here.)
-- Row 2: meta line, bodySmall (12/18), textSecondary: `"up {uptime} · {hostname} · v{version}"` (joined with `" · "`). Hidden when status is null. Example: `up 7h 46m · theone-sandbox · v0.1.0`.
+- Row 2: meta line, bodySmall (12/18), textSecondary: `"up {uptime} · {hostname} · v{version}"` (joined with `" · "`). Hidden when status is null. Example: `up 7h 46m · tesseract-sandbox · v0.1.0`.
 
 #### 1.3.2 Attention notice
 
@@ -269,14 +269,14 @@ The chart is fed by a client-side ring buffer, not an API. Port `services/metric
 - Keep at most **1500** samples and drop samples older than `3600 + 95` s.
 - `gap_before` is set on the first sample after: app start, a connection going non-online, status becoming null, a sandbox switch, or a non-monotonic clock. Additionally any two samples > **95s** apart get a `null` point inserted between them (line break).
 - Series points: for each sample emit `(t, value)` with a `(t, null)` before it on a gap.
-- Persist per sandbox to a cache file (GTK: `$XDG_CACHE_HOME/monolith-desktop/metrics.json`, `{version: 1, sandboxes: {id: [[t,cores,l1,l5,l15,mu,mt,du,dt,gap(0|1)], ...]}}`, values rounded to 4 decimals), saving at most every **30s** and on exit; keep the **4** most recently updated sandboxes; on load drop samples outside `[now-3600, now+60]`. In Electron, store this in `app.getPath('userData')` (main process) or localStorage; format may be reused.
+- Persist per sandbox to a cache file (GTK: `$XDG_CACHE_HOME/tesseract-desktop/metrics.json`, `{version: 1, sandboxes: {id: [[t,cores,l1,l5,l15,mu,mt,du,dt,gap(0|1)], ...]}}`, values rounded to 4 decimals), saving at most every **30s** and on exit; keep the **4** most recently updated sandboxes; on load drop samples outside `[now-3600, now+60]`. In Electron, store this in `app.getPath('userData')` (main process) or localStorage; format may be reused.
 - Switching sandbox (different `sandboxId`) swaps to that sandbox's stored samples.
 
 ### 1.7 Reference screenshots
 
-All captured with `tools/snapshot.sh … --zoom 1 --width 1440 --height 900` — note broadway clamps the window to **1024x768**, so the images are 1024x768, not 1440x900. Data is **live** from the user's running sandbox (`theone-sandbox`, 4 cores, heavily loaded at capture time).
+All captured with `tools/snapshot.sh … --zoom 1 --width 1440 --height 900` — note broadway clamps the window to **1024x768**, so the images are 1024x768, not 1440x900. Data is **live** from the user's running sandbox (`tesseract-sandbox`, 4 cores, heavily loaded at capture time).
 
-- `docs/electron/reference/page-files-overview-overview.png` (dark): header "theone-sandbox" + green "Online" badge + refresh icon; meta `up 7h 46m · theone-sandbox · v0.1.0`; 4 resource tiles (CPU load 11.99 load avg 100% with **yellow** warning bar because load/core ≥ 0.85; Memory 6.3 GB 79% indigo bar; Disk 81.8 GB 82% indigo bar; Uptime 7h 46m, no bar); Resource history with "15 min" chip selected, legend with CPU 300% / Memory 79% / Disk 82% on, 5m load and 15m load dimmed (off); chart with 0–300% y axis, CPU line with soft fill, flat teal memory and coral disk lines, dashed "85% warning" threshold, latest-value dots; Activity/Display headings at the bottom (rest below the fold).
+- `docs/electron/reference/page-files-overview-overview.png` (dark): header "tesseract-sandbox" + green "Online" badge + refresh icon; meta `up 7h 46m · tesseract-sandbox · v0.1.0`; 4 resource tiles (CPU load 11.99 load avg 100% with **yellow** warning bar because load/core ≥ 0.85; Memory 6.3 GB 79% indigo bar; Disk 81.8 GB 82% indigo bar; Uptime 7h 46m, no bar); Resource history with "15 min" chip selected, legend with CPU 300% / Memory 79% / Disk 82% on, 5m load and 15m load dimmed (off); chart with 0–300% y axis, CPU line with soft fill, flat teal memory and coral disk lines, dashed "85% warning" threshold, latest-value dots; Activity/Display headings at the bottom (rest below the fold).
 - `page-files-overview-overview-light.png`: same in light scheme (indigo CPU line `#5E6AD2`; CPU bar in light `warning` `#8F6400`, which reads brownish). A gap in the CPU line is visible near the right edge (a re-connect gap from the snapshot run).
 - `page-files-overview-overview-full.png`: dark, **zoom 0.67**, to show the whole page: Activity list (Projects 4, Running processes 1, Active builds 0, Terminals 2, Claude runs 0), Display (X display `:1 · Available`, Resolution `1600×900`, VNC `Port 5901 · Available`) and the Toolchain heading. Note the chart labels do not scale with zoom (see quirks).
 
@@ -302,7 +302,7 @@ One IconButton `refresh-cw`, tooltip **"Refresh"** → `refresh()`: if artifacts
 
 ### 2.2 API
 
-All requests to the controller with the saved bearer token (`Authorization` header) and `User-Agent: monolith-desktop/0.1` in GTK (use the Electron app's own UA).
+All requests to the controller with the saved bearer token (`Authorization` header) and `User-Agent: tesseract-desktop/0.1` in GTK (use the Electron app's own UA).
 
 | purpose | request | response |
 |---|---|---|
@@ -375,7 +375,7 @@ Notice, tone **danger**, margin **0 12px 8px 12px**, message = error text, no ti
 Rows = `filter_artifacts(artifacts, project, source)`: newest first by `createdAt` (unparsable → oldest), then project/source filters (`source` not in {build, agent} counts as `build`).
 
 States:
-- No artifacts at all → EmptyState title **"No files yet"**, message **"Build outputs and files Claude shares with theone-controller share show up here."**, icon `files`.
+- No artifacts at all → EmptyState title **"No files yet"**, message **"Build outputs and files Claude shares with tesseract-controller share show up here."**, icon `files`.
 - Artifacts exist but none match → EmptyState title **"No files match these filters."**, no message, icon `files`.
 - (Inner loading state, spinner, exists but the outer page state covers first load.)
 
@@ -464,14 +464,14 @@ Captured at 1024x768 (broadway clamp), live data from the user's sandbox.
 
 - `docs/electron/reference/page-files-overview-files-shared.png` (dark): header bar "Files" with refresh button; toolbar with "Shared files 2" (selected) / "Project builds" tabs on the left and "All projects ▾" / "All sources ▾" dropdowns on the right; two group bands (`hybrid-pos 1`, `best-html 1`) with `#1A1A1B` background; rows `SHIFT_MANAGER_SESSION_REPORT_PRINT.md` (note truncated to "Shift …", meta `10.4 KB · file · 47m ago`) and `index.html` (note "Basic HTML site (best-html): index page, open …", `3.5 KB · file · 6d ago`), both with the blue-dot "Shared by Claude" badge. No hover state captured.
 - `page-files-overview-files-shared-light.png`: same, light scheme. Note the group bands are invisible because surfaceElevated = surface = `#FFFFFF` in light.
-- `page-files-overview-files-builds.png` (dark): "Project builds 3" selected, only "All projects ▾"; groups `monolith 2` (app-release.apk with smartphone icon, folder in mono `apps/mobile/android/app/build/outputs/apk/release`, `98.3 MB · android · 1d ago`; native-debug-symbols.zip with archive icon, `13.3 MB · 1d ago`) and `hybrid-pos 1` (`KenzErp POS Setup 1.1.111.exe`, app-window icon, `release/build`, `93.9 MB · windows · 1d ago`).
+- `page-files-overview-files-builds.png` (dark): "Project builds 3" selected, only "All projects ▾"; groups `tesseract 2` (app-release.apk with smartphone icon, folder in mono `apps/mobile/android/app/build/outputs/apk/release`, `98.3 MB · android · 1d ago`; native-debug-symbols.zip with archive icon, `13.3 MB · 1d ago`) and `hybrid-pos 1` (`KenzErp POS Setup 1.1.111.exe`, app-window icon, `release/build`, `93.9 MB · windows · 1d ago`).
 
 Not captured (needs state the snapshot tool can't produce without mutating the sandbox): loading, error, empty, hover actions, download progress, dialogs. Build them from this spec.
 
 ### 2.9 GTK quirks — do NOT copy
 
 - In light scheme the group band background equals the page surface (`#FFFFFF`), so bands disappear. Use backgroundElement-ish `#F5F5F6`/`#EEEEF0`-level contrast in light, or confirm with the design owner; dark `#1A1A1B` is correct.
-- The empty-state copy "…files Claude shares with theone-controller share show up here." contains a doubled "share" — this is a copy bug. Quote it verbatim for parity tests only if required; preferred fix: "Build outputs and files Claude shares show up here." (flag to the product owner).
+- The empty-state copy "…files Claude shares with tesseract-controller share show up here." contains a doubled "share" — this is a copy bug. Quote it verbatim for parity tests only if required; preferred fix: "Build outputs and files Claude shares show up here." (flag to the product owner).
 - Hover actions are toggled with `visible` (no fade) — add the 120ms fade.
 - Row progress fraction updates repaint immediately; in Electron animate the bar width (120ms ease-out) and throttle IPC to the same 2% steps.
 - Errors from the background refresh and from actions share one notice and overwrite each other; acceptable, but keep exactly one notice.

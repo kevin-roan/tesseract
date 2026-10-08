@@ -76,7 +76,7 @@ export function sha1(data: Buffer): string {
   return createHash("sha1").update(data).digest("hex");
 }
 
-export async function tempDir(prefix = "monolith-test-android-"): Promise<{ dir: string; cleanup(): Promise<void> }> {
+export async function tempDir(prefix = "tesseract-test-android-"): Promise<{ dir: string; cleanup(): Promise<void> }> {
   const dir = await mkdtemp(join(tmpdir(), prefix));
   return { dir, cleanup: () => rm(dir, { recursive: true, force: true }) };
 }

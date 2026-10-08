@@ -1,7 +1,7 @@
 import { memo, useMemo } from "react";
 import { View } from "react-native";
 import { CheckCircleIcon, WrenchIcon, XCircleIcon } from "phosphor-react-native";
-import type { AgentRunEvent } from "@theone/protocol";
+import type { AgentRunEvent } from "@tesseract/protocol";
 
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";

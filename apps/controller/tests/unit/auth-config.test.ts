@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { DEFAULT_PORT, LIMITS } from "@theone/protocol";
+import { DEFAULT_PORT, LIMITS } from "@tesseract/protocol";
 import { TicketStore } from "../../src/auth/tickets";
 import { generateToken, mirrorTokenToFile, readTokenFile, resolveToken, rotateToken, TokenError, tokensEqual } from "../../src/auth/token";
 import { ConfigError, ensureDirectories, loadConfig, localApiUrl, type Config } from "../../src/config";
@@ -12,7 +12,7 @@ afterEach(removeTempDirs);
 const VALID_TOKEN = "unit-test-token-0123456789abcdefghijklmnop";
 
 function configFor(workspace: string, env: Record<string, string> = {}): Config {
-  return loadConfig({ THEONE_WORKSPACE: workspace, ...env });
+  return loadConfig({ TESSERACT_WORKSPACE: workspace, ...env });
 }
 
 describe("TicketStore", () => {
@@ -90,7 +90,7 @@ describe("token", () => {
 
   test("resolveToken prefers the environment, then the file, then generates", () => {
     const workspace = makeTempDir("token");
-    const fromEnv = configFor(workspace, { THEONE_TOKEN: VALID_TOKEN });
+    const fromEnv = configFor(workspace, { TESSERACT_TOKEN: VALID_TOKEN });
     expect(resolveToken(fromEnv, { create: true })).toEqual({ token: VALID_TOKEN, source: "env" });
 
     const config = configFor(workspace);
@@ -114,7 +114,7 @@ describe("token", () => {
     const workspace = makeTempDir("token");
     const blocker = join(workspace, "blocker");
     writeFileSync(blocker, "");
-    const config = configFor(workspace, { THEONE_TOKEN_FILE: join(blocker, "token") });
+    const config = configFor(workspace, { TESSERACT_TOKEN_FILE: join(blocker, "token") });
     expect(() => resolveToken(config, { create: true })).toThrow();
   });
 
@@ -165,24 +165,24 @@ describe("loadConfig", () => {
 
   test("reads and trims every variable", () => {
     const config = loadConfig({
-      THEONE_HOST: " 127.0.0.1 ",
-      THEONE_PORT: "0",
-      THEONE_WORKSPACE: "/srv/ws/../ws",
-      THEONE_DATA_DIR: "/srv/data",
-      THEONE_TOKEN_FILE: "/srv/secret/token",
-      THEONE_TOKEN: VALID_TOKEN,
-      THEONE_PUBLIC_URL: "https://box.example.ts.net",
-      THEONE_DISPLAY: "host:2.0",
-      THEONE_VNC_HOST: "vnc",
-      THEONE_VNC_PORT: "5902",
-      THEONE_VNC_PASSWORD: "pw",
-      THEONE_CHROMIUM_DEBUG_PORT: "9333",
-      THEONE_CLAUDE_BIN: "/opt/claude",
-      THEONE_CLAUDE_PERMISSION_MODE: "acceptEdits",
-      THEONE_TAILSCALE_SOCKET: " /var/run/tailscale/tailscaled.sock ",
-      THEONE_SANDBOX_ID: "box",
-      THEONE_LOG_LEVEL: "debug",
-      THEONE_CORS_ORIGINS: " https://a.example , ,https://b.example ",
+      TESSERACT_HOST: " 127.0.0.1 ",
+      TESSERACT_PORT: "0",
+      TESSERACT_WORKSPACE: "/srv/ws/../ws",
+      TESSERACT_DATA_DIR: "/srv/data",
+      TESSERACT_TOKEN_FILE: "/srv/secret/token",
+      TESSERACT_TOKEN: VALID_TOKEN,
+      TESSERACT_PUBLIC_URL: "https://box.example.ts.net",
+      TESSERACT_DISPLAY: "host:2.0",
+      TESSERACT_VNC_HOST: "vnc",
+      TESSERACT_VNC_PORT: "5902",
+      TESSERACT_VNC_PASSWORD: "pw",
+      TESSERACT_CHROMIUM_DEBUG_PORT: "9333",
+      TESSERACT_CLAUDE_BIN: "/opt/claude",
+      TESSERACT_CLAUDE_PERMISSION_MODE: "acceptEdits",
+      TESSERACT_TAILSCALE_SOCKET: " /var/run/tailscale/tailscaled.sock ",
+      TESSERACT_SANDBOX_ID: "box",
+      TESSERACT_LOG_LEVEL: "debug",
+      TESSERACT_CORS_ORIGINS: " https://a.example , ,https://b.example ",
       SHELL: "/bin/zsh",
     });
     expect(config).toMatchObject({
@@ -207,30 +207,30 @@ describe("loadConfig", () => {
       shell: ["/bin/zsh", "-l"],
     });
     expect(config.publicUrl).toStartWith("https://box.example.ts.net");
-    expect(loadConfig({ THEONE_PORT: "0" }).publicUrl).toBe(`http://127.0.0.1:${DEFAULT_PORT}`);
-    expect(loadConfig({ THEONE_CORS_ORIGINS: " , " }).corsOrigins).toEqual(["*"]);
+    expect(loadConfig({ TESSERACT_PORT: "0" }).publicUrl).toBe(`http://127.0.0.1:${DEFAULT_PORT}`);
+    expect(loadConfig({ TESSERACT_CORS_ORIGINS: " , " }).corsOrigins).toEqual(["*"]);
   });
 
   test("rejects invalid values with a ConfigError naming the variable", () => {
     const cases: Array<[Record<string, string>, string]> = [
-      [{ THEONE_HOST: "bad host" }, "THEONE_HOST"],
-      [{ THEONE_HOST: "a;b" }, "THEONE_HOST"],
-      [{ THEONE_PORT: "65536" }, "THEONE_PORT"],
-      [{ THEONE_PORT: "-1" }, "THEONE_PORT"],
-      [{ THEONE_PORT: "80.5" }, "THEONE_PORT"],
-      [{ THEONE_PORT: "0x50" }, "THEONE_PORT"],
-      [{ THEONE_VNC_PORT: "0" }, "THEONE_VNC_PORT"],
-      [{ THEONE_CHROMIUM_DEBUG_PORT: "0" }, "THEONE_CHROMIUM_DEBUG_PORT"],
-      [{ THEONE_WORKSPACE: "relative/path" }, "THEONE_WORKSPACE"],
-      [{ THEONE_DATA_DIR: "data" }, "THEONE_DATA_DIR"],
-      [{ THEONE_TOKEN_FILE: "token" }, "THEONE_TOKEN_FILE"],
-      [{ THEONE_TAILSCALE_SOCKET: "tailscaled.sock" }, "THEONE_TAILSCALE_SOCKET"],
-      [{ THEONE_TOKEN: "has space" }, "THEONE_TOKEN"],
-      [{ THEONE_PUBLIC_URL: "not a url" }, "THEONE_PUBLIC_URL"],
-      [{ THEONE_DISPLAY: "1" }, "THEONE_DISPLAY"],
-      [{ THEONE_DISPLAY: ":1;rm" }, "THEONE_DISPLAY"],
-      [{ THEONE_CLAUDE_PERMISSION_MODE: "--dangerous" }, "THEONE_CLAUDE_PERMISSION_MODE"],
-      [{ THEONE_LOG_LEVEL: "trace" }, "THEONE_LOG_LEVEL"],
+      [{ TESSERACT_HOST: "bad host" }, "TESSERACT_HOST"],
+      [{ TESSERACT_HOST: "a;b" }, "TESSERACT_HOST"],
+      [{ TESSERACT_PORT: "65536" }, "TESSERACT_PORT"],
+      [{ TESSERACT_PORT: "-1" }, "TESSERACT_PORT"],
+      [{ TESSERACT_PORT: "80.5" }, "TESSERACT_PORT"],
+      [{ TESSERACT_PORT: "0x50" }, "TESSERACT_PORT"],
+      [{ TESSERACT_VNC_PORT: "0" }, "TESSERACT_VNC_PORT"],
+      [{ TESSERACT_CHROMIUM_DEBUG_PORT: "0" }, "TESSERACT_CHROMIUM_DEBUG_PORT"],
+      [{ TESSERACT_WORKSPACE: "relative/path" }, "TESSERACT_WORKSPACE"],
+      [{ TESSERACT_DATA_DIR: "data" }, "TESSERACT_DATA_DIR"],
+      [{ TESSERACT_TOKEN_FILE: "token" }, "TESSERACT_TOKEN_FILE"],
+      [{ TESSERACT_TAILSCALE_SOCKET: "tailscaled.sock" }, "TESSERACT_TAILSCALE_SOCKET"],
+      [{ TESSERACT_TOKEN: "has space" }, "TESSERACT_TOKEN"],
+      [{ TESSERACT_PUBLIC_URL: "not a url" }, "TESSERACT_PUBLIC_URL"],
+      [{ TESSERACT_DISPLAY: "1" }, "TESSERACT_DISPLAY"],
+      [{ TESSERACT_DISPLAY: ":1;rm" }, "TESSERACT_DISPLAY"],
+      [{ TESSERACT_CLAUDE_PERMISSION_MODE: "--dangerous" }, "TESSERACT_CLAUDE_PERMISSION_MODE"],
+      [{ TESSERACT_LOG_LEVEL: "trace" }, "TESSERACT_LOG_LEVEL"],
     ];
     for (const [env, name] of cases) {
       let caught: unknown;
@@ -245,7 +245,7 @@ describe("loadConfig", () => {
   });
 
   test("blank values fall back to defaults", () => {
-    expect(loadConfig({ THEONE_PORT: "  ", THEONE_LOG_LEVEL: "", THEONE_TOKEN: " " })).toMatchObject({
+    expect(loadConfig({ TESSERACT_PORT: "  ", TESSERACT_LOG_LEVEL: "", TESSERACT_TOKEN: " " })).toMatchObject({
       port: DEFAULT_PORT,
       logLevel: "info",
       tokenFromEnv: null,

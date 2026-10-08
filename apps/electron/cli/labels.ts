@@ -18,7 +18,7 @@ export const CLI_LABELS = {
   invalidValue: (flag: string, value: string) => `invalid value for --${flag}: ${value}`,
   failed: (message: string) => `tesseract: ${message}`,
   interrupted: "Interrupted",
-  getOnHost: "monolith --get runs inside the sandbox (in /workspace/projects/<id>); on this computer use tesseract --sync",
+  getOnHost: "tesseract --get runs inside the sandbox (in /workspace/projects/<id>); on this computer use tesseract --sync",
   help: {
     sync: "Copy the current directory to the sandbox and exit",
     confidential: "With --sync: send the project under a pseudonym and keep its name on this computer",
@@ -39,14 +39,14 @@ export const CLI_LABELS = {
   },
   summary: {
     status: "Show the connection, Docker, sandbox and Android emulator at a glance",
-    open: "Open the Monolith app (or bring it to the front) on a page",
+    open: "Open the Tesseract app (or bring it to the front) on a page",
     doctor: "Check Docker, the sandbox image, hardware acceleration and the Android SDK",
     sandbox: "Manage the local sandbox stack: status, up, down, restart, logs, build, pair",
     server: "Run this computer as a headless Tesseract server: install, uninstall, status, pair",
     android: "Manage the host Android emulator: images, install, avd create|list|start|delete",
-    pair: "Print the pairing link and a QR code for the Monolith phone app",
+    pair: "Print the pairing link and a QR code for the Tesseract phone app",
     sync: "Sync the current directory with the sandbox: push, pull, revert, status",
-    config: "Read or change Monolith settings: get, set, unset, path",
+    config: "Read or change Tesseract settings: get, set, unset, path",
     version: "Print the version",
     help: "Show help for a command",
   },
@@ -98,7 +98,7 @@ export const CLI_LABELS = {
     help: ["tesseract help [command]"],
   },
   status: {
-    heading: (version: string) => `Monolith ${version}`,
+    heading: (version: string) => `Tesseract ${version}`,
     configFile: "Config",
     onboarding: "Setup",
     onboardingDone: "complete",
@@ -132,9 +132,9 @@ export const CLI_LABELS = {
   },
   open: {
     unknownPage: (page: string, pages: string) => `unknown page ${page}; expected one of ${pages}`,
-    launched: (path: string) => `Opened Monolith (${path})`,
+    launched: (path: string) => `Opened Tesseract (${path})`,
     linked: (url: string) => `Asked the system to open ${url}`,
-    notFound: "Monolith is not installed here; install the desktop app or set MONOLITH_APP_PATH",
+    notFound: "Tesseract is not installed here; install the desktop app or set TESSERACT_APP_PATH",
   },
   doctor: {
     sections: { docker: "Docker", image: "Sandbox image", kvm: "Hardware acceleration", sdk: "Android SDK" },
@@ -165,7 +165,7 @@ export const CLI_LABELS = {
   },
   sandbox: {
     noContext:
-      "Could not find the sandbox build files (infra/compose); reinstall Monolith, run this from the repository, or set MONOLITH_SANDBOX_CONTEXT",
+      "Could not find the sandbox build files (infra/compose); reinstall Tesseract, run this from the repository, or set TESSERACT_SANDBOX_CONTEXT",
     noServices: "No sandbox containers",
     header: ["SERVICE", "CONTAINER", "STATE", "HEALTH"],
     up: "Starting the sandbox…",
@@ -194,7 +194,7 @@ export const CLI_LABELS = {
     noTailscale: "The tailscale command was not found; install Tailscale or put it on PATH",
     noTailscaleIp: "Tailscale has no IPv4 address on this computer; run tailscale up first",
     noController: (path: string, variable: string) =>
-      `theone-controller was not found next to ${path}; keep both binaries in one directory or set ${variable}`,
+      `tesseract-controller was not found next to ${path}; keep both binaries in one directory or set ${variable}`,
     dryRun: "Dry run: nothing was changed.",
     plannedEnv: (file: string) => `Sandbox settings (${file}):`,
     plannedImage: (mode: string, image: string) => `Image: ${mode} ${image}`,
@@ -268,7 +268,7 @@ export const CLI_LABELS = {
   },
   pair: {
     heading: (name: string | null) => (name ? `Pair a phone with ${name}` : "Pair a phone with this sandbox"),
-    scan: "Scan the code with the Monolith phone app, or open the link on the phone.",
+    scan: "Scan the code with the Tesseract phone app, or open the link on the phone.",
     local: "This address only works on this computer. Use Tailscale mode to pair a phone.",
     sealed: (error: string, urlVar: string, tokenVar: string) =>
       `the app keeps the sandbox token in the system keychain, which this command cannot read, and no local sandbox was found (${error}). Open the app's Pair dialog, or set ${urlVar} and ${tokenVar}`,

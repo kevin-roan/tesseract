@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import type { TerminalInfo } from "@theone/protocol";
+import type { TerminalInfo } from "@tesseract/protocol";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useIsOnline, useServerEvent, useWindowVisible } from "../../../app/connection";
 import { DATA_KEYS, useApiClient, useApiQuery } from "../../../app/data";

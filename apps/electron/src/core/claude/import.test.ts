@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ClaudeImport, ClaudeImportResult } from "@theone/protocol";
+import type { ClaudeImport, ClaudeImportResult } from "@tesseract/protocol";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ClaudeEnvironment } from "./host";
 import { buildClaudeImport, importableFiles, importHostClaude } from "./import";
@@ -20,7 +20,7 @@ function environment(overrides: Partial<ClaudeEnvironment> = {}): ClaudeEnvironm
 const OAUTH = { accessToken: "sk-a", refreshToken: "rt-a", expiresAt: 1, scopes: ["user"], subscriptionType: "pro" };
 
 beforeEach(async () => {
-  home = await mkdtemp(join(tmpdir(), "monolith-test-claude-import-"));
+  home = await mkdtemp(join(tmpdir(), "tesseract-test-claude-import-"));
   await write(join(home, ".claude", ".credentials.json"), { claudeAiOauth: OAUTH, other: true });
   await write(join(home, ".claude.json"), {
     oauthAccount: { emailAddress: "you@example.com" },

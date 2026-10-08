@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { ApiError, NetworkError, TheOneClient } from "@theone/client";
+import { ApiError, NetworkError, TesseractClient } from "@tesseract/client";
 import {
   sampleAgentRun,
   sampleBuild,
@@ -7,7 +7,7 @@ import {
   sampleProcess,
   sampleProject,
   sampleStatus,
-} from "@theone/protocol/fixtures";
+} from "@tesseract/protocol/fixtures";
 
 import { useProfileScreen } from "@/features/sandbox/hooks/use-profile-screen";
 
@@ -23,7 +23,7 @@ import {
 
 const mockRouter = { push: jest.fn(), replace: jest.fn(), navigate: jest.fn(), canGoBack: jest.fn(() => true) };
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   get router() {
@@ -31,7 +31,7 @@ jest.mock("expo-router", () => ({
   },
 }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const fake = {
   identity: jest.fn(),
   status: jest.fn(),

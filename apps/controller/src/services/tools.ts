@@ -1,4 +1,4 @@
-import type { ToolVersion } from "@theone/protocol";
+import type { ToolVersion } from "@tesseract/protocol";
 import { resolveExecutable, run } from "../core/exec";
 
 export type ToolProbe = { name: string; bin: string; args: string[] };

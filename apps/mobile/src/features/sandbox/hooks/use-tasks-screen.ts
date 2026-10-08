@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import type { ProcessInfo } from "@theone/protocol";
+import type { ProcessInfo } from "@tesseract/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
 

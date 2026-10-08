@@ -15,7 +15,7 @@ Claude (the API variant runs the clone as a tracked process):
 ```bash
 cd /workspace/projects && git clone https://github.com/acme/my-electron-app.git my-electron-app
 # or, with the API:
-theone-controller api POST /v1/projects '{"name":"my-electron-app","gitUrl":"https://github.com/acme/my-electron-app.git"}'
+tesseract-controller api POST /v1/projects '{"name":"my-electron-app","gitUrl":"https://github.com/acme/my-electron-app.git"}'
 ```
 
 The repository's own fixture, `examples/electron-hello` (Electron plus
@@ -24,7 +24,7 @@ Copy it into the sandbox from the host, extracting as `dev` so the files get
 the right owner:
 
 ```bash
-tar -C examples -c electron-hello | docker exec -i -u dev theone-sandbox-1 tar -C /workspace/projects -x
+tar -C examples -c electron-hello | docker exec -i -u dev tesseract-sandbox-1 tar -C /workspace/projects -x
 ```
 
 The project must list `electron-builder` (or `@electron-forge/cli`) in its
@@ -59,9 +59,9 @@ The equivalent with the API (from a shell in the sandbox, see
 [SPEC §8.2](../../SPEC.md#82-local-api)):
 
 ```bash
-theone-controller api POST /v1/builds '{"projectId":"electron-hello","target":"electron-windows","profile":"release"}'
-theone-controller api GET /v1/builds/<id>                    # state, stage, artifacts
-theone-controller api GET "/v1/builds/<id>/logs?tail=100"
+tesseract-controller api POST /v1/builds '{"projectId":"electron-hello","target":"electron-windows","profile":"release"}'
+tesseract-controller api GET /v1/builds/<id>                    # state, stage, artifacts
+tesseract-controller api GET "/v1/builds/<id>/logs?tail=100"
 ```
 
 ## 3. Build by hand (iterating)
@@ -95,14 +95,14 @@ display** → **Run** (needs `electron`'s install script, see above). From a she
 
 ```bash
 # Linux dev run
-theone-controller api POST /v1/processes '{"projectId":"electron-hello","name":"dev","command":"npm start","display":true}'   # start script passes --no-sandbox
+tesseract-controller api POST /v1/processes '{"projectId":"electron-hello","name":"dev","command":"npm start","display":true}'   # start script passes --no-sandbox
 # Linux AppImage (APPIMAGE_EXTRACT_AND_RUN=1 is set in the image, no FUSE needed)
-theone-controller api POST /v1/processes '{"projectId":"electron-hello","name":"appimage","display":true,"command":"./dist/*.AppImage --no-sandbox"}'
-theone-screenshot -w "TheOne Electron Hello"
-theone-controller api GET /v1/display/screenshot > /tmp/check.png
+tesseract-controller api POST /v1/processes '{"projectId":"electron-hello","name":"appimage","display":true,"command":"./dist/*.AppImage --no-sandbox"}'
+tesseract-screenshot -w "Tesseract Electron Hello"
+tesseract-controller api GET /v1/display/screenshot > /tmp/check.png
 ```
 
-Stop each one with `theone-controller api DELETE /v1/processes/<id>` or from
+Stop each one with `tesseract-controller api DELETE /v1/processes/<id>` or from
 the app's process list.
 
 **Windows builds:** building the installer through wine is reliable, running

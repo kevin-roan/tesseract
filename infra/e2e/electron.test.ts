@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { ApiError } from "@theone/client";
-import type { Artifact, BuildJob, BuildTarget, LogLine, ProcessInfo, ServerEvent } from "@theone/protocol";
+import { ApiError } from "@tesseract/client";
+import type { Artifact, BuildJob, BuildTarget, LogLine, ProcessInfo, ServerEvent } from "@tesseract/protocol";
 import { client, e2e, MINUTES, REPO_ROOT, SECONDS } from "./lib/env";
 import { readPng, sha256 } from "./lib/bytes";
 import { copyDirectory, exec, processesMatching, sandboxCli, sh } from "./lib/sandbox";
@@ -11,7 +11,7 @@ import { delay, recordEvents, waitFor, type EventRecorder } from "./lib/wait";
 const PROJECT_ID = "electron-hello";
 const PROJECT_DIR = `/workspace/projects/${PROJECT_ID}`;
 const EXAMPLE_DIR = resolve(REPO_ROOT, "examples/electron-hello");
-const WINDOW_TITLE = "TheOne Electron Hello";
+const WINDOW_TITLE = "Tesseract Electron Hello";
 const BUILD_TIMEOUT_MS = 20 * MINUTES;
 const SEEDED_CONTEXT = [
   "GLOBAL_CONTEXT.md",
@@ -86,7 +86,7 @@ async function download(artifact: Artifact): Promise<void> {
 
 beforeAll(async () => {
   recorder = await recordEvents();
-  const dir = process.env.THEONE_E2E_SCREENSHOT_DIR;
+  const dir = process.env.TESSERACT_E2E_SCREENSHOT_DIR;
   if (dir) {
     mkdirSync(dir, { recursive: true });
     screenshotDir = dir;
@@ -281,7 +281,7 @@ describe("restart resilience", () => {
       await waitFor("sleeper running", async () => (await client.getProcess(sleeper.id)).state === "running");
       const before = await client.status();
 
-      await exec(["pkill", "-KILL", "-f", "^/usr/local/bin/theone-controller serve"], { user: "root" });
+      await exec(["pkill", "-KILL", "-f", "^/usr/local/bin/tesseract-controller serve"], { user: "root" });
       await waitFor(
         "a new controller instance",
         async () => (await client.status({ timeoutMs: 3 * SECONDS })).startedAt !== before.startedAt,

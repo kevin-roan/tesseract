@@ -1,4 +1,4 @@
-import { buildPairingLink, normalizeBaseUrl, parsePairingLink } from "@theone/protocol";
+import { buildPairingLink, normalizeBaseUrl, parsePairingLink } from "@tesseract/protocol";
 import type { ConnectionConfig, ConnectionInput } from "../../shared/contracts/connection";
 
 export type PairingTarget = Pick<ConnectionConfig, "apiUrl" | "token" | "name" | "pairingUrl">;

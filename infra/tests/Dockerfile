@@ -1,10 +1,10 @@
 # Test runner images for infra/tests (built by infra/tests/run, never pushed).
 #   bats          Debian + bats-core, its helper libraries, kcov and shellcheck; also has
-#                 the dev user (uid 1000) so theone-entrypoint runs in it unchanged.
+#                 the dev user (uid 1000) so tesseract-entrypoint runs in it unchanged.
 #   sandbox-bats  the real sandbox image plus the same bats install, for the entrypoint
 #                 suite against the image's own tools and templates.
 ARG DEBIAN_IMAGE=debian:trixie-slim
-ARG SANDBOX_IMAGE=theone/sandbox:latest
+ARG SANDBOX_IMAGE=tesseract/sandbox:latest
 
 FROM ${DEBIAN_IMAGE} AS bats
 RUN apt-get update \

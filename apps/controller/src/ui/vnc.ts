@@ -1,6 +1,6 @@
 import RFB from "@novnc/novnc";
 import { KeyBar, Overlay, StatusBadge, type ConnectionState } from "./lib/components";
-import type { InputMode } from "@theone/protocol/bridge";
+import type { InputMode } from "@tesseract/protocol/bridge";
 import {
   API_PATHS,
   DEFAULT_INPUT_MODE,

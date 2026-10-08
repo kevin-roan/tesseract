@@ -1,4 +1,4 @@
-import type { DisplayWindow } from "@theone/protocol";
+import type { DisplayWindow } from "@tesseract/protocol";
 import { EmptyState } from "../../components/EmptyState";
 import { IconButton } from "../../components/IconButton";
 import { RecordRow, type RowAction } from "../../components/RecordRow";

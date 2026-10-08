@@ -103,13 +103,13 @@ describe("tesseract android avd", () => {
     mkdirSync(join(sdkRoot, "system-images", "android-35", "google_apis", "x86_64"), { recursive: true });
     const created = await runCli(sandbox, ["android", "avd", "create", "--sdk", sdkRoot, "--image", "35", "--ram", "2048", "--cores", "2", "--json"]);
     expect(created.code).toBe(0);
-    expect(JSON.parse(created.out.join("\n"))).toMatchObject({ name: "Monolith_API_35", target: "android-35", abi: "x86_64" });
-    expect(JSON.parse(readFileSync(sandbox.configFile, "utf8"))).toEqual({ androidAvd: "Monolith_API_35", androidSdkRoot: sdkRoot });
+    expect(JSON.parse(created.out.join("\n"))).toMatchObject({ name: "Tesseract_API_35", target: "android-35", abi: "x86_64" });
+    expect(JSON.parse(readFileSync(sandbox.configFile, "utf8"))).toEqual({ androidAvd: "Tesseract_API_35", androidSdkRoot: sdkRoot });
 
     const listed = await runCli(sandbox, ["android", "list", "--json"]);
-    expect(JSON.parse(listed.out.join("\n"))).toMatchObject({ default: "Monolith_API_35", avds: [{ name: "Monolith_API_35" }] });
+    expect(JSON.parse(listed.out.join("\n"))).toMatchObject({ default: "Tesseract_API_35", avds: [{ name: "Tesseract_API_35" }] });
 
-    expect((await runCli(sandbox, ["android", "avd", "delete", "Monolith_API_35"])).code).toBe(0);
+    expect((await runCli(sandbox, ["android", "avd", "delete", "Tesseract_API_35"])).code).toBe(0);
     expect(JSON.parse(readFileSync(sandbox.configFile, "utf8"))).toEqual({ androidSdkRoot: sdkRoot });
   });
 

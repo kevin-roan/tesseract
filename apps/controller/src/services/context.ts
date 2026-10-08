@@ -1,6 +1,6 @@
 import { lstatSync, readdirSync } from "node:fs";
 import { join, relative } from "node:path";
-import { LIMITS, type AgentContext, type AgentContextFile } from "@theone/protocol";
+import { LIMITS, type AgentContext, type AgentContextFile } from "@tesseract/protocol";
 import { readRegularFile } from "../core/files";
 
 const MARKDOWN = /\.md$/i;

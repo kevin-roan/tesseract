@@ -1,5 +1,5 @@
 import { afterAll, afterEach, describe, expect, test } from "bun:test";
-import { PushDataSchema, PushDeviceSchema, restPaths, type PushData, type PushDevice } from "@theone/protocol";
+import { PushDataSchema, PushDeviceSchema, restPaths, type PushData, type PushDevice } from "@tesseract/protocol";
 import { loadConfig } from "../src/config";
 import type { PushFetch, PushOptions } from "../src/services/push";
 import { makeTempDir, removeTempDirs, startTestController, waitFor, type TestController, type TestEnv } from "./helpers";
@@ -29,7 +29,7 @@ function fakeExpo(tickets: (messages: Record<string, unknown>[]) => unknown[] = 
 }
 
 async function start(fetch: PushFetch, env: TestEnv = {}, options: Omit<PushOptions, "fetch"> = {}): Promise<TestController> {
-  t = await startTestController({ env: { THEONE_PUSH_URL: PUSH_URL, ...env }, controller: { push: { fetch, ...options } } });
+  t = await startTestController({ env: { TESSERACT_PUSH_URL: PUSH_URL, ...env }, controller: { push: { fetch, ...options } } });
   return t;
 }
 
@@ -46,12 +46,12 @@ async function register(
 }
 
 describe("push config", () => {
-  const base = { THEONE_WORKSPACE: makeTempDir("push-config") };
+  const base = { TESSERACT_WORKSPACE: makeTempDir("push-config") };
 
   test("defaults to Expo, `off` disables and other values must be http(s) URLs", () => {
     expect(loadConfig(base).push).toEqual({ url: "https://exp.host/--/api/v2/push/send", accessToken: null });
-    expect(loadConfig({ ...base, THEONE_PUSH_URL: "off", THEONE_EXPO_ACCESS_TOKEN: "secret" }).push).toEqual({ url: null, accessToken: "secret" });
-    expect(() => loadConfig({ ...base, THEONE_PUSH_URL: "ftp://push" })).toThrow("THEONE_PUSH_URL");
+    expect(loadConfig({ ...base, TESSERACT_PUSH_URL: "off", TESSERACT_EXPO_ACCESS_TOKEN: "secret" }).push).toEqual({ url: null, accessToken: "secret" });
+    expect(() => loadConfig({ ...base, TESSERACT_PUSH_URL: "ftp://push" })).toThrow("TESSERACT_PUSH_URL");
   });
 });
 
@@ -100,7 +100,7 @@ describe("push devices over HTTP", () => {
 describe("inbox pushes", () => {
   test("an unread completed item sends one request with every token, titled with the app name", async () => {
     const expo = fakeExpo();
-    const c = await start(expo.fetch, { THEONE_EXPO_ACCESS_TOKEN: "expo-secret" });
+    const c = await start(expo.fetch, { TESSERACT_EXPO_ACCESS_TOKEN: "expo-secret" });
     await register(c, IOS, "ios");
     await register(c, ANDROID, "android");
     const item = c.controller.services.inbox.add({ kind: "completed", title: "Claude finished", body: "All green", sessionId: "sess-1", projectId: "hello" });
@@ -116,8 +116,8 @@ describe("inbox pushes", () => {
     expect(PushDataSchema.parse(request?.messages[0]?.data)).toEqual(data);
     const common = { sound: "default", priority: "high", channelId: "inbox", data };
     expect(request?.messages).toEqual([
-      { to: ANDROID, title: "Monolith", body: "hello · Claude finished: All green", ...common },
-      { to: IOS, title: "Monolith", subtitle: "hello · Claude finished", body: "All green", ...common },
+      { to: ANDROID, title: "Tesseract", body: "hello · Claude finished: All green", ...common },
+      { to: IOS, title: "Tesseract", subtitle: "hello · Claude finished", body: "All green", ...common },
     ]);
   });
 
@@ -179,9 +179,9 @@ describe("inbox pushes", () => {
     expect((await c.json("GET", restPaths.pushDevices())).status).toBe(200);
   });
 
-  test("THEONE_PUSH_URL=off sends nothing", async () => {
+  test("TESSERACT_PUSH_URL=off sends nothing", async () => {
     const expo = fakeExpo();
-    const c = await start(expo.fetch, { THEONE_PUSH_URL: "off" });
+    const c = await start(expo.fetch, { TESSERACT_PUSH_URL: "off" });
     await register(c, IOS, "ios");
     c.controller.services.inbox.add({ kind: "completed", title: "Claude finished", body: "done", sessionId: "sess-4" });
     await Bun.sleep(50);

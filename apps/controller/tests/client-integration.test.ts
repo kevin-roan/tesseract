@@ -3,15 +3,15 @@ import { join } from "node:path";
 import {
   ApiError,
   isAuthError,
-  TheOneClient,
+  TesseractClient,
   type ConnectionState,
-  type TheOneError,
-} from "@theone/client";
-import { isFinalBuildState, PROTOCOL_VERSION, type LogLine, type ServerEvent } from "@theone/protocol";
+  type TesseractError,
+} from "@tesseract/client";
+import { isFinalBuildState, PROTOCOL_VERSION, type LogLine, type ServerEvent } from "@tesseract/protocol";
 import { installFakeClaude, makeTempDir, removeTempDirs, startTestController, waitFor, writeFiles, type TestController } from "./helpers";
 
 let t: TestController;
-let client: TheOneClient;
+let client: TesseractClient;
 
 function git(dir: string, ...args: string[]): void {
   const result = Bun.spawnSync(["git", "-c", "user.name=Client", "-c", "user.email=client@example.com", ...args], { cwd: dir });
@@ -35,10 +35,10 @@ beforeAll(async () => {
   writeFiles(workspace, { ".agent/CURRENT_TASK.md": "# Current Task\n" });
   t = await startTestController({
     workspace,
-    env: { THEONE_CLAUDE_BIN: installFakeClaude(makeTempDir("client-integration-bin")), THEONE_VNC_PASSWORD: "vnc-secret" },
+    env: { TESSERACT_CLAUDE_BIN: installFakeClaude(makeTempDir("client-integration-bin")), TESSERACT_VNC_PASSWORD: "vnc-secret" },
     controller: { pingIntervalMs: 100 },
   });
-  client = new TheOneClient({ baseUrl: t.baseUrl, token: t.controller.services.token });
+  client = new TesseractClient({ baseUrl: t.baseUrl, token: t.controller.services.token });
 });
 
 afterAll(async () => {
@@ -46,7 +46,7 @@ afterAll(async () => {
   removeTempDirs();
 });
 
-describe("@theone/client against a live controller", () => {
+describe("@tesseract/client against a live controller", () => {
   test("system endpoints", async () => {
     const health = await client.health();
     expect(health).toMatchObject({ ok: true, protocolVersion: PROTOCOL_VERSION, sandboxId: "test-sandbox" });
@@ -211,13 +211,13 @@ describe("@theone/client against a live controller", () => {
   });
 
   test("a revoked token fails REST with an auth error and stops the events stream", async () => {
-    const revoked = new TheOneClient({ baseUrl: t.baseUrl, token: "revoked-token" });
+    const revoked = new TesseractClient({ baseUrl: t.baseUrl, token: "revoked-token" });
     expect((await revoked.health()).ok).toBe(true);
     const status = await revoked.status().catch((error: unknown) => error);
     expect(isAuthError(status)).toBe(true);
     expect(status).toMatchObject({ status: 401, code: "unauthorized" });
 
-    const errors: TheOneError[] = [];
+    const errors: TesseractError[] = [];
     const states: ConnectionState[] = [];
     revoked.openEvents(
       { onEvent: () => undefined, onError: (error) => errors.push(error), onStateChange: (state) => states.push(state) },

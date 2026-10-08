@@ -171,7 +171,7 @@ test.describe("android step", () => {
     for (const line of ["hw.device.name=pixel_8", "hw.lcd.width=1080", "hw.lcd.height=2400", "hw.lcd.density=420", "disk.dataPartition.size=7G"]) {
       expect(avdConfig).toContain(`${line}\n`);
     }
-    const configFile = launched.profile.env.MONOLITH_DESKTOP_CONFIG as string;
+    const configFile = launched.profile.env.TESSERACT_DESKTOP_CONFIG as string;
     await expect.poll(() => readJson(configFile).androidAvd).toBe(FIXTURE_ANDROID.avd);
     expect(readJson(configFile).androidSdkRoot).toBeUndefined();
 
@@ -181,7 +181,7 @@ test.describe("android step", () => {
 });
 
 test.describe("finish", () => {
-  test("opening Monolith from the last step lands on the main shell and remembers it", async () => {
+  test("opening Tesseract from the last step lands on the main shell and remembers it", async () => {
     launched = await launchApp({ config: {}, env: REAL_SERVICES_ENV });
     const { app, window: wizard } = launched;
     await expect(wizard).toHaveURL(/#\/onboarding\/welcome/);
@@ -193,7 +193,7 @@ test.describe("finish", () => {
     await expect(autostart).not.toBeChecked();
 
     const opened = app.waitForEvent("window");
-    await footer(wizard).getByRole("button", { name: BUTTONS.openMonolith }).click();
+    await footer(wizard).getByRole("button", { name: BUTTONS.openTesseract }).click();
     const main = await opened;
     await main.waitForLoadState("domcontentloaded");
     await expect(main).toHaveURL(/#\/overview/);
@@ -201,7 +201,7 @@ test.describe("finish", () => {
     await expect.poll(() => wizard.isClosed()).toBe(true);
 
     const config = readJson<{ onboarding?: { completedAt?: string | null }; sandboxAutostart?: boolean }>(
-      launched.profile.env.MONOLITH_DESKTOP_CONFIG as string,
+      launched.profile.env.TESSERACT_DESKTOP_CONFIG as string,
     );
     expect(config.onboarding?.completedAt).toEqual(expect.any(String));
     expect(config.sandboxAutostart).toBe(false);
@@ -210,12 +210,12 @@ test.describe("finish", () => {
 
 test.describe("live stack", () => {
   const stack = liveStack();
-  test.skip(stack === null, "THEONE_E2E_URL is not set (start the stack with infra/e2e)");
+  test.skip(stack === null, "TESSERACT_E2E_URL is not set (start the stack with infra/e2e)");
 
   test("a configured connection skips the wizard and the shell reaches the sandbox", async () => {
     launched = await launchApp({
       config: {},
-      env: { ...REAL_SERVICES_ENV, MONOLITH_DESKTOP_URL: stack!.url, THEONE_TOKEN: stack!.token },
+      env: { ...REAL_SERVICES_ENV, TESSERACT_DESKTOP_URL: stack!.url, TESSERACT_TOKEN: stack!.token },
     });
     const { window } = launched;
     await expect(window).toHaveURL(/#\/overview/);

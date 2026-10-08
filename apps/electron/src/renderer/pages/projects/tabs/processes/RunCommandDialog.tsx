@@ -1,5 +1,5 @@
-import type { TheOneClient } from "@theone/client";
-import type { ProcessInfo, Project } from "@theone/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import type { ProcessInfo, Project } from "@tesseract/protocol";
 import { Chip } from "../../../../components/Chip";
 import { FieldGroup, FormDialog, FormEntry, FormField, PropertyChips, TitleEntry } from "../../../../components/FormDialog";
 import { RUN_DIALOG_WIDTH } from "../../../../features/projects/constants";
@@ -9,7 +9,7 @@ import { useRunCommand } from "./hooks/use-run-command";
 
 export interface RunCommandDialogProps {
   project: Project;
-  client: TheOneClient | null;
+  client: TesseractClient | null;
   open: boolean;
   onStarted(process: ProcessInfo): void;
   onClose(): void;

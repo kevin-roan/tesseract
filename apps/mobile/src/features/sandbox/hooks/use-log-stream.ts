@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import type { ConnectionState } from "@theone/client";
-import type { LogLine } from "@theone/protocol";
+import type { ConnectionState } from "@tesseract/client";
+import type { LogLine } from "@tesseract/protocol";
 
 import { storeBuild } from "../api/cache";
 import { RESUMABLE_STREAM_OPTIONS, createReconnectGuard } from "../api/streams";

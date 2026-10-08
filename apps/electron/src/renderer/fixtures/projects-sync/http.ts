@@ -1,5 +1,5 @@
-import type { SyncDiscard, SyncRequest } from "@theone/protocol";
-import { routePatterns } from "@theone/protocol";
+import type { SyncDiscard, SyncRequest } from "@tesseract/protocol";
+import { routePatterns } from "@tesseract/protocol";
 import { GTK_PARITY } from "../projects/parity";
 import { currentScenario, isScenario } from "../scenario";
 import { defineHttpFixtures, reply } from "../types";

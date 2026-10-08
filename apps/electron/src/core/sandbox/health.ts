@@ -33,15 +33,15 @@ export interface StackEndpoint {
 }
 
 export function stackEndpoint(values: EnvValues, env: NodeJS.ProcessEnv): StackEndpoint {
-  const project = values.THEONE_COMPOSE_PROJECT || DEFAULT_PROJECT;
-  const port = values.THEONE_CONTROLLER_HOST_PORT || String(DEFAULT_CONTROLLER_PORT);
-  const hostname = values.THEONE_HOSTNAME || DEFAULT_HOSTNAME;
-  const mode = values.THEONE_MODE;
+  const project = values.TESSERACT_COMPOSE_PROJECT || DEFAULT_PROJECT;
+  const port = values.TESSERACT_CONTROLLER_HOST_PORT || String(DEFAULT_CONTROLLER_PORT);
+  const hostname = values.TESSERACT_HOSTNAME || DEFAULT_HOSTNAME;
+  const mode = values.TESSERACT_MODE;
   const tailnet = mode === "tailscale" && values.TS_TAILNET_DOMAIN ? `https://${hostname}.${values.TS_TAILNET_DOMAIN}` : null;
-  const bind = mode === "host-tailscale" && values.THEONE_BIND_ADDR ? values.THEONE_BIND_ADDR : LOCAL_BIND_ADDR;
+  const bind = mode === "host-tailscale" && values.TESSERACT_BIND_ADDR ? values.TESSERACT_BIND_ADDR : LOCAL_BIND_ADDR;
   const candidates = mode === "tailscale" ? (tailnet ? [tailnet] : []) : [`http://${bind}:${port}`];
-  const exported: NodeJS.ProcessEnv = { THEONE_COMPOSE_PROJECT: project, THEONE_CONTROLLER_HOST_PORT: port };
-  if (mode !== "tailscale") exported.THEONE_BIND_ADDR = bind;
+  const exported: NodeJS.ProcessEnv = { TESSERACT_COMPOSE_PROJECT: project, TESSERACT_CONTROLLER_HOST_PORT: port };
+  if (mode !== "tailscale") exported.TESSERACT_BIND_ADDR = bind;
   return {
     project,
     container: containerName(project),

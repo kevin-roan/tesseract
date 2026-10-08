@@ -28,7 +28,7 @@ export async function planAutostart(context: SandboxContext, enabled: boolean): 
   const stack = sandboxStackFromConfig(await readConfig(sandboxConfigFile(context)).catch(() => ({})));
   if (!stack || !stack.builtAt || stack.envFile !== context.envFile) return { kind: "skip", reason: "not-managed" };
   const values = await readEnvValues(context.envFile);
-  const project = values?.THEONE_COMPOSE_PROJECT || DEFAULT_PROJECT;
+  const project = values?.TESSERACT_COMPOSE_PROJECT || DEFAULT_PROJECT;
   if (!values || project !== stack.project) return { kind: "skip", reason: "not-managed" };
 
   const deps = sandboxDeps(context);

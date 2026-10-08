@@ -8,11 +8,11 @@ Rationale: [ADR 0001](../adr/0001-monorepo-bun-workspaces.md).
 
 ```text
 apps/
-  mobile/        @theone/mobile      Expo SDK 56, React Native 0.85, expo-router
-  controller/    @theone/controller  Bun + Hono daemon, compiled to one binary
+  mobile/        @tesseract/mobile      Expo SDK 56, React Native 0.85, expo-router
+  controller/    @tesseract/controller  Bun + Hono daemon, compiled to one binary
 packages/
-  protocol/      @theone/protocol    zod v4 schemas, types, constants, URL/pairing helpers
-  client/        @theone/client      typed REST/WS client (React Native, browser, Bun)
+  protocol/      @tesseract/protocol    zod v4 schemas, types, constants, URL/pairing helpers
+  client/        @tesseract/client      typed REST/WS client (React Native, browser, Bun)
 infra/
   docker/sandbox/  Dockerfile + rootfs/ (supervisord, entrypoint, templates, openbox)
   compose/         compose*.yml, tailscale/serve.json, .env.example
@@ -34,18 +34,18 @@ copied into the sandbox and built there.
 
 ```mermaid
 flowchart LR
-  mobile["@theone/mobile"] --> client["@theone/client"]
-  mobile --> protocol["@theone/protocol"]
+  mobile["@tesseract/mobile"] --> client["@tesseract/client"]
+  mobile --> protocol["@tesseract/protocol"]
   client --> protocol
-  controller["@theone/controller"] --> protocol
+  controller["@tesseract/controller"] --> protocol
   controller -. "devDependency (integration tests)" .-> client
 ```
 
-`@theone/protocol` depends only on `zod`; its `./bridge` subpath (WebView
+`@tesseract/protocol` depends only on `zod`; its `./bridge` subpath (WebView
 message names) is zod-free so the controller's browser pages can import it.
-`@theone/client` depends only on `@theone/protocol` and platform globals
+`@tesseract/client` depends only on `@tesseract/protocol` and platform globals
 (`fetch`, `WebSocket`), which is why the same code runs in React Native,
-browsers and Bun. The controller uses `@theone/client` only in tests
+browsers and Bun. The controller uses `@tesseract/client` only in tests
 (`tests/client-integration.test.ts` runs every client method against a real controller).
 
 ## Why bun with the hoisted linker
@@ -90,11 +90,11 @@ Run from the repository root:
 | `bun run test` | tests in every workspace (bun test, or jest for mobile) |
 | `bun run lint` | lint where configured (`expo lint` in `apps/mobile`) |
 | `bun run mobile` | `expo start` in `apps/mobile` |
-| `bun run controller:dev` | controller with `--watch` on the host, for development (set `THEONE_HOST=127.0.0.1` and `THEONE_WORKSPACE`, see [controller.md](controller.md#development)) |
-| `bun run controller:build` | `bun build --compile` → `apps/controller/dist/theone-controller` |
+| `bun run controller:dev` | controller with `--watch` on the host, for development (set `TESSERACT_HOST=127.0.0.1` and `TESSERACT_WORKSPACE`, see [controller.md](controller.md#development)) |
+| `bun run controller:build` | `bun build --compile` → `apps/controller/dist/tesseract-controller` |
 | `bun run sandbox <cmd>` | operator CLI: `up`, `down`, `restart`, `logs`, `shell`, `pair`, `doctor`, `build`, `status`, `ps`, `config` (plus `--mode`, `--dind`, `--env-file`) |
 | `bun run test:infra` | bats suites for `infra/` in throwaway containers ([infra/tests](../../infra/tests/README.md)) |
-| `bun run e2e` | end-to-end suite against an isolated `theone-e2e` stack ([e2e-testing](../runbooks/e2e-testing.md)) |
+| `bun run e2e` | end-to-end suite against an isolated `tesseract-e2e` stack ([e2e-testing](../runbooks/e2e-testing.md)) |
 
 Every workspace package MUST define `typecheck` and `test`. `infra/e2e` is not a
 workspace: typecheck it with `bunx tsc -p infra/e2e/tsconfig.json`.
@@ -104,20 +104,20 @@ workspace: typecheck it with `bunx tsc -p infra/e2e/tsconfig.json`.
 **A dependency**: run `bun add <pkg>` inside the package directory, not at the
 root. For Expo native modules use `bunx expo install <pkg>` in `apps/mobile`,
 which picks the SDK-compatible version. Automated agents working in parallel
-MUST wrap installs in `flock /tmp/theone-bun-install.lock …` so that two
+MUST wrap installs in `flock /tmp/tesseract-bun-install.lock …` so that two
 installs never rewrite `bun.lock` at once.
 
 **A package**:
 
-1. Create `packages/<name>/` with `package.json` (`"name": "@theone/<name>"`,
+1. Create `packages/<name>/` with `package.json` (`"name": "@tesseract/<name>"`,
    `"private": true`, `"type": "module"`, source `exports`, `typecheck` and
    `test` scripts) and a `tsconfig.json` that extends `../../tsconfig.base.json`.
-2. Consume it with `"@theone/<name>": "workspace:*"` and run `bun install`.
+2. Consume it with `"@tesseract/<name>": "workspace:*"` and run `bun install`.
 3. If the controller uses it, check that the `controller-build` stage in the
    Dockerfile copies the new package directory.
 
 **A protocol change**: update the blueprint, then the zod schema in
-`packages/protocol`, the controller route, `@theone/client`, and
+`packages/protocol`, the controller route, `@tesseract/client`, and
 [protocol.md](protocol.md), all in one change.
 
 ## Expo and Metro in the monorepo
@@ -143,7 +143,7 @@ root as its context. It copies the manifests, runs a filtered
 `bun install --frozen-lockfile`, and runs the controller's `build` script
 (`bun build src/index.ts --compile --minify --sourcemap`), which compiles for
 the platform the stage runs on (the image's platform; no `--target`).
-The resulting self-contained binary becomes `/usr/local/bin/theone-controller`
+The resulting self-contained binary becomes `/usr/local/bin/tesseract-controller`
 in the final stage, so the runtime image needs no Bun and no `node_modules`
 for the controller. Static `/ui` assets (xterm.js, noVNC) are bundled into the
 binary. See [controller.md](controller.md).

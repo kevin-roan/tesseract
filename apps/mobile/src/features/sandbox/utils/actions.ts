@@ -1,4 +1,4 @@
-import type { InputMode } from "@theone/protocol";
+import type { InputMode } from "@tesseract/protocol";
 import {
   AppWindowIcon,
   ArrowClockwiseIcon,

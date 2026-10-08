@@ -1,5 +1,5 @@
-import { ApiError } from "@theone/client";
-import type { Artifact, ArtifactSource, BuildOutput, Project, TaildropTarget, TaildropTargets } from "@theone/protocol";
+import { ApiError } from "@tesseract/client";
+import type { Artifact, ArtifactSource, BuildOutput, Project, TaildropTarget, TaildropTargets } from "@tesseract/protocol";
 import { IpcError } from "../../../shared/ipc-types";
 import type { ChoiceOption } from "../../components/ChoiceDropdown";
 import type { PillTab } from "../../components/PillTabs";

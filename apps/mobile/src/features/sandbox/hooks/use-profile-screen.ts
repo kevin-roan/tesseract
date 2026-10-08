@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { isApiError } from "@theone/client";
+import { isApiError } from "@tesseract/client";
 
 import type { ActivityItemProps } from "@/components/activity-item";
 import { useClaudeAccountEntry } from "@/features/claude-account/hooks/use-claude-account-entry";

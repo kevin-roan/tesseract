@@ -1,6 +1,6 @@
 import { AppState, type AppStateStatus } from "react-native";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient, computeBackoffDelay } from "@theone/client";
+import { TesseractClient, computeBackoffDelay } from "@tesseract/client";
 
 import { useWebPageSession } from "@/features/sandbox/hooks/use-web-page-session";
 import { PAGE_RECONNECT_DELAY_MS, PAGE_RECONNECT_LIMIT } from "@/features/sandbox/utils/constants";
@@ -8,13 +8,13 @@ import { reconnectScript } from "@/features/sandbox/utils/web-bridge";
 
 import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../helpers";
 
-jest.mock("@theone/client", () => ({
-  ...jest.requireActual("@theone/client"),
-  TheOneClient: jest.fn(),
+jest.mock("@tesseract/client", () => ({
+  ...jest.requireActual("@tesseract/client"),
+  TesseractClient: jest.fn(),
   computeBackoffDelay: jest.fn(() => 0),
 }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const backoff = computeBackoffDelay as jest.Mock;
 const URL_1 = "http://127.0.0.1:7700/ui/terminal#ticket=t1&session=trm_1";
 const fake = { terminalPageUrl: jest.fn(), createTicket: jest.fn() };

@@ -1,4 +1,4 @@
-import type { ClaudeAuthStatus } from "@theone/protocol";
+import type { ClaudeAuthStatus } from "@tesseract/protocol";
 import { SettingsGroup } from "../../../components/PreferenceRows";
 import { BreakableText } from "../shared/BreakableText";
 import { SHARED_LABELS } from "../shared/labels";

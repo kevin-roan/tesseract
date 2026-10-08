@@ -44,5 +44,5 @@ export async function saveAndroidConfig(file: string, paths: PathEnvironment, up
 }
 
 export function hostDaemonAndroidEnv(paths: PathEnvironment, sdkRoot: string): Record<string, string> {
-  return { THEONE_ANDROID_SDK_ROOT: sdkRoot, THEONE_ADB: adbBinary(sdkRoot, paths.platform) };
+  return { TESSERACT_ANDROID_SDK_ROOT: sdkRoot, TESSERACT_ADB: adbBinary(sdkRoot, paths.platform) };
 }

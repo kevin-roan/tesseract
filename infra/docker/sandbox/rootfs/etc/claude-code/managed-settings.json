@@ -1,16 +1,16 @@
 {
   "hooks": {
     "Notification": [
-      { "hooks": [{ "type": "command", "command": "/usr/local/bin/theone-controller hook", "timeout": 5 }] }
+      { "hooks": [{ "type": "command", "command": "/usr/local/bin/tesseract-controller hook", "timeout": 5 }] }
     ],
     "Stop": [
-      { "hooks": [{ "type": "command", "command": "/usr/local/bin/theone-controller hook", "timeout": 5 }] }
+      { "hooks": [{ "type": "command", "command": "/usr/local/bin/tesseract-controller hook", "timeout": 5 }] }
     ],
     "StopFailure": [
-      { "hooks": [{ "type": "command", "command": "/usr/local/bin/theone-controller hook", "timeout": 5 }] }
+      { "hooks": [{ "type": "command", "command": "/usr/local/bin/tesseract-controller hook", "timeout": 5 }] }
     ],
     "UserPromptSubmit": [
-      { "hooks": [{ "type": "command", "command": "/usr/local/bin/theone-controller hook", "timeout": 5 }] }
+      { "hooks": [{ "type": "command", "command": "/usr/local/bin/tesseract-controller hook", "timeout": 5 }] }
     ]
   }
 }

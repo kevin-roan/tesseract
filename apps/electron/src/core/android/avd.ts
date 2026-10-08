@@ -29,7 +29,7 @@ export function avdHome(paths: PathEnvironment): string {
 }
 
 export function defaultAvdName(api: number): string {
-  return `Monolith_API_${api}`;
+  return `Tesseract_API_${api}`;
 }
 
 export function defaultAvdResources(totalMemoryBytes: number, cpus: number): { ramMb: number; cores: number } {

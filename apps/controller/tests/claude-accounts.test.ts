@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { chmodSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { AgentRunDetailSchema, AgentRunSchema, ClaudeAccountListSchema, ProjectSchema, type AgentRun } from "@theone/protocol";
+import { AgentRunDetailSchema, AgentRunSchema, ClaudeAccountListSchema, ProjectSchema, type AgentRun } from "@tesseract/protocol";
 import { loadConfig } from "../src/config";
 import { makeTempDir, removeTempDirs, startTestController, waitFor, writeFiles, type TestController } from "./helpers";
 
@@ -44,7 +44,7 @@ beforeAll(async () => {
   const claude = join(makeTempDir("accounts-bin"), "claude");
   writeFileSync(claude, FAKE_CLAUDE);
   chmodSync(claude, 0o755);
-  t = await startTestController({ workspace, env: { HOME: home, THEONE_CLAUDE_BIN: claude, THEONE_CLAUDE_ACCOUNTS: "work, gone" } });
+  t = await startTestController({ workspace, env: { HOME: home, TESSERACT_CLAUDE_BIN: claude, TESSERACT_CLAUDE_ACCOUNTS: "work, gone" } });
 });
 
 afterAll(async () => {
@@ -53,14 +53,14 @@ afterAll(async () => {
 });
 
 describe("config", () => {
-  test("maps THEONE_CLAUDE_ACCOUNTS names to ~/.claude-<name>", () => {
-    const config = loadConfig({ HOME: "/home/dev", THEONE_CLAUDE_ACCOUNTS: "work personal,work" });
+  test("maps TESSERACT_CLAUDE_ACCOUNTS names to ~/.claude-<name>", () => {
+    const config = loadConfig({ HOME: "/home/dev", TESSERACT_CLAUDE_ACCOUNTS: "work personal,work" });
     expect(config.claudeAccounts).toEqual([
       { id: "claude", configDir: "/home/dev/.claude", globalConfig: "/home/dev/.claude.json", env: {} },
       { id: "claude-work", configDir: "/home/dev/.claude-work", globalConfig: "/home/dev/.claude-work/.claude.json", env: { CLAUDE_CONFIG_DIR: "/home/dev/.claude-work" } },
       { id: "claude-personal", configDir: "/home/dev/.claude-personal", globalConfig: "/home/dev/.claude-personal/.claude.json", env: { CLAUDE_CONFIG_DIR: "/home/dev/.claude-personal" } },
     ]);
-    expect(() => loadConfig({ THEONE_CLAUDE_ACCOUNTS: "../etc" })).toThrow("THEONE_CLAUDE_ACCOUNTS");
+    expect(() => loadConfig({ TESSERACT_CLAUDE_ACCOUNTS: "../etc" })).toThrow("TESSERACT_CLAUDE_ACCOUNTS");
   });
 });
 

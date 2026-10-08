@@ -1,7 +1,7 @@
 import { Text } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import type { AppRun, HostAndroidStatus } from "@theone/protocol";
-import { sampleAppRun, sampleHostAndroidStatus, sampleRunTargets } from "@theone/protocol/fixtures";
+import type { AppRun, HostAndroidStatus } from "@tesseract/protocol";
+import { sampleAppRun, sampleHostAndroidStatus, sampleRunTargets } from "@tesseract/protocol/fixtures";
 
 import AppRunsSection from "@/features/app-runs/components/app-runs-section";
 import type { AppRunsState } from "@/features/app-runs/hooks/use-app-runs";

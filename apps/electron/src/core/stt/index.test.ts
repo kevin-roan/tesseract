@@ -1,4 +1,4 @@
-import type { SttStatus } from "@theone/protocol";
+import type { SttStatus } from "@tesseract/protocol";
 import { describe, expect, it } from "vitest";
 import {
   isSttProfile,

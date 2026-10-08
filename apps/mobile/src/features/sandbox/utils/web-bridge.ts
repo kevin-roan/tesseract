@@ -1,4 +1,4 @@
-import { PAGE_MESSAGES, VNC_ACTIONS, type InputMode, type VncAction } from "@theone/protocol";
+import { PAGE_MESSAGES, VNC_ACTIONS, type InputMode, type VncAction } from "@tesseract/protocol";
 
 import type { PageConnection, PageInsets, PageKind, PageMessage } from "../types";
 
@@ -54,9 +54,9 @@ export function isDroppedPageState(state: string): boolean {
   return DROPPED_STATES.has(state.toLowerCase());
 }
 
-/** Calls `window.theone[method](argument)` inside the page, doing nothing when the page has no such bridge function. */
+/** Calls `window.tesseract[method](argument)` inside the page, doing nothing when the page has no such bridge function. */
 function pageCallScript(method: string, argument: unknown): string {
-  return `(function(){var t=window.theone;if(t&&typeof t.${method}==="function"){t.${method}(${JSON.stringify(argument)});}})();true;`;
+  return `(function(){var t=window.tesseract;if(t&&typeof t.${method}==="function"){t.${method}(${JSON.stringify(argument)});}})();true;`;
 }
 
 export function reconnectScript(ticket: string): string {

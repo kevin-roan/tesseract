@@ -1,4 +1,4 @@
-import type { AgentRun, InboxItem } from "@theone/protocol";
+import type { AgentRun, InboxItem } from "@tesseract/protocol";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { describeError } from "../../../app/connection";
 import { useApiClient, useApiQuery } from "../../../app/data";

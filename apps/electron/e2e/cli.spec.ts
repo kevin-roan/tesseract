@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
 import { expect, test } from "@playwright/test";
-import { buildPairingLink } from "@theone/protocol";
+import { buildPairingLink } from "@tesseract/protocol";
 import manifest from "../package.json" with { type: "json" };
 import { EXIT } from "../cli/types.ts";
 import {
@@ -76,18 +76,18 @@ test.afterEach(() => home?.dispose());
 const run = (...args: string[]) => runCli(cli.path, args, home.env);
 
 function withoutDockerEnv(): NodeJS.ProcessEnv {
-  return { ...home.env, PATH: home.bin, DOCKER_HOST: "unix:///nonexistent/monolith-test.sock" };
+  return { ...home.env, PATH: home.bin, DOCKER_HOST: "unix:///nonexistent/tesseract-test.sock" };
 }
 
 test.describe("version and help", () => {
   test("prints the package version", async () => {
     const json = await run("version", "--json");
     expect(json.code).toBe(EXIT.ok);
-    expect(parseJson(json)).toEqual({ name: "monolith", version: manifest.version, platform: process.platform, arch: HOST_ARCH });
+    expect(parseJson(json)).toEqual({ name: "tesseract", version: manifest.version, platform: process.platform, arch: HOST_ARCH });
     for (const args of [["version"], ["--version"]]) {
       const human = await run(...args);
       expect(human.code).toBe(EXIT.ok);
-      expect(human.stdout.trim()).toBe(`monolith ${manifest.version}`);
+      expect(human.stdout.trim()).toBe(`tesseract ${manifest.version}`);
     }
   });
 
@@ -99,7 +99,7 @@ test.describe("version and help", () => {
     }
     const config = await run("config", "--help");
     expect(config.code).toBe(EXIT.ok);
-    expect(config.stdout).toContain("monolith config set <key> <value>");
+    expect(config.stdout).toContain("tesseract config set <key> <value>");
   });
 });
 
@@ -140,7 +140,7 @@ test.describe("error codes", () => {
     expect(parseJson<ErrorBody>(result).error.code).toBe("not_found");
     const human = await run("config", "get", "name");
     expect(human.code).toBe(EXIT.error);
-    expect(human.stderr).toMatch(/^monolith: /);
+    expect(human.stderr).toMatch(/^tesseract: /);
   });
 
   test(`missing Docker exits ${EXIT.error} with unavailable`, async () => {
@@ -183,7 +183,7 @@ test.describe("config", () => {
   });
 
   test("redacts the token unless --reveal", async () => {
-    const link = buildPairingLink({ url: UNREACHABLE_URL, token: TEST_TOKEN, name: "monolith-test" });
+    const link = buildPairingLink({ url: UNREACHABLE_URL, token: TEST_TOKEN, name: "tesseract-test" });
     expect((await run("config", "set", "link", link)).code).toBe(EXIT.ok);
     expect(parseJson(await run("config", "get", "url", "--json"))).toBe(UNREACHABLE_URL);
     expect(parseJson(await run("config", "get", "token", "--json"))).not.toBe(TEST_TOKEN);
@@ -285,12 +285,12 @@ test.describe("sandbox status", () => {
     expect(result.code, result.stderr).toBe(EXIT.ok);
     const status = parseJson<StatusBody>(result);
     expect(status.configured).toBe(true);
-    expect(status.project.startsWith("monolith-test-")).toBe(true);
+    expect(status.project.startsWith("tesseract-test-")).toBe(true);
     expect(status.services).toEqual([]);
   });
 
   test("reports the e2e stack", async () => {
-    test.skip(!E2E_STACK.url || !E2E_STACK.envFile, "THEONE_E2E_URL is not set");
+    test.skip(!E2E_STACK.url || !E2E_STACK.envFile, "TESSERACT_E2E_URL is not set");
     writeConfig(home.configFile, {
       sandboxStack: { envFile: E2E_STACK.envFile, project: E2E_STACK.project, image: E2E_STACK.image, mode: "local", components: [] },
     });
@@ -308,13 +308,13 @@ test.describe("sandbox status", () => {
 test.describe("pair", () => {
   test("prints the saved connection", async () => {
     isolatedStackEnv(home.userData);
-    const link = buildPairingLink({ url: UNREACHABLE_URL, token: TEST_TOKEN, name: "monolith-test" });
+    const link = buildPairingLink({ url: UNREACHABLE_URL, token: TEST_TOKEN, name: "tesseract-test" });
     expect((await run("config", "set", "link", link)).code).toBe(EXIT.ok);
 
     const json = await run("pair", "--json");
     expect(json.code, json.stderr).toBe(EXIT.ok);
     const info = parseJson<PairBody>(json);
-    expect(info).toEqual({ link, url: UNREACHABLE_URL, name: "monolith-test", local: true });
+    expect(info).toEqual({ link, url: UNREACHABLE_URL, name: "tesseract-test", local: true });
 
     const plain = await run("pair", "--no-qr");
     expect(plain.code).toBe(EXIT.ok);
@@ -335,14 +335,14 @@ test.describe("pair", () => {
   });
 
   test("pairs with the e2e stack", async () => {
-    test.skip(!E2E_STACK.url || !E2E_STACK.envFile, "THEONE_E2E_URL is not set");
+    test.skip(!E2E_STACK.url || !E2E_STACK.envFile, "TESSERACT_E2E_URL is not set");
     writeConfig(home.configFile, {
       sandboxStack: { envFile: E2E_STACK.envFile, project: E2E_STACK.project, image: E2E_STACK.image, mode: "local", components: [] },
     });
     const result = await run("pair", "--json");
     expect(result.code, result.stderr).toBe(EXIT.ok);
     const info = parseJson<PairBody>(result);
-    expect(info.link).toMatch(/^theone:\/\/pair\?/);
+    expect(info.link).toMatch(/^tesseract:\/\/pair\?/);
     expect(info.link).toContain(encodeURIComponent(E2E_STACK.token));
     expect(new URL(info.url).port).toBe(new URL(E2E_STACK.url).port);
     expect(info.local).toBe(true);
@@ -353,8 +353,8 @@ test.describe("open", () => {
   test.skip(process.platform === "win32", "the launch recorders are POSIX shell scripts");
 
   test("launches the app on the requested page", async () => {
-    const app = writeRecorder(home.bin, "monolith-app");
-    const env = { ...home.env, MONOLITH_APP_PATH: app.path };
+    const app = writeRecorder(home.bin, "tesseract-app");
+    const env = { ...home.env, TESSERACT_APP_PATH: app.path };
     const result = await runCli(cli.path, ["open", "agents", "--json"], env);
     expect(result.code, result.stderr).toBe(EXIT.ok);
     expect(parseJson(result)).toEqual({ via: "app", target: app.path, page: "agents" });
@@ -365,20 +365,20 @@ test.describe("open", () => {
     expect(human.stdout).toContain(app.path);
   });
 
-  test("falls back to the monolith:// link", async () => {
+  test("falls back to the tesseract:// link", async () => {
     test.skip(process.platform !== "linux", "xdg-open is the Linux opener");
-    test.skip(existsSync("/opt/Monolith/monolith-desktop"), "an installed Monolith app would be launched");
+    test.skip(existsSync("/opt/Tesseract/tesseract-desktop"), "an installed Tesseract app would be launched");
     const opener = writeRecorder(home.bin, "xdg-open");
     const env = { ...home.env, PATH: [home.bin, process.env.PATH ?? ""].join(delimiter) };
     const result = await runCli(cli.path, ["open", "terminals", "--json"], env);
     expect(result.code, result.stderr).toBe(EXIT.ok);
-    expect(parseJson(result)).toEqual({ via: "link", target: "monolith://terminals", page: "terminals" });
-    expect((await waitForFile(opener.log)).trim()).toBe("monolith://terminals");
+    expect(parseJson(result)).toEqual({ via: "link", target: "tesseract://terminals", page: "terminals" });
+    expect((await waitForFile(opener.log)).trim()).toBe("tesseract://terminals");
   });
 
   test(`exits ${EXIT.error} when nothing can open the app`, async () => {
     test.skip(process.platform !== "linux", "the opener lookup is Linux specific");
-    test.skip(existsSync("/opt/Monolith/monolith-desktop"), "an installed Monolith app would be launched");
+    test.skip(existsSync("/opt/Tesseract/tesseract-desktop"), "an installed Tesseract app would be launched");
     const result = await runCli(cli.path, ["open", "--json"], { ...home.env, PATH: home.bin });
     expect(result.code).toBe(EXIT.error);
     expect(parseJson<ErrorBody>(result).error.code).toBe("not_found");

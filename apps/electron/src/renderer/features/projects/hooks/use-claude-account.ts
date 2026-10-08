@@ -1,4 +1,4 @@
-import type { ClaudeAccountList, Project } from "@theone/protocol";
+import type { ClaudeAccountList, Project } from "@tesseract/protocol";
 import { useCallback, useState } from "react";
 import { describeError, useConnectionClient } from "../../../app/connection";
 import { showToast } from "../../../components/Toast";

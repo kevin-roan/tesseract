@@ -4,7 +4,7 @@ import {
   type CreateTerminal,
   type TerminalInfo,
   type TerminalServerMessage,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { errorMessage, notFound, unavailable } from "../core/errors";
 import { childEnv, resolveExecutable } from "../core/exec";
 import { locateProject } from "../core/paths";
@@ -130,7 +130,7 @@ export class TerminalService {
           TERM: "xterm-256color",
           COLORTERM: "truecolor",
           LANG: process.env.LANG ?? "C.UTF-8",
-          THEONE_TERMINAL_ID: info.id,
+          TESSERACT_TERMINAL_ID: info.id,
         },
         terminal: {
           cols: input.cols,

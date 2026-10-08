@@ -7,7 +7,7 @@ import {
   sampleProject,
   sampleStatusEvent,
   sampleTerminal,
-} from "@theone/protocol/fixtures";
+} from "@tesseract/protocol/fixtures";
 
 import AgentsScreen from "@/app/(tabs)/agents";
 import ProfileScreen from "@/app/(tabs)/profile";

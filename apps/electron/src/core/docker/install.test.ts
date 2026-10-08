@@ -29,7 +29,7 @@ function fakeFetch(routes: Record<string, string | Buffer>): typeof fetch {
 }
 
 async function install(request: DockerInstallRequest, options: FakeSystemOptions, host: Partial<DockerHost> = LINUX) {
-  const dir = mkdtempSync(join(tmpdir(), "monolith-test-docker-install-"));
+  const dir = mkdtempSync(join(tmpdir(), "tesseract-test-docker-install-"));
   dirs.push(dir);
   const system: FakeSystem = fakeSystem(options);
   const phases: DockerPhase[] = [];
@@ -90,7 +90,7 @@ describe("installDocker on Linux", () => {
     const unknown = await install(engine(), { binaries: { pkexec: "/usr/bin/pkexec" }, files: { "/etc/os-release": OS_RELEASE_VOID } });
     expect(unknown.result).toMatchObject({
       kind: "blocked",
-      reason: "Monolith can't install Docker on this system automatically. Run the commands below in a terminal.",
+      reason: "Tesseract can't install Docker on this system automatically. Run the commands below in a terminal.",
     });
     expect(unknown.result).toHaveProperty("commands");
   });
@@ -214,7 +214,7 @@ describe("installDocker on Windows", () => {
 
 describe("isCompleteGetDockerScript", () => {
   it("accepts only a script with the shebang and the final do_install call", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "monolith-test-get-docker-"));
+    const dir = mkdtempSync(join(tmpdir(), "tesseract-test-get-docker-"));
     dirs.push(dir);
     const full = join(dir, "full.sh");
     const truncated = join(dir, "truncated.sh");

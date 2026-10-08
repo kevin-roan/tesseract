@@ -1,7 +1,7 @@
 import pytest
 
-from monolith_desktop.widgets.charts.animation import Tween
-from monolith_desktop.widgets.charts.scale import (
+from tesseract_desktop.widgets.charts.animation import Tween
+from tesseract_desktop.widgets.charts.scale import (
     bezier_controls,
     crisp,
     monotone_tangents,

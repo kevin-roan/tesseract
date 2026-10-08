@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { ErrorBodySchema, LIMITS, TranscriptionSchema, UploadSchema, type ServerEvent, type Upload } from "@theone/protocol";
+import { ErrorBodySchema, LIMITS, TranscriptionSchema, UploadSchema, type ServerEvent, type Upload } from "@tesseract/protocol";
 import { loadConfig } from "../src/config";
 import { HttpError } from "../src/core/errors";
 import { EventHub } from "../src/core/events";
@@ -110,10 +110,10 @@ describe("uploads over HTTP", () => {
     const created = await upload({ name: "../notes/Screen Shot.png", mimeType: "image/png", data: b64("fake png bytes") });
     expect(created).toMatchObject({ name: "Screen Shot.png", mimeType: "image/png", kind: "image", sizeBytes: 14 });
     expect(created.id).toStartWith("upl_");
-    expect(created.path).toBe(join(t.workspace, ".theone", "uploads", created.id, "Screen Shot.png"));
+    expect(created.path).toBe(join(t.workspace, ".tesseract", "uploads", created.id, "Screen Shot.png"));
     expect(statSync(created.path).mode & 0o777).toBe(0o600);
     expect(statSync(dirname(created.path)).mode & 0o777).toBe(0o700);
-    expect(statSync(join(t.workspace, ".theone", "uploads")).mode & 0o777).toBe(0o700);
+    expect(statSync(join(t.workspace, ".tesseract", "uploads")).mode & 0o777).toBe(0o700);
 
     const content = await t.request("GET", `/v1/uploads/${created.id}/content`);
     expect(content.status).toBe(200);
@@ -163,7 +163,7 @@ describe("uploads over HTTP", () => {
 
 describe("UploadService", () => {
   test("prunes old uploads with their files", async () => {
-    const config = loadConfig({ THEONE_WORKSPACE: makeTempDir("prune") });
+    const config = loadConfig({ TESSERACT_WORKSPACE: makeTempDir("prune") });
     const repos = new Repositories(openDatabase(":memory:"));
     const uploads = new UploadService(config, repos, silentLogger);
     const old = await uploads.create({ name: "old.txt", mimeType: "text/plain", data: b64("old") });
@@ -196,42 +196,42 @@ describe("transcription helpers", () => {
 });
 
 describe("engine selection", () => {
-  const base = (env: Record<string, string>) => loadConfig({ THEONE_WORKSPACE: "/w", THEONE_WHISPER_MODELS_DIR: "/nonexistent/models", ...env });
-  const auto = { THEONE_STT_ENGINE: "auto" };
+  const base = (env: Record<string, string>) => loadConfig({ TESSERACT_WORKSPACE: "/w", TESSERACT_WHISPER_MODELS_DIR: "/nonexistent/models", ...env });
+  const auto = { TESSERACT_STT_ENGINE: "auto" };
   const found = (bin: string) => `/usr/bin/${bin}`;
   const missing = () => null;
 
   test("auto prefers whisper.cpp, then an OpenAI-compatible service, else explains what to set", () => {
     const model = join(makeTempDir("model"), "ggml-base.bin");
     writeFileSync(model, "model");
-    const remote = { ...auto, THEONE_STT_URL: "https://api.groq.com/openai/v1/", THEONE_STT_API_KEY: "sk-test" };
-    expect(selectEngine(base({ THEONE_WHISPER_MODEL: model, ...remote }), { which: found }).name).toBe("whisper.cpp");
-    expect(selectEngine(base({ THEONE_WHISPER_MODEL: model, ...remote }), { which: missing }).name).toBe("openai-compatible");
-    expect(selectEngine(base({ THEONE_WHISPER_MODEL: "/nonexistent/model.bin", ...remote }), { which: found }).name).toBe("openai-compatible");
-    const unconfigured = httpCode(() => selectEngine(base({ ...auto, THEONE_STT_URL: "https://api.openai.com/v1" }), { which: found }));
+    const remote = { ...auto, TESSERACT_STT_URL: "https://api.groq.com/openai/v1/", TESSERACT_STT_API_KEY: "sk-test" };
+    expect(selectEngine(base({ TESSERACT_WHISPER_MODEL: model, ...remote }), { which: found }).name).toBe("whisper.cpp");
+    expect(selectEngine(base({ TESSERACT_WHISPER_MODEL: model, ...remote }), { which: missing }).name).toBe("openai-compatible");
+    expect(selectEngine(base({ TESSERACT_WHISPER_MODEL: "/nonexistent/model.bin", ...remote }), { which: found }).name).toBe("openai-compatible");
+    const unconfigured = httpCode(() => selectEngine(base({ ...auto, TESSERACT_STT_URL: "https://api.openai.com/v1" }), { which: found }));
     expect(unconfigured).toStartWith("unavailable: Speech-to-text is not configured");
-    expect(unconfigured).toContain("THEONE_WHISPER_MODELS_DIR");
-    expect(unconfigured).toContain("THEONE_STT_API_KEY");
+    expect(unconfigured).toContain("TESSERACT_WHISPER_MODELS_DIR");
+    expect(unconfigured).toContain("TESSERACT_STT_API_KEY");
   });
 
   test("explicit engines report what is missing; none disables speech-to-text", () => {
-    expect(httpCode(() => selectEngine(base({ THEONE_STT_ENGINE: "none" }), { which: found }))).toContain("THEONE_STT_ENGINE=none");
-    const whisper = httpCode(() => selectEngine(base({ THEONE_STT_ENGINE: "whisper.cpp" }), { which: (bin) => (bin === "ffmpeg" ? null : found(bin)) }));
+    expect(httpCode(() => selectEngine(base({ TESSERACT_STT_ENGINE: "none" }), { which: found }))).toContain("TESSERACT_STT_ENGINE=none");
+    const whisper = httpCode(() => selectEngine(base({ TESSERACT_STT_ENGINE: "whisper.cpp" }), { which: (bin) => (bin === "ffmpeg" ? null : found(bin)) }));
     expect(whisper).toBe(
-      "unavailable: whisper.cpp speech-to-text is missing ffmpeg (THEONE_FFMPEG_BIN), the model /nonexistent/models/ggml-base.bin (THEONE_WHISPER_MODELS_DIR) or a fallback model (THEONE_WHISPER_MODEL)",
+      "unavailable: whisper.cpp speech-to-text is missing ffmpeg (TESSERACT_FFMPEG_BIN), the model /nonexistent/models/ggml-base.bin (TESSERACT_WHISPER_MODELS_DIR) or a fallback model (TESSERACT_WHISPER_MODEL)",
     );
     expect(httpCode(() => selectEngine(base({}), { which: found }, "off"))).toBe(`unavailable: ${STT_OFF_MESSAGE}`);
-    expect(httpCode(() => selectEngine(base({ THEONE_STT_URL: "https://api.openai.com/v1", THEONE_STT_API_KEY: "sk" }), { which: found }))).toContain(
+    expect(httpCode(() => selectEngine(base({ TESSERACT_STT_URL: "https://api.openai.com/v1", TESSERACT_STT_API_KEY: "sk" }), { which: found }))).toContain(
       "whisper.cpp speech-to-text is missing",
     );
-    expect(httpCode(() => selectEngine(base({ THEONE_STT_ENGINE: "openai-compatible" }), { which: found }))).toContain("THEONE_STT_URL");
-    expect(selectEngine(base({ THEONE_STT_ENGINE: "openai-compatible", THEONE_STT_URL: "http://127.0.0.1:9000/v1" }), { which: found }).name).toBe(
+    expect(httpCode(() => selectEngine(base({ TESSERACT_STT_ENGINE: "openai-compatible" }), { which: found }))).toContain("TESSERACT_STT_URL");
+    expect(selectEngine(base({ TESSERACT_STT_ENGINE: "openai-compatible", TESSERACT_STT_URL: "http://127.0.0.1:9000/v1" }), { which: found }).name).toBe(
       "openai-compatible",
     );
   });
 
   test("config validates the STT variables", () => {
-    expect(loadConfig({ THEONE_WORKSPACE: "/w" }).stt).toEqual({
+    expect(loadConfig({ TESSERACT_WORKSPACE: "/w" }).stt).toEqual({
       engine: "whisper.cpp",
       profile: "eco",
       whisperBin: "whisper-cli",
@@ -242,18 +242,18 @@ describe("engine selection", () => {
       model: "whisper-1",
       geminiModel: "gemini-2.5-flash",
     });
-    expect(base({ GEMINI_API_KEY: "AIza-key", THEONE_GEMINI_STT_MODEL: "gemini-2.5-pro" }).stt).toEqual(expect.not.objectContaining({ geminiApiKey: expect.anything() }));
-    expect(base({ THEONE_GEMINI_STT_MODEL: "gemini-2.5-pro" }).stt.geminiModel).toBe("gemini-2.5-pro");
-    expect(() => base({ THEONE_GEMINI_STT_MODEL: "bad model" })).toThrow("THEONE_GEMINI_STT_MODEL");
-    expect(base({ THEONE_STT_PROFILE: "performance" }).stt.profile).toBe("performance");
-    expect(() => base({ THEONE_STT_PROFILE: "turbo" })).toThrow("THEONE_STT_PROFILE");
-    expect(() => base({ THEONE_WHISPER_MODELS_DIR: "models" })).toThrow("THEONE_WHISPER_MODELS_DIR");
-    expect(base({ THEONE_STT_URL: "https://api.openai.com/v1/" }).stt.url).toBe("https://api.openai.com/v1");
-    expect(() => base({ THEONE_STT_ENGINE: "vosk" })).toThrow("THEONE_STT_ENGINE");
-    expect(() => base({ THEONE_STT_URL: "ftp://x" })).toThrow("THEONE_STT_URL");
-    expect(() => base({ THEONE_STT_URL: "https://user:pw@x" })).toThrow("THEONE_STT_URL");
-    expect(() => base({ THEONE_WHISPER_MODEL: "models/base.bin" })).toThrow("THEONE_WHISPER_MODEL");
-    expect(() => base({ THEONE_STT_MODEL: "bad model" })).toThrow("THEONE_STT_MODEL");
+    expect(base({ GEMINI_API_KEY: "AIza-key", TESSERACT_GEMINI_STT_MODEL: "gemini-2.5-pro" }).stt).toEqual(expect.not.objectContaining({ geminiApiKey: expect.anything() }));
+    expect(base({ TESSERACT_GEMINI_STT_MODEL: "gemini-2.5-pro" }).stt.geminiModel).toBe("gemini-2.5-pro");
+    expect(() => base({ TESSERACT_GEMINI_STT_MODEL: "bad model" })).toThrow("TESSERACT_GEMINI_STT_MODEL");
+    expect(base({ TESSERACT_STT_PROFILE: "performance" }).stt.profile).toBe("performance");
+    expect(() => base({ TESSERACT_STT_PROFILE: "turbo" })).toThrow("TESSERACT_STT_PROFILE");
+    expect(() => base({ TESSERACT_WHISPER_MODELS_DIR: "models" })).toThrow("TESSERACT_WHISPER_MODELS_DIR");
+    expect(base({ TESSERACT_STT_URL: "https://api.openai.com/v1/" }).stt.url).toBe("https://api.openai.com/v1");
+    expect(() => base({ TESSERACT_STT_ENGINE: "vosk" })).toThrow("TESSERACT_STT_ENGINE");
+    expect(() => base({ TESSERACT_STT_URL: "ftp://x" })).toThrow("TESSERACT_STT_URL");
+    expect(() => base({ TESSERACT_STT_URL: "https://user:pw@x" })).toThrow("TESSERACT_STT_URL");
+    expect(() => base({ TESSERACT_WHISPER_MODEL: "models/base.bin" })).toThrow("TESSERACT_WHISPER_MODEL");
+    expect(() => base({ TESSERACT_STT_MODEL: "bad model" })).toThrow("TESSERACT_STT_MODEL");
   });
 });
 
@@ -290,7 +290,7 @@ describe("transcriptions over HTTP", () => {
       },
     });
     t = await startTestController({
-      env: { THEONE_STT_ENGINE: "auto", THEONE_STT_URL: `http://127.0.0.1:${provider.port}/openai/v1`, THEONE_STT_API_KEY: "sk-secret-key", THEONE_STT_MODEL: "whisper-large-v3" },
+      env: { TESSERACT_STT_ENGINE: "auto", TESSERACT_STT_URL: `http://127.0.0.1:${provider.port}/openai/v1`, TESSERACT_STT_API_KEY: "sk-secret-key", TESSERACT_STT_MODEL: "whisper-large-v3" },
       controller: { transcription: sttOptions },
     });
   });
@@ -379,11 +379,11 @@ describe("transcriptions over HTTP", () => {
 
   test("the service surfaces unavailable engines as 503", async () => {
     const repos = new Repositories(openDatabase(":memory:"));
-    const config = loadConfig({ THEONE_WORKSPACE: makeTempDir("stt-none"), THEONE_STT_ENGINE: "none" });
+    const config = loadConfig({ TESSERACT_WORKSPACE: makeTempDir("stt-none"), TESSERACT_STT_ENGINE: "none" });
     const uploads = new UploadService(config, repos, silentLogger);
     const voice = await uploads.create({ name: "v.m4a", mimeType: "audio/mp4", data: b64("x") });
     const service = new TranscriptionService(config, uploads, repos, new EventHub(silentLogger), silentLogger);
-    expect(await asyncCode(() => service.transcribe({ uploadId: voice.id }))).toBe("unavailable: Speech-to-text is disabled (THEONE_STT_ENGINE=none)");
+    expect(await asyncCode(() => service.transcribe({ uploadId: voice.id }))).toBe("unavailable: Speech-to-text is disabled (TESSERACT_STT_ENGINE=none)");
   });
 });
 
@@ -409,7 +409,7 @@ describe("gemini transcriptions", () => {
     model = join(bin, "ggml-test.bin");
     writeFileSync(model, "native words");
     t = await startTestController({
-      env: { THEONE_WHISPER_MODEL: model, THEONE_GEMINI_STT_MODEL: "gemini-test" },
+      env: { TESSERACT_WHISPER_MODEL: model, TESSERACT_GEMINI_STT_MODEL: "gemini-test" },
       controller: { transcription: sttOptions },
     });
     await t.json("PUT", "/v1/stt", { geminiApiKey: "AIza-secret" });
@@ -529,7 +529,7 @@ describe("gemini transcriptions", () => {
     await t.stop();
     t = await startTestController({
       workspace: t.workspace,
-      env: { THEONE_WHISPER_MODEL: model, THEONE_GEMINI_STT_MODEL: "gemini-test" },
+      env: { TESSERACT_WHISPER_MODEL: model, TESSERACT_GEMINI_STT_MODEL: "gemini-test" },
       controller: { transcription: sttOptions },
     });
     expect((await t.json("GET", "/v1/stt")).body).toMatchObject({ gemini: { configured: true, source: "settings" } });

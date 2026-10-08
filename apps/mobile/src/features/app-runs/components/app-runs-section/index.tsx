@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from "react";
-import type { AppRun } from "@theone/protocol";
+import type { AppRun } from "@tesseract/protocol";
 
 import MotionItem from "@/components/motion-item";
 import Notice from "@/components/notice";

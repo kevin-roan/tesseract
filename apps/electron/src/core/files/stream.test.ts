@@ -23,7 +23,7 @@ function sha(text: string): string {
 
 describe("streamToFile", () => {
   it("writes through a part file and renames it when the checksum matches", async () => {
-    dir = mkdtempSync(join(tmpdir(), "monolith-test-files-"));
+    dir = mkdtempSync(join(tmpdir(), "tesseract-test-files-"));
     const path = join(dir, "app.apk");
     const progress: number[] = [];
     const size = await streamToFile({ body: body(["ab", "cd"]), path, expectedSha256: sha("abcd").toUpperCase(), onProgress: (n) => progress.push(n) });
@@ -34,7 +34,7 @@ describe("streamToFile", () => {
   });
 
   it("keeps an existing file and removes the part when the checksum fails", async () => {
-    dir = mkdtempSync(join(tmpdir(), "monolith-test-files-"));
+    dir = mkdtempSync(join(tmpdir(), "tesseract-test-files-"));
     const path = join(dir, "app.apk");
     writeFileSync(path, "old");
     await expect(streamToFile({ body: body(["new"]), path, expectedSha256: sha("other") })).rejects.toBeInstanceOf(ChecksumMismatchError);
@@ -43,7 +43,7 @@ describe("streamToFile", () => {
   });
 
   it("removes the part file when the stream errors", async () => {
-    dir = mkdtempSync(join(tmpdir(), "monolith-test-files-"));
+    dir = mkdtempSync(join(tmpdir(), "tesseract-test-files-"));
     const path = join(dir, "out.bin");
     const broken = new ReadableStream<Uint8Array>({
       pull(controller) {

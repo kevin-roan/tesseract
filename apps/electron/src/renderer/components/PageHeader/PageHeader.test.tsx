@@ -13,11 +13,11 @@ describe("PageHeader", () => {
   it("renders the parent breadcrumb and the back button", () => {
     const onBack = vi.fn();
     const onParentClick = vi.fn();
-    render(<PageHeader title="monolith" parent="Projects" onBack={onBack} onParentClick={onParentClick} controls={false} />);
+    render(<PageHeader title="tesseract" parent="Projects" onBack={onBack} onParentClick={onParentClick} controls={false} />);
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     fireEvent.click(screen.getByRole("button", { name: "Projects" }));
     expect(onBack).toHaveBeenCalledOnce();
     expect(onParentClick).toHaveBeenCalledOnce();
-    expect(screen.getByText("monolith")).toBeTruthy();
+    expect(screen.getByText("tesseract")).toBeTruthy();
   });
 });

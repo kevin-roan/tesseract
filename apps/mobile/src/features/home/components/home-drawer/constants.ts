@@ -9,7 +9,7 @@ import {
   type Icon,
 } from "phosphor-react-native";
 
-export const DRAWER_TITLE = "Monolith";
+export const DRAWER_TITLE = "Tesseract";
 export const DRAWER_RECENTS_TITLE = "Recents";
 export const DRAWER_ALL_CHATS_LABEL = "All chats";
 export const DRAWER_SETTINGS_LABEL = "Open settings";

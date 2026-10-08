@@ -1,4 +1,4 @@
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 
 import type { StatusBadgeProps } from "@/components/status-badge";
 import { agentRunMeta } from "@/features/sandbox/utils/describe";

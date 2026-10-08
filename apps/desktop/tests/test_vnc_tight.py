@@ -3,10 +3,10 @@ import zlib
 
 import pytest
 
-from monolith_desktop.vnc.pixels import cursor_bgra, expand_bits, gradient_to_rgb, palette_to_bgrx, rgb_to_bgrx
-from monolith_desktop.vnc.protocol import Encoding, RfbError
-from monolith_desktop.vnc.reader import NeedMore, Reader
-from monolith_desktop.vnc.tight import encode_compact_length, read_compact_length
+from tesseract_desktop.vnc.pixels import cursor_bgra, expand_bits, gradient_to_rgb, palette_to_bgrx, rgb_to_bgrx
+from tesseract_desktop.vnc.protocol import Encoding, RfbError
+from tesseract_desktop.vnc.reader import NeedMore, Reader
+from tesseract_desktop.vnc.tight import encode_compact_length, read_compact_length
 
 from test_vnc_client import connected, pixel_at, px, rect, update
 
@@ -175,7 +175,7 @@ def test_tight_bad_filter_and_control():
 
 
 def test_quality_encoding_only_with_decoder():
-    from monolith_desktop.vnc.client import encodings_for
+    from tesseract_desktop.vnc.client import encodings_for
 
     assert -26 in encodings_for(6)
     assert all(not -32 <= e <= -23 for e in encodings_for(None))

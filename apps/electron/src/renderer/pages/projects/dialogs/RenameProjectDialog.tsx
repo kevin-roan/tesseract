@@ -1,4 +1,4 @@
-import type { Project } from "@theone/protocol";
+import type { Project } from "@tesseract/protocol";
 import { useEffect } from "react";
 import { FieldGroup, FormDialog, TitleEntry } from "../../../components/FormDialog";
 import { PROJECTS_ICONS, PROJECTS_ROOT, RENAME_DIALOG_WIDTH } from "../../../features/projects/constants";

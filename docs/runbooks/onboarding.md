@@ -1,6 +1,6 @@
-# Set up Monolith on your computer
+# Set up Tesseract on your computer
 
-Monolith runs Claude Code and your builds in a Docker sandbox on this computer, and lets
+Tesseract runs Claude Code and your builds in a Docker sandbox on this computer, and lets
 you follow them from your phone. The first time you open it, a setup wizard (like
 Android Studio's) takes the computer from nothing to a running sandbox, an optional
 Android emulator and a paired phone. Plan for about an hour; most of it is the first
@@ -23,14 +23,14 @@ The Android emulator runs on Linux x64, macOS (Apple silicon and Intel) and Wind
 Google doesn't publish it for Linux on ARM or Windows on ARM; there the Android step is
 skipped and everything else works.
 
-## 1. Install Monolith
+## 1. Install Tesseract
 
 | OS | File | How |
 |---|---|---|
-| macOS | `Monolith-<version>-universal.dmg` | open it, drag **Monolith** to **Applications**, start it from there |
-| Windows | `Monolith-<version>-x64.exe` | run it; it installs for your user only (no admin prompt) and starts Monolith |
-| Debian / Ubuntu | `Monolith-<version>-amd64.deb` | `sudo apt install ./Monolith-<version>-amd64.deb` |
-| Other Linux | `Monolith-<version>-x86_64.AppImage` | `chmod +x Monolith-*.AppImage` and run it (AppImages need FUSE 2, e.g. `libfuse2`) |
+| macOS | `Tesseract-<version>-universal.dmg` | open it, drag **Tesseract** to **Applications**, start it from there |
+| Windows | `Tesseract-<version>-x64.exe` | run it; it installs for your user only (no admin prompt) and starts Tesseract |
+| Debian / Ubuntu | `Tesseract-<version>-amd64.deb` | `sudo apt install ./Tesseract-<version>-amd64.deb` |
+| Other Linux | `Tesseract-<version>-x86_64.AppImage` | `chmod +x Tesseract-*.AppImage` and run it (AppImages need FUSE 2, e.g. `libfuse2`) |
 
 Every installer also ships the `tesseract` command; see
 [tesseract-cli.md](tesseract-cli.md#install) for how it lands on your `PATH`.
@@ -40,20 +40,20 @@ Every installer also ships the `tesseract` command; see
 The wizard opens instead of the main window on first run. It does **not** open when setup
 was finished before, or when a sandbox connection is already saved (on Linux the settings
 file is shared with the GTK desktop app, so its connection counts) or set through
-`MONOLITH_DESKTOP_URL` + `THEONE_TOKEN`. If a sandbox already runs on this computer
+`TESSERACT_DESKTOP_URL` + `TESSERACT_TOKEN`. If a sandbox already runs on this computer
 (e.g. from the repository's `bun run sandbox up`) but no connection is saved, the app
 looks for it through Docker first (for up to 2.5 seconds): when its controller answers,
 the app saves it as the connection, marks setup as done and opens the main window
 without the wizard. If that lookup finds nothing in time, the wizard opens, and its
-Sandbox step can still find the sandbox and offer **Use it**. `MONOLITH_DISABLE_DISCOVERY=1`
+Sandbox step can still find the sandbox and offer **Use it**. `TESSERACT_DISABLE_DISCOVERY=1`
 turns the lookup off (the tests set it). The step rail on the left shows where you are;
 each step can be revisited. Setup remembers the current step, so after a log-out or a
 restart it continues where you left off.
 
-To run it again later: **Settings › Connection › Set up Monolith…**, **Settings › Sandbox ›
+To run it again later: **Settings › Connection › Set up Tesseract…**, **Settings › Sandbox ›
 Set up…** (or **Open setup** when Docker needs attention), the command palette
-(`Ctrl+K` / `⌘K`, "Run the setup wizard"), or the link `monolith://setup` (also
-`monolith://onboarding/<step>`).
+(`Ctrl+K` / `⌘K`, "Run the setup wizard"), or the link `tesseract://setup` (also
+`tesseract://onboarding/<step>`).
 
 ### Welcome
 
@@ -63,7 +63,7 @@ Android emulator isn't available for it). Warnings don't block. Click **Get star
 
 ### Docker
 
-The sandbox is a Docker container, so Monolith needs a running Docker engine with
+The sandbox is a Docker container, so Tesseract needs a running Docker engine with
 Compose 2.24+ and BuildKit (buildx). The checks run one after another; the refresh button
 (**Check again**) runs them again.
 
@@ -81,7 +81,7 @@ Compose 2.24+ and BuildKit (buildx). The checks run one after another; the refre
 | Virtualization (Windows) | yes | virtualization is on in the BIOS/UEFI |
 | Podman | refused | Podman isn't supported: the sandbox needs Compose 2.24+ features and BuildKit cache mounts |
 
-Before probing, Monolith adds the usual Docker locations to its own `PATH`
+Before probing, Tesseract adds the usual Docker locations to its own `PATH`
 (`/usr/local/bin`, `/opt/homebrew/bin`, `~/.docker/bin`, Docker.app's `bin`, `~/.orbstack/bin`
 on macOS; Docker Desktop's `resources\bin` on Windows; `/usr/bin`, `/usr/local/bin`,
 `~/bin` on Linux), because apps started from Finder, the Start menu or a launcher get a
@@ -98,7 +98,7 @@ When something fails the row has an action:
 
 Being in the `docker` group (Linux) or `docker-users` (Windows) gives root-level /
 administrator-level control of the computer. That is how Docker works, not something
-Monolith adds.
+Tesseract adds.
 
 #### macOS
 
@@ -107,9 +107,9 @@ instructions).
 
 1. Tick **I accept the Docker Subscription Service Agreement** (**Read the agreement** opens it).
 2. **Install** downloads `Docker.dmg` for your Mac (Apple silicon or Intel; an Intel build
-   of Monolith running under Rosetta still gets the Apple-silicon DMG), with resume and a
+   of Tesseract running under Rosetta still gets the Apple-silicon DMG), with resume and a
    sha256 check against Docker's published checksums.
-3. macOS asks once for an administrator password. Monolith mounts the DMG, runs Docker's
+3. macOS asks once for an administrator password. Tesseract mounts the DMG, runs Docker's
    installer for your user with `--accept-license`, and unmounts it.
 4. It starts Docker Desktop (`open -a Docker`) and waits for the engine.
 
@@ -123,22 +123,22 @@ Options: **Docker Desktop (recommended)** (all users, asks for admin), **Docker 
 for my user only** (no admin), **I'll install it myself**.
 
 1. Tick the Docker Subscription Service Agreement.
-2. **Install**: if WSL is missing, Monolith installs it first (`wsl --install
+2. **Install**: if WSL is missing, Tesseract installs it first (`wsl --install
    --no-distribution`, UAC prompt).
 3. It downloads `Docker Desktop Installer.exe` (x64 or ARM), checks it against Docker's
    checksums when they are published, and runs `install --quiet --accept-license
    --backend=wsl-2` (all users: also `--always-run-service`, through a UAC prompt; per
    user: `--user`).
-4. Monolith starts Docker Desktop and waits for the engine. When WSL was just installed or
+4. Tesseract starts Docker Desktop and waits for the engine. When WSL was just installed or
    the installer asks for a restart (exit code 3010), you get **Restart to finish** instead:
-   restart Windows and open Monolith again; setup continues at the Docker step.
+   restart Windows and open Tesseract again; setup continues at the Docker step.
 
 If you installed for all users with another administrator account, add your own user to
 `docker-users` in an admin terminal: `net localgroup docker-users <you> /add`, then sign
 out and in.
 
 Windows 10 before 22H2 (build 19045) and Windows 11 before 23H2 (build 22631) are blocked
-with a message. Hardware virtualization must be on in the BIOS/UEFI; Monolith can't
+with a message. Hardware virtualization must be on in the BIOS/UEFI; Tesseract can't
 change that (**Learn more** opens Docker's page).
 
 #### Linux
@@ -160,8 +160,8 @@ Other distros, or no `pkexec`, or no polkit agent: the panel shows the same comm
 run in a terminal instead.
 
 After you are added to the `docker` group your current session doesn't have it yet:
-**Log out to finish** asks you to log out and back in (or restart) and open Monolith
-again. **Quit Monolith** closes it for you.
+**Log out to finish** asks you to log out and back in (or restart) and open Tesseract
+again. **Quit Tesseract** closes it for you.
 
 Starting the engine: `pkexec systemctl start docker.service` (Docker Engine),
 `systemctl --user start docker.service` (rootless), `systemctl --user start docker-desktop`
@@ -174,7 +174,7 @@ with the container (mounted, never copied). The step shows the login, account, p
 access-token expiry and settings of the first account (and how many more there are).
 
 - **Signed in**: nothing to do.
-- **Claude Code isn't set up on this computer**: Monolith creates an empty `~/.claude`
+- **Claude Code isn't set up on this computer**: Tesseract creates an empty `~/.claude`
   (mode 0700) so the sandbox can start. Install Claude Code (**Open install guide**), run
   `claude` once and sign in, then **Check again**. You can also sign in later from a
   sandbox terminal.
@@ -190,14 +190,14 @@ computer it may use. **You can rebuild with other choices later** (Settings › 
 If a sandbox already exists on this computer, a notice offers **Use it** (running) or
 **Start and use it** (stopped), which skips the build. A stopped sandbox is started with
 its own compose files (the `com.docker.compose.project.config_files` label), so the action
-is hidden when those files are gone. Monolith then waits up to 3 minutes for
-`theone-controller pair --json` inside the container to answer, saves the connection and
+is hidden when those files are gone. Tesseract then waits up to 3 minutes for
+`tesseract-controller pair --json` inside the container to answer, saves the connection and
 marks the Sandbox and Build steps done. An image without a container shows
 up as **Use the existing image**.
 
 **Image**
 
-- **Build a new image** (default): builds from the files bundled with Monolith. The first
+- **Build a new image** (default): builds from the files bundled with Tesseract. The first
   build takes 20 to 60 minutes; later builds reuse the cache.
 - **Download a prebuilt image**: only when an image reference is configured (see
   [tesseract-cli.md](tesseract-cli.md#config) `sandboxImageRef`); otherwise it reads
@@ -208,8 +208,8 @@ up as **Use the existing image**.
 
 | Choice | Effect | You enter |
 |---|---|---|
-| **This computer only** (default) | the controller listens on `127.0.0.1:7700`; phones can't reach it. Good for trying Monolith | — |
-| **Tailscale (sidecar)** | a Tailscale container joins your tailnet as `theone-sandbox`; phones connect over HTTPS | **Auth key** (`tskey-auth-…`, used once for the first login and then removed from the env file), **Tailnet domain** (e.g. `tail1234.ts.net`), **Hostname**. **How to create an auth key** opens Tailscale's admin page. See [tailscale-https-setup.md](tailscale-https-setup.md) |
+| **This computer only** (default) | the controller listens on `127.0.0.1:7700`; phones can't reach it. Good for trying Tesseract | — |
+| **Tailscale (sidecar)** | a Tailscale container joins your tailnet as `tesseract-sandbox`; phones connect over HTTPS | **Auth key** (`tskey-auth-…`, used once for the first login and then removed from the env file), **Tailnet domain** (e.g. `tail1234.ts.net`), **Hostname**. **How to create an auth key** opens Tailscale's admin page. See [tailscale-https-setup.md](tailscale-https-setup.md) |
 | **This computer's Tailscale** | the ports are published on this computer's Tailscale IPv4 | **Bind address** (filled from `tailscale ip -4`). Disabled when Tailscale isn't running. Best on Linux |
 
 **Tools in the image** (Dockerfile build arguments)
@@ -233,12 +233,12 @@ image size, rounded up to 5 GB, about 40 GB with every tool) against what is fre
 Docker Desktop the images live in Docker's own disk, so check its size in Docker Desktop ›
 Settings › Resources.
 
-**Advanced**: compose project (`theone`), image (`theone/sandbox:latest`), controller port
+**Advanced**: compose project (`tesseract`), image (`tesseract/sandbox:latest`), controller port
 (`7700`), VNC port (`5901`), Claude Code version (`latest`), Flutter version, shared Claude
 folder (default `~/.claude`), and **Docker-in-Docker** (adds a privileged `docker:dind`
 container; read [security-model.md](../architecture/security-model.md) first). The
 defaults are the same as the repository's `infra/compose/.env.example`, so a stack you
-started with `bun run sandbox up` and the one Monolith manages are the same project.
+started with `bun run sandbox up` and the one Tesseract manages are the same project.
 
 **Build** writes the settings to `<app data>/sandbox/.env` (readable only by you) and runs:
 
@@ -267,25 +267,25 @@ Android apps.
 | macOS | Hypervisor.framework | `sysctl kern.hv_support` is `1` |
 | Windows x64 | Windows Hypervisor Platform (WHPX) | the feature is installed; else run in an admin terminal `dism.exe /online /enable-feature /featurename:HypervisorPlatform /all /norestart` and restart |
 
-After the emulator is installed, Monolith also runs `emulator -accel-check` and shows its
+After the emulator is installed, Tesseract also runs `emulator -accel-check` and shows its
 message with a hint. **Learn more** opens Google's acceleration guide.
 
 **SDK location**: reuse an SDK that already has the emulator (from
-`THEONE_ANDROID_SDK_ROOT`, `ANDROID_SDK_ROOT`, `ANDROID_HOME` or Android Studio's default
-folder), or **Install a new SDK for Monolith**:
+`TESSERACT_ANDROID_SDK_ROOT`, `ANDROID_SDK_ROOT`, `ANDROID_HOME` or Android Studio's default
+folder), or **Install a new SDK for Tesseract**:
 
-| OS | Monolith's SDK |
+| OS | Tesseract's SDK |
 |---|---|
-| Linux | `~/.local/share/theone/android-sdk` (the host daemon finds it without configuration) |
-| macOS | `~/Library/Application Support/Monolith/android-sdk` |
-| Windows | `%LOCALAPPDATA%\Monolith\android-sdk` |
+| Linux | `~/.local/share/tesseract/android-sdk` (the host daemon finds it without configuration) |
+| macOS | `~/Library/Application Support/Tesseract/android-sdk` |
+| Windows | `%LOCALAPPDATA%\Tesseract\android-sdk` |
 
 **SDK packages**: Google's package list (stable channel) for your CPU. The emulator and
 platform tools are always included; pick one or more Google APIs system images (newest
 first; Android 16 / API 36, the sandbox's platform, is preselected; **Show all** for older
 ones). Arm Macs get `arm64-v8a` images, everything else `x86_64`.
 
-**Virtual device**: name (default `Monolith_API_36`; letters, digits, `.`, `-`, `_`),
+**Virtual device**: name (default `Tesseract_API_36`; letters, digits, `.`, `-`, `_`),
 **Device profile** (Pixel 5 · 1080 × 2340 · 440 dpi by default; also Pixel 8 and Medium
 Phone, both 1080 × 2400 · 420 dpi, and Pixel Tablet · 2560 × 1600 · 320 dpi), memory
 (2048 MB, or 4096 MB on computers with 12 GB or more; 1024 to 8192), CPU cores (half the
@@ -300,12 +300,12 @@ checks (size and sha1), and unpacks every package, runs the acceleration check a
 the AVD. **Cancel** keeps partial downloads; **Install** resumes them. While an install
 runs, a second **Install** is refused ("An installation is already running"), so it can't
 mark the first one failed. When the SDK already has everything, the button reads
-**Use {avd}**: nothing is downloaded, Monolith saves the SDK folder and the AVD
-(`androidSdkRoot`, `androidAvd` in `config.json`), restarts the host daemon only if Monolith
+**Use {avd}**: nothing is downloaded, Tesseract saves the SDK folder and the AVD
+(`androidSdkRoot`, `androidAvd` in `config.json`), restarts the host daemon only if Tesseract
 started it and its Android env changed, and runs the acceleration check.
 
 When it is done: `{avd} is ready · Android {version} · {abi}`. On macOS and Windows the
-emulator runs without network isolation, so Monolith won't connect it to the sandbox
+emulator runs without network isolation, so Tesseract won't connect it to the sandbox
 automatically; you can still run it on this computer. On Linux the host shell daemon runs
 it isolated and can link it to the sandbox ([host-shell.md](host-shell.md#android-emulator)).
 
@@ -313,23 +313,23 @@ Devices are managed later in **Settings › Android** (start, stop, delete, crea
 
 ### Phone (optional)
 
-Install the TheOne app and Tailscale on your phone, then scan the QR code in the app
+Install the Tesseract app and Tailscale on your phone, then scan the QR code in the app
 (**Agents › Pair a sandbox**), or copy the link. With **This computer only** the phone can't
 reach the sandbox: **Change reachability** takes you back to the Sandbox step. More:
 [pairing-mobile.md](pairing-mobile.md).
 
 ### Done
 
-A summary of every step. **Open Monolith** closes the wizard and opens the main window;
+A summary of every step. **Open Tesseract** closes the wizard and opens the main window;
 setup isn't shown again. Everything can be changed later in Settings. The sandbox
 containers use Docker's `unless-stopped` restart policy, so they come back with Docker
 after a reboot unless you stopped them (Settings › Sandbox › **Stop** / **Start**).
 
-**Start the sandbox when Monolith opens** (on by default, `sandboxAutostart`): each time
+**Start the sandbox when Tesseract opens** (on by default, `sandboxAutostart`): each time
 the app starts, also with `--hidden` in the tray, it runs `docker compose up -d` for the
-sandbox that Monolith built (its own env file, the same compose project, and a finished
+sandbox that Tesseract built (its own env file, the same compose project, and a finished
 build). It does nothing when the switch is off, when the sandbox already runs, or for a
-stack Monolith didn't create (e.g. `bun run sandbox up` from the repository). If Docker
+stack Tesseract didn't create (e.g. `bun run sandbox up` from the repository). If Docker
 isn't reachable, you get one notification ("Docker isn't running") that opens
 Settings › Sandbox.
 
@@ -337,8 +337,8 @@ Settings › Sandbox.
 
 | What | Where |
 |---|---|
-| Settings file | Linux `~/.config/monolith-desktop/config.json`, macOS `~/Library/Application Support/Monolith/config.json`, Windows `%APPDATA%\Monolith\config.json` |
-| Sandbox settings | `<app data>/sandbox/.env`; app data is `~/.config/Monolith`, `~/Library/Application Support/Monolith` or `%APPDATA%\Monolith` |
+| Settings file | Linux `~/.config/tesseract-desktop/config.json`, macOS `~/Library/Application Support/Tesseract/config.json`, Windows `%APPDATA%\Tesseract\config.json` |
+| Sandbox settings | `<app data>/sandbox/.env`; app data is `~/.config/Tesseract`, `~/Library/Application Support/Tesseract` or `%APPDATA%\Tesseract` |
 | Docker installer downloads | `<app data>/downloads/` |
 | Android SDK and AVDs | the SDK folder above; AVDs in `~/.android/avd` (or `ANDROID_AVD_HOME`) |
 | Logs of a step | **Show details** in the step (last 200 lines, secrets removed); **Copy log** |
@@ -351,8 +351,8 @@ Format: **symptom** → cause → fix. `tesseract doctor` runs the same Docker, 
 acceleration and SDK checks from a terminal.
 
 **Docker: `Docker isn't installed`, but it is**
-→ Monolith doesn't find `docker` on its `PATH` (installed somewhere unusual). → Make sure
-`docker` is in one of the folders listed in the Docker step, or start Monolith from a
+→ Tesseract doesn't find `docker` on its `PATH` (installed somewhere unusual). → Make sure
+`docker` is in one of the folders listed in the Docker step, or start Tesseract from a
 terminal where `docker version` works.
 
 **Docker: `You don't have access to the Docker engine` (Linux)**
@@ -412,7 +412,7 @@ cached. **Show details** shows the failing step's last lines. See also
 → Tailscale mode needs an auth key until the sidecar has logged in once. → Create a key
 (**How to create an auth key**) and paste it.
 
-**Sandbox: `THEONE_BIND_ADDR=… would publish the sandbox on every host interface`**
+**Sandbox: `TESSERACT_BIND_ADDR=… would publish the sandbox on every host interface`**
 → A wildcard bind address. → Use this computer's Tailscale IPv4 (`tailscale ip -4`).
 
 **Sandbox: a port is already in use**
@@ -434,8 +434,8 @@ restart.
 
 **Android: `Couldn't load Google's package list`**
 → No connection to `dl.google.com`, or a proxy blocks it. → Check the network and
-**Retry**. To use a mirror, start the app with `MONOLITH_ANDROID_REPOSITORY_URL` and
-`MONOLITH_ANDROID_SYSIMG_URL` set (the full `.xml` URL or its base URL; `http` or
+**Retry**. To use a mirror, start the app with `TESSERACT_ANDROID_REPOSITORY_URL` and
+`TESSERACT_ANDROID_SYSIMG_URL` set (the full `.xml` URL or its base URL; `http` or
 `https` only).
 
 **Android: `…: the download is corrupt (checksum mismatch)` / `the download stalled for 30 seconds`**
@@ -450,11 +450,11 @@ system image.
 → The name is taken in `~/.android/avd`. → Choose another name, or delete the old device in
 Settings › Android.
 
-**macOS: "Monolith can't be opened" / it asks to move to Applications**
+**macOS: "Tesseract can't be opened" / it asks to move to Applications**
 → The app isn't in `/Applications`, or the build isn't notarized. → Drag it to
 Applications and open it from there (right-click › Open the first time for unsigned
 builds).
 
 **The wizard keeps opening at startup**
-→ Setup was never finished (**Open Monolith** on the last step) and no sandbox connection
+→ Setup was never finished (**Open Tesseract** on the last step) and no sandbox connection
 is saved. → Finish the wizard, or connect in Settings › Connection.

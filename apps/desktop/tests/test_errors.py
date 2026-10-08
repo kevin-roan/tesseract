@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from monolith_desktop.api.errors import (
+from tesseract_desktop.api.errors import (
     ApiError,
     NetworkError,
     NotConfigured,

@@ -1,4 +1,4 @@
-import { statusForErrorCode, type ErrorCode } from "@theone/protocol";
+import { statusForErrorCode, type ErrorCode } from "@tesseract/protocol";
 
 export class HttpError extends Error {
   readonly code: ErrorCode;

@@ -1,4 +1,4 @@
-import type { Artifact, BuildOutput } from "@theone/protocol";
+import type { Artifact, BuildOutput } from "@tesseract/protocol";
 import { useMemo } from "react";
 import type { RowAction } from "../../../components/RecordRow";
 import { ARTIFACT_LABELS } from "../labels";

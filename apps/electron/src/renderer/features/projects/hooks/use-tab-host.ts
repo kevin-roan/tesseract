@@ -1,4 +1,4 @@
-import type { Artifact, BuildJob, ProcessInfo } from "@theone/protocol";
+import type { Artifact, BuildJob, ProcessInfo } from "@tesseract/protocol";
 import { useMemo } from "react";
 import type { ListKind, NoticeAction } from "../types";
 import type { ProjectDetail } from "./use-project-detail";

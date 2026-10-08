@@ -1,4 +1,4 @@
-import type { UsageReport } from "@theone/protocol";
+import type { UsageReport } from "@tesseract/protocol";
 
 import type { UsageHeroData } from "@/features/home/components/usage-hero";
 import { cachedPercent, tokenSplit } from "@/features/home/utils/tokens";

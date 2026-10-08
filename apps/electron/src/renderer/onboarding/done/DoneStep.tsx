@@ -36,7 +36,7 @@ export default function DoneStep() {
           <ActionButton
             variant="primary"
             size="dialog"
-            label={ONBOARDING_LABELS.buttons.openMonolith}
+            label={ONBOARDING_LABELS.buttons.openTesseract}
             onClick={step.finish}
             busy={step.finishing}
             disabled={step.finishing}

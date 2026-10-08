@@ -1,4 +1,4 @@
-import type { BuildJob, BuildTarget } from "@theone/protocol";
+import type { BuildJob, BuildTarget } from "@tesseract/protocol";
 import type { RecordRowProps, RowAction } from "../../../../components/RecordRow";
 import { FIX_LABELS } from "../../../../features/projects/labels";
 import { canFixBuild, targetLabel } from "../../../../features/projects/model";

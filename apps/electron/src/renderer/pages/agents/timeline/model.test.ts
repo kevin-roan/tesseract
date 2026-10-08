@@ -1,4 +1,4 @@
-import type { AgentRun, AgentRunEvent } from "@theone/protocol";
+import type { AgentRun, AgentRunEvent } from "@tesseract/protocol";
 import { describe, expect, it } from "vitest";
 import { addEvents, buildTimeline, EMPTY_EVENT_LOG, firstTextKey, orderedEvents } from "./model";
 
@@ -6,7 +6,7 @@ const TS = "2026-10-07T10:00:00.000Z";
 
 const run = (overrides: Partial<AgentRun> = {}): AgentRun => ({
   id: "run_a",
-  projectId: "monolith",
+  projectId: "tesseract",
   prompt: "Do it",
   mode: null,
   attachments: [],

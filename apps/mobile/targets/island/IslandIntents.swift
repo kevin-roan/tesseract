@@ -3,7 +3,7 @@ import Foundation
 
 struct StopRunIntent: LiveActivityIntent {
   static let title: LocalizedStringResource = "Stop run"
-  static let description = IntentDescription("Stops a running Monolith run.")
+  static let description = IntentDescription("Stops a running Tesseract run.")
 
   @Parameter(title: "Run")
   var runId: String
@@ -22,7 +22,7 @@ struct StopRunIntent: LiveActivityIntent {
 
 struct CaptureIntent: AppIntent {
   static let title: LocalizedStringResource = "Capture"
-  static let description = IntentDescription("Opens Monolith and captures the screen.")
+  static let description = IntentDescription("Opens Tesseract and captures the screen.")
   static let openAppWhenRun: Bool = true
 
   func perform() async throws -> some IntentResult {

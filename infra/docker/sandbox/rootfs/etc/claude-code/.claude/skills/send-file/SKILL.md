@@ -1,15 +1,15 @@
 ---
 name: send-file
-description: Send a file from this chat to the TheOne app's Files (inbox) with theone-controller share. Use when the user runs /send-file or asks to send, share or push a build, APK/AAB, installer or Markdown file to their phone or desktop.
+description: Send a file from this chat to the Tesseract app's Files (inbox) with tesseract-controller share. Use when the user runs /send-file or asks to send, share or push a build, APK/AAB, installer or Markdown file to their phone or desktop.
 argument-hint: "[latest | apk | aab | android | windows | linux | build | md | <path or name>] [-- note]"
 ---
 
 # /send-file
 
-Share a file with the user's TheOne app. Arguments: `$ARGUMENTS`
+Share a file with the user's Tesseract app. Arguments: `$ARGUMENTS`
 
-`theone-controller share` copies the file to `/workspace/artifacts/`, links it to this chat
-(it sends `THEONE_AGENT_RUN_ID` / `CLAUDE_CODE_SESSION_ID` itself) and adds it to the app's
+`tesseract-controller share` copies the file to `/workspace/artifacts/`, links it to this chat
+(it sends `TESSERACT_AGENT_RUN_ID` / `CLAUDE_CODE_SESSION_ID` itself) and adds it to the app's
 Files and inbox.
 
 ## 1. Pick the file
@@ -49,7 +49,7 @@ Rules:
 ## 2. Share it
 
 ```bash
-theone-controller share "<file>" --note "<one line: what it is and what changed>"
+tesseract-controller share "<file>" --note "<one line: what it is and what changed>"
 ```
 
 - Write the note yourself when the user gave none: what the file is plus the version, build

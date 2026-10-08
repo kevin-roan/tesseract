@@ -1,4 +1,4 @@
-import { LIMITS, type SyncRequest } from "@theone/protocol";
+import { LIMITS, type SyncRequest } from "@tesseract/protocol";
 import { createLogger } from "../log";
 import type { SyncApi } from "./api";
 import { SyncBackError, SyncConflict, errorMessage } from "./errors";

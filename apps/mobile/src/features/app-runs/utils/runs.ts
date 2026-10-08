@@ -1,4 +1,4 @@
-import { RUN_TARGET_VIEWERS, isFinalAppRunState, type AppRun, type AppViewer, type AppViewerKind, type RunTarget, type RunTargetInfo } from "@theone/protocol";
+import { RUN_TARGET_VIEWERS, isFinalAppRunState, type AppRun, type AppViewer, type AppViewerKind, type RunTarget, type RunTargetInfo } from "@tesseract/protocol";
 
 import { newestFirst } from "@/features/sandbox/utils/collections";
 import { formatRelativeTime } from "@/features/sandbox/utils/format";

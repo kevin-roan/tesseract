@@ -22,7 +22,7 @@ describe("distPlan", () => {
   });
 
   it("reads the update feed from flags before the environment", () => {
-    const env = { MONOLITH_UPDATE_URL: "https://env.example/desktop", MONOLITH_UPDATE_CHANNEL: "beta" };
+    const env = { TESSERACT_UPDATE_URL: "https://env.example/desktop", TESSERACT_UPDATE_CHANNEL: "beta" };
     expect(plan([], env)).toMatchObject({ updateUrl: "https://env.example/desktop", channel: "beta" });
     expect(plan(["--update-url", "https://flag.example/feed/"], env)).toMatchObject({ updateUrl: "https://flag.example/feed" });
   });
@@ -60,7 +60,7 @@ describe("builderArgs", () => {
 
 describe("requiredCliFiles", () => {
   it("lists the binaries electron-builder copies into resources/bin", () => {
-    expect(requiredCliFiles("win")).toEqual(["dist-cli/win-x64/tesseract.exe", "dist-cli/win-x64/theone-controller.exe"]);
+    expect(requiredCliFiles("win")).toEqual(["dist-cli/win-x64/tesseract.exe", "dist-cli/win-x64/tesseract-controller.exe"]);
     expect(requiredCliFiles("mac")).toHaveLength(4);
   });
 });

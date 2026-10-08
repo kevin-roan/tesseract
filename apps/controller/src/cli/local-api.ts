@@ -1,4 +1,4 @@
-import { parseJson, type ErrorBody } from "@theone/protocol";
+import { parseJson, type ErrorBody } from "@tesseract/protocol";
 import { resolveToken } from "../auth/token";
 import { localApiUrl, type Config } from "../config";
 
@@ -17,7 +17,7 @@ export class CliError extends Error {
 export function requireToken(config: Config): string {
   const resolved = resolveToken(config, { create: false });
   if (!resolved) {
-    throw new CliError(`No API token: set THEONE_TOKEN or start the controller once to create ${config.tokenFile}`);
+    throw new CliError(`No API token: set TESSERACT_TOKEN or start the controller once to create ${config.tokenFile}`);
   }
   return resolved.token;
 }

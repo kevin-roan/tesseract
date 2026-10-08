@@ -1,10 +1,10 @@
 # Mobile app
 
-`apps/mobile` (`@theone/mobile`) is the Expo SDK 56 / React Native 0.85 app
+`apps/mobile` (`@tesseract/mobile`) is the Expo SDK 56 / React Native 0.85 app
 with expo-router. The sandbox integration lives in one feature module. The
 Agents, Projects and Profile tabs read from the paired sandbox; Home and Tasks
 keep their placeholder content. It talks to controllers only through
-`@theone/client`, and wire types come from `@theone/protocol`.
+`@tesseract/client`, and wire types come from `@tesseract/protocol`.
 
 Decision record for state handling:
 [ADR 0008](../adr/0008-mobile-server-state-react-query-and-events.md).
@@ -13,7 +13,7 @@ Decision record for state handling:
 
 ```text
 apps/mobile/src/features/sandbox/
-├── api/          client.ts (TheOneClient per paired sandbox) · query-keys.ts · cache.ts (event → cache patches) · pairing.ts
+├── api/          client.ts (TesseractClient per paired sandbox) · query-keys.ts · cache.ts (event → cache patches) · pairing.ts
 │                 · streams.ts (log/run socket options)
 ├── components/   feature components, each a folder with index.tsx (+ styles.ts):
 │                 agent-composer, agent-event, agent-run-card, agent-run-view, artifact-card, build-card,
@@ -61,7 +61,7 @@ apps/mobile/src/features/island/
 └── utils/        state, crop, shared, actions, destinations, capture, format, stats, constants
 ```
 
-The native side is `apps/mobile/modules/theone-island` (imported as `@/modules/theone-island`).
+The native side is `apps/mobile/modules/tesseract-island` (imported as `@/modules/tesseract-island`).
 
 Shared building blocks used by the screens live in `src/components/`
 (`screen-scaffold`, `screen-header`, `section`, `stat-grid`, `status-badge`,
@@ -133,7 +133,7 @@ whether the device is paired. Routes are split with `Stack.Protected`:
 - Pairing (scan, deep link or manual) opens the Agents tab. From onboarding
   the guard flips and its history is dropped, so back does not return to it.
 - Removing the last sandbox flips the guard back and opens onboarding.
-- `pair` stays outside both guards, so `theone://pair?…` deep links,
+- `pair` stays outside both guards, so `tesseract://pair?…` deep links,
   **Pair another sandbox** and **Pair again** work in both states.
 
 ## Screens (expo-router)
@@ -142,16 +142,16 @@ whether the device is paired. Routes are split with `Stack.Protected`:
 |---|---|
 | `(tabs)/agents` | **Sandbox hub.** Sandbox switcher, connection dot, issue notice, resources (CPU, memory, workspace disk, display), quick actions (Display, Terminal, Claude, Build — Build is disabled with "Unavailable until a project has build targets." when no project has one), projects (**Add** in the header, **Add a project** when empty), running processes, sessions, recent builds, Claude runs, activity |
 | `(tabs)/projects` | Projects from `/v1/projects` as cards (`project-card-<id>` in `projects-list`): status from live work (Building, Claude working, Running, Failed, Idle), framework, branch, last commit and the active-task count. Card and menu open the project, the chat button starts a Claude run for it. A **Running** section (`running-section`) lists active processes (with **Stop**), queued/running builds and running Claude runs. Header: **New project** and the sandbox hub |
-| `(tabs)/profile` | Tailscale identity from `GET /v1/identity` (`profile-name`, `profile-tailnet`): viewer, else owner, else the sandbox name; a notice when the controller does not expose it (start it with `--tailscale-api` / `THEONE_TAILSCALE_LOCALAPI=1`). Stats from `/v1/status` counts (Projects, Running, Builds). Activity (`profile-activity`) merged newest first from builds, Claude runs and processes; entries open the build, run or project. The menu button opens the sandbox hub |
+| `(tabs)/profile` | Tailscale identity from `GET /v1/identity` (`profile-name`, `profile-tailnet`): viewer, else owner, else the sandbox name; a notice when the controller does not expose it (start it with `--tailscale-api` / `TESSERACT_TAILSCALE_LOCALAPI=1`). Stats from `/v1/status` counts (Projects, Running, Builds). Activity (`profile-activity`) merged newest first from builds, Claude runs and processes; entries open the build, run or project. The menu button opens the sandbox hub |
 | `(onboarding)/welcome` | Animated pager of three slides (sandbox, Claude, tailnet privacy): parallax hero orb, page dots, **Skip**, **Next** and, on the last page, **Get started** |
 | `(onboarding)/setup` | Three steps (`bun run sandbox up`, `bun run sandbox pair`, scan) with staggered entrance and **Scan pairing code**, which opens `pair` |
-| `pair` (modal) | QR scanner (`expo-camera`; a scanned code pairs at once) plus the manual form; the `theone://pair?…` deep link pre-fills the form and needs a tap on **Pair sandbox** |
+| `pair` (modal) | QR scanner (`expo-camera`; a scanned code pairs at once) plus the manual form; the `tesseract://pair?…` deep link pre-fills the form and needs a tap on **Pair sandbox** |
 | `sandbox/projects/new` | add a project: name, optional git URL and branch, validated like the controller (including existing names). Without a URL it creates the project and opens it. With a URL it shows the clone's live log; exit code 0 opens the project, a failure shows the exit code and **Open project** (the folder stays). The exit is also taken from the process list the events socket keeps current, in case the log stream never reports it |
 | `sandbox/projects/[id]` | git summary, the project's chats (`GET /v1/sessions?projectId=`, newest 5; "View all" opens `/chats?projectId=`), run targets (app runs), scripts (run one as a tracked process), build targets (debug/release), processes, recent builds, artifacts; open a shell, an interactive Claude session, or ask Claude (headless run). Projects with an Android run target open on the host emulator instead of the display (see `app-runs-and-emulator.md` §3) |
 | `sandbox/builds/[id]` | stage, progress, live log, artifacts with download, cancel |
 | `sandbox/agent/[id]` | headless Claude run: streamed events, result, tokens used, continue (`resumeSessionId`), cancel |
 | `sandbox/terminal/[id]` | xterm page in a WebView (`shell` or `claude`) |
-| `island/[action]`, `island/run/[id]` | targets of `theone://island/{open,capture,share}` and `theone://island/run/<id>`: dispatch the island action (capture sheet, shared-items attach flow, open the run or the Agents hub) and leave the route at once |
+| `island/[action]`, `island/run/[id]` | targets of `tesseract://island/{open,capture,share}` and `tesseract://island/run/<id>`: dispatch the island action (capture sheet, shared-items attach flow, open the run or the Agents hub) and leave the route at once |
 | `sandbox/display` | noVNC page in a WebView, loaded only while `display.available` and `display.vnc.available` are true; otherwise it explains whether X or VNC is down and offers **Check again**. The single-use page URL is dropped during an outage so recovery fetches a fresh ticket |
 
 ## WebView pages
@@ -170,11 +170,11 @@ The terminal and display screens embed controller-served pages through
   (`allowedOrigin`) and pins navigation to it; other links (for example OSC 8
   links in the terminal, which xterm confirms first) open in the OS browser.
 - The message contract is in [protocol.md](protocol.md#webview-bridge)
-  (`@theone/protocol/bridge`). The page asks for a new ticket
+  (`@tesseract/protocol/bridge`). The page asks for a new ticket
   (`terminal-need-ticket`, `vnc-need-ticket`) when its socket drops. The app
   answers automatically, up to 4 times with backoff and again when the app
-  returns to the foreground: native via injected `window.theone.reconnect(ticket)`,
-  web via `postMessage({ type: "theone-reconnect", ticket })`. It never
+  returns to the foreground: native via injected `window.tesseract.reconnect(ticket)`,
+  web via `postMessage({ type: "tesseract-reconnect", ticket })`. It never
   reconnects after `exited` or `error`, and reloads the page if the WebView
   process was terminated.
 - Secrets travel only in the fragment, and the page strips it from its history
@@ -201,7 +201,7 @@ without icons on the project and build screens, and a tab bar wider than a
 are native modules. Use a development build: `bun run android` / `bun run ios`
 in `apps/mobile` (`expo run:*`), or an EAS development build. Then run
 `bun run mobile` for Metro. Expo Go is not supported for this feature,
-because it ships its own module versions and cannot open custom `theone://`
+because it ships its own module versions and cannot open custom `tesseract://`
 links. Native folders are generated (continuous native generation) and
 gitignored.
 
@@ -226,5 +226,5 @@ store) belong in `app.json` → `plugins`. Rebuild the dev client after changing
    `apps/mobile` (`tsc --noEmit`), run `bun run test` there (jest) and
    `bun run lint` (`expo lint`), and add tests under `apps/mobile/tests/`.
 
-New wire features start in the blueprint and `@theone/protocol`, then
-`@theone/client`, then this module ([monorepo.md](monorepo.md#adding-things)).
+New wire features start in the blueprint and `@tesseract/protocol`, then
+`@tesseract/client`, then this module ([monorepo.md](monorepo.md#adding-things)).

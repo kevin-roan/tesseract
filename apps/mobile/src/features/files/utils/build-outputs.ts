@@ -1,4 +1,4 @@
-import type { BuildOutput } from "@theone/protocol";
+import type { BuildOutput } from "@tesseract/protocol";
 import { AndroidLogoIcon, AppleLogoIcon, FileZipIcon, LinuxLogoIcon, WindowsLogoIcon, type Icon } from "phosphor-react-native";
 
 import { capitalize, formatBytes, formatRelativeTime, pluralize } from "@/features/sandbox/utils/format";

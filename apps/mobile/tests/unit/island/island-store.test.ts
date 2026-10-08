@@ -1,7 +1,7 @@
 import { selectHasPendingWork, useIslandStore } from "@/features/island/store/island-store";
 import type { AttachDraft } from "@/features/island/types";
 
-import type { SharedItem } from "@/modules/theone-island";
+import type { SharedItem } from "@/modules/tesseract-island";
 
 const DRAFT: AttachDraft = { text: "hello", files: [], source: "capture" };
 const ITEM: SharedItem = {

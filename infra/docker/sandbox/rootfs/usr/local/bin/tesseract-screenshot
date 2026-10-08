@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# Captures the sandbox virtual display (or one window) as PNG.
+set -euo pipefail
+
+usage() {
+  cat << 'USAGE'
+Usage: tesseract-screenshot [-d DISPLAY] [-w WINDOW_NAME] [OUTPUT]
+
+Captures the virtual display (default $TESSERACT_DISPLAY) or the first visible window whose
+title matches WINDOW_NAME (regular expression) as a PNG.
+OUTPUT defaults to /tmp/tesseract-screenshots/<UTC timestamp>.png; "-" writes the PNG to stdout.
+Prints the output path on success.
+USAGE
+}
+
+display="${TESSERACT_DISPLAY:-:1}"
+window_name=""
+
+while getopts ':d:w:h' opt; do
+  case "${opt}" in
+    d) display="${OPTARG}" ;;
+    w) window_name="${OPTARG}" ;;
+    h)
+      usage
+      exit 0
+      ;;
+    *)
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+shift $((OPTIND - 1))
+
+if (($# > 1)); then
+  usage >&2
+  exit 2
+fi
+
+output="${1:-/tmp/tesseract-screenshots/$(date -u +%Y%m%dT%H%M%SZ).png}"
+target=root
+
+if [[ -n "${window_name}" ]]; then
+  mapfile -t windows < <(DISPLAY="${display}" xdotool search --onlyvisible --name "${window_name}" 2> /dev/null)
+  if ((${#windows[@]} == 0)); then
+    echo "tesseract-screenshot: no visible window matches '${window_name}' on ${display}" >&2
+    exit 1
+  fi
+  target="${windows[0]}"
+fi
+
+if [[ "${output}" == "-" ]]; then
+  DISPLAY="${display}" exec import -silent -window "${target}" png:-
+fi
+
+mkdir -p "$(dirname "${output}")"
+DISPLAY="${display}" import -silent -window "${target}" "png:${output}"
+printf '%s\n' "${output}"

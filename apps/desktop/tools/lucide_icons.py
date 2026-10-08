@@ -16,7 +16,7 @@ from pathlib import Path
 DESKTOP_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(DESKTOP_DIR))
 
-from monolith_desktop.theme.icons import ICONS  # noqa: E402
+from tesseract_desktop.theme.icons import ICONS  # noqa: E402
 
 VERSION = "1.52.0"
 SOURCE = f"https://unpkg.com/lucide-static@{VERSION}/icons/{{name}}.svg"

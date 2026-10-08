@@ -1,4 +1,4 @@
-import type { SyncFileChange } from "@theone/protocol";
+import type { SyncFileChange } from "@tesseract/protocol";
 import { useCallback, useMemo, useState, type KeyboardEvent } from "react";
 import { syncFiles, type SyncView } from "../model";
 import { confirmLabel, diffDisplay, filterReviewFiles, kindCounts, sortReviewFiles } from "../review/model";

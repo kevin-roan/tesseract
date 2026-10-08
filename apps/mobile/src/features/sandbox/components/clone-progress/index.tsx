@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { View } from "react-native";
-import type { LogLine } from "@theone/protocol";
+import type { LogLine } from "@tesseract/protocol";
 import { WarningCircleIcon } from "phosphor-react-native";
 
 import LogView from "@/components/log-view";

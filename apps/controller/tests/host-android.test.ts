@@ -10,7 +10,7 @@ import {
   HostSessionSchema,
   type AndroidStreamSettings,
   type EmulatorInfo,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { silentLogger } from "../src/core/logger";
 import { HostConfigError, loadHostConfig, type HostConfig } from "../src/host/config";
 import { defaultGpu, defaultIsolation, loadAndroidConfig, parseScrcpyVersion, SCRCPY_SERVER_PATHS, type AndroidConfig } from "../src/host/android/config";
@@ -127,12 +127,12 @@ describe("android config", () => {
     expect(loadAndroidConfig({ HOME: home, PATH: "", ANDROID_SDK_ROOT: "/opt/sdk", ANDROID_HOME: "/opt/home" }).sdkRoot).toBe("/opt/sdk");
     expect(loadAndroidConfig({ HOME: home, PATH: "", ANDROID_HOME: "/opt/home" }).sdkRoot).toBe("/opt/home");
     expect(loadAndroidConfig({ HOME: home, PATH: "" }).sdkRoot).toBeNull();
-    const bundled = join(home, ".local", "share", "theone", "android-sdk");
+    const bundled = join(home, ".local", "share", "tesseract", "android-sdk");
     script(join(bundled, "emulator", "emulator"), "exit 0");
     const config = loadAndroidConfig({ HOME: home, PATH: "", ANDROID_SDK_ROOT: "/opt/sdk" });
     expect(config.sdkRoot).toBe(bundled);
     expect(config.emulator).toBe(join(bundled, "emulator", "emulator"));
-    expect(loadAndroidConfig({ HOME: home, PATH: "", THEONE_ANDROID_SDK_ROOT: "/elsewhere" }).sdkRoot).toBe("/elsewhere");
+    expect(loadAndroidConfig({ HOME: home, PATH: "", TESSERACT_ANDROID_SDK_ROOT: "/elsewhere" }).sdkRoot).toBe("/elsewhere");
   });
 
   test("resolves tools from overrides or PATH, with defaults for port and GPU", () => {
@@ -142,7 +142,7 @@ describe("android config", () => {
     script(join(bin, "scrcpy"), 'echo "scrcpy 4.1 <https://github.com/Genymobile/scrcpy>"');
     const jar = join(fakes.dir, "scrcpy-server");
     writeFileSync(jar, "jar");
-    const config = loadAndroidConfig({ HOME: fakes.dir, PATH: `${bin}:/usr/bin:/bin`, THEONE_ANDROID_SDK_ROOT: fakes.sdk, THEONE_SCRCPY_SERVER: jar, XDG_RUNTIME_DIR: "/run/user/7" });
+    const config = loadAndroidConfig({ HOME: fakes.dir, PATH: `${bin}:/usr/bin:/bin`, TESSERACT_ANDROID_SDK_ROOT: fakes.sdk, TESSERACT_SCRCPY_SERVER: jar, XDG_RUNTIME_DIR: "/run/user/7" });
     expect(config).toEqual({
       sdkRoot: fakes.sdk,
       emulator: fakes.emulator,
@@ -158,28 +158,28 @@ describe("android config", () => {
       allowNets: [],
       adbBridgePort: null,
       shareEmulators: false,
-      runtimeDir: "/run/user/7/theone",
+      runtimeDir: "/run/user/7/tesseract",
     });
     const custom = loadAndroidConfig({
       HOME: fakes.dir,
       PATH: "",
-      THEONE_ADB: fakes.adb,
-      THEONE_FFMPEG: "/missing/ffmpeg",
-      THEONE_SCRCPY_VERSION: "3.3",
-      THEONE_SCRCPY_SERVER: "/missing/jar",
-      THEONE_EMULATOR_PORT: "5560",
-      THEONE_EMULATOR_GPU: "host",
+      TESSERACT_ADB: fakes.adb,
+      TESSERACT_FFMPEG: "/missing/ffmpeg",
+      TESSERACT_SCRCPY_VERSION: "3.3",
+      TESSERACT_SCRCPY_SERVER: "/missing/jar",
+      TESSERACT_EMULATOR_PORT: "5560",
+      TESSERACT_EMULATOR_GPU: "host",
     });
     expect(custom).toMatchObject({ adb: fakes.adb, ffmpeg: null, scrcpyVersion: "3.3", scrcpyServer: null, emulatorPort: 5560, gpu: "host" });
   });
 
-  test("THEONE_ANDROID_SHARE_EMULATORS is an on/off switch, off by default", () => {
+  test("TESSERACT_ANDROID_SHARE_EMULATORS is an on/off switch, off by default", () => {
     const home = makeTempDir("android-share");
     expect(loadAndroidConfig({ HOME: home, PATH: "" }).shareEmulators).toBe(false);
-    expect(loadAndroidConfig({ HOME: home, PATH: "", THEONE_ANDROID_SHARE_EMULATORS: "on" }).shareEmulators).toBe(true);
-    expect(loadAndroidConfig({ HOME: home, PATH: "", THEONE_ANDROID_SHARE_EMULATORS: "1" }).shareEmulators).toBe(true);
-    expect(loadAndroidConfig({ HOME: home, PATH: "", THEONE_ANDROID_SHARE_EMULATORS: "off" }).shareEmulators).toBe(false);
-    expect(() => loadAndroidConfig({ HOME: home, PATH: "", THEONE_ANDROID_SHARE_EMULATORS: "maybe" })).toThrow("THEONE_ANDROID_SHARE_EMULATORS");
+    expect(loadAndroidConfig({ HOME: home, PATH: "", TESSERACT_ANDROID_SHARE_EMULATORS: "on" }).shareEmulators).toBe(true);
+    expect(loadAndroidConfig({ HOME: home, PATH: "", TESSERACT_ANDROID_SHARE_EMULATORS: "1" }).shareEmulators).toBe(true);
+    expect(loadAndroidConfig({ HOME: home, PATH: "", TESSERACT_ANDROID_SHARE_EMULATORS: "off" }).shareEmulators).toBe(false);
+    expect(() => loadAndroidConfig({ HOME: home, PATH: "", TESSERACT_ANDROID_SHARE_EMULATORS: "maybe" })).toThrow("TESSERACT_ANDROID_SHARE_EMULATORS");
   });
 
   test("uses the host GPU only when a render node can be opened", () => {
@@ -201,8 +201,8 @@ describe("android config", () => {
     expect(defaultGpu(join(home, "missing"), "darwin")).toBe("host");
     expect(defaultIsolation("linux")).toBe("netns");
     expect(defaultIsolation("darwin")).toBe("none");
-    expect(loadAndroidConfig({ HOME: home, PATH: "", THEONE_EMULATOR_GPU: "swiftshader_indirect" }, "darwin").gpu).toBe("swiftshader_indirect");
-    expect(loadAndroidConfig({ HOME: home, PATH: "", THEONE_EMULATOR_ISOLATION: "netns" }, "darwin")).toMatchObject({ isolation: "netns", unshare: null, ip: null });
+    expect(loadAndroidConfig({ HOME: home, PATH: "", TESSERACT_EMULATOR_GPU: "swiftshader_indirect" }, "darwin").gpu).toBe("swiftshader_indirect");
+    expect(loadAndroidConfig({ HOME: home, PATH: "", TESSERACT_EMULATOR_ISOLATION: "netns" }, "darwin")).toMatchObject({ isolation: "netns", unshare: null, ip: null });
     expect(SCRCPY_SERVER_PATHS).toContain("/opt/homebrew/share/scrcpy/scrcpy-server");
   });
 
@@ -211,15 +211,32 @@ describe("android config", () => {
     const studio = join(home, "Library", "Android", "sdk");
     script(join(studio, "emulator", "emulator"), "exit 0");
     expect(loadAndroidConfig({ HOME: home, PATH: "" }, "darwin").sdkRoot).toBe(studio);
-    const bundled = join(home, "Library", "Application Support", "Monolith", "android-sdk");
+    const bundled = join(home, "Library", "Application Support", "Tesseract", "android-sdk");
     script(join(bundled, "emulator", "emulator"), "exit 0");
     expect(loadAndroidConfig({ HOME: home, PATH: "", ANDROID_SDK_ROOT: "/opt/sdk" }, "darwin").sdkRoot).toBe(bundled);
     expect(loadAndroidConfig({ HOME: home, PATH: "", ANDROID_SDK_ROOT: "/opt/sdk" }, "linux").sdkRoot).toBe("/opt/sdk");
   });
 
+  test("keeps the SDK and host shell state installed under the pre-rename names", () => {
+    const home = makeTempDir("android-legacy");
+    const linuxLegacy = join(home, ".local", "share", "theone", "android-sdk");
+    script(join(linuxLegacy, "emulator", "emulator"), "exit 0");
+    mkdirSync(join(home, ".config", "theone", "host-shell"), { recursive: true });
+    writeFileSync(join(home, ".config", "theone", "host-shell", "state.json"), "{}");
+    const config = loadHostConfig({ HOME: home, PATH: "" }, { bind: "127.0.0.1", port: "0" }, true, "linux");
+    expect(config.stateDir).toBe(join(home, ".config", "tesseract", "host-shell"));
+    expect(readFileSync(config.stateFile, "utf8")).toBe("{}");
+    expect(config.android.sdkRoot).toBe(join(home, ".local", "share", "tesseract", "android-sdk"));
+    expect(existsSync(linuxLegacy)).toBe(false);
+
+    const macLegacy = join(home, "Library", "Application Support", "Monolith", "android-sdk");
+    script(join(macLegacy, "emulator", "emulator"), "exit 0");
+    expect(loadAndroidConfig({ HOME: home, PATH: "" }, "darwin").sdkRoot).toBe(macLegacy);
+  });
+
   test("rejects an emulator port the emulator would not accept", () => {
-    expect(() => loadAndroidConfig({ PATH: "", THEONE_EMULATOR_PORT: "5555" })).toThrow(HostConfigError);
-    expect(() => loadAndroidConfig({ PATH: "", THEONE_EMULATOR_PORT: "abc" })).toThrow(HostConfigError);
+    expect(() => loadAndroidConfig({ PATH: "", TESSERACT_EMULATOR_PORT: "5555" })).toThrow(HostConfigError);
+    expect(() => loadAndroidConfig({ PATH: "", TESSERACT_EMULATOR_PORT: "abc" })).toThrow(HostConfigError);
   });
 
   test("parses tool output", () => {
@@ -394,7 +411,7 @@ describe("isolated emulator", () => {
     const fakes = fakeAndroid();
     const missing = manager(fakes, {}, { ...fakes.config, isolation: "netns", unshare: null, ip: null });
     expect(missing.unavailableReason()).toBe(EMULATOR_MESSAGES.noIsolationTools);
-    expect(missing.unavailableReason()).toContain("THEONE_EMULATOR_ISOLATION=none");
+    expect(missing.unavailableReason()).toContain("TESSERACT_EMULATOR_ISOLATION=none");
     expect(missing.unavailableReason()).toContain("Linux host");
     const refusing = script(join(fakes.dir, "bin", "unshare-denied"), 'echo "unshare: unshare failed: Operation not permitted" >&2; exit 1');
     const denied = manager(fakes, {}, { ...fakes.config, isolation: "netns", unshare: refusing, ip: "/usr/bin/true" });
@@ -699,7 +716,7 @@ describe("host android API", () => {
 
   async function start(android: AndroidConfig): Promise<string> {
     const dir = makeTempDir("host-android");
-    config = { ...loadHostConfig({ HOME: dir, THEONE_HOST_SHELL_DIR: join(dir, "state"), PATH: "" }, { bind: "127.0.0.1", port: "0" }), android };
+    config = { ...loadHostConfig({ HOME: dir, TESSERACT_HOST_SHELL_DIR: join(dir, "state"), PATH: "" }, { bind: "127.0.0.1", port: "0" }), android };
     const store = new HostStateStore(config.stateDir, config.stateFile);
     await store.setPin(PIN);
     shell = startHostShell(config, { logger: silentLogger, android: { emulator: { bootPollMs: 50, watchMs: 0, stopGraceMs: 2_000 }, link: { reconnectMinMs: 50, reconnectMaxMs: 100 } } });
@@ -752,7 +769,7 @@ describe("host android API", () => {
     expect(result.status).toBe(200);
     expect(HostAndroidStatusSchema.parse(result.body)).toEqual({
       available: false,
-      reason: "No Android SDK found; set THEONE_ANDROID_SDK_ROOT",
+      reason: "No Android SDK found; set TESSERACT_ANDROID_SDK_ROOT",
       sdkRoot: null,
       isolation: "none",
       avds: [],
@@ -829,7 +846,7 @@ describe("host android API", () => {
       socket.onmessage = (event) => messages.push(String(event.data));
       socket.onclose = (event) => resolve(event.code);
     });
-    expect(messages.map((message) => JSON.parse(message))).toEqual([{ type: "error", message: "scrcpy-server is not installed on the host; set THEONE_SCRCPY_SERVER" }]);
+    expect(messages.map((message) => JSON.parse(message))).toEqual([{ type: "error", message: "scrcpy-server is not installed on the host; set TESSERACT_SCRCPY_SERVER" }]);
     expect(closed).toBe(1000);
 
     const { ticket: second } = (await call("POST", "/v1/auth/ticket", session)).body;

@@ -1,5 +1,5 @@
-import type { ClaudeSession, UsageDay, UsageReport } from "@theone/protocol";
-import { sampleClaudeSession } from "@theone/protocol/fixtures";
+import type { ClaudeSession, UsageDay, UsageReport } from "@tesseract/protocol";
+import { sampleClaudeSession } from "@tesseract/protocol/fixtures";
 
 const ZERO = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 0, messages: 0, sessions: 0 };
 

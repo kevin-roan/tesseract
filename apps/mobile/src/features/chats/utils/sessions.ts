@@ -1,4 +1,4 @@
-import type { ClaudeSession, Project } from "@theone/protocol";
+import type { ClaudeSession, Project } from "@tesseract/protocol";
 
 export type SessionTarget =
   | { kind: "agentRun"; id: string }

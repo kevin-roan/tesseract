@@ -13,7 +13,7 @@ import {
   updateActivity,
   type IslandPushToken,
   type IslandState,
-} from "@/modules/theone-island";
+} from "@/modules/tesseract-island";
 
 import { ACTIVITY_END_GRACE_MS, ACTIVITY_UPDATE_THROTTLE_MS } from "../utils/constants";
 import { hasLiveWork, stateSignature } from "../utils/state";

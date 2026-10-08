@@ -13,7 +13,7 @@ function busy(queryClient: QueryClient): boolean {
 }
 
 export function installIdleProbe(queryClient: QueryClient): void {
-  window.__monolithIdle = async () => {
+  window.__tesseractIdle = async () => {
     await document.fonts.ready;
     const started = performance.now();
     let quietSince = performance.now();

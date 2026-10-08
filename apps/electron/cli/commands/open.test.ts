@@ -34,28 +34,28 @@ describe("open helpers", () => {
 
   it("builds app arguments and deep links", () => {
     expect(appArgs("agents")).toEqual(["--page", "agents"]);
-    expect(deepLink("display")).toBe("monolith://display");
+    expect(deepLink("display")).toBe("tesseract://display");
   });
 });
 
 describe("tesseract open", () => {
   it("launches the installed app with the page", async () => {
-    sandbox.runtime.appExecutable = () => "/opt/Monolith/monolith-desktop";
+    sandbox.runtime.appExecutable = () => "/opt/Tesseract/tesseract-desktop";
     const result = await runCli(sandbox, ["open", "projects", "--json"]);
     expect(result.code).toBe(0);
-    expect(mocks.launchDetached).toHaveBeenCalledWith("/opt/Monolith/monolith-desktop", ["--page", "projects"], sandbox.env);
-    expect(JSON.parse(result.out.join("\n"))).toEqual({ via: "app", target: "/opt/Monolith/monolith-desktop", page: "projects" });
+    expect(mocks.launchDetached).toHaveBeenCalledWith("/opt/Tesseract/tesseract-desktop", ["--page", "projects"], sandbox.env);
+    expect(JSON.parse(result.out.join("\n"))).toEqual({ via: "app", target: "/opt/Tesseract/tesseract-desktop", page: "projects" });
   });
 
   it("falls back to the deep link, then reports a missing app", async () => {
     sandbox.runtime.appExecutable = () => null;
     mocks.runCommand.mockResolvedValueOnce({ code: 0, stdout: "", stderr: "", timedOut: false });
     const linked = await runCli(sandbox, ["open"]);
-    expect(mocks.runCommand).toHaveBeenCalledWith("xdg-open", ["monolith://overview"], expect.any(Object));
-    expect(linked.out).toEqual(["Asked the system to open monolith://overview"]);
+    expect(mocks.runCommand).toHaveBeenCalledWith("xdg-open", ["tesseract://overview"], expect.any(Object));
+    expect(linked.out).toEqual(["Asked the system to open tesseract://overview"]);
     mocks.runCommand.mockResolvedValueOnce({ code: 4, stdout: "", stderr: "", timedOut: false });
     const missing = await runCli(sandbox, ["open"]);
     expect(missing.code).toBe(1);
-    expect(missing.err[0]).toContain("MONOLITH_APP_PATH");
+    expect(missing.err[0]).toContain("TESSERACT_APP_PATH");
   });
 });

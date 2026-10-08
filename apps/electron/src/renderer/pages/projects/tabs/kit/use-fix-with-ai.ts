@@ -1,4 +1,4 @@
-import type { LogLine } from "@theone/protocol";
+import type { LogLine } from "@tesseract/protocol";
 import { useCallback } from "react";
 import { useNavigateTo } from "../../../../app/navigation";
 import type { TabHost } from "../../../../features/projects/hooks/use-tab-host";

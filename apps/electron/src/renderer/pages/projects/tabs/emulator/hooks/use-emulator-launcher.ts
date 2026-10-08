@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import type { AppRun, RunTargetInfo } from "@theone/protocol";
+import type { AppRun, RunTargetInfo } from "@tesseract/protocol";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { HostShellState } from "../../../../../../shared/contracts/hostShell";
 import { describeError, NotConfiguredError } from "../../../../../app/connection";

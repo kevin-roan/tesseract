@@ -1,4 +1,4 @@
-import { LIMITS, type InputMode } from "@theone/protocol";
+import { LIMITS, type InputMode } from "@tesseract/protocol";
 
 export const STATUS_REFRESH_INTERVAL_MS = 10_000;
 export const PORTS_REFRESH_INTERVAL_MS = 5_000;
@@ -13,9 +13,9 @@ export const STREAM_FLUSH_INTERVAL_MS = 80;
 export const PAIRING_TIMEOUT_MS = 10_000;
 export const TERMINAL_DEFAULT_SIZE = { cols: 80, rows: 24 } as const;
 export const DEFAULT_PACKAGE_MANAGER = "npm";
-export const SANDBOX_STORE_NAME = "theone.sandboxes";
+export const SANDBOX_STORE_NAME = "tesseract.sandboxes";
 export const SANDBOX_STORE_VERSION = 1;
-export const TOKEN_KEY_PREFIX = "theone.sandbox.";
+export const TOKEN_KEY_PREFIX = "tesseract.sandbox.";
 export const TOKEN_KEY_SUFFIX = ".token";
 export const SANDBOX_ID_PREFIX = "sbx_";
 export const GIT_PREVIEW = { files: 8, commits: 3 } as const;
@@ -26,11 +26,11 @@ export const PAGE_RECONNECT_LIMIT = 4;
 /** WebKit killing the page process twice in a row means memory pressure; stop rebuilding it and let the user retry. */
 export const PAGE_TERMINATE_LIMIT = 2;
 export const PAGE_RECONNECT_DELAY_MS = { minDelayMs: 1_000, maxDelayMs: 8_000 } as const;
-export const DISPLAY_STORE_NAME = "theone.display";
+export const DISPLAY_STORE_NAME = "tesseract.display";
 export const DISPLAY_STORE_VERSION = 1;
-export const SCRIPT_BOOKMARKS_STORE_NAME = "theone.script-bookmarks";
+export const SCRIPT_BOOKMARKS_STORE_NAME = "tesseract.script-bookmarks";
 export const SCRIPT_BOOKMARKS_STORE_VERSION = 1;
 export const DEFAULT_INPUT_MODE = "trackpad" satisfies InputMode;
 export const UPLOAD_TIMEOUT_MS = 120_000;
-export const RESOURCE_HISTORY_STORE_NAME = "theone.resource-history";
+export const RESOURCE_HISTORY_STORE_NAME = "tesseract.resource-history";
 export const RESOURCE_HISTORY_STORE_VERSION = 1;

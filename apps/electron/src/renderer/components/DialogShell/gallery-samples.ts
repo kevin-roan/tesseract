@@ -12,7 +12,7 @@ export const DIALOG_SAMPLES = {
   branch: "Default branch",
   branchValue: "main",
   remote: "Remote URL",
-  remoteValue: "git@github.com:theone/hybrid-pos.git",
+  remoteValue: "git@github.com:tesseract/hybrid-pos.git",
   description: "Leave the remote empty to keep the project local.",
   error: "Couldn't rename the project: name already taken",
   save: "Save",

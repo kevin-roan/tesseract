@@ -12,7 +12,7 @@ import {
   type AndroidLinkInfo,
   type EmulatorInfo,
   type SharedEmulator,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { errorMessage } from "../../core/errors";
 import type { Logger } from "../../core/logger";
 import type { AndroidLinkConfig } from "../state";
@@ -26,7 +26,7 @@ export type LinkTarget = {
   adbd: () => Endpoint;
   /** Why the current emulator must not be linked (not isolated), or null. */
   refusal: () => string | null;
-  /** Other host emulators shared with the sandbox (empty unless `THEONE_ANDROID_SHARE_EMULATORS` is on). */
+  /** Other host emulators shared with the sandbox (empty unless `TESSERACT_ANDROID_SHARE_EMULATORS` is on). */
   shared: () => SharedEmulator[];
   /** A shared emulator's adbd, or null when that serial is not shared now. */
   sharedAdbd: (serial: string) => Endpoint | null;

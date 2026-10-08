@@ -2,7 +2,7 @@ bats_load_library bats-support
 bats_load_library bats-assert
 bats_load_library bats-file
 
-REPO="${THEONE_TEST_REPO:-$(cd -- "${BATS_TEST_DIRNAME}/../.." && pwd -P)}"
+REPO="${TESSERACT_TEST_REPO:-$(cd -- "${BATS_TEST_DIRNAME}/../.." && pwd -P)}"
 ROOTFS="${REPO}/infra/docker/sandbox/rootfs"
 ROOTFS_BIN="${ROOTFS}/usr/local/bin"
 
@@ -42,12 +42,12 @@ minimal_path() {
   printf '%s:/usr/sbin:/usr/bin:/sbin:/bin' "${STUB_BIN}"
 }
 
-unset_theone_env() {
+unset_tesseract_env() {
   local name
   for name in $(compgen -e); do
     case "${name}" in
-      THEONE_TEST_*) ;;
-      THEONE_* | TS_* | ANTHROPIC_* | CLAUDE_CODE_* | GEMINI_API_KEY | DOCKER_HOST | DISPLAY) unset "${name}" ;;
+      TESSERACT_TEST_*) ;;
+      TESSERACT_* | THEONE_* | MONOLITH_* | TS_* | ANTHROPIC_* | CLAUDE_CODE_* | GEMINI_API_KEY | DOCKER_HOST | DISPLAY) unset "${name}" ;;
     esac
   done
 }

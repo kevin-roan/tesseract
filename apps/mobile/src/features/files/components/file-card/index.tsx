@@ -1,5 +1,5 @@
 import { PaperPlaneTiltIcon, TrashIcon } from "phosphor-react-native";
-import type { Artifact } from "@theone/protocol";
+import type { Artifact } from "@tesseract/protocol";
 import Animated from "react-native-reanimated";
 
 import ActionButton from "@/components/action-button";

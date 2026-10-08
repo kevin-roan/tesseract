@@ -1,4 +1,4 @@
-import { sampleSttStatus } from "@theone/protocol/fixtures";
+import { sampleSttStatus } from "@tesseract/protocol/fixtures";
 
 import { geminiKeyHint, geminiUnavailable, isSttProfile, isSttProvider, sttProfileRows, sttProviderRows } from "@/features/settings/utils/stt";
 import { fallbackNotice } from "@/features/voice/utils/fallback";

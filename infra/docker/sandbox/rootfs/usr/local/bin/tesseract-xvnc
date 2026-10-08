@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# supervisord program "xvnc": TigerVNC X server on $TESSERACT_DISPLAY, RFB on $TESSERACT_VNC_PORT.
+set -euo pipefail
+
+display="${TESSERACT_DISPLAY:-:1}"
+number="${display#*:}"
+number="${number%%.*}"
+lock="/tmp/.X${number}-lock"
+
+# A crashed server leaves its lock behind and blocks every restart; only a live Xvnc may keep it.
+if [[ -f "${lock}" ]]; then
+  pid="$(tr -d '[:space:]' < "${lock}")"
+  if [[ ! "${pid}" =~ ^[0-9]+$ ]] || [[ "$(cat "/proc/${pid}/comm" 2> /dev/null)" != "Xvnc" ]]; then
+    rm -f "${lock}" "/tmp/.X11-unix/X${number}"
+  fi
+fi
+
+# Every client reaches Xvnc from 127.0.0.1 (controller bridge, its RFB probe, tailscale serve), so
+# TigerVNC's per-host blacklist would lock out everyone after a few pre-auth hang-ups. Tickets and
+# tailnet ACLs guard access instead.
+exec Xvnc "${display}" \
+  -geometry "${TESSERACT_DISPLAY_GEOMETRY:-1600x900}" \
+  -depth 24 \
+  -rfbport "${TESSERACT_VNC_PORT:-5901}" \
+  -rfbauth "${HOME}/.vnc/passwd" \
+  -SecurityTypes VncAuth \
+  -AlwaysShared \
+  -UseBlacklist=0 \
+  -desktop "Tesseract ${TESSERACT_SANDBOX_ID:-${HOSTNAME}}" \
+  -nolisten tcp

@@ -1,4 +1,4 @@
-import { routePatterns, type AgentRun, type StartAgentRun } from "@theone/protocol";
+import { routePatterns, type AgentRun, type StartAgentRun } from "@tesseract/protocol";
 import { parityConversationDetail } from "../agents/gtk-parity";
 import { isScenario } from "../scenario";
 import { isGtkParity } from "../shell/parity";

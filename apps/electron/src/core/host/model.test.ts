@@ -1,4 +1,4 @@
-import { ApiError, NetworkError, TimeoutError } from "@theone/client";
+import { ApiError, NetworkError, TimeoutError } from "@tesseract/client";
 import { describe, expect, it } from "vitest";
 import { INITIAL_HOST_SHELL_STATE } from "./constants";
 import {
@@ -22,7 +22,7 @@ import {
   viewerError,
 } from "./model";
 
-const PAIRING = { link: "theone://host?url=http%3A%2F%2F127.0.0.1%3A7799&token=abc%2Fdef&name=box", url: "http://127.0.0.1:7799", name: "box" };
+const PAIRING = { link: "tesseract://host?url=http%3A%2F%2F127.0.0.1%3A7799&token=abc%2Fdef&name=box", url: "http://127.0.0.1:7799", name: "box" };
 
 describe("cliError", () => {
   it("prefers the last error: line and strips the prefix", () => {
@@ -56,13 +56,13 @@ describe("parsePairing", () => {
 describe("hostToken", () => {
   it("reads and decodes the token from the query", () => {
     expect(hostToken(PAIRING.link)).toBe("abc/def");
-    expect(hostToken("theone://host?token=a#token=b")).toBe("a");
-    expect(hostToken("theone://host?token=first&token=second")).toBe("first");
+    expect(hostToken("tesseract://host?token=a#token=b")).toBe("a");
+    expect(hostToken("tesseract://host?token=first&token=second")).toBe("first");
   });
 
   it("fails without a token", () => {
-    expect(() => hostToken("theone://host?url=x#token=b")).toThrow("The host pairing link has no token");
-    expect(() => hostToken("theone://host?token=")).toThrow("The host pairing link has no token");
+    expect(() => hostToken("tesseract://host?url=x#token=b")).toThrow("The host pairing link has no token");
+    expect(() => hostToken("tesseract://host?token=")).toThrow("The host pairing link has no token");
   });
 });
 

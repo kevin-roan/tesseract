@@ -18,7 +18,7 @@ function environment(overrides: Partial<ClaudeEnvironment> = {}): ClaudeEnvironm
 const EXPIRES = 1_900_000_000_000;
 
 beforeEach(async () => {
-  home = await mkdtemp(join(tmpdir(), "monolith-test-claude-"));
+  home = await mkdtemp(join(tmpdir(), "tesseract-test-claude-"));
 });
 
 afterEach(async () => {

@@ -20,9 +20,9 @@ function withEnv(text: string) {
 
 describe("resolveStack", () => {
   it("local mode: compose.yml + compose.local.yml bound to 127.0.0.1, exports resolved values only", async () => {
-    const context = withEnv("THEONE_MODE=local\nTHEONE_COMPOSE_PROJECT=monolith-test-a\nTHEONE_CONTROLLER_HOST_PORT=7811\n")(
+    const context = withEnv("TESSERACT_MODE=local\nTESSERACT_COMPOSE_PROJECT=tesseract-test-a\nTESSERACT_CONTROLLER_HOST_PORT=7811\n")(
       undefined,
-      { PATH: "/bin", HOME: "/home/u", THEONE_TOKEN: "leak", THEONE_COMPOSE_PROJECT: "other", COMPOSE_FILE: "x.yml" },
+      { PATH: "/bin", HOME: "/home/u", TESSERACT_TOKEN: "leak", TESSERACT_COMPOSE_PROJECT: "other", COMPOSE_FILE: "x.yml" },
     );
     const resolved = await resolveStack(context, "up");
     const composeDir = join(context.contextDir, "infra", "compose");
@@ -30,16 +30,16 @@ describe("resolveStack", () => {
     expect(resolved.env).toEqual({
       PATH: "/bin",
       HOME: "/home/u",
-      THEONE_COMPOSE_PROJECT: "monolith-test-a",
-      THEONE_VOLUME_PREFIX: "monolith-test-a",
-      THEONE_CONTROLLER_HOST_PORT: "7811",
-      THEONE_VNC_HOST_PORT: "5901",
-      THEONE_BIND_ADDR: "127.0.0.1",
+      TESSERACT_COMPOSE_PROJECT: "tesseract-test-a",
+      TESSERACT_VOLUME_PREFIX: "tesseract-test-a",
+      TESSERACT_CONTROLLER_HOST_PORT: "7811",
+      TESSERACT_VNC_HOST_PORT: "5901",
+      TESSERACT_BIND_ADDR: "127.0.0.1",
     });
     expect(composeArgs(resolved, ["ps"])).toEqual([
       "compose",
       "--project-name",
-      "monolith-test-a",
+      "tesseract-test-a",
       "--project-directory",
       composeDir,
       "--env-file",
@@ -53,7 +53,7 @@ describe("resolveStack", () => {
   });
 
   it("defaults to the script's tailscale mode and adds dind + LocalAPI sidecar overlays", async () => {
-    const context = withEnv("THEONE_DIND=1\nTHEONE_TAILSCALE_LOCALAPI=true\n")();
+    const context = withEnv("TESSERACT_DIND=1\nTESSERACT_TAILSCALE_LOCALAPI=true\n")();
     const resolved = await resolveStack(context, "up");
     expect(resolved.mode).toBe("tailscale");
     expect(resolved.files.map((file) => file.split(/[\\/]/).at(-1))).toEqual([
@@ -62,30 +62,30 @@ describe("resolveStack", () => {
       "compose.dind.yml",
       "compose.tailscale-api-sidecar.yml",
     ]);
-    expect(resolved.env.THEONE_BIND_ADDR).toBeUndefined();
+    expect(resolved.env.TESSERACT_BIND_ADDR).toBeUndefined();
   });
 
   it("host-tailscale reads `tailscale ip -4`, refuses wildcards and falls back for non-up commands", async () => {
     const docker = new FakeDocker().onRun((_args, file) => (file === "tailscale" ? ok("100.101.102.103\nfd7a::1\n") : undefined));
-    const make = withEnv("THEONE_MODE=host-tailscale\n");
+    const make = withEnv("TESSERACT_MODE=host-tailscale\n");
     expect((await resolveStack(make(docker.deps()), "up")).bindAddr).toBe("100.101.102.103");
 
     const none = new FakeDocker().onRun((_args, file) => (file === "tailscale" ? { code: 1 } : undefined));
     await expect(resolveStack(make(none.deps()), "up")).rejects.toThrow(/could not determine the host tailscale IPv4/);
     expect((await resolveStack(make(none.deps()), "down")).bindAddr).toBe("127.0.0.1");
 
-    const wildcard = withEnv("THEONE_MODE=host-tailscale\nTHEONE_BIND_ADDR=0.0.0.0\n")();
+    const wildcard = withEnv("TESSERACT_MODE=host-tailscale\nTESSERACT_BIND_ADDR=0.0.0.0\n")();
     await expect(resolveStack(wildcard, "up")).rejects.toThrow(/every host interface/);
   });
 
   it("validates project, prefix and ports with the script's messages", async () => {
-    await expect(resolveStack(withEnv("THEONE_COMPOSE_PROJECT=Bad\n")(), "up")).rejects.toThrow(
-      "THEONE_COMPOSE_PROJECT=Bad is not a valid compose project name (lowercase letters, digits, '-' and '_')",
+    await expect(resolveStack(withEnv("TESSERACT_COMPOSE_PROJECT=Bad\n")(), "up")).rejects.toThrow(
+      "TESSERACT_COMPOSE_PROJECT=Bad is not a valid compose project name (lowercase letters, digits, '-' and '_')",
     );
-    await expect(resolveStack(withEnv("THEONE_MODE=local\nTHEONE_VNC_HOST_PORT=0\n")(), "up")).rejects.toThrow(
-      "THEONE_VNC_HOST_PORT=0 is not a TCP port",
+    await expect(resolveStack(withEnv("TESSERACT_MODE=local\nTESSERACT_VNC_HOST_PORT=0\n")(), "up")).rejects.toThrow(
+      "TESSERACT_VNC_HOST_PORT=0 is not a TCP port",
     );
-    await expect(resolveStack(withEnv("THEONE_MODE=weird\n")(), "up")).rejects.toThrow("unknown mode 'weird'");
+    await expect(resolveStack(withEnv("TESSERACT_MODE=weird\n")(), "up")).rejects.toThrow("unknown mode 'weird'");
   });
 
   it("rejects a missing env file as not configured", async () => {
@@ -102,8 +102,8 @@ describe("resolveStack", () => {
       writeFileSync(context.envFile, text);
       return context;
     };
-    const resolved = await resolveStack(make(`THEONE_MODE=local\nTHEONE_HOST_CLAUDE_ACCOUNTS="work=${work} personal"\n`), "up");
-    const override = join(stack.dir, "state", "theone", "compose.theone.claude-accounts.yml");
+    const resolved = await resolveStack(make(`TESSERACT_MODE=local\nTESSERACT_HOST_CLAUDE_ACCOUNTS="work=${work} personal"\n`), "up");
+    const override = join(stack.dir, "state", "tesseract", "compose.tesseract.claude-accounts.yml");
     expect(resolved.files.at(-1)).toBe(override);
     expect(resolved.warnings).toEqual(["warning: Claude account 'personal' skipped: /nowhere/.claude-personal is not a directory"]);
     expect(readFileSync(override, "utf8")).toBe(claudeAccountsYaml([{ name: "work", path: work }]));

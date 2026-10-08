@@ -17,7 +17,7 @@ export const SANDBOX_STEP_LABELS = {
       local: {
         title: "This computer only",
         subtitle: (port: number) =>
-          `The controller listens on 127.0.0.1:${port}. Phones can't reach it; use this to try Monolith or for development.`,
+          `The controller listens on 127.0.0.1:${port}. Phones can't reach it; use this to try Tesseract or for development.`,
       },
       tailscale: {
         title: "Tailscale (sidecar)",
@@ -47,7 +47,7 @@ export const SANDBOX_STEP_LABELS = {
       build: {
         title: "Build a new image",
         subtitle:
-          "Builds from the files bundled with Monolith. The first build takes 20 to 60 minutes; later builds reuse the cache.",
+          "Builds from the files bundled with Tesseract. The first build takes 20 to 60 minutes; later builds reuse the cache.",
       },
       pull: {
         title: "Download a prebuilt image",

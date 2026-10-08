@@ -1,6 +1,6 @@
-from monolith_desktop.widgets.terminal.cells import Line
-from monolith_desktop.widgets.terminal.keys import Modifiers, encode_key, encode_mouse, encode_paste
-from monolith_desktop.widgets.terminal.selection import Selection, row_span, selected_text, selection_range
+from tesseract_desktop.widgets.terminal.cells import Line
+from tesseract_desktop.widgets.terminal.keys import Modifiers, encode_key, encode_mouse, encode_paste
+from tesseract_desktop.widgets.terminal.selection import Selection, row_span, selected_text, selection_range
 
 SHIFT = Modifiers(shift=True)
 CTRL = Modifiers(ctrl=True)
@@ -141,7 +141,7 @@ class FakeApp:
 
 
 def test_accel_guard_suspends_terminal_keys_and_restores():
-    from monolith_desktop.widgets.accel_guard import AccelGuard
+    from tesseract_desktop.widgets.accel_guard import AccelGuard
 
     app = FakeApp()
     original = {k: list(v) for k, v in app.accels.items()}

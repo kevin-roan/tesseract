@@ -1,6 +1,6 @@
 import { parseArgs } from "node:util";
 import { renderANSI } from "uqr";
-import { buildPairingLink, HOST_PAIRING_ACTION, HOST_PIN_PATTERN, parseJsonWith, UpdateAndroidStreamSchema } from "@theone/protocol";
+import { buildPairingLink, HOST_PAIRING_ACTION, HOST_PIN_PATTERN, parseJsonWith, UpdateAndroidStreamSchema } from "@tesseract/protocol";
 import { CliError } from "../cli/local-api";
 import type { Output } from "../cli/output";
 import type { Env } from "../core/exec";
@@ -11,22 +11,22 @@ import { HostConfigError, loadHostConfig, tailscaleServeUrl } from "./config";
 import { startHostShell } from "./server";
 import { HostStateStore } from "./state";
 
-export const HOST_USAGE = `  theone-controller host serve [--bind <ipv4>] [--port <n>]
+export const HOST_USAGE = `  tesseract-controller host serve [--bind <ipv4>] [--port <n>]
                                      run the host shell daemon (on the host, not in the sandbox) on the
                                      host's Tailscale IPv4 (or loopback); phones need the host token and the PIN
-                                     also drives the host Android emulator (THEONE_ANDROID_SDK_ROOT, THEONE_ADB,
-                                     THEONE_SCRCPY_SERVER, THEONE_SCRCPY_VERSION, THEONE_FFMPEG,
-                                     THEONE_EMULATOR_PORT, THEONE_EMULATOR_GPU, THEONE_EMULATOR_ISOLATION,
-                                     THEONE_EMULATOR_ALLOW_NETS, THEONE_EMULATOR_ADB_PORT,
-                                     THEONE_ANDROID_SHARE_EMULATORS=on to tunnel the host's other emulators too)
-  theone-controller host pin [--stdin]
+                                     also drives the host Android emulator (TESSERACT_ANDROID_SDK_ROOT, TESSERACT_ADB,
+                                     TESSERACT_SCRCPY_SERVER, TESSERACT_SCRCPY_VERSION, TESSERACT_FFMPEG,
+                                     TESSERACT_EMULATOR_PORT, TESSERACT_EMULATOR_GPU, TESSERACT_EMULATOR_ISOLATION,
+                                     TESSERACT_EMULATOR_ALLOW_NETS, TESSERACT_EMULATOR_ADB_PORT,
+                                     TESSERACT_ANDROID_SHARE_EMULATORS=on to tunnel the host's other emulators too)
+  tesseract-controller host pin [--stdin]
                                      set the host shell PIN (6-12 digits); ends every open session
-  theone-controller host pair [--json]
-                                     print the host shell pairing link (theone://host) and a QR code;
+  tesseract-controller host pair [--json]
+                                     print the host shell pairing link (tesseract://host) and a QR code;
                                      --json prints { link, url, name, pinSet }
-  theone-controller host token [--rotate]
+  tesseract-controller host token [--rotate]
                                      print the host token, or replace it (paired phones must pair again)
-  theone-controller host stream [--json] [--stdin]
+  tesseract-controller host stream [--json] [--stdin]
                                      print the Android screen stream settings and the adb devices;
                                      --stdin reads a JSON object of settings to change first;
                                      --json prints { stream, devices }`;
@@ -109,9 +109,9 @@ async function pin(args: string[], io: HostCliIo): Promise<number> {
 
 function pair(args: string[], io: HostCliIo): number {
   const { values } = parseArgs({ args, options: { json: { type: "boolean", default: false } }, strict: true });
-  const settings = config(io.env, {}, !io.env.THEONE_HOST_SHELL_PUBLIC_URL);
+  const settings = config(io.env, {}, !io.env.TESSERACT_HOST_SHELL_PUBLIC_URL);
   // iOS refuses plain http to the Tailscale IP, so prefer the HTTPS name `tailscale serve` gives this daemon.
-  const url = io.env.THEONE_HOST_SHELL_PUBLIC_URL ? settings.publicUrl : (tailscaleServeUrl(settings.bind, settings.port, io.env) ?? settings.publicUrl);
+  const url = io.env.TESSERACT_HOST_SHELL_PUBLIC_URL ? settings.publicUrl : (tailscaleServeUrl(settings.bind, settings.port, io.env) ?? settings.publicUrl);
   const store = new HostStateStore(settings.stateDir, settings.stateFile);
   const token = store.ensureToken();
   const link = buildPairingLink({ url, token, name: settings.hostId }, HOST_PAIRING_ACTION);
@@ -120,11 +120,11 @@ function pair(args: string[], io: HostCliIo): number {
     io.output.out(JSON.stringify({ link, url, name: settings.hostId, pinSet }));
   } else {
     io.output.out(renderANSI(link, { ecc: "L", border: 2 }));
-    io.output.out(`Scan with the TheOne app (Host shell), or open this link on the phone:\n\n  ${link}\n`);
+    io.output.out(`Scan with the Tesseract app (Host shell), or open this link on the phone:\n\n  ${link}\n`);
     io.output.out(`Host ${settings.hostId} · ${url}`);
     io.output.err("The link contains the host token: share it only with your own devices.");
   }
-  if (!pinSet) io.output.err("warning: no PIN is set yet; run theone-controller host pin");
+  if (!pinSet) io.output.err("warning: no PIN is set yet; run tesseract-controller host pin");
   return 0;
 }
 
@@ -138,7 +138,7 @@ function token(args: string[], io: HostCliIo): number {
   }
   store.rotateToken();
   io.output.out(`Wrote a new host token to ${settings.stateFile}; phones must pair again.`);
-  io.output.out("Pair them with theone-controller host pair.");
+  io.output.out("Pair them with tesseract-controller host pair.");
   return 0;
 }
 

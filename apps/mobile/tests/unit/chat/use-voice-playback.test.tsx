@@ -1,5 +1,5 @@
 import { act, renderHook } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
+import { TesseractClient } from "@tesseract/client";
 
 import { useVoicePlayback } from "@/features/voice/hooks/use-voice-playback";
 import { useLocalAudioStore } from "@/features/voice/store/local-audio-store";
@@ -7,9 +7,9 @@ import { useLocalAudioStore } from "@/features/voice/store/local-audio-store";
 import { __reset as resetAudio, __setPlayerStatus, player } from "../../mocks/expo-audio";
 import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../sandbox/helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const fake = {
   httpUrl: (path: string) => `http://sandbox${path}`,
   authHeaders: () => ({ Authorization: "Bearer t" }),

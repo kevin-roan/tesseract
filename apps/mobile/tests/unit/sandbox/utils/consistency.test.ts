@@ -7,7 +7,7 @@ import {
   PROCESS_STATES,
   TERMINAL_KINDS,
   TERMINAL_STATES,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import { frameworkIcon } from "@/features/sandbox/utils/icons";
 import { buildProfileLabel, buildTargetLabel, frameworkLabel, terminalKindLabel } from "@/features/sandbox/utils/labels";

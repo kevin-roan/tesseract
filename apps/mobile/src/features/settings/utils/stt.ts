@@ -1,4 +1,4 @@
-import { STT_PROFILES, STT_PROVIDERS, type SttProfile, type SttProvider, type SttStatus } from "@theone/protocol";
+import { STT_PROFILES, STT_PROVIDERS, type SttProfile, type SttProvider, type SttStatus } from "@tesseract/protocol";
 
 import type { ChoiceRow } from "@/components/choice-list";
 

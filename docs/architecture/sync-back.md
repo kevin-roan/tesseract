@@ -1,7 +1,8 @@
 # Sync back (sandbox → host) and get (host → sandbox)
 
-`tesseract --sync` pushes a host checkout into the sandbox
-(`POST /v1/projects/:id/sync`). `monolith --get`, run **inside the sandbox**,
+`tesseract --sync`, run **on the host** (the desktop CLI, blueprint §7.1), pushes a host
+checkout into the sandbox (`POST /v1/projects/:id/sync`). `tesseract --get`, run
+**inside the sandbox** (the sandbox's own `tesseract` wrapper, blueprint §7),
 brings the host's later changes in without touching the host (§6). The sandbox is for trying changes out; once they
 are good, **sync back** copies the changed files from the sandbox into the host
 checkout. Sync back writes nothing until it has taken a snapshot, refuses to
@@ -44,7 +45,7 @@ request** on the controller, and the desktop companion claims and applies it.
   prunes them (a host revert acks old hashes back). Baselines from before the
   store have no blobs: those changes are not discardable until the next push.
 
-## 2. Protocol (`@theone/protocol`, schemas in `schemas/sync.ts`)
+## 2. Protocol (`@tesseract/protocol`, schemas in `schemas/sync.ts`)
 
 ```ts
 SyncChangeKind = "added" | "modified" | "deleted"
@@ -113,7 +114,7 @@ Requests are persisted in the controller database (newest 500 kept).
 
 ## 4. Host side (`apps/desktop`, Python)
 
-State lives in `$XDG_STATE_HOME/monolith` (default `~/.local/state/monolith`):
+State lives in `$XDG_STATE_HOME/tesseract` (default `~/.local/state/tesseract`):
 
 - `links.json`: `{ projectId: { hostPath, pushedAt, manifest: {path: sha256}, confidential?: true } }`,
   written by every successful `tesseract --sync` (the host manifest at push time,
@@ -189,7 +190,7 @@ for the run's project.
 ## 5. Mobile
 
 Project screen (`sandbox/projects/[id]`) gets a **Sync to host** group:
-changed-file list (A/M/D + path), host status ("Monolith on <host> · online" /
+changed-file list (A/M/D + path), host status ("Tesseract on <host> · online" /
 "Desktop companion offline — the request waits until it connects" / "Not linked
 — run tesseract --sync on your computer"), a primary **Sync to host** button
 (confirm sheet listing the files, optional force when the last request failed on
@@ -221,7 +222,7 @@ request is applied); `sync.changed` refetches both the changes and the requests.
 
 ## 6. Get (host → sandbox)
 
-`monolith --get` in a sandbox project folder (`/workspace/projects/<id>/…`)
+`tesseract --get` in a terminal inside the sandbox, in a project folder (`/workspace/projects/<id>/…`)
 copies what changed in the linked host checkout since the last push or get into
 the sandbox, and prints a `git pull` style summary.
 
@@ -232,12 +233,12 @@ same file set as the push (tracked + unignored files and `.git`), never follows
 a symlink out of it, and skips any path whose parent resolves outside it. A
 project never pushed (no baseline) cannot be got from (400 at create).
 
-**Sandbox CLI** (`/usr/local/bin/monolith` → `theone-controller monolith`):
-`monolith --get [--force] [--json]`. Checks `GET changes` first and fails fast
+**Sandbox CLI** (`/usr/local/bin/tesseract` in the sandbox → `tesseract-controller tesseract`; not the host CLI of the same name):
+`tesseract --get [--force] [--json]`. Checks `GET changes` first and fails fast
 when no desktop companion is connected, it is offline, or the project is not
 linked there. Creates `{ kind: "get", force, source: "cli" }`, then follows the
 request (polling `GET /v1/projects/:id/sync/requests`): pending → "Waiting for
-Monolith on <host>…", claimed → "Getting changes from <host>…". A request still
+Tesseract on <host>…", claimed → "Getting changes from <host>…". A request still
 pending after 60 s (or on Ctrl-C) is cancelled. Exit 0 applied, 1 error, 2
 conflicts. Output:
 

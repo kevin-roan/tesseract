@@ -174,8 +174,8 @@ import {
   type Ticket,
   type UsageFilter,
   type UsageReport,
-} from "@theone/protocol";
-import { AbortError, ApiError, NetworkError, ProtocolError, ProtocolVersionError, TheOneError, TimeoutError } from "./errors";
+} from "@tesseract/protocol";
+import { AbortError, ApiError, NetworkError, ProtocolError, ProtocolVersionError, TesseractError, TimeoutError } from "./errors";
 import {
   SocketSession,
   type ConnectionHandlers,
@@ -190,7 +190,7 @@ import {
   type SocketConstructor,
 } from "./transport";
 
-export interface TheOneClientOptions {
+export interface TesseractClientOptions {
   baseUrl: string;
   token: string;
   fetch?: FetchLike;
@@ -304,14 +304,14 @@ async function toApiError(response: HttpResponse): Promise<ApiError> {
   return new ApiError(response.status, errorCodeForStatus(response.status), fallback);
 }
 
-export class TheOneClient {
+export class TesseractClient {
   readonly baseUrl: string;
   readonly timeoutMs: number;
   private readonly token: string;
   private readonly fetchImpl: FetchLike;
   private readonly webSocketImpl: SocketConstructor | undefined;
 
-  constructor(protected readonly options: TheOneClientOptions) {
+  constructor(protected readonly options: TesseractClientOptions) {
     const baseUrl = normalizeBaseUrl(options.baseUrl);
     if (!baseUrl) throw new TypeError(`Invalid controller URL: ${options.baseUrl}`);
     if (!options.token) throw new TypeError("A controller token is required");
@@ -832,7 +832,7 @@ export class TheOneClient {
     onMessage: (message: Incoming, session: SocketSession<Incoming, Outgoing>) => void;
     isHandshake?: (message: Incoming) => boolean;
     isFinal?: (message: Incoming) => boolean;
-    fatalFrame?: (text: string) => TheOneError | null;
+    fatalFrame?: (text: string) => TesseractError | null;
   }): SocketSession<Incoming, Outgoing> {
     return new SocketSession<Incoming, Outgoing>({
       ...config,
@@ -854,7 +854,7 @@ export class TheOneClient {
 
     let timer: ReturnType<typeof setTimeout> | undefined;
     let onAbort: (() => void) | undefined;
-    let settled: TheOneError | undefined;
+    let settled: TesseractError | undefined;
 
     const work = (async () => {
       try {
@@ -868,7 +868,7 @@ export class TheOneClient {
         return await init.read(response, path);
       } catch (error) {
         if (settled) throw settled;
-        if (error instanceof TheOneError) throw error;
+        if (error instanceof TesseractError) throw error;
         throw new NetworkError(`Request to ${path} failed: ${errorMessage(error)}`, { cause: error });
       }
     })();
@@ -876,7 +876,7 @@ export class TheOneClient {
 
     // Racing guarantees the timeout/abort even if a fetch polyfill ignores AbortSignal.
     const interrupt = new Promise<never>((_, reject) => {
-      const stop = (error: TheOneError) => {
+      const stop = (error: TesseractError) => {
         settled = error;
         controller.abort();
         reject(error);
@@ -896,11 +896,11 @@ export class TheOneClient {
 }
 
 /**
- * Client of the host shell daemon (`theone-controller host serve`). `token` is the host token from
- * `theone-controller host pair`; it only reads the lock state and trades the PIN for a session.
+ * Client of the host shell daemon (`tesseract-controller host serve`). `token` is the host token from
+ * `tesseract-controller host pair`; it only reads the lock state and trades the PIN for a session.
  * Terminals, tickets and the `/ui/terminal` page go through `sessionClient(session)`.
  */
-export class HostShellClient extends TheOneClient {
+export class HostShellClient extends TesseractClient {
   hostHealth(options?: RequestOptions): Promise<HostHealth> {
     return this.request("GET", restPaths.health(), { read: json(HostHealthSchema, true), auth: false, options });
   }
@@ -918,7 +918,7 @@ export class HostShellClient extends TheOneClient {
     return this.request("POST", restPaths.hostLock(), { read: ignoreBody, body: { session }, options });
   }
 
-  sessionClient(session: string): TheOneClient {
-    return new TheOneClient({ ...this.options, token: session });
+  sessionClient(session: string): TesseractClient {
+    return new TesseractClient({ ...this.options, token: session });
   }
 }

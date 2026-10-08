@@ -14,8 +14,10 @@ readonly INSTALL_ROOT="${HOME}/.tesseract"
 readonly BIN_DIR="${INSTALL_ROOT}/bin"
 readonly SANDBOX_DIR="${INSTALL_ROOT}/sandbox"
 readonly IMAGE_STAMP="${INSTALL_ROOT}/image.sha256"
-readonly IMAGE="theone/sandbox:latest"
-readonly TAILSCALE_VOLUME="theone-tailscale"
+readonly IMAGE="tesseract/sandbox:latest"
+readonly TAILSCALE_VOLUME="tesseract-tailscale"
+# Node state of an install from before the rename; `tesseract server install` copies it over.
+readonly LEGACY_TAILSCALE_VOLUME="theone-tailscale"
 readonly PROFILE_MARKER="# tesseract (setup-server.sh)"
 readonly AUTHKEY_URL="https://login.tailscale.com/admin/settings/keys"
 
@@ -24,7 +26,7 @@ usage() {
 Usage: ./setup-server.sh [--hostname NAME] [--with COMPONENTS] [--rebuild] [--yes]
 
 Sets up this machine as the Tesseract server: builds the `tesseract` and
-`theone-controller` binaries into ~/.tesseract/bin, builds the sandbox image,
+`tesseract-controller` binaries into ~/.tesseract/bin, builds the sandbox image,
 starts the sandbox on your tailnet and installs the host shell as a login service
 (launchd on macOS, systemd --user on Linux). Safe to re-run; re-run after
 `git pull` to update.
@@ -215,7 +217,7 @@ if ((${#manual_steps[@]} > 0)); then
   for line in "${manual_steps[@]}"; do printf '    %s\n' "${line}"; done
 fi
 
-step "Building tesseract and theone-controller"
+step "Building tesseract and tesseract-controller"
 
 (cd "${REPO_ROOT}" && ELECTRON_SKIP_BINARY_DOWNLOAD=1 bun install --frozen-lockfile)
 (cd "${ELECTRON_DIR}" && bun scripts/cli-build.ts --target "${target}")
@@ -224,14 +226,14 @@ step "Building tesseract and theone-controller"
 step "Installing into ~/.tesseract"
 
 mkdir -p "${BIN_DIR}" "${SANDBOX_DIR}" "${HOME}/.claude"
-for binary in tesseract theone-controller; do
+for binary in tesseract tesseract-controller; do
   built="${ELECTRON_DIR}/dist-cli/${target}/${binary}"
   [[ -x "${built}" ]] || die "build produced no ${built}"
   install -m 0755 "${built}" "${BIN_DIR}/${binary}"
 done
 rsync -a --delete "${BUNDLE_DIR}/" "${SANDBOX_DIR}/"
 [[ "${os_name}" != mac ]] || xattr -dr com.apple.quarantine "${BIN_DIR}" 2> /dev/null || true
-export MONOLITH_SANDBOX_CONTEXT="${SANDBOX_DIR}"
+export TESSERACT_SANDBOX_CONTEXT="${SANDBOX_DIR}"
 
 if [[ "${os_name}" == mac ]]; then profile="${HOME}/.zprofile"; else profile="${HOME}/.profile"; fi
 if ! grep -qF "${PROFILE_MARKER}" "${profile}" 2> /dev/null; then
@@ -242,14 +244,22 @@ info "$("${BIN_DIR}/tesseract" --version)"
 
 step "Secrets"
 
-if [[ -n "${MONOLITH_USER_DATA:-}" ]]; then
-  env_file="${MONOLITH_USER_DATA}/sandbox/.env"
-elif [[ "${os_name}" == mac ]]; then
-  env_file="${HOME}/Library/Application Support/Monolith/sandbox/.env"
+if [[ "${os_name}" == mac ]]; then app_support="${HOME}/Library/Application Support"; else app_support="${XDG_CONFIG_HOME:-${HOME}/.config}"; fi
+if [[ -n "${TESSERACT_USER_DATA:-}" ]]; then
+  env_files=("${TESSERACT_USER_DATA}/sandbox/.env")
 else
-  env_file="${XDG_CONFIG_HOME:-${HOME}/.config}/Monolith/sandbox/.env"
+  env_files=("${app_support}/Tesseract/sandbox/.env")
 fi
-saved() { [[ -f "${env_file}" ]] && grep -qE "^$1=.+" "${env_file}"; }
+# Before the rename the app kept its data under "Monolith" (MONOLITH_USER_DATA);
+# `tesseract server install` carries it over, so secrets saved there still count.
+env_files+=("${MONOLITH_USER_DATA:-${app_support}/Monolith}/sandbox/.env")
+saved() {
+  local file
+  for file in "${env_files[@]}"; do
+    [[ -f "${file}" ]] && grep -qE "^(export[[:space:]]+)?$1=.+" "${file}" && return 0
+  done
+  return 1
+}
 
 ask_secret() {
   local name=$1 prompt=$2 value
@@ -267,7 +277,8 @@ if [[ -z "${TS_TAILNET_DOMAIN:-}" ]]; then
 fi
 info "tailnet ${TS_TAILNET_DOMAIN}"
 
-if [[ -n "${TS_AUTHKEY:-}" ]] || saved TS_AUTHKEY || docker volume inspect "${TAILSCALE_VOLUME}" > /dev/null 2>&1; then
+if [[ -n "${TS_AUTHKEY:-}" ]] || saved TS_AUTHKEY || docker volume inspect "${TAILSCALE_VOLUME}" > /dev/null 2>&1 \
+  || docker volume inspect "${LEGACY_TAILSCALE_VOLUME}" > /dev/null 2>&1; then
   info "tailscale auth key: not needed (given or sandbox already joined)"
 else
   printf '    The sandbox joins your tailnet as its own machine and needs an auth key once.\n'
@@ -286,14 +297,14 @@ fi
 
 step "Host shell PIN"
 
-pin_set="$("${BIN_DIR}/theone-controller" host pair --json 2> /dev/null | bun -e 'const line = (await Bun.stdin.text()).split("\n").find((l) => l.trim().startsWith("{")); console.log(line && JSON.parse(line).pinSet ? "yes" : "no")' || echo no)"
+pin_set="$("${BIN_DIR}/tesseract-controller" host pair --json 2> /dev/null | bun -e 'const line = (await Bun.stdin.text()).split("\n").find((l) => l.trim().startsWith("{")); console.log(line && JSON.parse(line).pinSet ? "yes" : "no")' || echo no)"
 if [[ "${pin_set}" == yes ]]; then
-  info "already set (change it with: theone-controller host pin)"
+  info "already set (change it with: tesseract-controller host pin)"
 elif interactive; then
   info "choose a 6-12 digit PIN; the phone asks for it before opening a shell on this machine"
-  "${BIN_DIR}/theone-controller" host pin
+  "${BIN_DIR}/tesseract-controller" host pin
 else
-  warn "no host shell PIN yet; set one with: ~/.tesseract/bin/theone-controller host pin"
+  warn "no host shell PIN yet; set one with: ~/.tesseract/bin/tesseract-controller host pin"
 fi
 
 step "Starting the sandbox and the host shell"

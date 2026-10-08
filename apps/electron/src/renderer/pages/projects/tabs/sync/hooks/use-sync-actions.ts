@@ -1,4 +1,4 @@
-import type { SyncRequest } from "@theone/protocol";
+import type { SyncRequest } from "@tesseract/protocol";
 import { useCallback, useMemo, useState } from "react";
 import { describeError } from "../../../../../app/connection";
 import { useApiClient } from "../../../../../app/data";

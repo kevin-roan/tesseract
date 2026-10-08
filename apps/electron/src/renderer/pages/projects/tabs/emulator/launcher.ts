@@ -1,4 +1,4 @@
-import type { AppRun, HostAndroidStatus, RunTargetInfo, SandboxAndroidStatus } from "@theone/protocol";
+import type { AppRun, HostAndroidStatus, RunTargetInfo, SandboxAndroidStatus } from "@tesseract/protocol";
 import { BOOT_TIMEOUT_MS, POLL_MS, SESSION_REQUIRED_CODE, SESSION_REQUIRED_DETAIL, STOP_TIMEOUT_MS, TARGET_TIMEOUT_MS } from "./constants";
 import { EMULATOR_LABELS } from "./labels";
 import { androidTarget, emulatorReady, liveRun, type EmulatorPlan, type EmulatorStage } from "./model";

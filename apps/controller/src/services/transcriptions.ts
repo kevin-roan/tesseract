@@ -2,7 +2,7 @@ import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { availableParallelism, tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { STT_PROFILES, type CreateTranscription, type SttEngineName, type SttProfile, type SttStatus, type Transcription, type UpdateStt } from "@theone/protocol";
+import { STT_PROFILES, type CreateTranscription, type SttEngineName, type SttProfile, type SttStatus, type Transcription, type UpdateStt } from "@tesseract/protocol";
 import { badRequest, errorMessage, HttpError, unavailable } from "../core/errors";
 import type { EventHub } from "../core/events";
 import { resolveExecutable, run, type RunResult } from "../core/exec";
@@ -133,7 +133,7 @@ function modelName(path: string): string {
   return file.replace(/^ggml-/, "").replace(/\.bin$/, "");
 }
 
-/** The profile's own model, else the THEONE_WHISPER_MODEL fallback. */
+/** The profile's own model, else the TESSERACT_WHISPER_MODEL fallback. */
 function resolveModel(config: Config, model: string | null): { path: string; name: string } | null {
   if (model !== null) {
     const own = whisperModelPath(config, model);
@@ -162,7 +162,7 @@ export function whisperCppEngine(
     name: "whisper.cpp",
     model: settings.modelName,
     transcribe: async (input) => {
-      const dir = await mkdtemp(join(tmpdir(), "theone-stt-"));
+      const dir = await mkdtemp(join(tmpdir(), "tesseract-stt-"));
       try {
         const wav = join(dir, "audio.wav");
         const convert = await run(
@@ -328,8 +328,8 @@ export function geminiEngine(
 }
 
 const SETUP_HINT =
-  "install whisper.cpp and ffmpeg and put a model in THEONE_WHISPER_MODELS_DIR or set THEONE_WHISPER_MODEL (THEONE_WHISPER_BIN if it is not whisper-cli), " +
-  "or set THEONE_STT_URL and THEONE_STT_API_KEY for an OpenAI-compatible service";
+  "install whisper.cpp and ffmpeg and put a model in TESSERACT_WHISPER_MODELS_DIR or set TESSERACT_WHISPER_MODEL (TESSERACT_WHISPER_BIN if it is not whisper-cli), " +
+  "or set TESSERACT_STT_URL and TESSERACT_STT_API_KEY for an OpenAI-compatible service";
 
 /** Chooses the engine per request, so installing whisper.cpp or a model takes effect without a restart. */
 export function selectEngine(
@@ -342,7 +342,7 @@ export function selectEngine(
   const which = options.which ?? ((bin: string) => resolveExecutable(bin));
   const timeoutMs = options.timeoutMs ?? TRANSCRIPTION_TIMEOUT_MS;
   if (profile === "off") throw unavailable(STT_OFF_MESSAGE);
-  if (stt.engine === "none") throw unavailable("Speech-to-text is disabled (THEONE_STT_ENGINE=none)");
+  if (stt.engine === "none") throw unavailable("Speech-to-text is disabled (TESSERACT_STT_ENGINE=none)");
 
   if (stt.engine === "auto" || stt.engine === "whisper.cpp") {
     const tuning = profileTuning(profile, cpus);
@@ -356,9 +356,9 @@ export function selectEngine(
     if (stt.engine === "whisper.cpp") {
       const wanted = tuning.model === null ? null : whisperModelPath(config, tuning.model);
       const missing = [
-        whisper ? null : `${stt.whisperBin} (THEONE_WHISPER_BIN)`,
-        ffmpeg ? null : `${config.ffmpegBin} (THEONE_FFMPEG_BIN)`,
-        model ? null : `the model ${wanted} (THEONE_WHISPER_MODELS_DIR) or ${stt.whisperModel ?? "a fallback model (THEONE_WHISPER_MODEL)"}`,
+        whisper ? null : `${stt.whisperBin} (TESSERACT_WHISPER_BIN)`,
+        ffmpeg ? null : `${config.ffmpegBin} (TESSERACT_FFMPEG_BIN)`,
+        model ? null : `the model ${wanted} (TESSERACT_WHISPER_MODELS_DIR) or ${stt.whisperModel ?? "a fallback model (TESSERACT_WHISPER_MODEL)"}`,
       ].filter((item) => item !== null);
       throw unavailable(`whisper.cpp speech-to-text is missing ${missing.join(", ")}`);
     }
@@ -366,7 +366,7 @@ export function selectEngine(
 
   const fetchImpl = options.fetch ?? ((input: string, init: RequestInit) => fetch(input, init));
   if (stt.engine === "openai-compatible") {
-    if (!stt.url) throw unavailable("THEONE_STT_ENGINE=openai-compatible needs THEONE_STT_URL (and usually THEONE_STT_API_KEY)");
+    if (!stt.url) throw unavailable("TESSERACT_STT_ENGINE=openai-compatible needs TESSERACT_STT_URL (and usually TESSERACT_STT_API_KEY)");
     return openAiCompatibleEngine({ url: stt.url, apiKey: stt.apiKey, model: stt.model }, fetchImpl, timeoutMs);
   }
   if (stt.url && stt.apiKey) return openAiCompatibleEngine({ url: stt.url, apiKey: stt.apiKey, model: stt.model }, fetchImpl, timeoutMs);

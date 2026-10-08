@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import type { ListeningPort, ProcessInfo } from "@theone/protocol";
+import type { ListeningPort, ProcessInfo } from "@tesseract/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
 

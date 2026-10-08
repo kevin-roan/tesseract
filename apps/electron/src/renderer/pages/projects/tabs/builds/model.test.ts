@@ -1,5 +1,5 @@
-import type { BuildJob } from "@theone/protocol";
-import { sampleArtifact, sampleBuild } from "@theone/protocol/fixtures";
+import type { BuildJob } from "@tesseract/protocol";
+import { sampleArtifact, sampleBuild } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import { buildMeta, buildProgress, buildStatus, cancelBody, targetSubtitle } from "./model";
 

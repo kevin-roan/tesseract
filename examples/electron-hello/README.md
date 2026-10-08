@@ -1,8 +1,8 @@
 # electron-hello
 
-Minimal Electron + electron-builder app used to verify the TheOne sandbox end to end:
+Minimal Electron + electron-builder app used to verify the Tesseract sandbox end to end:
 Linux AppImage build, Windows NSIS build through wine, and rendering on the virtual
-display. The window shows "TheOne Electron Hello" plus the platform and the Electron,
+display. The window shows "Tesseract Electron Hello" plus the platform and the Electron,
 Chromium and Node versions.
 
 It is **not** a workspace member. Never install it on the host; only inside the sandbox
@@ -40,13 +40,13 @@ npx electron-builder --win squirrel --x64 --publish never \
 ```bash
 DISPLAY=:1 npm start                                                  # electron . --no-sandbox
 DISPLAY=:1 ./dist/electron-hello-linux-x86_64-1.0.0.AppImage --no-sandbox
-theone-screenshot -w "TheOne Electron Hello"
+tesseract-screenshot -w "Tesseract Electron Hello"
 ```
 
 - `--no-sandbox` is required: the container has no unprivileged user namespaces, and a
   `chrome-sandbox` helper that is not setuid root makes Electron abort.
 - AppImages need no FUSE because the image sets `APPIMAGE_EXTRACT_AND_RUN=1`.
 - D-Bus and ALSA errors in the log are expected and harmless.
-- The Windows build (`dist/win-unpacked/TheOne Electron Hello.exe`) does not render under
+- The Windows build (`dist/win-unpacked/Tesseract Electron Hello.exe`) does not render under
   wine 10.0 with Electron 44. The wine path is proven by producing the installer, not by
   running it.

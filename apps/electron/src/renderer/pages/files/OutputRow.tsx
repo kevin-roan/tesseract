@@ -1,4 +1,4 @@
-import type { BuildOutput } from "@theone/protocol";
+import type { BuildOutput } from "@tesseract/protocol";
 import { RecordRow } from "../../components/RecordRow";
 import type { FileActions } from "../../features/files/hooks/use-file-actions";
 import { ARTIFACT_LABELS } from "../../features/files/labels";

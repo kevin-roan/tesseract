@@ -53,7 +53,7 @@ function scenarioBuild(): Pick<OnboardingState, "build"> & { log?: string[] } {
   if (isScenario(SANDBOX_SCENARIOS.failed)) {
     return {
       build: FAILED_PHASE,
-      log: [...BUILD_LOG, "theone-sandbox-1  | controller: waiting for /home/dev/.claude", "health: timed out after 180 s"],
+      log: [...BUILD_LOG, "tesseract-sandbox-1  | controller: waiting for /home/dev/.claude", "health: timed out after 180 s"],
     };
   }
   if (isScenario(SANDBOX_SCENARIOS.done))
@@ -186,7 +186,7 @@ function simulate(mode: BuildMode): void {
     () =>
       void publish({
         build: { kind: "pairing" },
-        buildLog: log("$ theone-controller pair --json"),
+        buildLog: log("$ tesseract-controller pair --json"),
       }),
   );
   schedule(

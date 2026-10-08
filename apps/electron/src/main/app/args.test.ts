@@ -14,7 +14,7 @@ describe("parseLaunchArgs", () => {
   });
 
   it("finds a deep link anywhere in argv", () => {
-    expect(parseLaunchArgs(["Monolith.exe", "--allow-file-access", "monolith://agents?new=1"]).deepLink).toBe("monolith://agents?new=1");
+    expect(parseLaunchArgs(["Tesseract.exe", "--allow-file-access", "tesseract://agents?new=1"]).deepLink).toBe("tesseract://agents?new=1");
   });
 
   it("decodes the snapshot request", () => {
@@ -29,9 +29,9 @@ describe("localCommandArgs", () => {
   });
 
   it("keeps the command and its modifiers, dropping Chromium switches", () => {
-    expect(localCommandArgs(["Monolith", "--no-sandbox", "--sync", "--confidential"])).toEqual(["--sync", "--confidential"]);
-    expect(localCommandArgs(["Monolith", "--pull", "--dry-run", "--force"])).toEqual(["--pull", "--dry-run", "--force"]);
-    expect(localCommandArgs(["Monolith", "--sync-status"])).toEqual(["--sync-status"]);
+    expect(localCommandArgs(["Tesseract", "--no-sandbox", "--sync", "--confidential"])).toEqual(["--sync", "--confidential"]);
+    expect(localCommandArgs(["Tesseract", "--pull", "--dry-run", "--force"])).toEqual(["--pull", "--dry-run", "--force"]);
+    expect(localCommandArgs(["Tesseract", "--sync-status"])).toEqual(["--sync-status"]);
   });
 });
 

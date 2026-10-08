@@ -6,7 +6,7 @@ import { resolveChoice } from "./model";
 
 describe("resolveChoice", () => {
   it("keeps an existing selection and falls back to the first option", () => {
-    expect(resolveChoice(PROJECT_CHOICES, "monolith")).toBe("monolith");
+    expect(resolveChoice(PROJECT_CHOICES, "tesseract")).toBe("tesseract");
     expect(resolveChoice(PROJECT_CHOICES, "gone")).toBe("all");
     expect(resolveChoice([], "gone")).toBeNull();
   });

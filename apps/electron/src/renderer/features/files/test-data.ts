@@ -1,4 +1,4 @@
-import type { Artifact, BuildOutput } from "@theone/protocol";
+import type { Artifact, BuildOutput } from "@tesseract/protocol";
 
 export const NOW = Date.parse("2026-09-28T12:00:00Z") / 1000;
 

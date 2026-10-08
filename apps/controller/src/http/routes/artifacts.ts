@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { BuildOutputQuerySchema, routePatterns, SendArtifactSchema, ShareArtifactSchema } from "@theone/protocol";
+import { BuildOutputQuerySchema, routePatterns, SendArtifactSchema, ShareArtifactSchema } from "@tesseract/protocol";
 import type { Services } from "../../services";
 import { fileResponse } from "../file-response";
 import { idParam, jsonBody, parseWith, projectFilter } from "../validation";

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import { AgentRunSchema, ProcessInfoSchema, TerminalInfoSchema } from "@theone/protocol";
+import { AgentRunSchema, ProcessInfoSchema, TerminalInfoSchema } from "@tesseract/protocol";
 import { openDatabase } from "../src/db/database";
 import { Repositories } from "../src/db/repositories";
 import { installFakeClaude, makeTempDir, processGone, removeTempDirs, startTestController, TEST_TOKEN, waitFor, writeFiles } from "./helpers";
@@ -14,7 +14,7 @@ describe("controller shutdown", () => {
     const workspace = makeTempDir("shutdown");
     writeFiles(workspace, { "projects/app/.keep": "" });
     const claude = installFakeClaude(makeTempDir("bin"));
-    const t = await startTestController({ workspace, env: { THEONE_CLAUDE_BIN: claude } });
+    const t = await startTestController({ workspace, env: { TESSERACT_CLAUDE_BIN: claude } });
 
     const proc = ProcessInfoSchema.parse((await t.json("POST", "/v1/processes", { projectId: "app", command: "sleep 60" })).body);
     const run = AgentRunSchema.parse((await t.json("POST", "/v1/agent/runs", { prompt: "slow please" })).body);
@@ -47,13 +47,13 @@ describe("serve", () => {
       env: {
         PATH: process.env.PATH,
         HOME: process.env.HOME,
-        THEONE_WORKSPACE: makeTempDir("serve"),
-        THEONE_HOST: "127.0.0.1",
-        THEONE_PORT: String(port),
-        THEONE_TOKEN: TEST_TOKEN,
-        THEONE_VNC_PORT: "1",
-        THEONE_DISPLAY: ":987",
-        THEONE_CLAUDE_BIN: "/nonexistent/claude",
+        TESSERACT_WORKSPACE: makeTempDir("serve"),
+        TESSERACT_HOST: "127.0.0.1",
+        TESSERACT_PORT: String(port),
+        TESSERACT_TOKEN: TEST_TOKEN,
+        TESSERACT_VNC_PORT: "1",
+        TESSERACT_DISPLAY: ":987",
+        TESSERACT_CLAUDE_BIN: "/nonexistent/claude",
       },
       stdout: "pipe",
       stderr: "pipe",

@@ -1,5 +1,5 @@
-import type { ClaudeAccountList } from "@theone/protocol";
-import { sampleClaudeAccountList } from "@theone/protocol/fixtures";
+import type { ClaudeAccountList } from "@tesseract/protocol";
+import { sampleClaudeAccountList } from "@tesseract/protocol/fixtures";
 
 import {
   DEFAULT_ACCOUNT_CHOICE,

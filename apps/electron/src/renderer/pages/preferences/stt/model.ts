@@ -1,4 +1,4 @@
-import { STT_PROFILES, type SttProfile, type SttProfileInfo, type SttStatus } from "@theone/protocol";
+import { STT_PROFILES, type SttProfile, type SttProfileInfo, type SttStatus } from "@tesseract/protocol";
 import type { RadioChoice } from "../../../components/RadioRows";
 import { joinMeta, pluralize } from "../shared/format";
 import { SHARED_LABELS } from "../shared/labels";

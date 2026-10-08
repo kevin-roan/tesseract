@@ -1,7 +1,7 @@
 import { constants as fsConstants, existsSync, statSync } from "node:fs";
 import { copyFile, link, rm, stat } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
-import { createId, type Artifact, type ArtifactSource, type BuildProfile, type ShareArtifact } from "@theone/protocol";
+import { createId, type Artifact, type ArtifactSource, type BuildProfile, type ShareArtifact } from "@tesseract/protocol";
 import { badRequest, forbidden, notFound } from "../core/errors";
 import { isInside, locateProject, realpathOrNull } from "../core/paths";
 import { nowIso } from "../core/time";

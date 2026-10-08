@@ -1,5 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { AppRun } from "@theone/protocol";
+import type { AppRun } from "@tesseract/protocol";
 
 import { filterFromKey, matchesFilter } from "@/features/sandbox/api/query-keys";
 import { upsertById } from "@/features/sandbox/utils/collections";

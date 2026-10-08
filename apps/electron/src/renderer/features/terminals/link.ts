@@ -1,4 +1,4 @@
-import type { TerminalConnection, TerminalHandlers, TheOneError } from "@theone/client";
+import type { TerminalConnection, TerminalHandlers, TesseractError } from "@tesseract/client";
 import { RESIZE_DEBOUNCE_MS } from "./constants";
 import { InputQueue, inputEnabled, mapSocketState } from "./model";
 import type { Grid, LiveSession, SessionState } from "./types";
@@ -52,7 +52,7 @@ export class TerminalLink {
     try {
       connection = this.options.open({
         onStateChange: (state) => this.onSocketState(state),
-        onError: (error: TheOneError) => {
+        onError: (error: TesseractError) => {
           this.error = error.message;
           if (this.currentState === "closed") this.emit({ error: this.error });
         },

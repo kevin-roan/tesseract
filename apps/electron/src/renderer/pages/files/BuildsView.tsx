@@ -1,4 +1,4 @@
-import type { BuildOutput } from "@theone/protocol";
+import type { BuildOutput } from "@tesseract/protocol";
 import { EmptyState } from "../../components/EmptyState";
 import { GroupedList } from "../../components/GroupedList";
 import { BAND_ICON, BUILDS_EMPTY_ICON } from "../../features/files/constants";

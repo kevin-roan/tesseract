@@ -1,5 +1,5 @@
-import type { SyncRequest } from "@theone/protocol";
-import { ApiError } from "@theone/client";
+import type { SyncRequest } from "@tesseract/protocol";
+import { ApiError } from "@tesseract/client";
 import type { HostChange, SyncBackState, SyncKind, SyncSubmitOptions } from "../../shared/contracts/syncback";
 import { createLogger } from "../log";
 import type { SyncApi } from "./api";

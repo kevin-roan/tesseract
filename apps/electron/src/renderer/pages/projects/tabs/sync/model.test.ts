@@ -1,5 +1,5 @@
-import type { SyncChanges, SyncRequest } from "@theone/protocol";
-import { sampleSyncRequest } from "@theone/protocol/fixtures";
+import type { SyncChanges, SyncRequest } from "@tesseract/protocol";
+import { sampleSyncRequest } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import { formatBytes } from "../../../../features/projects/format";
 import {

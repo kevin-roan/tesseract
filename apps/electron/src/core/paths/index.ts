@@ -9,23 +9,26 @@ export interface PathEnvironment {
   userData?: string;
 }
 
-export const CONFIG_DIR_NAME = "monolith-desktop";
-export const LEGACY_CONFIG_DIR_NAME = "theone-desktop";
+export const CONFIG_DIR_NAME = "tesseract-desktop";
 export const CONFIG_FILE_NAME = "config.json";
-export const STATE_DIR_NAME = "monolith";
+export const STATE_DIR_NAME = "tesseract";
 
 export function currentPathEnvironment(userData?: string): PathEnvironment {
   return { platform: process.platform, env: process.env, home: homedir(), userData };
 }
 
-export function defaultUserDataDir({ platform, env, home }: PathEnvironment): string {
-  if (env[ENV.userData]) return env[ENV.userData] as string;
-  if (platform === "darwin") return join(home, "Library", "Application Support", APP_NAME);
-  if (platform === "win32") return join(env.APPDATA ?? join(home, "AppData", "Roaming"), APP_NAME);
-  return join(env.XDG_CONFIG_HOME || join(home, ".config"), APP_NAME);
+export function defaultUserDataDir(paths: PathEnvironment): string {
+  if (paths.env[ENV.userData]) return paths.env[ENV.userData] as string;
+  return appDataDir(paths, APP_NAME);
 }
 
-function localAppData({ env, home }: PathEnvironment): string {
+export function appDataDir({ platform, env, home }: PathEnvironment, name: string): string {
+  if (platform === "darwin") return join(home, "Library", "Application Support", name);
+  if (platform === "win32") return join(env.APPDATA ?? join(home, "AppData", "Roaming"), name);
+  return join(env.XDG_CONFIG_HOME || join(home, ".config"), name);
+}
+
+export function localAppData({ env, home }: PathEnvironment): string {
   return env.LOCALAPPDATA ?? join(home, "AppData", "Local");
 }
 
@@ -69,5 +72,5 @@ export function downloadsDir(paths: PathEnvironment): string {
 export function defaultAndroidSdkRoot(paths: PathEnvironment): string {
   if (paths.platform === "darwin") return join(paths.home, "Library", "Application Support", APP_NAME, "android-sdk");
   if (paths.platform === "win32") return join(localAppData(paths), APP_NAME, "android-sdk");
-  return join(paths.home, ".local", "share", "theone", "android-sdk");
+  return join(paths.home, ".local", "share", "tesseract", "android-sdk");
 }

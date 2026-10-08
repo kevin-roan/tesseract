@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { View } from "react-native";
 import { ArrowSquareOutIcon, ExportIcon } from "phosphor-react-native";
-import type { BrowserTab } from "@theone/protocol";
+import type { BrowserTab } from "@tesseract/protocol";
 
 import IconButton from "@/components/icon-button";
 import { ThemedText } from "@/components/themed-text";

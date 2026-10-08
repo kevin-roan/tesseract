@@ -12,7 +12,7 @@ describe("ProjectsPage", () => {
   it("lists the fixture projects with tab counts", async () => {
     renderRoutes(routes, "/projects");
     expect(await screen.findByRole("button", { name: "streaxfit" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "monolith" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "tesseract" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "hybrid-pos" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "sante-production" })).toBeTruthy();
     const tabs = screen.getByRole("tablist", { name: "Project filter" });
@@ -55,9 +55,9 @@ describe("ProjectsPage", () => {
   });
 
   it("renders the project detail header and tabs", async () => {
-    renderRoutes(routes, "/projects/monolith");
-    expect(await screen.findByRole("heading", { level: 1, name: "monolith" })).toBeTruthy();
-    expect(screen.getByText("/workspace/projects/monolith")).toBeTruthy();
+    renderRoutes(routes, "/projects/tesseract");
+    expect(await screen.findByRole("heading", { level: 1, name: "tesseract" })).toBeTruthy();
+    expect(screen.getByText("/workspace/projects/tesseract")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ask Claude" })).toBeTruthy();
     const sections = screen.getByRole("tablist", { name: "Project sections" });
     expect(within(sections).getAllByRole("tab").map((tab) => tab.textContent?.replace(/\d+/g, ""))).toEqual([
@@ -72,9 +72,9 @@ describe("ProjectsPage", () => {
   });
 
   it("shows the error state for a missing project", async () => {
-    renderRoutes(routes, "/projects/monolith-test-missing");
+    renderRoutes(routes, "/projects/tesseract-test-missing");
     expect(await screen.findByText("Couldn't load this project")).toBeTruthy();
-    expect(screen.getByText("Project monolith-test-missing not found")).toBeTruthy();
+    expect(screen.getByText("Project tesseract-test-missing not found")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
   });
 

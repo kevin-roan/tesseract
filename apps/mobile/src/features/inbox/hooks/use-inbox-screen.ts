@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { router } from "expo-router";
-import type { InboxItem } from "@theone/protocol";
+import type { InboxItem } from "@tesseract/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
 import { useChatNavigation } from "@/features/chats/hooks/use-chat-navigation";

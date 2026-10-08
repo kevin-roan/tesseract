@@ -7,7 +7,7 @@ stores them and logs `live activity pushes disabled` at `debug`.
 ## 1. Create the APNs auth key
 
 1. [Apple Developer → Certificates, Identifiers & Profiles → Keys](https://developer.apple.com/account/resources/authkeys/list),
-   **+**, name it (e.g. `TheOne APNs`), tick **Apple Push Notifications service (APNs)**,
+   **+**, name it (e.g. `Tesseract APNs`), tick **Apple Push Notifications service (APNs)**,
    Continue, Register.
 2. Download `AuthKey_<KEYID>.p8` once (Apple never shows it again) and note the **Key ID**
    (10 characters) and your **Team ID** (Membership details).
@@ -20,11 +20,11 @@ Set, in `infra/compose/.env` (or the controller's environment):
 
 | Var | Value |
 |---|---|
-| `THEONE_APNS_KEY_FILE` | absolute path of the `.p8` inside the container, e.g. `/workspace/.agent/controller/AuthKey_ABC123DEF4.p8` |
-| `THEONE_APNS_KEY_ID` | the key id, e.g. `ABC123DEF4` |
-| `THEONE_APNS_TEAM_ID` | the team id, e.g. `TEAM123456` |
-| `THEONE_APNS_BUNDLE_ID` | only when the app is not `com.kevinbpract.theone` |
-| `THEONE_APNS_ENV` | `production` (default) or `sandbox` |
+| `TESSERACT_APNS_KEY_FILE` | absolute path of the `.p8` inside the container, e.g. `/workspace/.agent/controller/AuthKey_ABC123DEF4.p8` |
+| `TESSERACT_APNS_KEY_ID` | the key id, e.g. `ABC123DEF4` |
+| `TESSERACT_APNS_TEAM_ID` | the team id, e.g. `TEAM123456` |
+| `TESSERACT_APNS_BUNDLE_ID` | only when the app is not `com.kevinroan.tesseract` |
+| `TESSERACT_APNS_ENV` | `production` (default) or `sandbox` |
 
 All three of key file, key id and team id are required together; setting only some of them
 stops the controller with a `ConfigError`. Restart the controller afterwards.
@@ -38,18 +38,18 @@ APNs has two environments and a token is only valid in the one the app was built
 - **`production`** (`api.push.apple.com`): TestFlight and App Store builds.
 
 Sending to the wrong environment returns `400 BadDeviceToken`; the controller then deletes the
-token and the app has to register again after you fix `THEONE_APNS_ENV`.
+token and the app has to register again after you fix `TESSERACT_APNS_ENV`.
 
 ## 3. Verify
 
 1. Open the app on the phone; it registers its push-to-start token. Check with
-   `theone-controller` API: `curl -H "Authorization: Bearer $TOKEN" $URL/v1/push/live-activities`
+   `tesseract-controller` API: `curl -H "Authorization: Bearer $TOKEN" $URL/v1/push/live-activities`
    should list a `push-to-start` token (and an `activity` token while an activity is showing).
-2. Start an agent run from the app. With `THEONE_LOG_LEVEL=debug` the controller logs
+2. Start an agent run from the app. With `TESSERACT_LOG_LEVEL=debug` the controller logs
    `live activity pushed {event: "start", tokens: 1, removed: 0}`, then `update` events while
    the run works and `end` when nothing is running.
 3. Problems show up as:
-   - `live activity pushes disabled: THEONE_APNS_KEY_FILE, …` (debug): the variables are not set.
+   - `live activity pushes disabled: TESSERACT_APNS_KEY_FILE, …` (debug): the variables are not set.
    - `cannot load the APNs key; live activity pushes disabled` (error): wrong path or not a
      P-256 `.p8` key.
    - `live activity push rejected {status, reason}` (warn): APNs refused it. `403

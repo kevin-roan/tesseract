@@ -10,7 +10,7 @@ import {
   type ClaudeImport,
   type ClaudeImportFile,
   type ClaudeImportResult,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import type { Config } from "../config";
 import { resolveExecutable } from "../core/exec";
 import { readRegularFile, writeFileAtomic } from "../core/files";
@@ -19,7 +19,7 @@ import { isInside, realpathOrNull } from "../core/paths";
 import { nowIso } from "../core/time";
 
 export const CLAUDE_IMPORT_STATE_FILE = "claude-import.json";
-export const BACKUP_SUFFIX = ".theone-bak";
+export const BACKUP_SUFFIX = ".tesseract-bak";
 
 type Json = Record<string, unknown>;
 type Skipped = ClaudeImportResult["skipped"][number];
@@ -235,7 +235,7 @@ export class ClaudeAuthService {
     return target;
   }
 
-  /** Atomic write that first copies the previous file to `<file>.theone-bak`. */
+  /** Atomic write that first copies the previous file to `<file>.tesseract-bak`. */
   private replace(path: string, content: string, mode: number): void {
     if (existsSync(path)) {
       const backup = `${path}${BACKUP_SUFFIX}`;

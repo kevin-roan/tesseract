@@ -1,6 +1,6 @@
 export const CLI_ENV = {
-  appPath: "MONOLITH_APP_PATH",
-  sandboxContext: "MONOLITH_SANDBOX_CONTEXT",
+  appPath: "TESSERACT_APP_PATH",
+  sandboxContext: "TESSERACT_SANDBOX_CONTEXT",
   noColor: "NO_COLOR",
 } as const;
 
@@ -16,17 +16,17 @@ export const INSTALL_SIDECAR = "app.json";
 export const SIDECAR_KEYS = { appPath: "appPath", sandboxDir: "sandboxDir" } as const;
 
 export const APP_EXECUTABLE = {
-  linux: ["..", "monolith-desktop"],
-  win32: ["..", "Monolith.exe"],
-  darwin: ["..", "MacOS", "Monolith"],
+  linux: ["..", "tesseract-desktop"],
+  win32: ["..", "Tesseract.exe"],
+  darwin: ["..", "MacOS", "Tesseract"],
 } as const;
 
 export const INSTALLED_APP = {
-  linux: ["/opt/Monolith/monolith-desktop"],
-  darwin: ["/Applications/Monolith.app/Contents/MacOS/Monolith"],
+  linux: ["/opt/Tesseract/tesseract-desktop"],
+  darwin: ["/Applications/Tesseract.app/Contents/MacOS/Tesseract"],
 } as const;
 
-export const WINDOWS_INSTALL_DIR = ["Programs", "Monolith", "Monolith.exe"] as const;
+export const WINDOWS_INSTALL_DIR = ["Programs", "Tesseract", "Tesseract.exe"] as const;
 
 export const LINK_OPENERS = {
   linux: { file: "xdg-open", args: [] as string[] },
@@ -81,6 +81,8 @@ export const SERVER = {
   hostShellReadyMs: 15_000,
   hostShellPollMs: 500,
   commandTimeoutMs: 20_000,
+  bootstrapRetries: 5,
+  retryDelayMs: 1_000,
 } as const;
 
 export const SERVER_ENV = {

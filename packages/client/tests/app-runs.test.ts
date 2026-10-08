@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { sampleAppRun, sampleRunTargets, sampleSandboxAndroidStatus } from "@theone/protocol/fixtures";
-import { ProtocolError, TheOneClient, type FetchLike, type HttpRequestInit, type HttpResponse } from "../src/index";
+import { sampleAppRun, sampleRunTargets, sampleSandboxAndroidStatus } from "@tesseract/protocol/fixtures";
+import { ProtocolError, TesseractClient, type FetchLike, type HttpRequestInit, type HttpResponse } from "../src/index";
 
-const BASE = "https://theone-sandbox.tail1234.ts.net";
+const BASE = "https://tesseract-sandbox.tail1234.ts.net";
 const TOKEN = "secret-token";
 
 type Call = { url: string; init: HttpRequestInit };
@@ -26,7 +26,7 @@ function clientWith(replies: Record<string, HttpResponse>) {
     const parsed = new URL(url);
     return replies[`${init.method} ${parsed.pathname}${parsed.search}`] ?? respond(404, { error: { code: "not_found", message: "nope" } });
   };
-  return { client: new TheOneClient({ baseUrl: BASE, token: TOKEN, fetch }), calls };
+  return { client: new TesseractClient({ baseUrl: BASE, token: TOKEN, fetch }), calls };
 }
 
 describe("app runs", () => {

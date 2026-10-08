@@ -6,7 +6,7 @@ export const SANDBOX_SETTINGS_LABELS = {
   separator: " · ",
   docker: {
     title: "Docker",
-    description: "Monolith runs the sandbox in Docker on this computer.",
+    description: "Tesseract runs the sandbox in Docker on this computer.",
     engine: "Engine",
     checking: "Checking Docker…",
     kinds: {
@@ -47,8 +47,8 @@ export const SANDBOX_SETTINGS_LABELS = {
     },
     unconfigured: "No sandbox is set up on this computer yet.",
     setUp: "Set up…",
-    autostart: "Start with Monolith",
-    autostartSubtitle: "Start the sandbox whenever Monolith opens",
+    autostart: "Start with Tesseract",
+    autostartSubtitle: "Start the sandbox whenever Tesseract opens",
     start: "Start",
     stop: "Stop",
     started: "Sandbox started",

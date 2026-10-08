@@ -1,6 +1,6 @@
 # Projects page (core): list, detail shell, dialogs, actions
 
-Source of truth (GTK, read-only): `apps/desktop/monolith_desktop/pages/projects/{page,detail,model,labels,streams,create_dialog,rename_dialog,remove_action,fix_action,run_dialog}.py`, plus the shared widgets they use (`widgets/{project_card,list_view,feedback,form_dialog,dialog,confirm_dialog,log_panel,badges,buttons,choice_dropdown,surface,page_body,motion}.py`) and styles (`theme/css.py`, `theme/extras/{projects,dialogs,motion}.py`, `theme/tokens.py`, `theme/typography.py`, `theme/semantic.py`, `theme/palette.py`).
+Source of truth (GTK, read-only): `apps/desktop/tesseract_desktop/pages/projects/{page,detail,model,labels,streams,create_dialog,rename_dialog,remove_action,fix_action,run_dialog}.py`, plus the shared widgets they use (`widgets/{project_card,list_view,feedback,form_dialog,dialog,confirm_dialog,log_panel,badges,buttons,choice_dropdown,surface,page_body,motion}.py`) and styles (`theme/css.py`, `theme/extras/{projects,dialogs,motion}.py`, `theme/tokens.py`, `theme/typography.py`, `theme/semantic.py`, `theme/palette.py`).
 
 Out of scope here (other specs cover them): the detail tab bodies (Processes, Builds, Artifacts, Git, Sync back, Chats: `tab_*.py`, `sync_*.py`), the emulator launcher (`emulator.py`, `emulator_launch.py`), the window chrome / sidebar / page header bar, and the global toast host. This spec covers how the detail shell mounts those tabs and passes data to them.
 
@@ -10,16 +10,16 @@ All sizes are CSS px at zoom 1.0. Colors are given as semantic tokens and then r
 
 ## 1. Reference screenshots
 
-All in `docs/electron/reference/`. They were captured with `apps/desktop/tools/snapshot.sh ... --zoom 1 --width 1440 --height 900`. **Broadway clamps the window to 1024x768**, so every PNG is 1024x768, not 1440x900. The data is **live** (the user's real sandbox `theone-sandbox`, 4 projects) and is not a fixture.
+All in `docs/electron/reference/`. They were captured with `apps/desktop/tools/snapshot.sh ... --zoom 1 --width 1440 --height 900`. **Broadway clamps the window to 1024x768**, so every PNG is 1024x768, not 1440x900. The data is **live** (the user's real sandbox `tesseract-sandbox`, 4 projects) and is not a fixture.
 
 | File | What it shows |
 |---|---|
-| `page-projects-core-list.png` | Dark. Projects list, `All projects` tab selected with counts `4` / `Active 1` / `Idle 3`, search and group toggles on the right of the toolbar, 2-column card grid (the content width allows only 2 columns of min 280px plus gaps). Cards: `streaxfit` (Confidential lock badge in yellow, `1 running` green dot, branch `main`, yellow `Uncommitted changes`, commit row, tags `Web bundle`, `Build script`), `monolith`, `hybrid-pos` (long branch wraps the badge row), `sante-production` (commit date older than a week shows as `2026-09-21`). All cards in all rows have the same height (GTK FlowBox homogeneous). Header bar shows the `Projects` title with refresh and `+` buttons. |
+| `page-projects-core-list.png` | Dark. Projects list, `All projects` tab selected with counts `4` / `Active 1` / `Idle 3`, search and group toggles on the right of the toolbar, 2-column card grid (the content width allows only 2 columns of min 280px plus gaps). Cards: `streaxfit` (Confidential lock badge in yellow, `1 running` green dot, branch `main`, yellow `Uncommitted changes`, commit row, tags `Web bundle`, `Build script`), `tesseract`, `hybrid-pos` (long branch wraps the badge row), `sante-production` (commit date older than a week shows as `2026-09-21`). All cards in all rows have the same height (GTK FlowBox homogeneous). Header bar shows the `Projects` title with refresh and `+` buttons. |
 | `page-projects-core-list-light.png` | The same view in light (`graphiteLight`): white cards `#FFFFFF` on a `#F5F5F6`-ish canvas, darker yellow `#8F6400` dots, green `#2E8A5B`. |
-| `page-projects-core-detail.png` | Dark. Detail of project id `theone-mobile` (display name `monolith`). Crumb row: `theone-mobile` + mono path `/workspace/projects/theone-mobile` + copy / rename / delete icon buttons on the right. `h1` title `monolith`. Property chips: `Idle`, `Node · bun`, `main`, `92 changed` (yellow circle-dot), `Claude · claude-work`. Quick actions: indigo `Ask Claude`, `Claude terminal`, `Shell`, `Open on emulator` (Expo project, so the Display button became the emulator button), then the Claude account dropdown `Default (claude-work)` wrapped onto a second line. Tab strip: `Processes` (selected), `Builds`, `Artifacts`, `Git`, `Sync back 11`, `Chats 23`, then a hairline divider and the start of the Processes tab (out of scope). The header bar breadcrumb reads `Projects › theone-mobile` (see quirk Q1). |
+| `page-projects-core-detail.png` | Dark. Detail of project id `tesseract-mobile` (display name `tesseract`). Crumb row: `tesseract-mobile` + mono path `/workspace/projects/tesseract-mobile` + copy / rename / delete icon buttons on the right. `h1` title `tesseract`. Property chips: `Idle`, `Node · bun`, `main`, `92 changed` (yellow circle-dot), `Claude · claude-work`. Quick actions: indigo `Ask Claude`, `Claude terminal`, `Shell`, `Open on emulator` (Expo project, so the Display button became the emulator button), then the Claude account dropdown `Default (claude-work)` wrapped onto a second line. Tab strip: `Processes` (selected), `Builds`, `Artifacts`, `Git`, `Sync back 11`, `Chats 23`, then a hairline divider and the start of the Processes tab (out of scope). The header bar breadcrumb reads `Projects › tesseract-mobile` (see quirk Q1). |
 | `page-projects-core-detail-light.png` | The same detail view in light. |
 | `page-projects-core-create-dialog.png` | Dark. `New project` dialog over the list (`--params {"create":true}`): breadcrumb chip `[box] Projects › New project`, close X, large `Name` title input (placeholder), hint `Becomes a folder in /workspace/projects.`, `Clone from` group with `Git URL (optional)` and `Branch (optional)` fields, hint `Leave empty to create an empty project.`, `Confidential` chip with a lock, footer `Cancel` (left, flat) and indigo pill `Create` (right). The backdrop is dimmed. |
-| `page-projects-core-detail-error.png` | Dark. Detail for a project id that does not exist (`monolith-test-missing`; a read-only GET that returned 404): centered warning triangle, `Couldn't load this project`, message `Project monolith-test-missing not found`, indigo `Try again` button. |
+| `page-projects-core-detail-error.png` | Dark. Detail for a project id that does not exist (`tesseract-test-missing`; a read-only GET that returned 404): centered warning triangle, `Couldn't load this project`, message `Project tesseract-test-missing not found`, indigo `Try again` button. |
 
 Not captured (no params reach them): grouped view, search revealer open, empty / offline / unauthorized states, rename / delete / run dialogs, clone progress page. They are specified below from code.
 
@@ -470,7 +470,7 @@ The root is a crossfade stack with `loading` (EmptyState) and `content`.
         - `Couldn't read the project's run targets: {error}` on other errors.
       - If there is an Android target: label `Open on emulator`, or `Show emulator` when a live app run exists. The icon is `smartphone`. The tooltip is:
         - `Build the app in {dir} and install it on the host Android emulator`, or the same without `in {dir}`;
-        - `{reason}. Monolith starts and links the emulator on this computer first` when the reason is host-fixable;
+        - `{reason}. Tesseract starts and links the emulator on this computer first` when the reason is host-fixable;
         - otherwise the raw reason.
         Clicking hands off to the emulator launcher (out of scope).
       - The button is disabled while the emulator is busy, and the label then shows the launcher's progress text, e.g. `Starting the emulator…`.
@@ -520,7 +520,7 @@ The root is a crossfade stack with `loading` (EmptyState) and `content`.
 - **Loading** (no cached project): a spinner with `Loading project…`.
 - **First fetch failed and no project is known**:
   - The glyph is `triangle-alert` (48px `textTertiary`).
-  - The title is `Couldn't load this project`, and the message is the described error (e.g. `Project monolith-test-missing not found`).
+  - The title is `Couldn't load this project`, and the message is the described error (e.g. `Project tesseract-test-missing not found`).
   - The primary action is `Try again`, which runs refresh.
   - See `page-projects-core-detail-error.png`.
 - **Fetch failed with a known project**: keep showing the content and raise the danger notice with the error.
@@ -631,7 +631,7 @@ ConfirmDialog:
 - Focus starts in Name.
 - **Confidential toggle on**:
   1. Remember the typed name.
-  2. Replace the name with a fresh pseudonym (an `adjective-noun` pair from the lists in `monolith_desktop/pseudonym.py`, not colliding with existing ids or the current text; on exhaustion `{pair}-{n}`).
+  2. Replace the name with a fresh pseudonym (an `adjective-noun` pair from the lists in `tesseract_desktop/pseudonym.py`, not colliding with existing ids or the current text; on exhaustion `{pair}-{n}`).
   3. Make the name read-only.
   4. Show a trailing `shuffle` icon in the entry with the tooltip `New pseudonym`. Clicking it re-rolls.
   5. Change the `Clone from` description to `Leave empty to create an empty project. The sandbox still receives the git URL to clone it.`
@@ -866,7 +866,7 @@ shared components: PillTabs, ToolbarToggle, StatusBadge, PropertyChip, EmptyStat
 
 ## 10. GTK quirks: do NOT copy
 
-- **Q1. Stale breadcrumb title.** The screenshot shows `Projects › theone-mobile` (the id) while the page h1 says `monolith`. `page.set_title(name)` runs on render, but the header bar breadcrumb doesn't follow it. In Electron, the breadcrumb should always show the display name (`name || id`).
+- **Q1. Stale breadcrumb title.** The screenshot shows `Projects › tesseract-mobile` (the id) while the page h1 says `tesseract`. `page.set_title(name)` runs on render, but the header bar breadcrumb doesn't follow it. In Electron, the breadcrumb should always show the display name (`name || id`).
 - **Q2. FlowBox spacing and global equal height.** GTK spreads leftover width into the gaps (measured about 19px instead of 12) and makes every card as tall as the tallest card in the whole grid. Use a CSS grid with a 12px gap. Per-row equal height is acceptable; global equal height is optional.
 - **Q3. Icon badge size.** By cascade order, `.to-project-surface .to-icon-badge` (32px) beats `.to-icon-badge.large` (36px). The rendered badge is **32x32 with radius 8**. Copy the rendered result (32/8), not the "large" intent.
 - **Q4. Ellipsis.** `set_max_width_chars(1)` is a GTK trick to let labels shrink. Use `min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap`.

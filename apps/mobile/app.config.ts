@@ -7,14 +7,14 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
  * build on the same device. EAS sets it per build profile (eas.json `env`) and per
  * environment (`eas env`), `expo start` reads it from `.env.development`.
  *
- * The app group `group.com.kevinbpract.theone` and the `theone://` scheme are
- * shared on purpose: the controller mints `theone://pair` links and the island
+ * The app group `group.com.kevinroan.tesseract` and the `tesseract://` scheme are
+ * shared on purpose: the controller mints `tesseract://pair` links and the island
  * and share extensions hardcode the group.
  */
 const VARIANT = process.env.APP_VARIANT ?? 'production';
 const IS_DEV = VARIANT === 'development';
 
-const BASE_ID = 'com.kevinbpract.theone';
+const BASE_ID = 'com.kevinroan.tesseract';
 
 const LOCAL_GOOGLE_SERVICES = './google-services.json';
 
@@ -23,7 +23,7 @@ const googleServicesFile =
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...(config as ExpoConfig),
-  name: IS_DEV ? `${config.name} Dev` : (config.name ?? 'Monolith'),
+  name: IS_DEV ? `${config.name} Dev` : (config.name ?? 'Tesseract'),
   ios: {
     ...config.ios,
     bundleIdentifier: IS_DEV ? `${BASE_ID}.dev` : BASE_ID,

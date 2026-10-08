@@ -1,4 +1,4 @@
-import { routePatterns, type CreateProject, type Project } from "@theone/protocol";
+import { routePatterns, type CreateProject, type Project } from "@tesseract/protocol";
 import { isScenario } from "../scenario";
 import { defineHttpFixtures, reply, type HttpFixtureRequest } from "../types";
 import { GTK_PARITY, PARITY_SCRIPTS, parityProcesses } from "./parity";

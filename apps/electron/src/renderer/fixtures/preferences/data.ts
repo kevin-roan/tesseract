@@ -12,18 +12,18 @@ export const PREFERENCES_SCENARIOS = {
 
 export const GTK_PARITY_DEFAULT_ACCOUNT = "claude-work";
 
-const HOST_HOME = "/tmp/monolith-test-prefs-home";
-const LIVE_CONFIG_FILE = "/tmp/monolith-test-prefs-cfg/config.json";
-const DEFAULT_CONFIG_FILE = "/home/dev/.config/monolith-desktop/config.json";
+const HOST_HOME = "/tmp/tesseract-test-prefs-home";
+const LIVE_CONFIG_FILE = "/tmp/tesseract-test-prefs-cfg/config.json";
+const DEFAULT_CONFIG_FILE = "/home/dev/.config/tesseract-desktop/config.json";
 const EXPIRY_LEAD_MS = 2 * 60 * 60 * 1000 - 30_000;
 
 export const LIVE_CONFIG: ConnectionConfig = {
   apiUrl: "http://172.22.0.2:7700",
   token: "fixture-live-token-0123456789",
   name: FIXTURE_SANDBOX,
-  pairingUrl: "https://theone-sandbox.tail511d9d.ts.net",
+  pairingUrl: "https://tesseract-sandbox.tail511d9d.ts.net",
   source: "docker",
-  container: "theone-sandbox",
+  container: "tesseract-sandbox",
 };
 
 export const SAVED_CONFIG: ConnectionConfig = {

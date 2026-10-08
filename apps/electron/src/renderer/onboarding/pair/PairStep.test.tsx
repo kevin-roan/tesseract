@@ -31,8 +31,8 @@ describe("PairStep", () => {
     mock(() => fixtureOnboardingState());
     renderStep(<PairStep />, "/onboarding/pair");
     expect(await screen.findByTestId("pair-qr")).toBeTruthy();
-    expect(screen.getByTestId("pair-link").textContent).toContain("theone://pair");
-    expect(screen.getByText("Sandbox theone-sandbox · https://theone-sandbox.tail1234.ts.net")).toBeTruthy();
+    expect(screen.getByTestId("pair-link").textContent).toContain("tesseract://pair");
+    expect(screen.getByText("Sandbox tesseract-sandbox · https://tesseract-sandbox.tail1234.ts.net")).toBeTruthy();
     expect(screen.getByText(PAIR_STEP_LABELS.secret)).toBeTruthy();
   });
 

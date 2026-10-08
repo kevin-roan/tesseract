@@ -3,12 +3,12 @@ import { localCommandInvocation, runLocalCommand } from "./local-command";
 
 describe("localCommandInvocation", () => {
   it("runs the bundled CLI in packaged builds", () => {
-    expect(localCommandInvocation({ platform: "linux", packaged: true, resourcesPath: "/opt/Monolith/resources", appPath: "/x" }, ["--sync"])).toEqual({
-      file: "/opt/Monolith/resources/bin/tesseract",
+    expect(localCommandInvocation({ platform: "linux", packaged: true, resourcesPath: "/opt/Tesseract/resources", appPath: "/x" }, ["--sync"])).toEqual({
+      file: "/opt/Tesseract/resources/bin/tesseract",
       args: ["--sync"],
     });
-    expect(localCommandInvocation({ platform: "win32", packaged: true, resourcesPath: "C:\\Monolith\\resources", appPath: "C:\\x" }, ["--pull"]).file).toBe(
-      "C:\\Monolith\\resources\\bin\\tesseract.exe",
+    expect(localCommandInvocation({ platform: "win32", packaged: true, resourcesPath: "C:\\Tesseract\\resources", appPath: "C:\\x" }, ["--pull"]).file).toBe(
+      "C:\\Tesseract\\resources\\bin\\tesseract.exe",
     );
   });
 
@@ -29,7 +29,7 @@ describe("runLocalCommand", () => {
     const original = process.stderr.write.bind(process.stderr);
     process.stderr.write = (() => true) as typeof process.stderr.write;
     try {
-      expect(await runLocalCommand({ file: "monolith-test-does-not-exist", args: [] })).toBe(1);
+      expect(await runLocalCommand({ file: "tesseract-test-does-not-exist", args: [] })).toBe(1);
     } finally {
       process.stderr.write = original;
     }

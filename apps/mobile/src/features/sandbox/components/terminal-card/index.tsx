@@ -1,5 +1,5 @@
 import { SparkleIcon, TerminalWindowIcon, XIcon } from "phosphor-react-native";
-import type { TerminalInfo } from "@theone/protocol";
+import type { TerminalInfo } from "@tesseract/protocol";
 
 import ActionButton from "@/components/action-button";
 import ResourceCard from "@/components/resource-card";

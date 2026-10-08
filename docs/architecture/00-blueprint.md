@@ -1,4 +1,4 @@
-# TheOne — System Blueprint (v1 contract)
+# Tesseract — System Blueprint (v1 contract)
 
 This file is the **single source of truth** for names, paths, ports, environment
 variables and the controller protocol. Every component (mobile app, client SDK,
@@ -16,7 +16,7 @@ A phone-controlled, sandboxed development machine.
  └──────────────────────┘                                              ▼
                                   HOST (infrastructure only: Docker + disk)
                                   ┌──────────────────────────────────────────────┐
-                                  │ compose project "theone" (default)           │
+                                  │ compose project "tesseract" (default)           │
                                   │                                              │
                                   │  ┌───────────────┐  shared network namespace │
                                   │  │ tailscale     │◄───────────────┐          │
@@ -28,7 +28,7 @@ A phone-controlled, sandboxed development machine.
                                   │  │  supervisord (runs as dev)             │  │
                                   │  │   ├─ Xvnc :1  (TigerVNC, rfb 5901)     │  │
                                   │  │   ├─ openbox (window manager)          │  │
-                                  │  │   ├─ theone-controller :7700           │  │
+                                  │  │   ├─ tesseract-controller :7700           │  │
                                   │  │   │    REST + WS + /ui (xterm, noVNC)  │  │
                                   │  │   └─ wine prefix init (oneshot)        │  │
                                   │  │  Claude Code, git, node, bun, python,  │  │
@@ -46,10 +46,10 @@ A phone-controlled, sandboxed development machine.
   does (status, terminal, Claude, builds, VNC) goes through it.
 * **Tailscale** is the only transport. Nothing is published on host interfaces
   in the default mode.
-* Opt-in **host shell** (§4.3, §5.7): `theone-controller host serve`, run on the host
+* Opt-in **host shell** (§4.3, §5.7): `tesseract-controller host serve`, run on the host
   itself (not in the sandbox), gives the phone a PTY on the host over the host's own
   Tailscale address. It needs the host token (paired once) and a PIN set with
-  `theone-controller host pin`; the sandbox never holds either.
+  `tesseract-controller host pin`; the sandbox never holds either.
 
 ## 2. Monorepo layout
 
@@ -60,15 +60,15 @@ they export TypeScript source (`exports: { ".": "./src/index.ts" }`).
 ```text
 /
 ├── apps/
-│   ├── mobile/          @theone/mobile      Expo SDK 56 / RN 0.85 / expo-router (existing app)
-│   ├── controller/      @theone/controller  Bun + Hono daemon that runs INSIDE the sandbox
-│   ├── desktop/         Monolith GTK4/libadwaita app (Python, dev.monolith.Desktop): the visual reference
-│   └── electron/        @monolith/electron  Monolith desktop app (Electron 44, React 19): setup wizard,
+│   ├── mobile/          @tesseract/mobile      Expo SDK 56 / RN 0.85 / expo-router (existing app)
+│   ├── controller/      @tesseract/controller  Bun + Hono daemon that runs INSIDE the sandbox
+│   ├── desktop/         Tesseract GTK4/libadwaita app (Python, dev.tesseract.Desktop): the visual reference
+│   └── electron/        @tesseract/electron  Tesseract desktop app (Electron 44, React 19): setup wizard,
 │                                            sandbox stack control, host Android emulator, `tesseract` CLI (§12)
 ├── packages/
-│   ├── protocol/        @theone/protocol    zod v4 schemas + types + route helpers (the wire contract);
+│   ├── protocol/        @tesseract/protocol    zod v4 schemas + types + route helpers (the wire contract);
 │   │                                        subpath exports ./bridge (zod-free) and ./fixtures
-│   └── client/          @theone/client      typed REST/WS client used by mobile (runs in RN, browser, Bun)
+│   └── client/          @tesseract/client      typed REST/WS client used by mobile (runs in RN, browser, Bun)
 ├── infra/
 │   ├── docker/sandbox/  Dockerfile + rootfs/ (supervisord confs, entrypoint, helpers, templates, openbox)
 │   ├── compose/         compose.yml, compose.tailscale.yml, compose.local.yml, compose.dind.yml,
@@ -94,53 +94,67 @@ Root scripts: `bun run typecheck`, `bun run test`, `bun run lint` (fan out with
 `bun run electron` (dev), `electron:build`, `electron:e2e`, `electron:dist`, `electron:smoke` (§12).
 
 Every workspace package has `typecheck` and `test` scripts. Adding a dependency
-from an automated agent MUST go through `flock /tmp/theone-bun-install.lock bun add …`
+from an automated agent MUST go through `flock /tmp/tesseract-bun-install.lock bun add …`
 (run inside the package directory) so parallel installs never race.
 
 ## 3. Fixed names, ports, paths
 
 | Thing | Value |
 |---|---|
-| Compose project | `theone` (`THEONE_COMPOSE_PROJECT`; containers `<project>-<service>-1`) |
-| Named volumes | `<prefix>-workspace`, `<prefix>-home`, `<prefix>-tailscale`, `<prefix>-tailscale-run` (sidecar LocalAPI socket, `--tailscale-api` only), `<prefix>-dind-certs`, `<prefix>-dind-data`; prefix = `THEONE_VOLUME_PREFIX`, default the project name (so `theone-*`) |
-| Image | `theone/sandbox:latest` (`THEONE_IMAGE`) |
-| Sandbox service / container hostname | `sandbox` (tailscale mode: the sidecar's hostname `THEONE_HOSTNAME`, because it joins the sidecar's network namespace) |
-| Tailscale node hostname (default) | `theone-sandbox` (`THEONE_HOSTNAME`, also `THEONE_SANDBOX_ID`) |
-| Controller listen | `0.0.0.0:7700` inside the sandbox netns (`THEONE_PORT`) |
-| Host ports (local, host-tailscale) | `7700`, `5901` on `THEONE_BIND_ADDR` only (`THEONE_CONTROLLER_HOST_PORT`, `THEONE_VNC_HOST_PORT`) |
-| X display | `:1` (`THEONE_DISPLAY`), default geometry `1600x900` (`THEONE_DISPLAY_GEOMETRY`) |
-| VNC (RFB) | TCP `5901`, VncAuth (`THEONE_VNC_PASSWORD`; hash `/home/dev/.vnc/passwd`, generated plaintext `/home/dev/.vnc/password` 0600) |
-| Tailscale LocalAPI socket (opt-in) | `/run/tailscale/tailscaled.sock` in the sandbox (`THEONE_TAILSCALE_SOCKET`), read-only mount of the host's `/var/run/tailscale` or the sidecar's `<prefix>-tailscale-run` volume (§9) |
-| Per-start secrets | `/run/theone/controller.env` (0600, dev): VNC password and, if set, `THEONE_TOKEN`; read only by `theone-controller-run` |
+| Compose project | `tesseract` (`TESSERACT_COMPOSE_PROJECT`; containers `<project>-<service>-1`) |
+| Named volumes | `<prefix>-workspace`, `<prefix>-home`, `<prefix>-tailscale`, `<prefix>-tailscale-run` (sidecar LocalAPI socket, `--tailscale-api` only), `<prefix>-dind-certs`, `<prefix>-dind-data`; prefix = `TESSERACT_VOLUME_PREFIX`, default the project name (so `tesseract-*`) |
+| Image | `tesseract/sandbox:latest` (`TESSERACT_IMAGE`) |
+| Sandbox service / container hostname | `sandbox` (tailscale mode: the sidecar's hostname `TESSERACT_HOSTNAME`, because it joins the sidecar's network namespace) |
+| Tailscale node hostname (default) | `tesseract-sandbox` (`TESSERACT_HOSTNAME`, also `TESSERACT_SANDBOX_ID`) |
+| Controller listen | `0.0.0.0:7700` inside the sandbox netns (`TESSERACT_PORT`) |
+| Host ports (local, host-tailscale) | `7700`, `5901` on `TESSERACT_BIND_ADDR` only (`TESSERACT_CONTROLLER_HOST_PORT`, `TESSERACT_VNC_HOST_PORT`) |
+| X display | `:1` (`TESSERACT_DISPLAY`), default geometry `1600x900` (`TESSERACT_DISPLAY_GEOMETRY`) |
+| VNC (RFB) | TCP `5901`, VncAuth (`TESSERACT_VNC_PASSWORD`; hash `/home/dev/.vnc/passwd`, generated plaintext `/home/dev/.vnc/password` 0600) |
+| Tailscale LocalAPI socket (opt-in) | `/run/tailscale/tailscaled.sock` in the sandbox (`TESSERACT_TAILSCALE_SOCKET`), read-only mount of the host's `/var/run/tailscale` or the sidecar's `<prefix>-tailscale-run` volume (§9) |
+| Per-start secrets | `/run/tesseract/controller.env` (0600, dev): VNC password and, if set, `TESSERACT_TOKEN`; read only by `tesseract-controller-run` |
 | supervisord | socket `/run/supervisor/supervisor.sock` (0700, dev), logs `/workspace/.agent/logs/supervisor/` |
 | Sandbox user | `dev` (uid/gid `1000` by default, build args `DEV_UID`/`DEV_GID`) |
 | Workspace | `/workspace` (volume `<prefix>-workspace`) |
 | Projects | `/workspace/projects/<projectId>` |
 | Artifacts | `/workspace/artifacts/<project>-<platform>-<profile>-<version>.<ext>` for builds, `/workspace/artifacts/<file name>` for shared files (`-2`, `-3`… before the extension on collision) |
-| Uploads | `/workspace/.theone/uploads/<uploadId>/<sanitized name>` (dirs 0700, files 0600; `POST /v1/uploads`), rows and files older than 30 days removed at startup |
+| Uploads | `/workspace/.tesseract/uploads/<uploadId>/<sanitized name>` (dirs 0700, files 0600; `POST /v1/uploads`), rows and files older than 30 days removed at startup |
 | Agent memory | `/workspace/.agent/` (§6.4, SPEC.md) |
-| Controller data | `/workspace/.agent/controller/` (`THEONE_DATA_DIR`, 0700) → `state.db`, `token`, `logs/`, `sync/` (baselines, `blobs/`, `backups/`, `staging/`), `claude-import.json` |
+| Controller data | `/workspace/.agent/controller/` (`TESSERACT_DATA_DIR`, 0700) → `state.db`, `token`, `logs/`, `sync/` (baselines, `blobs/`, `backups/`, `staging/`), `claude-import.json` |
 | Claude credentials | the host's `~/.claude` bind-mounted at `/home/dev/.claude` (`CLAUDE_CONFIG_DIR`): login (`.credentials.json`), settings, CLAUDE.md; the host's Claude Max subscription login. On macOS the login lives in the keychain, not in `.credentials.json`, so a Mac host passes a long-lived `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token` on the Mac; `tesseract server install --claude-token`, §7.2) to the sandbox instead |
-| Claude accounts | primary account `claude` = the dir above; each `THEONE_HOST_CLAUDE_ACCOUNTS` name `<n>` adds the host's `~/.claude-<n>` (what `CLAUDE_CONFIG_DIR=~/.claude-<n> claude` uses on the host) bind-mounted at `/home/dev/.claude-<n>`, account id `claude-<n>`, global config `<dir>/.claude.json`. Live bind mounts, never copies: token refreshes by either side stay valid for both. The controller never writes into these dirs; the default account and per-project picks live in `state.db` |
+| Claude accounts | primary account `claude` = the dir above; each `TESSERACT_HOST_CLAUDE_ACCOUNTS` name `<n>` adds the host's `~/.claude-<n>` (what `CLAUDE_CONFIG_DIR=~/.claude-<n> claude` uses on the host) bind-mounted at `/home/dev/.claude-<n>`, account id `claude-<n>`, global config `<dir>/.claude.json`. Live bind mounts, never copies: token refreshes by either side stay valid for both. The controller never writes into these dirs; the default account and per-project picks live in `state.db` |
 | Home | `/home/dev` (volume `<prefix>-home`: wine prefix, caches; `.claude` is the host bind mount above) |
 | Wine prefix | `/home/dev/.wine` (`WINEPREFIX`), `WINEARCH=win64`, `WINEDEBUG=-all` |
-| Android SDK | `/opt/android-sdk` (`ANDROID_HOME`, `ANDROID_SDK_ROOT`, owned by `dev`); with `THEONE_HOST_ANDROID_SDK` the host's SDK, read-only, in its place |
-| Gradle read-only cache | with `THEONE_HOST_GRADLE_CACHE`: the host's Gradle `caches/` at `/opt/gradle-ro-cache` (read-only, `GRADLE_RO_DEP_CACHE`); the writable Gradle home stays `/home/dev/.gradle` |
+| Android SDK | `/opt/android-sdk` (`ANDROID_HOME`, `ANDROID_SDK_ROOT`, owned by `dev`); with `TESSERACT_HOST_ANDROID_SDK` the host's SDK, read-only, in its place |
+| Gradle read-only cache | with `TESSERACT_HOST_GRADLE_CACHE`: the host's Gradle `caches/` at `/opt/gradle-ro-cache` (read-only, `GRADLE_RO_DEP_CACHE`); the writable Gradle home stays `/home/dev/.gradle` |
 | Java | `/opt/java/openjdk` (Temurin 17, `JAVA_HOME`) |
-| Controller binary | `/usr/local/bin/theone-controller` (built with `bun build --compile`) |
+| Controller binary | `/usr/local/bin/tesseract-controller` (built with `bun build --compile`) |
 | Browser pages | `/ui/terminal`, `/ui/vnc` (controller), `/ui/android` (host shell daemon); their bundled assets are served at root paths (`/chunk-<hash>.js`, `.css`) |
-| Mobile deep link | `theone://pair?url=<encoded base url>&token=<token>&name=<label>`; host shell: `theone://host?url=…&token=<host token>&name=<host name>` |
-| Host shell daemon | `theone-controller host serve` on the host, `<host Tailscale IPv4>:7701` (`HOST_SHELL_PORT`, `THEONE_HOST_SHELL_PORT`); only loopback or `100.64.0.0/10` binds |
+| Mobile app id | iOS bundle id and Android package `com.kevinroan.tesseract` (development build `com.kevinroan.tesseract.dev`); iOS app group `group.com.kevinroan.tesseract` (shared with the widget/Live Activity and share extensions); URL scheme `tesseract`; EAS owner and project id set by `eas init` (`owner`, `extra.eas.projectId` in `app.json`) |
+| Mobile deep link | `tesseract://pair?url=<encoded base url>&token=<token>&name=<label>`; host shell: `tesseract://host?url=…&token=<host token>&name=<host name>` |
+| Host shell daemon | `tesseract-controller host serve` on the host, `<host Tailscale IPv4>:7701` (`HOST_SHELL_PORT`, `TESSERACT_HOST_SHELL_PORT`); only loopback or `100.64.0.0/10` binds |
 | Headless server install | `~/.tesseract/{bin,sandbox}` (`./setup-server.sh` on the server, or `infra/scripts/deploy-mac` from the dev box); host shell service LaunchAgent `dev.tesseract.host-shell` (logs `~/Library/Logs/Tesseract/`) or systemd user unit `tesseract-host-shell.service` (§7.2) |
-| ADB tunnel | `127.0.0.1:15555` in the sandbox (`DEFAULT_ADB_TUNNEL_PORT`, `THEONE_ADB_TUNNEL_PORT`), adb serial `127.0.0.1:15555`; open only while the host emulator is linked and `running` ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2.3). Shared host emulators (`THEONE_ANDROID_SHARE_EMULATORS`): `emulator-<n>` → `127.0.0.1:<15555 + 1 + (n − 5554)/2>` (`sharedEmulatorTunnelPort`), e.g. `emulator-5556` → `127.0.0.1:15557` |
-| Host Android emulator | console `5554`, adbd `5555` (`DEFAULT_EMULATOR_PORT`, `THEONE_EMULATOR_PORT`); adb serial `127.0.0.1:<bridge port>` in `netns` isolation (`THEONE_EMULATOR_ADB_PORT`), `emulator-<port>` for a plain (`none` or adopted non-isolated) emulator |
+| ADB tunnel | `127.0.0.1:15555` in the sandbox (`DEFAULT_ADB_TUNNEL_PORT`, `TESSERACT_ADB_TUNNEL_PORT`), adb serial `127.0.0.1:15555`; open only while the host emulator is linked and `running` ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2.3). Shared host emulators (`TESSERACT_ANDROID_SHARE_EMULATORS`): `emulator-<n>` → `127.0.0.1:<15555 + 1 + (n − 5554)/2>` (`sharedEmulatorTunnelPort`), e.g. `emulator-5556` → `127.0.0.1:15557` |
+| Host Android emulator | console `5554`, adbd `5555` (`DEFAULT_EMULATOR_PORT`, `TESSERACT_EMULATOR_PORT`); adb serial `127.0.0.1:<bridge port>` in `netns` isolation (`TESSERACT_EMULATOR_ADB_PORT`), `emulator-<port>` for a plain (`none` or adopted non-isolated) emulator |
 | Desktop renderer dev server | `http://127.0.0.1:4545` (`RENDERER_DEV_PORT`, `strictPort`, dev and preview); never the Electron/Vite defaults |
-| Desktop app id / deep link | `dev.monolith.Desktop`; `monolith://<page>[?…]`, `monolith://preferences/<section>`, `monolith://onboarding/<step>`, `monolith://pair`, … (§12.3) |
-| Host shell state | `$XDG_CONFIG_HOME/theone/host-shell/state.json` (default `~/.config/…`, `THEONE_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters, `androidLink` (sandbox URL + token), `androidStream` (the `AndroidStreamSettings` fields changed from the defaults; invalid fields fall back to them) |
+| Desktop app id / deep link | `dev.tesseract.Desktop`; `tesseract://<page>[?…]`, `tesseract://preferences/<section>`, `tesseract://onboarding/<step>`, `tesseract://pair`, … (§12.3) |
+| Host shell state | `$XDG_CONFIG_HOME/tesseract/host-shell/state.json` (default `~/.config/…`, `TESSERACT_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters, `androidLink` (sandbox URL + token), `androidStream` (the `AndroidStreamSettings` fields changed from the defaults; invalid fields fall back to them) |
 
 `projectId` = directory name under `/workspace/projects`, must match
 `^[a-z0-9][a-z0-9._-]{0,63}$` (case-insensitive input is lower-cased). Paths are
 always resolved (`realpath`) and verified to stay under the workspace.
+
+Installs from before the rename to Tesseract are migrated once, by `bun run sandbox` (env
+file on every command; stack on `up`), the desktop app's sandbox start and `tesseract server install`:
+legacy env keys become `TESSERACT_*` (original kept as `<env file>.legacy-backup`; old default
+project/prefix/image values become the `tesseract` ones, the hostname is kept), the legacy project
+is stopped (`down`, volumes kept), its image is tagged `tesseract/sandbox:latest` if that is
+missing, and its volumes (all but `tailscale-run`) are copied to missing `tesseract-*` ones, once
+per prefix (marker `$XDG_STATE_HOME/tesseract/legacy-volumes.<prefix>.migrated`, default
+`~/.local/state/…`); only for the default project and prefix, never with
+`TESSERACT_SKIP_LEGACY_MIGRATION=1`. The desktop app, the `tesseract` CLI, the host shell
+daemon and the sandbox entrypoint each copy or move their own legacy dirs once. Details and the
+manual steps: [rebrand-migration.md](../runbooks/rebrand-migration.md). The mobile app and the
+controller are upgraded together (renamed deep-link scheme and in-page message names).
 
 ## 4. Environment variables
 
@@ -148,55 +162,55 @@ always resolved (`realpath`) and verified to stay under the workspace.
 
 | Var | Default | Meaning |
 |---|---|---|
-| `THEONE_HOST` | `0.0.0.0` | bind address |
-| `THEONE_PORT` | `7700` | HTTP/WS port (`0` = ephemeral, tests) |
-| `THEONE_WORKSPACE` | `/workspace` | workspace root |
-| `THEONE_DATA_DIR` | `$THEONE_WORKSPACE/.agent/controller` | sqlite, token, logs |
-| `THEONE_TOKEN` | — | bearer token; if unset, read `THEONE_TOKEN_FILE`. When set, it is also written to `THEONE_TOKEN_FILE` so the in-sandbox CLI works without the variable |
-| `THEONE_TOKEN_FILE` | `$THEONE_DATA_DIR/token` | generated on first start (32 random bytes, base64url, mode 0600) |
-| `THEONE_PUBLIC_URL` | `http://127.0.0.1:$THEONE_PORT` | URL the phone should use (tailscale: `https://<host>.<tailnet>.ts.net`) — used for pairing links only |
-| `THEONE_DISPLAY` | `:1` | X display for GUI processes/screenshots |
-| `THEONE_VNC_HOST` / `THEONE_VNC_PORT` | `127.0.0.1` / `5901` | RFB target for the WS bridge |
-| `THEONE_VNC_PASSWORD` | — | returned to authenticated clients so noVNC can log in |
-| `THEONE_CHROMIUM_DEBUG_PORT` | `9222` | Chromium DevTools port on `127.0.0.1` read by `GET /v1/display/browser`; `/etc/chromium.d/theone` starts Chromium with `--remote-debugging-address=127.0.0.1 --remote-debugging-port=$THEONE_CHROMIUM_DEBUG_PORT --user-data-dir=$HOME/.config/chromium-theone` (Chromium 136+ refuses remote debugging on the default profile) |
-| `THEONE_CLAUDE_BIN` | `claude` | Claude Code executable |
-| `THEONE_CLAUDE_PERMISSION_MODE` | `bypassPermissions` | passed to headless Claude runs (the container is the boundary) |
-| `THEONE_CLAUDE_ACCOUNTS` | — | extra Claude accounts, names separated by commas or spaces (`work,personal`, each `[a-z0-9][a-z0-9_-]{0,31}`): `<n>` → `$HOME/.claude-<n>`, id `claude-<n>`. Set by `infra/scripts/sandbox` from the mounted `THEONE_HOST_CLAUDE_ACCOUNTS` |
+| `TESSERACT_HOST` | `0.0.0.0` | bind address |
+| `TESSERACT_PORT` | `7700` | HTTP/WS port (`0` = ephemeral, tests) |
+| `TESSERACT_WORKSPACE` | `/workspace` | workspace root |
+| `TESSERACT_DATA_DIR` | `$TESSERACT_WORKSPACE/.agent/controller` | sqlite, token, logs |
+| `TESSERACT_TOKEN` | — | bearer token; if unset, read `TESSERACT_TOKEN_FILE`. When set, it is also written to `TESSERACT_TOKEN_FILE` so the in-sandbox CLI works without the variable |
+| `TESSERACT_TOKEN_FILE` | `$TESSERACT_DATA_DIR/token` | generated on first start (32 random bytes, base64url, mode 0600) |
+| `TESSERACT_PUBLIC_URL` | `http://127.0.0.1:$TESSERACT_PORT` | URL the phone should use (tailscale: `https://<host>.<tailnet>.ts.net`) — used for pairing links only |
+| `TESSERACT_DISPLAY` | `:1` | X display for GUI processes/screenshots |
+| `TESSERACT_VNC_HOST` / `TESSERACT_VNC_PORT` | `127.0.0.1` / `5901` | RFB target for the WS bridge |
+| `TESSERACT_VNC_PASSWORD` | — | returned to authenticated clients so noVNC can log in |
+| `TESSERACT_CHROMIUM_DEBUG_PORT` | `9222` | Chromium DevTools port on `127.0.0.1` read by `GET /v1/display/browser`; `/etc/chromium.d/tesseract` starts Chromium with `--remote-debugging-address=127.0.0.1 --remote-debugging-port=$TESSERACT_CHROMIUM_DEBUG_PORT --user-data-dir=$HOME/.config/chromium-tesseract` (Chromium 136+ refuses remote debugging on the default profile) |
+| `TESSERACT_CLAUDE_BIN` | `claude` | Claude Code executable |
+| `TESSERACT_CLAUDE_PERMISSION_MODE` | `bypassPermissions` | passed to headless Claude runs (the container is the boundary) |
+| `TESSERACT_CLAUDE_ACCOUNTS` | — | extra Claude accounts, names separated by commas or spaces (`work,personal`, each `[a-z0-9][a-z0-9_-]{0,31}`): `<n>` → `$HOME/.claude-<n>`, id `claude-<n>`. Set by `infra/scripts/sandbox` from the mounted `TESSERACT_HOST_CLAUDE_ACCOUNTS` |
 | `CLAUDE_CONFIG_DIR` | `$HOME/.claude` | Claude Code config dir of the primary account; `GET /v1/usage` and `GET /v1/sessions` read the `projects/<encoded-cwd>/<sessionId>.jsonl` transcripts and `sessions/<pid>.json` of every account's dir; a missing dir means no usage. `/v1/claude/*` read and write its `.credentials.json` and `settings.json`, and the global config `$CLAUDE_CONFIG_DIR/.claude.json` when the variable is set, else `$HOME/.claude.json` (Claude Code's rule) |
 | `CLAUDE_CODE_OAUTH_TOKEN` / `ANTHROPIC_API_KEY` | — | not configured by the stack (Claude auth is the host's Max login only); if set manually anyway, `GET /v1/claude/auth` still reports them (`sources`, `oauthTokenFromEnv`) and children inherit them as usual |
-| `THEONE_SANDBOX_ID` | container hostname | identity shown in the app |
-| `THEONE_TAILSCALE_SOCKET` | `/run/tailscale/tailscaled.sock` | tailscaled LocalAPI socket for `GET /v1/identity`; missing socket = Tailscale identity unavailable |
-| `THEONE_LOG_LEVEL` | `info` | `debug|info|warn|error` |
-| `THEONE_CORS_ORIGINS` | `*` | comma list; auth is header/ticket based, never cookies |
+| `TESSERACT_SANDBOX_ID` | container hostname | identity shown in the app |
+| `TESSERACT_TAILSCALE_SOCKET` | `/run/tailscale/tailscaled.sock` | tailscaled LocalAPI socket for `GET /v1/identity`; missing socket = Tailscale identity unavailable |
+| `TESSERACT_LOG_LEVEL` | `info` | `debug|info|warn|error` |
+| `TESSERACT_CORS_ORIGINS` | `*` | comma list; auth is header/ticket based, never cookies |
 | `SHELL` | `bash` | login shell for `shell` terminals (`$SHELL -l`) |
-| `THEONE_STT_ENGINE` | `whisper.cpp` | speech-to-text for `POST /v1/transcriptions`: `whisper.cpp` (local only, never calls a paid API) \| `auto` \| `openai-compatible` \| `none`. `auto` = whisper.cpp when its binary, ffmpeg and a model file exist, else openai-compatible when `THEONE_STT_URL` and `THEONE_STT_API_KEY` are set, else 503 naming these variables. Checked per request |
-| `THEONE_STT_PROFILE` | `eco` | initial resource profile (`off` \| `eco` \| `balanced` \| `performance`, see `GET /v1/stt`); a profile chosen with `PUT /v1/stt` is stored in the database and wins |
-| `THEONE_WHISPER_BIN` | `whisper-cli` (image: `/opt/whisper/bin/whisper-cli`) | whisper.cpp CLI |
-| `THEONE_WHISPER_MODELS_DIR` | `/opt/whisper/models` | absolute dir the profiles load `ggml-<model>.bin` from |
-| `THEONE_WHISPER_MODEL` | — (image: `/opt/whisper/models/ggml-model.bin`) | absolute path of the fallback ggml model, used when the profile's model is missing from `THEONE_WHISPER_MODELS_DIR` |
-| `THEONE_FFMPEG_BIN` | `ffmpeg` | converts audio to 16 kHz mono WAV for whisper.cpp |
-| `THEONE_STT_URL` | — | OpenAI-compatible base URL (`http(s)`, no credentials/query), e.g. `https://api.openai.com/v1`, `https://api.groq.com/openai/v1`; the controller posts to `<url>/audio/transcriptions` |
-| `THEONE_STT_API_KEY` | — | bearer key for `THEONE_STT_URL`; never logged, never passed to children (optional with `THEONE_STT_ENGINE=openai-compatible`, e.g. a local server) |
-| `THEONE_STT_MODEL` | `whisper-1` | model field of the OpenAI-compatible request (e.g. `whisper-large-v3-turbo` on Groq) |
-| `THEONE_GEMINI_STT_MODEL` | `gemini-2.5-flash` | Gemini model used for `provider: "gemini"`. The key is not an env var: it is saved from the mobile or desktop app or `tesseract --gemini-key=KEY` (`PUT /v1/stt { geminiApiKey }`); no key = those fall back to the native engine |
-| `THEONE_PUSH_URL` | `https://exp.host/--/api/v2/push/send` | Expo push API used for inbox pushes (`http(s)`, no credentials/query); `off` disables pushes |
-| `THEONE_EXPO_ACCESS_TOKEN` | — | optional Expo access token, sent as `Authorization: Bearer` when Expo's enhanced push security is on |
-| `THEONE_APNS_KEY_FILE` | — | absolute path of the APNs auth key (`AuthKey_<KEYID>.p8`) used for Live Activity (Dynamic Island) pushes; with `THEONE_APNS_KEY_ID` and `THEONE_APNS_TEAM_ID` it enables them, setting only some of the three stops startup, none = tokens are stored but nothing is sent ([runbook](../runbooks/live-activities.md)) |
-| `THEONE_APNS_KEY_ID` | — | id of that key (1-64 letters/digits) |
-| `THEONE_APNS_TEAM_ID` | — | Apple developer team id (1-64 letters/digits) |
-| `THEONE_APNS_BUNDLE_ID` | `com.kevinbpract.theone` | bundle id of the app; the `apns-topic` is `<bundle id>.push-type.liveactivity`. The development build (`APP_VARIANT=development`, see [getting started](../runbooks/getting-started.md)) is `com.kevinbpract.theone.dev` |
-| `THEONE_ADB_TUNNEL_PORT` | `15555` | sandbox loopback port tunnelled to the host emulator's adbd over the Android link |
-| `THEONE_ADB` | `adb` | adb client used for `adb connect`/`disconnect` of the tunnel |
-| `THEONE_FLUTTER` | `flutter` | Flutter SDK entry point of the `flutter-*` and Flutter `test` run targets; they are unavailable when it is not found |
-| `THEONE_APNS_ENV` | `production` | `production` (`api.push.apple.com`) or `sandbox` (`api.sandbox.push.apple.com`, development builds) |
+| `TESSERACT_STT_ENGINE` | `whisper.cpp` | speech-to-text for `POST /v1/transcriptions`: `whisper.cpp` (local only, never calls a paid API) \| `auto` \| `openai-compatible` \| `none`. `auto` = whisper.cpp when its binary, ffmpeg and a model file exist, else openai-compatible when `TESSERACT_STT_URL` and `TESSERACT_STT_API_KEY` are set, else 503 naming these variables. Checked per request |
+| `TESSERACT_STT_PROFILE` | `eco` | initial resource profile (`off` \| `eco` \| `balanced` \| `performance`, see `GET /v1/stt`); a profile chosen with `PUT /v1/stt` is stored in the database and wins |
+| `TESSERACT_WHISPER_BIN` | `whisper-cli` (image: `/opt/whisper/bin/whisper-cli`) | whisper.cpp CLI |
+| `TESSERACT_WHISPER_MODELS_DIR` | `/opt/whisper/models` | absolute dir the profiles load `ggml-<model>.bin` from |
+| `TESSERACT_WHISPER_MODEL` | — (image: `/opt/whisper/models/ggml-model.bin`) | absolute path of the fallback ggml model, used when the profile's model is missing from `TESSERACT_WHISPER_MODELS_DIR` |
+| `TESSERACT_FFMPEG_BIN` | `ffmpeg` | converts audio to 16 kHz mono WAV for whisper.cpp |
+| `TESSERACT_STT_URL` | — | OpenAI-compatible base URL (`http(s)`, no credentials/query), e.g. `https://api.openai.com/v1`, `https://api.groq.com/openai/v1`; the controller posts to `<url>/audio/transcriptions` |
+| `TESSERACT_STT_API_KEY` | — | bearer key for `TESSERACT_STT_URL`; never logged, never passed to children (optional with `TESSERACT_STT_ENGINE=openai-compatible`, e.g. a local server) |
+| `TESSERACT_STT_MODEL` | `whisper-1` | model field of the OpenAI-compatible request (e.g. `whisper-large-v3-turbo` on Groq) |
+| `TESSERACT_GEMINI_STT_MODEL` | `gemini-2.5-flash` | Gemini model used for `provider: "gemini"`. The key is not an env var: it is saved from the mobile or desktop app or `tesseract --gemini-key=KEY` (`PUT /v1/stt { geminiApiKey }`); no key = those fall back to the native engine |
+| `TESSERACT_PUSH_URL` | `https://exp.host/--/api/v2/push/send` | Expo push API used for inbox pushes (`http(s)`, no credentials/query); `off` disables pushes |
+| `TESSERACT_EXPO_ACCESS_TOKEN` | — | optional Expo access token, sent as `Authorization: Bearer` when Expo's enhanced push security is on |
+| `TESSERACT_APNS_KEY_FILE` | — | absolute path of the APNs auth key (`AuthKey_<KEYID>.p8`) used for Live Activity (Dynamic Island) pushes; with `TESSERACT_APNS_KEY_ID` and `TESSERACT_APNS_TEAM_ID` it enables them, setting only some of the three stops startup, none = tokens are stored but nothing is sent ([runbook](../runbooks/live-activities.md)) |
+| `TESSERACT_APNS_KEY_ID` | — | id of that key (1-64 letters/digits) |
+| `TESSERACT_APNS_TEAM_ID` | — | Apple developer team id (1-64 letters/digits) |
+| `TESSERACT_APNS_BUNDLE_ID` | `com.kevinroan.tesseract` | bundle id of the app; the `apns-topic` is `<bundle id>.push-type.liveactivity`. The development build (`APP_VARIANT=development`, see [getting started](../runbooks/getting-started.md)) is `com.kevinroan.tesseract.dev` |
+| `TESSERACT_ADB_TUNNEL_PORT` | `15555` | sandbox loopback port tunnelled to the host emulator's adbd over the Android link |
+| `TESSERACT_ADB` | `adb` | adb client used for `adb connect`/`disconnect` of the tunnel |
+| `TESSERACT_FLUTTER` | `flutter` | Flutter SDK entry point of the `flutter-*` and Flutter `test` run targets; they are unavailable when it is not found |
+| `TESSERACT_APNS_ENV` | `production` | `production` (`api.push.apple.com`) or `sandbox` (`api.sandbox.push.apple.com`, development builds) |
 
 Invalid values stop startup with a clear message. The controller must run on a
 developer laptop too (for tests): every sandbox dependency (X display, VNC,
 claude, wine, java) is optional and reported as unavailable instead of crashing.
 
 Children (processes, build steps, terminals, agent runs, git/zip helpers) get the
-controller's environment **without** `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, and `THEONE_STT_API_KEY`, plus
-`THEONE_PROCESS_ID` / `THEONE_BUILD_ID` / `THEONE_TERMINAL_ID` / `THEONE_AGENT_RUN_ID`.
+controller's environment **without** `TESSERACT_TOKEN`, `TESSERACT_VNC_PASSWORD`, and `TESSERACT_STT_API_KEY`, plus
+`TESSERACT_PROCESS_ID` / `TESSERACT_BUILD_ID` / `TESSERACT_TERMINAL_ID` / `TESSERACT_AGENT_RUN_ID`.
 Agent runs also drop `CLAUDECODE`. The controller does not store or inject Claude
 credentials: children use the host's Claude Max login in `/home/dev/.claude` (the host's
 `~/.claude`, bind-mounted), the only supported authentication. Agent runs and `claude`
@@ -210,98 +224,99 @@ lists. Exported shell variables win over the env file; empty counts as unset.
 
 | Var | Default | Meaning |
 |---|---|---|
-| `THEONE_MODE` | `tailscale` | `tailscale` \| `host-tailscale` \| `local` (§9); `--mode` wins |
-| `THEONE_DIND` | — | `1` adds `compose.dind.yml` (same as `--dind`) |
-| `THEONE_TAILSCALE_LOCALAPI` | — | `1` shares the tailscaled LocalAPI socket with the sandbox (same as `--tailscale-api`, §9) |
-| `THEONE_TAILSCALE_HOST_SOCKET_DIR` | `/var/run/tailscale` | host directory holding `tailscaled.sock` (host-tailscale/local with `--tailscale-api`); `up` refuses when the socket is missing |
-| `THEONE_COMPOSE_PROJECT` | `theone` | compose project name (`[a-z0-9][a-z0-9_-]*`) |
-| `THEONE_VOLUME_PREFIX` | `$THEONE_COMPOSE_PROJECT` | prefix of every named volume |
-| `THEONE_IMAGE` | `theone/sandbox:latest` | image the stack runs and `sandbox build` tags |
-| `THEONE_HOSTNAME` | `theone-sandbox` | tailnet node name, `THEONE_SANDBOX_ID` |
+| `TESSERACT_MODE` | `tailscale` | `tailscale` \| `host-tailscale` \| `local` (§9); `--mode` wins |
+| `TESSERACT_DIND` | — | `1` adds `compose.dind.yml` (same as `--dind`) |
+| `TESSERACT_TAILSCALE_LOCALAPI` | — | `1` shares the tailscaled LocalAPI socket with the sandbox (same as `--tailscale-api`, §9) |
+| `TESSERACT_TAILSCALE_HOST_SOCKET_DIR` | `/var/run/tailscale` | host directory holding `tailscaled.sock` (host-tailscale/local with `--tailscale-api`); `up` refuses when the socket is missing |
+| `TESSERACT_COMPOSE_PROJECT` | `tesseract` | compose project name (`[a-z0-9][a-z0-9_-]*`) |
+| `TESSERACT_VOLUME_PREFIX` | `$TESSERACT_COMPOSE_PROJECT` | prefix of every named volume |
+| `TESSERACT_IMAGE` | `tesseract/sandbox:latest` | image the stack runs and `sandbox build` tags |
+| `TESSERACT_HOSTNAME` | `tesseract-sandbox` | tailnet node name, `TESSERACT_SANDBOX_ID` |
+| `TESSERACT_SKIP_LEGACY_MIGRATION` | — | `1`: skip the Docker steps of the pre-rename migration (§3; also read by the desktop app and `tesseract server install`) |
 | `TS_AUTHKEY` | — | first login of the sidecar only (`TS_AUTH_ONCE=true`) |
-| `TS_TAILNET_DOMAIN` | — | e.g. `tail1234.ts.net`; required in tailscale mode, builds `THEONE_PUBLIC_URL` |
+| `TS_TAILNET_DOMAIN` | — | e.g. `tail1234.ts.net`; required in tailscale mode, builds `TESSERACT_PUBLIC_URL` |
 | `TS_EXTRA_ARGS` | — | extra `tailscale up` flags |
-| `THEONE_BIND_ADDR` | host-tailscale: `tailscale ip -4`; local: `127.0.0.1` | IPv4 the ports are published on; wildcards and non-IPv4 values are refused |
-| `THEONE_CONTROLLER_HOST_PORT` / `THEONE_VNC_HOST_PORT` | `7700` / `5901` | host side of the published ports; `THEONE_PUBLIC_URL` follows |
-| `THEONE_TOKEN`, `THEONE_VNC_PASSWORD`, `THEONE_LOG_LEVEL`, `THEONE_CLAUDE_PERMISSION_MODE`, `THEONE_CORS_ORIGINS` | as §4.1 | passed to the sandbox |
-| `THEONE_STT_ENGINE`, `THEONE_STT_PROFILE`, `THEONE_STT_URL`, `THEONE_STT_API_KEY`, `THEONE_STT_MODEL`, `THEONE_WHISPER_MODELS_DIR`, `THEONE_WHISPER_MODEL`, `THEONE_GEMINI_STT_MODEL` | as §4.1 | passed to the sandbox; the entrypoint moves `THEONE_STT_API_KEY` into `/run/theone/controller.env` like `THEONE_TOKEN` |
-| `THEONE_DISPLAY_GEOMETRY` | `1600x900` | Xvnc geometry |
-| `THEONE_HOST_CLAUDE_DIR` | `$HOME/.claude` | host dir bind-mounted at `/home/dev/.claude`: the host's Claude Max login is the sandbox's only Claude credential (`ANTHROPIC_API_KEY`/`CLAUDE_CODE_OAUTH_TOKEN` are not passed through) |
-| `THEONE_HOST_CLAUDE_ACCOUNTS` | — | extra host Claude accounts (`work personal`, or `name=/abs/path`): `infra/scripts/sandbox` writes a compose override (`${XDG_STATE_HOME:-~/.local/state}/theone/compose.<project>.claude-accounts.yml`, added to every compose call) binding each existing `~/.claude-<n>` at `/home/dev/.claude-<n>` and passing `THEONE_CLAUDE_ACCOUNTS`; missing dirs are skipped with a warning, never created |
-| `THEONE_HOST_ANDROID_SDK` | — | absolute path of a Linux x86_64 host Android SDK: adds `compose.host-android-sdk.yml`, bind-mounting it read-only at `/opt/android-sdk` over the image's. `up` refuses on a non-Linux/x86_64 host or a dir without `platform-tools/` and `platforms/` |
-| `THEONE_HOST_GRADLE_CACHE` | — | absolute path of the host Gradle user home's `caches/` (holds `modules-2/`): adds `compose.host-gradle-cache.yml`, bind-mounting it read-only at `/opt/gradle-ro-cache` with `GRADLE_RO_DEP_CACHE` set. `up` refuses without `modules-2/` |
+| `TESSERACT_BIND_ADDR` | host-tailscale: `tailscale ip -4`; local: `127.0.0.1` | IPv4 the ports are published on; wildcards and non-IPv4 values are refused |
+| `TESSERACT_CONTROLLER_HOST_PORT` / `TESSERACT_VNC_HOST_PORT` | `7700` / `5901` | host side of the published ports; `TESSERACT_PUBLIC_URL` follows |
+| `TESSERACT_TOKEN`, `TESSERACT_VNC_PASSWORD`, `TESSERACT_LOG_LEVEL`, `TESSERACT_CLAUDE_PERMISSION_MODE`, `TESSERACT_CORS_ORIGINS` | as §4.1 | passed to the sandbox |
+| `TESSERACT_STT_ENGINE`, `TESSERACT_STT_PROFILE`, `TESSERACT_STT_URL`, `TESSERACT_STT_API_KEY`, `TESSERACT_STT_MODEL`, `TESSERACT_WHISPER_MODELS_DIR`, `TESSERACT_WHISPER_MODEL`, `TESSERACT_GEMINI_STT_MODEL` | as §4.1 | passed to the sandbox; the entrypoint moves `TESSERACT_STT_API_KEY` into `/run/tesseract/controller.env` like `TESSERACT_TOKEN` |
+| `TESSERACT_DISPLAY_GEOMETRY` | `1600x900` | Xvnc geometry |
+| `TESSERACT_HOST_CLAUDE_DIR` | `$HOME/.claude` | host dir bind-mounted at `/home/dev/.claude`: the host's Claude Max login is the sandbox's only Claude credential (`ANTHROPIC_API_KEY`/`CLAUDE_CODE_OAUTH_TOKEN` are not passed through) |
+| `TESSERACT_HOST_CLAUDE_ACCOUNTS` | — | extra host Claude accounts (`work personal`, or `name=/abs/path`): `infra/scripts/sandbox` writes a compose override (`${XDG_STATE_HOME:-~/.local/state}/tesseract/compose.<project>.claude-accounts.yml`, added to every compose call) binding each existing `~/.claude-<n>` at `/home/dev/.claude-<n>` and passing `TESSERACT_CLAUDE_ACCOUNTS`; missing dirs are skipped with a warning, never created |
+| `TESSERACT_HOST_ANDROID_SDK` | — | absolute path of a Linux x86_64 host Android SDK: adds `compose.host-android-sdk.yml`, bind-mounting it read-only at `/opt/android-sdk` over the image's. `up` refuses on a non-Linux/x86_64 host or a dir without `platform-tools/` and `platforms/` |
+| `TESSERACT_HOST_GRADLE_CACHE` | — | absolute path of the host Gradle user home's `caches/` (holds `modules-2/`): adds `compose.host-gradle-cache.yml`, bind-mounting it read-only at `/opt/gradle-ro-cache` with `GRADLE_RO_DEP_CACHE` set. `up` refuses without `modules-2/` |
 | `SANDBOX_CPUS` / `SANDBOX_MEMORY` / `SANDBOX_PIDS` | `4` / `8g` / `4096` | sandbox limits |
 | `DIND_CPUS` / `DIND_MEMORY` / `DIND_PIDS` | `4` / `8g` / `4096` | dind limits (cap everything it runs) |
 | `TZ` | `UTC` | sandbox time zone |
 | `DEV_UID`, `DEV_GID`, `WITH_ANDROID`, `WITH_MONO`, `CLAUDE_CODE_VERSION`, `WITH_WHISPER`, `WHISPER_MODELS` | §8 | build args passed by compose (compose defaults `WITH_WHISPER=true`, `WHISPER_MODELS="base small"`) |
 
-Image-provided environment: `THEONE_IMAGE_VERSION`, `THEONE_WORKSPACE`,
-`THEONE_HOST`, `THEONE_PORT`, `THEONE_DATA_DIR`, `THEONE_VNC_HOST`, `THEONE_DISPLAY`,
-`THEONE_DISPLAY_GEOMETRY`, `THEONE_VNC_PORT`, `XDG_RUNTIME_DIR=/run/user/<uid>`,
+Image-provided environment: `TESSERACT_IMAGE_VERSION`, `TESSERACT_WORKSPACE`,
+`TESSERACT_HOST`, `TESSERACT_PORT`, `TESSERACT_DATA_DIR`, `TESSERACT_VNC_HOST`, `TESSERACT_DISPLAY`,
+`TESSERACT_DISPLAY_GEOMETRY`, `TESSERACT_VNC_PORT`, `XDG_RUNTIME_DIR=/run/user/<uid>`,
 `WINEPREFIX`/`WINEARCH`/`WINEDEBUG`, `APPIMAGE_EXTRACT_AND_RUN=1`, `DISABLE_AUTOUPDATER=1`,
-`JAVA_HOME`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `THEONE_WHISPER_BIN`, `THEONE_WHISPER_MODELS_DIR`, `THEONE_WHISPER_MODEL`. `DISPLAY` is not set globally: only
-interactive login shells get `DISPLAY=:1` (`/etc/profile.d/theone.sh`). Rootfs helper
-knob: `THEONE_WAIT_X_TIMEOUT` (s, default 60).
+`JAVA_HOME`, `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `TESSERACT_WHISPER_BIN`, `TESSERACT_WHISPER_MODELS_DIR`, `TESSERACT_WHISPER_MODEL`. `DISPLAY` is not set globally: only
+interactive login shells get `DISPLAY=:1` (`/etc/profile.d/tesseract.sh`). Rootfs helper
+knob: `TESSERACT_WAIT_X_TIMEOUT` (s, default 60).
 
-### 4.3 Host shell daemon (`theone-controller host …`, runs on the host)
+### 4.3 Host shell daemon (`tesseract-controller host …`, runs on the host)
 
 | Var | Default | Meaning |
 |---|---|---|
-| `THEONE_HOST_SHELL_BIND` | first line of `tailscale ip -4` (`tailscale` from `PATH`, else on macOS `/Applications/Tailscale.app/Contents/MacOS/Tailscale`) | IPv4 to listen on; `--bind` wins. Wildcards, empty values and anything but loopback or `100.64.0.0/10` stop startup |
-| `THEONE_HOST_SHELL_PORT` | `7701` | port; `--port` wins |
-| `THEONE_HOST_SHELL_DIR` | `$XDG_CONFIG_HOME/theone/host-shell` (`~/.config/theone/host-shell`) | state directory (`state.json`) |
-| `THEONE_HOST_SHELL_PUBLIC_URL` | the `tailscale serve` HTTPS URL proxying to `http://<bind>:<port>` at `/` (`tailscale serve status --json`), else `http://<bind>:<port>` | URL put into the `host pair` link. iOS blocks plain http to the Tailscale IP, so serve it over HTTPS: `tailscale serve --bg --https=8443 http://<bind>:7701` |
+| `TESSERACT_HOST_SHELL_BIND` | first line of `tailscale ip -4` (`tailscale` from `PATH`, else on macOS `/Applications/Tailscale.app/Contents/MacOS/Tailscale`) | IPv4 to listen on; `--bind` wins. Wildcards, empty values and anything but loopback or `100.64.0.0/10` stop startup |
+| `TESSERACT_HOST_SHELL_PORT` | `7701` | port; `--port` wins |
+| `TESSERACT_HOST_SHELL_DIR` | `$XDG_CONFIG_HOME/tesseract/host-shell` (`~/.config/tesseract/host-shell`) | state directory (`state.json`) |
+| `TESSERACT_HOST_SHELL_PUBLIC_URL` | the `tailscale serve` HTTPS URL proxying to `http://<bind>:<port>` at `/` (`tailscale serve status --json`), else `http://<bind>:<port>` | URL put into the `host pair` link. iOS blocks plain http to the Tailscale IP, so serve it over HTTPS: `tailscale serve --bg --https=8443 http://<bind>:7701` |
 | `SHELL` | `bash` | host terminals run `$SHELL -l` in `$HOME` |
-| `THEONE_ANDROID_SDK_ROOT` | `$HOME/.local/share/theone/android-sdk` if it has `emulator/emulator`, else `$ANDROID_SDK_ROOT`, else `$ANDROID_HOME` | SDK with `emulator/` and `system-images/` |
-| `THEONE_ADB` | `adb` | host adb client (the user's adb server on 5037) |
-| `THEONE_SCRCPY_SERVER` | `/usr/share/scrcpy/scrcpy-server`, else `/usr/local/share/scrcpy/scrcpy-server`, else (Homebrew on Apple silicon) `/opt/homebrew/share/scrcpy/scrcpy-server` | scrcpy server jar |
-| `THEONE_SCRCPY_VERSION` | parsed from `scrcpy --version` | must equal the jar's version |
-| `THEONE_FFMPEG` | `ffmpeg` | H.264 → MJPEG for `/v1/android/screen` viewers that can't decode H.264 (or with `encoding: "mjpeg"`) |
-| `THEONE_EMULATOR_PORT` | `5554` | emulator console port; adbd = +1; serial `emulator-<port>` when not isolated |
-| `THEONE_EMULATOR_GPU` | macOS: `host`; Linux: `swiftshader_indirect` | emulator `-gpu` |
-| `THEONE_EMULATOR_ISOLATION` | Linux: `netns`; macOS: `none` (no user/network namespaces) | `netns`: emulator in its own user + network namespace, guest egress only to public addresses through a filtering proxy, adb via a host bridge (serial `127.0.0.1:<port>`); needs `unshare`, `ip` and unprivileged user namespaces, else `GET /v1/android` is `available: false`. `none`: emulator on the host network (the guest, and the linked sandbox, can reach host loopback, LAN, tailnet) |
-| `THEONE_EMULATOR_ALLOW_NETS` | — | comma-separated CIDRs the isolated guest may still reach (e.g. a LAN backend) |
-| `THEONE_EMULATOR_ADB_PORT` | free port, kept across daemon restarts | host loopback port of the adb bridge to the isolated emulator |
-| `THEONE_ANDROID_SHARE_EMULATORS` | `off` | `on`: also tunnel every other online `emulator-<port>` the host adb lists (Android Studio, `emulator -avd …`) to the linked sandbox. They run on the host network, so **the sandbox can reach host loopback (incl. the host adb server), LAN and tailnet through them** |
+| `TESSERACT_ANDROID_SDK_ROOT` | `$HOME/.local/share/tesseract/android-sdk` if it has `emulator/emulator`, else `$ANDROID_SDK_ROOT`, else `$ANDROID_HOME` | SDK with `emulator/` and `system-images/` |
+| `TESSERACT_ADB` | `adb` | host adb client (the user's adb server on 5037) |
+| `TESSERACT_SCRCPY_SERVER` | `/usr/share/scrcpy/scrcpy-server`, else `/usr/local/share/scrcpy/scrcpy-server`, else (Homebrew on Apple silicon) `/opt/homebrew/share/scrcpy/scrcpy-server` | scrcpy server jar |
+| `TESSERACT_SCRCPY_VERSION` | parsed from `scrcpy --version` | must equal the jar's version |
+| `TESSERACT_FFMPEG` | `ffmpeg` | H.264 → MJPEG for `/v1/android/screen` viewers that can't decode H.264 (or with `encoding: "mjpeg"`) |
+| `TESSERACT_EMULATOR_PORT` | `5554` | emulator console port; adbd = +1; serial `emulator-<port>` when not isolated |
+| `TESSERACT_EMULATOR_GPU` | macOS: `host`; Linux: `swiftshader_indirect` | emulator `-gpu` |
+| `TESSERACT_EMULATOR_ISOLATION` | Linux: `netns`; macOS: `none` (no user/network namespaces) | `netns`: emulator in its own user + network namespace, guest egress only to public addresses through a filtering proxy, adb via a host bridge (serial `127.0.0.1:<port>`); needs `unshare`, `ip` and unprivileged user namespaces, else `GET /v1/android` is `available: false`. `none`: emulator on the host network (the guest, and the linked sandbox, can reach host loopback, LAN, tailnet) |
+| `TESSERACT_EMULATOR_ALLOW_NETS` | — | comma-separated CIDRs the isolated guest may still reach (e.g. a LAN backend) |
+| `TESSERACT_EMULATOR_ADB_PORT` | free port, kept across daemon restarts | host loopback port of the adb bridge to the isolated emulator |
+| `TESSERACT_ANDROID_SHARE_EMULATORS` | `off` | `on`: also tunnel every other online `emulator-<port>` the host adb lists (Android Studio, `emulator -avd …`) to the linked sandbox. They run on the host network, so **the sandbox can reach host loopback (incl. the host adb server), LAN and tailnet through them** |
 
-Host terminals get the daemon's environment without `THEONE_HOST_SHELL_*`, plus
+Host terminals get the daemon's environment without `TESSERACT_HOST_SHELL_*`, plus
 `TERM=xterm-256color`, `COLORTERM=truecolor`, `LANG`.
 
 The desktop app (Preferences → Host Shell, and the "This Computer" tab of Pair a Device) drives the same
 CLI: it runs `host serve` as its child process (stopped on quit; `setpriv --pdeathsig` when available),
 sets the PIN with `host pin --stdin`, rotates with `host token --rotate` and reads `host pair --json`.
-It runs `bun apps/controller/src/index.ts` from its checkout, or `MONOLITH_CONTROLLER_COMMAND`;
-"Start With Monolith" is `host_shell_autostart` in the desktop `config.json`. The Electron app
-(`apps/electron`, §12) resolves the command in this order: `MONOLITH_CONTROLLER_COMMAND`, the bundled
-`resources/bin/theone-controller` in a packaged build, `bun apps/controller/src/index.ts` in a checkout,
-then `apps/controller/dist/theone-controller`. It fills `THEONE_ANDROID_SDK_ROOT` (and `THEONE_ADB`) from the
+It runs `bun apps/controller/src/index.ts` from its checkout, or `TESSERACT_CONTROLLER_COMMAND`;
+"Start With Tesseract" is `host_shell_autostart` in the desktop `config.json`. The Electron app
+(`apps/electron`, §12) resolves the command in this order: `TESSERACT_CONTROLLER_COMMAND`, the bundled
+`resources/bin/tesseract-controller` in a packaged build, `bun apps/controller/src/index.ts` in a checkout,
+then `apps/controller/dist/tesseract-controller`. It fills `TESSERACT_ANDROID_SDK_ROOT` (and `TESSERACT_ADB`) from the
 SDK its setup wizard installed when they are not already set.
 
 ### 4.4 Desktop app and `tesseract` CLI (`apps/electron`, runs on the host)
 
 | Var | Default | Meaning |
 |---|---|---|
-| `MONOLITH_DESKTOP_CONFIG` | see §12.4 | path of `config.json` (app and CLI) |
-| `MONOLITH_USER_DATA` | OS user-data dir (§12.4) | Electron `userData`: sandbox env file, downloads, Android catalog cache, window state |
-| `MONOLITH_STATE_DIR` | `$XDG_STATE_HOME/monolith`, else `~/.local/state/monolith` (Windows `%LOCALAPPDATA%\Monolith\state`) | sync-back links and snapshots (shared with the GTK app) |
-| `MONOLITH_DESKTOP_URL` / `THEONE_TOKEN` / `MONOLITH_DESKTOP_NAME` / `MONOLITH_DESKTOP_PAIRING_URL` | — | connection used when `config.json` has none (url + token both required) |
-| `MONOLITH_DESKTOP_LOG` | `info` | main-process log level `debug\|info\|warn\|error` (`--debug` = `debug`) |
-| `MONOLITH_FIXTURES` | — | `1` = renderer runs on fixtures (no controller, no Docker); set by snapshots and e2e |
-| `MONOLITH_SNAPSHOT` | — | `1` = isolated run: no single-instance lock (snapshots, e2e) |
-| `MONOLITH_CONTROLLER_COMMAND` | — | command line for the host shell daemon (§4.3) |
-| `MONOLITH_SANDBOX_IMAGE_REF` | — | registry ref the wizard may **pull** instead of building (`sandboxImageRef` in `config.json` wins) |
-| `MONOLITH_DISABLE_UPDATES` | — | set = no background update checks |
-| `MONOLITH_DISABLE_DISCOVERY` | — | `1` = no Docker discovery of a running sandbox on first run (§12.2); set by the tests |
-| `MONOLITH_ANDROID_REPOSITORY_URL` / `MONOLITH_ANDROID_SYSIMG_URL` | Google's `…/repository/repository2-3.xml` / `…/sys-img/google_apis/sys-img2-3.xml` | Android catalog mirror (app and CLI): a full `.xml` URL, or a base URL the default file name is appended to; `http`/`https` only, else `invalid_argument` |
-| `MONOLITH_APP_PATH` | installed app (AppImage copy: `appPath` in `~/.local/share/monolith/app.json`, §12.5) | CLI: the app executable `tesseract open` launches |
-| `MONOLITH_SANDBOX_CONTEXT` | bundled `resources/sandbox`, else (AppImage copy) `sandboxDir` in `~/.local/share/monolith/app.json`, else the checkout | CLI: directory holding `infra/compose` and the Dockerfile |
+| `TESSERACT_DESKTOP_CONFIG` | see §12.4 | path of `config.json` (app and CLI) |
+| `TESSERACT_USER_DATA` | OS user-data dir (§12.4) | Electron `userData`: sandbox env file, downloads, Android catalog cache, window state |
+| `TESSERACT_STATE_DIR` | `$XDG_STATE_HOME/tesseract`, else `~/.local/state/tesseract` (Windows `%LOCALAPPDATA%\Tesseract\state`) | sync-back links and snapshots (shared with the GTK app) |
+| `TESSERACT_DESKTOP_URL` / `TESSERACT_TOKEN` / `TESSERACT_DESKTOP_NAME` / `TESSERACT_DESKTOP_PAIRING_URL` | — | connection used when `config.json` has none (url + token both required) |
+| `TESSERACT_DESKTOP_LOG` | `info` | main-process log level `debug\|info\|warn\|error` (`--debug` = `debug`) |
+| `TESSERACT_FIXTURES` | — | `1` = renderer runs on fixtures (no controller, no Docker); set by snapshots and e2e |
+| `TESSERACT_SNAPSHOT` | — | `1` = isolated run: no single-instance lock (snapshots, e2e) |
+| `TESSERACT_CONTROLLER_COMMAND` | — | command line for the host shell daemon (§4.3) |
+| `TESSERACT_SANDBOX_IMAGE_REF` | — | registry ref the wizard may **pull** instead of building (`sandboxImageRef` in `config.json` wins) |
+| `TESSERACT_DISABLE_UPDATES` | — | set = no background update checks |
+| `TESSERACT_DISABLE_DISCOVERY` | — | `1` = no Docker discovery of a running sandbox on first run (§12.2); set by the tests |
+| `TESSERACT_ANDROID_REPOSITORY_URL` / `TESSERACT_ANDROID_SYSIMG_URL` | Google's `…/repository/repository2-3.xml` / `…/sys-img/google_apis/sys-img2-3.xml` | Android catalog mirror (app and CLI): a full `.xml` URL, or a base URL the default file name is appended to; `http`/`https` only, else `invalid_argument` |
+| `TESSERACT_APP_PATH` | installed app (AppImage copy: `appPath` in `~/.local/share/tesseract/app.json`, §12.5) | CLI: the app executable `tesseract open` launches |
+| `TESSERACT_SANDBOX_CONTEXT` | bundled `resources/sandbox`, else (AppImage copy) `sandboxDir` in `~/.local/share/tesseract/app.json`, else the checkout | CLI: directory holding `infra/compose` and the Dockerfile |
 | `ELECTRON_RENDERER_URL` | — | set by `electron-vite dev` to `http://127.0.0.1:4545` |
-| `THEONE_COMPOSE_PROJECT`, `THEONE_CONTROLLER_HOST_PORT`, `THEONE_BIND_ADDR` | §4.2 | read by sandbox discovery (find a running `theone` stack and its controller port) |
+| `TESSERACT_COMPOSE_PROJECT`, `TESSERACT_CONTROLLER_HOST_PORT`, `TESSERACT_BIND_ADDR` | §4.2 | read by sandbox discovery (find a running `tesseract` stack and its controller port) |
 | `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME` | — | move config, state and cache dirs as usual (also on macOS/Windows when set) |
 | `ANDROID_AVD_HOME`, `ANDROID_USER_HOME` | `~/.android/avd` | where AVDs are written and listed |
 
-Build-time only (`scripts/dist.ts`): `MONOLITH_UPDATE_URL`, `MONOLITH_UPDATE_CHANNEL` (update feed),
-`MONOLITH_NOTARIZE` + `APPLE_API_KEY`/`APPLE_API_KEY_ID`/`APPLE_API_ISSUER`, or `APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/`APPLE_TEAM_ID`,
+Build-time only (`scripts/dist.ts`): `TESSERACT_UPDATE_URL`, `TESSERACT_UPDATE_CHANNEL` (update feed),
+`TESSERACT_NOTARIZE` + `APPLE_API_KEY`/`APPLE_API_KEY_ID`/`APPLE_API_ISSUER`, or `APPLE_ID`/`APPLE_APP_SPECIFIC_PASSWORD`/`APPLE_TEAM_ID`,
 or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: §11.
 
 ## 5. Controller protocol v1
@@ -311,7 +326,7 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 ### 5.1 Auth and errors
 
 * REST: `Authorization: Bearer <token>`; constant-time compare. Only
-  `GET /v1/health` is public. 401 responses carry `WWW-Authenticate: Bearer realm="theone"`.
+  `GET /v1/health` is public. 401 responses carry `WWW-Authenticate: Bearer realm="tesseract"`.
 * WebSocket and browser-opened URLs (WebView pages, artifact and build output downloads, upload content) use a
   **one-time ticket**: `POST /v1/auth/ticket` → `200 { ticket, expiresAt }`
   (random 32 bytes, valid 60 s, consumed on first use, not scoped to a target).
@@ -333,17 +348,17 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | POST | `/v1/auth/ticket` | — | `200 Ticket { ticket, expiresAt }` |
 | GET | `/v1/status` | — | `SandboxStatus` |
 | GET | `/v1/identity` | — | `Identity`: Tailscale viewer, owner, node and tailnet (§5.4); never fails because Tailscale is unreachable, it reports `available: false` and nulls |
-| GET | `/v1/claude/accounts` | — | `ClaudeAccountList { defaultAccountId, accounts: ClaudeAccountProfile[] }`: primary first, then `THEONE_CLAUDE_ACCOUNTS` order; login, account, plan and expiry per dir; never contains a secret |
+| GET | `/v1/claude/accounts` | — | `ClaudeAccountList { defaultAccountId, accounts: ClaudeAccountProfile[] }`: primary first, then `TESSERACT_CLAUDE_ACCOUNTS` order; login, account, plan and expiry per dir; never contains a secret |
 | PUT | `/v1/claude/accounts/default` | `SetDefaultClaudeAccount { accountId }` | `200 ClaudeAccountList`; 404 unknown, 400 not mounted. Used by runs and terminals whose project has no account of its own |
 | GET | `/v1/claude/auth` | — | `ClaudeAuthStatus` (§5.4): which credential the sandbox's Claude Code uses (`method` = first of `oauth_token`, `credentials`, `api_key`, else `none`), account from the global config's `oauthAccount`, subscription and expiry from `.credentials.json`; never contains a secret |
-| POST | `/v1/claude/import` | `ClaudeImport { credentials?, account?, files? }` (body limit 8 MiB) | `200 ClaudeImportResult { status, written, skipped }`: `credentials` replaces `claudeAiOauth` in `.credentials.json` (other keys kept); `account` merges only `CLAUDE_IMPORT_ACCOUNT_KEYS` into the global config (`projects` etc. kept); `files` must be normalized relative paths matching `CLAUDE_IMPORT_PATHS` that stay in `$CLAUDE_CONFIG_DIR` without symlinks leading out; `settings.json` must be a JSON object and loses `CLAUDE_IMPORT_DROPPED_SETTINGS` (`settings.json#<key>` in `skipped`). Files are written atomically; `settings.json`, `.credentials.json` and the global config are first copied to `<file>.theone-bak`. `written`/`skipped` paths are relative to `$CLAUDE_CONFIG_DIR`; the global config is `.claude.json` (inside it) or `~/.claude.json`. Refused parts go to `skipped`; only schema errors are 400 |
+| POST | `/v1/claude/import` | `ClaudeImport { credentials?, account?, files? }` (body limit 8 MiB) | `200 ClaudeImportResult { status, written, skipped }`: `credentials` replaces `claudeAiOauth` in `.credentials.json` (other keys kept); `account` merges only `CLAUDE_IMPORT_ACCOUNT_KEYS` into the global config (`projects` etc. kept); `files` must be normalized relative paths matching `CLAUDE_IMPORT_PATHS` that stay in `$CLAUDE_CONFIG_DIR` without symlinks leading out; `settings.json` must be a JSON object and loses `CLAUDE_IMPORT_DROPPED_SETTINGS` (`settings.json#<key>` in `skipped`). Files are written atomically; `settings.json`, `.credentials.json` and the global config are first copied to `<file>.tesseract-bak`. `written`/`skipped` paths are relative to `$CLAUDE_CONFIG_DIR`; the global config is `.claude.json` (inside it) or `~/.claude.json`. Refused parts go to `skipped`; only schema errors are 400 |
 | GET | `/v1/context` | — | `AgentContext { files: AgentContextFile[] }`: regular files `.agent/*.md` and `.agent/projects/<id>/*.md` (no symlinks, FIFOs or devices), content capped at 64 KiB each |
 | GET | `/v1/projects` | — | `Project[]` |
 | POST | `/v1/projects` | `CreateProject { name, gitUrl?, branch?, confidential? }` | `201 { project, processId? }` (clone runs as a tracked process); 409 if the directory exists; `confidential: true` marks the project confidential (§6.1, the client sends a pseudonym as `name`) |
 | GET | `/v1/projects/:id` | — | `Project` |
 | PUT | `/v1/projects/:id/name` | `RenameProject { name: string \| null }` | `200 Project` and `project.updated`; sets the display name only (id and directory stay); null restores the package.json name or id; 404 unknown project |
 | PUT | `/v1/projects/:id/claude-account` | `SetProjectClaudeAccount { accountId: string \| null }` | `200 Project` and `project.updated`; null follows the default account; 404 unknown project or account, 400 for an account whose dir is not mounted |
-| DELETE | `/v1/projects/:id` | `?force=1` (or `true`) | `200 DeletedProject { id, trashPath }`: moves `/workspace/projects/<id>` to `<os tmpdir>/theone-deleted-projects/<id>-<ts>` (the host copy is never touched), drops the sync-back baseline and blobs (the confidential mark stays), publishes `sync.changed`, `project.deleted`; without `force`, 409 when the project has changes not synced back to the host or no baseline (never pushed from a host); 409 (even with `force`) while a process, build, terminal or agent run of the project is running or a `pending`/`claimed` sync request exists; 404 unknown project |
+| DELETE | `/v1/projects/:id` | `?force=1` (or `true`) | `200 DeletedProject { id, trashPath }`: moves `/workspace/projects/<id>` to `<os tmpdir>/tesseract-deleted-projects/<id>-<ts>` (the host copy is never touched), drops the sync-back baseline and blobs (the confidential mark stays), publishes `sync.changed`, `project.deleted`; without `force`, 409 when the project has changes not synced back to the host or no baseline (never pushed from a host); 409 (even with `force`) while a process, build, terminal or agent run of the project is running or a `pending`/`claimed` sync request exists; 404 unknown project |
 | POST | `/v1/projects/:id/sync` | `?confidential=1`; tar archive body, `Content-Type` `application/x-tar` or `application/gzip` (body limit 1 GiB) | `201 Project` when the directory was created, else `200 Project`: `confidential=1` (exactly `1`) first marks the project confidential (one-way; other values or none leave the mark as is); extracts with `tar --no-same-owner` over `/workspace/projects/<id>`; files missing from the archive are kept; a bad archive is 400 (a directory created for it is removed), another content type 400; publishes `project.updated`. Sent by `tesseract --sync` (desktop), which archives the cwd (in a git checkout: tracked and unignored files, plus `.git` at the top level) |
 | GET | `/v1/projects/:id/git` | — | `GitDetails { branch, ahead, behind, files: GitFileStatus[], log: GitCommit[] }`; in a confidential project every `author` is `REDACTED` |
 | GET | `/v1/projects/:id/sync/changes` | — | `SyncChanges`: current tree vs the baseline recorded by the last push ([sync-back.md](sync-back.md)); 404 unknown project |
@@ -373,7 +388,7 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | DELETE | `/v1/builds/:id` | — | `BuildJob` (cancel) |
 | GET | `/v1/builds/:id/logs` | `?tail=500` | `LogLine[]` |
 | GET | `/v1/artifacts` | `?projectId=` | `Artifact[]` |
-| POST | `/v1/artifacts` | `ShareArtifact { path (absolute), projectId?, name?, note? (≤ 500), agentRunId?, sessionId? }` | `201 Artifact` (`source: "agent"`): copies a regular file inside `/workspace` (realpath; not under `artifacts/` or `THEONE_DATA_DIR` → 403) into the artifacts dir under its own name or `name`; `projectId` defaults to the project containing the path (none → 400; unknown explicit id → 404); `platform` from the extension (`.apk`/`.aab` android, `.exe`/`.msi`/`.msix`/`.appx` windows, `.deb`/`.rpm`/`.AppImage`/`.snap` linux, `.ipa` ios, `.dmg` macos, else `file`); an unknown `agentRunId` is dropped; publishes `artifact.created` and adds a `file` inbox item (never bumped) with `artifactId`; 403 `Project <id> is confidential; sharing artifacts is disabled` when the resolved project is confidential (build artifacts are unaffected). Sent by `theone-controller share` |
+| POST | `/v1/artifacts` | `ShareArtifact { path (absolute), projectId?, name?, note? (≤ 500), agentRunId?, sessionId? }` | `201 Artifact` (`source: "agent"`): copies a regular file inside `/workspace` (realpath; not under `artifacts/` or `TESSERACT_DATA_DIR` → 403) into the artifacts dir under its own name or `name`; `projectId` defaults to the project containing the path (none → 400; unknown explicit id → 404); `platform` from the extension (`.apk`/`.aab` android, `.exe`/`.msi`/`.msix`/`.appx` windows, `.deb`/`.rpm`/`.AppImage`/`.snap` linux, `.ipa` ios, `.dmg` macos, else `file`); an unknown `agentRunId` is dropped; publishes `artifact.created` and adds a `file` inbox item (never bumped) with `artifactId`; 403 `Project <id> is confidential; sharing artifacts is disabled` when the resolved project is confidential (build artifacts are unaffected). Sent by `tesseract-controller share` |
 | DELETE | `/v1/artifacts/:id` | — | `Artifact` (deleted): removes the file and row, clears `artifactId` on inbox items (their text stays), publishes `artifact.deleted` |
 | GET | `/v1/artifacts/:id/download` | bearer **or** `?ticket=` | file stream (`Content-Disposition: attachment`, `X-Content-SHA256`); 404 if the file is gone |
 | GET | `/v1/outputs` | `?projectId=` | `BuildOutput[] { projectId, path (project-relative), fileName, sizeBytes, platform, modifiedAt }`, newest first, at most 500: deliverables (`.apk`/`.aab`/`.ipa`/`.exe`/`.msi`/`.msix`/`.appx`/`.AppImage`/`.deb`/`.rpm`/`.snap`/`.dmg`/`.pkg`/`.zip`/`.7z`/`.tar.*`) that plain builds left under a `build`/`builds`/`dist`/`release`/`releases`/`out`/`outputs`/`make`/`artifacts` folder of a project (e.g. `android/app/build/outputs/apk/…`, `release/build/…`, `out/make/…`). Found by scanning, not indexed; skips dot-folders, `node_modules`, Gradle `intermediates`/`generated`/`tmp`, `*-unpacked`, `*.app`, symlinks and electron-builder helpers (`__uninstaller*`, `elevate.exe`); depth ≤ 10, ≤ 20 000 entries per project. Unknown `projectId` → 404 |
@@ -385,24 +400,24 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | GET | `/v1/sessions?limit=&projectId=` | — | `ClaudeSession[]` (default 20, max 200), newest `lastActiveAt` first, across every Claude account (`claudeAccountId`): title (first real prompt, ≤120 chars), preview (last assistant text, ≤160), model, usage (including subagent transcripts), `source` `agent-run`/`terminal`/`cli`, `agentRunId` (newest run with the session id), `terminalId` (running Claude terminal: `$CLAUDE_CONFIG_DIR/sessions/<pid>.json`, else the newest transcript with the terminal's cwd written since it started), `active` (run running or terminal attached); a session a later run resumed (`resumedSessionId`) under a new id is left out, so a chat lists once |
 | GET | `/v1/inbox?limit=&unread=` | — | `Inbox { items: InboxItem[], unreadCount, attentionCount }`, newest `updatedAt` first (default 100, max 500; `unread=1`/`true` → unread only); `attentionCount` = unread `needs_input` + `permission` |
 | POST | `/v1/inbox/read` | `MarkInboxRead { ids: InboxId[] } \| { all: true }` | `200 InboxCounts { unreadCount, attentionCount }`; unknown ids are ignored |
-| POST | `/v1/hooks/claude` | `ClaudeHookPayload` (the Claude Code hook JSON, extra fields kept) | `202`; maps `Notification`/`Stop`/`StopFailure`/`UserPromptSubmit` to inbox items (controller.md "Inbox and Claude hooks"); other events are ignored. Sent by `theone-controller hook` |
+| POST | `/v1/hooks/claude` | `ClaudeHookPayload` (the Claude Code hook JSON, extra fields kept) | `202`; maps `Notification`/`Stop`/`StopFailure`/`UserPromptSubmit` to inbox items (controller.md "Inbox and Claude hooks"); other events are ignored. Sent by `tesseract-controller hook` |
 | GET | `/v1/push/devices` | — | `PushDevice[]`, newest `updatedAt` first |
-| POST | `/v1/push/devices` | `RegisterPushDevice { token (Expo push token), platform: "ios" \| "android", name? (≤ 128), deviceId? (≤ 128, id of the phone shared by its Monolith builds) }` | `200 PushDevice`; upserts by token (a re-registered token keeps `createdAt`) and deletes the other tokens with the same `deviceId`. Unread `completed`/`failed`/`needs_input`/`permission`/`file` inbox items are then pushed to every device through `THEONE_PUSH_URL` (controller.md "Inbox and Claude hooks") |
+| POST | `/v1/push/devices` | `RegisterPushDevice { token (Expo push token), platform: "ios" \| "android", name? (≤ 128), deviceId? (≤ 128, id of the phone shared by its Tesseract builds) }` | `200 PushDevice`; upserts by token (a re-registered token keeps `createdAt`) and deletes the other tokens with the same `deviceId`. Unread `completed`/`failed`/`needs_input`/`permission`/`file` inbox items are then pushed to every device through `TESSERACT_PUSH_URL` (controller.md "Inbox and Claude hooks") |
 | DELETE | `/v1/push/devices/:token` | — | `PushDevice` (removed); invalid token → 400, unknown → 404 |
 | GET | `/v1/push/live-activities` | — | `LiveActivityToken[]`, newest `updatedAt` first |
-| POST | `/v1/push/live-activities` | `RegisterLiveActivity { kind: "activity" \| "push-to-start", token (hex, 32-512 chars), activityId? (≤ 128, null for push-to-start) }` | `200 LiveActivityToken`; upserts by token (stored lower-case, `createdAt` kept). The controller then mirrors `IslandState` into the phone's Live Activity through ActivityKit pushes when `THEONE_APNS_*` is set (controller.md "Live Activities") |
+| POST | `/v1/push/live-activities` | `RegisterLiveActivity { kind: "activity" \| "push-to-start", token (hex, 32-512 chars), activityId? (≤ 128, null for push-to-start) }` | `200 LiveActivityToken`; upserts by token (stored lower-case, `createdAt` kept). The controller then mirrors `IslandState` into the phone's Live Activity through ActivityKit pushes when `TESSERACT_APNS_*` is set (controller.md "Live Activities") |
 | DELETE | `/v1/push/live-activities/:token` | — | `LiveActivityToken` (removed); invalid token → 400, unknown → 404 |
 | GET | `/v1/display` | — | `DisplayStatus` |
 | GET | `/v1/display/screenshot` | — | `image/png` of the virtual display; 503 without a display |
-| GET | `/v1/display/browser` | — | `BrowserStatus { available, tabs: BrowserTab[] }`: Chromium `page` targets from the DevTools endpoint `http://127.0.0.1:$THEONE_CHROMIUM_DEBUG_PORT/json/list` (1.5 s timeout, `devtools://` pages dropped), in Chromium's order so `tabs[0]` is the current tab; `phoneUrl` rewrites an http(s) URL whose host is `localhost`, `*.localhost`, `127.0.0.0/8`, `0.0.0.0` or `[::1]` to the sandbox Tailscale IPv4 (else its MagicDNS name, as `/v1/ports`) keeping port/path/query/hash, passes other http(s) URLs through, and is null for other schemes or local URLs without Tailscale; an unreachable endpoint is `{ available: false, tabs: [] }`, never an error |
+| GET | `/v1/display/browser` | — | `BrowserStatus { available, tabs: BrowserTab[] }`: Chromium `page` targets from the DevTools endpoint `http://127.0.0.1:$TESSERACT_CHROMIUM_DEBUG_PORT/json/list` (1.5 s timeout, `devtools://` pages dropped), in Chromium's order so `tabs[0]` is the current tab; `phoneUrl` rewrites an http(s) URL whose host is `localhost`, `*.localhost`, `127.0.0.0/8`, `0.0.0.0` or `[::1]` to the sandbox Tailscale IPv4 (else its MagicDNS name, as `/v1/ports`) keeping port/path/query/hash, passes other http(s) URLs through, and is null for other schemes or local URLs without Tailscale; an unreachable endpoint is `{ available: false, tabs: [] }`, never an error |
 | GET | `/v1/display/windows` | — | `DisplayWindowList { windows: DisplayWindow[] }`, `DisplayWindow { id (hex like `0x03a00004`), title, app (WM_CLASS class or null), pid (or null), active, minimized }`: `wmctrl -lp` order (oldest first) minus docks, desktops, menus, splashes, tooltips, notifications and `_NET_WM_STATE_SKIP_TASKBAR` windows; `active` from the root's `_NET_ACTIVE_WINDOW`, `minimized` = `_NET_WM_STATE_HIDDEN`; 503 without a display |
 | POST | `/v1/display/windows/:id/activate` | — | `204`; raises and focuses the window, restoring it when minimized (`wmctrl -ia`). Id not matching `^0x[0-9a-f]+$` → 400, not in the list above → 404, no display → 503 |
 | POST | `/v1/display/windows/:id/close` | `CloseDisplayWindow { force? }` (body optional) | `204`; asks the window to close (`wmctrl -ic`, the app may still prompt or refuse); `force: true` disconnects its X client instead (`xdotool windowkill`). Errors as for `activate` |
 | GET | `/v1/agent/runs` | `?projectId=&archived=` | `AgentRun[]` newest first (max 200): without `archived` (or `0`/`false`) only runs that are not archived, with `archived=1`/`true` only archived ones; running runs are never archived |
-| POST | `/v1/agent/runs` | `StartAgentRun { projectId?, prompt, mode?, attachmentIds?, resumeSessionId? }` | `201 AgentRun`; 503 without `claude`; 404 for an unknown attachment. `mode` → `--permission-mode` (else `THEONE_CLAUDE_PERMISSION_MODE`; stored as `null`). Attachments are stored on the run as full `Upload`s; for non-audio ones the run gets `--add-dir <uploads dir>` and the stdin prompt gains `\n\nAttached files (read them with the Read tool):\n- <path> (<mimeType>)` lines. Audio attachments are not listed (the transcript is the prompt); they stay on the run for replay. In a confidential project (also when resuming) the run gets `--append-system-prompt <confidential prompt>` (§6.1) |
+| POST | `/v1/agent/runs` | `StartAgentRun { projectId?, prompt, mode?, attachmentIds?, resumeSessionId? }` | `201 AgentRun`; 503 without `claude`; 404 for an unknown attachment. `mode` → `--permission-mode` (else `TESSERACT_CLAUDE_PERMISSION_MODE`; stored as `null`). Attachments are stored on the run as full `Upload`s; for non-audio ones the run gets `--add-dir <uploads dir>` and the stdin prompt gains `\n\nAttached files (read them with the Read tool):\n- <path> (<mimeType>)` lines. Audio attachments are not listed (the transcript is the prompt); they stay on the run for replay. In a confidential project (also when resuming) the run gets `--append-system-prompt <confidential prompt>` (§6.1) |
 | POST | `/v1/uploads` | `CreateUpload { name, mimeType, data /* base64 */ }` (body limit 28 MiB) | `201 Upload`; 400 for invalid base64, an empty file or more than 20 MiB decoded. `name` → last path segment without control characters or leading dots, ≤ 200 UTF-8 bytes (extension kept), fallback `upload`; `mimeType` → lower-cased essence (`application/octet-stream` when malformed); `kind` = `image` (`image/*`), `pdf` (`application/pdf`), `audio` (`audio/*`), else `file` |
 | GET | `/v1/uploads/:id/content` | bearer **or** `?ticket=` | file stream with the stored `Content-Type`, `Content-Disposition` `inline` (image/pdf/audio) or `attachment` (file), `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox`; single `Range: bytes=` requests get 206 (players that issue several range requests need bearer auth, a ticket is single-use); 404 if the file is gone |
-| POST | `/v1/transcriptions` | `CreateTranscription { uploadId, language?, provider? }` | `200 Transcription { uploadId, text, language, durationMs, engine, fallbackReason }`; 404 unknown upload, 400 not audio, invalid `language` (ISO-639-1, region suffix dropped, `auto` = detect) or `No speech detected` (empty after dropping `[BLANK_AUDIO]`-style markers), 503 when the STT profile is `off` (`Speech-to-text is off (select a profile in the desktop app)`), when no engine is configured or it fails (message says which env vars to set). One transcription runs at a time; others wait in FIFO order (`busy`/`queued` in `GET /v1/stt`). whisper.cpp: `[ionice -c3] [nice -n <nice>]` prefix per profile (skipped when the binary is missing), ffmpeg → 16 kHz mono WAV in a temp dir, `whisper-cli -m <model> -t <threads> -l <lang\|auto> -oj`, 5 min timeout each, `durationMs` from the WAV. openai-compatible: multipart `file`, `model`, `response_format=verbose_json`, `language?` with `Authorization: Bearer`, 5 min timeout; a non-JSON reply is used as plain text. `provider: "gemini"` (default `native`): JSON `POST https://generativelanguage.googleapis.com/v1beta/models/<THEONE_GEMINI_STT_MODEL>:generateContent` with `x-goog-api-key`, the audio as `inline_data` (`audio/mp4`/`audio/x-m4a` sent as `audio/m4a`) and a verbatim-transcript instruction (language hint included), `temperature: 0`, 5 min timeout, outside the FIFO queue and regardless of the profile; empty text → 400 `No speech detected`. When no Gemini key is set (saved from an app or `tesseract --gemini-key`) or Gemini fails (network, HTTP error — 429 reported as quota/rate limit, 401/403/400 `API_KEY_INVALID` as a rejected key), the native engine (profile check included) answers and `fallbackReason` says why; if it cannot either, 503 with both reasons. `fallbackReason` is null otherwise |
+| POST | `/v1/transcriptions` | `CreateTranscription { uploadId, language?, provider? }` | `200 Transcription { uploadId, text, language, durationMs, engine, fallbackReason }`; 404 unknown upload, 400 not audio, invalid `language` (ISO-639-1, region suffix dropped, `auto` = detect) or `No speech detected` (empty after dropping `[BLANK_AUDIO]`-style markers), 503 when the STT profile is `off` (`Speech-to-text is off (select a profile in the desktop app)`), when no engine is configured or it fails (message says which env vars to set). One transcription runs at a time; others wait in FIFO order (`busy`/`queued` in `GET /v1/stt`). whisper.cpp: `[ionice -c3] [nice -n <nice>]` prefix per profile (skipped when the binary is missing), ffmpeg → 16 kHz mono WAV in a temp dir, `whisper-cli -m <model> -t <threads> -l <lang\|auto> -oj`, 5 min timeout each, `durationMs` from the WAV. openai-compatible: multipart `file`, `model`, `response_format=verbose_json`, `language?` with `Authorization: Bearer`, 5 min timeout; a non-JSON reply is used as plain text. `provider: "gemini"` (default `native`): JSON `POST https://generativelanguage.googleapis.com/v1beta/models/<TESSERACT_GEMINI_STT_MODEL>:generateContent` with `x-goog-api-key`, the audio as `inline_data` (`audio/mp4`/`audio/x-m4a` sent as `audio/m4a`) and a verbatim-transcript instruction (language hint included), `temperature: 0`, 5 min timeout, outside the FIFO queue and regardless of the profile; empty text → 400 `No speech detected`. When no Gemini key is set (saved from an app or `tesseract --gemini-key`) or Gemini fails (network, HTTP error — 429 reported as quota/rate limit, 401/403/400 `API_KEY_INVALID` as a rejected key), the native engine (profile check included) answers and `fallbackReason` says why; if it cannot either, 503 with both reasons. `fallbackReason` is null otherwise |
 | GET | `/v1/stt` | — | `SttStatus`: selected profile, every profile's tuning and whether its model file exists, the engine and model a transcription would use now (`ready`/`reason`), `cpus` (`os.availableParallelism()` capped by the cgroup v2 `cpu.max` quota), `busy`, `queued`, `gemini { configured /* a key is set */, model, source: "settings" \| "env" \| null }` (the key itself is never returned) |
 | PUT | `/v1/stt` | `UpdateStt { profile?: SttProfile, geminiApiKey?: string \| null }` (at least one) | `200 SttStatus`; stores the profile (key `stt.profile`) and the Gemini key (key `stt.geminiApiKey`, trimmed, 1–256 printable ASCII without spaces; `null` deletes it) in the `settings` table and publishes `stt.updated` when something changed; 400 for an unknown profile, an invalid key or an empty body |
 | POST | `/v1/agent/runs/archive` | `ArchiveAgentRuns { ids: AgentRunId[] (1–500), archived: boolean } \| { all: true, archived: boolean, projectId? }` | `200 { count }` = runs whose archived state changed; `archived: true` sets `archivedAt` to now, `false` clears it; `all` covers every finished run (of `projectId`); running runs and unknown ids are skipped; publishes `agent.updated` per changed run |
@@ -419,7 +434,7 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | POST | `/v1/events` | `StatusEvent` (without `ts`) | `202` — lets the in-sandbox agent publish SPEC §8.1 status events |
 
 `command` in `StartProcess` is `string` (run via `bash -lc` in the project dir)
-or `string[]` (exec directly). `display: true` sets `DISPLAY=$THEONE_DISPLAY` and `ELECTRON_DISABLE_SANDBOX=1` (the sandbox cannot run Chromium's setuid sandbox; `spec.env` may override it).
+or `string[]` (exec directly). `display: true` sets `DISPLAY=$TESSERACT_DISPLAY` and `ELECTRON_DISABLE_SANDBOX=1` (the sandbox cannot run Chromium's setuid sandbox; `spec.env` may override it).
 CORS allows `GET, POST, DELETE` with `Authorization, Content-Type` and exposes
 `Content-Disposition, X-Content-SHA256`.
 
@@ -434,7 +449,7 @@ CORS allows `GET, POST, DELETE` with `Authorization, Content-Type` and exposes
 | `/v1/agent/runs/:id/stream` | server → client `{type:"event", event: AgentRunEvent}` · `{type:"run", run: AgentRun}` (replays prior events first) |
 | `/v1/android/link` | host daemon → controller (host dials out): JSON `AndroidLinkHostMessage` `hello` · `emulator` · `devices` (shared emulators) · `refuse` · `pong`; controller → host `AndroidLinkSandboxMessage` `open {streamId, device?}` · `ping` (every 20 s). A newer link closes the older with 4000 |
 | `/v1/android/link/streams/:id` | **binary** raw adb bytes between the sandbox tunnel connection `:id` (`adb_…`) and the host emulator's (or a shared emulator's) adbd; opened by the host after `open`, within 10 s |
-| `/v1/display/vnc` | **binary** RFB bridge to `THEONE_VNC_HOST:THEONE_VNC_PORT` (echo `Sec-WebSocket-Protocol: binary` when offered; used by noVNC) |
+| `/v1/display/vnc` | **binary** RFB bridge to `TESSERACT_VNC_HOST:TESSERACT_VNC_PORT` (echo `Sec-WebSocket-Protocol: binary` when offered; used by noVNC) |
 
 Upgrades fail with 401 (missing/used/expired ticket), 404 (unknown target) or
 400 (not an upgrade). Log, run and terminal streams close with **1000** once their
@@ -442,7 +457,7 @@ target has ended; 1011 means the stream could not be set up. A socket whose
 send buffer exceeds 16 MiB is closed by the server (abnormal close): clients
 reconnect with a fresh ticket and rely on the replay. Client frames are capped at 1 MiB.
 
-### 5.4 Core types (authoritative names; zod schemas live in `@theone/protocol`)
+### 5.4 Core types (authoritative names; zod schemas live in `@tesseract/protocol`)
 
 ```ts
 type Health = { ok: true; version: string; protocolVersion: 1; sandboxId: string };
@@ -524,7 +539,7 @@ type TerminalInfo = { id: string; kind: TerminalKind; projectId: string | null; 
 type BuildState = "queued" | "running" | "succeeded" | "failed" | "cancelled";
 type Artifact = { id: string; projectId: string; buildId: string | null; fileName: string; path: string;
                   sizeBytes: number; sha256: string; platform: string;
-                  source: "build" | "agent" /* agent: shared with `theone-controller share` */;
+                  source: "build" | "agent" /* agent: shared with `tesseract-controller share` */;
                   agentRunId: string | null; note: string | null; createdAt: string };
 type ShareArtifact = { path: string; projectId?: string; name?: string; note?: string; agentRunId?: string; sessionId?: string };
 type TaildropTarget = { id: string /* node StableID */; hostName: string; dnsName: string | null; os: string | null; online: boolean };
@@ -551,10 +566,10 @@ type SttProfile = "off" | "eco" | "balanced" | "performance";
 //   off: no transcriptions (503) · eco: base, 2 threads, nice 19 + ionice -c3
 //   balanced: base, max(2, cpus/4) threads, nice 10 · performance: small, min(cpus, max(4, cpus/2)) threads, nice 0
 type SttProfileInfo = { id: SttProfile; model: string | null /* ggml name, null for off */; threads: number; nice: number;
-                        available: boolean /* ggml-<model>.bin in THEONE_WHISPER_MODELS_DIR; true for off */ };
+                        available: boolean /* ggml-<model>.bin in TESSERACT_WHISPER_MODELS_DIR; true for off */ };
 type SttStatus = { profile: SttProfile; profiles: SttProfileInfo[] /* STT_PROFILES order */;
                    engine: "whisper.cpp" | "openai-compatible" | null; ready: boolean; reason: string | null;
-                   model: string | null /* after the THEONE_WHISPER_MODEL fallback; THEONE_STT_MODEL for openai-compatible */;
+                   model: string | null /* after the TESSERACT_WHISPER_MODEL fallback; TESSERACT_STT_MODEL for openai-compatible */;
                    cpus: number; busy: boolean; queued: number;
                    gemini: { configured: boolean; model: string;
                              source: "settings" /* saved from an app or tesseract --gemini-key */ | null } };
@@ -562,7 +577,7 @@ type UpdateStt = { profile?: SttProfile; geminiApiKey?: string | null /* null fo
 type AgentRunUsage = { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number;
                        totalTokens: number /* sum of the four */ };
 type AgentRun = { id: string; projectId: string | null; prompt: string;
-                  mode: AgentRunMode | null /* null = THEONE_CLAUDE_PERMISSION_MODE */; attachments: Upload[];
+                  mode: AgentRunMode | null /* null = TESSERACT_CLAUDE_PERMISSION_MODE */; attachments: Upload[];
                   sessionId: string | null; claudeAccountId: string | null /* null: before accounts (primary) */;
                   resumedSessionId?: string | null /* the `resumeSessionId` it started with; links a follow-up to its chat */;
                   state: AgentRunState;
@@ -666,7 +681,7 @@ type EmulatorInfo = { state: EmulatorState; avd: string | null; serial: string |
                       isolated: boolean /* in its own netns; sandbox android targets need it */;
                       width: number | null; height: number | null; startedAt: string | null; error: string | null };
 type AndroidLinkInfo = { configured: boolean; sandboxUrl: string | null; connected: boolean; lastError: string | null };
-type EmulatorIsolationMode = "netns" | "none"; // EMULATOR_ISOLATION_MODES, THEONE_EMULATOR_ISOLATION
+type EmulatorIsolationMode = "netns" | "none"; // EMULATOR_ISOLATION_MODES, TESSERACT_EMULATOR_ISOLATION
 type HostAndroidStatus = { available: boolean; reason: string | null; sdkRoot: string | null;
                            isolation: EmulatorIsolationMode; avds: string[];
                            scrcpy: boolean; ffmpeg: boolean; emulator: EmulatorInfo; link: AndroidLinkInfo;
@@ -690,7 +705,7 @@ Identity resolution (controller): `viewer` comes from the Tailscale Serve header
 `Tailscale-User-Login` / `-Name` / `-Profile-Pic` (RFC 2047 values decoded) only when the
 request arrives from loopback (serve proxies from `127.0.0.1`), matched against the LocalAPI
 user list for `id` (else `id` = login name) → `source: "serve"`. Otherwise the controller asks
-the LocalAPI on `THEONE_TAILSCALE_SOCKET` (`GET /localapi/v0/whois?addr=<ip:port>` of the
+the LocalAPI on `TESSERACT_TAILSCALE_SOCKET` (`GET /localapi/v0/whois?addr=<ip:port>` of the
 TCP peer) → `source: "localapi"`. `owner`, `node` and `tailnet` come from
 `GET /localapi/v0/status` (`Self`, `User[Self.UserID]`, `MagicDNSSuffix`), cached 30 s.
 Every LocalAPI call has a 1.5 s timeout. The identity is informational: the bearer token
@@ -700,7 +715,7 @@ IDs: type prefix (`prc_`, `trm_`, `bld_`, `art_`, `run_`, `inb_`, `upl_`, `sync_
 lowercase Crockford base32 (`0-9a-z` without `i l o u`), e.g. `bld_7f3k2q9xa1`.
 Validators accept any `<prefix>[A-Za-z0-9_-]{1,64}`. Timestamps: ISO-8601 UTC strings.
 
-`@theone/protocol` also exports: `LIMITS` (§6), the constants above as arrays
+`@tesseract/protocol` also exports: `LIMITS` (§6), the constants above as arrays
 (`BUILD_TARGETS`, `PROCESS_STATES`, …), list and query schemas, the stream message
 schemas (`ProcessLogStreamMessage`, `LogStreamMessage`, `AgentStreamMessage`,
 `EventsClientMessage`), `CreateProjectResponse`, `restPaths`/`wsPaths`/`uiPaths`
@@ -708,7 +723,7 @@ builders and server-side `routePatterns`, pairing helpers (`buildPairingLink`,
 `parsePairingLink`, `parseBaseUrl`), and `projectIdFromName`.
 
 **Compatibility.** A client MUST check `protocolVersion` on `GET /v1/health` and on
-the events `hello`; `@theone/client` raises `ProtocolVersionError` and ends the
+the events `hello`; `@tesseract/client` raises `ProtocolVersionError` and ends the
 events stream on a mismatch. Unknown event types and fields are ignored, but a new
 value in an existing enum fails the whole payload parse, so adding enum values is
 a breaking change.
@@ -740,7 +755,7 @@ builds are ignored; no match fails the build. Each file is copied to
 
 ### 5.6 WebView bridge (`/ui` pages ↔ embedding app)
 
-Names live in `@theone/protocol/bridge` (`PAGE_MESSAGES`, `PAGE_STATES`, `INPUT_MODES`,
+Names live in `@tesseract/protocol/bridge` (`PAGE_MESSAGES`, `PAGE_STATES`, `INPUT_MODES`,
 `VNC_ACTIONS`, `PageInsets`; zod-free so
 the pages can import it). Pages post to `window.ReactNativeWebView.postMessage`
 (JSON string) and, when framed, `parent.postMessage(message, "*")`:
@@ -750,27 +765,27 @@ the pages can import it). Pages post to `window.ReactNativeWebView.postMessage`
 | `terminal-state`, `vnc-state`, `android-state` | page → app | `{ type, state, code?, reason? }`, `state` ∈ `connecting\|connected\|disconnected\|exited\|error`; `code` = exit code on `exited`; `vnc-state` adds `inputMode`; `reason` on `disconnected` (e.g. the host's `error` message such as `The emulator is not running`) |
 | `terminal-need-ticket`, `vnc-need-ticket`, `android-need-ticket` | page → app | `{ type }` (terminal adds `session`) after the page's socket dropped |
 | `vnc-action` | page → app | `{ type, action }`, `action` ∈ `browser\|paste` (the user tapped the key row's **URL** or **Paste** key) |
-| `theone-reconnect` | app → page | native: injected `window.theone.reconnect(ticket)`; web: `postMessage({ type: "theone-reconnect", ticket })` to the frame |
-| `theone-input-mode` | app → page | `window.theone.setInputMode(mode)` / `{ type, mode }`, `mode` ∈ `trackpad\|touch`; switches without reconnecting (VNC page only) |
-| `theone-insets` | app → page | `window.theone.setInsets({ top, bottom })` / `{ type, top, bottom }`, CSS px ≥ 0 covered by the app's floating chrome (VNC and Android pages) |
-| `theone-paste` | app → page | `window.theone.paste(text)` / `{ type, text }`, the phone clipboard's non-empty text; the VNC page sets it as the remote clipboard and types it into the focused field (VNC page only) |
+| `tesseract-reconnect` | app → page | native: injected `window.tesseract.reconnect(ticket)`; web: `postMessage({ type: "tesseract-reconnect", ticket })` to the frame |
+| `tesseract-input-mode` | app → page | `window.tesseract.setInputMode(mode)` / `{ type, mode }`, `mode` ∈ `trackpad\|touch`; switches without reconnecting (VNC page only) |
+| `tesseract-insets` | app → page | `window.tesseract.setInsets({ top, bottom })` / `{ type, top, bottom }`, CSS px ≥ 0 covered by the app's floating chrome (VNC and Android pages) |
+| `tesseract-paste` | app → page | `window.tesseract.paste(text)` / `{ type, text }`, the phone clipboard's non-empty text; the VNC page sets it as the remote clipboard and types it into the focused field (VNC page only) |
 
 The app verifies the sender origin (the sandbox base URL), answers `*-need-ticket`
 with a fresh ticket (automatically, up to 4 times with backoff, and again when the app
 returns to the foreground), and never reconnects after `exited` or `error`.
 `viewOnly=1` in the VNC fragment disables input. Pages validate every app → page call and
-ignore malformed ones; `window.theone` always has all four methods (no-ops where a page
+ignore malformed ones; `window.tesseract` always has all four methods (no-ops where a page
 does not support them).
 
 VNC page input: `input=trackpad|touch` in the fragment (default `trackpad`), then
-`theone-input-mode` at runtime. **trackpad**: a layer over the screen captures touches and
+`tesseract-input-mode` at runtime. **trackpad**: a layer over the screen captures touches and
 drives a drawn pointer kept on the remote screen: one-finger drag moves it relatively
 (≈60 % of the screen width per swipe across the page, accelerated when fast), tap = left
 click, two-finger tap = right click, two-finger drag = wheel, tap then press-and-drag =
 left-button drag; noVNC gets synthetic mouse/wheel events on its canvas. **touch**:
 noVNC's own touch gestures act under the finger and no pointer is drawn. Embedded (any
 host), the page hides its own top bar (the app shows status) and starts the key row with
-**⌨** (toggle the phone keyboard), **URL** and **Paste** (post `vnc-action`; view-only keeps only **URL**); `theone-insets` pads
+**⌨** (toggle the phone keyboard), **URL** and **Paste** (post `vnc-action`; view-only keeps only **URL**); `tesseract-insets` pads
 the screen below the app's header (`top`) and the key row above its bottom chrome (`bottom`).
 
 Android page (`/ui/android` on the host daemon, fragment `ticket`, optional `maxSize` and `serial`): it
@@ -779,13 +794,13 @@ in front of each key frame and skips to the next key frame when the decoder queu
 6 frames; a decoder error closes the socket and the next connect asks for JPEG. Pointer
 events are touches (multi-touch, pointer ids 0..9) in the last `meta`/`size` space, the wheel
 scrolls, the bottom bar is ◁ ○ ▢ ⌨ ⟳ (back, home, recents, keyboard, rotate). Embedded, it hides
-its top bar; `theone-insets` pads the screen (`top`) and the bottom bar (`bottom`). A host `error`
+its top bar; `tesseract-insets` pads the screen (`top`) and the bottom bar (`bottom`). A host `error`
 message ends the socket and is reported as `disconnected` with `reason`.
 
-### 5.7 Host shell API (`theone-controller host serve`)
+### 5.7 Host shell API (`tesseract-controller host serve`)
 
 Same JSON error format, `/v1` prefix and terminal protocol as the controller, so
-`/ui/terminal` and `TheOneClient` work against it unchanged. Two credentials:
+`/ui/terminal` and `TesseractClient` work against it unchanged. Two credentials:
 the **host token** (`Authorization: Bearer`, from `host pair`, compared in constant
 time) and a **session** (`HostSession`, issued for the PIN, in memory only, valid
 `LIMITS.hostSessionTtlMs` = 15 min, dropped when the token is rotated or the PIN
@@ -795,7 +810,7 @@ changes). Neither is accepted where the other is expected.
 |---|---|---|---|---|
 | GET | `/v1/health` | — | — | `HostHealth { ok, service: "host-shell", version, protocolVersion, hostId }` |
 | GET | `/v1/host/lock` | host token | — | `HostLockStatus { pinSet, attemptsLeft, lockedUntil }` |
-| POST | `/v1/host/unlock` | host token | `HostUnlock { pin }` (6–12 digits, else 400 without counting) | `200 HostSession { session, expiresAt }`; 503 `No PIN is set; run theone-controller host pin on the host`; 403 `Wrong PIN (<n> attempts left)`; after `hostPinMaxAttempts` (5) wrong PINs 403 `Too many wrong PINs; try again after <time>` for `hostLockoutBaseMs` (5 min) × 2^lockouts, capped at `hostLockoutMaxMs` (24 h). Attempts are serialized; counters persist in `state.json`; a correct PIN resets them |
+| POST | `/v1/host/unlock` | host token | `HostUnlock { pin }` (6–12 digits, else 400 without counting) | `200 HostSession { session, expiresAt }`; 503 `No PIN is set; run tesseract-controller host pin on the host`; 403 `Wrong PIN (<n> attempts left)`; after `hostPinMaxAttempts` (5) wrong PINs 403 `Too many wrong PINs; try again after <time>` for `hostLockoutBaseMs` (5 min) × 2^lockouts, capped at `hostLockoutMaxMs` (24 h). Attempts are serialized; counters persist in `state.json`; a correct PIN resets them |
 | POST | `/v1/host/lock` | host token | `HostLock { session }` | `204`; ends that session |
 | POST | `/v1/auth/ticket` | session | — | `Ticket` (one-time, 60 s) |
 | GET | `/v1/terminals` | session | — | `TerminalInfo[]` (newest first) |
@@ -810,7 +825,7 @@ changes). Neither is accepted where the other is expected.
 | DELETE | `/v1/android/link` | session | — | `AndroidLinkInfo` (cleared, link closed) |
 | GET | `/v1/android/devices` | session | — | `AndroidDevice[]` from `adb devices -l` (`[]` without adb) |
 | GET | `/v1/android/stream` | session | — | `AndroidStreamSettings` |
-| PUT | `/v1/android/stream` | session | `UpdateAndroidStream` (any `AndroidStreamSettings` fields) | `AndroidStreamSettings`; stored in `state.json` as `androidStream`. Also `theone-controller host stream [--json] [--stdin]` (the desktop app uses it, no PIN). On a change (this route, or `state.json` rewritten, watched with a 150 ms debounce) every open screen whose session would differ moves to a new session: it gets a new `meta` (maybe another `codec`) and keeps its socket |
+| PUT | `/v1/android/stream` | session | `UpdateAndroidStream` (any `AndroidStreamSettings` fields) | `AndroidStreamSettings`; stored in `state.json` as `androidStream`. Also `tesseract-controller host stream [--json] [--stdin]` (the desktop app uses it, no PIN). On a change (this route, or `state.json` rewritten, watched with a 150 ms debounce) every open screen whose session would differ moves to a new session: it gets a new `meta` (maybe another `codec`) and keeps its socket |
 | WS | `/v1/android/screen?ticket=&maxSize=&serial=&codec=` | ticket | client → daemon `AndroidScreenClientMessage` `touch` · `scroll` · `key` · `text` · `rotate`; daemon → client `AndroidScreenServerMessage` `meta` (with `codec`) · `size` · `error` + binary video | an adb device's screen via scrcpy: `serial` (default: the settings' `device`, else the host emulator; only the host emulator needs `running`), `codec=h264` when the viewer decodes H.264. With settings `encoding: "h264"` and `codec=h264`, scrcpy's H.264 is forwarded as is: each binary message is a flags byte (`ANDROID_H264_FLAGS`: 1 config, 2 key frame) + an Annex B access unit; else ffmpeg turns it into one JPEG per message. scrcpy gets `video_bit_rate`, `max_fps`, `max_size` and `i-frame-interval` from the settings. Viewers of the same device, codec and settings share one session, sized by the first viewer's `maxSize` (default 1280, at least 160, at most the settings' `maxSize`); a late H.264 viewer gets the config and the frames since the last key frame (≤ 8 MiB); a viewer with > 512 KiB buffered skips frames until the next key frame; query checked before the ticket is used; per-viewer pointer ids, lifted when a viewer leaves |
 | GET | `/ui/android` | — | — | the Android screen page (fragment `#ticket=…&maxSize=…&serial=…`, same bridge as `/ui/vnc`) |
 
@@ -820,7 +835,7 @@ Android emulator details (scrcpy session, link protocol, adb tunnel): [app-runs-
 
 ### 6.1 State
 
-* `bun:sqlite` database at `$THEONE_DATA_DIR/state.db` (WAL) — processes, terminals
+* `bun:sqlite` database at `$TESSERACT_DATA_DIR/state.db` (WAL) — processes, terminals
   (metadata), builds, artifacts, agent runs and their events, and the inbox (newest 1 000
   items by `updatedAt` kept). Agent runs are kept until deleted through
   `POST /v1/agent/runs/delete`; archiving only sets `archived_at` (migration 3) and hides
@@ -836,7 +851,7 @@ Android emulator details (scrcpy session, link protocol, adb tunnel): [app-runs-
   the desktop client) whose real name never reaches the sandbox. It is marked by
   `CreateProject.confidential` or `POST /v1/projects/:id/sync?confidential=1`; nothing in the
   API unmarks it. For such a project `Project.name` is the id, `GitCommit.author` is
-  `REDACTED` (`REDACTED` in `@theone/protocol`), `POST /v1/artifacts` is refused with 403,
+  `REDACTED` (`REDACTED` in `@tesseract/protocol`), `POST /v1/artifacts` is refused with 403,
   and agent runs and `claude` terminals get `--append-system-prompt` with
   `confidentialPrompt(id)` (`apps/controller/src/services/confidential.ts`): the project is
   known only by its pseudonym; never reveal real, client, company, product or people's
@@ -844,14 +859,14 @@ Android emulator details (scrcpy session, link protocol, adb tunnel): [app-runs-
   comments, docs, logs, summaries or PR text, writing `REDACTED` instead; do not share files
   as artifacts.
 * Sync back: the baseline manifest of each pushed project in
-  `$THEONE_DATA_DIR/sync/<projectId>.json` (`{ pushedAt, files: { path: sha256 }, executable: path[], gotAt?, gitHead? }`),
-  the baseline content in `$THEONE_DATA_DIR/sync/blobs/<projectId>/<sha256>` (`<sha256>.link`: a symlink target;
+  `$TESSERACT_DATA_DIR/sync/<projectId>.json` (`{ pushedAt, files: { path: sha256 }, executable: path[], gotAt?, gitHead? }`),
+  the baseline content in `$TESSERACT_DATA_DIR/sync/blobs/<projectId>/<sha256>` (`<sha256>.link`: a symlink target;
   0600, written on push, get and ack, unreferenced ones removed on push), sandbox copies of edits a `get --force`
-  or a discard overwrote in `$THEONE_DATA_DIR/sync/backups/<projectId>/<requestId | discard-<ts>>/`
-  (newest 20 per project), `get` staging in `$THEONE_DATA_DIR/sync/staging/` (removed after each apply); sync
+  or a discard overwrote in `$TESSERACT_DATA_DIR/sync/backups/<projectId>/<requestId | discard-<ts>>/`
+  (newest 20 per project), `get` staging in `$TESSERACT_DATA_DIR/sync/staging/` (removed after each apply); sync
   requests in the database (newest 500 kept; a request `claimed` for over 10 minutes is failed).
   See [sync-back.md](sync-back.md).
-* Logs: `$THEONE_DATA_DIR/logs/<id>.log` (`<ts> <stream> <seq> <text>` lines), rotated at
+* Logs: `$TESSERACT_DATA_DIR/logs/<id>.log` (`<ts> <stream> <seq> <text>` lines), rotated at
   5 MiB (keep 1 rotation), plus an in-memory ring buffer (2 000 lines) per live process/build.
 * On startup, rows left live are marked: processes `orphaned`, builds and agent runs
   `failed`, terminals `exited` — the controller never re-runs anything automatically
@@ -890,7 +905,7 @@ repository's own git config never executes code when the controller lists it.
 
 ### 6.4 Agent memory layout (`/workspace/.agent/`)
 
-Seeded by the image entrypoint from `/etc/theone/agent-templates/` when missing;
+Seeded by the image entrypoint from `/etc/tesseract/agent-templates/` when missing;
 never overwritten afterwards. Described normatively in `SPEC.md`.
 
 ```text
@@ -916,35 +931,35 @@ never overwritten afterwards. Described normatively in `SPEC.md`.
 ## 7. Controller CLI (same binary)
 
 ```
-theone-controller [serve]                       # default when no args
-theone-controller pair [--json]                 # pairing deep link + ANSI QR code; --json → { link, url, name }
-theone-controller status [--json]               # SandboxStatus from the local API (VNC password shown as ***)
-theone-controller emit --status <s> --message <m> [--project p] [--stage s] [--platform p]
-theone-controller token [--rotate]              # print the token, or write a new one (restart required)
-theone-controller api <METHOD> <PATH> [JSON|-]  # call the local API; the agent's only way to use it
-theone-controller share <file> [--project p] [--name n] [--note t] [--json]  # POST /v1/artifacts; prints "shared <name> (<size>, <project>) as <id>"
-theone-controller hook                          # Claude Code hook: stdin JSON → POST /v1/hooks/claude; silent, always exit 0
-theone-controller monolith --get [--force] [--json]  # also /usr/local/bin/monolith; in /workspace/projects/<id>/…: queue a `get` and print a git pull style summary (sync-back.md §6); exit 0 / 1 / 2 conflicts / 130 interrupted
-theone-controller host serve [--bind <ipv4>] [--port <n>]  # ON THE HOST: host shell daemon (§5.7)
-theone-controller host pin [--stdin]            # set the 6-12 digit PIN (prompted twice without echo); ends sessions, resets lockouts
-theone-controller host pair [--json]            # theone://host link + QR with the host token; warns while no PIN is set; --json: { link, url, name, pinSet }
-theone-controller host token [--rotate]         # print, or replace, the host token (phones pair again)
-theone-controller --version | --help
+tesseract-controller [serve]                       # default when no args
+tesseract-controller pair [--json]                 # pairing deep link + ANSI QR code; --json → { link, url, name }
+tesseract-controller status [--json]               # SandboxStatus from the local API (VNC password shown as ***)
+tesseract-controller emit --status <s> --message <m> [--project p] [--stage s] [--platform p]
+tesseract-controller token [--rotate]              # print the token, or write a new one (restart required)
+tesseract-controller api <METHOD> <PATH> [JSON|-]  # call the local API; the agent's only way to use it
+tesseract-controller share <file> [--project p] [--name n] [--note t] [--json]  # POST /v1/artifacts; prints "shared <name> (<size>, <project>) as <id>"
+tesseract-controller hook                          # Claude Code hook: stdin JSON → POST /v1/hooks/claude; silent, always exit 0
+tesseract-controller tesseract --get [--force] [--json]  # IN THE SANDBOX, also as `tesseract --get` (/usr/local/bin/tesseract, not the host CLI §7.1); in /workspace/projects/<id>/…: queue a `get` and print a git pull style summary (sync-back.md §6); exit 0 / 1 / 2 conflicts / 130 interrupted
+tesseract-controller host serve [--bind <ipv4>] [--port <n>]  # ON THE HOST: host shell daemon (§5.7)
+tesseract-controller host pin [--stdin]            # set the 6-12 digit PIN (prompted twice without echo); ends sessions, resets lockouts
+tesseract-controller host pair [--json]            # tesseract://host link + QR with the host token; warns while no PIN is set; --json: { link, url, name, pinSet }
+tesseract-controller host token [--rotate]         # print, or replace, the host token (phones pair again)
+tesseract-controller --version | --help
 ```
 
 `host …` never reads the sandbox configuration; the repo's `bun run host <cmd>` runs it
 from a checkout on the host. Exit code 2 for bad arguments, a bad PIN or a refused bind.
 
-The CLI reads the token from `THEONE_TOKEN`/`THEONE_TOKEN_FILE` and talks to
-`http://127.0.0.1:$THEONE_PORT` (the bind address unless it is a wildcard).
+The CLI reads the token from `TESSERACT_TOKEN`/`TESSERACT_TOKEN_FILE` and talks to
+`http://127.0.0.1:$TESSERACT_PORT` (the bind address unless it is a wildcard).
 `api`: `METHOD` ∈ `GET|POST|DELETE`, `PATH` must start with and stay under `/v1/`,
 body as argument or `-` for stdin; 2xx JSON is pretty-printed to stdout (non-JSON
 bytes only when stdout is not a terminal); the token and `display.vnc.password` are
 printed as `***`. Exit codes (`api`, `emit`): 0 ok, 1 request failed / non-2xx
 (error body on stderr), 2 bad arguments (nothing sent).
 `share` resolves the file against the current directory and sends `agentRunId`/`sessionId` from
-`THEONE_AGENT_RUN_ID`/`CLAUDE_CODE_SESSION_ID` when set; exit codes as for `api`.
-`hook` adds `theone_terminal_id`/`theone_agent_run_id` from `THEONE_TERMINAL_ID`/`THEONE_AGENT_RUN_ID`
+`TESSERACT_AGENT_RUN_ID`/`CLAUDE_CODE_SESSION_ID` when set; exit codes as for `api`.
+`hook` adds `tesseract_terminal_id`/`tesseract_agent_run_id` from `TESSERACT_TERMINAL_ID`/`TESSERACT_AGENT_RUN_ID`
 (set by the controller for terminals and agent runs), gives up after 1.5 s and never prints
 or fails, so a controller outage never blocks Claude.
 
@@ -952,12 +967,12 @@ or fails, so a controller outage never blocks Claude.
 
 `apps/electron/cli`, compiled with `bun build --compile` (`bun run --cwd apps/electron cli:build`) to
 `dist-cli/<linux|mac|win>-<x64|arm64>/tesseract[.exe]` and shipped in the installers as `resources/bin/tesseract`
-next to `theone-controller` (§12.5). It shares `src/core` with the app, so both read the same `config.json`,
+next to `tesseract-controller` (§12.5). It shares `src/core` with the app, so both read the same `config.json`,
 sandbox env file and Android SDK. Every command takes `--json`, `--verbose`, `--help`.
 
 ```
 tesseract status [--json]                                # config, setup progress, connection, Docker, stack, Android
-tesseract open [overview|agents|projects|files|terminals|display]   # start or focus the app (else monolith://<page>)
+tesseract open [overview|agents|projects|files|terminals|display]   # start or focus the app (else tesseract://<page>)
 tesseract doctor [docker|image|kvm|sdk]... [--json]      # Docker, sandbox image, hardware acceleration, Android SDK
 tesseract sandbox status|up|down [--volumes]|restart [service]|logs [--tail N] [--follow]
 tesseract sandbox build [--with android,flutter,mono,whisper|all|none] [--pull | --existing] [--verbose]
@@ -976,9 +991,9 @@ tesseract --sync [--confidential] | --pull [--dry-run] [--force] | --revert [--f
 tesseract --gemini-key=KEY                               # save the Gemini key for voice notes on the sandbox (PUT /v1/stt)
 ```
 
-`--get` on the host only prints that it runs inside the sandbox (`theone-controller monolith --get`, §7).
+`--get` on the host only prints that it runs inside the sandbox, where `tesseract` is the controller wrapper (`tesseract-controller tesseract --get`, §7).
 `config get` prints the token as `…` unless `--reveal`. The packaged app forwards the sync flags to the
-bundled CLI (`Monolith --sync` = `tesseract --sync`). Exit codes: 0 ok, 1 failure, 2 sync conflict,
+bundled CLI (`Tesseract --sync` = `tesseract --sync`). Exit codes: 0 ok, 1 failure, 2 sync conflict,
 64 bad arguments, 130 interrupted.
 
 ### 7.2 Headless server (`tesseract server`, macOS and Linux)
@@ -995,8 +1010,8 @@ tesseract server status
 tesseract server pair                                    # sandbox and host shell pairing links + QR codes
 ```
 
-`install` writes the sandbox env file (§12.4: macOS `~/Library/Application Support/Monolith/sandbox/.env`,
-Linux `~/.config/Monolith/sandbox/.env`), pulls `--image` or builds (`--build`, `--with`), runs `compose up`,
+`install` writes the sandbox env file (§12.4: macOS `~/Library/Application Support/Tesseract/sandbox/.env`,
+Linux `~/.config/Tesseract/sandbox/.env`), pulls `--image` or builds (`--build`, `--with`), runs `compose up`,
 installs the host shell service and runs `tailscale serve --bg --https=<host-https-port> http://<tailscale ip>:7701`,
 then prints the pairing. `--authkey`, `--tailnet-domain` and `--claude-token` fall back to `TS_AUTHKEY`,
 `TS_TAILNET_DOMAIN` and `CLAUDE_CODE_OAUTH_TOKEN` (passed to the sandbox, because Claude Code on macOS keeps its
@@ -1005,15 +1020,15 @@ login in the keychain, which the sandbox can't read). The stack restarts with Do
 | Host shell service | macOS | Linux |
 |---|---|---|
 | Unit | LaunchAgent `~/Library/LaunchAgents/dev.tesseract.host-shell.plist` (`RunAtLoad`, `KeepAlive`) | systemd user unit `tesseract-host-shell.service` (`loginctl enable-linger` to run without a login) |
-| Command | `theone-controller host serve --bind <tailscale ip>` | same |
+| Command | `tesseract-controller host serve --bind <tailscale ip>` | same |
 | Logs | `~/Library/Logs/Tesseract/` | `journalctl --user -u tesseract-host-shell` |
 
 Installing on the server itself: `./setup-server.sh [--hostname NAME] [--with LIST] [--rebuild] [--yes]` from a repo checkout (builds the binaries for that machine, installs them into `~/.tesseract`, prompts for missing secrets and the host PIN, prints root-only steps such as `pmset` for the user to run, then runs `tesseract server install --mode tailscale`; see docs/runbooks/mac-server.md).
 
 Deploying from the Linux dev box: `infra/scripts/deploy-mac <ssh-host> [--arch auto|arm64|x64] [--skip-build]
-[-- <install args>]` (`bun run deploy:mac`) builds `tesseract` + `theone-controller` for `mac-arm64`/`mac-x64`
+[-- <install args>]` (`bun run deploy:mac`) builds `tesseract` + `tesseract-controller` for `mac-arm64`/`mac-x64`
 (`uname -m` on the Mac) and the sandbox context (`bundle:sandbox`), copies them to `~/.tesseract/bin/` and
-`~/.tesseract/sandbox/` and runs `MONOLITH_SANDBOX_CONTEXT=~/.tesseract/sandbox ~/.tesseract/bin/tesseract server install`.
+`~/.tesseract/sandbox/` and runs `TESSERACT_SANDBOX_CONTEXT=~/.tesseract/sandbox ~/.tesseract/bin/tesseract server install`.
 `TS_AUTHKEY`, `TS_TAILNET_DOMAIN` and `CLAUDE_CODE_OAUTH_TOKEN` from its environment reach the Mac over ssh stdin
 (a 0600 `~/.tesseract/secrets.env` removed before the install runs), never on a command line.
 
@@ -1024,15 +1039,15 @@ Multi-stage `infra/docker/sandbox/Dockerfile`, build context = repo root.
 | Stage | Adds |
 |---|---|
 | `bun`, `jdk` | helper aliases for `oven/bun:${BUN_VERSION}` and `${JDK_IMAGE}` |
-| `controller-build` | `bun install --frozen-lockfile --filter @theone/controller` → `bun build --compile` (host arch) |
+| `controller-build` | `bun install --frozen-lockfile --filter @tesseract/controller` → `bun build --compile` (host arch) |
 | `base` | `${DEBIAN_IMAGE}`, tini, supervisor, sudo, coreutils + util-linux (`nice`, `ionice` for the STT profiles), git, git-lfs, curl, jq, ripgrep, fd, build-essential, python3/pip/venv/pipx, Docker CLI + compose/buildx (no daemon), Node `${NODE_MAJOR}` from nodejs.org (SHASUMS256-checked) + corepack, bun, locales, fonts, `dev` user |
 | `desktop` | TigerVNC (`Xvnc`, `vncpasswd`), openbox, xterm, x11-apps (`xwd`), x11-utils, x11-xserver-utils, xdotool, imagemagick, ffmpeg, dbus-x11, chromium, Electron runtime libs, Flutter Linux desktop deps (`clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-14-dev`), wmctrl |
 | `electron` | wine (`wine`, `wine64`, `wine32:i386`, `/usr/local/bin/wine64` symlink), osslsigncode, fakeroot, dpkg-dev, rpm, mono-complete if `WITH_MONO=true` |
 | `android-sdk` | side stage: JDK copy, Android cmdline-tools (sha256-pinned), platform-tools, `platforms;${ANDROID_PLATFORM}`, `build-tools;${ANDROID_BUILD_TOOLS}`; empty dirs if `WITH_ANDROID=false` |
-| `android` | JDK → `/opt/java/openjdk`, SDK → `/opt/android-sdk` (owned by `dev`), `/etc/profile.d/theone.sh` |
+| `android` | JDK → `/opt/java/openjdk`, SDK → `/opt/android-sdk` (owned by `dev`), `/etc/profile.d/tesseract.sh` |
 | `flutter` | with `WITH_FLUTTER=true`, the Flutter SDK cloned at tag `${FLUTTER_VERSION}` into `/opt/flutter` (owned by `dev`, on `PATH`), `flutter config --no-analytics --android-sdk /opt/android-sdk`, `flutter precache --web --linux` |
 | `whisper` | side stage: with `WITH_WHISPER=true`, whisper.cpp `v${WHISPER_CPP_VERSION}` built statically (`${WHISPER_CMAKE_ARGS}`, default `-DGGML_NATIVE=ON`) → `/opt/whisper/bin/whisper-cli`, and `ggml-<m>.bin` for each `m` in `${WHISPER_MODELS}` from huggingface.co/ggerganov/whisper.cpp with the symlink `/opt/whisper/models/ggml-model.bin` to the first; empty `/opt/whisper` otherwise |
-| `sandbox` (final, default) | Claude Code (`npm i -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}`), `/opt/whisper`, rootfs, `SPEC.md` → `/etc/theone/SPEC.md`, controller binary |
+| `sandbox` (final, default) | Claude Code (`npm i -g @anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}`), `/opt/whisper`, rootfs, `SPEC.md` → `/etc/tesseract/SPEC.md`, controller binary |
 
 Build args: `DEBIAN_IMAGE` (`debian:trixie-slim`), `BUN_VERSION` (`1.4.2`), `JDK_IMAGE`
 (`eclipse-temurin:17-jdk`), `DEV_UID`/`DEV_GID` (`1000`), `ENABLE_SUDO` (`true`),
@@ -1041,31 +1056,31 @@ Build args: `DEBIAN_IMAGE` (`debian:trixie-slim`), `BUN_VERSION` (`1.4.2`), `JDK
 (`android-36`), `ANDROID_BUILD_TOOLS` (`36.0.0`), `CLAUDE_CODE_VERSION` (`latest`),
 `WITH_FLUTTER` (`true`), `FLUTTER_VERSION` (`3.47.5`),
 `WITH_WHISPER` (`true`), `WHISPER_CPP_VERSION` (`1.7.6`), `WHISPER_MODELS` (`base small`),
-`WHISPER_CMAKE_ARGS` (`-DGGML_NATIVE=ON`), `THEONE_IMAGE_VERSION` (`0.1.0`).
+`WHISPER_CMAKE_ARGS` (`-DGGML_NATIVE=ON`), `TESSERACT_IMAGE_VERSION` (`0.1.0`).
 
 Claude Code hooks: `/etc/claude-code/managed-settings.json` (the Linux managed-settings path,
-applied to every session, interactive or `claude -p`) runs `/usr/local/bin/theone-controller hook`
+applied to every session, interactive or `claude -p`) runs `/usr/local/bin/tesseract-controller hook`
 (timeout 5 s) on `Notification`, `Stop`, `StopFailure` and `UserPromptSubmit`.
-`/etc/claude-code/CLAUDE.md` (managed memory) tells Claude to run `theone-controller share <file> --note …`
+`/etc/claude-code/CLAUDE.md` (managed memory) tells Claude to run `tesseract-controller share <file> --note …`
 for finished deliverables (APK/AAB, installers, zips, reports, exported media), not intermediate files.
 `/etc/claude-code/.claude/skills/send-file/` is a managed skill, `/send-file [latest|apk|aab|android|windows|linux|build|md|<path or name>] [-- note]`
 (interactive or `claude -p`, so also from a phone chat): it picks the file (the chat's last deliverable, the newest
-of a kind via its `find-files` helper, or a named file), refuses secrets, and runs `theone-controller share`.
+of a kind via its `find-files` helper, or a named file), refuses secrets, and runs `tesseract-controller share`.
 
-Rootfs helpers (`/usr/local/bin`): `theone-entrypoint`, `theone-xvnc`, `theone-wait-x`,
-`theone-controller-run`, `theone-wine-init`, `theone-screenshot`, `theone-doctor`.
+Rootfs helpers (`/usr/local/bin`): `tesseract-entrypoint`, `tesseract-xvnc`, `tesseract-wait-x`,
+`tesseract-controller-run`, `tesseract-wine-init`, `tesseract-screenshot`, `tesseract-doctor`.
 
-Entrypoint (`/usr/local/bin/theone-entrypoint`, run by tini as root): drops empty
-`THEONE_*`/`ANTHROPIC_*`/`CLAUDE_*`/`DOCKER_*` vars, fixes volume ownership, creates
+Entrypoint (`/usr/local/bin/tesseract-entrypoint`, run by tini as root): drops empty
+`TESSERACT_*`/`ANTHROPIC_*`/`CLAUDE_*`/`DOCKER_*` vars, fixes volume ownership, creates
 workspace dirs (never following symlinks planted in the volumes), seeds
 `/workspace/.agent/` templates if missing (never touching the bind-mounted
 `/home/dev/.claude`; SPEC.md is baked into `/etc/claude-code/CLAUDE.md` at build time), writes the VNC password files and
-`/run/theone/controller.env`, clears stale X locks, regenerates `ENVIRONMENT.md` (tool
-probes run as `dev`), unsets `THEONE_TOKEN`/`THEONE_VNC_PASSWORD`, then execs
+`/run/tesseract/controller.env`, clears stale X locks, regenerates `ENVIRONMENT.md` (tool
+probes run as `dev`), unsets `TESSERACT_TOKEN`/`TESSERACT_VNC_PASSWORD`, then execs
 supervisord (any arguments replace it). supervisord drops to `dev` itself
-(`user=dev`); programs: `xvnc` (`theone-xvnc`), `openbox` (`theone-wait-x dbus-run-session
--- openbox-session`), `controller` (`theone-controller-run` loads `controller.env`, then
-`theone-controller serve`), `wine-init` (oneshot `wineboot -u` when the prefix is missing).
+(`user=dev`); programs: `xvnc` (`tesseract-xvnc`), `openbox` (`tesseract-wait-x dbus-run-session
+-- openbox-session`), `controller` (`tesseract-controller-run` loads `controller.env`, then
+`tesseract-controller serve`), `wine-init` (oneshot `wineboot -u` when the prefix is missing).
 `HEALTHCHECK` = `curl -fsS http://127.0.0.1:7700/v1/health`.
 
 ## 9. Compose modes
@@ -1076,19 +1091,19 @@ resolved settings to compose. It reads `infra/compose/.env`, or only the file gi
 
 | Mode | Files | Reachability |
 |---|---|---|
-| `tailscale` (default) | `compose.yml` + `compose.tailscale.yml` | sandbox joins the tailscale sidecar's netns; `tailscale serve` → `https://<THEONE_HOSTNAME>.<TS_TAILNET_DOMAIN>` (443 → 7700) and TCP 5901; no host ports. Refuses to start without `TS_TAILNET_DOMAIN`, or without `TS_AUTHKEY` on first start |
-| `host-tailscale` | `compose.yml` + `compose.local.yml`, `THEONE_BIND_ADDR` = host tailnet IPv4 | ports bound only on that address |
-| `local` | `compose.yml` + `compose.local.yml`, `THEONE_BIND_ADDR=127.0.0.1` | loopback only, for development/e2e tests |
-| `+tailscale-api` | tailscale: add `compose.tailscale-api-sidecar.yml`; host-tailscale/local: add `compose.tailscale-api.yml` | opt-in (`--tailscale-api`, `THEONE_TAILSCALE_LOCALAPI=1`) for `GET /v1/identity`. Sidecar: `TS_SOCKET=/var/run/tailscale/tailscaled.sock` on volume `<prefix>-tailscale-run`, mounted read-only at `/run/tailscale` in the sandbox. Host: `THEONE_TAILSCALE_HOST_SOCKET_DIR` bind-mounted read-only at `/run/tailscale`. Root in the sandbox can then reconfigure that tailscaled ([security model](security-model.md#tailscale-localapi-opt-in)) |
-| `+host-android` | add `compose.host-android-sdk.yml` (`THEONE_HOST_ANDROID_SDK`) and/or `compose.host-gradle-cache.yml` (`THEONE_HOST_GRADLE_CACHE`) | opt-in, any mode: the host's Android SDK and Gradle dependency cache, read-only, so builds do not download NDK, CMake, platforms and dependencies again ([security model](security-model.md#host-android-sdk-and-gradle-cache-opt-in)) |
+| `tailscale` (default) | `compose.yml` + `compose.tailscale.yml` | sandbox joins the tailscale sidecar's netns; `tailscale serve` → `https://<TESSERACT_HOSTNAME>.<TS_TAILNET_DOMAIN>` (443 → 7700) and TCP 5901; no host ports. Refuses to start without `TS_TAILNET_DOMAIN`, or without `TS_AUTHKEY` on first start |
+| `host-tailscale` | `compose.yml` + `compose.local.yml`, `TESSERACT_BIND_ADDR` = host tailnet IPv4 | ports bound only on that address |
+| `local` | `compose.yml` + `compose.local.yml`, `TESSERACT_BIND_ADDR=127.0.0.1` | loopback only, for development/e2e tests |
+| `+tailscale-api` | tailscale: add `compose.tailscale-api-sidecar.yml`; host-tailscale/local: add `compose.tailscale-api.yml` | opt-in (`--tailscale-api`, `TESSERACT_TAILSCALE_LOCALAPI=1`) for `GET /v1/identity`. Sidecar: `TS_SOCKET=/var/run/tailscale/tailscaled.sock` on volume `<prefix>-tailscale-run`, mounted read-only at `/run/tailscale` in the sandbox. Host: `TESSERACT_TAILSCALE_HOST_SOCKET_DIR` bind-mounted read-only at `/run/tailscale`. Root in the sandbox can then reconfigure that tailscaled ([security model](security-model.md#tailscale-localapi-opt-in)) |
+| `+host-android` | add `compose.host-android-sdk.yml` (`TESSERACT_HOST_ANDROID_SDK`) and/or `compose.host-gradle-cache.yml` (`TESSERACT_HOST_GRADLE_CACHE`) | opt-in, any mode: the host's Android SDK and Gradle dependency cache, read-only, so builds do not download NDK, CMake, platforms and dependencies again ([security model](security-model.md#host-android-sdk-and-gradle-cache-opt-in)) |
 | `+dind` | add `compose.dind.yml` | privileged `docker:dind` sidecar sharing `<prefix>-workspace`; sandbox gets `DOCKER_HOST=tcp://docker:2376` + TLS certs (opt-in, [ADR 0006](../adr/0006-optional-docker-in-docker.md)) |
 
-Stacks run side by side when each has its own `THEONE_COMPOSE_PROJECT` (and thereby
-volumes) plus its own host ports or `THEONE_HOSTNAME`.
+Stacks run side by side when each has its own `TESSERACT_COMPOSE_PROJECT` (and thereby
+volumes) plus its own host ports or `TESSERACT_HOSTNAME`.
 
 Hardening defaults: sandbox without `privileged`, no host bind mounts except the
 read-only serve config (and, with `--tailscale-api` outside tailscale mode, the read-only host
-tailscale socket directory, and with `THEONE_HOST_ANDROID_SDK`/`THEONE_HOST_GRADLE_CACHE` the read-only
+tailscale socket directory, and with `TESSERACT_HOST_ANDROID_SDK`/`TESSERACT_HOST_GRADLE_CACHE` the read-only
 host Android SDK and Gradle cache), `cap_drop: [ALL]` + minimal `cap_add` (CHOWN, DAC_OVERRIDE,
 FOWNER, SETUID, SETGID, KILL, AUDIT_WRITE), `shm_size: 2g`, `pids_limit`, CPU/memory
 limits from `.env`, explicit `environment` lists (no `env_file`), json-file logs
@@ -1098,7 +1113,7 @@ limits from `.env`, explicit `environment` lists (no `env_file`), json-file logs
 ## 10. Mobile app integration
 
 * Feature module `apps/mobile/src/features/sandbox/` (`api/`, `components/`, `hooks/`,
-  `store/`, `types/`, `utils/`) consumes `@theone/client`.
+  `store/`, `types/`, `utils/`) consumes `@tesseract/client`.
 * Stores: paired sandboxes (id, name, base URL, active id) in zustand persisted to
   `expo-sqlite/kv-store` (web: `localStorage`); tokens in `expo-secure-store`
   (`WHEN_UNLOCKED_THIS_DEVICE_ONLY`; web: `localStorage`, development only); live link
@@ -1112,7 +1127,7 @@ limits from `.env`, explicit `environment` lists (no `env_file`), json-file logs
   stays outside the guards. Pairing lands on the Agents tab; removing the last sandbox returns
   to onboarding.
 * Screens (expo-router): the **Agents tab** is the sandbox hub; routes
-  `pair` (QR scan via expo-camera pairs at once; `theone://pair` deep links pre-fill and
+  `pair` (QR scan via expo-camera pairs at once; `tesseract://pair` deep links pre-fill and
   need a tap; manual entry), `sandbox/projects/new` (create or clone, follows the clone's log),
   `sandbox/projects/[id]`, `sandbox/builds/[id]`, `sandbox/agent/[id]` (Claude run stream),
   `sandbox/terminal/[id]` (xterm page in WebView), `sandbox/display` (noVNC in WebView,
@@ -1120,8 +1135,8 @@ limits from `.env`, explicit `environment` lists (no `env_file`), json-file logs
 * WebViews load `<baseUrl>/ui/terminal#ticket=…&session=<id>` and
   `<baseUrl>/ui/vnc#ticket=…&password=…` (web platform: `<iframe>`), bridge per §5.6.
 * A 401/403 or a protocol mismatch shows a notice with **Pair again**.
-* **Host shell** (§5.7): routes `host` (pair by scanning `theone-controller host pair` or the
-  `theone://host` deep link, then a PIN pad; lists host terminals) and `host/terminal/[id]`
+* **Host shell** (§5.7): routes `host` (pair by scanning `tesseract-controller host pair` or the
+  `tesseract://host` deep link, then a PIN pad; lists host terminals) and `host/terminal/[id]`
   (the same xterm WebView). The host token is kept in `expo-secure-store` like sandbox
   tokens; the session lives in memory only and is dropped on **Lock**, and on expiry
   (the next request gets 401 → PIN pad again).
@@ -1145,20 +1160,20 @@ limits from `.env`, explicit `environment` lists (no `env_file`), json-file logs
 | Command | Scope |
 |---|---|
 | `bun run typecheck`, `bun run test` | every workspace: protocol, client, controller (bun test), mobile (jest) |
-| `bun run test:infra [--quick\|--coverage]` | bats suites in `infra/tests` (containers `theone-test-*`, images `theone/infra-test:*`) |
-| `bun run e2e [--no-build\|--keep\|--web\|--electron\|--electron-only]` | `infra/e2e`: builds `theone/sandbox:e2e`, starts project `theone-e2e` (volumes `theone-e2e-*`) in local mode on `127.0.0.1:17700/15901`, runs `bun test ./infra/e2e`, removes the stack |
-| `bun run --cwd apps/electron test` (part of `bun run test`) | `@monolith/electron` vitest: node project (`tests/`, `src/{core,shared,main}`, `cli/`, `scripts/`; temp dirs `monolith-test-*`) and happy-dom project (`src/renderer`); no display, no Docker |
-| `bun run electron:e2e` | `apps/electron/e2e`: Playwright `_electron` specs (shell, preferences, onboarding, CLI, packaging, visual snapshots, live controller); headless on Linux, isolated profiles under `$TMPDIR/monolith-test-*`; Docker resources `monolith-test-*`; live tests only with `THEONE_E2E_URL`/`THEONE_E2E_TOKEN`, which `bun run e2e --electron[-only]` sets for its `theone-e2e` stack |
+| `bun run test:infra [--quick\|--coverage]` | bats suites in `infra/tests` (containers `tesseract-test-*`, images `tesseract/infra-test:*`) |
+| `bun run e2e [--no-build\|--keep\|--web\|--electron\|--electron-only]` | `infra/e2e`: builds `tesseract/sandbox:e2e`, starts project `tesseract-e2e` (volumes `tesseract-e2e-*`) in local mode on `127.0.0.1:17700/15901`, runs `bun test ./infra/e2e`, removes the stack |
+| `bun run --cwd apps/electron test` (part of `bun run test`) | `@tesseract/electron` vitest: node project (`tests/`, `src/{core,shared,main}`, `cli/`, `scripts/`; temp dirs `tesseract-test-*`) and happy-dom project (`src/renderer`); no display, no Docker |
+| `bun run electron:e2e` | `apps/electron/e2e`: Playwright `_electron` specs (shell, preferences, onboarding, CLI, packaging, visual snapshots, live controller); headless on Linux, isolated profiles under `$TMPDIR/tesseract-test-*`; Docker resources `tesseract-test-*`; live tests only with `TESSERACT_E2E_URL`/`TESSERACT_E2E_TOKEN`, which `bun run e2e --electron[-only]` sets for its `tesseract-e2e` stack |
 | `bun run electron:smoke` | the built Linux AppImage/deb: packaged files, sandbox context vs its `manifest.json`, update feed, `tesseract --version`, deb postinst and desktop entry, one headless render of the wizard |
 
 The e2e suite is not a workspace: typecheck it with `bunx tsc -p infra/e2e/tsconfig.json`.
 Runbook: [e2e-testing.md](../runbooks/e2e-testing.md).
 
-## 12. Desktop app (`apps/electron`, package `@monolith/electron`)
+## 12. Desktop app (`apps/electron`, package `@tesseract/electron`)
 
-The Monolith desktop app for Linux, macOS and Windows. It is the Electron rebuild of the GTK app in
-`apps/desktop` (same app id `dev.monolith.Desktop`, same `config.json`, same pages, matched pixel for pixel
-against `docs/electron/reference/`). It talks to the sandbox controller with `@theone/client` like the phone,
+The Tesseract desktop app for Linux, macOS and Windows. It is the Electron rebuild of the GTK app in
+`apps/desktop` (same app id `dev.tesseract.Desktop`, same `config.json`, same pages, matched pixel for pixel
+against `docs/electron/reference/`). It talks to the sandbox controller with `@tesseract/client` like the phone,
 and it also sets the machine up: Docker, the sandbox stack and image, the host Android emulator.
 Specs and the code conventions: [docs/electron/](../electron/README.md).
 
@@ -1166,7 +1181,7 @@ Specs and the code conventions: [docs/electron/](../electron/README.md).
 
 | Part | What |
 |---|---|
-| Main (`src/main`, ESM) | windows, tray, menu, deep links, updater, IPC handlers (`monolith:<service>:<method>`, events `monolith:<service>:event:<event>`); spawns `docker`, `theone-controller host serve`, the Android emulator; proxies the renderer's HTTP through `net.fetch` |
+| Main (`src/main`, ESM) | windows, tray, menu, deep links, updater, IPC handlers (`tesseract:<service>:<method>`, events `tesseract:<service>:event:<event>`); spawns `docker`, `tesseract-controller host serve`, the Android emulator; proxies the renderer's HTTP through `net.fetch` |
 | Core (`src/core`, Node only) | docker, sandbox, android, connection, host, syncback, claude, config, paths; shared with the `tesseract` CLI (§7.1), never imports `electron` |
 | Preload (`src/preload`, CJS, sandboxed) | the typed IPC bridge |
 | Renderer (`src/renderer`, React 19, hash router) | the shell, pages, Settings, setup wizard; dev server `http://127.0.0.1:4545` |
@@ -1178,7 +1193,7 @@ lights, drawn window controls on Linux/Windows). Single instance; a second launc
 
 Opens instead of the main window until `onboarding.completedAt` is set, unless a connection is already
 configured (file or env). Before opening it, the app runs Docker discovery ([onboarding spec](../electron/spec/onboarding.md) §3.4, 2.5 s
-timeout; off with `MONOLITH_DISABLE_DISCOVERY=1`): a sandbox whose controller answers `/v1/health` is saved as the
+timeout; off with `TESSERACT_DISABLE_DISCOVERY=1`): a sandbox whose controller answers `/v1/health` is saved as the
 connection and onboarding is marked complete (`docker`/`sandbox`/`build` done, the rest skipped), so the main
 window opens instead. Steps: `welcome` → `docker` → `claude` → `sandbox` (with its build phase; the id
 `build` is an alias) → `android` (optional) → `pair` (optional) → `finish`.
@@ -1187,10 +1202,10 @@ window opens instead. Steps: `welcome` → `docker` → `claude` → `sandbox` (
 |---|---|
 | `docker` | checks the CLI, daemon, Compose, buildx and resources; Podman is reported as unsupported. Install options: macOS Docker Desktop; Windows Docker Desktop (machine or user) or WSL; Linux Docker Engine (convenience script through `pkexec`), Docker Desktop for Linux, `docker`/`kvm` group membership; always a manual path. Starts a stopped engine |
 | `claude` | reads the host's `~/.claude` and `~/.claude-<n>` login state (never secrets); can create the dir |
-| `sandbox` | stack choices (mode `local`/`tailscale`/`host-tailscale`, Tailscale key and tailnet, components `android`/`flutter`/`mono`/`whisper` = the Dockerfile's `WITH_*` args, Whisper models, CPUs, memory, ports, project, image, dind), writes `<userData>/sandbox/.env` (0600), then builds the image from the bundled context with `docker buildx build --progress=rawjson` (or pulls `sandboxImageRef`, or reuses an existing image), runs compose `up`, waits for `/v1/health`, pairs with `theone-controller pair --json` |
+| `sandbox` | stack choices (mode `local`/`tailscale`/`host-tailscale`, Tailscale key and tailnet, components `android`/`flutter`/`mono`/`whisper` = the Dockerfile's `WITH_*` args, Whisper models, CPUs, memory, ports, project, image, dind), writes `<userData>/sandbox/.env` (0600), then builds the image from the bundled context with `docker buildx build --progress=rawjson` (or pulls `sandboxImageRef`, or reuses an existing image), runs compose `up`, waits for `/v1/health`, pairs with `tesseract-controller pair --json` |
 | `android` | its own SDK manager: Google's `repository2-3.xml` and `sys-img2-3.xml`, downloads `emulator`, `platform-tools` and one `system-images;android-<api>;google_apis;<abi>` with sha1 checks and license acceptance, unzips into the SDK root, writes the AVD (`<name>.ini` + `config.ini` with the device profile `pixel_5`/`pixel_8`/`medium_phone`/`pixel_tablet` → `hw.device.*`, `hw.lcd.*`, `skin.name`, and internal storage 2–64 GB, default 6 → `disk.dataPartition.size`); checks KVM (Linux x64, `x86_64` images), WHPX (Windows x64) or HVF (macOS, `arm64-v8a` on Apple silicon) with `emulator -accel-check`; Linux and Windows on arm64 are unsupported, and only Linux can link the emulator to the sandbox. The host shell daemon uses this SDK for the host emulator ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2) |
 | `pair` | QR code and link for the phone |
-| `finish` | summary; "start the sandbox with Monolith" (`sandboxAutostart`, default on): at every launch, also `--hidden`, `compose up -d` for a Monolith-created stack only (its own env file, matching project, `builtAt` set); skipped when off or already running; Docker unreachable → one notification |
+| `finish` | summary; "start the sandbox with Tesseract" (`sandboxAutostart`, default on): at every launch, also `--hidden`, `compose up -d` for a Tesseract-created stack only (its own env file, matching project, `builtAt` set); skipped when off or already running; Docker unreachable → one notification |
 
 Contract details: [docs/electron/spec/onboarding.md](../electron/spec/onboarding.md).
 
@@ -1201,23 +1216,23 @@ Contract details: [docs/electron/spec/onboarding.md](../electron/spec/onboarding
 | Pages (`#/<page>`) | `overview`, `agents`, `projects`, `files`, `terminals`, `display` |
 | Settings (`?preferences=<section>`) | `connection`, `appearance`, `claude`, `host-shell`, `stt`, `sandbox`, `android`, `about` |
 | Wizard (`#/onboarding/<step>`) | as §12.2 |
-| Deep links | `monolith://<page>[?params]`, `monolith://preferences|settings[/<section>]`, `monolith://onboarding|setup[/<step>]`, `monolith://new-conversation`, `pair`, `pair-host`, `refresh`, `rediscover`, `about`; registered only in packaged builds |
+| Deep links | `tesseract://<page>[?params]`, `tesseract://preferences|settings[/<section>]`, `tesseract://onboarding|setup[/<step>]`, `tesseract://new-conversation`, `pair`, `pair-host`, `refresh`, `rediscover`, `about`; registered only in packaged builds |
 | Launch flags | `--hidden`, `--page <id>`, `--quit` (ask the running instance to quit), `--debug`; `--sync`, `--pull`, `--revert`, `--sync-status`, `--get` run the CLI (§7.1) and exit |
 
 ### 12.4 Files
 
 | What | Linux | macOS | Windows |
 |---|---|---|---|
-| `config.json` (`MONOLITH_DESKTOP_CONFIG`; shared with the GTK app and the CLI) | `$XDG_CONFIG_HOME/monolith-desktop/config.json` (`~/.config/…`) | `<userData>/config.json` | `<userData>/config.json` |
-| `userData` (`MONOLITH_USER_DATA`) | `~/.config/Monolith` | `~/Library/Application Support/Monolith` | `%APPDATA%\Monolith` |
+| `config.json` (`TESSERACT_DESKTOP_CONFIG`; shared with the GTK app and the CLI) | `$XDG_CONFIG_HOME/tesseract-desktop/config.json` (`~/.config/…`) | `<userData>/config.json` | `<userData>/config.json` |
+| `userData` (`TESSERACT_USER_DATA`) | `~/.config/Tesseract` | `~/Library/Application Support/Tesseract` | `%APPDATA%\Tesseract` |
 | Sandbox env file | `<userData>/sandbox/.env` (0600) | same | same |
 | Docker installer downloads | `<userData>/downloads/` | same | same |
 | Android catalog cache | `<userData>/android/cache/` | same | same |
 | Window state | `<userData>/window-state.json` | same | same |
-| Android SDK (default, `androidSdkRoot` overrides) | `~/.local/share/theone/android-sdk` | `~/Library/Application Support/Monolith/android-sdk` | `%LOCALAPPDATA%\Monolith\android-sdk` |
+| Android SDK (default, `androidSdkRoot` overrides) | `~/.local/share/tesseract/android-sdk` | `~/Library/Application Support/Tesseract/android-sdk` | `%LOCALAPPDATA%\Tesseract\android-sdk` |
 | AVDs | `$ANDROID_AVD_HOME`, else `$ANDROID_USER_HOME/avd`, else `~/.android/avd` | same | same |
-| State (`MONOLITH_STATE_DIR`): sync-back links, snapshots, locks | `~/.local/state/monolith` | `~/.local/state/monolith` | `%LOCALAPPDATA%\Monolith\state` |
-| Cache (`metrics.json`) | `~/.cache/monolith-desktop` | `~/Library/Caches/Monolith` | `%LOCALAPPDATA%\Monolith\cache` |
+| State (`TESSERACT_STATE_DIR`): sync-back links, snapshots, locks | `~/.local/state/tesseract` | `~/.local/state/tesseract` | `%LOCALAPPDATA%\Tesseract\state` |
+| Cache (`metrics.json`) | `~/.cache/tesseract-desktop` | `~/Library/Caches/Tesseract` | `%LOCALAPPDATA%\Tesseract\cache` |
 
 `config.json` keys: the GTK ones (`url` (legacy `apiUrl`), `token`, `name`, `pairingUrl`, `appearance`, `zoom`,
 `sidebarWidth`, `host_shell_autostart`) plus `onboarding` (`{ version, step, statuses, completedAt }`),
@@ -1229,18 +1244,18 @@ GTK app and the CLI can read it.
 ### 12.5 Packaging and CLI install
 
 `bun run electron:dist [-- --platform linux|mac|win] [--dir] [--publish never|always|onTag] [--update-url <url>]
-[--channel <name>] [--smoke]` runs `electron-vite build`, `cli:build` (`tesseract` + `theone-controller` per target),
+[--channel <name>] [--smoke]` runs `electron-vite build`, `cli:build` (`tesseract` + `tesseract-controller` per target),
 `bundle:sandbox` (git-tracked sandbox build context + `manifest.json` + `build-weights.json` into
 `build/sandbox-context/`) and electron-builder. Artifacts go to `apps/electron/dist/`
-(`Monolith-<version>-<arch>.<ext>`).
+(`Tesseract-<version>-<arch>.<ext>`).
 
 | OS | Installer | `tesseract` on PATH |
 |---|---|---|
 | macOS | universal `dmg` + `zip` (hardened runtime; notarized when the `APPLE_*` variables are set) | Settings › About "Install tesseract command": admin prompt, symlink `/usr/local/bin/tesseract` (only from `/Applications`) |
 | Windows | per-user one-click NSIS `exe` (x64) | the installer adds `$INSTDIR\resources\bin` to the user `Path` and removes it on uninstall |
-| Linux | `AppImage` and `deb` (x64) | deb: app in `/opt/Monolith`, postinst links `/usr/bin/tesseract` (only when free or already ours); AppImage: Settings › About copies it to `~/.local/share/monolith/bin/tesseract` and links `~/.local/bin/tesseract`; on install and every AppImage launch the app writes `~/.local/share/monolith/app.json` `{appPath, sandboxDir}` and syncs the bundled context to `~/.local/share/monolith/sandbox` (marker `.bundle-hash`) |
-| Headless server (macOS/Linux, no app, §7.2) | `./setup-server.sh` on the server (repo checkout), or `infra/scripts/deploy-mac` from the dev box | `~/.tesseract/bin/{tesseract,theone-controller}` (add `~/.tesseract/bin` to `PATH`); sandbox context in `~/.tesseract/sandbox` (found next to `bin/`; `MONOLITH_SANDBOX_CONTEXT` overrides) |
+| Linux | `AppImage` and `deb` (x64) | deb: app in `/opt/Tesseract`, postinst links `/usr/bin/tesseract` (only when free or already ours); AppImage: Settings › About copies it to `~/.local/share/tesseract/bin/tesseract` and links `~/.local/bin/tesseract`; on install and every AppImage launch the app writes `~/.local/share/tesseract/app.json` `{appPath, sandboxDir}` and syncs the bundled context to `~/.local/share/tesseract/sandbox` (marker `.bundle-hash`) |
+| Headless server (macOS/Linux, no app, §7.2) | `./setup-server.sh` on the server (repo checkout), or `infra/scripts/deploy-mac` from the dev box | `~/.tesseract/bin/{tesseract,tesseract-controller}` (add `~/.tesseract/bin` to `PATH`); sandbox context in `~/.tesseract/sandbox` (found next to `bin/`; `TESSERACT_SANDBOX_CONTEXT` overrides) |
 
-`extraResources`: `resources/bin/{tesseract,theone-controller}`, `resources/sandbox/` (the build context the
+`extraResources`: `resources/bin/{tesseract,tesseract-controller}`, `resources/sandbox/` (the build context the
 wizard and `tesseract sandbox build` use), icons and font licenses. Updates: electron-updater against the generic
-feed in `electron-builder.yml` (first check 60 s after start, then every 6 h; `MONOLITH_DISABLE_UPDATES` turns it off).
+feed in `electron-builder.yml` (first check 60 s after start, then every 6 h; `TESSERACT_DISABLE_UPDATES` turns it off).

@@ -1,4 +1,4 @@
-import { wsPaths } from "@theone/protocol";
+import { wsPaths } from "@tesseract/protocol";
 import { defineSocketFixtures } from "../types";
 import { FIXTURE_SANDBOX } from "./data";
 

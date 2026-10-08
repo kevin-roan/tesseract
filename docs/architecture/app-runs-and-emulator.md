@@ -13,7 +13,7 @@ A macOS host (iOS Simulator, Android emulator without `netns`) is a proposal in
 ```mermaid
 flowchart LR
   subgraph phone
-    app["TheOne app"]
+    app["Tesseract app"]
     wv["WebView /ui/android"]
   end
   subgraph sandbox
@@ -69,7 +69,7 @@ cwd and the root's package manager when the package has no lockfile, and its lab
 ` · <dir>` (`Android emulator · apps/mobile`). Root targets have `dir: null`.
 
 `<phone host>` is the sandbox Tailscale IPv4 (same source as `GET /v1/ports`), else the
-host part of `THEONE_PUBLIC_URL`. `$P` is `StartAppRun.port` or, when omitted, the first
+host part of `TESSERACT_PUBLIC_URL`. `$P` is `StartAppRun.port` or, when omitted, the first
 free port from the target's default (`web-dev` 5173, `expo-*`/`rn-android` 8081,
 `flutter-web` 8090), checked like `StartProcess.port`.
 
@@ -167,21 +167,21 @@ when the socket cannot be opened within 3 s.
 
 ## 2. Android emulator on the host
 
-### 2.1 Host daemon config (`theone-controller host serve`)
+### 2.1 Host daemon config (`tesseract-controller host serve`)
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `THEONE_ANDROID_SDK_ROOT` | `$HOME/.local/share/theone/android-sdk` if it has `emulator/emulator`, else `$ANDROID_SDK_ROOT`, else `$ANDROID_HOME` | SDK with `emulator/` and `system-images/` |
-| `THEONE_ADB` | `adb` on `PATH` | host adb client (talks to the user's normal adb server on 5037) |
-| `THEONE_SCRCPY_SERVER` | first of `/usr/share/scrcpy/scrcpy-server`, `/usr/local/share/scrcpy/scrcpy-server` | scrcpy server jar |
-| `THEONE_SCRCPY_VERSION` | parsed from `scrcpy --version` | must equal the jar's version |
-| `THEONE_FFMPEG` | `ffmpeg` on `PATH` | H.264 → MJPEG for viewers without H.264 |
-| `THEONE_EMULATOR_PORT` | `5554` | console port; adbd = +1 (inside the namespace when isolated); serial `emulator-<port>` when not isolated |
-| `THEONE_EMULATOR_GPU` | `swiftshader_indirect` | `-gpu` |
-| `THEONE_EMULATOR_ISOLATION` | `netns` | `netns`: the emulator runs in its own user + network namespace with filtered egress (below); `none`: the old behaviour, emulator on the host network (**the guest, and so the linked sandbox, can reach the host's loopback, LAN and tailnet**) |
-| `THEONE_EMULATOR_ALLOW_NETS` | — | comma-separated CIDRs the isolated guest may reach although they are private (e.g. `192.168.1.0/24` for a LAN backend); invalid entries stop startup |
-| `THEONE_ANDROID_SHARE_EMULATORS` | `off` | `on`: the sandbox link also tunnels the host's other emulators (§2.3, "Shared host emulators") |
-| `THEONE_EMULATOR_ADB_PORT` | a free port (kept in the runtime dir across daemon restarts) | host loopback port of the adb bridge; serial `127.0.0.1:<port>` |
+| `TESSERACT_ANDROID_SDK_ROOT` | `$HOME/.local/share/tesseract/android-sdk` if it has `emulator/emulator`, else `$ANDROID_SDK_ROOT`, else `$ANDROID_HOME` | SDK with `emulator/` and `system-images/` |
+| `TESSERACT_ADB` | `adb` on `PATH` | host adb client (talks to the user's normal adb server on 5037) |
+| `TESSERACT_SCRCPY_SERVER` | first of `/usr/share/scrcpy/scrcpy-server`, `/usr/local/share/scrcpy/scrcpy-server` | scrcpy server jar |
+| `TESSERACT_SCRCPY_VERSION` | parsed from `scrcpy --version` | must equal the jar's version |
+| `TESSERACT_FFMPEG` | `ffmpeg` on `PATH` | H.264 → MJPEG for viewers without H.264 |
+| `TESSERACT_EMULATOR_PORT` | `5554` | console port; adbd = +1 (inside the namespace when isolated); serial `emulator-<port>` when not isolated |
+| `TESSERACT_EMULATOR_GPU` | `swiftshader_indirect` | `-gpu` |
+| `TESSERACT_EMULATOR_ISOLATION` | `netns` | `netns`: the emulator runs in its own user + network namespace with filtered egress (below); `none`: the old behaviour, emulator on the host network (**the guest, and so the linked sandbox, can reach the host's loopback, LAN and tailnet**) |
+| `TESSERACT_EMULATOR_ALLOW_NETS` | — | comma-separated CIDRs the isolated guest may reach although they are private (e.g. `192.168.1.0/24` for a LAN backend); invalid entries stop startup |
+| `TESSERACT_ANDROID_SHARE_EMULATORS` | `off` | `on`: the sandbox link also tunnels the host's other emulators (§2.3, "Shared host emulators") |
+| `TESSERACT_EMULATOR_ADB_PORT` | a free port (kept in the runtime dir across daemon restarts) | host loopback port of the adb bridge; serial `127.0.0.1:<port>` |
 
 AVDs come from `emulator -list-avds` (with `ANDROID_SDK_ROOT`/`ANDROID_HOME` set to the
 SDK root). The emulator runs as
@@ -200,14 +200,14 @@ unauthenticated adb server on `127.0.0.1:5037` (USB phones, `host:connect`, forw
 every host-loopback, LAN and tailnet service. So the daemon starts the emulator as
 
 ```
-unshare --user --map-root-user --net -- /bin/sh -c '<launcher>' theone-emulator \
+unshare --user --map-root-user --net -- /bin/sh -c '<launcher>' tesseract-emulator \
   emulator … -http-proxy http://127.0.0.1:3128 -dns-server 127.0.0.1
 ```
 
 The launcher brings up `lo` and a `dummy0` with `10.254.254.1/32` and `fd00:254::1/128`
 (required: without a non-loopback IPv4 and IPv6 address getaddrinfo's `AI_ADDRCONFIG`
 fails inside the namespace), writes its pid to the runtime dir, starts the helper
-`theone-controller host emulator-helper --dir <dir> --console-port <port> --parent <pid>`
+`tesseract-controller host emulator-helper --dir <dir> --console-port <port> --parent <pid>`
 (hidden subcommand; the same binary, `bun <src/index.ts>` from a checkout), waits for it and
 execs the emulator. The namespace has no route out, so the guest can only use what the helper offers:
 
@@ -226,11 +226,11 @@ name **on the host**, and answers `403` if **any** address is blocked: `0/8`, `1
 `198.18/15`, `224/3`; `::/96` (`::`, `::1`, IPv4-compatible), `64:ff9b::/96`,
 `64:ff9b:1::/48`, `100::/64`, `fc00::/7`, `fe80::/10`, `fec0::/10`, `ff00::/8`, and
 IPv4-mapped `::ffff:0:0/96` by its IPv4 — unless the address is in
-`THEONE_EMULATOR_ALLOW_NETS` (loopback `127/8`, `0/8` and `::/96` can never be allowed). It then dials the vetted address (no second lookup, so no DNS
+`TESSERACT_EMULATOR_ALLOW_NETS` (loopback `127/8`, `0/8` and `::/96` can never be allowed). It then dials the vetted address (no second lookup, so no DNS
 rebinding) and pipes both ways (half-close passed on). At most 256 proxied connections,
 10 s connect timeout, 30 min idle timeout. Denials are logged (`emulator egress denied`).
 
-The runtime dir is `$XDG_RUNTIME_DIR/theone/emulator-<port>/` (else `<tmp>/theone-<uid>/…`;
+The runtime dir is `$XDG_RUNTIME_DIR/tesseract/emulator-<port>/` (else `<tmp>/tesseract-<uid>/…`;
 both 0700) and holds the sockets, `emulator.pid`, `helper.pid`, `netns`
 (`/proc/self/ns/net` of the helper), `adb-port`, `avd` and `emulator.log`. The serial is
 `127.0.0.1:<bridge port>` (`EmulatorInfo.serial`); boot polling, `wm size`, scrcpy and the
@@ -254,9 +254,9 @@ fail until a daemon is back).
 
 `netns` needs `unshare` (util-linux), `ip` (iproute2, also looked up in `/usr/sbin`, `/sbin`)
 and unprivileged user namespaces; the daemon probes once with
-`unshare --user --map-root-user --net -- ip link add theone0 type dummy`. If that fails,
+`unshare --user --map-root-user --net -- ip link add tesseract0 type dummy`. If that fails,
 `GET /v1/android` has `available: false` with a `reason` naming
-`THEONE_EMULATOR_ISOLATION=none` and its risk. With `none` the daemon logs a warning at start.
+`TESSERACT_EMULATOR_ISOLATION=none` and its risk. With `none` the daemon logs a warning at start.
 
 Adoption of a plain emulator: an emulator on `emulator-<port>` started outside the daemon is
 adopted (`managed: false`; stop sends `adb -s <serial> emu kill`), in both modes. With `netns`
@@ -275,7 +275,7 @@ EMULATOR_ISOLATION_MODES = ["netns","none"]
 EmulatorInfo { state, avd: string | null, serial: string | null, managed: boolean, isolated: boolean,
                width: number | null, height: number | null, startedAt: string | null, error: string | null }
 AndroidLinkInfo { configured: boolean, sandboxUrl: string | null, connected: boolean, lastError: string | null }
-// isolation = THEONE_EMULATOR_ISOLATION of the daemon
+// isolation = TESSERACT_EMULATOR_ISOLATION of the daemon
 HostAndroidStatus { available: boolean, reason: string | null, sdkRoot: string | null, isolation: "netns" | "none",
                     avds: string[], scrcpy: boolean, ffmpeg: boolean, emulator: EmulatorInfo, link: AndroidLinkInfo }
 StartEmulator { avd, coldBoot?: boolean, wipeData?: boolean }
@@ -310,7 +310,7 @@ Messages (text JSON, zod-validated, discriminated on `type`):
   `{type:"ping"}` (every 20 s).
 
 A newer link replaces an older one (old closed with 4000 `replaced`). While linked and the
-emulator is `running`, the controller listens on `127.0.0.1:$THEONE_ADB_TUNNEL_PORT`
+emulator is `running`, the controller listens on `127.0.0.1:$TESSERACT_ADB_TUNNEL_PORT`
 (default `15555`) and runs `adb connect 127.0.0.1:<port>` (adb serial
 `127.0.0.1:15555`); when the emulator leaves `running` or the link drops it runs
 `adb disconnect` and closes the listener. While tunnelled, `GET /v1/android` and starting a `*-android` run re-run
@@ -325,7 +325,7 @@ closes the other. No data socket within 10 s, or `refuse` → the TCP connection
 Host-side limits: at most 32 streams open (or opening) and 20 `open`s per second, beyond
 that `refuse` (`Too many adb streams are open` / `adb streams are opened too fast`); a stream
 whose adbd socket has more than 4 MiB unsent is closed; adbd → WS pauses above 1 MiB
-buffered. With `THEONE_EMULATOR_ISOLATION=netns` streams to a non-isolated (adopted)
+buffered. With `TESSERACT_EMULATOR_ISOLATION=netns` streams to a non-isolated (adopted)
 emulator are refused with `Emulator is not isolated; start it from the app`. The
 `emulator` messages carry `error: "The host emulator reported an error"` instead of the host's
 message (which may contain host paths); the host API keeps the detail. Logs never contain the
@@ -334,12 +334,12 @@ stream buffers at most 4 MiB in each direction (TCP bytes before the data socket
 bytes the local adb client has not read yet); beyond that it is closed. A second data socket
 for an attached stream is closed without touching the first.
 
-**Shared host emulators** (`THEONE_ANDROID_SHARE_EMULATORS=on` on the host daemon, off by
+**Shared host emulators** (`TESSERACT_ANDROID_SHARE_EMULATORS=on` on the host daemon, off by
 default). The daemon polls `adb devices -l` every 5 s (and on every emulator change) and shares
 each online `emulator-<port>` (even console port 5554-5682, at most 64) except the one already
 tunnelled as the host emulator: `SharedEmulator { serial: "emulator-<port>", model }`. A
 non-isolated emulator the daemon adopted in `netns` mode (refused above) is shared this way. The
-controller listens on `127.0.0.1:<THEONE_ADB_TUNNEL_PORT + 1 + (port − 5554)/2>` for each
+controller listens on `127.0.0.1:<TESSERACT_ADB_TUNNEL_PORT + 1 + (port − 5554)/2>` for each
 (`emulator-5554` → `15556`, `emulator-5556` → `15557`, …; `sharedEmulatorTunnelPort`) and runs
 `adb connect` on it; a listener whose port is taken is skipped (logged). Its connections send
 `open` with `device`, and the host pipes them to `127.0.0.1:<port + 1>` (refused with
@@ -361,7 +361,7 @@ read app data) while the tunnel is up. Grant the phone only `:443` (and `:5901`)
 `SandboxAndroidStatus { linked: boolean, hostId: string | null, emulator: EmulatorInfo | null,
 adbSerial: string | null, adbConnected: boolean, shared: { serial, model, adbSerial, adbConnected }[] }` (`GET /v1/android` on the controller).
 
-Env on the controller: `THEONE_ADB_TUNNEL_PORT` (`15555`), `THEONE_ADB` (`adb`), `THEONE_FLUTTER` (`flutter`).
+Env on the controller: `TESSERACT_ADB_TUNNEL_PORT` (`15555`), `TESSERACT_ADB` (`adb`), `TESSERACT_FLUTTER` (`flutter`).
 App runs of `*-android` targets get `ANDROID_SERIAL=127.0.0.1:<port>`.
 
 ### 2.4 Screen stream (`WS /v1/android/screen`)
@@ -371,8 +371,8 @@ one screen socket for it is open (fan-out to all). The serial is the socket's `s
 the stream settings' `device`, else the emulator's; any device in `adb devices` works
 (Genymotion, USB, Wi-Fi), and only the emulator must be `running`. Stream settings
 (`AndroidStreamSettings`, `state.json` `androidStream`, `GET/PUT /v1/android/stream`,
-`theone-controller host stream`) are read when a session starts; when they change, the
-daemon moves every viewer whose session would differ to a new one (new `meta`, same socket). It pushes `THEONE_SCRCPY_SERVER` to `/data/local/tmp/scrcpy-server.jar`,
+`tesseract-controller host stream`) are read when a session starts; when they change, the
+daemon moves every viewer whose session would differ to a new one (new `meta`, same socket). It pushes `TESSERACT_SCRCPY_SERVER` to `/data/local/tmp/scrcpy-server.jar`,
 `adb forward tcp:<free local port> localabstract:scrcpy_<scid>` and starts
 `CLASSPATH=/data/local/tmp/scrcpy-server.jar app_process / com.genymobile.scrcpy.Server <version> scid=<scid> tunnel_forward=true audio=false control=true video_codec=h264 max_size=<maxSize> max_fps=<maxFps> video_bit_rate=<bitRate> video_codec_options=i-frame-interval:int=<keyFrameInterval> send_frame_meta=true send_device_meta=true send_codec_meta=true send_dummy_byte=true cleanup=true`
 (exact option names and socket order verified against the scrcpy source of that version).
@@ -428,8 +428,8 @@ daemon writes scrcpy control messages (inject touch with the screen size it last
 announced, keycode down+up, inject text, inject scroll, rotate device). Touch in the
 page: pointer events (multi-touch, `pointerId` mapped to 0..9), finger pressure 1.
 
-The page `/ui/android` (built like `/ui/vnc`, same `window.theone` bridge and
-`theone-insets`) draws frames on a canvas letterboxed to the viewport, has a bottom bar
+The page `/ui/android` (built like `/ui/vnc`, same `window.tesseract` bridge and
+`tesseract-insets`) draws frames on a canvas letterboxed to the viewport, has a bottom bar
 (◁ back, ○ home, ▢ recents, ⌨ keyboard, ⟳ rotate) and a hidden input whose text goes as
 `text` (chunks of ≤ 300 UTF-8 bytes, never splitting a code point) and Backspace/Enter as `key`. It posts `android-state` (`connecting|connected|disconnected|error`,
 `reason` on `disconnected` and `error`; `error` when the daemon sent `{type:"error"}`, so the

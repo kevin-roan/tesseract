@@ -1,6 +1,6 @@
 import { chmod, lstat, mkdir, readFile, readdir, readlink, rm, stat, symlink, unlink } from "node:fs/promises";
 import { join } from "node:path";
-import { ApiError } from "@theone/client";
+import { ApiError } from "@tesseract/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { runPull, runRevert, runStatus } from "./cli";
 import type { CliIo, SyncEnvironment } from "./connect";

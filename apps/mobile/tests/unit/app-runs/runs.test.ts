@@ -1,5 +1,5 @@
-import type { AppRun, RunTargetInfo } from "@theone/protocol";
-import { sampleAppRun, sampleExpoAppRun, sampleRunTargets } from "@theone/protocol/fixtures";
+import type { AppRun, RunTargetInfo } from "@tesseract/protocol";
+import { sampleAppRun, sampleExpoAppRun, sampleRunTargets } from "@tesseract/protocol/fixtures";
 
 import {
   appRunEntries,

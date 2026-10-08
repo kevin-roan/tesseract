@@ -1,4 +1,4 @@
-import type { SandboxStatus } from "@theone/protocol";
+import type { SandboxStatus } from "@tesseract/protocol";
 import type { ConnectionStatus, SeriesKey } from "../../app/connection";
 import type { PageId } from "../../../shared/routes";
 import type { IconName } from "../../theme/icons";

@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
-import type { ServerEvent, SyncChanges, SyncDiscardResult, SyncRequest } from "@theone/protocol";
-import { sampleSyncChanges, sampleSyncRequest } from "@theone/protocol/fixtures";
+import { TesseractClient } from "@tesseract/client";
+import type { ServerEvent, SyncChanges, SyncDiscardResult, SyncRequest } from "@tesseract/protocol";
+import { sampleSyncChanges, sampleSyncRequest } from "@tesseract/protocol/fixtures";
 
 import { applyServerEvent } from "@/features/sandbox/api/cache";
 import { useSyncMenu } from "@/features/sandbox/hooks/use-sync-menu";
@@ -10,11 +10,11 @@ import { confirm } from "@/lib/confirm";
 
 import { TEST_SANDBOX, createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 jest.mock("@/lib/confirm", () => ({ confirm: jest.fn() }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const mockConfirm = confirm as jest.Mock;
 const PROJECT = sampleSyncChanges.projectId;
 const pending: SyncRequest = { ...sampleSyncRequest, id: "sync_pending", status: "pending", result: null, claimedBy: null };

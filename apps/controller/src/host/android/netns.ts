@@ -27,9 +27,9 @@ export function selfCommand(): string[] {
   return import.meta.dir.startsWith("/$bunfs") || !existsSync(ENTRY) ? [process.execPath] : [process.execPath, ENTRY];
 }
 
-/** `$XDG_RUNTIME_DIR/theone`, else a per-user directory under the temp dir. */
+/** `$XDG_RUNTIME_DIR/tesseract`, else a per-user directory under the temp dir. */
 export function runtimeBase(env: Env): string {
-  return env.XDG_RUNTIME_DIR ? join(env.XDG_RUNTIME_DIR, "theone") : join(tmpdir(), `theone-${process.getuid?.() ?? "user"}`);
+  return env.XDG_RUNTIME_DIR ? join(env.XDG_RUNTIME_DIR, "tesseract") : join(tmpdir(), `tesseract-${process.getuid?.() ?? "user"}`);
 }
 
 export const runtimeDir = (base: string, consolePort: number) => join(base, `emulator-${consolePort}`);
@@ -66,7 +66,7 @@ export function launcherArgv(options: { unshare: string; ip: string; dir: string
     "done",
     'exec "$@"',
   ].join("\n");
-  return [options.unshare, "--user", "--map-root-user", "--net", "--", "/bin/sh", "-c", script, "theone-emulator", ...options.emulator];
+  return [options.unshare, "--user", "--map-root-user", "--net", "--", "/bin/sh", "-c", script, "tesseract-emulator", ...options.emulator];
 }
 
 export function netnsOf(pid: number | "self"): string | null {
@@ -160,7 +160,7 @@ function socketAnswers(path: string): Promise<boolean> {
 export type RuntimeOptions = {
   dir: string;
   consolePort: number;
-  /** `THEONE_EMULATOR_ADB_PORT`; else the port recorded in the directory, else a free one. */
+  /** `TESSERACT_EMULATOR_ADB_PORT`; else the port recorded in the directory, else a free one. */
   adbPort: number | null;
   policy: EgressPolicy;
   logger: Logger;

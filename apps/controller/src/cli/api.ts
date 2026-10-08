@@ -1,4 +1,4 @@
-import { API_PREFIX, parseJson } from "@theone/protocol";
+import { API_PREFIX, parseJson } from "@tesseract/protocol";
 import { localApiUrl, type Config } from "../config";
 import { CliError, fetchLocalApi, requireToken } from "./local-api";
 import type { Output } from "./output";
@@ -6,7 +6,7 @@ import type { Output } from "./output";
 export const API_METHODS = ["GET", "POST", "DELETE"] as const;
 export type ApiMethod = (typeof API_METHODS)[number];
 
-export const API_USAGE = "theone-controller api <METHOD> <PATH> [JSON | -]";
+export const API_USAGE = "tesseract-controller api <METHOD> <PATH> [JSON | -]";
 export const REDACTED = "***";
 
 const API_TIMEOUT_MS = 120_000;

@@ -1,4 +1,4 @@
-import type { CapturedImage } from "@/modules/theone-island";
+import type { CapturedImage } from "@/modules/tesseract-island";
 
 import type { CaptureImage, CaptureOption, CaptureSource } from "../types";
 

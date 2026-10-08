@@ -21,7 +21,7 @@ export const ANDROID_SCENARIOS = {
   existing: "android-existing",
 } as const;
 
-export const SDK_ROOT = "/home/dev/.local/share/theone/android-sdk";
+export const SDK_ROOT = "/home/dev/.local/share/tesseract/android-sdk";
 export const STUDIO_ROOT = "/home/dev/Android/Sdk";
 export const AVD_HOME = "/home/dev/.android/avd";
 
@@ -51,7 +51,7 @@ export const MAC_SUPPORT: AndroidHostSupport = {
 
 export const CANDIDATES: SdkCandidate[] = [{ path: STUDIO_ROOT, source: "studio-default", emulatorRevision: "36.1.9", systemImages: 2 }];
 
-export const EXISTING_CANDIDATES: SdkCandidate[] = [{ path: SDK_ROOT, source: "monolith-default", emulatorRevision: "37.2.12", systemImages: 1 }];
+export const EXISTING_CANDIDATES: SdkCandidate[] = [{ path: SDK_ROOT, source: "tesseract-default", emulatorRevision: "37.2.12", systemImages: 1 }];
 
 const REPO = "https://dl.google.com/android/repository/";
 const SYS_IMG = `${REPO}sys-img/google_apis/`;
@@ -152,7 +152,7 @@ export const ACCEL_DENIED: AccelResult = {
   ],
 };
 
-export const AVDS: AvdInfo[] = [{ name: "Monolith_API_36", path: `${AVD_HOME}/Monolith_API_36.avd`, target: "android-36", abi: "x86_64" }];
+export const AVDS: AvdInfo[] = [{ name: "Tesseract_API_36", path: `${AVD_HOME}/Tesseract_API_36.avd`, target: "android-36", abi: "x86_64" }];
 
 export const ANDROID_LOG = [
   "GET https://dl.google.com/android/repository/repository2-3.xml (cached, 304)",

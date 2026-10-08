@@ -1,4 +1,4 @@
-import { parseJson, restPaths } from "@theone/protocol";
+import { parseJson, restPaths } from "@tesseract/protocol";
 import { loadConfig } from "../config";
 import type { Env } from "../core/exec";
 import { HOOK_AGENT_RUN_FIELD, HOOK_TERMINAL_FIELD } from "../services/claude-hooks";
@@ -14,14 +14,14 @@ async function forward(env: Env, readStdin: () => Promise<string>, timeoutMs: nu
   if (!parsed.ok || !isRecord(parsed.value)) return;
   const payload = {
     ...parsed.value,
-    ...(env.THEONE_TERMINAL_ID ? { [HOOK_TERMINAL_FIELD]: env.THEONE_TERMINAL_ID } : {}),
-    ...(env.THEONE_AGENT_RUN_ID ? { [HOOK_AGENT_RUN_FIELD]: env.THEONE_AGENT_RUN_ID } : {}),
+    ...(env.TESSERACT_TERMINAL_ID ? { [HOOK_TERMINAL_FIELD]: env.TESSERACT_TERMINAL_ID } : {}),
+    ...(env.TESSERACT_AGENT_RUN_ID ? { [HOOK_AGENT_RUN_FIELD]: env.TESSERACT_AGENT_RUN_ID } : {}),
   };
   await fetchLocalApi(config, "POST", restPaths.claudeHook(), JSON.stringify(payload), timeoutMs);
 }
 
 /**
- * `theone-controller hook`: forwards the Claude Code hook JSON on stdin to the controller.
+ * `tesseract-controller hook`: forwards the Claude Code hook JSON on stdin to the controller.
  * Always exits 0 within the timeout and prints nothing, so a controller outage never blocks Claude.
  */
 export async function hook(env: Env, readStdin: () => Promise<string>, timeoutMs = HOOK_TIMEOUT_MS): Promise<number> {

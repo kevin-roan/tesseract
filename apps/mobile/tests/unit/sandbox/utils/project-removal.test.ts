@@ -1,4 +1,4 @@
-import { sampleSyncChanges } from "@theone/protocol/fixtures";
+import { sampleSyncChanges } from "@tesseract/protocol/fixtures";
 
 import { projectRemovalPrompt } from "@/features/sandbox/utils/project-removal";
 

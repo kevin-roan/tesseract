@@ -2,7 +2,7 @@ import math
 
 import pytest
 
-from monolith_desktop.widgets.dot_sphere import (
+from tesseract_desktop.widgets.dot_sphere import (
     DEPTH_BANDS,
     FRAMES_PER_TURN,
     TURN,

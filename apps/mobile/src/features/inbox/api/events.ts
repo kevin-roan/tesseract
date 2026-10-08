@@ -1,4 +1,4 @@
-import type { ServerEventOf } from "@theone/protocol";
+import type { ServerEventOf } from "@tesseract/protocol";
 
 export type InboxEvent = ServerEventOf<"inbox.updated">;
 

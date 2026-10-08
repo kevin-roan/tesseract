@@ -10,12 +10,12 @@ readonly SCRIPT_DIR REPO_ROOT
 readonly SANDBOX="${REPO_ROOT}/infra/scripts/sandbox"
 readonly TEST_DIR=./infra/e2e
 
-readonly PROJECT="${THEONE_E2E_PROJECT:-theone-e2e}"
-readonly IMAGE="${THEONE_E2E_IMAGE:-theone/sandbox:e2e}"
-readonly CONTROLLER_PORT="${THEONE_E2E_CONTROLLER_PORT:-17700}"
-readonly VNC_PORT="${THEONE_E2E_VNC_PORT:-15901}"
-readonly HEALTH_TIMEOUT="${THEONE_E2E_HEALTH_TIMEOUT:-180}"
-readonly TOKEN=theone-e2e-token-not-a-secret
+readonly PROJECT="${TESSERACT_E2E_PROJECT:-tesseract-e2e}"
+readonly IMAGE="${TESSERACT_E2E_IMAGE:-tesseract/sandbox:e2e}"
+readonly CONTROLLER_PORT="${TESSERACT_E2E_CONTROLLER_PORT:-17700}"
+readonly VNC_PORT="${TESSERACT_E2E_VNC_PORT:-15901}"
+readonly HEALTH_TIMEOUT="${TESSERACT_E2E_HEALTH_TIMEOUT:-180}"
+readonly TOKEN=tesseract-e2e-token-not-a-secret
 readonly VNC_PASSWORD=e2evnc01
 readonly BASE_URL="http://127.0.0.1:${CONTROLLER_PORT}"
 
@@ -23,14 +23,14 @@ usage() {
   cat << 'EOF'
 Usage: infra/e2e/run [--no-build] [--keep] [--web] [--electron | --electron-only] [--] [bun test args]
 
-Builds theone/sandbox:e2e (target sandbox), starts compose project theone-e2e in local
-mode (127.0.0.1:17700 controller, 127.0.0.1:15901 VNC, volumes theone-e2e-*), waits for
+Builds tesseract/sandbox:e2e (target sandbox), starts compose project tesseract-e2e in local
+mode (127.0.0.1:17700 controller, 127.0.0.1:15901 VNC, volumes tesseract-e2e-*), waits for
 /v1/health, runs `bun test ./infra/e2e` and then removes the stack with its volumes.
 
   --no-build   use the existing image instead of building it
   --keep       leave the stack running (prints the command that removes it)
   --web        afterwards drive the mobile web build with infra/e2e/web/run
-               (THEONE_E2E_WEB_EXPORT_DIR: use that export instead of exporting apps/mobile)
+               (TESSERACT_E2E_WEB_EXPORT_DIR: use that export instead of exporting apps/mobile)
   --electron   afterwards run the Electron app's Playwright suites (bun run --cwd apps/electron e2e)
                against the same stack
   --electron-only
@@ -40,15 +40,15 @@ mode (127.0.0.1:17700 controller, 127.0.0.1:15901 VNC, volumes theone-e2e-*), wa
 Any other argument, and everything after `--`, is appended to `bun test`, e.g.
 `bun run e2e --bail -t health`.
 
-The tests get THEONE_E2E_URL, THEONE_E2E_TOKEN, THEONE_E2E_PROJECT (compose project and
-sandbox id), THEONE_E2E_ENV_FILE (for `infra/scripts/sandbox --env-file`),
-THEONE_E2E_VNC_PORT and THEONE_E2E_VNC_PASSWORD.
+The tests get TESSERACT_E2E_URL, TESSERACT_E2E_TOKEN, TESSERACT_E2E_PROJECT (compose project and
+sandbox id), TESSERACT_E2E_ENV_FILE (for `infra/scripts/sandbox --env-file`),
+TESSERACT_E2E_VNC_PORT and TESSERACT_E2E_VNC_PASSWORD.
 
-Overrides: THEONE_E2E_IMAGE, THEONE_E2E_PROJECT (must start with theone-e2e),
-THEONE_E2E_CONTROLLER_PORT, THEONE_E2E_VNC_PORT, THEONE_E2E_HEALTH_TIMEOUT (seconds),
-THEONE_E2E_CLAUDE_DIR (host dir mounted at /home/dev/.claude; default: an empty temporary
+Overrides: TESSERACT_E2E_IMAGE, TESSERACT_E2E_PROJECT (must start with tesseract-e2e),
+TESSERACT_E2E_CONTROLLER_PORT, TESSERACT_E2E_VNC_PORT, TESSERACT_E2E_HEALTH_TIMEOUT (seconds),
+TESSERACT_E2E_CLAUDE_DIR (host dir mounted at /home/dev/.claude; default: an empty temporary
 dir, so the host's ~/.claude is never touched and Claude is not logged in).
-The stack never reads infra/compose/.env; other THEONE_* variables are ignored, while
+The stack never reads infra/compose/.env; other TESSERACT_* variables are ignored, while
 build arguments (WITH_ANDROID, …) exported in the shell apply.
 EOF
 }
@@ -123,47 +123,48 @@ cleanup() {
   exit "${status}"
 }
 
-# Only the generated env file may configure the stack: exported THEONE_* variables would
-# win over it in compose interpolation.
+# Only the generated env file may configure the stack: exported TESSERACT_* variables (and
+# the legacy THEONE_*/MONOLITH_* ones infra/scripts/sandbox maps onto them) would win over it
+# in compose interpolation.
 isolate_environment() {
   local name
   for name in $(compgen -e); do
     case "${name}" in
-      THEONE_E2E_*) ;;
-      THEONE_* | COMPOSE_PROJECT_NAME | COMPOSE_FILE | COMPOSE_PROFILES) unset "${name}" ;;
+      TESSERACT_E2E_*) ;;
+      TESSERACT_* | THEONE_* | MONOLITH_* | COMPOSE_PROJECT_NAME | COMPOSE_FILE | COMPOSE_PROFILES) unset "${name}" ;;
     esac
   done
 }
 
-# The sandbox mounts THEONE_HOST_CLAUDE_DIR read-write: never the host's real ~/.claude
-# unless THEONE_E2E_CLAUDE_DIR asks for it. World-writable so any DEV_UID can use it.
+# The sandbox mounts TESSERACT_HOST_CLAUDE_DIR read-write: never the host's real ~/.claude
+# unless TESSERACT_E2E_CLAUDE_DIR asks for it. World-writable so any DEV_UID can use it.
 prepare_claude_dir() {
-  if [[ -n "${THEONE_E2E_CLAUDE_DIR:-}" ]]; then
-    [[ -d "${THEONE_E2E_CLAUDE_DIR}" ]] || die "THEONE_E2E_CLAUDE_DIR=${THEONE_E2E_CLAUDE_DIR} is not a directory"
-    host_claude_dir="${THEONE_E2E_CLAUDE_DIR}"
+  if [[ -n "${TESSERACT_E2E_CLAUDE_DIR:-}" ]]; then
+    [[ -d "${TESSERACT_E2E_CLAUDE_DIR}" ]] || die "TESSERACT_E2E_CLAUDE_DIR=${TESSERACT_E2E_CLAUDE_DIR} is not a directory"
+    host_claude_dir="${TESSERACT_E2E_CLAUDE_DIR}"
     return
   fi
-  claude_dir="$(mktemp -d "${TMPDIR:-/tmp}/theone-e2e-claude.XXXXXX")"
+  claude_dir="$(mktemp -d "${TMPDIR:-/tmp}/tesseract-e2e-claude.XXXXXX")"
   chmod 0777 "${claude_dir}"
   host_claude_dir="${claude_dir}"
 }
 
 write_env_file() {
-  env_file="$(mktemp "${TMPDIR:-/tmp}/theone-e2e.XXXXXX")"
+  env_file="$(mktemp "${TMPDIR:-/tmp}/tesseract-e2e.XXXXXX")"
   cat > "${env_file}" << EOF
-THEONE_MODE=local
-THEONE_DIND=
-THEONE_COMPOSE_PROJECT=${PROJECT}
-THEONE_VOLUME_PREFIX=${PROJECT}
-THEONE_IMAGE=${IMAGE}
-THEONE_BIND_ADDR=127.0.0.1
-THEONE_CONTROLLER_HOST_PORT=${CONTROLLER_PORT}
-THEONE_VNC_HOST_PORT=${VNC_PORT}
-THEONE_HOSTNAME=${PROJECT}
-THEONE_TOKEN=${TOKEN}
-THEONE_VNC_PASSWORD=${VNC_PASSWORD}
-THEONE_LOG_LEVEL=debug
-THEONE_HOST_CLAUDE_DIR=${host_claude_dir}
+TESSERACT_MODE=local
+TESSERACT_DIND=
+TESSERACT_COMPOSE_PROJECT=${PROJECT}
+TESSERACT_VOLUME_PREFIX=${PROJECT}
+TESSERACT_IMAGE=${IMAGE}
+TESSERACT_BIND_ADDR=127.0.0.1
+TESSERACT_CONTROLLER_HOST_PORT=${CONTROLLER_PORT}
+TESSERACT_VNC_HOST_PORT=${VNC_PORT}
+TESSERACT_HOSTNAME=${PROJECT}
+TESSERACT_TOKEN=${TOKEN}
+TESSERACT_VNC_PASSWORD=${VNC_PASSWORD}
+TESSERACT_LOG_LEVEL=debug
+TESSERACT_HOST_CLAUDE_DIR=${host_claude_dir}
 EOF
 }
 
@@ -172,7 +173,7 @@ prepare_image() {
     log "building ${IMAGE}"
     sandbox build
   elif ! docker image inspect "${IMAGE}" > /dev/null 2>&1; then
-    die "image ${IMAGE} not found: run without --no-build or set THEONE_E2E_IMAGE"
+    die "image ${IMAGE} not found: run without --no-build or set TESSERACT_E2E_IMAGE"
   fi
 }
 
@@ -195,12 +196,12 @@ run_tests() {
   log "running bun test ${TEST_DIR} ${test_args[*]}"
   (
     cd "${REPO_ROOT}"
-    THEONE_E2E_URL="${BASE_URL}" \
-      THEONE_E2E_TOKEN="${TOKEN}" \
-      THEONE_E2E_PROJECT="${PROJECT}" \
-      THEONE_E2E_ENV_FILE="${env_file}" \
-      THEONE_E2E_VNC_PORT="${VNC_PORT}" \
-      THEONE_E2E_VNC_PASSWORD="${VNC_PASSWORD}" \
+    TESSERACT_E2E_URL="${BASE_URL}" \
+      TESSERACT_E2E_TOKEN="${TOKEN}" \
+      TESSERACT_E2E_PROJECT="${PROJECT}" \
+      TESSERACT_E2E_ENV_FILE="${env_file}" \
+      TESSERACT_E2E_VNC_PORT="${VNC_PORT}" \
+      TESSERACT_E2E_VNC_PASSWORD="${VNC_PASSWORD}" \
       bun test "${TEST_DIR}" ${test_args[@]+"${test_args[@]}"}
   ) || status=$?
   return "${status}"
@@ -208,9 +209,9 @@ run_tests() {
 
 run_web() {
   local args=()
-  [[ -z "${THEONE_E2E_WEB_EXPORT_DIR:-}" ]] || args+=(--export-dir "${THEONE_E2E_WEB_EXPORT_DIR}")
+  [[ -z "${TESSERACT_E2E_WEB_EXPORT_DIR:-}" ]] || args+=(--export-dir "${TESSERACT_E2E_WEB_EXPORT_DIR}")
   log "driving the mobile web build"
-  THEONE_E2E_PROJECT="${PROJECT}" THEONE_E2E_TOKEN="${TOKEN}" \
+  TESSERACT_E2E_PROJECT="${PROJECT}" TESSERACT_E2E_TOKEN="${TOKEN}" \
     "${SCRIPT_DIR}/web/run" ${args[@]+"${args[@]}"}
 }
 
@@ -218,22 +219,22 @@ run_electron() {
   log "running the Electron e2e suites (apps/electron)"
   (
     cd "${REPO_ROOT}"
-    THEONE_E2E_URL="${BASE_URL}" \
-      THEONE_E2E_TOKEN="${TOKEN}" \
-      THEONE_E2E_PROJECT="${PROJECT}" \
-      THEONE_E2E_ENV_FILE="${env_file}" \
-      THEONE_E2E_IMAGE="${IMAGE}" \
-      THEONE_E2E_VNC_PORT="${VNC_PORT}" \
-      THEONE_E2E_VNC_PASSWORD="${VNC_PASSWORD}" \
+    TESSERACT_E2E_URL="${BASE_URL}" \
+      TESSERACT_E2E_TOKEN="${TOKEN}" \
+      TESSERACT_E2E_PROJECT="${PROJECT}" \
+      TESSERACT_E2E_ENV_FILE="${env_file}" \
+      TESSERACT_E2E_IMAGE="${IMAGE}" \
+      TESSERACT_E2E_VNC_PORT="${VNC_PORT}" \
+      TESSERACT_E2E_VNC_PASSWORD="${VNC_PASSWORD}" \
       bun run --cwd apps/electron e2e
   )
 }
 
 main() {
   parse_args "$@"
-  [[ "${PROJECT}" =~ ^theone-e2e[a-z0-9_-]*$ ]] \
-    || die "THEONE_E2E_PROJECT=${PROJECT} must start with theone-e2e: the harness deletes its volumes"
-  [[ "${HEALTH_TIMEOUT}" =~ ^[1-9][0-9]*$ ]] || die "THEONE_E2E_HEALTH_TIMEOUT=${HEALTH_TIMEOUT} is not a number of seconds"
+  [[ "${PROJECT}" =~ ^tesseract-e2e[a-z0-9_-]*$ ]] \
+    || die "TESSERACT_E2E_PROJECT=${PROJECT} must start with tesseract-e2e: the harness deletes its volumes"
+  [[ "${HEALTH_TIMEOUT}" =~ ^[1-9][0-9]*$ ]] || die "TESSERACT_E2E_HEALTH_TIMEOUT=${HEALTH_TIMEOUT} is not a number of seconds"
   local tool
   for tool in docker bun curl; do
     command -v "${tool}" > /dev/null 2>&1 || die "${tool} is not installed"

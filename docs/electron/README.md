@@ -1,6 +1,6 @@
-# Monolith desktop app (Electron)
+# Tesseract desktop app (Electron)
 
-`apps/electron` (package `@monolith/electron`, app id `dev.monolith.Desktop`) is the Monolith desktop app for
+`apps/electron` (package `@tesseract/electron`, app id `dev.tesseract.Desktop`) is the Tesseract desktop app for
 Linux, macOS and Windows. It rebuilds the GTK4/libadwaita app in `apps/desktop` in Electron and adds what the GTK
 app never had: a first-run setup wizard that installs and configures Docker, builds and starts the sandbox, and
 downloads the Android emulator, system images and an AVD for the host emulator, like Android Studio's setup wizard.
@@ -12,7 +12,7 @@ selection, `#5E6AD2` accent), 13px base text, 6–12px radii, and 120–260 ms m
 under `prefers-reduced-motion`.
 
 The contract (names, ports, env vars, files, CLI, packaging) is in the
-[blueprint §4.4, §7.1 and §12](../architecture/00-blueprint.md#12-desktop-app-appselectron-package-monolithelectron).
+[blueprint §4.4, §7.1 and §12](../architecture/00-blueprint.md#12-desktop-app-appselectron-package-tesseractelectron).
 
 ## This folder
 
@@ -74,21 +74,21 @@ apps/electron/
 ```
 
 - **Pages:** Overview, Agents, Projects, Files, Terminals, Display, all on the sandbox controller through
-  `@theone/client` (HTTP goes through main's `net.fetch`).
+  `@tesseract/client` (HTTP goes through main's `net.fetch`).
 - **Settings:** Connection, Appearance, Claude, Host shell, Speech-to-text, Sandbox, Android, About
   (`#/<page>?preferences=<section>`).
 - **Setup wizard:** Welcome, Docker, Claude, Sandbox (with the image build), Android (optional), Pair
   (optional), Done. It opens on first run (until it is finished, a connection is configured, or Docker discovery finds a
   healthy local sandbox, which is then saved and setup marked complete), and later from
   Settings › Sandbox (**Set up…**), the command palette, a project's emulator tab (**Set up emulator**) and
-  `monolith://onboarding[/<step>]`. The Docker step installs Docker Desktop (macOS, Windows), WSL 2 (Windows) or Docker
+  `tesseract://onboarding[/<step>]`. The Docker step installs Docker Desktop (macOS, Windows), WSL 2 (Windows) or Docker
   Engine / Docker Desktop for Linux, fixes `docker`/`kvm` group membership and starts the engine; Podman is reported
-  as unsupported. The Sandbox step writes the stack's env file, builds `theone/sandbox` from the bundled context
+  as unsupported. The Sandbox step writes the stack's env file, builds `tesseract/sandbox` from the bundled context
   with the chosen components (`WITH_ANDROID`, `WITH_FLUTTER`, `WITH_MONO`, `WITH_WHISPER`; Chromium is always
   in the image) and starts it. The Android step is its own SDK manager (no Java, no `sdkmanager`): it checks
   KVM / WHPX / HVF, downloads the emulator, platform-tools and a system image, and writes the AVD the host
   emulator uses.
-- **Host shell:** the app runs `theone-controller host serve` (bundled in `resources/bin`) as a child process,
+- **Host shell:** the app runs `tesseract-controller host serve` (bundled in `resources/bin`) as a child process,
   as the GTK app did ([host-shell runbook](../runbooks/host-shell.md)).
 - **CLI:** `tesseract status | open | doctor | sandbox | android | pair | sync | config | version`, plus the GTK app's
   `--sync`/`--pull`/`--revert`/`--sync-status` flags ([blueprint §7.1](../architecture/00-blueprint.md#71-host-tesseract-cli)).
@@ -96,7 +96,7 @@ apps/electron/
 ## Working on it
 
 Run from `apps/electron` (root shortcuts in brackets). Never start, stop or restart the Expo server on 8081, the
-`theone` sandbox stack or the host daemon on 7701 for this work.
+`tesseract` sandbox stack or the host daemon on 7701 for this work.
 
 | Command | What it does |
 |---|---|
@@ -107,7 +107,7 @@ Run from `apps/electron` (root shortcuts in brackets). Never start, stop or rest
 | `bun run diff -- <a.png> <b.png> [--out diff.png] [--max <percent>]` | pixelmatch against a reference capture |
 | `bun run build` (`electron:build`) | `out/` |
 | `bun run e2e` (`electron:e2e`) | builds if stale, then the Playwright specs ([e2e-testing](../runbooks/e2e-testing.md#desktop-app-appselectron)) |
-| `bun run cli:build [-- --target linux-x64,mac-arm64 \| --all]` | `dist-cli/<os>-<arch>/{tesseract,theone-controller}` |
+| `bun run cli:build [-- --target linux-x64,mac-arm64 \| --all]` | `dist-cli/<os>-<arch>/{tesseract,tesseract-controller}` |
 | `bun run dist [-- --platform linux\|mac\|win] [--dir] [--smoke]` (`electron:dist`) | installers in `dist/` |
 | `bun run smoke` (`electron:smoke`) | checks the built AppImage/deb |
 

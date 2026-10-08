@@ -1,4 +1,4 @@
-import type { Artifact, BuildOutput, TaildropTargets } from "@theone/protocol";
+import type { Artifact, BuildOutput, TaildropTargets } from "@tesseract/protocol";
 import { create } from "zustand";
 import { ALL, DEFAULT_VIEW, type FileView } from "./constants";
 

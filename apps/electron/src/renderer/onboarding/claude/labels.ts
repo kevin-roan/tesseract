@@ -9,7 +9,7 @@ export const CLAUDE_LABELS = {
   signedIn: "Signed in",
   folderMissingTitle: "Claude Code isn't set up on this computer",
   folderMissingMessage:
-    "Install Claude Code and sign in once with your Claude subscription, then check again. Monolith creates an empty ~/.claude now so the sandbox can start.",
+    "Install Claude Code and sign in once with your Claude subscription, then check again. Tesseract creates an empty ~/.claude now so the sandbox can start.",
   notSignedInTitle: "Not signed in",
   notSignedInMessage:
     "Run claude in a terminal and sign in, then check again. You can also sign in later from the sandbox.",

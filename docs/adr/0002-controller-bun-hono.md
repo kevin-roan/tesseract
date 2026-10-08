@@ -17,10 +17,10 @@ developer laptop without X, VNC, wine or Claude for tests.
 - Runtime: **Bun**. Built-in HTTP server with WebSocket upgrade, built-in
   `bun:sqlite`, `Bun.spawn` (including a terminal/PTY option), `bun test`,
   and `bun build --compile` for a single self-contained binary
-  (`/usr/local/bin/theone-controller`).
+  (`/usr/local/bin/tesseract-controller`).
 - HTTP framework: **Hono**. Small, typed routing, middleware for auth, error
   mapping and CORS, and first-class Bun support. Request bodies are validated
-  with the zod schemas from `@theone/protocol`.
+  with the zod schemas from `@tesseract/protocol`.
 - One binary provides both the daemon (`serve`) and the CLI (`pair`,
   `status`, `emit`, `token`).
 - Every sandbox dependency is optional and probed at runtime. A missing one
@@ -62,4 +62,4 @@ Not a change of decision; recorded so the ADR matches the shipped code.
   group or session are found through `/proc` and stopped.
 - The `/ui` pages are Bun HTML routes; their bundled chunks are served at root
   paths and do not include zod (the message names come from
-  `@theone/protocol/bridge`).
+  `@tesseract/protocol/bridge`).

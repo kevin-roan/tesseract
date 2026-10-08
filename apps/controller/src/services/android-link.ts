@@ -11,7 +11,7 @@ import {
   type SandboxAndroidStatus,
   type SandboxSharedEmulator,
   type SharedEmulator,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { run, resolveExecutable } from "../core/exec";
 import type { Logger } from "../core/logger";
 import type { Config } from "../config";

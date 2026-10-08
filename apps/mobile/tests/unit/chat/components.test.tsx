@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { SparkleIcon } from "phosphor-react-native";
-import { sampleAgentRun, sampleUpload } from "@theone/protocol/fixtures";
+import { sampleAgentRun, sampleUpload } from "@tesseract/protocol/fixtures";
 
 import MenuSheet from "@/components/menu-sheet";
 import Waveform from "@/components/waveform";

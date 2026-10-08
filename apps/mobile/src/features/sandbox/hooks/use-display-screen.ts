@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { VncAction } from "@theone/protocol";
+import type { VncAction } from "@tesseract/protocol";
 
 import type { GlassToolbarAction } from "@/components/glass-toolbar";
 import { useRotationToggle } from "@/hooks/use-orientation-lock";

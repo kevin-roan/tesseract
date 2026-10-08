@@ -65,7 +65,7 @@ describe("tesseract server", () => {
     expect(result.code).toBe(0);
     const out = result.out.join("\n");
     expect(out).toContain("Dry run: nothing was changed.");
-    expect(out).toContain("THEONE_MODE=tailscale");
+    expect(out).toContain("TESSERACT_MODE=tailscale");
     expect(out).toContain("TS_TAILNET_DOMAIN=example.ts.net");
     expect(out).toContain("TS_AUTHKEY=…");
     expect(out).toContain("CLAUDE_CODE_OAUTH_TOKEN=…");

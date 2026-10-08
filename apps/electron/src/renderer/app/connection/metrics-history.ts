@@ -1,4 +1,4 @@
-import type { SandboxStatus } from "@theone/protocol";
+import type { SandboxStatus } from "@tesseract/protocol";
 import type { Unsubscribe } from "../../../shared/contracts/common";
 import type { MetricsCache, MetricsRow } from "../../../shared/contracts/metrics";
 import { METRICS, type SERIES_KEYS } from "./constants";

@@ -1,6 +1,6 @@
 # Spec: list, row, section, control, progress and chart widgets
 
-Source of truth: `apps/desktop/monolith_desktop/widgets/{list_view,rows,record_row,keyed_list,section,page_body,preference_rows,radio_rows,segmented,choice_dropdown,action_menu,progress,stat_card,sparkline,dot_sphere,avatar,qr,charts/*}.py`, plus the CSS that styles them: `theme/css.py` (`_adwaita`, `_components`), `theme/extras/{projects,overview,chart,dialogs,motion,agents}.py`.
+Source of truth: `apps/desktop/tesseract_desktop/widgets/{list_view,rows,record_row,keyed_list,section,page_body,preference_rows,radio_rows,segmented,choice_dropdown,action_menu,progress,stat_card,sparkline,dot_sphere,avatar,qr,charts/*}.py`, plus the CSS that styles them: `theme/css.py` (`_adwaita`, `_components`), `theme/extras/{projects,overview,chart,dialogs,motion,agents}.py`.
 
 All numbers here were read from the code. Where noted as **measured**, they come from rendering the real GTK widgets headless (broadway, Cairo renderer, dark scheme, 1x) and reading their allocations. Reference crops:
 

@@ -2,12 +2,12 @@
 module.exports = {
   type: "widget",
   name: "island",
-  displayName: process.env.APP_VARIANT === "development" ? "Monolith Island Dev" : "Monolith Island",
+  displayName: process.env.APP_VARIANT === "development" ? "Tesseract Island Dev" : "Tesseract Island",
   bundleIdentifier: ".island",
   deploymentTarget: "17.0",
   frameworks: ["SwiftUI", "WidgetKit", "ActivityKit", "AppIntents"],
   entitlements: {
-    "com.apple.security.application-groups": ["group.com.kevinbpract.theone"],
+    "com.apple.security.application-groups": ["group.com.kevinroan.tesseract"],
   },
   colors: {
     $accent: "#EDEDED",

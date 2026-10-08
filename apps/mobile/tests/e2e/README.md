@@ -20,10 +20,10 @@ adb reverse tcp:8082 tcp:8082
 
 TOKEN=$(bun run --silent sandbox pair --json | jq -r .link | sed 's/.*token=\([^&]*\).*/\1/')
 maestro --device <serial> test \
-  -e THEONE_URL=http://<controller>:7700 \
-  -e THEONE_TOKEN="$TOKEN" \
+  -e TESSERACT_URL=http://<controller>:7700 \
+  -e TESSERACT_TOKEN="$TOKEN" \
   -e DEV_SERVER_URL=http%3A%2F%2F127.0.0.1%3A8082 \
-  -e OUTPUT_DIR=/tmp/theone-e2e \
+  -e OUTPUT_DIR=/tmp/tesseract-e2e \
   apps/mobile/tests/e2e
 ```
 

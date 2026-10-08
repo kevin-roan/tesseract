@@ -1,7 +1,7 @@
 export const SANDBOX_LABELS = {
   validation: {
     project: "Use lowercase letters, digits, '-' and '_'",
-    image: "Enter an image name such as theone/sandbox:latest",
+    image: "Enter an image name such as tesseract/sandbox:latest",
     port: "Enter a port between 1 and 65535",
     portsClash: "The controller and VNC ports must be different",
     tailnetDomainRequired: "Enter your tailnet domain, such as tail1234.ts.net",
@@ -18,24 +18,24 @@ export const SANDBOX_LABELS = {
   },
   stack: {
     project: (value: string) =>
-      `THEONE_COMPOSE_PROJECT=${value} is not a valid compose project name (lowercase letters, digits, '-' and '_')`,
-    volumePrefix: (value: string) => `THEONE_VOLUME_PREFIX=${value} is not a valid volume name prefix`,
+      `TESSERACT_COMPOSE_PROJECT=${value} is not a valid compose project name (lowercase letters, digits, '-' and '_')`,
+    volumePrefix: (value: string) => `TESSERACT_VOLUME_PREFIX=${value} is not a valid volume name prefix`,
     port: (key: string, value: string) => `${key}=${value} is not a TCP port`,
     bindWildcard: (value: string) =>
-      `THEONE_BIND_ADDR=${value} would publish the sandbox on every host interface; use the host's tailscale IPv4`,
+      `TESSERACT_BIND_ADDR=${value} would publish the sandbox on every host interface; use the host's tailscale IPv4`,
     bindInvalid: (value: string) =>
-      `THEONE_BIND_ADDR=${value} is not an IPv4 address of this host; use the host's tailscale IPv4`,
-    noTailscaleIp: "could not determine the host tailscale IPv4: start tailscale on the host or set THEONE_BIND_ADDR",
+      `TESSERACT_BIND_ADDR=${value} is not an IPv4 address of this host; use the host's tailscale IPv4`,
+    noTailscaleIp: "could not determine the host tailscale IPv4: start tailscale on the host or set TESSERACT_BIND_ADDR",
     unknownMode: (value: string) => `unknown mode '${value}' (tailscale, host-tailscale or local)`,
     tailnetDomain: "TS_TAILNET_DOMAIN is required in tailscale mode (e.g. tail1234.ts.net, see infra/compose/.env.example)",
     authKey: "TS_AUTHKEY is required for the first start in tailscale mode (see infra/compose/.env.example)",
-    socketDir: (value: string) => `THEONE_TAILSCALE_HOST_SOCKET_DIR=${value} must be an absolute path`,
+    socketDir: (value: string) => `TESSERACT_TAILSCALE_HOST_SOCKET_DIR=${value} must be an absolute path`,
     noSocket: (dir: string) =>
-      `--tailscale-api: no tailscaled socket at ${dir}/tailscaled.sock (set THEONE_TAILSCALE_HOST_SOCKET_DIR)`,
+      `--tailscale-api: no tailscaled socket at ${dir}/tailscaled.sock (set TESSERACT_TAILSCALE_HOST_SOCKET_DIR)`,
     accountName: (name: string) =>
-      `THEONE_HOST_CLAUDE_ACCOUNTS: invalid account name '${name}' (lowercase letters, digits, '-' and '_', at most 32)`,
-    accountTwice: (name: string) => `THEONE_HOST_CLAUDE_ACCOUNTS: account '${name}' is listed twice`,
-    accountPath: (name: string, path: string) => `THEONE_HOST_CLAUDE_ACCOUNTS: ${name}=${path} is not an absolute path`,
+      `TESSERACT_HOST_CLAUDE_ACCOUNTS: invalid account name '${name}' (lowercase letters, digits, '-' and '_', at most 32)`,
+    accountTwice: (name: string) => `TESSERACT_HOST_CLAUDE_ACCOUNTS: account '${name}' is listed twice`,
+    accountPath: (name: string, path: string) => `TESSERACT_HOST_CLAUDE_ACCOUNTS: ${name}=${path} is not an absolute path`,
     accountSkipped: (name: string, path: string) =>
       `warning: Claude account '${name}' skipped: ${path} is not a directory`,
     notConfigured: "No sandbox is configured on this computer yet",
@@ -60,7 +60,7 @@ export const SANDBOX_LABELS = {
     upToDate: "Image is up to date",
   },
   pairing: {
-    noLink: "theone-controller pair --json printed no pairing link",
+    noLink: "tesseract-controller pair --json printed no pairing link",
     invalidLink: (error: string) => `controller printed an invalid pairing link: ${error}`,
     unavailable: "The sandbox isn't running, so there is no pairing link yet",
     found: (name: string, url: string) => `Found ${name} at ${url}`,
@@ -73,11 +73,11 @@ export const SANDBOX_LABELS = {
     started: (project: string) => `The ${project} sandbox is running`,
     failedTitle: "The sandbox didn't start",
     dockerTitle: "Docker isn't running",
-    dockerBody: "Monolith couldn't start the sandbox because Docker isn't reachable. Start Docker, then start the sandbox from Settings.",
+    dockerBody: "Tesseract couldn't start the sandbox because Docker isn't reachable. Start Docker, then start the sandbox from Settings.",
   },
   adopt: {
     notFound: (project: string) => `There is no ${project} sandbox container on this computer any more`,
-    noComposeFiles: (container: string) => `${container} is stopped and its compose files are gone, so Monolith can't start it`,
+    noComposeFiles: (container: string) => `${container} is stopped and its compose files are gone, so Tesseract can't start it`,
     starting: (container: string) => `Starting ${container}`,
     cancelled: "Stopped waiting for the sandbox",
   },

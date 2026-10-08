@@ -1,4 +1,4 @@
-import type { Framework } from "@theone/protocol";
+import type { Framework } from "@tesseract/protocol";
 import {
   AndroidLogoIcon,
   AppWindowIcon,

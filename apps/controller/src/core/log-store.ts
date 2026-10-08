@@ -1,6 +1,6 @@
 import { appendFileSync, closeSync, existsSync, fstatSync, openSync, readSync, renameSync } from "node:fs";
 import { join } from "node:path";
-import { LIMITS, type LogLine, type LogStream } from "@theone/protocol";
+import { LIMITS, type LogLine, type LogStream } from "@tesseract/protocol";
 import { RingBuffer } from "./ring-buffer";
 import { nowIso } from "./time";
 import type { Logger } from "./logger";

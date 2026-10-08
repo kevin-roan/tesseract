@@ -33,7 +33,7 @@ export function isPreferencesRoute(): boolean {
 export const HOST_URL = "https://archlinux.tail511d9d.ts.net:8443";
 
 export const HOST_LOG: readonly string[] = [
-  "host shell: loaded token from /home/dev/.local/state/theone/host-shell/token",
+  "host shell: loaded token from /home/dev/.local/state/tesseract/host-shell/token",
   "host shell: tailscale serve https:8443 -> http://127.0.0.1:7701",
   "host shell listening on 127.0.0.1:7701",
   "GET /v1/health 200 0.4ms",
@@ -43,7 +43,7 @@ export const HOST_LOG: readonly string[] = [
 
 export function hostShellState(scenario: string | null): HostShellState {
   const pairing = {
-    link: `theone://host?url=${encodeURIComponent(HOST_URL)}&token=fixture-host-token&name=archlinux`,
+    link: `tesseract://host?url=${encodeURIComponent(HOST_URL)}&token=fixture-host-token&name=archlinux`,
     url: HOST_URL,
     name: "archlinux",
     pinSet: scenario !== SETTINGS_SCENARIOS.hostNoPin,
@@ -65,7 +65,7 @@ export const SETTINGS_CHOICES: SetupChoices = {
   mode: "local",
   tsAuthKey: "",
   tailnetDomain: "",
-  hostname: "theone-sandbox",
+  hostname: "tesseract-sandbox",
   bindAddr: "",
   components: ["android", "flutter", "whisper"],
   whisperModels: ["base", "small"],
@@ -73,8 +73,8 @@ export const SETTINGS_CHOICES: SetupChoices = {
   cpus: 4,
   memoryGb: 8,
   timeZone: "UTC",
-  project: "theone",
-  image: "theone/sandbox:latest",
+  project: "tesseract",
+  image: "tesseract/sandbox:latest",
   controllerPort: 7700,
   vncPort: 5901,
   claudeCodeVersion: "latest",
@@ -84,10 +84,10 @@ export const SETTINGS_CHOICES: SetupChoices = {
 };
 
 export const SANDBOX_STACK: SandboxStackConfig = {
-  envFile: "/home/dev/.config/Monolith/sandbox/.env",
-  project: "theone",
+  envFile: "/home/dev/.config/Tesseract/sandbox/.env",
+  project: "tesseract",
   mode: "local",
-  image: "theone/sandbox:latest",
+  image: "tesseract/sandbox:latest",
   builtAt: "2026-10-04T18:12:00Z",
   components: ["android", "flutter", "whisper"],
 };
@@ -96,10 +96,10 @@ export function sandboxStatus(running: boolean): SandboxStackStatus {
   const state = running ? "running" : "exited";
   return {
     configured: true,
-    project: "theone",
+    project: "tesseract",
     services: [
-      { service: "sandbox", container: "theone-sandbox-1", state, health: running ? "healthy" : null },
-      { service: "tailscale", container: "theone-tailscale-1", state, health: null },
+      { service: "sandbox", container: "tesseract-sandbox-1", state, health: running ? "healthy" : null },
+      { service: "tailscale", container: "tesseract-tailscale-1", state, health: null },
     ],
   };
 }
@@ -107,9 +107,9 @@ export function sandboxStatus(running: boolean): SandboxStackStatus {
 export const UNCONFIGURED_STATUS: SandboxStackStatus = { configured: false, project: null, services: [] };
 
 export const SANDBOX_LOG: readonly string[] = [
-  "Container theone-sandbox-1  Running",
-  "theone-sandbox-1  | controller: listening on 0.0.0.0:7700",
-  "theone-sandbox-1  | xvnc: display :1 1600x900",
+  "Container tesseract-sandbox-1  Running",
+  "tesseract-sandbox-1  | controller: listening on 0.0.0.0:7700",
+  "tesseract-sandbox-1  | xvnc: display :1 1600x900",
 ];
 
 export const SETTINGS_AVDS: AvdInfo[] = [
@@ -118,7 +118,7 @@ export const SETTINGS_AVDS: AvdInfo[] = [
 ];
 
 export function emulatorState(scenario: string | null): EmulatorState {
-  if (scenario === SETTINGS_SCENARIOS.emulatorRunning) return { kind: "running", avd: "Monolith_API_36", serial: "emulator-5554" };
+  if (scenario === SETTINGS_SCENARIOS.emulatorRunning) return { kind: "running", avd: "Tesseract_API_36", serial: "emulator-5554" };
   return { kind: "stopped" };
 }
 
@@ -136,8 +136,8 @@ export function updateState(scenario: string | null): UpdateState {
 }
 
 export function cliStatus(scenario: string | null): CliInstallStatus {
-  const binaryPath = "/opt/Monolith/resources/bin/monolith";
+  const binaryPath = "/opt/Tesseract/resources/bin/tesseract";
   if (scenario === SETTINGS_SCENARIOS.cliMissing) return { state: "missing", binaryPath, linkPath: null, message: null };
-  if (scenario === SETTINGS_SCENARIOS.cliInstalled) return { state: "installed", binaryPath, linkPath: "/usr/bin/monolith", message: null };
-  return { state: "installed", binaryPath, linkPath: "/home/dev/.local/bin/monolith", message: null };
+  if (scenario === SETTINGS_SCENARIOS.cliInstalled) return { state: "installed", binaryPath, linkPath: "/usr/bin/tesseract", message: null };
+  return { state: "installed", binaryPath, linkPath: "/home/dev/.local/bin/tesseract", message: null };
 }

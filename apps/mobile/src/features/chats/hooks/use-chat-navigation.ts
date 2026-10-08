@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { router } from "expo-router";
-import type { ClaudeSession } from "@theone/protocol";
+import type { ClaudeSession } from "@tesseract/protocol";
 
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
 

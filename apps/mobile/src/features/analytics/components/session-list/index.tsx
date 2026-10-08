@@ -1,6 +1,6 @@
 import { Fragment, useMemo } from "react";
 import { View } from "react-native";
-import type { ClaudeSession } from "@theone/protocol";
+import type { ClaudeSession } from "@tesseract/protocol";
 
 import { Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";

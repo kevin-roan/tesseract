@@ -10,7 +10,7 @@ import {
   type SyncRequestKind,
   type SyncRequestStatus,
   type SyncResult,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import type { Tone } from "@/lib/tone";
 
@@ -67,7 +67,7 @@ export const SYNC_COPY = {
   hostUnchanged: "No changes on your computer",
   notLinked: "Not linked — run tesseract --sync on your computer",
   offline: "Desktop companion offline — the request waits until it connects",
-  pending: "Waiting for Monolith on your computer…",
+  pending: "Waiting for Tesseract on your computer…",
   inProgress: "A sync is already in progress",
   noFileChanges: "No files changed",
   cancelled: "Cancelled",
@@ -166,7 +166,7 @@ export function syncHostWarning(changes: SyncChanges | undefined): string | null
 
 export function syncHostLabel(changes: SyncChanges | undefined): string | null {
   const host = changes?.host;
-  return syncHostWarning(changes) ?? (host ? `Monolith on ${host.name} · online` : null);
+  return syncHostWarning(changes) ?? (host ? `Tesseract on ${host.name} · online` : null);
 }
 
 export function syncDisabledReason(empty: SyncEmptyState, busy: boolean): string | null {
@@ -375,7 +375,7 @@ export const syncDiscardMessage = (count: number): string =>
 
 export const SYNC_REVERT_CONFIRM = {
   title: "Revert last sync?",
-  message: "Monolith restores the host files from the snapshot it took before the last sync.",
+  message: "Tesseract restores the host files from the snapshot it took before the last sync.",
   confirmLabel: "Revert",
   cancelLabel: "Keep changes",
   destructive: true,

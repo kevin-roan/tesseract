@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { ArrowSquareOutIcon, CaretDownIcon, CaretUpIcon, SparkleIcon, StopIcon, TerminalIcon } from "phosphor-react-native";
-import type { ListeningPort, ProcessInfo } from "@theone/protocol";
+import type { ListeningPort, ProcessInfo } from "@tesseract/protocol";
 
 import ActionButton from "@/components/action-button";
 import ResourceCard from "@/components/resource-card";

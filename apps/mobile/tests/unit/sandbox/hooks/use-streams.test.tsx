@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { NetworkError, TheOneClient } from "@theone/client";
-import type { AgentRunDetail, AgentRunEvent, BuildJob, LogLine } from "@theone/protocol";
-import { sampleAgentRun, sampleAgentRunDetail, sampleBuild } from "@theone/protocol/fixtures";
+import { NetworkError, TesseractClient } from "@tesseract/client";
+import type { AgentRunDetail, AgentRunEvent, BuildJob, LogLine } from "@tesseract/protocol";
+import { sampleAgentRun, sampleAgentRunDetail, sampleBuild } from "@tesseract/protocol/fixtures";
 
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
 import { useAgentRunStream } from "@/features/sandbox/hooks/use-agent-run-stream";
@@ -19,10 +19,10 @@ import {
   type StreamHandlers,
 } from "../helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const SID = TEST_SANDBOX.id;
 const TS = "2026-09-23T10:00:00.000Z";
 const line = (seq: number, stream: LogLine["stream"] = "stdout"): LogLine => ({ seq, ts: TS, stream, text: `line ${seq}` });

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { PROTOCOL_VERSION } from "@theone/protocol";
-import { sampleAndroidLink, sampleEmulator, sampleHostAndroidStatus, sampleTerminal, sampleTicket } from "@theone/protocol/fixtures";
+import { PROTOCOL_VERSION } from "@tesseract/protocol";
+import { sampleAndroidLink, sampleEmulator, sampleHostAndroidStatus, sampleTerminal, sampleTicket } from "@tesseract/protocol/fixtures";
 import { ApiError, HostShellClient, ProtocolVersionError, type FetchLike, type HttpRequestInit, type HttpResponse } from "../src/index";
 
 const BASE = "http://100.101.102.103:7701";

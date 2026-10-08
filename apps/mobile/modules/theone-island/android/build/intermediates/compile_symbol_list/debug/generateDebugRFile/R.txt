@@ -1,1 +1,0 @@
-int drawable ic_island_status 0x0

@@ -1,9 +1,9 @@
 export const TIMELINE_SAMPLES = {
   user: "Take a look at this image.\nThen write the plan down.",
   userTime: "7h ago",
-  system: "Session started (model claude-opus-5-5, cwd /workspace/projects/theone-mobile)",
+  system: "Session started (model claude-opus-5-5, cwd /workspace/projects/tesseract-mobile)",
   tools: [
-    { tool: "Read", summary: "/workspace/.theone/uploads/upload-1.png", result: "Read 1 image (412 KB)", status: "ok" },
+    { tool: "Read", summary: "/workspace/.tesseract/uploads/upload-1.png", result: "Read 1 image (412 KB)", status: "ok" },
     { tool: "Bash", summary: "bun run typecheck", result: "error TS2322: Type 'string' is not assignable to type 'number'.", status: "error" },
     { tool: "Grep", summary: "useFollowTail", result: null, status: "pending" },
   ],

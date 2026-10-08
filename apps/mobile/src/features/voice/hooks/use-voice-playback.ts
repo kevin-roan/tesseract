@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { setAudioModeAsync, useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import type { Upload } from "@theone/protocol";
+import type { Upload } from "@tesseract/protocol";
 
 import { useUploadSource } from "@/features/attachments/hooks/use-upload-source";
 import { describeError } from "@/features/sandbox/utils/errors";

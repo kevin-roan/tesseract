@@ -54,7 +54,7 @@ export type InboxCounts = z.infer<typeof InboxCountsSchema>;
 
 /**
  * The JSON Claude Code passes to a hook on stdin (`Notification`, `Stop`, …), forwarded as-is by
- * `theone-controller hook`. Only the fields the controller reads are declared; the rest pass through.
+ * `tesseract-controller hook`. Only the fields the controller reads are declared; the rest pass through.
  */
 export const ClaudeHookPayloadSchema = z.looseObject({
   hook_event_name: z.string().min(1).max(64),

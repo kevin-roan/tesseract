@@ -30,12 +30,12 @@ describe("SandboxPreferences", () => {
   it("shows Docker and the running stack", async () => {
     render();
     expect(await screen.findByText("Docker Engine 28.5.1 · 16 CPUs · 32 GB")).toBeTruthy();
-    expect(await screen.findByText("Compose project theone · 2 containers")).toBeTruthy();
+    expect(await screen.findByText("Compose project tesseract · 2 containers")).toBeTruthy();
     expect(screen.getByRole("button", { name: L.stack.stop })).toBeTruthy();
   });
 
   it("stops the sandbox", async () => {
-    const down = vi.fn(() => ({ configured: true, project: "theone", services: [] }));
+    const down = vi.fn(() => ({ configured: true, project: "tesseract", services: [] }));
     restores.push(overrideIpcFixtures({ sandbox: { down } }));
     render();
     fireEvent.click(await screen.findByRole("button", { name: L.stack.stop }));

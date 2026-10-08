@@ -87,6 +87,6 @@ describe("DockerStep", () => {
     useScenario(MISSING, { kind: "needs-relogin" });
     renderRoutes(routes, "/onboarding/docker");
     expect(await screen.findByText("Log out to finish")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Quit Monolith" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Quit Tesseract" })).toBeTruthy();
   });
 });

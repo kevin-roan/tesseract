@@ -1,4 +1,4 @@
-import type { AgentRun, AgentRunEvent } from "@theone/protocol";
+import type { AgentRun, AgentRunEvent } from "@tesseract/protocol";
 import { useMemo, type Ref } from "react";
 import { ThinkingRow, Timeline, type TimelineHandle } from "../../../components/Timeline";
 import { cx } from "../../../lib/cx";

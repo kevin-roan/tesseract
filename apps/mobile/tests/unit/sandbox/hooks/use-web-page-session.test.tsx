@@ -1,14 +1,14 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
+import { TesseractClient } from "@tesseract/client";
 
 import { useWebPageSession } from "@/features/sandbox/hooks/use-web-page-session";
 import { reconnectMessage, reconnectScript } from "@/features/sandbox/utils/web-bridge";
 
 import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const FIRST = "http://127.0.0.1:7700/ui/vnc#ticket=t1&password=pw";
 const SECOND = "http://127.0.0.1:7700/ui/vnc#ticket=t3&password=pw";
 const fake = { vncPageUrl: jest.fn(), createTicket: jest.fn() };

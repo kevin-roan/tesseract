@@ -23,7 +23,7 @@ So iOS support is off by default.
 ---
 
 \`\`\`bash
-docker compose -p monolith-test-sandbox up -d
+docker compose -p tesseract-test-sandbox up -d
 curl -fsS http://127.0.0.1:7700/v1/health
 \`\`\`
 

@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
-import { sampleStatus } from "@theone/protocol/fixtures";
+import { sampleStatus } from "@tesseract/protocol/fixtures";
 
 import ResourceHistory from "@/features/sandbox/components/resource-history";
 import { useResourceHistoryStore } from "@/features/sandbox/store/resource-history-store";

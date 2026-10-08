@@ -1,4 +1,4 @@
-import type { SyncChanges } from "@theone/protocol";
+import type { SyncChanges } from "@tesseract/protocol";
 
 import type { ConfirmOptions } from "@/lib/confirm";
 

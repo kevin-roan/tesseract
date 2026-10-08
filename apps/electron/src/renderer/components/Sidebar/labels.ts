@@ -1,5 +1,5 @@
 export const SIDEBAR_LABELS = {
-  appName: "Monolith",
+  appName: "Tesseract",
   mainMenu: "Main menu",
   noProject: "No project",
   noRuns: "No conversations yet",

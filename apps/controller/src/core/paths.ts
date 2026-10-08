@@ -1,6 +1,6 @@
-import { lstatSync, realpathSync, statSync } from "node:fs";
-import { join, relative, sep, isAbsolute } from "node:path";
-import { normalizeProjectId } from "@theone/protocol";
+import { existsSync, lstatSync, mkdirSync, realpathSync, renameSync, statSync } from "node:fs";
+import { dirname, join, relative, sep, isAbsolute } from "node:path";
+import { normalizeProjectId } from "@tesseract/protocol";
 import { badRequest, forbidden } from "./errors";
 
 export function isInside(root: string, candidate: string): boolean {
@@ -14,6 +14,14 @@ export function realpathOrNull(path: string): string | null {
   } catch {
     return null;
   }
+}
+
+/** Moves state left under a pre-rename (theone, Monolith) path to `path` once; a no-op when `path` exists. */
+export function adoptLegacyPath(legacy: string, path: string): boolean {
+  if (existsSync(path) || !existsSync(legacy)) return false;
+  mkdirSync(dirname(path), { recursive: true });
+  renameSync(legacy, path);
+  return true;
 }
 
 export function requireProjectId(input: string): string {

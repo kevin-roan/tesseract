@@ -10,5 +10,5 @@ export const THEME_CHOICES: readonly RadioChoice<ThemeChoiceId>[] = [
 
 export const RADIO_GALLERY_LABELS = {
   title: "Theme",
-  description: "Choose how Monolith looks on this computer.",
+  description: "Choose how Tesseract looks on this computer.",
 } as const;

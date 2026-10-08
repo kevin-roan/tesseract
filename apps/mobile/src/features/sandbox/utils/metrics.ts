@@ -1,4 +1,4 @@
-import type { SandboxStatus } from "@theone/protocol";
+import type { SandboxStatus } from "@tesseract/protocol";
 
 import type { ChartPoint } from "@/components/time-series-chart";
 

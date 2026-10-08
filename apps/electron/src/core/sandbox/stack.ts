@@ -108,7 +108,7 @@ export function claudeAccountsYaml(accounts: { name: string; path: string }[]): 
     "services:",
     `  ${SERVICE}:`,
     "    environment:",
-    `      THEONE_CLAUDE_ACCOUNTS: ${yamlString(accounts.map((account) => account.name).join(","))}`,
+    `      TESSERACT_CLAUDE_ACCOUNTS: ${yamlString(accounts.map((account) => account.name).join(","))}`,
     "    volumes:",
   ];
   for (const account of accounts) {
@@ -147,7 +147,7 @@ async function writeClaudeAccounts(
   warnings: string[],
 ): Promise<string | null> {
   const home = context.env.HOME || deps.homeDir;
-  const accounts = parseClaudeAccounts(values.THEONE_HOST_CLAUDE_ACCOUNTS ?? "", home).filter((account) => {
+  const accounts = parseClaudeAccounts(values.TESSERACT_HOST_CLAUDE_ACCOUNTS ?? "", home).filter((account) => {
     const ok = existsSync(account.path) && statSync(account.path).isDirectory();
     if (!ok) warnings.push(labels.accountSkipped(account.name, account.path));
     return ok;
@@ -165,32 +165,32 @@ export async function resolveStack(context: SandboxContext, command: string): Pr
   const deps = sandboxDeps(context);
   const values = await readEnvValues(context.envFile);
   if (!values) throw new IpcError("not_found", labels.notConfigured);
-  const project = values.THEONE_COMPOSE_PROJECT || DEFAULT_PROJECT;
+  const project = values.TESSERACT_COMPOSE_PROJECT || DEFAULT_PROJECT;
   if (!PATTERNS.project.test(project)) throw new StackError(labels.project(project));
-  const volumePrefix = values.THEONE_VOLUME_PREFIX || project;
+  const volumePrefix = values.TESSERACT_VOLUME_PREFIX || project;
   if (!PATTERNS.volumePrefix.test(volumePrefix)) throw new StackError(labels.volumePrefix(volumePrefix));
-  const controllerPort = requirePort("THEONE_CONTROLLER_HOST_PORT", values.THEONE_CONTROLLER_HOST_PORT || String(DEFAULT_CONTROLLER_PORT));
-  const vncPort = requirePort("THEONE_VNC_HOST_PORT", values.THEONE_VNC_HOST_PORT || String(DEFAULT_VNC_PORT));
+  const controllerPort = requirePort("TESSERACT_CONTROLLER_HOST_PORT", values.TESSERACT_CONTROLLER_HOST_PORT || String(DEFAULT_CONTROLLER_PORT));
+  const vncPort = requirePort("TESSERACT_VNC_HOST_PORT", values.TESSERACT_VNC_HOST_PORT || String(DEFAULT_VNC_PORT));
 
-  const rawMode = values.THEONE_MODE || SCRIPT_DEFAULT_MODE;
+  const rawMode = values.TESSERACT_MODE || SCRIPT_DEFAULT_MODE;
   const mode = MODES.find((candidate) => candidate === rawMode);
   if (!mode) throw new StackError(labels.unknownMode(rawMode));
-  const dind = isTruthyFlag(values.THEONE_DIND);
-  const tailscaleApi = isTruthyFlag(values.THEONE_TAILSCALE_LOCALAPI);
+  const dind = isTruthyFlag(values.TESSERACT_DIND);
+  const tailscaleApi = isTruthyFlag(values.TESSERACT_TAILSCALE_LOCALAPI);
   const composeDir = composeDirOf(context.contextDir);
   const files = [join(composeDir, COMPOSE_FILES.base)];
   const exported: NodeJS.ProcessEnv = {
-    THEONE_COMPOSE_PROJECT: project,
-    THEONE_VOLUME_PREFIX: volumePrefix,
-    THEONE_CONTROLLER_HOST_PORT: String(controllerPort),
-    THEONE_VNC_HOST_PORT: String(vncPort),
+    TESSERACT_COMPOSE_PROJECT: project,
+    TESSERACT_VOLUME_PREFIX: volumePrefix,
+    TESSERACT_CONTROLLER_HOST_PORT: String(controllerPort),
+    TESSERACT_VNC_HOST_PORT: String(vncPort),
   };
   const baseEnv = scrubEnv(context.env, SCRUBBED_ENV_PREFIXES, SCRUBBED_ENV_NAMES);
 
   let bindAddr: string | null = null;
   if (mode === "tailscale") files.push(join(composeDir, COMPOSE_FILES.tailscale));
   if (mode === "host-tailscale") {
-    bindAddr = values.THEONE_BIND_ADDR || (await tailscaleIpv4(deps, baseEnv));
+    bindAddr = values.TESSERACT_BIND_ADDR || (await tailscaleIpv4(deps, baseEnv));
     if (!bindAddr) {
       if (ADDRESS_COMMANDS.includes(command)) throw new StackError(labels.noTailscaleIp);
       bindAddr = LOCAL_BIND_ADDR;
@@ -203,16 +203,16 @@ export async function resolveStack(context: SandboxContext, command: string): Pr
     bindAddr = LOCAL_BIND_ADDR;
     files.push(join(composeDir, COMPOSE_FILES.local));
   }
-  if (bindAddr) exported.THEONE_BIND_ADDR = bindAddr;
+  if (bindAddr) exported.TESSERACT_BIND_ADDR = bindAddr;
   if (dind) files.push(join(composeDir, COMPOSE_FILES.dind));
 
   let socketDir: string | null = null;
   if (tailscaleApi) {
     if (mode === "tailscale") files.push(join(composeDir, COMPOSE_FILES.tailscaleApiSidecar));
     else {
-      socketDir = values.THEONE_TAILSCALE_HOST_SOCKET_DIR || TAILSCALE_HOST_SOCKET_DIR;
+      socketDir = values.TESSERACT_TAILSCALE_HOST_SOCKET_DIR || TAILSCALE_HOST_SOCKET_DIR;
       if (!socketDir.startsWith("/")) throw new StackError(labels.socketDir(socketDir));
-      exported.THEONE_TAILSCALE_HOST_SOCKET_DIR = socketDir;
+      exported.TESSERACT_TAILSCALE_HOST_SOCKET_DIR = socketDir;
       files.push(join(composeDir, COMPOSE_FILES.tailscaleApi));
     }
   }

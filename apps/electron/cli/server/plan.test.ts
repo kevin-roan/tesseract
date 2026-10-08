@@ -39,10 +39,10 @@ const BASE = {
   mode: "local",
   tsAuthKey: "",
   tailnetDomain: "",
-  hostname: "theone-sandbox",
+  hostname: "tesseract-sandbox",
   bindAddr: "",
   components: ["android", "flutter", "mono", "whisper"],
-  image: "theone/sandbox:latest",
+  image: "tesseract/sandbox:latest",
 } as unknown as SetupChoices;
 
 describe("resolveTailscale", () => {
@@ -62,10 +62,10 @@ describe("resolveTailscale", () => {
 
 describe("controllerCommand", () => {
   it("uses the binary next to tesseract, or the override", () => {
-    const probe = files(["/Users/me/.tesseract/bin/theone-controller"]);
-    expect(controllerCommand("/Users/me/.tesseract/bin/tesseract", {}, "darwin", probe)).toEqual(["/Users/me/.tesseract/bin/theone-controller"]);
+    const probe = files(["/Users/me/.tesseract/bin/tesseract-controller"]);
+    expect(controllerCommand("/Users/me/.tesseract/bin/tesseract", {}, "darwin", probe)).toEqual(["/Users/me/.tesseract/bin/tesseract-controller"]);
     expect(controllerCommand("/tmp/tesseract", {}, "darwin", probe)).toBeNull();
-    expect(controllerCommand("/tmp/tesseract", { MONOLITH_CONTROLLER_COMMAND: "bun /repo/apps/controller/src/index.ts" }, "linux", probe)).toEqual([
+    expect(controllerCommand("/tmp/tesseract", { TESSERACT_CONTROLLER_COMMAND: "bun /repo/apps/controller/src/index.ts" }, "linux", probe)).toEqual([
       "bun",
       "/repo/apps/controller/src/index.ts",
     ]);
@@ -76,7 +76,7 @@ describe("planHostService", () => {
   const input = {
     home: "/Users/me",
     uid: 501,
-    command: ["/Users/me/.tesseract/bin/theone-controller"],
+    command: ["/Users/me/.tesseract/bin/tesseract-controller"],
     bind: "100.64.0.7",
     tailscale: "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
     env: { HOME: "/Users/me", SHELL: "/bin/zsh", SECRET: "x" },
@@ -90,7 +90,7 @@ describe("planHostService", () => {
     expect(plan.text).toContain("<string>dev.tesseract.host-shell</string>");
     expect(plan.text).toContain(
       [
-        "    <string>/Users/me/.tesseract/bin/theone-controller</string>",
+        "    <string>/Users/me/.tesseract/bin/tesseract-controller</string>",
         "    <string>host</string>",
         "    <string>serve</string>",
         "    <string>--bind</string>",
@@ -111,13 +111,14 @@ describe("planHostService", () => {
     ]);
     expect(plan.install[0]?.optional).toBe(true);
     expect(plan.install[1]?.optional).toBeUndefined();
+    expect(plan.install[1]?.retries).toBeGreaterThan(0);
   });
 
   it("writes a systemd user unit on Linux", () => {
-    const plan = planHostService({ ...input, platform: "linux", home: "/home/me", command: ["/home/me/my bin/theone-controller"] });
+    const plan = planHostService({ ...input, platform: "linux", home: "/home/me", command: ["/home/me/my bin/tesseract-controller"] });
     expect(plan.kind).toBe("systemd");
     expect(plan.file).toBe("/home/me/.config/systemd/user/tesseract-host-shell.service");
-    expect(plan.text).toContain('ExecStart="/home/me/my bin/theone-controller" host serve --bind 100.64.0.7');
+    expect(plan.text).toContain('ExecStart="/home/me/my bin/tesseract-controller" host serve --bind 100.64.0.7');
     expect(plan.text).toContain("Environment=HOME=/home/me");
     expect(plan.text).toContain("Restart=always");
     expect(plan.install.map((step) => step.args.join(" "))).toEqual([
@@ -174,7 +175,7 @@ describe("install choices", () => {
       mode: "host-tailscale",
       tsAuthKey: "",
       bindAddr: "100.64.0.7",
-      hostname: "theone-sandbox",
+      hostname: "tesseract-sandbox",
     });
   });
 

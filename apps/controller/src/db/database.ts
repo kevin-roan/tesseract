@@ -210,6 +210,10 @@ const MIGRATIONS: readonly string[] = [
   `
   ALTER TABLE agent_runs ADD COLUMN resumed_session_id TEXT;
   `,
+  `
+  UPDATE uploads SET path = replace(path, '/.theone/uploads/', '/.tesseract/uploads/');
+  UPDATE agent_runs SET attachments = replace(attachments, '/.theone/uploads/', '/.tesseract/uploads/') WHERE attachments IS NOT NULL;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

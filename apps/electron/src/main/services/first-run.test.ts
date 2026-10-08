@@ -41,10 +41,10 @@ const connection = await import("../../core/connection");
 const FOUND: ConnectionConfig = {
   apiUrl: "http://127.0.0.1:7700",
   token: "t",
-  name: "monolith-test",
+  name: "tesseract-test",
   pairingUrl: null,
   source: "docker",
-  container: "monolith-test-sandbox-1",
+  container: "tesseract-test-sandbox-1",
 };
 
 let dir = "";
@@ -54,7 +54,7 @@ function writeConfig(data: Record<string, unknown>): void {
 }
 
 beforeEach(() => {
-  dir = mkdtempSync(join(tmpdir(), "monolith-test-first-run-"));
+  dir = mkdtempSync(join(tmpdir(), "tesseract-test-first-run-"));
   state.configFile = join(dir, "config.json");
   state.isTest = false;
   state.fixtures = false;
@@ -67,11 +67,11 @@ afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
 describe("first-run discovery", () => {
   it("adopts a healthy running sandbox and skips the wizard", async () => {
-    writeConfig({ sandboxStack: { project: "monolith-test-x" } });
+    writeConfig({ sandboxStack: { project: "tesseract-test-x" } });
     state.found = FOUND;
     expect(await onboardingStepToResume()).toBeNull();
-    expect(vi.mocked(connection.discoverHealthySandbox).mock.calls[0]?.[0].project).toBe("monolith-test-x");
-    expect(state.saved).toEqual([{ apiUrl: FOUND.apiUrl, token: "t", name: "monolith-test", pairingUrl: null }]);
+    expect(vi.mocked(connection.discoverHealthySandbox).mock.calls[0]?.[0].project).toBe("tesseract-test-x");
+    expect(state.saved).toEqual([{ apiUrl: FOUND.apiUrl, token: "t", name: "tesseract-test", pairingUrl: null }]);
     expect(JSON.parse(readFileSync(state.configFile, "utf8")).onboarding.completedAt).toBe("now");
   });
 

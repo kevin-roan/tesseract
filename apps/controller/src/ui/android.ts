@@ -1,4 +1,4 @@
-import type { AndroidKey, AndroidScreenClientMessage, AndroidScreenServerMessage } from "@theone/protocol";
+import type { AndroidKey, AndroidScreenClientMessage, AndroidScreenServerMessage } from "@tesseract/protocol";
 import { KeyBar, Overlay, StatusBadge, type ConnectionState } from "./lib/components";
 import {
   ANDROID_BAR,

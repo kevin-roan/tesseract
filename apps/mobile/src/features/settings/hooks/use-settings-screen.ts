@@ -1,5 +1,5 @@
 import { useCallback } from "react";
-import { INPUT_MODES, type InputMode } from "@theone/protocol";
+import { INPUT_MODES, type InputMode } from "@tesseract/protocol";
 
 import { useClaudeAccountEntry } from "@/features/claude-account/hooks/use-claude-account-entry";
 import { useHostEntry } from "@/features/host-shell/hooks/use-host-entry";

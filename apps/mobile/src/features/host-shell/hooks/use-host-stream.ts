@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DEFAULT_ANDROID_STREAM, type AndroidStreamSettings, type UpdateAndroidStream } from "@theone/protocol";
+import { DEFAULT_ANDROID_STREAM, type AndroidStreamSettings, type UpdateAndroidStream } from "@tesseract/protocol";
 
 import type { MenuOption } from "@/components/menu-sheet/types";
 

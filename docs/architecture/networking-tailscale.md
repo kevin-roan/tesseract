@@ -8,20 +8,20 @@ default mode needs nothing on the host except Docker. Decision record:
 
 | Mode | Compose files | Reachability | Use when |
 |---|---|---|---|
-| `tailscale` (default) | `compose.yml` + `compose.tailscale.yml` | `https://<THEONE_HOSTNAME>.<tailnet>.ts.net` (443 → 7700) and `<THEONE_HOSTNAME>:5901`; **no host ports** | normal use |
-| `host-tailscale` | `compose.yml` + `compose.local.yml`, `THEONE_BIND_ADDR=<host 100.x IP>` | `http://<host tailnet IP>:7700`, `:5901` (host ports `THEONE_CONTROLLER_HOST_PORT`, `THEONE_VNC_HOST_PORT`) | the host already runs Tailscale and you prefer not to add a node |
-| `local` | `compose.yml` + `compose.local.yml`, `THEONE_BIND_ADDR=127.0.0.1` | `http://127.0.0.1:7700` on the host only (same host-port variables) | development, e2e tests, CI |
+| `tailscale` (default) | `compose.yml` + `compose.tailscale.yml` | `https://<TESSERACT_HOSTNAME>.<tailnet>.ts.net` (443 → 7700) and `<TESSERACT_HOSTNAME>:5901`; **no host ports** | normal use |
+| `host-tailscale` | `compose.yml` + `compose.local.yml`, `TESSERACT_BIND_ADDR=<host 100.x IP>` | `http://<host tailnet IP>:7700`, `:5901` (host ports `TESSERACT_CONTROLLER_HOST_PORT`, `TESSERACT_VNC_HOST_PORT`) | the host already runs Tailscale and you prefer not to add a node |
+| `local` | `compose.yml` + `compose.local.yml`, `TESSERACT_BIND_ADDR=127.0.0.1` | `http://127.0.0.1:7700` on the host only (same host-port variables) | development, e2e tests, CI |
 | `+tailscale-api` | tailscale: + `compose.tailscale-api-sidecar.yml`; host-tailscale, local: + `compose.tailscale-api.yml` | unchanged; the sandbox can query tailscaled's LocalAPI for `GET /v1/identity` | the app should show the real Tailscale user and node ([below](#tailscale-identity-localapi)) |
 | `+dind` | any of the above + `compose.dind.yml` | unchanged; adds a Docker daemon for the sandbox | projects that need Docker ([ADR 0006](../adr/0006-optional-docker-in-docker.md)) |
 
 The operator CLI picks the files. The mode comes from `--mode <mode>` (for
-example `bun run sandbox up --mode local`), then `THEONE_MODE` in the
+example `bun run sandbox up --mode local`), then `TESSERACT_MODE` in the
 environment or `infra/compose/.env`, and defaults to `tailscale`. dind is added
-with `--dind` or `THEONE_DIND=1`, the LocalAPI share with `--tailscale-api` or
-`THEONE_TAILSCALE_LOCALAPI=1`. The modes are overlay files, not compose
+with `--dind` or `TESSERACT_DIND=1`, the LocalAPI share with `--tailscale-api` or
+`TESSERACT_TAILSCALE_LOCALAPI=1`. The modes are overlay files, not compose
 profiles. The CLI reads `infra/compose/.env`, or only the file named with
 `--env-file <path>` (which it also hands to compose). In `host-tailscale` mode it
-runs the read-only `tailscale ip -4` on the host when `THEONE_BIND_ADDR` is
+runs the read-only `tailscale ip -4` on the host when `TESSERACT_BIND_ADDR` is
 empty, and refuses anything but an IPv4 address (no wildcard spelling such as
 `0.0.0.0`, `::` or `[::0]`, no `0.x.x.x`, no host names). In `tailscale` mode it
 refuses to start without `TS_TAILNET_DOMAIN`, and on the first start (no
@@ -29,10 +29,10 @@ refuses to start without `TS_TAILNET_DOMAIN`, and on the first start (no
 [getting started](../runbooks/getting-started.md) runbook.
 
 Several stacks can run on one host when each has its own
-`THEONE_COMPOSE_PROJECT` (container and network names; the volume prefix
-follows unless `THEONE_VOLUME_PREFIX` is set) and its own host ports (local,
-host-tailscale) or `THEONE_HOSTNAME` (tailscale). The e2e harness uses this
-(`theone-e2e` on `127.0.0.1:17700/15901`).
+`TESSERACT_COMPOSE_PROJECT` (container and network names; the volume prefix
+follows unless `TESSERACT_VOLUME_PREFIX` is set) and its own host ports (local,
+host-tailscale) or `TESSERACT_HOSTNAME` (tailscale). The e2e harness uses this
+(`tesseract-e2e` on `127.0.0.1:17700/15901`).
 
 ## Default mode: userspace sidecar
 
@@ -59,18 +59,18 @@ flowchart LR
 
   | Variable | Value / source | Purpose |
   |---|---|---|
-  | `TS_AUTHKEY` | `.env` | used on first login. Prefer a tagged (`tag:theone`), pre-approved key |
-  | `TS_HOSTNAME` | `THEONE_HOSTNAME` (default `theone-sandbox`) | node name. Also the sandbox id shown in the app |
-  | `TS_STATE_DIR` | `/var/lib/tailscale` on volume `<prefix>-tailscale` (default `theone-tailscale`) | keeps the node identity across restarts and recreation |
+  | `TS_AUTHKEY` | `.env` | used on first login. Prefer a tagged (`tag:tesseract`), pre-approved key |
+  | `TS_HOSTNAME` | `TESSERACT_HOSTNAME` (default `tesseract-sandbox`) | node name. Also the sandbox id shown in the app |
+  | `TS_STATE_DIR` | `/var/lib/tailscale` on volume `<prefix>-tailscale` (default `tesseract-tailscale`) | keeps the node identity across restarts and recreation |
   | `TS_AUTH_ONCE` | `true` | log in only when there is no state; the key is not needed afterwards |
   | `TS_USERSPACE` | `true` | no kernel networking, no extra privileges |
   | `TS_SERVE_CONFIG` | `/config/serve.json` (`./tailscale` mounted read-only) | serve configuration, below |
-  | `TS_EXTRA_ARGS` | `.env`, optional | extra `tailscale up` flags, e.g. `--advertise-tags=tag:theone` |
+  | `TS_EXTRA_ARGS` | `.env`, optional | extra `tailscale up` flags, e.g. `--advertise-tags=tag:tesseract` |
 
   The sidecar also runs with `no-new-privileges`. It keeps Docker's default
   capability set; dropping all capabilities is untested
   ([open decision](../roadmap.md#open-decisions)).
-- The sandbox gets `THEONE_PUBLIC_URL=https://${THEONE_HOSTNAME}.${TS_TAILNET_DOMAIN}`.
+- The sandbox gets `TESSERACT_PUBLIC_URL=https://${TESSERACT_HOSTNAME}.${TS_TAILNET_DOMAIN}`.
   Set `TS_TAILNET_DOMAIN` (e.g. `tail1234.ts.net`, shown on the admin console's
   DNS page) in `.env`. The URL is only used to build the pairing link.
 
@@ -101,7 +101,7 @@ VNC bridge work through the same HTTPS endpoint.
 
 In the Tailscale admin console:
 
-1. **DNS → MagicDNS: on.** This gives names like `theone-sandbox.tail1234.ts.net`.
+1. **DNS → MagicDNS: on.** This gives names like `tesseract-sandbox.tail1234.ts.net`.
 2. **DNS → HTTPS Certificates: enable.** Serve then obtains a Let's Encrypt
    certificate for the node name on the first HTTPS request. The first
    request can take a few seconds.
@@ -120,7 +120,7 @@ Whether release builds should is an [open decision](../roadmap.md#open-decisions
 
 - Create the key under **Settings → Keys → Generate auth key**: reusable off,
   ephemeral off (so the node survives restarts via its state volume),
-  pre-approved on, tags `tag:theone`.
+  pre-approved on, tags `tag:tesseract`.
 - The key is used on first login only (`TS_AUTH_ONCE=true`). After that the
   node key lives in the `<prefix>-tailscale` volume and `TS_AUTHKEY` can be
   removed from `.env`. Deleting that volume requires a new key.
@@ -128,11 +128,11 @@ Whether release builds should is an [open decision](../roadmap.md#open-decisions
 
   ```jsonc
   {
-    "tagOwners": { "tag:theone": ["autogroup:admin"] },
+    "tagOwners": { "tag:tesseract": ["autogroup:admin"] },
     "grants": [
       // your devices → the sandbox: controller over HTTPS, native VNC
-      { "src": ["autogroup:member"], "dst": ["tag:theone"], "ip": ["tcp:443", "tcp:5901"] }
-      // no grant with src tag:theone: the sandbox cannot initiate connections to other tailnet nodes
+      { "src": ["autogroup:member"], "dst": ["tag:tesseract"], "ip": ["tcp:443", "tcp:5901"] }
+      // no grant with src tag:tesseract: the sandbox cannot initiate connections to other tailnet nodes
     ]
   }
   ```
@@ -146,16 +146,16 @@ Whether release builds should is an [open decision](../roadmap.md#open-decisions
 ## `host-tailscale` mode
 
 For hosts that already run Tailscale. `compose.local.yml` publishes
-`${THEONE_BIND_ADDR}:${THEONE_CONTROLLER_HOST_PORT}:7700` and
-`${THEONE_BIND_ADDR}:${THEONE_VNC_HOST_PORT}:5901` (defaults 7700 and 5901), with
-`THEONE_BIND_ADDR` set to the host's own tailnet IP. When it is empty, the CLI
+`${TESSERACT_BIND_ADDR}:${TESSERACT_CONTROLLER_HOST_PORT}:7700` and
+`${TESSERACT_BIND_ADDR}:${TESSERACT_VNC_HOST_PORT}:5901` (defaults 7700 and 5901), with
+`TESSERACT_BIND_ADDR` set to the host's own tailnet IP. When it is empty, the CLI
 fills it from `tailscale ip -4` on the host (read-only). Nothing is bound on LAN or public interfaces.
 
 - The URL is `http://<100.x.y.z>:7700`, or `http://<host>.<tailnet>.ts.net:7700`
   with MagicDNS. There is no TLS unless you run `tailscale serve` on the host,
   which is a host change the operator makes deliberately.
 - The host's Tailscale ACLs decide who can reach those ports.
-- `compose.local.yml` sets `THEONE_PUBLIC_URL=http://${THEONE_BIND_ADDR}:${THEONE_CONTROLLER_HOST_PORT}`,
+- `compose.local.yml` sets `TESSERACT_PUBLIC_URL=http://${TESSERACT_BIND_ADDR}:${TESSERACT_CONTROLLER_HOST_PORT}`,
   so the pairing link uses the tailnet IP.
 
 ## `local` mode
@@ -188,17 +188,17 @@ suffix. The controller resolves it like this:
    socket.
 2. **LocalAPI whois.** Otherwise the controller asks tailscaled
    (`GET /localapi/v0/whois?addr=<peer ip:port>`) over the unix socket
-   `THEONE_TAILSCALE_SOCKET` (default `/run/tailscale/tailscaled.sock`).
+   `TESSERACT_TAILSCALE_SOCKET` (default `/run/tailscale/tailscaled.sock`).
 3. **LocalAPI status** gives `node` (`Self`), `owner` (`User[Self.UserID]`) and
    `tailnet`; it is cached for 30 s. Calls time out after 1.5 s; no socket means
    `available: false` and nulls, never an error response.
 
-The socket is only there with `--tailscale-api` (`THEONE_TAILSCALE_LOCALAPI=1`):
+The socket is only there with `--tailscale-api` (`TESSERACT_TAILSCALE_LOCALAPI=1`):
 
 | Mode | What is shared |
 |---|---|
 | `tailscale` | `compose.tailscale-api-sidecar.yml` sets `TS_SOCKET=/var/run/tailscale/tailscaled.sock` in the sidecar, keeps that directory on the volume `<prefix>-tailscale-run` and mounts it read-only at `/run/tailscale` in the sandbox. `docker exec <project>-tailscale-1 tailscale status` then also works without `--socket` |
-| `host-tailscale`, `local` | `compose.tailscale-api.yml` bind-mounts the host directory `THEONE_TAILSCALE_HOST_SOCKET_DIR` (default `/var/run/tailscale`) read-only at `/run/tailscale`. The directory, not the socket file, so a tailscaled restart does not leave a stale socket. `sandbox up` refuses when `tailscaled.sock` is missing there |
+| `host-tailscale`, `local` | `compose.tailscale-api.yml` bind-mounts the host directory `TESSERACT_TAILSCALE_HOST_SOCKET_DIR` (default `/var/run/tailscale`) read-only at `/run/tailscale`. The directory, not the socket file, so a tailscaled restart does not leave a stale socket. `sandbox up` refuses when `tailscaled.sock` is missing there |
 
 In `host-tailscale` mode, Docker's port publishing DNATs tailnet traffic that arrives on
 `tailscale0`, so the controller sees the peer's own tailnet address and whois resolves the
@@ -225,10 +225,10 @@ rules or an egress proxy) is a roadmap item.
 
 ```bash
 bun run sandbox status                             # compose state and controller status
-bun run sandbox doctor                             # theone-doctor inside the sandbox
-docker exec theone-tailscale-1 tailscale status    # node state as seen by the sidecar
-docker exec theone-tailscale-1 tailscale serve status
-curl -fsS https://theone-sandbox.<tailnet>.ts.net/v1/health   # from any tailnet device
+bun run sandbox doctor                             # tesseract-doctor inside the sandbox
+docker exec tesseract-tailscale-1 tailscale status    # node state as seen by the sidecar
+docker exec tesseract-tailscale-1 tailscale serve status
+curl -fsS https://tesseract-sandbox.<tailnet>.ts.net/v1/health   # from any tailnet device
 ```
 
 Symptoms and fixes: [runbooks/troubleshooting.md](../runbooks/troubleshooting.md#connectivity).

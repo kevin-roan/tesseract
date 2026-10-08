@@ -1,5 +1,5 @@
 import { relative, sep } from "node:path";
-import { isValidProjectId, type ListeningPort, type ListeningPorts } from "@theone/protocol";
+import { isValidProjectId, type ListeningPort, type ListeningPorts } from "@tesseract/protocol";
 import type { Config } from "../config";
 import { isInside, realpathOrNull } from "../core/paths";
 import { listListeningPorts, type ListeningPortOwner } from "../core/ports";
@@ -33,7 +33,7 @@ export class PortService {
     this.internal = new Set([config.port, config.vncPort]);
   }
 
-  /** Hides a port the controller itself serves on (the bound port when THEONE_PORT is 0). */
+  /** Hides a port the controller itself serves on (the bound port when TESSERACT_PORT is 0). */
   ignore(port: number): void {
     this.internal.add(port);
   }

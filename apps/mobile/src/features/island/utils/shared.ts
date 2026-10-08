@@ -1,7 +1,7 @@
 import type { PickedFile } from "@/features/attachments/types";
 import { fileNameOf, mimeTypeOr } from "@/features/attachments/utils/files";
 
-import type { SharedItem } from "@/modules/theone-island";
+import type { SharedItem } from "@/modules/tesseract-island";
 
 import type { AttachDraft, CaptureImage, CaptureSeed } from "../types";
 

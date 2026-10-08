@@ -9,7 +9,7 @@ import {
   type AndroidScreenServerMessage,
   type AndroidStreamEncoding,
   type AndroidStreamSettings,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { errorMessage } from "../../core/errors";
 import { run } from "../../core/exec";
 import type { Logger } from "../../core/logger";
@@ -417,10 +417,10 @@ export class AndroidScreens {
 
   /** Why the screen cannot be streamed, or null. */
   unavailableReason(codec: AndroidStreamEncoding = "mjpeg", hostEmulator = true): string | null {
-    if (!this.config.scrcpyServer) return "scrcpy-server is not installed on the host; set THEONE_SCRCPY_SERVER";
-    if (!this.config.scrcpyVersion) return "The scrcpy version is unknown; install scrcpy or set THEONE_SCRCPY_VERSION";
-    if (codec === "mjpeg" && !this.config.ffmpeg) return "ffmpeg is not installed on the host; set THEONE_FFMPEG";
-    if (!this.config.adb) return "adb is not installed on the host; set THEONE_ADB";
+    if (!this.config.scrcpyServer) return "scrcpy-server is not installed on the host; set TESSERACT_SCRCPY_SERVER";
+    if (!this.config.scrcpyVersion) return "The scrcpy version is unknown; install scrcpy or set TESSERACT_SCRCPY_VERSION";
+    if (codec === "mjpeg" && !this.config.ffmpeg) return "ffmpeg is not installed on the host; set TESSERACT_FFMPEG";
+    if (!this.config.adb) return "adb is not installed on the host; set TESSERACT_ADB";
     if (hostEmulator && !this.emulator.running) return SCREEN_MESSAGES.notRunning;
     return null;
   }

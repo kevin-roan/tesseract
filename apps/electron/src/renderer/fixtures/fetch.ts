@@ -1,4 +1,4 @@
-import type { FetchLike, HttpRequestInit, HttpResponse } from "@theone/client";
+import type { FetchLike, HttpRequestInit, HttpResponse } from "@tesseract/client";
 import { httpFixtures } from "./registry";
 import { FixtureReply, type HttpFixtureRoute } from "./types";
 

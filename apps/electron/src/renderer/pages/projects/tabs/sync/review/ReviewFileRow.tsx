@@ -1,4 +1,4 @@
-import type { SyncFileChange } from "@theone/protocol";
+import type { SyncFileChange } from "@tesseract/protocol";
 import { cssVar, TONE_COLORS } from "../../../../../theme/colors";
 import { SYNC_LABELS } from "../labels";
 import { syncChangeCode } from "../model";

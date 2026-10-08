@@ -1,4 +1,4 @@
-import type { DisplayWindow } from "@theone/protocol";
+import type { DisplayWindow } from "@tesseract/protocol";
 import { useState } from "react";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { IconButton } from "../../components/IconButton";

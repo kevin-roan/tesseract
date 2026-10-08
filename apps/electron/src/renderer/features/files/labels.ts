@@ -1,7 +1,7 @@
 export const FILES_LABELS = {
   title: "Files",
   refresh: "Refresh",
-  empty: "Build outputs and files Claude shares with theone-controller share show up here.",
+  empty: "Build outputs and files Claude shares with tesseract-controller share show up here.",
   emptyTitle: "No files yet",
   noMatch: "No files match these filters.",
   loading: "Loading files…",

@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient, type QueryKey, type UseQueryOptions } from "@tanstack/react-query";
-import type { TheOneClient } from "@theone/client";
+import type { TesseractClient } from "@tesseract/client";
 import { useEffect } from "react";
 import type { ConnectionSnapshot } from "../../../shared/contracts/connection";
 import { ipc } from "../../lib/ipc";
@@ -20,7 +20,7 @@ export function useConnectionSnapshot() {
   return useQuery({ queryKey: DATA_KEYS.connection, queryFn: () => ipc.connection.load(), staleTime: Infinity });
 }
 
-export function useApiClient(): TheOneClient | null {
+export function useApiClient(): TesseractClient | null {
   const config = useConnectionSnapshot().data?.config;
   return config ? createApiClient(config) : null;
 }
@@ -29,7 +29,7 @@ type ApiQueryOptions<T> = Omit<UseQueryOptions<T, Error, T, QueryKey>, "queryKey
   enabled?: boolean;
 };
 
-export function useApiQuery<T>(key: readonly unknown[], fetcher: (client: TheOneClient, signal: AbortSignal) => Promise<T>, options: ApiQueryOptions<T> = {}) {
+export function useApiQuery<T>(key: readonly unknown[], fetcher: (client: TesseractClient, signal: AbortSignal) => Promise<T>, options: ApiQueryOptions<T> = {}) {
   const client = useApiClient();
   const { enabled = true, ...rest } = options;
   return useQuery({

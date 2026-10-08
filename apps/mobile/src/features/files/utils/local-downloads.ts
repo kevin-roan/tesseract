@@ -1,4 +1,4 @@
-import type { Artifact, BuildOutput } from "@theone/protocol";
+import type { Artifact, BuildOutput } from "@tesseract/protocol";
 
 import type { LocalDownload } from "../hooks/use-local-downloads";
 import { buildOutputKey } from "./build-outputs";

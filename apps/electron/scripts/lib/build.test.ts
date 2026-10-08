@@ -7,7 +7,7 @@ import { buildIsStale, withBuildLock } from "./build.ts";
 const dirs: string[] = [];
 
 function lockDir(): string {
-  const dir = mkdtempSync(join(tmpdir(), "monolith-test-lock-"));
+  const dir = mkdtempSync(join(tmpdir(), "tesseract-test-lock-"));
   dirs.push(dir);
   return join(dir, "build.lock");
 }
@@ -33,7 +33,7 @@ describe("build lock", () => {
 
 describe("buildIsStale", () => {
   it("treats a build whose renderer is older than the sources as stale", () => {
-    const dir = mkdtempSync(join(tmpdir(), "monolith-test-stale-"));
+    const dir = mkdtempSync(join(tmpdir(), "tesseract-test-stale-"));
     dirs.push(dir);
     const main = join(dir, "main.js");
     const renderer = join(dir, "index.html");

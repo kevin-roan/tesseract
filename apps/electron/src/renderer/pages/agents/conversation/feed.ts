@@ -1,5 +1,5 @@
-import type { AgentRunHandlers, RequestOptions, StreamConnection, StreamOptions } from "@theone/client";
-import type { AgentRun, AgentRunDetail, AgentRunEvent } from "@theone/protocol";
+import type { AgentRunHandlers, RequestOptions, StreamConnection, StreamOptions } from "@tesseract/client";
+import type { AgentRun, AgentRunDetail, AgentRunEvent } from "@tesseract/protocol";
 import { addEvents, EMPTY_EVENT_LOG, type EventLog } from "../timeline/model";
 import { isFinal } from "../timeline/run-info";
 import { FEED_POLL_INTERVAL_MS, FEED_STREAM_OPTIONS } from "./constants";

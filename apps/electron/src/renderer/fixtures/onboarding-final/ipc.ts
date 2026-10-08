@@ -3,7 +3,7 @@ import { defineIpcFixtures } from "../types";
 import { FIXTURE_COMPLETED_AT, ONBOARDING_FINAL_SCENARIOS, claudeAccount, scenarioState } from "./data";
 import { currentScenario } from "../scenario";
 
-const PAIR_ERROR = "theone-controller pair --json printed no pairing link";
+const PAIR_ERROR = "tesseract-controller pair --json printed no pairing link";
 
 function claudeChecked() {
   const state = scenarioState();

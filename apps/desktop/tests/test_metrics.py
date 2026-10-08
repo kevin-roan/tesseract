@@ -1,7 +1,7 @@
 import copy
 import json
 
-from monolith_desktop.services.metrics import (
+from tesseract_desktop.services.metrics import (
     GAP_S,
     MAX_SAMPLES,
     MetricsHistory,
@@ -13,7 +13,7 @@ from monolith_desktop.services.metrics import (
     series_points,
     series_stats,
 )
-from monolith_desktop.store import AppStore, ConnectionState
+from tesseract_desktop.store import AppStore, ConnectionState
 
 from test_view_models import STATUS
 
@@ -26,7 +26,7 @@ class Clock:
         return self.now
 
 
-def status(load1: float = 2.0, sandbox: str = "theone-sandbox", uptime: float = 0.0) -> dict:
+def status(load1: float = 2.0, sandbox: str = "tesseract-sandbox", uptime: float = 0.0) -> dict:
     value = copy.deepcopy(STATUS)
     value["sandboxId"] = sandbox
     value["uptimeSec"] = uptime
@@ -79,7 +79,7 @@ def test_records_samples_from_status_updates():
         feed(store, clock, 5)
     assert len(metrics.samples) == 3
     assert metrics.revision.value == 3
-    assert metrics.sandbox_id == "theone-sandbox"
+    assert metrics.sandbox_id == "tesseract-sandbox"
 
 
 def test_disconnect_marks_next_sample_as_gap():
@@ -162,7 +162,7 @@ def test_switching_sandbox_keeps_histories_apart():
     store.status.set(status(sandbox="other"))
     assert len(metrics.samples) == 1
     clock.now += 5
-    store.status.set(status(sandbox="theone-sandbox", uptime=123))
+    store.status.set(status(sandbox="tesseract-sandbox", uptime=123))
     assert len(metrics.samples) == 3
     assert metrics.samples[-1].gap_before
 

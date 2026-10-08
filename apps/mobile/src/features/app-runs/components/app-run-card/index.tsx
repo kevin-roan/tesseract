@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { CaretDownIcon, CaretUpIcon, PlayIcon, SparkleIcon, StopIcon } from "phosphor-react-native";
-import type { AppRunAction } from "@theone/protocol";
+import type { AppRunAction } from "@tesseract/protocol";
 
 import ActionButton from "@/components/action-button";
 import ResourceCard from "@/components/resource-card";

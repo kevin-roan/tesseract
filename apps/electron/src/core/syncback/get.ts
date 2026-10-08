@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { SyncGetChange, SyncRequest } from "@theone/protocol";
+import type { SyncGetChange, SyncRequest } from "@tesseract/protocol";
 import type { SyncApi } from "./api";
 import { GET_TEMP_PREFIX, GIT_DIR, MAX_GET_CHANGES, MAX_GET_GIT_PATHS, SYNC_STATE } from "./constants";
 import { SyncBackError, isMissing } from "./errors";

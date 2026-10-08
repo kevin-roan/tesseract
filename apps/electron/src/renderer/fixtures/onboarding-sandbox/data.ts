@@ -60,7 +60,7 @@ export const DESKTOP_REPORT: DockerReport = {
 export const NO_EXISTING: ExistingSandbox = { container: null, image: null };
 
 const IMAGE: NonNullable<ExistingSandbox["image"]> = {
-  ref: "theone/sandbox:latest",
+  ref: "tesseract/sandbox:latest",
   sizeBytes: 7.3 * GB,
   version: "0.1.0",
   createdAt: "2026-10-04T18:12:00Z",
@@ -68,11 +68,11 @@ const IMAGE: NonNullable<ExistingSandbox["image"]> = {
 
 export const EXISTING_RUNNING: ExistingSandbox = {
   container: {
-    name: "theone-sandbox-1",
+    name: "tesseract-sandbox-1",
     state: "running",
-    image: "theone/sandbox:latest",
-    configFiles: ["/home/dev/theone/infra/compose/compose.yml", "/home/dev/theone/infra/compose/compose.local.yml"],
-    workingDir: "/home/dev/theone/infra/compose",
+    image: "tesseract/sandbox:latest",
+    configFiles: ["/home/dev/tesseract/infra/compose/compose.yml", "/home/dev/tesseract/infra/compose/compose.local.yml"],
+    workingDir: "/home/dev/tesseract/infra/compose",
   },
   image: IMAGE,
 };
@@ -90,7 +90,7 @@ export const BUILD_LOG: readonly string[] = [
   "#2 resolve image config for docker-image://docker.io/docker/dockerfile:1",
   "#4 [base 1/6] FROM docker.io/library/debian:trixie-slim",
   "#4 CACHED",
-  "#5 [controller-build 3/7] RUN bun install --frozen-lockfile --filter @theone/controller",
+  "#5 [controller-build 3/7] RUN bun install --frozen-lockfile --filter @tesseract/controller",
   "#5 0.412 bun install v1.3.2",
   "#5 9.870 + 412 packages installed [9.46s]",
   "#5 DONE 10.2s",
@@ -124,13 +124,13 @@ export const DONE_PHASE: BuildPhase = {
 };
 
 export const SIMULATED_STEPS: readonly string[] = [
-  "[controller-build 3/7] RUN bun install --frozen-lockfile --filter @theone/controller",
+  "[controller-build 3/7] RUN bun install --frozen-lockfile --filter @tesseract/controller",
   "[desktop 2/5] RUN apt-get install -y chromium xvfb tigervnc-standalone-server ffmpeg",
   "[electron 3/4] RUN apt-get install -y wine64 wine32",
   "[android-sdk 2/4] RUN sdkmanager --install platform-tools platforms;android-36",
   "[flutter 2/3] RUN flutter precache --web --linux",
   "[whisper 4/5] RUN cmake --build build -j",
-  "[sandbox 6/6] COPY --from=controller-build /out /opt/theone",
+  "[sandbox 6/6] COPY --from=controller-build /out /opt/tesseract",
 ];
 
 export const SIMULATION_TICK_MS = 450;
@@ -151,8 +151,8 @@ const MESSAGES = {
   hostname: "Use lowercase letters, digits and '-' (up to 63)",
   authKey: "TS_AUTHKEY is required for the first start in tailscale mode (see infra/compose/.env.example)",
   bindAddrWildcard: (value: string) =>
-    `THEONE_BIND_ADDR=${value} would publish the sandbox on every host interface; use the host's tailscale IPv4`,
-  bindAddr: (value: string) => `THEONE_BIND_ADDR=${value} is not an IPv4 address of this host; use the host's tailscale IPv4`,
+    `TESSERACT_BIND_ADDR=${value} would publish the sandbox on every host interface; use the host's tailscale IPv4`,
+  bindAddr: (value: string) => `TESSERACT_BIND_ADDR=${value} is not an IPv4 address of this host; use the host's tailscale IPv4`,
   version: "Use a version like latest or 2.1.0",
 } as const;
 

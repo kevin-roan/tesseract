@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { DeleteAgentRuns } from "@theone/protocol";
+import type { DeleteAgentRuns } from "@tesseract/protocol";
 import { NO_PROJECT_KEY, type AgentFilter, type DetailView } from "./constants";
 
 export interface NewDraft {

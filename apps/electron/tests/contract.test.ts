@@ -22,7 +22,7 @@ describe("IPC contract", () => {
   });
 
   it("rejects unknown channels", () => {
-    expect(parseChannel("monolith:nope:method")).toBeNull();
+    expect(parseChannel("tesseract:nope:method")).toBeNull();
     expect(parseChannel("other:app:runtime")).toBeNull();
     expect(isServiceName("app")).toBe(true);
   });

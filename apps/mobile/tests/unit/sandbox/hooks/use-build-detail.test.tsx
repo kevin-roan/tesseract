@@ -1,7 +1,7 @@
 import { Linking } from "react-native";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
-import { sampleBuild } from "@theone/protocol/fixtures";
+import { TesseractClient } from "@tesseract/client";
+import { sampleBuild } from "@tesseract/protocol/fixtures";
 
 import { useArtifactDownload } from "@/features/sandbox/hooks/use-artifact-download";
 import { useBuildDetail } from "@/features/sandbox/hooks/use-build-detail";
@@ -15,12 +15,12 @@ import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSand
 
 let mockLogs: LogStream;
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({ useIsFocused: () => true, router: {} }));
 jest.mock("@/lib/confirm", () => ({ confirm: jest.fn() }));
 jest.mock("@/features/sandbox/hooks/use-log-stream", () => ({ useLogStream: () => mockLogs }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const mockConfirm = confirm as jest.Mock;
 const fake = { getBuild: jest.fn(), cancelBuild: jest.fn(), artifactDownloadUrl: jest.fn() };
 const running = { ...sampleBuild, state: "running" as const, stage: "compile" as const, endedAt: null };

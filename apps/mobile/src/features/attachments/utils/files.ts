@@ -1,4 +1,4 @@
-import type { UploadKind } from "@theone/protocol";
+import type { UploadKind } from "@tesseract/protocol";
 
 import type { AttachSource, DraftAttachment, PickedFile } from "../types";
 import { FALLBACK_MIME_TYPE, MAX_ATTACHMENTS, MAX_UPLOAD_BYTES } from "./constants";

@@ -2,9 +2,9 @@ import re
 
 import pytest
 
-from monolith_desktop.theme import COLORS, SCHEMES, TEXT_VARIANTS, TONE_COLORS, generate_css, kebab, var_name
-from monolith_desktop.theme.chart import chart_for
-from monolith_desktop.theme.surfaces import SURFACES
+from tesseract_desktop.theme import COLORS, SCHEMES, TEXT_VARIANTS, TONE_COLORS, generate_css, kebab, var_name
+from tesseract_desktop.theme.chart import chart_for
+from tesseract_desktop.theme.surfaces import SURFACES
 
 
 def test_schemes_share_keys():
@@ -13,7 +13,7 @@ def test_schemes_share_keys():
 
 
 def test_graphite_is_rendered_with_the_linear_palette():
-    from monolith_desktop.theme.semantic import is_dark, look_for, rendered_scheme
+    from tesseract_desktop.theme.semantic import is_dark, look_for, rendered_scheme
 
     graphite = COLORS["graphite"]
     assert rendered_scheme("dark") == "graphite"
@@ -31,9 +31,9 @@ def test_graphite_is_rendered_with_the_linear_palette():
 
 
 def test_graphite_light_keeps_the_linear_look_on_light_panels():
-    from monolith_desktop.theme.semantic import APPEARANCES, DEFAULT_APPEARANCE, ink_alpha, look_for, rendered_scheme
-    from monolith_desktop.theme.tokens import radius_for
-    from monolith_desktop.widgets.terminal.palette import palette_for
+    from tesseract_desktop.theme.semantic import APPEARANCES, DEFAULT_APPEARANCE, ink_alpha, look_for, rendered_scheme
+    from tesseract_desktop.theme.tokens import radius_for
+    from tesseract_desktop.widgets.terminal.palette import palette_for
 
     light = COLORS["graphiteLight"]
     assert rendered_scheme("light") == "graphiteLight"
@@ -51,7 +51,7 @@ def test_graphite_light_keeps_the_linear_look_on_light_panels():
 
 
 def test_graphite_variants_cover_every_scheme_table():
-    from monolith_desktop.theme.gradients import GRADIENTS
+    from tesseract_desktop.theme.gradients import GRADIENTS
 
     for table in (SURFACES, GRADIENTS):
         assert set(table) == set(SCHEMES)
@@ -63,7 +63,7 @@ def test_graphite_variants_cover_every_scheme_table():
 
 
 def test_graphite_corners_are_tight():
-    from monolith_desktop.theme.tokens import RADIUS, radius_for
+    from tesseract_desktop.theme.tokens import RADIUS, radius_for
 
     assert radius_for("graphite")["sm"] == 6
     assert radius_for("graphite")["card"] == 10
@@ -73,7 +73,7 @@ def test_graphite_corners_are_tight():
 
 
 def test_motion_tokens():
-    from monolith_desktop.theme.tokens import CHART_MOTION, DURATIONS, PRESS_SCALE, easing, transition
+    from tesseract_desktop.theme.tokens import CHART_MOTION, DURATIONS, PRESS_SCALE, easing, transition
 
     assert DURATIONS["fast"] == 120 and DURATIONS["normal"] == 180 and DURATIONS["slow"] == 260
     assert PRESS_SCALE == {"card": 0.98, "control": 0.95}
@@ -132,7 +132,7 @@ def test_schemes_differ():
 
 
 def test_scale_css_scales_pixel_lengths_only():
-    from monolith_desktop.theme.css import scale_css
+    from tesseract_desktop.theme.css import scale_css
 
     css = ".a { padding: 8px 12px; border: 0.5px solid #10px; margin: -4px; opacity: 0.9; }"
     assert scale_css(css, 1) == css
@@ -140,13 +140,13 @@ def test_scale_css_scales_pixel_lengths_only():
 
 
 def test_generated_css_scales_with_zoom():
-    from monolith_desktop.theme.css import generate_css, scale_css
+    from tesseract_desktop.theme.css import generate_css, scale_css
 
     assert "font-size: 21px" in scale_css(generate_css("dark"), 1.5)
 
 
 def test_font_stacks_use_inter():
-    from monolith_desktop.theme.typography import DISPLAY_STACK, MONO_STACK, SANS_STACK
+    from tesseract_desktop.theme.typography import DISPLAY_STACK, MONO_STACK, SANS_STACK
 
     assert (SANS_STACK[0], DISPLAY_STACK[0], MONO_STACK[0]) == ("Inter", "Inter Display", "Geist Mono")
     for variant in ("display", "title", "h1", "h3", "metric"):
@@ -166,7 +166,7 @@ def test_css_uses_display_and_mono_faces():
 
 
 def test_bundled_fonts_present():
-    from monolith_desktop.theme.fonts import bundled_fonts
+    from tesseract_desktop.theme.fonts import bundled_fonts
 
     names = {path.stem.split("_")[0] for path in bundled_fonts()}
     assert names == {"Inter", "InterDisplay", "GeistMono"}

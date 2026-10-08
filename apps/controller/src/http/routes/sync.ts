@@ -10,7 +10,7 @@ import {
   SyncGetPlanSchema,
   SyncHeartbeatSchema,
   SyncRequestsQuerySchema,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import type { Services } from "../../services";
 import { badRequest } from "../../core/errors";
 import { isSyncFormat } from "../../services/projects";

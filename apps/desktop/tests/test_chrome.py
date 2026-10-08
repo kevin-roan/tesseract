@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta, timezone
 
-from monolith_desktop.config.model import ConnectionConfig
-from monolith_desktop.services.connection_view import connection_label, status_title
-from monolith_desktop.store import ConnectionState
-from monolith_desktop.theme.css import css_var
-from monolith_desktop.theme.extras.chrome import rules
-from monolith_desktop.theme.extras.sidebar import rules as sidebar_rules
-from monolith_desktop.widgets.sidebar_composer import composer_params
-from monolith_desktop.theme.tokens import SIDEBAR_WIDTH, SIDEBAR_WIDTH_RANGE
-from monolith_desktop.widgets.sidebar_model import (
+from tesseract_desktop.config.model import ConnectionConfig
+from tesseract_desktop.services.connection_view import connection_label, status_title
+from tesseract_desktop.store import ConnectionState
+from tesseract_desktop.theme.css import css_var
+from tesseract_desktop.theme.extras.chrome import rules
+from tesseract_desktop.theme.extras.sidebar import rules as sidebar_rules
+from tesseract_desktop.widgets.sidebar_composer import composer_params
+from tesseract_desktop.theme.tokens import SIDEBAR_WIDTH, SIDEBAR_WIDTH_RANGE
+from tesseract_desktop.widgets.sidebar_model import (
     clamp_sidebar_width,
     dragged_sidebar_width,
     project_items,
@@ -17,7 +17,7 @@ from monolith_desktop.widgets.sidebar_model import (
     stored_sidebar_width,
     workspace_state,
 )
-from monolith_desktop.widgets.window_controls import decoration_buttons
+from tesseract_desktop.widgets.window_controls import decoration_buttons
 
 NOW = datetime(2026, 9, 28, 12, 0, tzinfo=timezone.utc)
 

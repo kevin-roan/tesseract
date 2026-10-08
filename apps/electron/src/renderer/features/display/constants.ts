@@ -24,7 +24,7 @@ export const DEFAULT_DISPLAY = ":1";
 export const META_SEPARATOR = " · ";
 export const UNIT_SCALE_EPSILON = 1e-3;
 
-export const SCREENSHOT_FILE_PREFIX = "monolith-display-";
+export const SCREENSHOT_FILE_PREFIX = "tesseract-display-";
 export const SCREENSHOT_MIME = "image/png";
 export const SVG_MIME = "image/svg+xml";
 export const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47] as const;

@@ -1,4 +1,4 @@
-import type { SyncChanges, SyncFileChange, SyncRequest } from "@theone/protocol";
+import type { SyncChanges, SyncFileChange, SyncRequest } from "@tesseract/protocol";
 import type { FileDiff, HostChange, SnapshotSummary, SyncLinkSummary } from "../../../shared/contracts/syncback";
 
 const MINUTE_MS = 60_000;
@@ -10,7 +10,7 @@ const sha = (seed: string) => seed.repeat(64).slice(0, 64);
 export const FIXTURE_LINKS: SyncLinkSummary[] = [
   { projectId: "sante-production", hostPath: "/mnt/data/dev/Projects/work/sante-production", pushedAt: ago(7 * HOUR_MS), gotAt: null, confidential: false, files: 412 },
   { projectId: "hybrid-pos", hostPath: "/mnt/data/dev/Projects/ejs/racecast-pos", pushedAt: ago(2 * DAY_MS), gotAt: ago(56 * MINUTE_MS), confidential: false, files: 1290 },
-  { projectId: "monolith", hostPath: "/home/dev/code/monolith", pushedAt: ago(3 * HOUR_MS), gotAt: ago(2 * HOUR_MS), confidential: false, files: 820 },
+  { projectId: "tesseract", hostPath: "/home/dev/code/tesseract", pushedAt: ago(3 * HOUR_MS), gotAt: ago(2 * HOUR_MS), confidential: false, files: 820 },
 ];
 
 const change = (path: string, kind: SyncFileChange["kind"], size: number | null, discardable = true): SyncFileChange => ({
@@ -36,7 +36,7 @@ const HYBRID_CHANGES: SyncFileChange[] = [
   change("src/legacy/report-print.ts", "deleted", null),
 ];
 
-const MONOLITH_CHANGES: SyncFileChange[] = [
+const TESSERACT_CHANGES: SyncFileChange[] = [
   change("apps/electron/src/main/index.ts", "modified", 4_120),
   change("docs/electron/conventions.md", "modified", 21_840),
   change("apps/electron/assets/hero.png", "added", 2_400_000, false),
@@ -55,13 +55,13 @@ const changes = (projectId: string, list: SyncFileChange[], baselineAt: string |
 export const FIXTURE_CHANGES: Readonly<Record<string, SyncChanges>> = {
   "sante-production": changes("sante-production", [], ago(7 * HOUR_MS)),
   "hybrid-pos": changes("hybrid-pos", HYBRID_CHANGES, ago(2 * DAY_MS)),
-  monolith: changes("monolith", MONOLITH_CHANGES, ago(3 * HOUR_MS)),
+  tesseract: changes("tesseract", TESSERACT_CHANGES, ago(3 * HOUR_MS)),
   streaxfit: changes("streaxfit", [], null),
 };
 
 const request = (id: string, kind: SyncRequest["kind"], status: SyncRequest["status"], createdAt: string, extra: Partial<SyncRequest> = {}): SyncRequest => ({
   id,
-  projectId: "monolith",
+  projectId: "tesseract",
   kind,
   status,
   paths: null,
@@ -76,21 +76,21 @@ const request = (id: string, kind: SyncRequest["kind"], status: SyncRequest["sta
 });
 
 export const FIXTURE_REQUESTS: Readonly<Record<string, SyncRequest[]>> = {
-  monolith: [
+  tesseract: [
     request("sync_p3nd1ng0a1", "pull", "pending", ago(MINUTE_MS)),
     request("sync_4ppl13d0b2", "get", "applied", ago(2 * HOUR_MS), {
       source: "cli",
-      result: { added: 1, modified: 3, deleted: 0, conflicts: [], snapshotId: null, hostPath: "/home/dev/code/monolith", insertions: 42, deletions: 7, gitFiles: 3 },
+      result: { added: 1, modified: 3, deleted: 0, conflicts: [], snapshotId: null, hostPath: "/home/dev/code/tesseract", insertions: 42, deletions: 7, gitFiles: 3 },
     }),
     request("sync_4ppl13d0c3", "pull", "applied", ago(3 * HOUR_MS), {
-      result: { added: 2, modified: 5, deleted: 1, conflicts: [], snapshotId: "20260923T100500Z", hostPath: "/home/dev/code/monolith" },
+      result: { added: 2, modified: 5, deleted: 1, conflicts: [], snapshotId: "20260923T100500Z", hostPath: "/home/dev/code/tesseract" },
     }),
     request("sync_f41l3d00d4", "pull", "failed", ago(5 * HOUR_MS), { source: "mobile", error: "The host folder is not linked on workstation" }),
   ],
 };
 
 export const FIXTURE_SNAPSHOTS: Readonly<Record<string, SnapshotSummary[]>> = {
-  monolith: [
+  tesseract: [
     { id: "20260923T100500Z", createdAt: ago(3 * HOUR_MS), entries: 8, reverted: false, kind: "pull" },
     { id: "20260922T171200Z", createdAt: ago(DAY_MS + 6 * HOUR_MS), entries: 2, reverted: true, kind: "pull" },
   ],
@@ -127,8 +127,8 @@ export function fixtureDiff(path: string): FileDiff {
   return { ...DIFF_LINES, path };
 }
 
-const THEONE_MOBILE_CHANGES: SyncFileChange[] = [
-  ...MONOLITH_CHANGES,
+const TESSERACT_MOBILE_CHANGES: SyncFileChange[] = [
+  ...TESSERACT_CHANGES,
   change("apps/electron/src/renderer/pages/projects/ProjectsPage.tsx", "modified", 2_310),
   change("apps/electron/src/renderer/pages/files/FilesPage.tsx", "modified", 3_870),
   change("apps/electron/src/renderer/pages/display/DisplayPage.tsx", "modified", 4_020),
@@ -143,7 +143,7 @@ export function parityLinks(): SyncLinkSummary[] {
   return [
     { ...FIXTURE_LINKS[0]!, pushedAt: ago(7 * HOUR_MS) },
     { ...FIXTURE_LINKS[1]!, projectId: "brave-hare", pushedAt: ago(2 * DAY_MS), gotAt: ago(56 * MINUTE_MS) },
-    { ...FIXTURE_LINKS[2]!, projectId: "theone-mobile", hostPath: "/mnt/data/dev/Projects/work/theone-mobile", pushedAt: ago(3 * HOUR_MS), gotAt: ago(2 * HOUR_MS) },
+    { ...FIXTURE_LINKS[2]!, projectId: "tesseract-mobile", hostPath: "/mnt/data/dev/Projects/work/tesseract-mobile", pushedAt: ago(3 * HOUR_MS), gotAt: ago(2 * HOUR_MS) },
   ];
 }
 
@@ -151,7 +151,7 @@ export function parityChanges(): Readonly<Record<string, SyncChanges>> {
   return {
     "sante-production": changes("sante-production", [], ago(7 * HOUR_MS)),
     "brave-hare": changes("brave-hare", HYBRID_CHANGES, ago(2 * DAY_MS)),
-    "theone-mobile": changes("theone-mobile", THEONE_MOBILE_CHANGES, ago(3 * HOUR_MS)),
+    "tesseract-mobile": changes("tesseract-mobile", TESSERACT_MOBILE_CHANGES, ago(3 * HOUR_MS)),
     "nimble-lotus": changes("nimble-lotus", [], null),
   };
 }

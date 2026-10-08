@@ -3,11 +3,11 @@ from pathlib import Path
 
 import pytest
 
-from monolith_desktop.api.errors import ProtocolError
-from monolith_desktop.api.client import ControllerClient
-from monolith_desktop.api.types import parse_claude_account_list, parse_claude_auth_status
-from monolith_desktop.claude import model
-from monolith_desktop.claude.host import HostPaths, host_accounts, host_paths, read_host_state, read_host_states
+from tesseract_desktop.api.errors import ProtocolError
+from tesseract_desktop.api.client import ControllerClient
+from tesseract_desktop.api.types import parse_claude_account_list, parse_claude_auth_status
+from tesseract_desktop.claude import model
+from tesseract_desktop.claude.host import HostPaths, host_accounts, host_paths, read_host_state, read_host_states
 
 OAUTH = {
     "accessToken": "sk-ant-oat-access",
@@ -146,9 +146,9 @@ def test_model_rows(claude_home: HostPaths):
 
 
 def test_sandbox_error_message_flags_outdated_controller():
-    from monolith_desktop.api.errors import ApiError
-    from monolith_desktop.claude.model import sandbox_error_message
-    from monolith_desktop.strings import CLAUDE
+    from tesseract_desktop.api.errors import ApiError
+    from tesseract_desktop.claude.model import sandbox_error_message
+    from tesseract_desktop.strings import CLAUDE
 
     assert sandbox_error_message(ApiError(404, "not_found", "No route for GET /v1/claude/auth")) == CLAUDE["outdated"]
     assert sandbox_error_message(ApiError(500, "internal", "boom")) != CLAUDE["outdated"]
@@ -218,8 +218,8 @@ def test_account_choices():
 
 
 def test_accounts_error_message_flags_outdated_controller():
-    from monolith_desktop.api.errors import ApiError
-    from monolith_desktop.strings import CLAUDE
+    from tesseract_desktop.api.errors import ApiError
+    from tesseract_desktop.strings import CLAUDE
 
     assert model.sandbox_error_message(ApiError(404, "not_found", "nope"), "accounts_outdated") == CLAUDE["accounts_outdated"]
 

@@ -10,7 +10,7 @@ import {
   StatusEventInputSchema,
   UsageQuerySchema,
   type Health,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { nowIso } from "../../core/time";
 import type { Services } from "../../services";
 import { jsonBody, optionalJsonBody, parseWith } from "../validation";

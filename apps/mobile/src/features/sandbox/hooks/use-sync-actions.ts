@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import type { CreateSyncRequest, SyncDiscardResult, SyncRequest } from "@theone/protocol";
+import type { CreateSyncRequest, SyncDiscardResult, SyncRequest } from "@tesseract/protocol";
 
 import { confirm } from "@/lib/confirm";
 

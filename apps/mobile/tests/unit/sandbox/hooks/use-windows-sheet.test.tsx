@@ -1,17 +1,17 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
-import type { DisplayWindow } from "@theone/protocol";
+import { TesseractClient } from "@tesseract/client";
+import type { DisplayWindow } from "@tesseract/protocol";
 
 import { useWindowsSheet } from "@/features/sandbox/hooks/use-windows-sheet";
 import { confirm } from "@/lib/confirm";
 
 import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 jest.mock("@/lib/confirm", () => ({ confirm: jest.fn() }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const mockConfirm = confirm as jest.Mock;
 const APP: DisplayWindow = { id: "0x3a00004", title: "Hybrid POS", app: "electron", pid: 42, active: true, minimized: false };
 const fake = { displayWindows: jest.fn(), activateDisplayWindow: jest.fn(), closeDisplayWindow: jest.fn() };

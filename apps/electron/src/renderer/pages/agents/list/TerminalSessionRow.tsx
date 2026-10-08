@@ -1,4 +1,4 @@
-import type { ClaudeSession } from "@theone/protocol";
+import type { ClaudeSession } from "@tesseract/protocol";
 import { Icon } from "../../../components/Icon";
 import { Text } from "../../../components/Text";
 import { Tooltip } from "../../../components/Tooltip";

@@ -1,4 +1,4 @@
-import type { SessionsFilter } from "@theone/protocol";
+import type { SessionsFilter } from "@tesseract/protocol";
 
 import { useSandboxQuery } from "@/features/sandbox/hooks/use-sandbox-query";
 

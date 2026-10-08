@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
-import type { TerminalInfo } from "@theone/protocol";
-import { sampleTerminal } from "@theone/protocol/fixtures";
+import { TesseractClient } from "@tesseract/client";
+import type { TerminalInfo } from "@tesseract/protocol";
+import { sampleTerminal } from "@tesseract/protocol/fixtures";
 
 import { useTerminalLauncher } from "@/features/sandbox/hooks/use-terminal-launcher";
 import { useTerminalSession } from "@/features/sandbox/hooks/use-terminal-session";
@@ -24,7 +24,7 @@ const mockSession = {
 };
 const mockPageUrls: unknown[] = [];
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   get router() {
@@ -39,7 +39,7 @@ jest.mock("@/features/sandbox/hooks/use-web-page-session", () => ({
   },
 }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const mockConfirm = confirm as jest.Mock;
 const fake = { createTerminal: jest.fn(), closeTerminal: jest.fn(), listTerminals: jest.fn(), terminalPageUrl: jest.fn() };
 const wrapper = () => createWrapper(createTestQueryClient());

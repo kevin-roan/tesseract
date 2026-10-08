@@ -4,7 +4,7 @@ import type { RadioChoice } from "../../../components/RadioRows";
 export const SECTION_LABELS = {
   title: "Appearance",
   themeGroup: "Theme",
-  themeDescription: "Choose how Monolith looks on this computer.",
+  themeDescription: "Choose how Tesseract looks on this computer.",
 } as const;
 
 export const APPEARANCE_CHOICES: readonly RadioChoice<Appearance>[] = [

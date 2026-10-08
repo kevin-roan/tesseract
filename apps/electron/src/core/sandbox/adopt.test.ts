@@ -6,8 +6,8 @@ import type { BuildPhase } from "../../shared/contracts/sandbox";
 import { adoptExisting } from "./adopt";
 import { FakeDocker, ok, tempStack, type TempStack } from "./test-support";
 
-const TARGET = { project: "monolith-test-adopt", image: "theone/sandbox:latest" };
-const CONTAINER = "monolith-test-adopt-sandbox-1";
+const TARGET = { project: "tesseract-test-adopt", image: "tesseract/sandbox:latest" };
+const CONTAINER = "tesseract-test-adopt-sandbox-1";
 const FOUND: DiscoveryResult & { ok: true } = {
   ok: true,
   config: { apiUrl: "http://127.0.0.1:7700", token: "t".repeat(43), name: "box", pairingUrl: "http://127.0.0.1:7700", source: "docker", container: CONTAINER },

@@ -1,4 +1,4 @@
-import type { Upload, UploadKind } from "@theone/protocol";
+import type { Upload, UploadKind } from "@tesseract/protocol";
 
 export type PickedFile = {
   uri: string;

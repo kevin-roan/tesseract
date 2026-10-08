@@ -13,7 +13,7 @@ import {
   TicketSchema,
   type HostSession,
   type TerminalInfo,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { runCli, type Output } from "../src/cli/commands";
 import { silentLogger } from "../src/core/logger";
 import { HostConfigError, hostToolPath, loadHostConfig, servedUrl, tailscaleBin, validateBind, type HostConfig } from "../src/host/config";
@@ -34,7 +34,7 @@ let token: string;
 function hostConfig(): HostConfig {
   const dir = makeTempDir("host");
   return {
-    ...loadHostConfig({ HOME: dir, THEONE_HOST_SHELL_DIR: join(dir, "state"), SHELL: "/bin/sh" }, { bind: "127.0.0.1", port: "0" }),
+    ...loadHostConfig({ HOME: dir, TESSERACT_HOST_SHELL_DIR: join(dir, "state"), SHELL: "/bin/sh" }, { bind: "127.0.0.1", port: "0" }),
     shell: ["/bin/sh"],
   };
 }
@@ -86,20 +86,20 @@ describe("bind validation", () => {
 
   test("refuses empty and wildcard binds from the environment", () => {
     for (const bind of ["", " ", "::", "0.0.0.0"]) {
-      expect(() => loadHostConfig({ THEONE_HOST_SHELL_BIND: bind, HOME: "/tmp" })).toThrow(HostConfigError);
+      expect(() => loadHostConfig({ TESSERACT_HOST_SHELL_BIND: bind, HOME: "/tmp" })).toThrow(HostConfigError);
     }
-    expect(() => loadHostConfig({ THEONE_HOST_SHELL_PORT: "70000", THEONE_HOST_SHELL_BIND: "127.0.0.1" })).toThrow(HostConfigError);
+    expect(() => loadHostConfig({ TESSERACT_HOST_SHELL_PORT: "70000", TESSERACT_HOST_SHELL_BIND: "127.0.0.1" })).toThrow(HostConfigError);
   });
 
   test("defaults the state dir under XDG_CONFIG_HOME and the public url to the bind", () => {
-    const loaded = loadHostConfig({ XDG_CONFIG_HOME: "/x/cfg", HOME: "/x", THEONE_HOST_SHELL_BIND: "100.100.1.2" });
-    expect(loaded.stateFile).toBe("/x/cfg/theone/host-shell/state.json");
+    const loaded = loadHostConfig({ XDG_CONFIG_HOME: "/x/cfg", HOME: "/x", TESSERACT_HOST_SHELL_BIND: "100.100.1.2" });
+    expect(loaded.stateFile).toBe("/x/cfg/tesseract/host-shell/state.json");
     expect(loaded.publicUrl).toBe("http://100.100.1.2:7701");
-    expect(loadHostConfig({ HOME: "/x" }, {}, false).stateDir).toBe("/x/.config/theone/host-shell");
+    expect(loadHostConfig({ HOME: "/x" }, {}, false).stateDir).toBe("/x/.config/tesseract/host-shell");
   });
 
   test("defaults the shell to zsh on macOS and keeps SHELL when set", () => {
-    const bind = { THEONE_HOST_SHELL_BIND: "127.0.0.1", HOME: "/x", PATH: "" };
+    const bind = { TESSERACT_HOST_SHELL_BIND: "127.0.0.1", HOME: "/x", PATH: "" };
     expect(loadHostConfig(bind, {}, true, "darwin").shell).toEqual(["/bin/zsh", "-l"]);
     expect(loadHostConfig(bind, {}, true, "linux").shell).toEqual(["bash", "-l"]);
     expect(loadHostConfig({ ...bind, SHELL: "/bin/fish" }, {}, true, "darwin").shell).toEqual(["/bin/fish", "-l"]);
@@ -131,7 +131,7 @@ describe("bind validation", () => {
   });
 
   test("children never see host shell variables", () => {
-    expect(hostShellEnv({ THEONE_HOST_SHELL_DIR: "/s", PATH: "/bin" })).toEqual({ PATH: "/bin" });
+    expect(hostShellEnv({ TESSERACT_HOST_SHELL_DIR: "/s", PATH: "/bin" })).toEqual({ PATH: "/bin" });
   });
 });
 
@@ -258,7 +258,7 @@ describe("terminals", () => {
 
     const { ticket } = TicketSchema.parse((await call("POST", "/v1/auth/ticket", session)).body);
     const socket = await WsClient.connect(`${base.replace(/^http/, "ws")}/v1/terminals/${info.id}/stream?ticket=${ticket}`);
-    socket.send({ type: "input", data: "echo host-$((40+2)) $THEONE_HOST_SHELL_DIR.\r" });
+    socket.send({ type: "input", data: "echo host-$((40+2)) $TESSERACT_HOST_SHELL_DIR.\r" });
     const text = () =>
       socket.messages
         .map((message) => TerminalServerMessageSchema.parse(message))
@@ -311,7 +311,7 @@ describe("host CLI", () => {
 
   test("pin (stdin and prompted), pair and token", async () => {
     const dir = makeTempDir("host-cli");
-    const env = { HOME: dir, THEONE_HOST_SHELL_DIR: join(dir, "s"), THEONE_HOST_SHELL_BIND: "100.101.102.103" };
+    const env = { HOME: dir, TESSERACT_HOST_SHELL_DIR: join(dir, "s"), TESSERACT_HOST_SHELL_BIND: "100.101.102.103" };
     const cli = new HostStateStore(join(dir, "s"), join(dir, "s", "state.json"));
 
     const bad = capture();

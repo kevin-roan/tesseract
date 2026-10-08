@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { Platform, Share } from "react-native";
-import type { BrowserTab } from "@theone/protocol";
+import type { BrowserTab } from "@tesseract/protocol";
 
 import { browserSummary, tabShare } from "../utils/browser";
 import { describeError } from "../utils/errors";

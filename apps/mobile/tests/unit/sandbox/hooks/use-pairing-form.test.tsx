@@ -1,7 +1,7 @@
 import { act, renderHook } from "@testing-library/react-native";
-import { ApiError, NetworkError, ProtocolVersionError, TheOneClient } from "@theone/client";
-import { buildPairingLink } from "@theone/protocol";
-import { sampleHealth, sampleStatus } from "@theone/protocol/fixtures";
+import { ApiError, NetworkError, ProtocolVersionError, TesseractClient } from "@tesseract/client";
+import { buildPairingLink } from "@tesseract/protocol";
+import { sampleHealth, sampleStatus } from "@tesseract/protocol/fixtures";
 
 import { usePairingForm } from "@/features/sandbox/hooks/use-pairing-form";
 import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
@@ -10,11 +10,11 @@ import { tokenStorageKey } from "@/features/sandbox/utils/identity";
 import { __dump as dumpSecure } from "../../../mocks/expo-secure-store";
 import { createTestQueryClient, createWrapper, resetSandboxState } from "../helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const TOKEN = "Zx9-pairing_token.0123456789";
-const URL = "https://theone-sandbox.tail1234.ts.net";
+const URL = "https://tesseract-sandbox.tail1234.ts.net";
 const probe = { baseUrl: URL, health: jest.fn(), status: jest.fn() };
 
 const renderForm = (initial?: Parameters<typeof usePairingForm>[0]) =>
@@ -146,7 +146,7 @@ describe("usePairingForm", () => {
     });
     expect(draft).toBeNull();
     expect(result.current.status).toBe("error");
-    expect(result.current.message).toMatch(/not a Monolith pairing link/);
+    expect(result.current.message).toMatch(/not a Tesseract pairing link/);
   });
 
   it("submits an explicit draft from a scan without waiting for a re-render", async () => {

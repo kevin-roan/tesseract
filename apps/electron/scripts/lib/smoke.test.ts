@@ -3,8 +3,8 @@ import { artifactName, parseCliVersion, parseUpdateFeed, pngSize } from "./smoke
 
 describe("smoke helpers", () => {
   it("names the Linux artifacts like electron-builder", () => {
-    expect(artifactName("0.1.0", "AppImage")).toBe("Monolith-0.1.0-x86_64.AppImage");
-    expect(artifactName("0.1.0", "deb")).toBe("Monolith-0.1.0-amd64.deb");
+    expect(artifactName("0.1.0", "AppImage")).toBe("Tesseract-0.1.0-x86_64.AppImage");
+    expect(artifactName("0.1.0", "deb")).toBe("Tesseract-0.1.0-amd64.deb");
   });
 
   it("parses the CLI version line", () => {
@@ -19,9 +19,9 @@ describe("smoke helpers", () => {
   });
 
   it("parses app-update.yml", () => {
-    expect(parseUpdateFeed("provider: generic\nurl: https://downloads.monolith.dev/desktop\nupdaterCacheDirName: monolith-updater\n")).toEqual({
+    expect(parseUpdateFeed("provider: generic\nurl: https://downloads.tesseract.dev/desktop\nupdaterCacheDirName: tesseract-updater\n")).toEqual({
       provider: "generic",
-      url: "https://downloads.monolith.dev/desktop",
+      url: "https://downloads.tesseract.dev/desktop",
       channel: null,
     });
   });

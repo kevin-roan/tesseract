@@ -8,13 +8,13 @@ const env = (name, fallback) => {
   return value;
 };
 
-const app = env("THEONE_WEB_APP", "http://127.0.0.1:8081");
-const controller = env("THEONE_WEB_CONTROLLER", "http://127.0.0.1:7700");
-const token = env("THEONE_WEB_TOKEN");
-const name = env("THEONE_WEB_NAME", "e2e");
-const project = env("THEONE_WEB_PROJECT", "electron-hello");
-const out = env("THEONE_WEB_OUT", "/tmp/theone-e2e-web-shots");
-const chromiumPath = env("THEONE_WEB_CHROMIUM", "/usr/bin/chromium");
+const app = env("TESSERACT_WEB_APP", "http://127.0.0.1:8081");
+const controller = env("TESSERACT_WEB_CONTROLLER", "http://127.0.0.1:7700");
+const token = env("TESSERACT_WEB_TOKEN");
+const name = env("TESSERACT_WEB_NAME", "e2e");
+const project = env("TESSERACT_WEB_PROJECT", "electron-hello");
+const out = env("TESSERACT_WEB_OUT", "/tmp/tesseract-e2e-web-shots");
+const chromiumPath = env("TESSERACT_WEB_CHROMIUM", "/usr/bin/chromium");
 const TIMEOUT_MS = 30_000;
 
 mkdirSync(out, { recursive: true });

@@ -1,4 +1,4 @@
-import type { GitCommit, GitDetails, GitFileStatus, GitSummary } from "@theone/protocol";
+import type { GitCommit, GitDetails, GitFileStatus, GitSummary } from "@tesseract/protocol";
 import { childEnv, run } from "../core/exec";
 import { toUtcIso } from "../core/time";
 

@@ -18,8 +18,8 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from monolith_desktop.app import MonolithApplication  # noqa: E402
-from monolith_desktop.theme.manager import theme  # noqa: E402
+from tesseract_desktop.app import TesseractApplication  # noqa: E402
+from tesseract_desktop.theme.manager import theme  # noqa: E402
 
 from gi.repository import Adw, GLib, Graphene, Gtk  # noqa: E402
 
@@ -66,7 +66,7 @@ def main() -> None:
     args = parser.parse_args()
     params = json.loads(args.params) if args.params else None
 
-    app = MonolithApplication()
+    app = TesseractApplication()
 
     attempts = [0]
 

@@ -1,4 +1,4 @@
-import type { InboxItem, InboxKind } from "@theone/protocol";
+import type { InboxItem, InboxKind } from "@tesseract/protocol";
 
 export type InboxSectionId = "attention" | "unread" | "earlier";
 

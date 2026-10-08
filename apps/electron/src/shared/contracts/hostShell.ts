@@ -1,4 +1,4 @@
-import type { AndroidLinkInfo, HostAndroidStatus } from "@theone/protocol";
+import type { AndroidLinkInfo, HostAndroidStatus } from "@tesseract/protocol";
 import type { DefineContract } from "../ipc-types";
 
 export type HostShellStatus = "stopped" | "starting" | "running" | "stopping" | "external" | "failed";

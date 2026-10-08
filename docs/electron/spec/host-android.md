@@ -1,13 +1,13 @@
 # Spec: host shell daemon, host Android emulator, Speech-to-text, Claude accounts
 
-Scope: everything the GTK app (`apps/desktop`, "Monolith") does with **this computer** rather than
-the sandbox: running and controlling the host shell daemon (`theone-controller host …`), preparing the
+Scope: everything the GTK app (`apps/desktop`, "Tesseract") does with **this computer** rather than
+the sandbox: running and controlling the host shell daemon (`tesseract-controller host …`), preparing the
 host Android emulator for a project's Android run target, and the three settings pages
 **Claude**, **Host shell** and **Speech-to-text**. It is enough to rebuild them in
 `apps/electron` (React renderer + Electron main) without opening the Python.
 
 Python sources this was taken from (read-only reference):
-`monolith_desktop/hostshell/{model,service,android}.py`, `stt/model.py`, `claude/{host,model}.py`,
+`tesseract_desktop/hostshell/{model,service,android}.py`, `stt/model.py`, `claude/{host,model}.py`,
 `preferences/{host_shell,stt,claude}.py`, `widgets/{host_pin_dialog,host_unlock_dialog,pair_dialog,preference_rows,radio_rows}.py`,
 `pages/projects/{emulator,emulator_launch,labels}.py`, `strings.py`, `theme/extras/dialogs.py`.
 Daemon: `apps/controller/src/host/**`. Contracts: [app-runs-and-emulator.md §2](../../architecture/app-runs-and-emulator.md#2-android-emulator-on-the-host),
@@ -18,8 +18,8 @@ Daemon: `apps/controller/src/host/**`. Contracts: [app-runs-and-emulator.md §2]
 ## 1. Architecture in Electron
 
 ```
-renderer (React)  ──IPC──>  main: HostShellService  ──spawn──> theone-controller host serve   (child process)
-                                                     ──spawn──> theone-controller host pin|pair|token (one-shot)
+renderer (React)  ──IPC──>  main: HostShellService  ──spawn──> tesseract-controller host serve   (child process)
+                                                     ──spawn──> tesseract-controller host pin|pair|token (one-shot)
                                                      ──HTTP───> http(s)://<bind>:7701/v1/...      (Android API, health)
                    ──IPC──>  main: readHostClaudeStates()       (reads ~/.claude*, never returns secrets)
                    ──IPC──>  main: EmulatorViewer (scrcpy child)
@@ -40,18 +40,18 @@ renderer ──(sandbox controller REST, existing client)──> /v1/stt, /v1/cl
 
 GTK resolves the command as (in order):
 
-1. `MONOLITH_CONTROLLER_COMMAND` env var, split shell-style (`shlex.split`) – used verbatim.
+1. `TESSERACT_CONTROLLER_COMMAND` env var, split shell-style (`shlex.split`) – used verbatim.
 2. `<repo>/apps/controller/src/index.ts` run with `bun` (`bun` from `PATH`, else `$BUN_INSTALL/bin/bun`,
    else `~/.bun/bin/bun`, must be executable).
    Errors (verbatim):
-   - `The controller is not in this checkout ({entry}); set MONOLITH_CONTROLLER_COMMAND`
+   - `The controller is not in this checkout ({entry}); set TESSERACT_CONTROLLER_COMMAND`
    - `Bun is not installed or not on PATH; install it from bun.sh`
 
 **Electron** (installed app, no checkout, no Bun):
 
-1. `MONOLITH_CONTROLLER_COMMAND` (keep the override, same semantics; useful for dev).
-2. The bundled compiled binary: `process.resourcesPath/bin/theone-controller[.exe]` (electron-builder
-   `extraResources`), built with the existing script `bun build src/index.ts --compile --minify --sourcemap --outfile dist/theone-controller`
+1. `TESSERACT_CONTROLLER_COMMAND` (keep the override, same semantics; useful for dev).
+2. The bundled compiled binary: `process.resourcesPath/bin/tesseract-controller[.exe]` (electron-builder
+   `extraResources`), built with the existing script `bun build src/index.ts --compile --minify --sourcemap --outfile dist/tesseract-controller`
    (`apps/controller/package.json` `build`), one per target (`--target=bun-linux-x64`, `bun-linux-arm64`,
    `bun-darwin-arm64`, `bun-darwin-x64`, `bun-windows-x64`).
 3. Dev (`app.isPackaged === false`): `bun <repo>/apps/controller/src/index.ts`, as GTK.
@@ -63,10 +63,10 @@ Facts that make the compiled binary work unchanged:
 - `/ui/android` and `/ui/terminal` pages are HTML imports (`import androidPage from "../ui/android.html"`)
   and are embedded by `bun build --compile` (Bun HTML-import bundling). Verify `GET /ui/android` returns 200
   from the compiled binary in an e2e test.
-- The same binary is also the sandbox controller and the `monolith` CLI entry (`src/index.ts` dispatches
-  `serve`, `host …`, etc.), so one bundled binary can serve both the `monolith` CLI and the host daemon if the
+- The same binary is also the sandbox controller and the in-sandbox `tesseract --get` entry (`src/index.ts` dispatches
+  `serve`, `host …`, etc.), so one bundled binary can serve both the controller CLI and the host daemon if the
   packaging spec decides so (they may be the same file or two builds; the host daemon only needs `host …`).
-- A prebuilt `apps/controller/dist/theone-controller` already exists in the repo checkout (Linux).
+- A prebuilt `apps/controller/dist/tesseract-controller` already exists in the repo checkout (Linux).
 
 ### 2.2 State model (`HostShellState`)
 
@@ -102,7 +102,7 @@ ready   = serving && pairing !== null && pairing.pinSet
 | PIN pattern | `^[0-9]{6,12}$` (full match) |
 | Autostart setting | key `host_shell_autostart` (`true` only when exactly boolean true) in the app settings file |
 
-GTK's settings file is `$XDG_CONFIG_HOME/monolith-desktop/config.json` (`MONOLITH_DESKTOP_CONFIG` overrides).
+GTK's settings file is `$XDG_CONFIG_HOME/tesseract-desktop/config.json` (`TESSERACT_DESKTOP_CONFIG` overrides).
 Electron stores `hostShellAutostart` in its own settings store; reading the GTK file once for migration is optional.
 
 **start()** – no-op when `owned` or `external`. Spawns `[...command, "host", "serve"]` with
@@ -132,7 +132,7 @@ it is the host daemon when the JSON is `{ ok: true, service: "host-shell", … }
 
 Probe error → `error = message`; `status = "failed"` unless owned (then status unchanged).
 
-`host pair --json` needs to resolve the bind address (Tailscale) unless `THEONE_HOST_SHELL_PUBLIC_URL`
+`host pair --json` needs to resolve the bind address (Tailscale) unless `TESSERACT_HOST_SHELL_PUBLIC_URL`
 is set; it prefers the `https://<magicdns>` URL of `tailscale serve` when one proxies to the daemon. So
 on a machine without Tailscale the probe fails with the daemon's message, e.g.
 `tailscale is not installed; install it on the host or pass --bind <ipv4>` or
@@ -145,7 +145,7 @@ take the last one, strip the `error:` prefix; fallback `The controller exited wi
 **setPin(pin)** – `host pin --stdin`, PIN written to stdin as `"<pin>\n"` (never argv, never disk in clear),
 then `refresh()`. **rotateToken()** – `host token --rotate`, then `refresh()`.
 
-**Host token** – taken from the pairing link: `theone://host?…&token=<t>` (query before `#`,
+**Host token** – taken from the pairing link: `tesseract://host?…&token=<t>` (query before `#`,
 URI-decoded). Missing → `The host pairing link has no token`.
 
 **App lifecycle** – on app ready: `autostart ? start() : refresh()`. On quit: SIGTERM our child, wait 3 s, kill.
@@ -166,8 +166,8 @@ Host HTTP error text: API errors → the server's `message`; network errors →
 ### 2.5 Electron-specific requirements (do not copy GTK limits blindly)
 
 - **Ports.** The daemon default is `7701` (`HOST_SHELL_PORT`). The user's own daemon may already be on it;
-  dev/e2e runs must pass `THEONE_HOST_SHELL_PORT=<free port>`, `THEONE_HOST_SHELL_DIR=<tmp dir>` and
-  `--bind 127.0.0.1` / `THEONE_HOST_SHELL_BIND=127.0.0.1` so they never touch the user's state or daemon.
+  dev/e2e runs must pass `TESSERACT_HOST_SHELL_PORT=<free port>`, `TESSERACT_HOST_SHELL_DIR=<tmp dir>` and
+  `--bind 127.0.0.1` / `TESSERACT_HOST_SHELL_BIND=127.0.0.1` so they never touch the user's state or daemon.
   A port conflict shows up as a `failed` status with the daemon's error; detect `external` first (health probe) so
   the app never spawns a second daemon on a busy port.
 - **Bind.** Only loopback or `100.64.0.0/10` is accepted (`Refusing to bind …`). Phones need the Tailscale
@@ -187,22 +187,22 @@ Host HTTP error text: API errors → the server's `message`; network errors →
 
 | What | Resolution (first match wins) | Missing → |
 |---|---|---|
-| SDK root | `THEONE_ANDROID_SDK_ROOT`; else `$HOME/.local/share/theone/android-sdk` **if** it contains `emulator/emulator`; else `ANDROID_SDK_ROOT`; else `ANDROID_HOME` | `No Android SDK found; set THEONE_ANDROID_SDK_ROOT` |
+| SDK root | `TESSERACT_ANDROID_SDK_ROOT`; else `$HOME/.local/share/tesseract/android-sdk` **if** it contains `emulator/emulator`; else `ANDROID_SDK_ROOT`; else `ANDROID_HOME` | `No Android SDK found; set TESSERACT_ANDROID_SDK_ROOT` |
 | emulator binary | `<sdkRoot>/emulator/emulator` (must exist) | `The Android emulator is not installed in {sdkRoot}` |
-| adb | `THEONE_ADB` (path with `/` must exist, else looked up on PATH); else `adb` on PATH | `adb is not installed on the host; set THEONE_ADB` |
-| scrcpy server jar | `THEONE_SCRCPY_SERVER`; else `/usr/share/scrcpy/scrcpy-server`, `/usr/local/share/scrcpy/scrcpy-server` | `scrcpy: false` in status (screen stream off) |
-| scrcpy version | `THEONE_SCRCPY_VERSION`; else parsed from `scrcpy --version` first line `scrcpy <ver>` | `scrcpy: false` |
-| ffmpeg | `THEONE_FFMPEG`; else `ffmpeg` on PATH | `ffmpeg: false` |
-| console port | `THEONE_EMULATOR_PORT`, even, 5554–5682, default `5554` (adbd = +1) | startup error |
-| GPU | `THEONE_EMULATOR_GPU`, default `host` if a `/dev/dri/renderD*` node is usable, else `swiftshader_indirect` | — |
-| isolation | `THEONE_EMULATOR_ISOLATION` = `netns` (default) \| `none` | startup error on other values |
-| unshare / ip | PATH; `ip` also in `/usr/sbin`, `/sbin` | `Emulator network isolation needs unshare (util-linux) and ip (iproute2) on the host; THEONE_EMULATOR_ISOLATION=none runs the emulator without isolation, but …` |
-| allow-list | `THEONE_EMULATOR_ALLOW_NETS` comma CIDRs | startup error `THEONE_EMULATOR_ALLOW_NETS: "<x>" is not a CIDR` |
-| adb bridge port | `THEONE_EMULATOR_ADB_PORT` (≠0), else free port persisted in the runtime dir | — |
-| runtime dir | `$XDG_RUNTIME_DIR/theone/emulator-<port>/`, else `<tmpdir>/theone-<uid>/emulator-<port>/` (0700) | — |
+| adb | `TESSERACT_ADB` (path with `/` must exist, else looked up on PATH); else `adb` on PATH | `adb is not installed on the host; set TESSERACT_ADB` |
+| scrcpy server jar | `TESSERACT_SCRCPY_SERVER`; else `/usr/share/scrcpy/scrcpy-server`, `/usr/local/share/scrcpy/scrcpy-server` | `scrcpy: false` in status (screen stream off) |
+| scrcpy version | `TESSERACT_SCRCPY_VERSION`; else parsed from `scrcpy --version` first line `scrcpy <ver>` | `scrcpy: false` |
+| ffmpeg | `TESSERACT_FFMPEG`; else `ffmpeg` on PATH | `ffmpeg: false` |
+| console port | `TESSERACT_EMULATOR_PORT`, even, 5554–5682, default `5554` (adbd = +1) | startup error |
+| GPU | `TESSERACT_EMULATOR_GPU`, default `host` if a `/dev/dri/renderD*` node is usable, else `swiftshader_indirect` | — |
+| isolation | `TESSERACT_EMULATOR_ISOLATION` = `netns` (default) \| `none` | startup error on other values |
+| unshare / ip | PATH; `ip` also in `/usr/sbin`, `/sbin` | `Emulator network isolation needs unshare (util-linux) and ip (iproute2) on the host; TESSERACT_EMULATOR_ISOLATION=none runs the emulator without isolation, but …` |
+| allow-list | `TESSERACT_EMULATOR_ALLOW_NETS` comma CIDRs | startup error `TESSERACT_EMULATOR_ALLOW_NETS: "<x>" is not a CIDR` |
+| adb bridge port | `TESSERACT_EMULATOR_ADB_PORT` (≠0), else free port persisted in the runtime dir | — |
+| runtime dir | `$XDG_RUNTIME_DIR/tesseract/emulator-<port>/`, else `<tmpdir>/tesseract-<uid>/emulator-<port>/` (0700) | — |
 
 The emulator tools run with `ANDROID_SDK_ROOT` and `ANDROID_HOME` both set to the SDK root
-(env with every `THEONE_HOST_SHELL_*` variable removed). AVDs = `emulator -list-avds` (10 s timeout);
+(env with every `TESSERACT_HOST_SHELL_*` variable removed). AVDs = `emulator -list-avds` (10 s timeout);
 AVD files themselves live where the emulator looks (`ANDROID_AVD_HOME`, else `~/.android/avd`).
 Launch: `emulator -avd <avd> -port <port> -no-window -no-audio -no-boot-anim -skip-adb-auth -gpu <gpu>`
 (+ netns flags `-http-proxy http://127.0.0.1:3128 -dns-server 127.0.0.1`). Booted when
@@ -210,21 +210,21 @@ Launch: `emulator -avd <avd> -port <port> -no-window -no-audio -no-boot-anim -sk
 External emulators are re-checked every 5 s. Serial: `127.0.0.1:<bridge port>` (netns) or `emulator-<port>`.
 
 `unavailableReason()` order: SDK → emulator → adb → (netns only) the isolation probe
-`unshare --user --map-root-user --net -- ip link add theone0 type dummy`; failure →
-`Emulator network isolation could not create a user and network namespace ({detail}); enable unprivileged user namespaces, or set THEONE_EMULATOR_ISOLATION=none to run without isolation, but without it, anything with adb access to the emulator (the linked sandbox) can reach the host's loopback services (including the adb server), LAN and tailnet`.
+`unshare --user --map-root-user --net -- ip link add tesseract0 type dummy`; failure →
+`Emulator network isolation could not create a user and network namespace ({detail}); enable unprivileged user namespaces, or set TESSERACT_EMULATOR_ISOLATION=none to run without isolation, but without it, anything with adb access to the emulator (the linked sandbox) can reach the host's loopback services (including the adb server), LAN and tailnet`.
 
 ### 3.2 What the Electron onboarding must provide (Android-Studio-like)
 
 The GTK app installs nothing; it says `This computer has no Android virtual device; create one in Android Studio`.
 The Electron setup wizard replaces that with an installer whose **output must match the resolution above**:
 
-1. SDK root: install into `~/.local/share/theone/android-sdk` on Linux (picked up automatically, no env),
-   and into an app-data dir on macOS/Windows (`~/Library/Application Support/Monolith/android-sdk`,
-   `%LOCALAPPDATA%\Monolith\android-sdk`) passed to the daemon as `THEONE_ANDROID_SDK_ROOT`. Reuse an existing
+1. SDK root: install into `~/.local/share/tesseract/android-sdk` on Linux (picked up automatically, no env),
+   and into an app-data dir on macOS/Windows (`~/Library/Application Support/Tesseract/android-sdk`,
+   `%LOCALAPPDATA%\Tesseract\android-sdk`) passed to the daemon as `TESSERACT_ANDROID_SDK_ROOT`. Reuse an existing
    `ANDROID_SDK_ROOT`/`ANDROID_HOME` when it already has `emulator/emulator` and the user picks it.
 2. Packages through the SDK's `cmdline-tools/latest/bin/sdkmanager` (download the cmdline-tools zip per OS,
    sha256-pinned like the sandbox image does): `platform-tools` (provides `adb`, then pass
-   `THEONE_ADB=<sdk>/platform-tools/adb` so no PATH change is needed), `emulator`, and one
+   `TESSERACT_ADB=<sdk>/platform-tools/adb` so no PATH change is needed), `emulator`, and one
    `system-images;android-<api>;google_apis;<abi>` (`x86_64` on x64 hosts, `arm64-v8a` on Apple silicon /
    arm64 Linux). Licences via `sdkmanager --licenses` with the user's explicit accept in the wizard.
 3. AVD: `avdmanager create avd -n <name> -k <image> -d <device>`; it then appears in `emulator -list-avds`.
@@ -232,8 +232,8 @@ The Electron setup wizard replaces that with an installer whose **output must ma
    (`emulator -accel-check` gives the detail); Windows WHPX (Windows Hypervisor Platform feature) via
    `emulator -accel-check`; macOS HVF (always on Apple silicon / supported Intel).
 5. scrcpy-server + ffmpeg for the phone screen stream: Linux distro packages, or bundle a scrcpy-server jar
-   with the app and set `THEONE_SCRCPY_SERVER` + `THEONE_SCRCPY_VERSION` (must equal the jar's version) and
-   `THEONE_FFMPEG`. Without them `/v1/android` still works; only the phone screen stream is off.
+   with the app and set `TESSERACT_SCRCPY_SERVER` + `TESSERACT_SCRCPY_VERSION` (must equal the jar's version) and
+   `TESSERACT_FFMPEG`. Without them `/v1/android` still works; only the phone screen stream is off.
 6. Linux isolation: run the probe above as part of the wizard and show the runbook fix
    (`sysctl kernel.unprivileged_userns_clone=1`; Ubuntu 24.04+: `kernel.apparmor_restrict_unprivileged_userns=0`).
 
@@ -241,7 +241,7 @@ The Electron setup wizard replaces that with an installer whose **output must ma
 
 `netns` isolation exists only on Linux. On macOS/Windows the probe fails, so `GET /v1/android` returns
 `available: false`, and the desktop flow refuses `isolation: "none"`
-(`The host shell runs with THEONE_EMULATOR_ISOLATION=none, so the sandbox may not use its emulator`).
+(`The host shell runs with TESSERACT_EMULATOR_ISOLATION=none, so the sandbox may not use its emulator`).
 Running there with `none` exposes the host loopback/LAN/tailnet to the linked sandbox. Until the daemon gains
 an isolation mode for macOS/Windows, the Electron app on those OSes may install the SDK/AVD and let the user run
 the emulator locally, but must show the GTK notices and **not** link it to the sandbox automatically.
@@ -256,7 +256,7 @@ the emulator locally, but must show the GTK notices and **not** link it to the s
 | `stopEmulator()` | `DELETE /v1/android/emulator` |
 | `linkSandbox(url, token)` | `POST /v1/android/link {sandboxUrl, token}` → `AndroidLinkInfo` |
 
-Types (`HostAndroidStatus`, `EmulatorInfo`, `AndroidLinkInfo`) are in `@theone/protocol`; import them, don't redeclare.
+Types (`HostAndroidStatus`, `EmulatorInfo`, `AndroidLinkInfo`) are in `@tesseract/protocol`; import them, don't redeclare.
 
 ### 3.5 Project detail: the Display / emulator button
 
@@ -274,7 +274,7 @@ Constants: `ANDROID_FRAMEWORKS = ["expo","react-native","android"]`; host-fixabl
 | … run-targets 404 | `unsupported` | `Open on emulator` | `smartphone` | `This sandbox can't run apps on the emulator yet; update the sandbox` |
 | … other error | `unsupported` | `Open on emulator` | `smartphone` | `Couldn't read the project's run targets: {error}` |
 | android target, a live run of it (`starting`/`ready`) | `emulator` | `Show emulator` | `smartphone` | as below |
-| android target, else | `emulator` | `Open on emulator` | `smartphone` | available: `Build the app and install it on the host Android emulator` (with dir: `Build the app in {dir} and install it on the host Android emulator`); host-fixable: `{reason}. Monolith starts and links the emulator on this computer first`; else `{reason}` |
+| android target, else | `emulator` | `Open on emulator` | `smartphone` | available: `Build the app and install it on the host Android emulator` (with dir: `Build the app in {dir} and install it on the host Android emulator`); host-fixable: `{reason}. Tesseract starts and links the emulator on this computer first`; else `{reason}` |
 
 Button disabled when `unsupported` or while the launcher is busy; while busy with a progress label the
 button text is replaced by that label (`Checking the emulator…` etc.).
@@ -285,16 +285,16 @@ button text is replaced by that label (`Checking the emulator…` etc.).
    or `POST /v1/projects/:id/app-runs {target}`; then `GET /v1/android` (sandbox) for `emulator.serial`.
 2. **Not host-fixable** → report `Can't run on the emulator: {reason}`.
 3. **Host-fixable** →
-   - `hostBlocker(state)`: status `stopped|stopping|failed` → `The host shell isn't running, so Monolith can't start the emulator. Turn on Serve host shell in Preferences.`;
-     `starting` or no pairing → `Monolith is still reading the host shell settings; try again in a moment.`;
-     no PIN → `Set a host shell PIN in Preferences so Monolith can start the emulator.`
+   - `hostBlocker(state)`: status `stopped|stopping|failed` → `The host shell isn't running, so Tesseract can't start the emulator. Turn on Serve host shell in Preferences.`;
+     `starting` or no pairing → `Tesseract is still reading the host shell settings; try again in a moment.`;
+     no PIN → `Set a host shell PIN in Preferences so Tesseract can start the emulator.`
      Blocked → `refresh()` and report with action button `Preferences` (opens settings page `host-shell`).
    - No live session → Unlock dialog (§4.4), then retry.
    - busy `Checking the emulator…`; `status()`. Auth error → forget session, retry (asks PIN). Other error →
      `The host shell couldn't prepare the emulator: {error}`.
    - `planEmulator(status, sandboxBaseUrl)`:
      - `!available` or emulator `unavailable` → blocked: `reason` or `The host can't run the Android emulator`
-     - `isolation === "none"` → blocked `The host shell runs with THEONE_EMULATOR_ISOLATION=none, so the sandbox may not use its emulator`
+     - `isolation === "none"` → blocked `The host shell runs with TESSERACT_EMULATOR_ISOLATION=none, so the sandbox may not use its emulator`
      - emulator `stopping` → blocked `The emulator is stopping; try again in a moment`
      - `linked` = `link.configured && link.sandboxUrl` equals the sandbox URL (trim, strip trailing `/`, lowercase);
        `relink = !(linked && link.connected)`; `replaces = link.sandboxUrl` when configured+connected and not ours.
@@ -305,7 +305,7 @@ button text is replaced by that label (`Checking the emulator…` etc.).
      - plan `{stop: state in starting|running, avd, link: relink, replaces}`.
      Blocked → report `Can't run on the emulator: {reason}`.
    - Confirms: `stop` → destructive confirm **Restart the emulator isolated?** /
-     `The running emulator was started outside Monolith, so the sandbox may not use it. Monolith stops it and starts {avd} in an isolated network.`
+     `The running emulator was started outside Tesseract, so the sandbox may not use it. Tesseract stops it and starts {avd} in an isolated network.`
      / `Restart` / `Cancel`; then, if `replaces`, non-destructive confirm **Link this sandbox instead?** /
      `The host emulator is linked to {url}. Linking it to this sandbox ends that link.` / `Link` / `Cancel`.
    - `prepareEmulator` (worker, poll every **2 s**): stop → wait for `stopped|failed` ≤ **60 s**
@@ -373,13 +373,13 @@ all disabled under `prefers-reduced-motion`.
 
 ### 4.2 Host shell page (`id: "host-shell"`, title `Host shell`)
 
-Group **Server** – description `Lets paired phones open a terminal on this computer over Tailscale. Monolith runs it in the background and stops it when you quit.`; header suffix refresh (→ `refresh()`).
+Group **Server** – description `Lets paired phones open a terminal on this computer over Tailscale. Tesseract runs it in the background and stops it when you quit.`; header suffix refresh (→ `refresh()`).
 - Switch row **Serve host shell**; subtitle = status label:
   `Stopped` · `Starting…` · `Running · {url}` (or `Running` without pairing) · `Stopping…` ·
-  `Running outside Monolith · {url}` · `Failed: {error}`.
+  `Running outside Tesseract · {url}` · `Failed: {error}`.
   Switch is on when `serving || starting`; disabled while `stopping` or `external`. Toggling on → `start()`,
   off → `stop()`. Programmatic syncing must not fire the handler.
-- Switch row **Start with Monolith**, subtitle `Start serving whenever Monolith opens` → persists autostart.
+- Switch row **Start with Tesseract**, subtitle `Start serving whenever Tesseract opens` → persists autostart.
 
 Group **Security**
 - Row **PIN**, subtitle `Set · phones unlock with it` / `Not set · phones can't unlock the shell`; suffix secondary
@@ -389,7 +389,7 @@ Group **Security**
   Success toast `Host token rotated; pair your phones again`; failure toast (6 s) `Couldn't rotate the token: {error}`.
 
 Group **Pairing**
-- Row **Pair a phone**, subtitle `Show the theone://host link and QR code`, button `Show QR…` → Pair dialog on the
+- Row **Pair a phone**, subtitle `Show the tesseract://host link and QR code`, button `Show QR…` → Pair dialog on the
   `This computer` tab.
 - Expander row **Log**: monospace caption text (Geist Mono 12px), selectable, wrapped, margins 8 top/bottom 12 sides;
   last 40 lines, or `No output yet`. Electron: auto-scroll to bottom while expanded.
@@ -413,13 +413,13 @@ continue the launch.
 ### 4.5 Pair dialog, `This computer` tab (host parts only)
 
 Dialog width 440, title `Pair a device`, segmented control `Sandbox` | `This computer`, QR 176 px
-(QR padding 12, radius 8). Host panel: instructions `Scan with the TheOne app (Host shell), or open this link on the phone.`,
+(QR padding 12, radius 8). Host panel: instructions `Scan with the Tesseract app (Host shell), or open this link on the phone.`,
 copy field with the link, caption `Host {name} · {url}`, warning notice
 `The link contains the host token: share it only with your own devices. Phones also need the PIN.`
 Notices above it (in order):
 - failed → danger `The host shell couldn't start: {error}` action `Retry` (→ refresh)
 - stopped → warning `The host shell isn't running. Start it so the phone can reach this computer.` action `Start`
-- starting → `Starting the host shell…`; external → `The host shell is running outside Monolith.`
+- starting → `Starting the host shell…`; external → `The host shell is running outside Tesseract.`
 - then: no pairing (and not failed) → `Reading the host shell settings…`; pairing without PIN → warning
   `No PIN is set yet. Phones need it to unlock the shell.` action `Set PIN`.
 Footer `Done` / primary `Copy link` (disabled without a link); toast `Pairing link copied`.
@@ -514,16 +514,16 @@ Errors as Claude (404 → `This sandbox is too old for speech-to-text settings. 
 - `This computer has no Android virtual device; create one in Android Studio` – Electron has its own AVD setup;
   point to it instead of Android Studio.
 - `read_login` on macOS always says keychain unsupported; acceptable to keep for parity.
-- Hard-coded `/usr/share/scrcpy` paths and `~/.local/share/theone/android-sdk` are Linux conventions: on other OSes
-  pass explicit `THEONE_*` env vars from the app (§3.2).
+- Hard-coded `/usr/share/scrcpy` paths and `~/.local/share/tesseract/android-sdk` are Linux conventions: on other OSes
+  pass explicit `TESSERACT_*` env vars from the app (§3.2).
 
 ## 6. Test checklist (Electron)
 
 - Unit: `cliError`, `parsePairing` (last `{` line), `hostToken`, `pinError`, status label, `displayButton`,
   `planEmulator`, `emulatorReady`, `isLinkedTo` (case/trailing slash), `pickAvd`, STT/Claude row builders,
   host account discovery with a temp HOME (incl. symlinked files not counted, keychain on darwin).
-- Integration (no user resources touched): spawn the compiled binary with `THEONE_HOST_SHELL_DIR=<tmp>`,
-  `THEONE_HOST_SHELL_PORT=<free>`, `--bind 127.0.0.1`, `THEONE_HOST_SHELL_PUBLIC_URL=http://127.0.0.1:<port>`;
+- Integration (no user resources touched): spawn the compiled binary with `TESSERACT_HOST_SHELL_DIR=<tmp>`,
+  `TESSERACT_HOST_SHELL_PORT=<free>`, `--bind 127.0.0.1`, `TESSERACT_HOST_SHELL_PUBLIC_URL=http://127.0.0.1:<port>`;
   `host pin --stdin`, `host pair --json`, `serve` → wait for `host shell listening`, unlock, `GET /v1/android`
   (expect `available:false` with a reason on CI), `GET /ui/android` 200, stop within 5 s.
-- Never use port 7701 or `~/.config/theone/host-shell` in tests.
+- Never use port 7701 or `~/.config/tesseract/host-shell` in tests.

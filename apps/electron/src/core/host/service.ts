@@ -1,8 +1,8 @@
 import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process";
 import { createInterface } from "node:readline";
 import type { Readable } from "node:stream";
-import { HostShellClient, TheOneClient, type FetchLike } from "@theone/client";
-import type { AndroidLinkInfo, HostAndroidStatus } from "@theone/protocol";
+import { HostShellClient, TesseractClient, type FetchLike } from "@tesseract/client";
+import type { AndroidLinkInfo, HostAndroidStatus } from "@tesseract/protocol";
 import type { HostPairing, HostShellState } from "../../shared/contracts/hostShell";
 import { redact } from "../log";
 import { runCommand, type CommandOptions, type CommandResult } from "../process";
@@ -247,7 +247,7 @@ export class HostShellService {
     });
   }
 
-  private sessionClient(): TheOneClient {
+  private sessionClient(): TesseractClient {
     const state = this.current;
     if (!isServing(state) || !state.pairing) throw new HostShellError(HOST_LABELS.notRunning);
     if (!state.pairing.pinSet) throw new HostShellError(HOST_LABELS.noPin);
@@ -256,7 +256,7 @@ export class HostShellService {
       this.forgetSession();
       throw sessionRequiredError();
     }
-    return new TheOneClient({
+    return new TesseractClient({
       baseUrl: state.pairing.url,
       token: session.token,
       timeoutMs: HOST_SHELL.hostTimeoutMs,
@@ -264,7 +264,7 @@ export class HostShellService {
     });
   }
 
-  private async hostCall<T>(call: (client: TheOneClient) => Promise<T>): Promise<T> {
+  private async hostCall<T>(call: (client: TesseractClient) => Promise<T>): Promise<T> {
     const client = this.sessionClient();
     try {
       return await call(client);

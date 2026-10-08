@@ -1,7 +1,7 @@
 import { homedir } from "node:os";
 import { app, nativeTheme, powerMonitor } from "electron";
-import { configBaseDir } from "../core/paths";
-import { migrateLegacyConfigDir } from "../core/config";
+import { migrateLegacyInstall } from "../core/legacy";
+import { currentPathEnvironment } from "../core/paths";
 import { applyPathFix } from "../core/docker";
 import { createLogger, setLogLevel } from "../core/log";
 import { APP_ID, DEEP_LINK_SCHEME, ENV } from "../shared/runtime";
@@ -101,7 +101,6 @@ async function start(launch: LaunchArgs): Promise<void> {
   await app.whenReady();
   const context = initContext(launch);
   installSecurity();
-  await migrateLegacyConfigDir(configBaseDir(context.paths));
   await loadSettings();
   const stopAppearance = wireAppearance();
   const stopIpc = await registerIpc();
@@ -163,9 +162,18 @@ function runLocal(command: string[]): void {
   );
 }
 
+function migrateLegacy(): void {
+  try {
+    migrateLegacyInstall(currentPathEnvironment()).messages.forEach((line) => log.info(line));
+  } catch (error) {
+    report(error);
+  }
+}
+
 function boot(): void {
   const userData = process.env[ENV.userData];
   if (userData) app.setPath("userData", userData);
+  if (!isolated) migrateLegacy();
   if (args.snapshot) {
     app.commandLine.appendSwitch("force-device-scale-factor", "1");
     app.commandLine.appendSwitch("disable-gpu-vsync");

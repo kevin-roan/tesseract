@@ -88,7 +88,7 @@ describe("loadCatalog", () => {
   });
 
   it("loads the XMLs from the override URLs", async () => {
-    const env = { MONOLITH_ANDROID_REPOSITORY_URL: "http://127.0.0.1:9/repo/", MONOLITH_ANDROID_SYSIMG_URL: "http://127.0.0.1:9/img" };
+    const env = { TESSERACT_ANDROID_REPOSITORY_URL: "http://127.0.0.1:9/repo/", TESSERACT_ANDROID_SYSIMG_URL: "http://127.0.0.1:9/img" };
     const bodies: Record<string, string> = {
       "http://127.0.0.1:9/repo/repository2-3.xml": await fixture("repository2-3.xml"),
       "http://127.0.0.1:9/img/sys-img2-3.xml": await fixture("sys-img2-3.xml"),
@@ -107,7 +107,7 @@ describe("loadCatalog", () => {
 describe("catalogUrls", () => {
   it("defaults to dl.google.com", () => {
     expect(catalogUrls({})).toEqual({ repository: ANDROID_REPOSITORY_URL, systemImages: ANDROID_SYSIMG_URL });
-    expect(catalogUrls({ MONOLITH_ANDROID_REPOSITORY_URL: " ", MONOLITH_ANDROID_SYSIMG_URL: "" })).toEqual({
+    expect(catalogUrls({ TESSERACT_ANDROID_REPOSITORY_URL: " ", TESSERACT_ANDROID_SYSIMG_URL: "" })).toEqual({
       repository: ANDROID_REPOSITORY_URL,
       systemImages: ANDROID_SYSIMG_URL,
     });
@@ -116,16 +116,16 @@ describe("catalogUrls", () => {
   it("accepts full XML URLs and base URLs", () => {
     expect(
       catalogUrls({
-        MONOLITH_ANDROID_REPOSITORY_URL: "https://mirror.example/android/repository",
-        MONOLITH_ANDROID_SYSIMG_URL: "http://127.0.0.1:8000/custom.xml",
+        TESSERACT_ANDROID_REPOSITORY_URL: "https://mirror.example/android/repository",
+        TESSERACT_ANDROID_SYSIMG_URL: "http://127.0.0.1:8000/custom.xml",
       }),
     ).toEqual({ repository: "https://mirror.example/android/repository/repository2-3.xml", systemImages: "http://127.0.0.1:8000/custom.xml" });
   });
 
   it("rejects non-http(s) and malformed overrides", () => {
-    expect(() => catalogUrls({ MONOLITH_ANDROID_REPOSITORY_URL: "file:///etc/passwd" })).toThrow(
-      "MONOLITH_ANDROID_REPOSITORY_URL must be an http(s) URL, not file:///etc/passwd",
+    expect(() => catalogUrls({ TESSERACT_ANDROID_REPOSITORY_URL: "file:///etc/passwd" })).toThrow(
+      "TESSERACT_ANDROID_REPOSITORY_URL must be an http(s) URL, not file:///etc/passwd",
     );
-    expect(() => catalogUrls({ MONOLITH_ANDROID_SYSIMG_URL: "not a url" })).toThrow(IpcError);
+    expect(() => catalogUrls({ TESSERACT_ANDROID_SYSIMG_URL: "not a url" })).toThrow(IpcError);
   });
 });

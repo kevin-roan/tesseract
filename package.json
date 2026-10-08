@@ -1,5 +1,5 @@
 {
-  "name": "theone",
+  "name": "tesseract",
   "private": true,
   "workspaces": [
     "apps/*",

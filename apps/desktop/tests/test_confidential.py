@@ -1,15 +1,15 @@
 import json
 import random
 
-from monolith_desktop import sync
-from monolith_desktop.api.client import ControllerClient
-from monolith_desktop.api.paths import rest
-from monolith_desktop.pages.projects import model
-from monolith_desktop.pseudonym import ADJECTIVES, NOUNS, pseudonym
-from monolith_desktop.syncback import SyncState
-from monolith_desktop.syncback.requests import handle_request
-from monolith_desktop.syncback.state import REDACTED, Link
-from monolith_desktop.widgets.sidebar_model import project_items
+from tesseract_desktop import sync
+from tesseract_desktop.api.client import ControllerClient
+from tesseract_desktop.api.paths import rest
+from tesseract_desktop.pages.projects import model
+from tesseract_desktop.pseudonym import ADJECTIVES, NOUNS, pseudonym
+from tesseract_desktop.syncback import SyncState
+from tesseract_desktop.syncback.requests import handle_request
+from tesseract_desktop.syncback.state import REDACTED, Link
+from tesseract_desktop.widgets.sidebar_model import project_items
 from test_projects import project
 from test_syncback import FakeController, PROJECT, sandbox_edits, write
 
@@ -101,7 +101,7 @@ def test_run_sync_confidential_uses_a_pseudonym_and_reuses_the_link(tmp_path, mo
 
 
 def test_run_sync_ignores_a_failing_project_list(tmp_path, monkeypatch):
-    from monolith_desktop.api.errors import NetworkError
+    from tesseract_desktop.api.errors import NetworkError
 
     class Offline(Pusher):
         def list_projects(self):
@@ -179,7 +179,7 @@ def test_requests_for_confidential_links_never_send_the_host_path(tmp_path):
         write(root, "src/app.py", "print('v1')\n")
         write(root, "src/old.py", "old\n")
     state = SyncState(tmp_path / "state")
-    from monolith_desktop.syncback.manifest import build_manifest
+    from tesseract_desktop.syncback.manifest import build_manifest
     from test_syncback import walk
 
     state.save_link(Link(PROJECT, str(host.resolve()), "", build_manifest(host, walk(host)), confidential=True))

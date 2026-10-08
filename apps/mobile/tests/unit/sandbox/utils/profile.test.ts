@@ -1,5 +1,5 @@
-import type { AgentRun, BuildJob, ProcessInfo } from "@theone/protocol";
-import { sampleAgentRun, sampleBuild, sampleProcess, sampleProject, sampleStatus } from "@theone/protocol/fixtures";
+import type { AgentRun, BuildJob, ProcessInfo } from "@tesseract/protocol";
+import { sampleAgentRun, sampleBuild, sampleProcess, sampleProject, sampleStatus } from "@tesseract/protocol/fixtures";
 
 import {
   activityActor,
@@ -19,7 +19,7 @@ describe("profileView", () => {
   it("prefers the viewer and shows login, sandbox node and tailnet", () => {
     expect(profileView(TEST_IDENTITY, TEST_SANDBOX, sampleStatus)).toEqual({
       name: "Ada Lovelace",
-      tagline: "ada@example.com · theone-sandbox.tail1234.ts.net",
+      tagline: "ada@example.com · tesseract-sandbox.tail1234.ts.net",
       team: "example.com",
       photo: "https://example.com/ada.png",
     });

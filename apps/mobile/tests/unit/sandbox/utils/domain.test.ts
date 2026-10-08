@@ -1,4 +1,4 @@
-import { sampleBuild, sampleProcess, sampleProject, sampleStatus } from "@theone/protocol/fixtures";
+import { sampleBuild, sampleProcess, sampleProject, sampleStatus } from "@tesseract/protocol/fixtures";
 
 import { isAllowedUrl, originOf } from "@/lib/url";
 import { activityTitle, processMeta, sandboxSubtitle } from "@/features/sandbox/utils/describe";
@@ -134,7 +134,7 @@ describe("identity", () => {
     const id = createSandboxId(1_700_000_000_000, () => 0.5);
     expect(id).toMatch(/^sbx_[a-z0-9]+$/);
     expect(tokenStorageKey(id)).toMatch(/^[A-Za-z0-9._-]+$/);
-    expect(tokenStorageKey("weird id/1")).toBe("theone.sandbox.weird_id_1.token");
+    expect(tokenStorageKey("weird id/1")).toBe("tesseract.sandbox.weird_id_1.token");
   });
 });
 

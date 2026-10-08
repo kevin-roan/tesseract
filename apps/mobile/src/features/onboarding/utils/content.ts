@@ -102,7 +102,7 @@ export const ONBOARDING_SLIDES: OnboardingSlide[] = [
   {
     id: "sandbox",
     icon: CubeIcon,
-    eyebrow: "Welcome to Monolith",
+    eyebrow: "Welcome to Tesseract",
     title: "Your dev machine, in your pocket",
     message: "A full sandbox runs on your own hardware. Follow projects, builds and processes from your phone.",
     panel: {
@@ -180,14 +180,14 @@ export const SETUP_STEPS: SetupStep[] = [
     id: "start",
     icon: CubeIcon,
     title: "Start the sandbox",
-    message: "On the host, from the Monolith repository.",
+    message: "On the host, from the Tesseract repository.",
     command: "bun run sandbox up",
   },
   {
     id: "code",
     icon: TerminalWindowIcon,
     title: "Show the pairing code",
-    message: "It prints a QR code and a theone://pair link. Inside the sandbox, run theone-controller pair.",
+    message: "It prints a QR code and a tesseract://pair link. Inside the sandbox, run tesseract-controller pair.",
     command: "bun run sandbox pair",
   },
   {
@@ -199,7 +199,7 @@ export const SETUP_STEPS: SetupStep[] = [
 ];
 
 export const ONBOARDING_LABELS = {
-  brand: "Monolith",
+  brand: "Tesseract",
   skip: "Skip",
   next: "Next",
   start: "Get started",

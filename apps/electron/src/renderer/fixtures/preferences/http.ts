@@ -1,5 +1,5 @@
-import { routePatterns, type ClaudeAccountList, type SttStatus, type UpdateStt } from "@theone/protocol";
-import { sampleClaudeAccountList, sampleClaudeAuthStatus, sampleSttStatus } from "@theone/protocol/fixtures";
+import { routePatterns, type ClaudeAccountList, type SttStatus, type UpdateStt } from "@tesseract/protocol";
+import { sampleClaudeAccountList, sampleClaudeAuthStatus, sampleSttStatus } from "@tesseract/protocol/fixtures";
 import { isScenario } from "../scenario";
 import { defineHttpFixtures, reply } from "../types";
 import { GTK_PARITY_DEFAULT_ACCOUNT, PREFERENCES_SCENARIOS } from "./data";

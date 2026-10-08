@@ -8,7 +8,7 @@ import {
   type DeletedProject,
   type GitDetails,
   type Project,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { mapLimit } from "../core/concurrency";
 import { badRequest, conflict, HttpError, notFound } from "../core/errors";
 import { childEnv, run } from "../core/exec";

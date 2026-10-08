@@ -1,4 +1,4 @@
-import type { BuildJob, Project } from "@theone/protocol";
+import type { BuildJob, Project } from "@tesseract/protocol";
 import { ChipGroup } from "../../../../components/Chip";
 import { ListGroup } from "../../../../components/GroupBand";
 import { KeyedList } from "../../../../components/KeyedList";

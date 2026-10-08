@@ -1,6 +1,6 @@
 # Security model
 
-TheOne deliberately runs an autonomous agent with `bypassPermissions`,
+Tesseract deliberately runs an autonomous agent with `bypassPermissions`,
 together with untrusted project code, on a machine reachable from a phone.
 The design goal is containment, not prevention: assume anything inside the
 sandbox can be compromised, and make sure that compromise stays inside the
@@ -17,17 +17,17 @@ Related: [overview → trust boundaries](overview.md#trust-boundaries),
 | Asset | Where | Why it matters |
 |---|---|---|
 | Host integrity | the Docker host, which also runs unrelated services | the only hard requirement: the host must stay untouched |
-| Source code and user work | `theone-workspace` volume | loss or leakage of the user's projects |
-| Controller token | `/workspace/.agent/controller/token` (0600, in a 0700 dir), `/run/theone/controller.env` when set through compose, the controller's environment, phone secure store | equivalent to a shell in the sandbox |
-| Claude credentials | `/home/dev/.claude/` (`theone-home` volume) | billable account access |
+| Source code and user work | `tesseract-workspace` volume | loss or leakage of the user's projects |
+| Controller token | `/workspace/.agent/controller/token` (0600, in a 0700 dir), `/run/tesseract/controller.env` when set through compose, the controller's environment, phone secure store | equivalent to a shell in the sandbox |
+| Claude credentials | `/home/dev/.claude/` (`tesseract-home` volume) | billable account access |
 | Tailscale auth key and node key | `infra/compose/.env` on the host, sidecar state volume | lets a device join the tailnet |
 | Project secrets and signing keys | project `.env*.local`, `/home/dev/.secrets/<project>/` | code signing identity, cloud and API access |
-| VNC password | `THEONE_VNC_PASSWORD` or generated once into `/home/dev/.vnc/password` (0600); hash in `/home/dev/.vnc/passwd`; controller copy in `/run/theone/controller.env` | view and control of the display |
-| Speech-to-text API key (optional) | `THEONE_STT_API_KEY` in `.env`, moved into `/run/theone/controller.env`; only the controller's environment | billable transcription account; voice notes are sent to `THEONE_STT_URL` |
+| VNC password | `TESSERACT_VNC_PASSWORD` or generated once into `/home/dev/.vnc/password` (0600); hash in `/home/dev/.vnc/passwd`; controller copy in `/run/tesseract/controller.env` | view and control of the display |
+| Speech-to-text API key (optional) | `TESSERACT_STT_API_KEY` in `.env`, moved into `/run/tesseract/controller.env`; only the controller's environment | billable transcription account; voice notes are sent to `TESSERACT_STT_URL` |
 | Gemini API key (optional) | saved from the mobile or desktop app or `tesseract --gemini-key=KEY` into the controller's `state.db` (`settings` table, data dir mode 0700; never returned by the API); only the controller | billable Google account; voice notes requested with `provider: "gemini"` are sent to Google |
-| Host shell token and PIN hash (opt-in) | `~/.config/theone/host-shell/state.json` on the host (0600 in a 0700 dir), host token also in the phone's secure store | together they are a shell on the host as the user running `host serve` |
+| Host shell token and PIN hash (opt-in) | `~/.config/tesseract/host-shell/state.json` on the host (0600 in a 0700 dir), host token also in the phone's secure store | together they are a shell on the host as the user running `host serve` |
 | Android link (opt-in) | `androidLink` in the host's `state.json` (0600): the sandbox URL and the **sandbox controller token** | host token + PIN therefore also means full control of the linked sandbox; anyone with the sandbox's adb access is root in the host emulator's guest |
-| Phone uploads (attachments, voice notes) | `/workspace/.theone/uploads` (0700 dirs, 0600 files), pruned after 30 days | the user's photos, documents and recordings |
+| Phone uploads (attachments, voice notes) | `/workspace/.tesseract/uploads` (0700 dirs, 0600 files), pruned after 30 days | the user's photos, documents and recordings |
 
 ## Adversaries and scenarios
 
@@ -58,20 +58,20 @@ Related: [overview → trust boundaries](overview.md#trust-boundaries),
   listener `127.0.0.1:15555` is reachable the same way, and it is plain,
   unauthenticated adb: a peer allowed on that port gets the emulator's adbd
   (shell, install, app data). The same port-restricted ACLs close it.
-- **ACLs.** Tag the node (e.g. `tag:theone`), create the auth key for that
+- **ACLs.** Tag the node (e.g. `tag:tesseract`), create the auth key for that
   tag, and allow only your own devices:
 
   ```jsonc
   // tailnet policy file (excerpt)
-  "tagOwners": { "tag:theone": ["autogroup:admin"] },
+  "tagOwners": { "tag:tesseract": ["autogroup:admin"] },
   "grants": [
-    { "src": ["autogroup:member"], "dst": ["tag:theone"], "ip": ["tcp:443", "tcp:5901"] }
+    { "src": ["autogroup:member"], "dst": ["tag:tesseract"], "ip": ["tcp:443", "tcp:5901"] }
   ]
   ```
 
   Narrow `src` to your own user, or to a group, if the tailnet has other members.
   The sandbox itself needs no inbound or outbound tailnet access to other
-  nodes. Unless you grant `tag:theone` access to other destinations, a
+  nodes. Unless you grant `tag:tesseract` access to other destinations, a
   compromised sandbox cannot reach the rest of your tailnet.
 - **`host-tailscale` mode** binds ports on the host's tailnet IP. Host ACLs
   then decide reachability. The operator CLI accepts only an IPv4 address
@@ -92,7 +92,7 @@ Related: [overview → trust boundaries](overview.md#trust-boundaries),
   terminal or the VNC bridge) or download within its 60 s. Download tickets
   travel in a URL handed to the OS browser and can remain in its history until
   they expire.
-- Rotation: `theone-controller token --rotate`, restart the controller, then
+- Rotation: `tesseract-controller token --rotate`, restart the controller, then
   pair again ([operations](../runbooks/operations.md#rotate-the-token)). There
   are no per-device tokens or revocation list. The app shows "Pairing no longer
   valid" on 401 and offers **Pair again**.
@@ -107,11 +107,11 @@ Related: [overview → trust boundaries](overview.md#trust-boundaries),
 
 ### Host shell (opt-in)
 
-`theone-controller host serve` deliberately crosses the host boundary, so it is
+`tesseract-controller host serve` deliberately crosses the host boundary, so it is
 built so that nothing in the sandbox can use it:
 
 - **Runs on the host, owned by the host.** The daemon, its token and the PIN hash
-  live in the host user's `~/.config/theone/host-shell/`. The sandbox has no route
+  live in the host user's `~/.config/tesseract/host-shell/`. The sandbox has no route
   to that file, no copy of the token and no SSH key for the host; a compromised
   sandbox or a prompt-injected Claude gains nothing new (A3, A4).
 - **Tailnet only.** It binds one IPv4 and refuses wildcards and anything outside
@@ -131,7 +131,7 @@ built so that nothing in the sandbox can use it:
   changes, the token is rotated or the phone taps **Lock**. A terminal already
   attached keeps streaming; reconnecting needs a new ticket and thus a session.
 - **Lost phone (A5).** The secure store holds only the host token; the PIN is not
-  stored. Run `theone-controller host token --rotate` (and `host pin` if the PIN
+  stored. Run `tesseract-controller host token --rotate` (and `host pin` if the PIN
   may have been seen), then pair the remaining phones again.
 - **Blast radius.** Token + PIN = a login shell as the user who runs
   `host serve`, with that user's sudo rights. Run it as an unprivileged account
@@ -150,7 +150,7 @@ as sandbox-controlled, and what matters is what the guest can reach on the host.
   the host network a guest could reach the user's unauthenticated adb server
   (`127.0.0.1:5037`: USB phones, `host:connect`, port forwards), this daemon, local dev
   servers and databases, the LAN and every tailnet peer the host may reach.
-- **Isolation (`THEONE_EMULATOR_ISOLATION=netns`, default).** The emulator runs in its own
+- **Isolation (`TESSERACT_EMULATOR_ISOLATION=netns`, default).** The emulator runs in its own
   unprivileged user + network namespace (`unshare --user --map-root-user --net`) holding
   only `lo` and a dummy interface without routes. Guest TCP goes through `-http-proxy` and
   guest DNS through `-dns-server`, both to a helper inside the namespace that relays them
@@ -165,13 +165,13 @@ as sandbox-controlled, and what matters is what the guest can reach on the host.
   server), the daemon's own port, the host's LAN IP and its Tailscale IP are refused; public
   HTTP/HTTPS works. The emulator's own adb server, started inside the namespace, sees nothing
   of the host's. Everything in the namespace is killed when the emulator is stopped.
-- **Allowlist caveat.** `THEONE_EMULATOR_ALLOW_NETS` re-opens chosen ranges for the guest
+- **Allowlist caveat.** `TESSERACT_EMULATOR_ALLOW_NETS` re-opens chosen ranges for the guest
   and thus for the sandbox. Allow single hosts, never the tailnet range. Host loopback
   (`127/8`, `0/8`, `::/96`, also IPv4-mapped) stays blocked whatever the allowlist says.
-- **Not isolated.** `THEONE_EMULATOR_ISOLATION=none` (for hosts without user namespaces)
+- **Not isolated.** `TESSERACT_EMULATOR_ISOLATION=none` (for hosts without user namespaces)
   keeps the old behaviour and its exposure. With isolation on, an emulator started outside
   the daemon is adopted for viewing only; the link refuses to tunnel it.
-- **Shared host emulators.** `THEONE_ANDROID_SHARE_EMULATORS=on` (off by default) tunnels
+- **Shared host emulators.** `TESSERACT_ANDROID_SHARE_EMULATORS=on` (off by default) tunnels
   every other `emulator-<port>` the host adb lists to the linked sandbox. Those emulators are
   not isolated, so it has the same exposure as `none`: through the guest the sandbox reaches
   host loopback (the host adb server on `5037`, so USB phones), LAN and tailnet. Turn it on
@@ -208,7 +208,7 @@ set `seccomp=unconfined` for the sandbox. The sandbox cannot use
 
 ### Tailscale LocalAPI (opt-in)
 
-`--tailscale-api` (`THEONE_TAILSCALE_LOCALAPI=1`) mounts a tailscaled LocalAPI socket into
+`--tailscale-api` (`TESSERACT_TAILSCALE_LOCALAPI=1`) mounts a tailscaled LocalAPI socket into
 the sandbox so `GET /v1/identity` can name the Tailscale user and node. The read-only mount
 does not make the API read-only: tailscaled authorises each connection by the peer's uid
 (`SO_PEERCRED`, which containers share with the host because Docker does not remap uids):
@@ -242,14 +242,14 @@ tailscaled, and only for a caller holding the token.
 
 Mitigations: keep it off unless the Profile tab or Taildrop needs it; build with `ENABLE_SUDO=false`
 and a `DEV_UID` that is not the host's operator uid, which leaves read access only; do not
-grant `tag:theone` the `funnel` attribute. The serve headers need no socket and give the
+grant `tag:tesseract` the `funnel` attribute. The serve headers need no socket and give the
 viewer in `tailscale` mode. Identity data is informational: nothing in the controller
 authorises on it, and a caller that already holds the token can fake serve headers from
 loopback.
 
 ### Host Android SDK and Gradle cache (opt-in)
 
-`THEONE_HOST_ANDROID_SDK` and `THEONE_HOST_GRADLE_CACHE` bind-mount the host's Android SDK
+`TESSERACT_HOST_ANDROID_SDK` and `TESSERACT_HOST_GRADLE_CACHE` bind-mount the host's Android SDK
 and Gradle `caches/` into the sandbox **read-only**, so builds reuse what the host already
 downloaded. The sandbox cannot change either (`EROFS`, even as root: the mount is read-only
 in the container's mount namespace and the sandbox lacks `SYS_ADMIN` to remount it), so the
@@ -270,7 +270,7 @@ you no longer need it. See [ADR 0006](../adr/0006-optional-docker-in-docker.md).
 ### Claude with `bypassPermissions` (A3, A4)
 
 Headless runs use `--permission-mode bypassPermissions`
-(`THEONE_CLAUDE_PERMISSION_MODE`) because nobody can approve tool prompts from
+(`TESSERACT_CLAUDE_PERMISSION_MODE`) because nobody can approve tool prompts from
 a background job. The consequences:
 
 - Claude can run any command `dev` can, which is the same power as the token.
@@ -279,7 +279,7 @@ a background job. The consequences:
   `CLAUDE.md`): no host access attempts, confirmation before destructive
   operations (the run stops and asks), git safety, secret handling, and
   prompt-injection rules.
-- To be stricter, set `THEONE_CLAUDE_PERMISSION_MODE=acceptEdits` or
+- To be stricter, set `TESSERACT_CLAUDE_PERMISSION_MODE=acceptEdits` or
   `default` in `infra/compose/.env` (compose passes it to the controller; see
   [claude-in-sandbox](../runbooks/claude-in-sandbox.md#3-permission-mode)).
   Headless runs then have tool calls that need approval denied. You can
@@ -294,9 +294,9 @@ aimed at Claude. Mitigations:
 
 - SPEC.md §2 defines them as data. Instructions come only from the user.
 - There are no secrets in `.agent/` or status events. SPEC has the agent use
-  the API only through `theone-controller api`, which reads the token itself
+  the API only through `tesseract-controller api`, which reads the token itself
   and prints it (and the VNC password) as `***`, and forbids running
-  `theone-controller token`/`pair` or touching `.agent/controller/`. An injected
+  `tesseract-controller token`/`pair` or touching `.agent/controller/`. An injected
   "print your token" request is therefore a rule violation rather than a
   routine action. Nothing technical stops code running as `dev` from reading
   the token ([same-user limit](#same-user-limit)).
@@ -308,9 +308,9 @@ aimed at Claude. Mitigations:
 
 | Secret | Rule |
 |---|---|
-| `TS_AUTHKEY` | lives only in `infra/compose/.env` on the host (gitignored) and is read by the sidecar. Prefer a one-time (not reusable), non-ephemeral, pre-approved key for `tag:theone`, and remove it from `.env` after the first login |
-| Controller token | generated in the sandbox, shown only by `sandbox pair` / `theone-controller pair` / `token`. A `THEONE_TOKEN` from `.env` is moved into `/run/theone/controller.env`, unset before supervisord starts, and mirrored into the 0600 token file |
-| VNC password | `THEONE_VNC_PASSWORD` in `.env`, or generated on first start. Only the controller has it in its environment. Returned to authenticated clients by `GET /v1/display` so noVNC can log in; `status --json` and `api` print it as `***` |
+| `TS_AUTHKEY` | lives only in `infra/compose/.env` on the host (gitignored) and is read by the sidecar. Prefer a one-time (not reusable), non-ephemeral, pre-approved key for `tag:tesseract`, and remove it from `.env` after the first login |
+| Controller token | generated in the sandbox, shown only by `sandbox pair` / `tesseract-controller pair` / `token`. A `TESSERACT_TOKEN` from `.env` is moved into `/run/tesseract/controller.env`, unset before supervisord starts, and mirrored into the 0600 token file |
+| VNC password | `TESSERACT_VNC_PASSWORD` in `.env`, or generated on first start. Only the controller has it in its environment. Returned to authenticated clients by `GET /v1/display` so noVNC can log in; `status --json` and `api` print it as `***` |
 | Claude login | created by `claude` login inside the sandbox, stored on the home volume. Never copied from the host |
 | Project secrets | `.env*.local` in the project (gitignored) or `/home/dev/.secrets/<project>/` (0700/0600). Injected through `env` in `StartProcess` or project config |
 
@@ -326,7 +326,7 @@ console. Either step alone cuts access, and doing both is best.
 
 ### Controller hardening against its own workload
 
-- **Child environment.** `THEONE_TOKEN`, `THEONE_VNC_PASSWORD` and `THEONE_STT_API_KEY` are removed
+- **Child environment.** `TESSERACT_TOKEN`, `TESSERACT_VNC_PASSWORD` and `TESSERACT_STT_API_KEY` are removed
   from the environment of every process, build step, terminal, agent run and
   git/zip helper, and neither reaches Xvnc, openbox or GUI apps. This prevents
   accidental leaks (crash reporters, `env` in a log), nothing more.
@@ -395,5 +395,5 @@ Regression tests: `apps/controller/tests/hardening.test.ts` and
 - The Tailscale sidecar keeps Docker's default capabilities (`cap_drop: [ALL]`
   is untested).
 - Scanning a QR code pairs immediately, without the confirmation step deep
-  links get; `theone://sandbox/terminal/new?kind=…` links create a terminal
+  links get; `tesseract://sandbox/terminal/new?kind=…` links create a terminal
   without a prompt (they cannot type into it).

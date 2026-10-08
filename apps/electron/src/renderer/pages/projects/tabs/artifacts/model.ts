@@ -1,4 +1,4 @@
-import type { Artifact } from "@theone/protocol";
+import type { Artifact } from "@tesseract/protocol";
 
 export type ArtifactsView = "loading" | "empty" | "content";
 

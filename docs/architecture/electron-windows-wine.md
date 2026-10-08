@@ -34,7 +34,7 @@ ship them), or the build fails.
 | Piece | Value |
 |---|---|
 | wine | 64-bit wine with the `wine32:i386` libraries (NSIS and some tools are 32-bit) |
-| Prefix | `WINEPREFIX=/home/dev/.wine` on the `theone-home` volume, `WINEARCH=win64` |
+| Prefix | `WINEPREFIX=/home/dev/.wine` on the `tesseract-home` volume, `WINEARCH=win64` |
 | Noise | `WINEDEBUG=-all` |
 | Init | supervisord oneshot `wine-init` runs `wineboot -u` at container start (idempotent) |
 | Display | `DISPLAY=:1`, so wine dialogs and the app appear in VNC |
@@ -135,9 +135,9 @@ builds under wine. With Electron 44 and Debian's wine 10.0,
    the same sources and run it; that proves the app itself starts and renders:
 
    ```bash
-   theone-controller api POST /v1/processes '{"projectId":"hello","name":"linux-smoke","display":true,
+   tesseract-controller api POST /v1/processes '{"projectId":"hello","name":"linux-smoke","display":true,
      "command":"./dist/*.AppImage --no-sandbox"}'
-   theone-screenshot -w "Hello"
+   tesseract-screenshot -w "Hello"
    ```
 
 2. **Treat the Windows artifact as build-verified.** Check that it exists, its

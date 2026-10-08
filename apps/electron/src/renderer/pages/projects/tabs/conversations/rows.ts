@@ -1,4 +1,4 @@
-import type { AgentRun, ClaudeSession } from "@theone/protocol";
+import type { AgentRun, ClaudeSession } from "@tesseract/protocol";
 import type { RecordRowProps } from "../../../../components/RecordRow";
 import { CONVERSATIONS_LABELS as L } from "./labels";
 import { sessionMeta, sessionStatus, sessionTarget, sessionTitle } from "./model";

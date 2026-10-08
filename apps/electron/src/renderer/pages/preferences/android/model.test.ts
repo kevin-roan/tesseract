@@ -3,7 +3,7 @@ import type { AvdInfo } from "../../../../shared/contracts/android";
 import type { PackageRow } from "../../../onboarding/android/model";
 import { appendLine, deviceState, deviceSubtitle, emulatorBusy, installingPhase, licensesFor } from "./model";
 
-const avd: AvdInfo = { name: "Monolith_API_36", path: "/avd/Monolith_API_36.avd", target: "android-36", abi: "x86_64" };
+const avd: AvdInfo = { name: "Tesseract_API_36", path: "/avd/Tesseract_API_36.avd", target: "android-36", abi: "x86_64" };
 
 describe("android settings model", () => {
   it("describes devices", () => {

@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 from gi.repository import GLib
 
-from monolith_desktop.hostshell import model
-from monolith_desktop.hostshell.model import (
+from tesseract_desktop.hostshell import model
+from tesseract_desktop.hostshell.model import (
     ENV_CONTROLLER_COMMAND,
     HostPairing,
     HostShellError,
@@ -19,7 +19,7 @@ from monolith_desktop.hostshell.model import (
     parse_pairing,
     pin_error,
 )
-from monolith_desktop.hostshell.service import AUTOSTART_SETTING, HostShellService
+from tesseract_desktop.hostshell.service import AUTOSTART_SETTING, HostShellService
 
 FAKE_CONTROLLER = r'''
 import json, signal, sys, time
@@ -29,7 +29,7 @@ state = Path(sys.argv[1])
 args = sys.argv[2:]
 data = json.loads(state.read_text()) if state.exists() else {"pin": None, "token": "t1"}
 if args[:2] == ["host", "pair"]:
-    print(json.dumps({"link": "theone://host?token=" + data["token"], "url": "http://127.0.0.1:1", "name": "box", "pinSet": data["pin"] is not None}))
+    print(json.dumps({"link": "tesseract://host?token=" + data["token"], "url": "http://127.0.0.1:1", "name": "box", "pinSet": data["pin"] is not None}))
 elif args[:2] == ["host", "pin"]:
     pin = sys.stdin.read().strip()
     if not pin.isdigit() or not 6 <= len(pin) <= 12:
@@ -78,7 +78,7 @@ def fake(tmp_path, monkeypatch):
     script.write_text(FAKE_CONTROLLER)
     state = tmp_path / "state.json"
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "config"))
-    monkeypatch.delenv("MONOLITH_DESKTOP_CONFIG", raising=False)
+    monkeypatch.delenv("TESSERACT_DESKTOP_CONFIG", raising=False)
     env = {"PATH": "/usr/bin:/bin", "HOME": str(tmp_path), ENV_CONTROLLER_COMMAND: f"{sys.executable} {script} {state}"}
     return env, state
 
@@ -100,8 +100,8 @@ def test_controller_command_prefers_override_then_checkout(tmp_path):
 
 
 def test_parse_pairing_reads_the_json_line():
-    out = "noise\n" + json.dumps({"link": "theone://host?x", "url": "http://100.1.2.3:7701", "name": "arch", "pinSet": True})
-    assert parse_pairing(out) == HostPairing("theone://host?x", "http://100.1.2.3:7701", "arch", True)
+    out = "noise\n" + json.dumps({"link": "tesseract://host?x", "url": "http://100.1.2.3:7701", "name": "arch", "pinSet": True})
+    assert parse_pairing(out) == HostPairing("tesseract://host?x", "http://100.1.2.3:7701", "arch", True)
     assert parse_pairing(json.dumps({"link": "l", "url": "u"})).pin_set is False
     with pytest.raises(HostShellError):
         parse_pairing("not json")
@@ -175,7 +175,7 @@ def test_autostart_is_persisted(fake):
     assert service.state.value.autostart is False
     service.set_autostart(True)
     assert HostShellService(env).state.value.autostart is True
-    from monolith_desktop.config.storage import read_settings
+    from tesseract_desktop.config.storage import read_settings
 
     assert read_settings()[AUTOSTART_SETTING] is True
     service.shutdown()

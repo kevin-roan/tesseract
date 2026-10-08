@@ -97,9 +97,9 @@ describe("AndroidStep", () => {
     fireEvent.click(footerButton("Install"));
     await waitFor(() => expect(calls.installs).toHaveLength(1));
     expect(calls.installs[0]).toMatchObject({
-      sdkRoot: "/home/dev/.local/share/theone/android-sdk",
+      sdkRoot: "/home/dev/.local/share/tesseract/android-sdk",
       packages: ["platform-tools", "emulator", API_36, API_35],
-      avd: { name: "Monolith_API_36", systemImage: API_36, api: 36, abi: "x86_64", ramMb: 4096, cores: 4, deviceProfile: "pixel_5", storageMb: 6144 },
+      avd: { name: "Tesseract_API_36", systemImage: API_36, api: 36, abi: "x86_64", ramMb: 4096, cores: 4, deviceProfile: "pixel_5", storageMb: 6144 },
     });
   });
 
@@ -135,7 +135,7 @@ describe("AndroidStep", () => {
     );
     expect(await screen.findByText("175 MB of 350 MB · 18.2 MB/s", {}, { timeout: READY_TIMEOUT_MS })).toBeTruthy();
     expect(screen.getByText("Android Emulator 37.2.12")).toBeTruthy();
-    expect(screen.getByText("Virtual device Monolith_API_36")).toBeTruthy();
+    expect(screen.getByText("Virtual device Tesseract_API_36")).toBeTruthy();
     expect(footerButton("Back").disabled).toBe(true);
     fireEvent.click(footerButton("Cancel"));
     await waitFor(() => expect(calls.cancelled).toBe(1));
@@ -146,9 +146,9 @@ describe("AndroidStep", () => {
     await setup(state);
     await ready();
     act(() => {
-      emitFixtureEvent("onboarding", "state", { ...state, android: { kind: "done", sdkRoot: "/sdk", avd: "Monolith_API_36", warnings: [] } });
+      emitFixtureEvent("onboarding", "state", { ...state, android: { kind: "done", sdkRoot: "/sdk", avd: "Tesseract_API_36", warnings: [] } });
     });
-    expect(await screen.findByText(/^Monolith_API_36 is ready/)).toBeTruthy();
+    expect(await screen.findByText(/^Tesseract_API_36 is ready/)).toBeTruthy();
     expect(footerButton("Continue")).toBeTruthy();
     expect(useStatusOverrides.getState().overrides.android).toBe("done");
   });

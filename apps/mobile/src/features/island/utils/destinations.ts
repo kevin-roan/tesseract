@@ -1,4 +1,4 @@
-import type { ClaudeSession, Project } from "@theone/protocol";
+import type { ClaudeSession, Project } from "@tesseract/protocol";
 
 import { projectLabel, projectNames, sessionTitle } from "@/features/chats/utils/sessions";
 import { formatRelativeTime } from "@/features/sandbox/utils/format";

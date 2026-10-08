@@ -1,7 +1,7 @@
-appId: com.kevinbpract.theone
+appId: com.kevinroan.tesseract
 ---
 - stopApp
-- openLink: exp+theone://expo-development-client/?url=${DEV_SERVER_URL}
+- openLink: exp+tesseract://expo-development-client/?url=${DEV_SERVER_URL}
 - extendedWaitUntil:
     visible: "This is the developer menu.*|Profile|Get started|Next"
     timeout: 90000

@@ -1,7 +1,7 @@
 import type { Dirent } from "node:fs";
 import { readdir, stat } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
-import type { BuildOutput } from "@theone/protocol";
+import type { BuildOutput } from "@tesseract/protocol";
 import { badRequest, notFound } from "../core/errors";
 import { isInside, realpathOrNull } from "../core/paths";
 import { artifactExtension, sharedPlatform } from "./artifacts";

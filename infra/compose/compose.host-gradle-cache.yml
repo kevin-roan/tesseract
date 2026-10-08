@@ -1,4 +1,4 @@
-# Opt-in (THEONE_HOST_GRADLE_CACHE=/abs/path): the host's Gradle `caches` directory (the one
+# Opt-in (TESSERACT_HOST_GRADLE_CACHE=/abs/path): the host's Gradle `caches` directory (the one
 # holding modules-2), read-only, as Gradle's read-only dependency cache. Dependencies found
 # there are not downloaded again; missing ones still go to /home/dev/.gradle.
 services:
@@ -7,7 +7,7 @@ services:
       GRADLE_RO_DEP_CACHE: /opt/gradle-ro-cache
     volumes:
       - type: bind
-        source: ${THEONE_HOST_GRADLE_CACHE:?THEONE_HOST_GRADLE_CACHE is not set}
+        source: ${TESSERACT_HOST_GRADLE_CACHE:?TESSERACT_HOST_GRADLE_CACHE is not set}
         target: /opt/gradle-ro-cache
         read_only: true
         bind:

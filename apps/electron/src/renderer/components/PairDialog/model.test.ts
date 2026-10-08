@@ -5,7 +5,7 @@ import { fill, hostPanel, sandboxPanel } from "./model";
 import { qrMatrix } from "./qr";
 
 const actions = { openPreferences: vi.fn(), startHost: vi.fn(), retryHost: vi.fn(), setPin: vi.fn() };
-const pairing = { link: "theone://host?x", url: "http://h:7701", name: "box", pinSet: true };
+const pairing = { link: "tesseract://host?x", url: "http://h:7701", name: "box", pinSet: true };
 
 describe("sandboxPanel", () => {
   it("asks to set up when unconfigured", () => {
@@ -20,7 +20,7 @@ describe("sandboxPanel", () => {
   });
 
   it("captions with the name and warns when offline", () => {
-    const panel = sandboxPanel({ kind: "ready", link: "theone://pair", url: "https://s", name: "sb", online: false }, actions);
+    const panel = sandboxPanel({ kind: "ready", link: "tesseract://pair", url: "https://s", name: "sb", online: false }, actions);
     expect(panel.caption).toBe("Sandbox sb · https://s");
     expect(panel.notices.map((notice) => notice.id)).toEqual(["offline"]);
     expect(sandboxPanel({ kind: "ready", link: "l", url: "https://s", online: true }, actions)).toEqual({ link: "l", caption: "https://s", notices: [] });
@@ -41,7 +41,7 @@ describe("hostPanel", () => {
 
   it("asks for a PIN and builds the caption", () => {
     const panel = hostPanel({ status: "running", error: null, pairing: { ...pairing, pinSet: false } }, actions);
-    expect(panel.link).toBe("theone://host?x");
+    expect(panel.link).toBe("tesseract://host?x");
     expect(panel.caption).toBe("Host box · http://h:7701");
     expect(panel.notices[0]).toMatchObject({ id: "no-pin", actionLabel: PAIR_LABELS.setPin });
     const withoutAction = hostPanel({ status: "running", error: null, pairing: { ...pairing, pinSet: false } }, { ...actions, setPin: undefined });
@@ -65,7 +65,7 @@ describe("helpers", () => {
   });
 
   it("builds a square QR path", () => {
-    const matrix = qrMatrix("theone://pair?url=x");
+    const matrix = qrMatrix("tesseract://pair?url=x");
     expect(matrix.size).toBeGreaterThanOrEqual(21);
     expect(matrix.path.startsWith("M0 0h7")).toBe(true);
   });

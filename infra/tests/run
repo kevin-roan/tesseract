@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Unit tests for infra/: bats suites run inside throwaway theone-test-* containers, so the
+# Unit tests for infra/: bats suites run inside throwaway tesseract-test-* containers, so the
 # host needs nothing but docker. See infra/tests/README.md.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)"
 readonly SCRIPT_DIR REPO_ROOT
-readonly BATS_IMAGE=theone/infra-test:bats
-readonly SANDBOX_BATS_IMAGE=theone/infra-test:sandbox-bats
-readonly SANDBOX_IMAGE_CANDIDATES=(theone/sandbox:latest theone/sandbox:dev theone/sandbox:e2e)
+readonly BATS_IMAGE=tesseract/infra-test:bats
+readonly SANDBOX_BATS_IMAGE=tesseract/infra-test:sandbox-bats
+readonly SANDBOX_IMAGE_CANDIDATES=(tesseract/sandbox:latest tesseract/sandbox:dev tesseract/sandbox:e2e)
 readonly SUITES=(sandbox lint compose rootfs-x11 rootfs-misc doctor entrypoint)
 readonly COVERAGE_DIR="${SCRIPT_DIR}/coverage"
 readonly COVERAGE_INCLUDE=/repo/infra/scripts,/repo/infra/docker/sandbox/rootfs
@@ -17,12 +17,12 @@ usage() {
   cat << 'EOF'
 Usage: infra/tests/run [--coverage] [--quick] [--] [bats args]
 
-Builds theone/infra-test:bats (Debian + bats-core, kcov, shellcheck), renders the compose
+Builds tesseract/infra-test:bats (Debian + bats-core, kcov, shellcheck), renders the compose
 configuration of every mode with the real `docker compose config` on the host, and runs
-the bats suites in infra/tests as root in a container named theone-test-bats-<pid>
+the bats suites in infra/tests as root in a container named tesseract-test-bats-<pid>
 (no network, repository mounted read-only). Then, unless --quick, runs entrypoint.bats
-again in theone-test-entrypoint-<pid> built from the real sandbox image
-(THEONE_TEST_SANDBOX_IMAGE, else the first of theone/sandbox:latest, :dev, :e2e that
+again in tesseract-test-entrypoint-<pid> built from the real sandbox image
+(TESSERACT_TEST_SANDBOX_IMAGE, else the first of tesseract/sandbox:latest, :dev, :e2e that
 exists; skipped when there is none).
 
   --coverage   run the first stage under kcov; HTML and JSON land in infra/tests/coverage/
@@ -66,7 +66,7 @@ done
 
 command -v docker > /dev/null 2>&1 || die "docker is not installed"
 
-work="$(mktemp -d "${TMPDIR:-/tmp}/theone-infra-tests.XXXXXX")"
+work="$(mktemp -d "${TMPDIR:-/tmp}/tesseract-infra-tests.XXXXXX")"
 containers=()
 cleanup() {
   local name
@@ -92,19 +92,19 @@ render_compose() {
     return 0
   fi
   cat > "${env_file}" << 'EOF'
-THEONE_COMPOSE_PROJECT=theone-test-config
-THEONE_VOLUME_PREFIX=vt
-THEONE_HOSTNAME=theone-test
+TESSERACT_COMPOSE_PROJECT=tesseract-test-config
+TESSERACT_VOLUME_PREFIX=vt
+TESSERACT_HOSTNAME=tesseract-test
 TS_TAILNET_DOMAIN=tail.ts.net
 TS_AUTHKEY=tskey-auth-test
-THEONE_BIND_ADDR=100.64.0.1
-THEONE_CONTROLLER_HOST_PORT=17710
-THEONE_VNC_HOST_PORT=15910
-THEONE_TOKEN=token-test
-THEONE_VNC_PASSWORD=vnctest1
-THEONE_IMAGE=theone/sandbox:test-config
-THEONE_TAILSCALE_HOST_SOCKET_DIR=/srv/tailscale
-THEONE_HOST_CLAUDE_DIR=/srv/claude
+TESSERACT_BIND_ADDR=100.64.0.1
+TESSERACT_CONTROLLER_HOST_PORT=17710
+TESSERACT_VNC_HOST_PORT=15910
+TESSERACT_TOKEN=token-test
+TESSERACT_VNC_PASSWORD=vnctest1
+TESSERACT_IMAGE=tesseract/sandbox:test-config
+TESSERACT_TAILSCALE_HOST_SOCKET_DIR=/srv/tailscale
+TESSERACT_HOST_CLAUDE_DIR=/srv/claude
 EOF
   for variant in local host-tailscale tailscale local-dind tailscale-dind host-tailscale-tsapi tailscale-tsapi; do
     mode="${variant%-dind}"
@@ -121,23 +121,23 @@ EOF
   mkdir -p "${work}/claude-work" "${work}/claude-other"
   env -i PATH="${PATH}" HOME="${HOME}" XDG_STATE_HOME="${work}/state" ${DOCKER_HOST:+DOCKER_HOST="${DOCKER_HOST}"} \
     ${DOCKER_CONFIG:+DOCKER_CONFIG="${DOCKER_CONFIG}"} ${DOCKER_CONTEXT:+DOCKER_CONTEXT="${DOCKER_CONTEXT}"} \
-    THEONE_HOST_CLAUDE_ACCOUNTS="work=${work}/claude-work,other=${work}/claude-other missing=${work}/claude-missing" \
+    TESSERACT_HOST_CLAUDE_ACCOUNTS="work=${work}/claude-work,other=${work}/claude-other missing=${work}/claude-missing" \
     "${REPO_ROOT}/infra/scripts/sandbox" --env-file "${env_file}" --mode local config --format json \
     > "${rendered}/local-claude-accounts.json" 2> /dev/null \
-    || die "sandbox --mode local config with THEONE_HOST_CLAUDE_ACCOUNTS failed"
+    || die "sandbox --mode local config with TESSERACT_HOST_CLAUDE_ACCOUNTS failed"
   env -i PATH="${PATH}" HOME="${HOME}" ${DOCKER_HOST:+DOCKER_HOST="${DOCKER_HOST}"} \
     ${DOCKER_CONFIG:+DOCKER_CONFIG="${DOCKER_CONFIG}"} ${DOCKER_CONTEXT:+DOCKER_CONTEXT="${DOCKER_CONTEXT}"} \
-    THEONE_HOST_ANDROID_SDK=/srv/android-sdk THEONE_HOST_GRADLE_CACHE=/srv/gradle/caches \
+    TESSERACT_HOST_ANDROID_SDK=/srv/android-sdk TESSERACT_HOST_GRADLE_CACHE=/srv/gradle/caches \
     "${REPO_ROOT}/infra/scripts/sandbox" --env-file "${env_file}" --mode local config --format json \
     > "${rendered}/local-host-android.json" \
-    || die "sandbox --mode local config with THEONE_HOST_ANDROID_SDK failed"
+    || die "sandbox --mode local config with TESSERACT_HOST_ANDROID_SDK failed"
 }
 
 mounts() {
   printf '%s\n' \
     -v "${REPO_ROOT}/infra:/repo/infra:ro" \
-    -v "${REPO_ROOT}/infra/docker/sandbox/rootfs/etc/theone/agent-templates:/etc/theone/agent-templates:ro" \
-    -v "${REPO_ROOT}/SPEC.md:/etc/theone/SPEC.md:ro" \
+    -v "${REPO_ROOT}/infra/docker/sandbox/rootfs/etc/tesseract/agent-templates:/etc/tesseract/agent-templates:ro" \
+    -v "${REPO_ROOT}/SPEC.md:/etc/tesseract/SPEC.md:ro" \
     -v "${work}/compose:/rendered:ro"
 }
 
@@ -154,13 +154,13 @@ run_container() {
   local args=()
   mapfile -t args < <(mounts)
   containers+=("${name}")
-  docker run --rm --name "${name}" --network none --hostname theone-test \
-    "${args[@]}" ${extra_mounts[@]+"${extra_mounts[@]}"} -e THEONE_TEST_CONTAINER=1 -e THEONE_TEST_REPO=/repo -e THEONE_TEST_COMPOSE_DIR=/rendered \
+  docker run --rm --name "${name}" --network none --hostname tesseract-test \
+    "${args[@]}" ${extra_mounts[@]+"${extra_mounts[@]}"} -e TESSERACT_TEST_CONTAINER=1 -e TESSERACT_TEST_REPO=/repo -e TESSERACT_TEST_COMPOSE_DIR=/rendered \
     "${image}" "$@"
 }
 
 run_unit_stage() {
-  local name="theone-test-bats-$$" paths=()
+  local name="tesseract-test-bats-$$" paths=()
   mapfile -t paths < <(suite_paths "${SUITES[@]}")
   log "running ${SUITES[*]} in ${name}"
   if [[ -z "${coverage}" ]]; then
@@ -187,8 +187,8 @@ run_unit_stage() {
 
 sandbox_image() {
   local image
-  if [[ -n "${THEONE_TEST_SANDBOX_IMAGE:-}" ]]; then
-    printf '%s' "${THEONE_TEST_SANDBOX_IMAGE}"
+  if [[ -n "${TESSERACT_TEST_SANDBOX_IMAGE:-}" ]]; then
+    printf '%s' "${TESSERACT_TEST_SANDBOX_IMAGE}"
     return
   fi
   for image in "${SANDBOX_IMAGE_CANDIDATES[@]}"; do
@@ -200,7 +200,7 @@ sandbox_image() {
 }
 
 run_sandbox_stage() {
-  local image name="theone-test-entrypoint-$$" paths=()
+  local image name="tesseract-test-entrypoint-$$" paths=()
   image="$(sandbox_image)"
   if [[ -z "${image}" ]]; then
     log "no sandbox image (build one with: bun run sandbox build): entrypoint stage skipped"

@@ -1,4 +1,4 @@
-import type { FetchLike, HttpResponse } from "@theone/client";
+import type { FetchLike, HttpResponse } from "@tesseract/client";
 import { ipc } from "../../lib/ipc";
 
 let sequence = 0;

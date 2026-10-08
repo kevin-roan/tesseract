@@ -1,16 +1,16 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
-import type { DisplayStatus } from "@theone/protocol";
-import { sampleDisplay } from "@theone/protocol/fixtures";
+import { TesseractClient } from "@tesseract/client";
+import type { DisplayStatus } from "@tesseract/protocol";
+import { sampleDisplay } from "@tesseract/protocol/fixtures";
 
 import { useDisplaySession } from "@/features/sandbox/hooks/use-display-session";
 
 import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const PAGE_1 = "http://127.0.0.1:7700/ui/vnc#ticket=t1&password=vncpass1";
 const PAGE_2 = "http://127.0.0.1:7700/ui/vnc#ticket=t2&password=vncpass1";
 const NO_DISPLAY: DisplayStatus = { ...sampleDisplay, available: false, width: null, height: null };

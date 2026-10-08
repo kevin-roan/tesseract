@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { View } from "react-native";
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 
 import { useAppTheme } from "@/hooks/use-app-theme";
 import UploadAttachment from "@/features/attachments/components/upload-attachment";

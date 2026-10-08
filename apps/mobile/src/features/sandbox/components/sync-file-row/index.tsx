@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { View } from "react-native";
 import { CheckIcon } from "phosphor-react-native";
-import type { SyncFileChange } from "@theone/protocol";
+import type { SyncFileChange } from "@tesseract/protocol";
 
 import PressableScale from "@/components/pressable-scale";
 import { ThemedText } from "@/components/themed-text";

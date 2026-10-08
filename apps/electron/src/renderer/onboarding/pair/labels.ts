@@ -2,7 +2,7 @@ import { PAIR_LABELS } from "../../components/PairDialog";
 
 export const PAIR_STEP_LABELS = {
   description:
-    "Install the TheOne app and Tailscale on your phone, then scan this code in the app (Agents › Pair a sandbox).",
+    "Install the Tesseract app and Tailscale on your phone, then scan this code in the app (Agents › Pair a sandbox).",
   instructions: PAIR_LABELS.instructions,
   caption: PAIR_LABELS.sandbox,
   copy: PAIR_LABELS.copy,

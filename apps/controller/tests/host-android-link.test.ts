@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, test } from "bun:test";
 import { createServer, type Server as TcpServer, type Socket } from "node:net";
 import type { ServerWebSocket } from "bun";
-import { AndroidLinkHostMessageSchema, createId, type AndroidLinkHostMessage, type EmulatorInfo, type SharedEmulator } from "@theone/protocol";
+import { AndroidLinkHostMessageSchema, createId, type AndroidLinkHostMessage, type EmulatorInfo, type SharedEmulator } from "@tesseract/protocol";
 import { silentLogger } from "../src/core/logger";
 import { AndroidLink, LINK_MESSAGES, linkEmulatorView, redactUrl, type LinkOptions } from "../src/host/android/link";
 import type { Endpoint } from "../src/host/android/pipe";

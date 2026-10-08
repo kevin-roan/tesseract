@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
+import { TesseractClient } from "@tesseract/client";
 import type { QueryClient } from "@tanstack/react-query";
 
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
@@ -8,12 +8,12 @@ import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
 
 import { TEST_SANDBOX, createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const URL = "http://127.0.0.1:7700/ui/terminal/trm_1#ticket=t1";
 const fake = { terminalPageUrl: jest.fn() };
-const build = (client: TheOneClient) => (client as unknown as typeof fake).terminalPageUrl();
+const build = (client: TesseractClient) => (client as unknown as typeof fake).terminalPageUrl();
 
 let queryClient: QueryClient;
 
@@ -57,7 +57,7 @@ describe("usePageUrl", () => {
 
   it("uses a given target client, key and origin instead of the active sandbox", async () => {
     const other = { terminalPageUrl: jest.fn().mockResolvedValue("http://100.64.0.1:7701/ui/terminal#ticket=h") };
-    const target = { key: ["host", "page", "trm_1"], client: other as unknown as TheOneClient, origin: "http://100.64.0.1:7701" };
+    const target = { key: ["host", "page", "trm_1"], client: other as unknown as TesseractClient, origin: "http://100.64.0.1:7701" };
     const { result } = await renderHook(() => usePageUrl("terminal", "trm_1", (client) => (client as unknown as typeof other).terminalPageUrl(), true, target), {
       wrapper: createWrapper(queryClient),
     });

@@ -29,10 +29,10 @@ describe("rows", () => {
 
   it("toggles a switch row from the row and from the switch exactly once", () => {
     const onChange = vi.fn();
-    render(<SwitchRow title="Start with Monolith" checked={false} onChange={onChange} />);
-    fireEvent.click(screen.getByText("Start with Monolith"));
+    render(<SwitchRow title="Start with Tesseract" checked={false} onChange={onChange} />);
+    fireEvent.click(screen.getByText("Start with Tesseract"));
     expect(onChange).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByRole("switch", { name: "Start with Monolith" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Start with Tesseract" }));
     expect(onChange).toHaveBeenCalledTimes(2);
     expect(onChange).toHaveBeenLastCalledWith(true);
   });
@@ -52,8 +52,8 @@ describe("rows", () => {
   });
 
   it("shows property rows with the value", () => {
-    render(<PropertyRow title="Image" value="ghcr.io/theone/sandbox:latest" />);
-    expect(screen.getByText("ghcr.io/theone/sandbox:latest")).toBeTruthy();
+    render(<PropertyRow title="Image" value="ghcr.io/tesseract/sandbox:latest" />);
+    expect(screen.getByText("ghcr.io/tesseract/sandbox:latest")).toBeTruthy();
   });
 
   it("expands and collapses", async () => {

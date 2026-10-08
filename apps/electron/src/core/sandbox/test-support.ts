@@ -97,7 +97,7 @@ export interface TempStack {
 }
 
 export function tempStack(): TempStack {
-  const dir = mkdtempSync(join(tmpdir(), "monolith-test-sandbox-"));
+  const dir = mkdtempSync(join(tmpdir(), "tesseract-test-sandbox-"));
   const contextDir = join(dir, "ctx");
   mkdirSync(join(contextDir, "infra", "compose"), { recursive: true });
   mkdirSync(join(dir, "claude"), { recursive: true });

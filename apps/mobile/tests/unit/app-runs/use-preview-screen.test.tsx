@@ -1,17 +1,17 @@
 import { renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
-import type { AppRun } from "@theone/protocol";
-import { sampleAppRun } from "@theone/protocol/fixtures";
+import { TesseractClient } from "@tesseract/client";
+import type { AppRun } from "@tesseract/protocol";
+import { sampleAppRun } from "@tesseract/protocol/fixtures";
 
 import { appRunKeys } from "@/features/app-runs/api/query-keys";
 import { usePreviewScreen } from "@/features/app-runs/hooks/use-preview-screen";
 
 import { TEST_SANDBOX, createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../sandbox/helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({ useIsFocused: () => true, router: { push: jest.fn(), back: jest.fn() } }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const fake = { getAppRun: jest.fn() };
 const SID = TEST_SANDBOX.id;
 const URL = "http://100.64.0.2:8090";

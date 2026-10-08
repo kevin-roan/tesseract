@@ -1,4 +1,4 @@
-import { isFinalBuildState, type BuildJob, type BuildProfile, type BuildTarget } from "@theone/protocol";
+import { isFinalBuildState, type BuildJob, type BuildProfile, type BuildTarget } from "@tesseract/protocol";
 import type { ChipOption } from "../../../../components/Chip";
 import type { RecordStatus } from "../../../../components/RecordRow";
 import { BUILD_TARGET_LABELS } from "../../../../features/projects/labels";

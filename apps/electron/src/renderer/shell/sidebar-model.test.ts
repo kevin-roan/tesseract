@@ -1,4 +1,4 @@
-import type { AgentRun, Project } from "@theone/protocol";
+import type { AgentRun, Project } from "@tesseract/protocol";
 import { describe, expect, it } from "vitest";
 import { agentsBadge, sidebarProjectItems } from "./sidebar-model";
 

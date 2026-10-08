@@ -1,4 +1,4 @@
-import type { UploadKind } from "@theone/protocol";
+import type { UploadKind } from "@tesseract/protocol";
 import {
   BYTE_STEP,
   BYTE_UNITS,

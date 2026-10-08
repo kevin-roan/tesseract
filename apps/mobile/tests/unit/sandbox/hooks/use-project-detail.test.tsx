@@ -1,7 +1,7 @@
 import { Linking } from "react-native";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { ApiError, TheOneClient } from "@theone/client";
-import type { BuildJob, ProcessInfo } from "@theone/protocol";
+import { ApiError, TesseractClient } from "@tesseract/client";
+import type { BuildJob, ProcessInfo } from "@tesseract/protocol";
 import {
   sampleArtifact,
   sampleBuild,
@@ -9,7 +9,7 @@ import {
   sampleProcess,
   sampleProject,
   sampleSyncChanges,
-} from "@theone/protocol/fixtures";
+} from "@tesseract/protocol/fixtures";
 
 import { useProjectDetail } from "@/features/sandbox/hooks/use-project-detail";
 import { confirm } from "@/lib/confirm";
@@ -20,7 +20,7 @@ import { TEST_SITE, createTestQueryClient, createWrapper, resetSandboxState, see
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) };
 const mockLogSources: unknown[] = [];
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   get router() {
@@ -36,7 +36,7 @@ jest.mock("@/features/sandbox/hooks/use-log-stream", () => ({
 
 jest.mock("@/lib/confirm", () => ({ confirm: jest.fn() }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const mockConfirm = confirm as jest.Mock;
 const fake = {
   getProject: jest.fn(),

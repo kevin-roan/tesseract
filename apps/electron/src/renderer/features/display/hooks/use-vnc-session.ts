@@ -1,4 +1,4 @@
-import type { TheOneClient } from "@theone/client";
+import type { TesseractClient } from "@tesseract/client";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { INITIAL_SESSION } from "../model";
 import type { SessionState } from "../types";
@@ -18,9 +18,9 @@ function createHost(): HTMLDivElement {
 }
 
 export function useVncSession(
-  client: TheOneClient | null,
+  client: TesseractClient | null,
   running: boolean,
-  depsFor: (client: TheOneClient | null) => SessionDeps | null = sessionDepsFor,
+  depsFor: (client: TesseractClient | null) => SessionDeps | null = sessionDepsFor,
 ): VncSessionHandle {
   const [host] = useState(createHost);
   const [session] = useState(() => new VncSession(null));

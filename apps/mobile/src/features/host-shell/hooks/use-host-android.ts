@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { HostAndroidStatus } from "@theone/protocol";
+import type { HostAndroidStatus } from "@tesseract/protocol";
 
 import type { MenuOption } from "@/components/menu-sheet/types";
 import { useActiveSandbox } from "@/features/sandbox/hooks/use-sandbox-client";

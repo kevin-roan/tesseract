@@ -1,5 +1,5 @@
 import type { Server } from "bun";
-import { errorBody, LIMITS, routePatterns } from "@theone/protocol";
+import { errorBody, LIMITS, routePatterns } from "@tesseract/protocol";
 import type { Config } from "./config";
 import { createApp, MAX_BODY_BYTES } from "./http/app";
 import { createServices, type ServiceOptions, type Services } from "./services";

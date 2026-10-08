@@ -1,14 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { ApiError } from "@theone/client";
+import { ApiError } from "@tesseract/client";
 import { client, MINUTES, SECONDS } from "./lib/env";
 import { sh } from "./lib/sandbox";
 import { waitFor } from "./lib/wait";
 
 const PROJECT_ID = "android-hello";
-const ENABLED = process.env.THEONE_E2E_ANDROID === "1";
+const ENABLED = process.env.TESSERACT_E2E_ANDROID === "1";
 const BUILD_TIMEOUT_MS = 45 * MINUTES;
 
-describe.skipIf(!ENABLED)("android-apk (THEONE_E2E_ANDROID=1)", () => {
+describe.skipIf(!ENABLED)("android-apk (TESSERACT_E2E_ANDROID=1)", () => {
   test(
     "a blank Expo app builds a debug APK",
     async () => {
@@ -20,12 +20,12 @@ describe.skipIf(!ENABLED)("android-apk (THEONE_E2E_ANDROID=1)", () => {
       await sh(
         [
           "set -e",
-          "rm -rf /tmp/theone-e2e-android",
-          "mkdir -p /tmp/theone-e2e-android",
-          "cd /tmp/theone-e2e-android",
+          "rm -rf /tmp/tesseract-e2e-android",
+          "mkdir -p /tmp/tesseract-e2e-android",
+          "cd /tmp/tesseract-e2e-android",
           `bunx create-expo-app@latest ${PROJECT_ID} --template blank-typescript --no-install --yes > create.log 2>&1 || { tail -20 create.log; exit 1; }`,
           `cp -a ${PROJECT_ID}/. /workspace/projects/${PROJECT_ID}/`,
-          "rm -rf /tmp/theone-e2e-android",
+          "rm -rf /tmp/tesseract-e2e-android",
         ].join("\n"),
       );
       const project = await client.getProject(PROJECT_ID);

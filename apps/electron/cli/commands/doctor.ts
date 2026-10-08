@@ -66,7 +66,7 @@ async function accelChecks(context: CliContext): Promise<CheckItem[]> {
 
 async function sdkChecks(context: CliContext): Promise<CheckItem[]> {
   const sdkRoot = await sdkRootFor(context);
-  const sdk = await describeSdk(sdkRoot, "monolith-default", context.runtime.platform);
+  const sdk = await describeSdk(sdkRoot, "tesseract-default", context.runtime.platform);
   const avds = await listAvds(context.runtime.paths).catch(() => []);
   if (sdk.emulatorRevision === null && sdk.systemImages === 0) {
     return [item("sdk", "warning", LABELS.sdkMissing, LABELS.sdkMissingDetail)];

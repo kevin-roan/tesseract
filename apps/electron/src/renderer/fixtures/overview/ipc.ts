@@ -8,7 +8,7 @@ import { EMPTY_METRICS, overviewMetricsCache } from "./data";
 import { parityMetricsCache } from "./gtk-parity";
 import { SCENARIOS } from "./http";
 
-const CONFIG_FILE = "/home/dev/.config/monolith-desktop/config.json";
+const CONFIG_FILE = "/home/dev/.config/tesseract-desktop/config.json";
 
 function overviewConnection() {
   return {

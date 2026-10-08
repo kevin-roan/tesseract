@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { BuildProfile, BuildTarget, PackageManager } from "@theone/protocol";
+import type { BuildProfile, BuildTarget, PackageManager } from "@tesseract/protocol";
 import { badRequest } from "../core/errors";
 import type { Env } from "../core/exec";
 import type { ProjectFacts } from "./project-detect";

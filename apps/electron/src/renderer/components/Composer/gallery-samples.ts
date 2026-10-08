@@ -4,7 +4,7 @@ import type { SlashCommand } from "./model";
 
 export const COMPOSER_GALLERY = {
   hint: "Type / for commands",
-  draft: "Summarize the failing tests in monolith and propose a fix.",
+  draft: "Summarize the failing tests in tesseract and propose a fix.",
   stop: "Stop",
   width: 311,
   largeWidth: 310,
@@ -33,7 +33,7 @@ export const COMPOSER_LOCKED_REASON = COMPOSER_LABELS.lockedRunning;
 
 export const GALLERY_PROJECTS = [
   { id: "streaxfit", name: "streaxfit" },
-  { id: "monolith", name: "monolith" },
+  { id: "tesseract", name: "tesseract" },
   { id: "hybrid-pos", name: "hybrid-pos" },
   { id: "sante-production", name: "sante-production" },
 ] as const;

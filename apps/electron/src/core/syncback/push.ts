@@ -1,7 +1,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
-import { projectIdFromName } from "@theone/protocol";
+import { projectIdFromName } from "@tesseract/protocol";
 import type { SyncApi } from "./api";
 import { connectSandbox, type CliIo, type SyncEnvironment } from "./connect";
 import { EXIT, GIT_DIR, PUSH_TEMP_PREFIX } from "./constants";

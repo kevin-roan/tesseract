@@ -1,4 +1,4 @@
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 import { useCallback, useMemo, useState } from "react";
 import { useAgentDetails, useRefreshDetails } from "../../../features/agents/hooks/use-agent-details";
 import { useAgentProjects, useAgentRuns, useArchivedRuns } from "../../../features/agents/hooks/use-agent-runs";

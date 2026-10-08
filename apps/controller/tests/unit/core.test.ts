@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdirSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { mapLimit } from "../../src/core/concurrency";
 import { badRequest, conflict, errorMessage, forbidden, HttpError, notFound, unavailable } from "../../src/core/errors";
@@ -7,7 +7,7 @@ import { EventHub } from "../../src/core/events";
 import { childEnv, resolveExecutable, run, runBytes } from "../../src/core/exec";
 import { LineSplitter } from "../../src/core/line-splitter";
 import { createLogger, isLogLevel, silentLogger, type LogLevel } from "../../src/core/logger";
-import { isInside, locateProject, realpathOrNull, requireProjectId } from "../../src/core/paths";
+import { adoptLegacyPath, isInside, locateProject, realpathOrNull, requireProjectId } from "../../src/core/paths";
 import { findPortOwner } from "../../src/core/ports";
 import { listPids, readProcStat } from "../../src/core/proc";
 import { describeLeftovers, groupAlive, groupLeftovers, groupMembers, signalGroup } from "../../src/core/process-group";
@@ -248,6 +248,21 @@ describe("time", () => {
 });
 
 describe("paths", () => {
+  test("adoptLegacyPath moves pre-rename state once and never over existing state", () => {
+    const root = makeTempDir("legacy");
+    const legacy = join(root, "theone", "host-shell");
+    const current = join(root, "tesseract", "host-shell");
+    expect(adoptLegacyPath(legacy, current)).toBe(false);
+    mkdirSync(legacy, { recursive: true });
+    writeFileSync(join(legacy, "state.json"), "old");
+    expect(adoptLegacyPath(legacy, current)).toBe(true);
+    expect(readFileSync(join(current, "state.json"), "utf8")).toBe("old");
+    expect(existsSync(legacy)).toBe(false);
+    mkdirSync(legacy, { recursive: true });
+    expect(adoptLegacyPath(legacy, current)).toBe(false);
+    expect(existsSync(legacy)).toBe(true);
+  });
+
   test("isInside", () => {
     expect(isInside("/a", "/a")).toBe(true);
     expect(isInside("/a", "/a/b/c")).toBe(true);
@@ -294,9 +309,9 @@ describe("paths", () => {
 
 describe("exec", () => {
   test("childEnv drops controller secrets without touching the source", () => {
-    const source = { THEONE_TOKEN: "t", THEONE_VNC_PASSWORD: "p", PATH: "/bin" };
+    const source = { TESSERACT_TOKEN: "t", TESSERACT_VNC_PASSWORD: "p", PATH: "/bin" };
     expect(childEnv(source)).toEqual({ PATH: "/bin" });
-    expect(source.THEONE_TOKEN).toBe("t");
+    expect(source.TESSERACT_TOKEN).toBe("t");
   });
 
   test("run captures stdout, stderr, exit code and stdin", async () => {
@@ -308,14 +323,14 @@ describe("exec", () => {
   });
 
   test("uses childEnv unless an env is given", async () => {
-    process.env.THEONE_VNC_PASSWORD = "leak-check";
+    process.env.TESSERACT_VNC_PASSWORD = "leak-check";
     try {
-      const inherited = await run(["bash", "-c", 'echo "${THEONE_VNC_PASSWORD:-none}"']);
+      const inherited = await run(["bash", "-c", 'echo "${TESSERACT_VNC_PASSWORD:-none}"']);
       expect(inherited.stdout.trim()).toBe("none");
       const explicit = await run(["bash", "-c", 'echo "$X"'], { env: { X: "given", PATH: process.env.PATH } });
       expect(explicit.stdout.trim()).toBe("given");
     } finally {
-      delete process.env.THEONE_VNC_PASSWORD;
+      delete process.env.TESSERACT_VNC_PASSWORD;
     }
   });
 

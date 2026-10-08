@@ -1,4 +1,4 @@
-import type { TheOneClient } from "@theone/client";
+import type { TesseractClient } from "@tesseract/client";
 import { MotionGlobalConfig } from "motion/react";
 import type { ReactElement } from "react";
 import { vi, type Mock } from "vitest";
@@ -47,8 +47,8 @@ export function fakeClient(overrides: Partial<FakeClient> = {}): FakeClient {
   } as unknown as FakeClient;
 }
 
-export function asClient(client: FakeClient): TheOneClient {
-  return client as unknown as TheOneClient;
+export function asClient(client: FakeClient): TesseractClient {
+  return client as unknown as TesseractClient;
 }
 
 export interface FakeHost extends TabHost {
@@ -57,10 +57,10 @@ export interface FakeHost extends TabHost {
   report: Mock<TabHost["report"]>;
 }
 
-export function fakeHost(projectId = "monolith"): FakeHost {
+export function fakeHost(projectId = "tesseract"): FakeHost {
   return { projectId, visible: true, upsert: vi.fn<TabHost["upsert"]>(), remove: vi.fn<TabHost["remove"]>(), report: vi.fn<TabHost["report"]>() };
 }
 
 export function renderTab(element: ReactElement) {
-  return renderRoutes([{ path: "*", element }], "/projects/monolith");
+  return renderRoutes([{ path: "*", element }], "/projects/tesseract");
 }

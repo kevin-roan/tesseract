@@ -1,4 +1,4 @@
-import { isFinalBuildState, type BuildJob } from "@theone/protocol";
+import { isFinalBuildState, type BuildJob } from "@tesseract/protocol";
 
 import { buildTargetLabel } from "@/features/sandbox/utils/labels";
 import { capitalize, elapsedSeconds, formatDuration, pluralize } from "@/features/sandbox/utils/format";

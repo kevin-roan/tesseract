@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { NetworkError, TheOneClient } from "@theone/client";
-import { buildPairingLink } from "@theone/protocol";
-import { sampleHealth, sampleStatus } from "@theone/protocol/fixtures";
+import { NetworkError, TesseractClient } from "@tesseract/client";
+import { buildPairingLink } from "@tesseract/protocol";
+import { sampleHealth, sampleStatus } from "@tesseract/protocol/fixtures";
 import type { BarcodeScanningResult } from "expo-camera";
 
 import { usePairScreen } from "@/features/sandbox/hooks/use-pair-screen";
@@ -14,7 +14,7 @@ import { createTestQueryClient, createWrapper, resetSandboxState } from "../help
 const mockRouter = { push: jest.fn(), replace: jest.fn(), back: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) };
 let mockParams: Record<string, string | undefined> = {};
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({
   useIsFocused: () => true,
   useLocalSearchParams: () => mockParams,
@@ -23,9 +23,9 @@ jest.mock("expo-router", () => ({
   },
 }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const TOKEN = "Zx9-pairing_token.0123456789";
-const URL = "https://theone-sandbox.tail1234.ts.net";
+const URL = "https://tesseract-sandbox.tail1234.ts.net";
 const LINK = buildPairingLink({ url: URL, token: TOKEN, name: "Studio" });
 const probe = { baseUrl: URL, health: jest.fn(), status: jest.fn() };
 
@@ -130,7 +130,7 @@ describe("usePairScreen", () => {
     const { result } = await renderScreen();
     await act(async () => result.current.scanner.onBarcodeScanned(scan("https://example.com")));
 
-    expect(result.current.form.message).toMatch(/not a Monolith pairing link/);
+    expect(result.current.form.message).toMatch(/not a Tesseract pairing link/);
     expect(result.current.canRescan).toBe(true);
     expect(MockClient).not.toHaveBeenCalled();
     expect(mockRouter.dismissTo).not.toHaveBeenCalled();

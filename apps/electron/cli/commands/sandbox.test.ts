@@ -28,8 +28,8 @@ vi.mock("../../src/core/docker", async (importOriginal) => ({
 
 const STATUS: SandboxStackStatus = {
   configured: true,
-  project: "theone",
-  services: [{ service: "sandbox", container: "theone-sandbox-1", state: "running", health: "healthy" }],
+  project: "tesseract",
+  services: [{ service: "sandbox", container: "tesseract-sandbox-1", state: "running", health: "healthy" }],
 };
 
 let sandbox: Sandbox;
@@ -79,7 +79,7 @@ describe("build helpers", () => {
   });
 
   it("renders the services table", () => {
-    expect(describeServices(STATUS)).toEqual(["SERVICE  CONTAINER         STATE    HEALTH", "sandbox  theone-sandbox-1  running  healthy"]);
+    expect(describeServices(STATUS)).toEqual(["SERVICE  CONTAINER            STATE    HEALTH", "sandbox  tesseract-sandbox-1  running  healthy"]);
     expect(describeServices({ ...STATUS, services: [] })).toEqual(["No sandbox containers"]);
   });
 });
@@ -95,12 +95,12 @@ describe("tesseract sandbox", () => {
 
   it("passes --volumes to down and streams compose output to stderr", async () => {
     core.composeDown.mockImplementation(async (_context, _volumes, callbacks: { onLog(line: string): void }) => {
-      callbacks.onLog("Container theone-sandbox-1 Removed");
+      callbacks.onLog("Container tesseract-sandbox-1 Removed");
       return { ...STATUS, services: [] };
     });
     const result = await runCli(sandbox, ["sandbox", "down", "--volumes"]);
     expect(core.composeDown.mock.calls[0]?.[1]).toBe(true);
-    expect(result.err).toContain("Container theone-sandbox-1 Removed");
+    expect(result.err).toContain("Container tesseract-sandbox-1 Removed");
     expect(result.out).toEqual(["No sandbox containers"]);
   });
 
@@ -130,7 +130,7 @@ describe("tesseract sandbox", () => {
   });
 
   it("keeps an existing configuration when no components are given", async () => {
-    core.readEnvValues.mockResolvedValue({ THEONE_IMAGE: "theone/sandbox:latest" });
+    core.readEnvValues.mockResolvedValue({ TESSERACT_IMAGE: "tesseract/sandbox:latest" });
     core.runBuild.mockResolvedValue({ kind: "failed", phase: "build", message: "boom" } satisfies BuildPhase);
     const result = await runCli(sandbox, ["sandbox", "build"]);
     expect(core.writeStack).not.toHaveBeenCalled();

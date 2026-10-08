@@ -10,13 +10,13 @@ In `host-tailscale` and `local` modes the pairing URL is plain HTTP
 from the app, and ATS exceptions can't be scoped to a raw IP address. Safari
 still loads the URL, which is what makes it confusing. The fix is an HTTPS
 URL: `tailscale` mode serves the sandbox at
-`https://<THEONE_HOSTNAME>.<tailnet>.ts.net` with a real certificate.
+`https://<TESSERACT_HOSTNAME>.<tailnet>.ts.net` with a real certificate.
 
 ## Confirm it's this problem
 
 1. On the host, check the sandbox is healthy:
    ```sh
-   docker ps --format '{{.Names}}\t{{.Status}}' | grep theone
+   docker ps --format '{{.Names}}\t{{.Status}}' | grep tesseract
    curl -sS http://<host tailnet IP>:7700/v1/health
    ```
 2. Check the phone is on the tailnet: `tailscale status` lists it as online,
@@ -40,10 +40,10 @@ URL: `tailscale` mode serves the sandbox at
 Edit `infra/compose/.env`:
 
 ```sh
-THEONE_MODE=tailscale
+TESSERACT_MODE=tailscale
 TS_TAILNET_DOMAIN=tail511d9d.ts.net
 TS_AUTHKEY=tskey-auth-...        # only needed for the first start
-THEONE_HOSTNAME=theone-sandbox   # becomes https://theone-sandbox.<tailnet>
+TESSERACT_HOSTNAME=tesseract-sandbox   # becomes https://tesseract-sandbox.<tailnet>
 ```
 
 Then, from the repo root:
@@ -57,14 +57,14 @@ the home volume and the token are kept. After the first successful start,
 the sidecar keeps its login in its state volume, so you can clear
 `TS_AUTHKEY` again.
 
-A machine named `theone-sandbox` must not already exist on the tailnet
+A machine named `tesseract-sandbox` must not already exist on the tailnet
 (check `tailscale status`). Otherwise Tailscale gives the new node a
 suffixed name and the URL won't match.
 
 ## Verify
 
 ```sh
-curl -sS https://theone-sandbox.tail511d9d.ts.net/v1/health
+curl -sS https://tesseract-sandbox.tail511d9d.ts.net/v1/health
 bun run sandbox doctor
 ```
 
@@ -80,7 +80,7 @@ The first HTTPS request can take a few seconds while the certificate is issued.
 
 ## Roll back
 
-Set `THEONE_MODE=host-tailscale` (and `THEONE_BIND_ADDR` to the host's
+Set `TESSERACT_MODE=host-tailscale` (and `TESSERACT_BIND_ADDR` to the host's
 tailnet IPv4, or leave it empty for auto-detection) in `infra/compose/.env`,
 run `bun run sandbox up`, and pair again.
 

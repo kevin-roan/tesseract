@@ -74,7 +74,7 @@ export type MethodArgs<S extends ServiceName, M extends MethodName<S>> = Fn<Meth
 export type MethodResult<S extends ServiceName, M extends MethodName<S>> = Awaited<Fn<Methods<S>[M]>["result"]>;
 export type EventPayload<S extends ServiceName, E extends EventName<S>> = Events<S>[E];
 
-export const IPC_PREFIX = "monolith";
+export const IPC_PREFIX = "tesseract";
 
 export function invokeChannel(service: string, method: string): string {
   return `${IPC_PREFIX}:${service}:${method}`;
@@ -106,11 +106,11 @@ export type ServiceClient<S extends ServiceName> = {
 
 export type IpcClient = { [S in ServiceName]: ServiceClient<S> };
 
-export interface MonolithBridge {
+export interface TesseractBridge {
   invoke(channel: string, args: unknown[]): Promise<IpcResult<unknown>>;
   on(channel: string, listener: (payload: unknown) => void): Unsubscribe;
   getPathForFile(file: File): string;
   runtimeArgv: readonly string[];
 }
 
-export const BRIDGE_KEY = "monolith";
+export const BRIDGE_KEY = "tesseract";

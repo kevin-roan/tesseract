@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { AppState } from "react-native";
 
-import { addIslandActionListener, addSharedItemsListener, drainActions, isIslandAvailable } from "@/modules/theone-island";
+import { addIslandActionListener, addSharedItemsListener, drainActions, isIslandAvailable } from "@/modules/tesseract-island";
 
 import { useIslandDispatch } from "./use-island-dispatch";
 

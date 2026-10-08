@@ -8,19 +8,19 @@ import { buildZip, serveFiles, sha1, type FileServer } from "../src/core/android
 import { SANDBOX_PREFIX } from "../scripts/lib/electron.ts";
 
 export const REAL_SERVICES_ENV = {
-  MONOLITH_FIXTURES: "0",
-  MONOLITH_DISABLE_DISCOVERY: "1",
-  MONOLITH_DESKTOP_URL: "",
-  MONOLITH_DESKTOP_NAME: "",
-  MONOLITH_DESKTOP_PAIRING_URL: "",
-  THEONE_TOKEN: "",
+  TESSERACT_FIXTURES: "0",
+  TESSERACT_DISABLE_DISCOVERY: "1",
+  TESSERACT_DESKTOP_URL: "",
+  TESSERACT_DESKTOP_NAME: "",
+  TESSERACT_DESKTOP_PAIRING_URL: "",
+  TESSERACT_TOKEN: "",
 } as const;
 
 export const FIXTURE_ANDROID = {
   api: 36,
   olderApi: 35,
   abi: "x86_64",
-  avd: "Monolith_API_36",
+  avd: "Tesseract_API_36",
   license: "android-sdk-license",
   licenseText: "Terms and Conditions\n\nThis is the fixture Android SDK License Agreement used by the e2e suite.",
   emulatorRevision: { major: 37, minor: 2, micro: 12 },
@@ -174,20 +174,20 @@ export function androidProfile(repository: AndroidRepositoryFixture, hostShellPo
     dir,
     home,
     userData,
-    sdkRoot: join(home, ".local", "share", "theone", "android-sdk"),
+    sdkRoot: join(home, ".local", "share", "tesseract", "android-sdk"),
     avdHome: join(home, ".android", "avd"),
     env: {
       HOME: home,
-      MONOLITH_USER_DATA: userData,
-      MONOLITH_ANDROID_REPOSITORY_URL: repository.repositoryUrl,
-      MONOLITH_ANDROID_SYSIMG_URL: repository.systemImagesUrl,
-      THEONE_ANDROID_SDK_ROOT: "",
+      TESSERACT_USER_DATA: userData,
+      TESSERACT_ANDROID_REPOSITORY_URL: repository.repositoryUrl,
+      TESSERACT_ANDROID_SYSIMG_URL: repository.systemImagesUrl,
+      TESSERACT_ANDROID_SDK_ROOT: "",
       ANDROID_SDK_ROOT: "",
       ANDROID_HOME: "",
       ANDROID_AVD_HOME: "",
       ANDROID_USER_HOME: "",
-      THEONE_HOST_SHELL_PORT: String(hostShellPort),
-      THEONE_HOST_SHELL_DIR: join(dir, "host-shell"),
+      TESSERACT_HOST_SHELL_PORT: String(hostShellPort),
+      TESSERACT_HOST_SHELL_DIR: join(dir, "host-shell"),
     },
     dispose: () => rmSync(dir, { recursive: true, force: true }),
   };
@@ -234,9 +234,9 @@ export interface LiveStack {
 }
 
 export function liveStack(): LiveStack | null {
-  const url = process.env.THEONE_E2E_URL;
+  const url = process.env.TESSERACT_E2E_URL;
   if (!url) return null;
-  return { url, token: process.env.THEONE_E2E_TOKEN ?? "" };
+  return { url, token: process.env.TESSERACT_E2E_TOKEN ?? "" };
 }
 
 export function escapeRegExp(text: string): string {

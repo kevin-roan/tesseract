@@ -38,7 +38,7 @@ describe("connection hooks (fixture mode)", () => {
   it("connects to the fixture sandbox and exposes the client", async () => {
     renderWithProviders(<StatusProbe />);
     await waitFor(() => expect(screen.getByTestId("label").textContent).toBe("Online"));
-    expect(screen.getByTestId("name").textContent).toBe("theone-sandbox");
+    expect(screen.getByTestId("name").textContent).toBe("tesseract-sandbox");
     expect(screen.getByTestId("client").textContent).toBe("http://127.0.0.1:7700");
   });
 

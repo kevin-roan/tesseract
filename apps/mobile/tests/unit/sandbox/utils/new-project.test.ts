@@ -1,4 +1,4 @@
-import { LIMITS } from "@theone/protocol";
+import { LIMITS } from "@tesseract/protocol";
 
 import {
   EMPTY_PROJECT_DRAFT,

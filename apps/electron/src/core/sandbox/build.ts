@@ -97,7 +97,7 @@ export async function writeStack(
   if (issues.length > 0) {
     throw new IpcError("invalid_argument", SANDBOX_LABELS.stack.invalidChoices, issues.map((issue) => `${issue.field}: ${issue.message}`).join("\n"));
   }
-  const token = existing?.THEONE_TOKEN || generateToken();
+  const token = existing?.TESSERACT_TOKEN || generateToken();
   const ids = await devIds(deps, choices.hostClaudeDir);
   const claudeOAuthToken = secrets.claudeOAuthToken ?? existing?.CLAUDE_CODE_OAUTH_TOKEN;
   await writeEnvAtomic(context.envFile, renderEnvFile(choices, ids, { token, tsAuthKey: savedAuthKey, claudeOAuthToken }));
@@ -136,7 +136,7 @@ export async function currentStack(context: SandboxContext): Promise<SandboxStac
 }
 
 export function buildArgs(values: EnvValues, contextDir: string, project: string): string[] {
-  const image = values.THEONE_IMAGE as string;
+  const image = values.TESSERACT_IMAGE as string;
   const arg = (name: string, fallback: string) => ["--build-arg", `${name}=${values[name] || fallback}`];
   return [
     "buildx",
@@ -215,13 +215,13 @@ async function preflight(runner: Runner, values: EnvValues, mode: BuildMode): Pr
     if (disk.kind === "low") return runner.failed("preflight", SANDBOX_LABELS.build.diskLow(disk.freeGb, disk.path, disk.needGb));
     if (disk.kind === "vm") runner.log(SANDBOX_LABELS.build.diskVm(disk.needGb));
   }
-  const claudeDir = values.THEONE_HOST_CLAUDE_DIR;
+  const claudeDir = values.TESSERACT_HOST_CLAUDE_DIR;
   if (claudeDir && !existsSync(claudeDir)) return runner.failed("preflight", SANDBOX_LABELS.build.claudeDirMissing(claudeDir));
   return { ok: true };
 }
 
 async function buildImage(runner: Runner, context: SandboxContext, values: EnvValues, env: NodeJS.ProcessEnv): Promise<StageOutcome> {
-  const project = values.THEONE_COMPOSE_PROJECT as string;
+  const project = values.TESSERACT_COMPOSE_PROJECT as string;
   const weights = await loadBuildWeights(context.contextDir);
   const run = async (plain: boolean) => {
     const progress = new BuildProgress(weights);
@@ -254,7 +254,7 @@ async function buildImage(runner: Runner, context: SandboxContext, values: EnvVa
 }
 
 async function pullStage(runner: Runner, context: SandboxContext, values: EnvValues, env: NodeJS.ProcessEnv): Promise<StageOutcome> {
-  const image = values.THEONE_IMAGE as string;
+  const image = values.TESSERACT_IMAGE as string;
   const ref = (await loadImageRef(context)) ?? image;
   runner.phase({ kind: "pulling", fraction: null, detail: ref });
   let lastEmit = 0;
@@ -289,7 +289,7 @@ async function imageId(deps: SandboxDeps, env: NodeJS.ProcessEnv, image: string)
 async function imageStage(runner: Runner, context: SandboxContext, mode: BuildMode, values: EnvValues, env: NodeJS.ProcessEnv): Promise<StageOutcome> {
   if (mode === "build") return buildImage(runner, context, values, env);
   if (mode === "pull") return pullStage(runner, context, values, env);
-  const image = values.THEONE_IMAGE as string;
+  const image = values.TESSERACT_IMAGE as string;
   return (await imageId(runner.deps, env, image)) ? { ok: true } : runner.failed("build", SANDBOX_LABELS.build.imageMissing(image));
 }
 
@@ -315,8 +315,8 @@ export async function runBuild(
   if (!values) return runner.phase({ kind: "failed", phase: "preflight", message: SANDBOX_LABELS.stack.notConfigured });
   const filled: EnvValues = {
     ...values,
-    THEONE_COMPOSE_PROJECT: values.THEONE_COMPOSE_PROJECT || DEFAULT_PROJECT,
-    THEONE_IMAGE: values.THEONE_IMAGE || DEFAULT_IMAGE,
+    TESSERACT_COMPOSE_PROJECT: values.TESSERACT_COMPOSE_PROJECT || DEFAULT_PROJECT,
+    TESSERACT_IMAGE: values.TESSERACT_IMAGE || DEFAULT_IMAGE,
   };
   const env = scrubEnv(context.env, SCRUBBED_ENV_PREFIXES, SCRUBBED_ENV_NAMES);
   const endpoint = stackEndpoint(filled, context.env);
@@ -364,6 +364,6 @@ export async function runBuild(
   runner.log(paired.message);
   await saveConnection(context, paired.connection);
   await markBuilt(context, new Date(deps.now()).toISOString());
-  const id = await imageId(deps, env, filled.THEONE_IMAGE as string);
+  const id = await imageId(deps, env, filled.TESSERACT_IMAGE as string);
   return runner.phase({ kind: "done", apiUrl: paired.connection.apiUrl, imageId: id ?? "" });
 }

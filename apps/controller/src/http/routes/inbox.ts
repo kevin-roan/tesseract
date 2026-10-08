@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { ClaudeHookPayloadSchema, InboxQuerySchema, MarkInboxReadSchema, routePatterns } from "@theone/protocol";
+import { ClaudeHookPayloadSchema, InboxQuerySchema, MarkInboxReadSchema, routePatterns } from "@tesseract/protocol";
 import type { Services } from "../../services";
 import { jsonBody, parseWith } from "../validation";
 

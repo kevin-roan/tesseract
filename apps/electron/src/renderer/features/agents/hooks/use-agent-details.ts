@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import type { ClaudeSession, InboxItem } from "@theone/protocol";
+import type { ClaudeSession, InboxItem } from "@tesseract/protocol";
 import { useCallback, useMemo } from "react";
 import { DATA_KEYS, useApiClient, useApiQuery } from "../../../app/data";
 import { AGENTS_QUERY_KEYS, DETAILS_INTERVAL_MS, INBOX_LIMIT, SESSIONS_LIMIT } from "../constants";

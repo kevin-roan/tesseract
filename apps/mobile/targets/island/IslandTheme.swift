@@ -40,11 +40,11 @@ private extension Color {
 }
 
 enum IslandLinks {
-  static let open = URL(string: "theone://island/open")!
-  static let capture = URL(string: "theone://island/capture")!
+  static let open = URL(string: "tesseract://island/open")!
+  static let capture = URL(string: "tesseract://island/capture")!
 
   static func run(_ id: String) -> URL {
-    URL(string: "theone://island/run/\(id)") ?? open
+    URL(string: "tesseract://island/run/\(id)") ?? open
   }
 }
 

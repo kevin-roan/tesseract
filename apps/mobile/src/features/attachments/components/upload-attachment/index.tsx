@@ -1,4 +1,4 @@
-import type { Upload } from "@theone/protocol";
+import type { Upload } from "@tesseract/protocol";
 
 import { useUploadSource } from "../../hooks/use-upload-source";
 import { formatBytes } from "../../utils/files";

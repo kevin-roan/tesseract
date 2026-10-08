@@ -8,7 +8,7 @@ describe("pairView", () => {
       kind: "ready",
       link: FIXTURE_PAIR.link,
       local: false,
-      caption: "Sandbox theone-sandbox · https://theone-sandbox.tail1234.ts.net",
+      caption: "Sandbox tesseract-sandbox · https://tesseract-sandbox.tail1234.ts.net",
     });
   });
 

@@ -105,7 +105,7 @@ self.__SERVER_FILES_MANIFEST={
         "transform": "lodash/{{member}}"
       }
     },
-    "outputFileTracingRoot": "/workspace/projects/theone-mobile/landing",
+    "outputFileTracingRoot": "/workspace/projects/tesseract-mobile/landing",
     "enablePrerenderSourceMaps": true,
     "cacheComponents": false,
     "cacheLife": {
@@ -321,12 +321,12 @@ self.__SERVER_FILES_MANIFEST={
     "bundlePagesRouterDependencies": false,
     "configFileName": "next.config.ts",
     "turbopack": {
-      "root": "/workspace/projects/theone-mobile/landing"
+      "root": "/workspace/projects/tesseract-mobile/landing"
     },
-    "repoRoot": "/workspace/projects/theone-mobile",
+    "repoRoot": "/workspace/projects/tesseract-mobile",
     "distDirRoot": ".next"
   },
-  "appDir": "/workspace/projects/theone-mobile/landing",
+  "appDir": "/workspace/projects/tesseract-mobile/landing",
   "relativeAppDir": "",
   "files": [
     ".next/package.json",

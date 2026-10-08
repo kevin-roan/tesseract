@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <openbox_menu xmlns="http://openbox.org/3.4/menu">
-  <menu id="root-menu" label="TheOne">
+  <menu id="root-menu" label="Tesseract">
     <item label="Terminal">
       <action name="Execute">
         <command>xterm -ls -fa "DejaVu Sans Mono" -fs 11 -bg "#1b1f27" -fg "#e6e6e6" -title Terminal</command>

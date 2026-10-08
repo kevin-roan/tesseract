@@ -1,4 +1,4 @@
-import type { InboxKind } from "@theone/protocol";
+import type { InboxKind } from "@tesseract/protocol";
 import {
   ChatCircleDotsIcon,
   CheckCircleIcon,

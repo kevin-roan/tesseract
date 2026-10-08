@@ -14,7 +14,7 @@ import {
   type RunTarget,
   type RunTargetInfo,
   type StartAppRun,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { badRequest, conflict, errorMessage, HttpError, notFound, unavailable } from "../core/errors";
 import { childEnv, resolveExecutable, run } from "../core/exec";
 import { readRegularFile } from "../core/files";

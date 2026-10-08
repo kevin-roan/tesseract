@@ -1,4 +1,4 @@
-import type { Health, SandboxStatus } from "@theone/protocol";
+import type { Health, SandboxStatus } from "@tesseract/protocol";
 import type { ConnectionConfig } from "../../../shared/contracts/connection";
 
 export type ConnectionStatus =

@@ -13,7 +13,7 @@ app on it.
 ```mermaid
 flowchart LR
   subgraph phone
-    app["TheOne app"]
+    app["Tesseract app"]
     wv["WebView /ui/ios"]
   end
   subgraph mac["macOS host"]
@@ -41,14 +41,14 @@ flowchart LR
 - **The Simulator only runs on macOS with Xcode.** On a Mac, Docker runs containers
   in a Linux VM, so the sandbox can never run the Simulator, `simctl` or `xcodebuild`.
   A host-side component is required, exactly as for the host Android emulator
-  (`theone-controller host serve`, §5.7 of the blueprint). The host daemon is a Bun
+  (`tesseract-controller host serve`, §5.7 of the blueprint). The host daemon is a Bun
   binary and runs on macOS unchanged; only the `android/netns*` parts are Linux-only.
 - **No KVM in the sandbox on a Mac.** Docker Desktop's VM does not reliably expose
   nested virtualization, so the Android emulator cannot run in the sandbox either.
   It keeps running on the host (§5).
 - **No `netns` isolation on macOS.** `unshare` and network namespaces do not exist.
   The Simulator (and a host Android emulator) share the Mac's network stack, i.e.
-  only the equivalent of today's `THEONE_EMULATOR_ISOLATION=none` is possible (§4).
+  only the equivalent of today's `TESSERACT_EMULATOR_ISOLATION=none` is possible (§4).
 - **No public API for live frames or input.** `xcrun simctl` can boot, install,
   launch, open URLs, take screenshots and record video to a file, but it cannot
   stream frames and cannot tap, swipe or type.
@@ -170,7 +170,7 @@ Compared with the Linux host Android emulator in `netns` mode, a Mac host is wea
 
 Rules:
 
-- iOS support is **off by default** (`THEONE_IOS=1` on the daemon) and
+- iOS support is **off by default** (`TESSERACT_IOS=1` on the daemon) and
   `GET /v1/ios` reports `isolation: "none"`; the app shows a warning like the
   `none` Android mode.
 - The sandbox never gets `simctl`, idb's gRPC port or a host shell. idb_companion
@@ -185,14 +185,14 @@ Rules:
 The host daemon's Android support works on macOS with these changes:
 
 - SDK: Android Studio's default `~/Library/Android/sdk` added to the
-  `THEONE_ANDROID_SDK_ROOT` search; Apple Silicon needs `arm64-v8a` system images
+  `TESSERACT_ANDROID_SDK_ROOT` search; Apple Silicon needs `arm64-v8a` system images
   (the emulator uses Hypervisor.framework, no KVM).
-- `THEONE_EMULATOR_ISOLATION` defaults to `none` on macOS and `netns` reports
+- `TESSERACT_EMULATOR_ISOLATION` defaults to `none` on macOS and `netns` reports
   `available: false` with `Network isolation needs Linux`. Today `*-android` run
   targets require `isolated: true`; on macOS that requirement becomes an explicit
-  opt-in (`THEONE_EMULATOR_ALLOW_UNISOLATED=1`), shown as a warning in the app.
+  opt-in (`TESSERACT_EMULATOR_ALLOW_UNISOLATED=1`), shown as a warning in the app.
 - scrcpy, ffmpeg and the screen stream are unchanged (Homebrew paths added to the
-  `THEONE_SCRCPY_SERVER` search: `/opt/homebrew/share/scrcpy/scrcpy-server`).
+  `TESSERACT_SCRCPY_SERVER` search: `/opt/homebrew/share/scrcpy/scrcpy-server`).
 - `-gpu swiftshader_indirect` stays the default; `host` (Metal) is faster on a Mac
   and worth offering.
 

@@ -1,4 +1,4 @@
-import type { Artifact, TaildropTarget, TaildropTargets } from "@theone/protocol";
+import type { Artifact, TaildropTarget, TaildropTargets } from "@tesseract/protocol";
 import type { Config } from "../config";
 import { errorMessage, forbidden, notFound, unavailable } from "../core/errors";
 import type { Logger } from "../core/logger";

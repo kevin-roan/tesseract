@@ -11,7 +11,7 @@ CLI_DIST_DIR="${ELECTRON_DIR}/dist-cli"
 SANDBOX_BUNDLE_DIR="${ELECTRON_DIR}/build/sandbox-context"
 readonly SCRIPT_DIR REPO_ROOT ELECTRON_DIR CLI_DIST_DIR SANDBOX_BUNDLE_DIR
 readonly CLI_BIN=tesseract
-readonly CONTROLLER_BIN=theone-controller
+readonly CONTROLLER_BIN=tesseract-controller
 readonly REMOTE_ROOT='.tesseract'
 readonly SECRET_KEYS=(TS_AUTHKEY TS_TAILNET_DOMAIN CLAUDE_CODE_OAUTH_TOKEN)
 # Non-interactive ssh on macOS starts with PATH=/usr/bin:/bin:/usr/sbin:/sbin.
@@ -21,7 +21,7 @@ usage() {
   cat << 'EOF'
 Usage: deploy-mac <ssh-host> [--arch auto|arm64|x64] [--skip-build] [-- <tesseract server install args>]
 
-Builds the macOS `tesseract` and `theone-controller` binaries and the sandbox build
+Builds the macOS `tesseract` and `tesseract-controller` binaries and the sandbox build
 context, copies them to the Mac, and runs `tesseract server install` there.
 
   <ssh-host>      anything `ssh` accepts (user@mac, a ~/.ssh/config alias, a tailnet name)
@@ -30,7 +30,7 @@ context, copies them to the Mac, and runs `tesseract server install` there.
   -h, --help      show this help
 
 On the Mac:
-  ~/.tesseract/bin/{tesseract,theone-controller}   the binaries
+  ~/.tesseract/bin/{tesseract,tesseract-controller}   the binaries
   ~/.tesseract/sandbox/                            the sandbox build context (compose files, Dockerfile)
 
 Secrets are read from this shell's environment and never put on a command line:
@@ -41,7 +41,7 @@ They go to the Mac over ssh stdin into a 0600 file that is deleted before the in
 
 Examples:
   TS_AUTHKEY=tskey-... TS_TAILNET_DOMAIN=tail1234.ts.net bun run deploy:mac mac-mini
-  infra/scripts/deploy-mac mac-mini --skip-build -- --mode tailscale --hostname theone-sandbox
+  infra/scripts/deploy-mac mac-mini --skip-build -- --mode tailscale --hostname tesseract-sandbox
 EOF
 }
 
@@ -186,7 +186,7 @@ if [[ -f "${root}/secrets.env" ]]; then
   set +a
   rm -f "${root}/secrets.env"
 fi
-export MONOLITH_SANDBOX_CONTEXT="${root}/sandbox"
+export TESSERACT_SANDBOX_CONTEXT="${root}/sandbox"
 exec "${root}/bin/tesseract" server install "$@"
 '
 command="export PATH=\"${REMOTE_PATH}\"; ${install_script}"

@@ -19,23 +19,23 @@ export const PAIR_SCREEN = {
 
 export const QR_SCANNER = {
   title: "Scan the pairing code",
-  footer: "theone://pair",
+  footer: "tesseract://pair",
   rescan: "Scan again",
   allow: "Allow camera",
   openSettings: "Open Settings",
-  promptMessage: "Scan the QR code printed by `theone-controller pair` to connect in one step.",
-  blockedMessage: "Camera access is turned off for Monolith. Allow it in Settings to scan the pairing code.",
+  promptMessage: "Scan the QR code printed by `tesseract-controller pair` to connect in one step.",
+  blockedMessage: "Camera access is turned off for Tesseract. Allow it in Settings to scan the pairing code.",
 } as const;
 
 export const PAIRING_FIELDS = {
   url: {
     label: "Controller URL",
-    hint: "Your sandbox's Tailscale address, or paste a theone://pair link.",
-    placeholder: "https://theone-sandbox.your-tailnet.ts.net",
+    hint: "Your sandbox's Tailscale address, or paste a tesseract://pair link.",
+    placeholder: "https://tesseract-sandbox.your-tailnet.ts.net",
   },
   token: {
     label: "Token",
-    hint: "Printed by `theone-controller pair` inside the sandbox.",
+    hint: "Printed by `tesseract-controller pair` inside the sandbox.",
     placeholder: "Pairing token",
   },
   name: {

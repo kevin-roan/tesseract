@@ -1,4 +1,4 @@
-import type { TheOneClient } from "@theone/client";
+import type { TesseractClient } from "@tesseract/client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePoller } from "../../../app/connection";
 import { SCREENSHOT_POLL_MS } from "../constants";
@@ -18,7 +18,7 @@ async function decodePicture(buffer: ArrayBuffer): Promise<string | null> {
   }
 }
 
-export function useScreenshotPoller(client: TheOneClient | null, enabled: boolean, keepPicture: boolean): string | null {
+export function useScreenshotPoller(client: TesseractClient | null, enabled: boolean, keepPicture: boolean): string | null {
   const [picture, setPicture] = useState<string | null>(null);
   const current = useRef<string | null>(null);
   const generation = useRef(0);

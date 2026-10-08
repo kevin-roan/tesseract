@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { routePatterns, StartProcessSchema } from "@theone/protocol";
+import { routePatterns, StartProcessSchema } from "@tesseract/protocol";
 import type { Services } from "../../services";
 import { idParam, jsonBody, logTail, projectFilter } from "../validation";
 

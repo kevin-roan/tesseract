@@ -1,4 +1,4 @@
-import type { SttProfile } from "@theone/protocol";
+import type { SttProfile } from "@tesseract/protocol";
 
 export const SECTION_LABELS = {
   title: "Speech-to-text",

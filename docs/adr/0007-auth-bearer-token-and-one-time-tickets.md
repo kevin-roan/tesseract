@@ -16,8 +16,8 @@ custom headers reliably.
 ## Decision
 
 - **One bearer token per sandbox**: 32 random bytes, base64url. It is
-  generated on first start into `$THEONE_DATA_DIR/token` (mode 0600), or set
-  with `THEONE_TOKEN`. REST requires `Authorization: Bearer`, compared in
+  generated on first start into `$TESSERACT_DATA_DIR/token` (mode 0600), or set
+  with `TESSERACT_TOKEN`. REST requires `Authorization: Bearer`, compared in
   constant time. Only `GET /v1/health` is public.
 - **One-time tickets** for everything that cannot send headers:
   `POST /v1/auth/ticket` returns 32 random bytes, valid for 60 s and consumed
@@ -26,10 +26,10 @@ custom headers reliably.
 - **Static `/ui/*` pages hold no secrets.** The app passes `ticket`,
   `session` and the VNC `password` in the URL fragment, which is never sent to
   the server, and the page opens the WebSocket with `?ticket=`.
-- **No cookies**, so no CSRF surface. `THEONE_CORS_ORIGINS` defaults to `*`.
+- **No cookies**, so no CSRF surface. `TESSERACT_CORS_ORIGINS` defaults to `*`.
 - The token reaches the phone only through the pairing link
-  (`theone://pair?url=…&token=…`, QR or deep link) and is stored in
-  `expo-secure-store`. It is rotated with `theone-controller token --rotate`
+  (`tesseract://pair?url=…&token=…`, QR or deep link) and is stored in
+  `expo-secure-store`. It is rotated with `tesseract-controller token --rotate`
   (see [operations](../runbooks/operations.md#rotate-the-token)).
 
 ## Consequences
@@ -61,9 +61,9 @@ custom headers reliably.
 - `POST /v1/auth/ticket` answers `200`. Tickets are not bound to a target: any
   unused ticket opens any socket or download for 60 s. Scoping them is an open
   decision in the [roadmap](../roadmap.md#open-decisions).
-- A `THEONE_TOKEN` set through compose is handed to the controller only
-  (`/run/theone/controller.env`), mirrored into the 0600 token file, and
+- A `TESSERACT_TOKEN` set through compose is handed to the controller only
+  (`/run/tesseract/controller.env`), mirrored into the 0600 token file, and
   stripped from every child process. The in-sandbox agent never handles the
-  token: it calls the API through `theone-controller api`.
+  token: it calls the API through `tesseract-controller api`.
 - Clients distinguish a revoked token (401/403, "Pairing no longer valid") and a
   protocol mismatch (`ProtocolVersionError`) and offer re-pairing.

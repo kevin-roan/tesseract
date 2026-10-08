@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { Linking } from "react-native";
-import type { AppRun } from "@theone/protocol";
+import type { AppRun } from "@tesseract/protocol";
 
 import { useHostNavigation } from "@/features/host-shell/hooks/use-host-navigation";
 import { useCopyText } from "@/hooks/use-copy-text";

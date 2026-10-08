@@ -1,4 +1,4 @@
-import { buildPairingLink, isValidToken } from "@theone/protocol";
+import { buildPairingLink, isValidToken } from "@tesseract/protocol";
 import type { PairingInfo } from "../../shared/contracts/sandbox";
 import { IpcError } from "../../shared/ipc-types";
 import { updateConfig, withConnection } from "../config";
@@ -46,7 +46,7 @@ export async function resolvePairing(
   } catch (error) {
     discoveryError = error instanceof Error ? error.message : String(error);
   }
-  const token = values.THEONE_TOKEN ?? "";
+  const token = values.TESSERACT_TOKEN ?? "";
   if (!isValidToken(token)) return { ok: false, message: discoveryError };
   const apiUrl = healthyUrl ?? (await firstHealthy(deps, endpoint.candidates, signal));
   if (!apiUrl && !endpoint.pairingUrl) return { ok: false, message: discoveryError };

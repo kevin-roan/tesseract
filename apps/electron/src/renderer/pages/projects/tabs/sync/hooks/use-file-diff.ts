@@ -1,4 +1,4 @@
-import type { SyncFileChange } from "@theone/protocol";
+import type { SyncFileChange } from "@tesseract/protocol";
 import { useEffect, useRef, useState } from "react";
 import { describeError } from "../../../../../app/connection";
 import { ipc } from "../../../../../lib/ipc";

@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { chmodSync, existsSync, readFileSync, readlinkSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { ServerEventSchema, SyncChangesSchema, SyncRequestListSchema, SyncRequestSchema, type SyncChanges, type SyncRequest } from "@theone/protocol";
+import { ServerEventSchema, SyncChangesSchema, SyncRequestListSchema, SyncRequestSchema, type SyncChanges, type SyncRequest } from "@tesseract/protocol";
 import { STALE_CLAIM_ERROR } from "../src/services/sync-back";
 import { makeTempDir, removeTempDirs, startTestController, waitFor, writeFiles, type TestController, type WsClient } from "./helpers";
 

@@ -1,4 +1,4 @@
-import { sampleBuild } from "@theone/protocol/fixtures";
+import { sampleBuild } from "@tesseract/protocol/fixtures";
 
 import { activeBuilds, buildActivityMessage, buildActivityTitle } from "@/features/home/utils/builds";
 

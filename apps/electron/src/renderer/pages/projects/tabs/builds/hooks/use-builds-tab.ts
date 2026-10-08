@@ -1,4 +1,4 @@
-import type { BuildJob, BuildProfile, BuildTarget, Project } from "@theone/protocol";
+import type { BuildJob, BuildProfile, BuildTarget, Project } from "@tesseract/protocol";
 import { useCallback, useMemo, useState } from "react";
 import { useConnectionClient, useWindowVisible } from "../../../../../app/connection";
 import type { LogPanelAction } from "../../../../../components/LogPanel";

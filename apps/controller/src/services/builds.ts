@@ -10,7 +10,7 @@ import {
   type BuildState,
   type LogLine,
   type StartBuild,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { errorMessage, notFound, unavailable } from "../core/errors";
 import { childEnv, run } from "../core/exec";
 import { isInside, realpathOrNull } from "../core/paths";
@@ -253,7 +253,7 @@ export class BuildService {
   private async runStep(job: Job, command: string, cwd: string, recipe: Recipe): Promise<number | null> {
     const proc = Bun.spawn(["bash", "-lc", command], {
       cwd,
-      env: { ...childEnv(), ...recipe.env, THEONE_BUILD_ID: job.record.id },
+      env: { ...childEnv(), ...recipe.env, TESSERACT_BUILD_ID: job.record.id },
       stdin: "ignore",
       stdout: "pipe",
       stderr: "pipe",

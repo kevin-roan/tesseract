@@ -1,8 +1,8 @@
-import type { BuildJob, ProcessInfo, Project } from "@theone/protocol";
-import { sampleBuild, sampleProcess, sampleProject } from "@theone/protocol/fixtures";
+import type { BuildJob, ProcessInfo, Project } from "@tesseract/protocol";
+import { sampleBuild, sampleProcess, sampleProject } from "@tesseract/protocol/fixtures";
 
 export const SCENARIOS = {
-  reference: "Project ids of the reference screenshots (nimble-lotus, theone-mobile, brave-hare)",
+  reference: "Project ids of the reference screenshots (nimble-lotus, tesseract-mobile, brave-hare)",
   empty: "No projects in the sandbox",
   busy: "A build running on hybrid-pos",
   "gtk-parity": "Reference ids plus the processes, scripts, git counts, run targets and sync data of the GTK reference PNGs",
@@ -18,13 +18,13 @@ const OLD_COMMIT_DATE = "2026-09-21T09:30:00.000Z";
 
 export interface ProjectIds {
   streaxfit: string;
-  monolith: string;
+  tesseract: string;
   hybrid: string;
   sante: string;
 }
 
-export const BASE_IDS: ProjectIds = { streaxfit: "streaxfit", monolith: "monolith", hybrid: "hybrid-pos", sante: "sante-production" };
-export const REFERENCE_IDS: ProjectIds = { streaxfit: "nimble-lotus", monolith: "theone-mobile", hybrid: "brave-hare", sante: "sante-production" };
+export const BASE_IDS: ProjectIds = { streaxfit: "streaxfit", tesseract: "tesseract", hybrid: "hybrid-pos", sante: "sante-production" };
+export const REFERENCE_IDS: ProjectIds = { streaxfit: "nimble-lotus", tesseract: "tesseract-mobile", hybrid: "brave-hare", sante: "sante-production" };
 
 export const CLONE_PROCESS_ID = "prc_clonefixture1";
 
@@ -56,8 +56,8 @@ export function fixtureProjectList(ids: ProjectIds, now = Date.now()): Project[]
       },
     }),
     project({
-      id: ids.monolith,
-      name: "monolith",
+      id: ids.tesseract,
+      name: "tesseract",
       framework: "node",
       packageManager: "bun",
       scripts: ["mobile", "lint", "typecheck", "test"],
@@ -100,10 +100,10 @@ export function fixtureProcesses(ids: ProjectIds, now = Date.now()): ProcessInfo
   const ended = (hours: number) => ({ startedAt: ago(hours * HOUR + 1000, now), endedAt: ago(hours * HOUR, now) });
   return [
     process({ id: "prc_streaxfitdev1", projectId: ids.streaxfit, name: "dev", command: "pnpm run dev", port: 8081, pid: 86081, state: "running", startedAt: ago(13 * MINUTE, now), endedAt: null }),
-    process({ id: "prc_monoandroid01", projectId: ids.monolith, name: "expo-android (Android emulator)", command: "bunx expo run:android --variant debug", port: 8081, state: "failed", exitCode: 1, ...ended(5) }),
-    process({ id: "prc_monoandroid02", projectId: ids.monolith, name: "expo-android (Android emulator)", command: "bunx expo run:android --variant debug", port: 8081, state: "failed", exitCode: 1, ...ended(10) }),
-    process({ id: "prc_monoassemble1", projectId: ids.monolith, name: "android:assembleRelease", command: "cd apps/mobile/android && APP_VARIANT=production ./gradlew assembleRelease", state: "exited", exitCode: 0, ...ended(26) }),
-    process({ id: "prc_monolint00001", projectId: ids.monolith, name: "lint", command: "bun run lint", display: true, state: "failed", exitCode: 127, ...ended(5 * 24) }),
+    process({ id: "prc_monoandroid01", projectId: ids.tesseract, name: "expo-android (Android emulator)", command: "bunx expo run:android --variant debug", port: 8081, state: "failed", exitCode: 1, ...ended(5) }),
+    process({ id: "prc_monoandroid02", projectId: ids.tesseract, name: "expo-android (Android emulator)", command: "bunx expo run:android --variant debug", port: 8081, state: "failed", exitCode: 1, ...ended(10) }),
+    process({ id: "prc_monoassemble1", projectId: ids.tesseract, name: "android:assembleRelease", command: "cd apps/mobile/android && APP_VARIANT=production ./gradlew assembleRelease", state: "exited", exitCode: 0, ...ended(26) }),
+    process({ id: "prc_monolint00001", projectId: ids.tesseract, name: "lint", command: "bun run lint", display: true, state: "failed", exitCode: 127, ...ended(5 * 24) }),
   ];
 }
 

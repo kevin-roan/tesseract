@@ -59,7 +59,7 @@ import {
   type ErrorCode,
   type Schema,
   type ServerEvent,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { openDatabase } from "../src/db/database";
 import { Repositories } from "../src/db/repositories";
 import { installFakeClaude, makeTempDir, removeTempDirs, startTestController, upgradeStatus, waitFor, writeFiles, WsClient, type TestController } from "./helpers";
@@ -142,10 +142,10 @@ beforeAll(async () => {
   t = await startTestController({
     workspace,
     env: {
-      THEONE_CLAUDE_BIN: installFakeClaude(makeTempDir("conformance-bin")),
-      THEONE_VNC_PORT: String(vnc.port),
-      THEONE_VNC_PASSWORD: "vnc-pass",
-      THEONE_STT_ENGINE: "none",
+      TESSERACT_CLAUDE_BIN: installFakeClaude(makeTempDir("conformance-bin")),
+      TESSERACT_VNC_PORT: String(vnc.port),
+      TESSERACT_VNC_PASSWORD: "vnc-pass",
+      TESSERACT_STT_ENGINE: "none",
     },
     controller: { pingIntervalMs: 100 },
   });
@@ -159,7 +159,7 @@ afterAll(async () => {
   removeTempDirs();
 });
 
-describe("REST responses match @theone/protocol", () => {
+describe("REST responses match @tesseract/protocol", () => {
   test("system endpoints", async () => {
     const health = await fetch(`${t.baseUrl}/v1/health`);
     expect(health.status).toBe(200);
@@ -369,7 +369,7 @@ describe("REST responses match @theone/protocol", () => {
   });
 });
 
-describe("WebSocket frames match @theone/protocol", () => {
+describe("WebSocket frames match @tesseract/protocol", () => {
   test("process log stream", async () => {
     const info = await rest(ProcessInfoSchema, "POST", "/v1/processes", {
       projectId: "site",

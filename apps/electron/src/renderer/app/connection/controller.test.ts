@@ -1,14 +1,14 @@
-import { ApiError, NetworkError, ProtocolVersionError, type EventStreamHandlers, type TheOneClient } from "@theone/client";
-import type { ServerEvent } from "@theone/protocol";
-import { sampleHealth, sampleStatus } from "@theone/protocol/fixtures";
+import { ApiError, NetworkError, ProtocolVersionError, type EventStreamHandlers, type TesseractClient } from "@tesseract/client";
+import type { ServerEvent } from "@tesseract/protocol";
+import { sampleHealth, sampleStatus } from "@tesseract/protocol/fixtures";
 import { describe, expect, it, vi } from "vitest";
 import type { ConnectionConfig, ConnectionSnapshot, DiscoveryResult } from "../../../shared/contracts/connection";
 import { ConnectionController, type ConnectionDeps } from "./controller";
 import { flush, manualTimers } from "./test-helpers";
 
-const CONFIG_FILE = "/home/dev/.config/monolith-desktop/config.json";
+const CONFIG_FILE = "/home/dev/.config/tesseract-desktop/config.json";
 const FILE_CONFIG: ConnectionConfig = { apiUrl: "http://127.0.0.1:7700", token: "tok", name: "rig", pairingUrl: null, source: "file" };
-const DOCKER_CONFIG: ConnectionConfig = { ...FILE_CONFIG, apiUrl: "http://172.22.0.2:7700", source: "docker", container: "theone-sandbox-1" };
+const DOCKER_CONFIG: ConnectionConfig = { ...FILE_CONFIG, apiUrl: "http://172.22.0.2:7700", source: "docker", container: "tesseract-sandbox-1" };
 
 function fakeClient() {
   const streams: EventStreamHandlers[] = [];
@@ -30,7 +30,7 @@ function fakeClient() {
       return { state: "connecting", close: () => handlers.onStateChange?.("closed"), reconnect: () => undefined };
     }),
   };
-  return { client, streams, failures, asClient: client as unknown as TheOneClient };
+  return { client, streams, failures, asClient: client as unknown as TesseractClient };
 }
 
 function setup(options: { config?: ConnectionConfig | null; discover?: DiscoveryResult } = {}) {
@@ -180,11 +180,11 @@ describe("ConnectionController", () => {
     handlers?.onStateChange?.("open");
     expect(controller.state.events).toBe("open");
     handlers?.onEvent({ type: "inbox.updated", unreadCount: 7, attentionCount: 0 } as ServerEvent);
-    handlers?.onEvent({ type: "project.deleted", id: "monolith" } as ServerEvent);
+    handlers?.onEvent({ type: "project.deleted", id: "tesseract" } as ServerEvent);
     stop();
     handlers?.onEvent({ type: "project.deleted", id: "other" } as ServerEvent);
     expect(controller.state.inbox).toEqual({ unreadCount: 7, attentionCount: 0 });
-    expect(seen).toEqual(["monolith"]);
+    expect(seen).toEqual(["tesseract"]);
     expect(all).toEqual(["inbox.updated", "project.deleted", "project.deleted"]);
   });
 

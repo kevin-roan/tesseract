@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import type { Project } from "@theone/protocol";
+import type { Project } from "@tesseract/protocol";
 
 import { describeError } from "@/features/sandbox/utils/errors";
 

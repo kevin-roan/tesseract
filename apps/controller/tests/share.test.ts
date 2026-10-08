@@ -10,7 +10,7 @@ import {
   type Artifact,
   type Inbox,
   type ServerEvent,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { runCli, type Output } from "../src/cli/commands";
 import { formatBytes, sharedFileName, sharedPlatform } from "../src/services/artifacts";
 import { mapFileTarget } from "../src/services/taildrop";
@@ -59,7 +59,7 @@ beforeAll(async () => {
       return new Response("not found", { status: 404 });
     },
   });
-  t = await startTestController({ env: { THEONE_TAILSCALE_SOCKET: socket } });
+  t = await startTestController({ env: { TESSERACT_TAILSCALE_SOCKET: socket } });
   events = [];
   t.controller.services.hub.subscribe((event) => events.push(event));
   writeFiles(t.workspace, {
@@ -245,7 +245,7 @@ describe("Taildrop", () => {
   });
 });
 
-describe("theone-controller share", () => {
+describe("tesseract-controller share", () => {
   function capture(): Output & { stdout: string[]; stderr: string[] } {
     const stdout: string[] = [];
     const stderr: string[] = [];
@@ -253,10 +253,10 @@ describe("theone-controller share", () => {
   }
 
   const cliEnv = (extra: Record<string, string> = {}) => ({
-    THEONE_WORKSPACE: t.workspace,
-    THEONE_HOST: "127.0.0.1",
-    THEONE_PORT: String(t.controller.url.port),
-    THEONE_TOKEN: TEST_TOKEN,
+    TESSERACT_WORKSPACE: t.workspace,
+    TESSERACT_HOST: "127.0.0.1",
+    TESSERACT_PORT: String(t.controller.url.port),
+    TESSERACT_TOKEN: TEST_TOKEN,
     ...extra,
   });
 
@@ -264,7 +264,7 @@ describe("theone-controller share", () => {
     const output = capture();
     const cwd = join(t.workspace, "projects/app/android");
     const code = await runCli(["share", "app/build/outputs/apk/release/app-release.apk", "--note", "try this one"], {
-      env: cliEnv({ CLAUDE_CODE_SESSION_ID: "sess-cli", THEONE_AGENT_RUN_ID: "run_unknown0002" }),
+      env: cliEnv({ CLAUDE_CODE_SESSION_ID: "sess-cli", TESSERACT_AGENT_RUN_ID: "run_unknown0002" }),
       output,
       cwd,
     });

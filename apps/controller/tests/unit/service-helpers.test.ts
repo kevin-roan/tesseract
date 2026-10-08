@@ -132,7 +132,7 @@ describe("agent stream parser", () => {
     const prompt = confidentialPrompt("morning-cat");
     expect(prompt).toContain('known only by the pseudonym "morning-cat"');
     expect(prompt).toContain("Write REDACTED in their place");
-    expect(prompt).toContain("`theone-controller share` is disabled");
+    expect(prompt).toContain("`tesseract-controller share` is disabled");
     expect(claudeArgs("x", "plan", { appendSystemPrompt: prompt, resumeSessionId: "s1" })).toEqual({
       argv: ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan", "--append-system-prompt", prompt, "--resume", "s1"],
       stdin: "x",
@@ -141,20 +141,20 @@ describe("agent stream parser", () => {
 
   test("claudeArgs adds the uploads dir and lists readable attachments, never audio", () => {
     const upload = { name: "a", sizeBytes: 1, createdAt: "2024-01-01T00:00:00.000Z" };
-    const image = { ...upload, id: "upl_image00000", kind: "image" as const, mimeType: "image/png", path: "/w/.theone/uploads/upl_image00000/a.png" };
-    const pdf = { ...upload, id: "upl_pdf0000000", kind: "pdf" as const, mimeType: "application/pdf", path: "/w/.theone/uploads/upl_pdf0000000/b.pdf" };
-    const voice = { ...upload, id: "upl_voice00000", kind: "audio" as const, mimeType: "audio/mp4", path: "/w/.theone/uploads/upl_voice00000/c.m4a" };
-    expect(claudeArgs("look", "acceptEdits", { attachments: [image, voice, pdf], uploadsDir: "/w/.theone/uploads", resumeSessionId: "s1" })).toEqual({
-      argv: ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--add-dir", "/w/.theone/uploads", "--resume", "s1"],
+    const image = { ...upload, id: "upl_image00000", kind: "image" as const, mimeType: "image/png", path: "/w/.tesseract/uploads/upl_image00000/a.png" };
+    const pdf = { ...upload, id: "upl_pdf0000000", kind: "pdf" as const, mimeType: "application/pdf", path: "/w/.tesseract/uploads/upl_pdf0000000/b.pdf" };
+    const voice = { ...upload, id: "upl_voice00000", kind: "audio" as const, mimeType: "audio/mp4", path: "/w/.tesseract/uploads/upl_voice00000/c.m4a" };
+    expect(claudeArgs("look", "acceptEdits", { attachments: [image, voice, pdf], uploadsDir: "/w/.tesseract/uploads", resumeSessionId: "s1" })).toEqual({
+      argv: ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "acceptEdits", "--add-dir", "/w/.tesseract/uploads", "--resume", "s1"],
       stdin: [
         "look",
         "",
         "Attached files (read them with the Read tool):",
-        "- /w/.theone/uploads/upl_image00000/a.png (image/png)",
-        "- /w/.theone/uploads/upl_pdf0000000/b.pdf (application/pdf)",
+        "- /w/.tesseract/uploads/upl_image00000/a.png (image/png)",
+        "- /w/.tesseract/uploads/upl_pdf0000000/b.pdf (application/pdf)",
       ].join("\n"),
     });
-    expect(claudeArgs("hear", "plan", { attachments: [voice], uploadsDir: "/w/.theone/uploads" })).toEqual({
+    expect(claudeArgs("hear", "plan", { attachments: [voice], uploadsDir: "/w/.tesseract/uploads" })).toEqual({
       argv: ["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan"],
       stdin: "hear",
     });

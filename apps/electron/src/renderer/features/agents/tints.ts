@@ -1,4 +1,4 @@
-import type { Project } from "@theone/protocol";
+import type { Project } from "@tesseract/protocol";
 import { PROJECT_TINTS } from "../../theme/palettes";
 import { FRAMEWORK_LOGOS } from "./constants";
 

@@ -1,4 +1,4 @@
-import type { Artifact, ArtifactSource, TaildropTarget } from "@theone/protocol";
+import type { Artifact, ArtifactSource, TaildropTarget } from "@tesseract/protocol";
 import { FileArrowDownIcon, HammerIcon, PackageIcon, RobotIcon, type Icon } from "phosphor-react-native";
 
 import type { StatusBadgeProps } from "@/components/status-badge";

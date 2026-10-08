@@ -1,4 +1,4 @@
-import type { AgentRun, AppRun, Artifact, BuildJob, ClaudeAccountList, ClaudeSession, GitDetails, ProcessInfo, Project, RunTargetInfo } from "@theone/protocol";
+import type { AgentRun, AppRun, Artifact, BuildJob, ClaudeAccountList, ClaudeSession, GitDetails, ProcessInfo, Project, RunTargetInfo } from "@tesseract/protocol";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { describeError, NotConfiguredError, useConnectionClient, usePoller, useServerEvent, useWindowVisible } from "../../../app/connection";
 import { DETAIL_REFRESH_INTERVAL_MS } from "../constants";

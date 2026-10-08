@@ -38,17 +38,17 @@ describe.skipIf(!bun || process.platform === "win32")("host shell daemon (real c
   const states: HostShellState[] = [];
 
   beforeAll(async () => {
-    dir = await mkdtemp(join(tmpdir(), "monolith-test-host-"));
+    dir = await mkdtemp(join(tmpdir(), "tesseract-test-host-"));
     port = await freePort();
     const env = {
       ...process.env,
-      THEONE_HOST_SHELL_DIR: join(dir, "state"),
-      THEONE_HOST_SHELL_PORT: String(port),
-      THEONE_HOST_SHELL_BIND: "127.0.0.1",
-      THEONE_HOST_SHELL_PUBLIC_URL: `http://127.0.0.1:${port}`,
-      THEONE_ANDROID_SDK_ROOT: join(dir, "no-sdk"),
-      THEONE_EMULATOR_PORT: "5680",
-      MONOLITH_CONTROLLER_COMMAND: undefined,
+      TESSERACT_HOST_SHELL_DIR: join(dir, "state"),
+      TESSERACT_HOST_SHELL_PORT: String(port),
+      TESSERACT_HOST_SHELL_BIND: "127.0.0.1",
+      TESSERACT_HOST_SHELL_PUBLIC_URL: `http://127.0.0.1:${port}`,
+      TESSERACT_ANDROID_SDK_ROOT: join(dir, "no-sdk"),
+      TESSERACT_EMULATOR_PORT: "5680",
+      TESSERACT_CONTROLLER_COMMAND: undefined,
     };
     service = new HostShellService({
       command: () => resolveControllerCommand({ env, resourcesPath: null, packaged: false, repoRoot: REPO, platform: process.platform }),

@@ -8,7 +8,7 @@ export const LIST_TOOLBAR_TABS = [
 
 export const LIST_TOOLBAR_FILTERS: readonly ChoiceOption[] = [
   { id: "all", label: "All projects" },
-  { id: "theone", label: "theone-mobile" },
+  { id: "tesseract", label: "tesseract-mobile" },
 ];
 
 export const LIST_TOOLBAR_SAMPLES = {

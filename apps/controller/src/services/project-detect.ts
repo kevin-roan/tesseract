@@ -1,6 +1,6 @@
 import { existsSync, lstatSync, readdirSync } from "node:fs";
 import { join } from "node:path";
-import { RUN_TARGETS, type BuildTarget, type Framework, type PackageManager, type RunTarget } from "@theone/protocol";
+import { RUN_TARGETS, type BuildTarget, type Framework, type PackageManager, type RunTarget } from "@tesseract/protocol";
 import { readRegularFile } from "../core/files";
 
 export type PackageJson = {

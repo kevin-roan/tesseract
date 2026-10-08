@@ -1,8 +1,8 @@
 import pytest
 
-from monolith_desktop.api.client import _run_selection
-from monolith_desktop.api.paths import rest
-from monolith_desktop.services.workspace import apply_run, remove_ids
+from tesseract_desktop.api.client import _run_selection
+from tesseract_desktop.api.paths import rest
+from tesseract_desktop.services.workspace import apply_run, remove_ids
 
 
 def run(**overrides):

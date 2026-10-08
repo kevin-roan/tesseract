@@ -1,4 +1,4 @@
-import { routePatterns } from "@theone/protocol";
+import { routePatterns } from "@tesseract/protocol";
 import { GTK_PARITY, parityGitFiles } from "../projects/parity";
 import { currentScenario, isScenario } from "../scenario";
 import { defineHttpFixtures, reply } from "../types";

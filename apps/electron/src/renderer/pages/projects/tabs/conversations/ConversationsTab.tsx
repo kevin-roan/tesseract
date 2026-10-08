@@ -1,4 +1,4 @@
-import type { AgentRun, ClaudeSession } from "@theone/protocol";
+import type { AgentRun, ClaudeSession } from "@tesseract/protocol";
 import { ListGroup } from "../../../../components/GroupBand";
 import { KeyedList } from "../../../../components/KeyedList";
 import { RecordRow } from "../../../../components/RecordRow";

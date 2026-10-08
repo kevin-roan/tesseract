@@ -1,4 +1,4 @@
-import type { FetchLike, TheOneClient } from "@theone/client";
+import type { FetchLike, TesseractClient } from "@tesseract/client";
 import { ipcFetch } from "../../app/data";
 import { bridge, isFixtureMode } from "../../app/runtime";
 import { ipc } from "../../lib/ipc";
@@ -58,7 +58,7 @@ export function downloadFetch(): FetchLike {
   return isFixtureMode() ? fixtureFetch : ipcFetch;
 }
 
-function mainProcessSaver(client: TheOneClient): FileSaver {
+function mainProcessSaver(client: TesseractClient): FileSaver {
   return async (request, callbacks) => {
     const id = crypto.randomUUID();
     let started = false;
@@ -85,7 +85,7 @@ function mainProcessSaver(client: TheOneClient): FileSaver {
   };
 }
 
-export function rendererFileSaver(client: TheOneClient): FileSaver {
+export function rendererFileSaver(client: TesseractClient): FileSaver {
   if (!isFixtureMode() && bridge()) return mainProcessSaver(client);
   return async (request, callbacks) => {
     const target = await chooseSaveTarget(request.suggestedName);

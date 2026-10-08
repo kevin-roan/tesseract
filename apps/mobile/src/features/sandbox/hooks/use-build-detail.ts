@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { isFinalBuildState } from "@theone/protocol";
+import { isFinalBuildState } from "@tesseract/protocol";
 
 import type { HeaderAction } from "@/components/screen-header";
 import { confirm } from "@/lib/confirm";

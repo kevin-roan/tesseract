@@ -1,4 +1,4 @@
-import { ApiError, type FetchLike, type HttpResponse, type TheOneClient } from "@theone/client";
+import { ApiError, type FetchLike, type HttpResponse, type TesseractClient } from "@tesseract/client";
 import { IpcError } from "../../../shared/ipc-types";
 import { describe, expect, it, vi } from "vitest";
 import { ChecksumError, describeDownloadError, downloadUrl, expectedChecksum, normalizeSha, runDownload, sha256Hex, type SaveTarget } from "./download";
@@ -72,7 +72,7 @@ describe("runDownload", () => {
   });
 
   it("builds download URLs and treats IPC not_found as missing", () => {
-    const client = { httpUrl: (path: string) => `http://sandbox${path}` } as unknown as TheOneClient;
+    const client = { httpUrl: (path: string) => `http://sandbox${path}` } as unknown as TesseractClient;
     expect(downloadUrl(client, { kind: "artifact", id: "a 1" })).toBe("http://sandbox/v1/artifacts/a%201/download");
     expect(downloadUrl(client, { kind: "output", projectId: "p", path: "out/app.apk" })).toContain("/v1/projects/p/outputs/download?path=");
     expect(describeDownloadError(new IpcError("not_found", "gone"), "a.apk is gone")).toBe("Download failed: a.apk is gone");

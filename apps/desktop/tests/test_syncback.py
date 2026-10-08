@@ -5,15 +5,15 @@ from pathlib import Path
 
 import pytest
 
-from monolith_desktop.api.errors import ApiError
-from monolith_desktop.syncback import SyncBackError, SyncConflict, SyncState
-from monolith_desktop.syncback import pull as pull_module
-from monolith_desktop.syncback.pull import pull
-from monolith_desktop.syncback.revert import restore_baseline, revert
-from monolith_desktop.syncback.cli import EXIT_CONFLICT, EXIT_ERROR, EXIT_OK, run_pull, run_revert, run_status
-from monolith_desktop.syncback.manifest import build_manifest, hash_path
-from monolith_desktop.syncback.requests import claimable, handle_request
-from monolith_desktop.syncback.state import Link
+from tesseract_desktop.api.errors import ApiError
+from tesseract_desktop.syncback import SyncBackError, SyncConflict, SyncState
+from tesseract_desktop.syncback import pull as pull_module
+from tesseract_desktop.syncback.pull import pull
+from tesseract_desktop.syncback.revert import restore_baseline, revert
+from tesseract_desktop.syncback.cli import EXIT_CONFLICT, EXIT_ERROR, EXIT_OK, run_pull, run_revert, run_status
+from tesseract_desktop.syncback.manifest import build_manifest, hash_path
+from tesseract_desktop.syncback.requests import claimable, handle_request
+from tesseract_desktop.syncback.state import Link
 
 PROJECT = "demo"
 
@@ -413,7 +413,7 @@ def test_only_the_newest_20_snapshots_are_kept(env):
 
 
 def test_unlinked_project_fails(tmp_path):
-    with pytest.raises(SyncBackError, match="monolith --sync"):
+    with pytest.raises(SyncBackError, match="tesseract --sync"):
         pull(FakeController(tmp_path), SyncState(tmp_path / "state"), PROJECT)
 
 
@@ -477,7 +477,7 @@ def test_cli_pull_revert_and_status(env, capsys):
     assert run_pull(str(host), lambda: controller, ids, force=True, state=state) == EXIT_OK
     out = capsys.readouterr().out
     assert f"Pulled 3 files into {host.resolve()} (1 added, 1 modified, 1 deleted) · snapshot" in out
-    assert "undo with monolith --revert" in out
+    assert "undo with tesseract --revert" in out
     write(host, "src/app.py", "edited after the pull\n")
     assert run_revert(str(host), ids, state=state, client_factory=lambda: controller) == EXIT_CONFLICT
     err = capsys.readouterr().err
@@ -488,11 +488,11 @@ def test_cli_pull_revert_and_status(env, capsys):
     assert len(controller.sync_changes(PROJECT)["changes"]) == 3
     assert run_revert(str(host), ids, state=state) == EXIT_ERROR
     assert run_pull(str(host.parent), lambda: controller, ids, state=state) == EXIT_ERROR
-    assert "monolith --sync" in capsys.readouterr().err
+    assert "tesseract --sync" in capsys.readouterr().err
 
 
 def test_run_sync_records_the_link_and_host_manifest(tmp_path, monkeypatch):
-    from monolith_desktop import sync
+    from tesseract_desktop import sync
 
     root = tmp_path / "My App"
     write(root, "index.ts", "x")
@@ -511,8 +511,8 @@ def test_run_sync_records_the_link_and_host_manifest(tmp_path, monkeypatch):
 
 
 def test_service_claims_linked_requests_once_and_notifies(env, monkeypatch):
-    from monolith_desktop.services import syncback as service_module
-    from monolith_desktop.store import AppStore
+    from tesseract_desktop.services import syncback as service_module
+    from tesseract_desktop.store import AppStore
 
     host, sandbox, state, controller = env
     sandbox_edits(sandbox)

@@ -1,4 +1,4 @@
-import type { AgentRun, BuildJob, ProcessInfo, Project } from "@theone/protocol";
+import type { AgentRun, BuildJob, ProcessInfo, Project } from "@tesseract/protocol";
 import type { ConnectionStatus } from "../../app/connection";
 import type { IconName } from "../../theme/icons";
 import { LIST_TABS, PROJECTS_ICONS } from "./constants";

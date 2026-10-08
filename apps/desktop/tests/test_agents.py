@@ -1,8 +1,8 @@
-from monolith_desktop.api.types import parse_agent_usage, run_total_tokens
-from monolith_desktop.pages.agents import model
-from monolith_desktop.pages.agents.feed import is_final_message
-from monolith_desktop.pages.agents.timeline import EventLog, build_timeline, same_prefix
-from monolith_desktop.util.markdown import inline_markup, is_balanced, parse_blocks, plain_text, table_text
+from tesseract_desktop.api.types import parse_agent_usage, run_total_tokens
+from tesseract_desktop.pages.agents import model
+from tesseract_desktop.pages.agents.feed import is_final_message
+from tesseract_desktop.pages.agents.timeline import EventLog, build_timeline, same_prefix
+from tesseract_desktop.util.markdown import inline_markup, is_balanced, parse_blocks, plain_text, table_text
 
 
 def run(**overrides):

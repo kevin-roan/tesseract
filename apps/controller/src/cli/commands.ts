@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { renderANSI } from "uqr";
-import { buildPairingLink, isIdOfKind, restPaths, ShareArtifactSchema, StatusEventInputSchema, validate, type Artifact, type SandboxStatus } from "@theone/protocol";
+import { buildPairingLink, isIdOfKind, restPaths, ShareArtifactSchema, StatusEventInputSchema, validate, type Artifact, type SandboxStatus } from "@tesseract/protocol";
 import { resolveToken, rotateToken } from "../auth/token";
 import { loadConfig, type Config } from "../config";
 import type { Env } from "../core/exec";
@@ -12,31 +12,32 @@ import { VERSION } from "../version";
 import { api, API_USAGE, redactVncPasswords } from "./api";
 import { hook } from "./hook";
 import { callLocalApi, CliError, isControllerUp } from "./local-api";
-import { monolith } from "./monolith";
+import { tesseract } from "./tesseract";
 import { consoleOutput, type Output } from "./output";
 
 export type { Output } from "./output";
 
-export const USAGE = `theone-controller ${VERSION}
+export const USAGE = `tesseract-controller ${VERSION}
 
 Usage:
-  theone-controller [serve]          run the daemon (default)
-  theone-controller pair [--json]    print the pairing deep link and a QR code
-  theone-controller status [--json]  print the sandbox status from the local API
-  theone-controller emit --status <s> --message <m> [--project <p>] [--stage <s>] [--platform <p>]
-  theone-controller token [--rotate] print the API token, or replace it (restart required)
+  tesseract-controller [serve]          run the daemon (default)
+  tesseract-controller pair [--json]    print the pairing deep link and a QR code
+  tesseract-controller status [--json]  print the sandbox status from the local API
+  tesseract-controller emit --status <s> --message <m> [--project <p>] [--stage <s>] [--platform <p>]
+  tesseract-controller token [--rotate] print the API token, or replace it (restart required)
   ${API_USAGE}
                                      call the local API (GET, POST or DELETE; PATH under /v1/; body as an
                                      argument or "-" for stdin); prints the JSON response, VNC password redacted
-  theone-controller share <file> [--project <id>] [--name <name>] [--note <text>] [--json]
+  tesseract-controller share <file> [--project <id>] [--name <name>] [--note <text>] [--json]
                                      copy a workspace file into the artifacts, announce it in the inbox and
                                      make it downloadable on paired devices (tags the Claude run/session)
-  theone-controller hook             forward a Claude Code hook (JSON on stdin) to the inbox; silent, always exits 0
-  theone-controller monolith --get [--force] [--json]
-                                     (also /usr/local/bin/monolith) in a project folder: bring in the changes made
-                                     on the linked host checkout since the last tesseract --sync or --get
+  tesseract-controller hook             forward a Claude Code hook (JSON on stdin) to the inbox; silent, always exits 0
+  tesseract-controller tesseract --get [--force] [--json]
+                                     what the sandbox's /usr/local/bin/tesseract runs (only --get; --sync is the
+                                     host CLI's): in a project folder, bring in the changes made on the linked
+                                     host checkout since the last tesseract --sync or --get
 ${HOST_USAGE}
-  theone-controller --version | --help`;
+  tesseract-controller --version | --help`;
 
 export type CliIo = {
   env?: Env;
@@ -45,7 +46,7 @@ export type CliIo = {
   /** `host pin`: reads the PIN without echo (default: the TTY in raw mode). */
   readSecret?: (prompt: string) => Promise<string>;
   cwd?: string;
-  /** `monolith --get`: interrupts the wait, and how often and how long it polls. */
+  /** `tesseract --get`: interrupts the wait, and how often and how long it polls. */
   signal?: AbortSignal;
   syncPollMs?: number;
   syncPendingTimeoutMs?: number;
@@ -92,7 +93,7 @@ async function pair(config: Config, args: string[], output: Output): Promise<num
     return 0;
   }
   output.out(renderANSI(link, { ecc: "L", border: 2 }));
-  output.out(`Scan with the TheOne app, or open this link on the phone:\n\n  ${link}\n`);
+  output.out(`Scan with the Tesseract app, or open this link on the phone:\n\n  ${link}\n`);
   output.out(`Sandbox ${config.sandboxId} · ${config.publicUrl}`);
   if (!(await isControllerUp(config))) output.err("warning: the controller is not answering on the local port yet");
   output.err("The link contains the API token: share it only with your own devices.");
@@ -150,7 +151,7 @@ async function share(config: Config, args: string[], env: Env, cwd: string, outp
     ...(values.project ? { projectId: values.project } : {}),
     ...(values.name ? { name: values.name } : {}),
     ...(values.note ? { note: values.note } : {}),
-    ...(env.THEONE_AGENT_RUN_ID && isIdOfKind("agentRun", env.THEONE_AGENT_RUN_ID) ? { agentRunId: env.THEONE_AGENT_RUN_ID } : {}),
+    ...(env.TESSERACT_AGENT_RUN_ID && isIdOfKind("agentRun", env.TESSERACT_AGENT_RUN_ID) ? { agentRunId: env.TESSERACT_AGENT_RUN_ID } : {}),
     ...(env.CLAUDE_CODE_SESSION_ID ? { sessionId: env.CLAUDE_CODE_SESSION_ID } : {}),
   });
   if (!input.ok) throw new CliError(`Invalid share: ${input.error.message}`, 2);
@@ -170,8 +171,8 @@ function token(config: Config, args: string[], output: Output): number {
   }
   rotateToken(config);
   output.out(`Wrote a new token to ${config.tokenFile} (mode 0600).`);
-  output.out("Restart the controller to apply it, then pair every phone again (theone-controller pair).");
-  if (config.tokenFromEnv) output.err("warning: THEONE_TOKEN is set and overrides the token file; unset it for the new token to take effect.");
+  output.out("Restart the controller to apply it, then pair every phone again (tesseract-controller pair).");
+  if (config.tokenFromEnv) output.err("warning: TESSERACT_TOKEN is set and overrides the token file; unset it for the new token to take effect.");
   return 0;
 }
 
@@ -219,9 +220,9 @@ export async function runCli(argv: string[], io: CliIo = {}): Promise<number | n
         return await share(config, rest, io.env ?? process.env, io.cwd ?? process.cwd(), output);
       case "api":
         return await api(config, rest, output, io.readStdin ?? readProcessStdin);
-      case "monolith":
+      case "tesseract":
         return await withInterrupt(io.signal, (signal) =>
-          monolith(config, rest, output, {
+          tesseract(config, rest, output, {
             cwd: io.cwd ?? process.cwd(),
             style: { width: process.stdout.columns || 80, color: Boolean(process.stdout.isTTY) && !(io.env ?? process.env).NO_COLOR },
             signal,

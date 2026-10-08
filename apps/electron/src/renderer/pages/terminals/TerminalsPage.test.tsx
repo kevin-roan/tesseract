@@ -81,7 +81,7 @@ describe("TerminalsPage", () => {
     renderPage();
     fireEvent.click(await screen.findByText("Shell · Workspace"));
     expect(await screen.findByText("Live")).toBeTruthy();
-    await waitFor(() => expect(allOutput()).toContain("dev@theone-sandbox"));
+    await waitFor(() => expect(allOutput()).toContain("dev@tesseract-sandbox"));
     expect(screen.getByRole("button", { name: "Close session" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Terminal actions" })).toBeTruthy();
     expect(screen.queryByText("No session selected")).toBeNull();

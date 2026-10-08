@@ -1,5 +1,5 @@
-import type { ConnectionState } from "@theone/client";
-import type { AgentRun, BuildJob, BuildTarget, ProcessInfo, TerminalKind, VncAction } from "@theone/protocol";
+import type { ConnectionState } from "@tesseract/client";
+import type { AgentRun, BuildJob, BuildTarget, ProcessInfo, TerminalKind, VncAction } from "@tesseract/protocol";
 import type { Icon } from "phosphor-react-native";
 
 import type { ActivityItemProps } from "@/components/activity-item";

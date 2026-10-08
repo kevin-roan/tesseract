@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-# `monolith --get` in a project folder: brings in the changes made on the linked host checkout
-# (docs/architecture/sync-back.md §6). The host-side monolith commands run on the computer.
-set -euo pipefail
-
-exec /usr/local/bin/theone-controller monolith "$@"

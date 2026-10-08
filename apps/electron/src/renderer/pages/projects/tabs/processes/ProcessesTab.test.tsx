@@ -1,6 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import type { ProcessInfo, Project } from "@theone/protocol";
-import { sampleProcess, sampleProject } from "@theone/protocol/fixtures";
+import type { ProcessInfo, Project } from "@tesseract/protocol";
+import { sampleProcess, sampleProject } from "@tesseract/protocol/fixtures";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fakeClient, fakeHost, renderTab, type FakeClient } from "../kit/testing";
 
@@ -13,8 +13,8 @@ vi.mock("../../../../app/connection", async (importOriginal) => {
 
 const { ProcessesTab } = await import("./ProcessesTab");
 
-const project: Project = { ...sampleProject, id: "monolith", name: "monolith", framework: "vite", packageManager: "pnpm", scripts: ["dev", "build"] };
-const process = (patch: Partial<ProcessInfo>): ProcessInfo => ({ ...sampleProcess, projectId: "monolith", ...patch });
+const project: Project = { ...sampleProject, id: "tesseract", name: "tesseract", framework: "vite", packageManager: "pnpm", scripts: ["dev", "build"] };
+const process = (patch: Partial<ProcessInfo>): ProcessInfo => ({ ...sampleProcess, projectId: "tesseract", ...patch });
 
 describe("ProcessesTab", () => {
   beforeEach(() => {
@@ -22,8 +22,8 @@ describe("ProcessesTab", () => {
       ports: vi.fn(async () => ({
         tailscaleIp: null,
         ports: [
-          { port: 41769, pid: 2, command: "java", processId: null, projectId: "monolith", url: "http://100.116.96.29:41769", dnsUrl: null },
-          { port: 41653, pid: 1, command: "java", processId: null, projectId: "monolith", url: "http://100.116.96.29:41653", dnsUrl: null },
+          { port: 41769, pid: 2, command: "java", processId: null, projectId: "tesseract", url: "http://100.116.96.29:41769", dnsUrl: null },
+          { port: 41653, pid: 1, command: "java", processId: null, projectId: "tesseract", url: "http://100.116.96.29:41653", dnsUrl: null },
           { port: 9, pid: 3, command: "x", processId: null, projectId: "other", url: null, dnsUrl: null },
         ],
       })),
@@ -89,12 +89,12 @@ describe("ProcessesTab", () => {
     await act(async () => {
       fireEvent.click(within(scripts).getAllByRole("button", { name: "Run" })[0] as HTMLElement);
     });
-    expect(client.startProcess).toHaveBeenCalledWith({ projectId: "monolith", command: "pnpm run dev", name: "dev" });
+    expect(client.startProcess).toHaveBeenCalledWith({ projectId: "tesseract", command: "pnpm run dev", name: "dev" });
     expect(host.upsert).toHaveBeenCalledWith("process", started);
     await act(async () => {
       fireEvent.click(within(scripts).getAllByRole("button", { name: "Run on display" })[1] as HTMLElement);
     });
-    expect(client.startProcess).toHaveBeenLastCalledWith({ projectId: "monolith", command: "pnpm run build", name: "build", display: true });
+    expect(client.startProcess).toHaveBeenLastCalledWith({ projectId: "tesseract", command: "pnpm run build", name: "build", display: true });
   });
 
   it("offers Fix with AI on failed processes", () => {
@@ -115,6 +115,6 @@ describe("ProcessesTab", () => {
     await act(async () => {
       fireEvent.click(within(dialog).getByRole("button", { name: "Run" }));
     });
-    expect(client.startProcess).toHaveBeenCalledWith({ projectId: "monolith", command: "ls -la" });
+    expect(client.startProcess).toHaveBeenCalledWith({ projectId: "tesseract", command: "ls -la" });
   });
 });

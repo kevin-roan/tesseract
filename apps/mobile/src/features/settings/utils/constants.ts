@@ -1,5 +1,5 @@
 import { Platform } from "react-native";
-import type { InputMode, SttProfile, SttProvider } from "@theone/protocol";
+import type { InputMode, SttProfile, SttProvider } from "@tesseract/protocol";
 import {
   ArrowDownLeftIcon,
   ArrowDownRightIcon,
@@ -23,7 +23,7 @@ import type { IslandPlacement } from "@/features/island/types";
 
 import type { AppearancePreference } from "../types";
 
-export const SETTINGS_STORE_NAME = "theone.settings";
+export const SETTINGS_STORE_NAME = "tesseract.settings";
 export const SETTINGS_STORE_VERSION = 1;
 export const DEFAULT_STT_PROVIDER: SttProvider = "gemini";
 export const DEFAULT_APPEARANCE: AppearancePreference = "dark";
@@ -112,7 +112,7 @@ export const SETTINGS_COPY = {
 export const ABOUT_COPY = {
   title: "About",
   subtitle: "Version and update details for this install",
-  entryTitle: "About Monolith",
+  entryTitle: "About Tesseract",
   entrySubtitle: (version: string, channel: string) => `Version ${version} · ${channel}`,
   sectionTitle: "About",
   appTitle: "Application",
@@ -149,7 +149,7 @@ export const ABOUT_COPY = {
 
 export const UPDATE_SHEET_COPY = {
   title: "Update available",
-  message: "A new version of Monolith is ready. Installing restarts the app, which takes a few seconds.",
+  message: "A new version of Tesseract is ready. Installing restarts the app, which takes a few seconds.",
   published: (time: string) => `Published ${time}`,
   install: "Install update",
   later: "Later",

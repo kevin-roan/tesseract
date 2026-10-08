@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import type { Upload } from "@theone/protocol";
+import type { Upload } from "@tesseract/protocol";
 
 import { useUploadFile } from "@/features/attachments/hooks/use-upload-file";
 import { useTranscribe } from "@/features/sandbox/hooks/use-sandbox-mutations";

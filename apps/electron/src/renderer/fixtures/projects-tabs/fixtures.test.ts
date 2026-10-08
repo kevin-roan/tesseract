@@ -31,8 +31,8 @@ describe("projects-tabs fixtures", () => {
   });
 
   it("starts processes and builds and serves logs", async () => {
-    const process = await call("POST", "/v1/processes", { projectId: "monolith", command: "bun run lint", name: "lint" });
-    expect(process.body).toMatchObject({ projectId: "monolith", name: "lint", state: "starting" });
+    const process = await call("POST", "/v1/processes", { projectId: "tesseract", command: "bun run lint", name: "lint" });
+    expect(process.body).toMatchObject({ projectId: "tesseract", name: "lint", state: "starting" });
     const build = await call("POST", "/v1/builds", { projectId: "hybrid-pos", target: "web", profile: "release" });
     expect(build.body).toMatchObject({ target: "web", profile: "release", state: "queued" });
     const logs = await call("GET", "/v1/builds/bld_x/logs");

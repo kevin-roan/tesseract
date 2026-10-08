@@ -1,4 +1,4 @@
-import type { AgentRun, Project } from "@theone/protocol";
+import type { AgentRun, Project } from "@tesseract/protocol";
 import { useEffect, useMemo, useRef } from "react";
 import { describeError, useWindowVisible } from "../../../app/connection";
 import { useApiQuery } from "../../../app/data";

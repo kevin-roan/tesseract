@@ -1,5 +1,5 @@
 import { existsSync } from "node:fs";
-import { UI_PREFIX, type DisplayStatus, type DisplayWindow, type DisplayWindowList } from "@theone/protocol";
+import { UI_PREFIX, type DisplayStatus, type DisplayWindow, type DisplayWindowList } from "@tesseract/protocol";
 import { badRequest, notFound, unavailable } from "../core/errors";
 import { childEnv, run, runBytes } from "../core/exec";
 import { probeRfb } from "../core/net";

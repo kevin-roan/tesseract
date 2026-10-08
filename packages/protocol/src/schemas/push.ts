@@ -14,7 +14,7 @@ export const RegisterPushDeviceSchema = z.object({
   token: PushTokenSchema,
   platform: PushPlatformSchema,
   name: z.string().trim().min(1).max(128).nullable().optional(),
-  /** Stable id of the physical phone, shared by every Monolith build installed on it (production and dev client). */
+  /** Stable id of the physical phone, shared by every Tesseract build installed on it (production and dev client). */
   deviceId: z.string().trim().min(1).max(128).nullable().optional(),
 });
 export type RegisterPushDevice = z.infer<typeof RegisterPushDeviceSchema>;

@@ -1,4 +1,4 @@
-import type { AgentRunEvent, AgentRunUsage } from "@theone/protocol";
+import type { AgentRunEvent, AgentRunUsage } from "@tesseract/protocol";
 
 export type AgentEventBody =
   | { kind: "text"; text: string }

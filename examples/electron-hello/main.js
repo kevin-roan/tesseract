@@ -5,7 +5,7 @@ function createWindow() {
   const window = new BrowserWindow({
     width: 900,
     height: 600,
-    title: "TheOne Electron Hello",
+    title: "Tesseract Electron Hello",
     backgroundColor: "#1b1f27",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),

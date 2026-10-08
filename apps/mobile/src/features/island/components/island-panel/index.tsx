@@ -10,7 +10,7 @@ import { useHapticPress } from "@/hooks/use-haptic-press";
 import { useLayoutMotion } from "@/hooks/use-layout-motion";
 import { MaxFontSizeMultiplier } from "@/theme";
 
-import type { IslandState } from "@/modules/theone-island";
+import type { IslandState } from "@/modules/tesseract-island";
 
 import { useIslandSummary } from "../../hooks/use-island-summary";
 import { useNow } from "../../hooks/use-now";

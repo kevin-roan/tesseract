@@ -11,22 +11,22 @@ function probe(executables: string[], files: string[] = []): FileProbe {
 
 const REPO = "/repo";
 const ENTRY = join(REPO, "apps", "controller", "src", "index.ts");
-const PREBUILT = join(REPO, "apps", "controller", "dist", "theone-controller");
+const PREBUILT = join(REPO, "apps", "controller", "dist", "tesseract-controller");
 
 describe("resolveControllerCommand", () => {
   const base = { resourcesPath: null, packaged: false, repoRoot: REPO, platform: "linux" as const, home: "/home/u" };
 
-  it("uses MONOLITH_CONTROLLER_COMMAND verbatim (shell-split)", () => {
-    const command = resolveControllerCommand({ ...base, env: { MONOLITH_CONTROLLER_COMMAND: "'/opt/x y/ctl' --flag" }, files: probe([]) });
+  it("uses TESSERACT_CONTROLLER_COMMAND verbatim (shell-split)", () => {
+    const command = resolveControllerCommand({ ...base, env: { TESSERACT_CONTROLLER_COMMAND: "'/opt/x y/ctl' --flag" }, files: probe([]) });
     expect(command).toEqual(["/opt/x y/ctl", "--flag"]);
   });
 
   it("runs the bundled binary when packaged", () => {
     const binary = bundledControllerPath("/app/resources", "linux");
-    expect(binary).toBe(join("/app/resources", "bin", "theone-controller"));
+    expect(binary).toBe(join("/app/resources", "bin", "tesseract-controller"));
     const command = resolveControllerCommand({ ...base, env: {}, packaged: true, resourcesPath: "/app/resources", files: probe([], [binary]) });
     expect(command).toEqual([binary]);
-    expect(bundledControllerPath("C:\\R", "win32")).toMatch(/theone-controller\.exe$/);
+    expect(bundledControllerPath("C:\\R", "win32")).toMatch(/tesseract-controller\.exe$/);
   });
 
   it("reports a missing bundled binary", () => {
@@ -50,7 +50,7 @@ describe("resolveControllerCommand", () => {
 
   it("explains a missing checkout or bun", () => {
     expect(() => resolveControllerCommand({ ...base, env: {}, files: probe([]) })).toThrow(
-      `The controller is not in this checkout (${ENTRY}); set MONOLITH_CONTROLLER_COMMAND`,
+      `The controller is not in this checkout (${ENTRY}); set TESSERACT_CONTROLLER_COMMAND`,
     );
     expect(() => resolveControllerCommand({ ...base, env: { PATH: "" }, files: probe([], [ENTRY]) })).toThrow(
       "Bun is not installed or not on PATH; install it from bun.sh",

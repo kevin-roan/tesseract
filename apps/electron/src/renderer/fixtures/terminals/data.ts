@@ -1,4 +1,4 @@
-import type { CreateTerminal, TerminalInfo } from "@theone/protocol";
+import type { CreateTerminal, TerminalInfo } from "@tesseract/protocol";
 import { currentScenario } from "../scenario";
 
 export const TERMINAL_SCENARIOS = {
@@ -76,7 +76,7 @@ export function closeFixtureTerminal(id: string): TerminalInfo | null {
 
 const ESC = "\x1b";
 const BOX_WIDTH = 41;
-const prompt = (cwd: string) => `${ESC}[1;32mdev@theone-sandbox${ESC}[0m:${ESC}[1;34m${cwd}${ESC}[0m$ `;
+const prompt = (cwd: string) => `${ESC}[1;32mdev@tesseract-sandbox${ESC}[0m:${ESC}[1;34m${cwd}${ESC}[0m$ `;
 
 export function fixtureScreen(id: string): string {
   if (id === FIXTURE_CLAUDE_ID) {
@@ -95,8 +95,8 @@ export function fixtureScreen(id: string): string {
   }
   return [
     `${prompt("/workspace")}ls`,
-    `${ESC}[1;34mhybrid-pos${ESC}[0m  ${ESC}[1;34mmonolith${ESC}[0m  ${ESC}[1;34msante-production${ESC}[0m  ${ESC}[1;34mstreaxfit${ESC}[0m  README.md`,
-    `${prompt("/workspace")}git -C monolith status --short`,
+    `${ESC}[1;34mhybrid-pos${ESC}[0m  ${ESC}[1;34mtesseract${ESC}[0m  ${ESC}[1;34msante-production${ESC}[0m  ${ESC}[1;34mstreaxfit${ESC}[0m  README.md`,
+    `${prompt("/workspace")}git -C tesseract status --short`,
     ` ${ESC}[31mM${ESC}[0m apps/electron/src/renderer/pages/terminals/TerminalsPage.tsx`,
     `${ESC}[32m??${ESC}[0m docs/electron/terminals.md`,
     `${prompt("/workspace")}echo "docs: https://docs.expo.dev"`,

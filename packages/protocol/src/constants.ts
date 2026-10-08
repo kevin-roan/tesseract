@@ -2,13 +2,13 @@ export const PROTOCOL_VERSION = 1 as const;
 export const API_PREFIX = "/v1" as const;
 export const UI_PREFIX = "/ui" as const;
 export const DEFAULT_PORT = 7700;
-export const PAIRING_SCHEME = "theone" as const;
+export const PAIRING_SCHEME = "tesseract" as const;
 export const PAIRING_ACTION = "pair" as const;
-/** `theone://host?url=…&token=…&name=…` pairs the phone with the host shell daemon (`theone-controller host pair`). */
+/** `tesseract://host?url=…&token=…&name=…` pairs the phone with the host shell daemon (`tesseract-controller host pair`). */
 export const HOST_PAIRING_ACTION = "host" as const;
 export const HOST_SHELL_PORT = 7701;
 export const HOST_SHELL_SERVICE = "host-shell" as const;
-/** Host shell PIN: 6 to 12 digits, set on the host with `theone-controller host pin`. */
+/** Host shell PIN: 6 to 12 digits, set on the host with `tesseract-controller host pin`. */
 export const HOST_PIN_PATTERN = /^\d{6,12}$/;
 export const TICKET_PARAM = "ticket" as const;
 export const VNC_WS_SUBPROTOCOL = "binary" as const;
@@ -18,7 +18,7 @@ export const DEFAULT_ADB_TUNNEL_PORT = 15555;
 export const DEFAULT_EMULATOR_PORT = 5554;
 /** Console ports an emulator can use (even, 5554-5682); the host adb serial of one is `emulator-<port>`. */
 export const EMULATOR_PORT_RANGE = { min: 5554, max: 5682 } as const;
-/** Host adb serial of a plain emulator (one the host shares with `THEONE_ANDROID_SHARE_EMULATORS`). */
+/** Host adb serial of a plain emulator (one the host shares with `TESSERACT_ANDROID_SHARE_EMULATORS`). */
 export const EMULATOR_SERIAL_PATTERN = /^emulator-(\d{4})$/;
 export const DEFAULT_EMULATOR_GPU = "swiftshader_indirect" as const;
 /** Close code of an Android link replaced by a newer one. */
@@ -112,7 +112,7 @@ export const AGENT_RUN_EVENT_KINDS = ["text", "tool_use", "tool_result", "system
 export const LOG_STREAMS = ["stdout", "stderr", "system"] as const;
 export const LOG_LEVELS = ["debug", "info", "warn", "error"] as const;
 export const INBOX_KINDS = ["needs_input", "permission", "completed", "failed", "status", "file"] as const;
-/** `build`: collected by a build recipe; `agent`: shared with `theone-controller share` (or `POST /v1/artifacts`). */
+/** `build`: collected by a build recipe; `agent`: shared with `tesseract-controller share` (or `POST /v1/artifacts`). */
 export const ARTIFACT_SOURCES = ["build", "agent"] as const;
 export const CLAUDE_SESSION_SOURCES = ["agent-run", "terminal", "cli"] as const;
 export const SYNC_CHANGE_KINDS = ["added", "modified", "deleted"] as const;
@@ -175,7 +175,7 @@ export const RUN_TARGET_ACTIONS = {
   test: [],
 } as const satisfies Record<RunTargetName, readonly (typeof APP_RUN_ACTIONS)[number][]>;
 
-/** Host `THEONE_EMULATOR_ISOLATION`: `netns` runs the emulator in its own network namespace, `none` on the host network. */
+/** Host `TESSERACT_EMULATOR_ISOLATION`: `netns` runs the emulator in its own network namespace, `none` on the host network. */
 export const EMULATOR_ISOLATION_MODES = ["netns", "none"] as const;
 export const EMULATOR_STATES = ["unavailable", "stopped", "starting", "running", "stopping", "failed"] as const;
 /** Keys the screen page may send (`{ type: "key" }` on `/v1/android/screen`). */

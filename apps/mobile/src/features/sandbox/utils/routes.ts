@@ -1,4 +1,4 @@
-import { TERMINAL_KINDS, normalizeProjectId, type TerminalKind } from "@theone/protocol";
+import { TERMINAL_KINDS, normalizeProjectId, type TerminalKind } from "@tesseract/protocol";
 
 import type { TerminalLaunch } from "../types";
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { TerminalInfo } from "@theone/protocol";
+import type { TerminalInfo } from "@tesseract/protocol";
 
 import type { TerminalLaunch } from "../types";
 import { TERMINAL_DEFAULT_SIZE } from "../utils/constants";

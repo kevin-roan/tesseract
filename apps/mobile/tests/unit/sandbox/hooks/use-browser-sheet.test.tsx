@@ -1,16 +1,16 @@
 import { Linking, Platform, Share } from "react-native";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TheOneClient } from "@theone/client";
-import type { BrowserStatus, BrowserTab } from "@theone/protocol";
+import { TesseractClient } from "@tesseract/client";
+import type { BrowserStatus, BrowserTab } from "@tesseract/protocol";
 
 import { useBrowserSheet } from "@/features/sandbox/hooks/use-browser-sheet";
 
 import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 const TAB: BrowserTab = { id: "a", title: "Vite App", url: "http://localhost:5173/", phoneUrl: "http://100.64.0.1:5173/" };
 const LOCAL: BrowserTab = { id: "b", title: "API", url: "http://localhost:3000/", phoneUrl: null };
 const STATUS: BrowserStatus = { available: true, tabs: [TAB, LOCAL] };

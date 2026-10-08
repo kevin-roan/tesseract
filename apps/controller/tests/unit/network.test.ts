@@ -2,7 +2,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test";
 import type { Socket, TCPSocketListener } from "bun";
 import { Hono } from "hono";
 import { HTTPException } from "hono/http-exception";
-import { createId } from "@theone/protocol";
+import { createId } from "@tesseract/protocol";
 import { TicketStore } from "../../src/auth/tickets";
 import { loadConfig } from "../../src/config";
 import { HttpError } from "../../src/core/errors";
@@ -189,7 +189,7 @@ describe("WebSocket routing", () => {
   function routerServices(tickets: TicketStore, overrides: Record<string, unknown> = {}) {
     return {
       tickets,
-      config: loadConfig({ THEONE_VNC_PORT: String(freePort()) }),
+      config: loadConfig({ TESSERACT_VNC_PORT: String(freePort()) }),
       terminals: { has: () => true },
       processes: { get: () => ({}) },
       builds: { get: () => ({}) },
@@ -247,7 +247,7 @@ describe("WebSocket routing", () => {
   test("the VNC upgrade echoes the binary subprotocol only when offered, and closes the bridge if the upgrade fails", async () => {
     const { port, side } = tcpServer();
     const tickets = new TicketStore();
-    const services = routerServices(tickets, { config: loadConfig({ THEONE_VNC_PORT: String(port) }) });
+    const services = routerServices(tickets, { config: loadConfig({ TESSERACT_VNC_PORT: String(port) }) });
     const upgrades: { headers?: Record<string, string> }[] = [];
     const server = { upgrade: (_request: Request, options: { headers?: Record<string, string> }) => (upgrades.push(options), true) } as never;
     const match = matchWsRoute("/v1/display/vnc")!;
@@ -386,7 +386,7 @@ describe("HTTP middleware", () => {
 describe("createApp error handling", () => {
   test("maps HttpError, HTTPException and unexpected errors to JSON bodies", async () => {
     const lines: { line: string; level: LogLevel }[] = [];
-    const config = loadConfig({ THEONE_WORKSPACE: makeTempDir("app"), THEONE_TOKEN: TEST_TOKEN, THEONE_VNC_PORT: "1", THEONE_CORS_ORIGINS: "https://a.example" });
+    const config = loadConfig({ TESSERACT_WORKSPACE: makeTempDir("app"), TESSERACT_TOKEN: TEST_TOKEN, TESSERACT_VNC_PORT: "1", TESSERACT_CORS_ORIGINS: "https://a.example" });
     const services = createServices(config, {
       logger: createLogger("debug", "app", (line, level) => lines.push({ line, level })),
       toolProbes: [],
@@ -433,7 +433,7 @@ describe("createApp error handling", () => {
       expect(other.headers.get("access-control-allow-origin")).toBeNull();
       const unauthorized = await app.request("/v1/status");
       expect(unauthorized.status).toBe(401);
-      expect(unauthorized.headers.get("www-authenticate")).toBe('Bearer realm="theone"');
+      expect(unauthorized.headers.get("www-authenticate")).toBe('Bearer realm="tesseract"');
     } finally {
       await services.close();
     }

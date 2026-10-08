@@ -10,7 +10,7 @@ import type {
   RegisterLiveActivity,
   ServerEvent,
   UsageReport,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import type { Config } from "../config";
 import { notFound } from "../core/errors";
 import type { EventHub } from "../core/events";
@@ -296,7 +296,7 @@ export class LiveActivityService {
   private createSigner(): ApnsTokenSigner | null {
     const { apns } = this.config;
     if (!apns.enabled || apns.keyFile === null || apns.keyId === null || apns.teamId === null) {
-      this.logger.debug("live activity pushes disabled: THEONE_APNS_KEY_FILE, THEONE_APNS_KEY_ID and THEONE_APNS_TEAM_ID are not all set");
+      this.logger.debug("live activity pushes disabled: TESSERACT_APNS_KEY_FILE, TESSERACT_APNS_KEY_ID and TESSERACT_APNS_TEAM_ID are not all set");
       return null;
     }
     try {

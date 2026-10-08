@@ -1,8 +1,8 @@
-# TheOne
+# Tesseract
 
 A development machine in a Docker container that you control from your phone.
 
-TheOne runs a sandbox container on any Docker host. It has a virtual display
+Tesseract runs a sandbox container on any Docker host. It has a virtual display
 with VNC, wine, Node/Bun/Python, the Android SDK, Electron tooling and Claude
 Code. An Expo app on your phone reaches it over Tailscale. From the phone you
 can add and clone projects, run terminals and Claude, start builds (including
@@ -14,12 +14,12 @@ Docker: nothing is installed on it and nothing is exposed to the internet.
  phone (apps/mobile, Expo)
    │  HTTPS + WSS over Tailscale (WireGuard, tailnet only)
    ▼
- host: Docker only ─ compose project "theone" (default)
+ host: Docker only ─ compose project "tesseract" (default)
    ├─ tailscale   sidecar, userspace; serve :443 → controller, tcp :5901 → VNC
    ├─ sandbox     Debian trixie, shares the sidecar's network namespace
-   │    supervisord (as dev) ─ Xvnc :1 (VNC 5901) · openbox · theone-controller :7700 · wine-init
+   │    supervisord (as dev) ─ Xvnc :1 (VNC 5901) · openbox · tesseract-controller :7700 · wine-init
    │    Claude Code · git · node 24 · bun · python · JDK 17 · Android SDK · wine · chromium
-   │    volumes: theone-workspace → /workspace   theone-home → /home/dev
+   │    volumes: tesseract-workspace → /workspace   tesseract-home → /home/dev
    └─ docker      optional dind sidecar (opt-in)
 ```
 
@@ -30,12 +30,12 @@ Claude runs) goes through its token-authenticated REST and WebSocket API.
 ## Repository layout
 
 ```text
-apps/mobile/          @theone/mobile      Expo SDK 56 / React Native 0.85 / expo-router app
-apps/controller/      @theone/controller  Bun + Hono daemon that runs inside the sandbox
-apps/electron/        @monolith/electron  Monolith desktop app (Electron): setup wizard, pages, `tesseract` CLI
-apps/desktop/         Monolith GTK4/libadwaita app (Python), the design reference for apps/electron
-packages/protocol/    @theone/protocol    zod schemas and types: the wire contract
-packages/client/      @theone/client      typed REST/WS client (React Native, browser, Bun)
+apps/mobile/          @tesseract/mobile      Expo SDK 56 / React Native 0.85 / expo-router app
+apps/controller/      @tesseract/controller  Bun + Hono daemon that runs inside the sandbox
+apps/electron/        @tesseract/electron  Tesseract desktop app (Electron): setup wizard, pages, `tesseract` CLI
+apps/desktop/         Tesseract GTK4/libadwaita app (Python), the design reference for apps/electron
+packages/protocol/    @tesseract/protocol    zod schemas and types: the wire contract
+packages/client/      @tesseract/client      typed REST/WS client (React Native, browser, Bun)
 infra/docker/sandbox/ sandbox image (Dockerfile + rootfs)
 infra/compose/        compose files, Tailscale serve config, .env.example
 infra/scripts/sandbox operator CLI (bun run sandbox …)
@@ -54,7 +54,7 @@ SPEC.md               operating spec for Claude inside the sandbox
 - [bun](https://bun.sh) 1.3+ on the machine you run the CLI from.
 - A Tailscale account with **MagicDNS** and **HTTPS certificates** enabled
   (admin console → DNS), and an **auth key** (Settings → Keys, preferably
-  tagged `tag:theone`, pre-approved).
+  tagged `tag:tesseract`, pre-approved).
 - The Tailscale app on your phone, logged into the same tailnet.
 
 **Start the sandbox**
@@ -63,9 +63,9 @@ SPEC.md               operating spec for Claude inside the sandbox
 cp infra/compose/.env.example infra/compose/.env
 $EDITOR infra/compose/.env            # set TS_AUTHKEY and TS_TAILNET_DOMAIN; review SANDBOX_* limits
 bun install
-bun run sandbox up --build            # builds theone/sandbox (first build takes a while) and starts the stack
+bun run sandbox up --build            # builds tesseract/sandbox (first build takes a while) and starts the stack
 bun run sandbox status                # containers + controller status (the URL is printed by up)
-bun run sandbox pair                  # prints the theone://pair link and a QR code
+bun run sandbox pair                  # prints the tesseract://pair link and a QR code
 ```
 
 **Run the app.** `react-native-webview` and `expo-camera` contain native
@@ -80,7 +80,11 @@ bun run mobile                        # from the repo root: starts Metro for the
 In the app: **Agents** tab → **Pair a sandbox** → scan the QR code. Step-by-step
 details are in [docs/runbooks/getting-started.md](docs/runbooks/getting-started.md).
 
-## Desktop app (Monolith)
+**Upgrading from TheOne / Monolith?** `bun run sandbox up` migrates the env file, stops the old
+stack and copies its volumes once; the phone needs the new app and a new pairing. See
+[docs/runbooks/rebrand-migration.md](docs/runbooks/rebrand-migration.md).
+
+## Desktop app
 
 `apps/electron` is the desktop companion for Linux, macOS and Windows. On first run a setup wizard (like
 Android Studio's) checks or installs Docker, builds and starts the sandbox with the components you pick
@@ -97,7 +101,7 @@ bun run electron:e2e                  # Playwright suites (headless on Linux)
 ```
 
 Details: [docs/electron/README.md](docs/electron/README.md) and
-[blueprint §12](docs/architecture/00-blueprint.md#12-desktop-app-appselectron-package-monolithelectron).
+[blueprint §12](docs/architecture/00-blueprint.md#12-desktop-app-appselectron-package-tesseractelectron).
 
 ## Common commands
 
@@ -109,16 +113,16 @@ Details: [docs/electron/README.md](docs/electron/README.md) and
 | `bun run sandbox logs [service] [-f]` | last 200 lines per service, `-f` to follow |
 | `bun run sandbox shell` | login shell as `dev` inside the sandbox |
 | `bun run sandbox pair [--json]` | pairing link + QR code for the phone |
-| `bun run sandbox status` | containers plus `theone-controller status` |
-| `bun run sandbox doctor` | `theone-doctor` inside the running sandbox |
+| `bun run sandbox status` | containers plus `tesseract-controller status` |
+| `bun run sandbox doctor` | `tesseract-doctor` inside the running sandbox |
 | `bun run sandbox build [--target <stage>]` | build the image only |
 | `bun run sandbox ps` / `config` | containers / resolved compose configuration |
-| `bun run sandbox up --mode local` | pick a mode for one call (`tailscale`, `host-tailscale`, `local`; default `THEONE_MODE` in `.env`) |
-| `bun run sandbox up --dind` | add the privileged Docker-in-Docker sidecar (or `THEONE_DIND=1`) |
+| `bun run sandbox up --mode local` | pick a mode for one call (`tailscale`, `host-tailscale`, `local`; default `TESSERACT_MODE` in `.env`) |
+| `bun run sandbox up --dind` | add the privileged Docker-in-Docker sidecar (or `TESSERACT_DIND=1`) |
 | `bun run sandbox --env-file <path> <cmd>` | use another env file, e.g. for a second stack ([operations](docs/runbooks/operations.md#run-more-than-one-stack)) |
 | `bun run typecheck` / `bun run test` / `bun run lint` | across all workspaces |
 | `bun run test:infra` | bats tests for the operator CLI, rootfs scripts and compose files (in docker) |
-| `bun run e2e` | end-to-end suite against an isolated `theone-e2e` stack on loopback ([e2e-testing](docs/runbooks/e2e-testing.md)) |
+| `bun run e2e` | end-to-end suite against an isolated `tesseract-e2e` stack on loopback ([e2e-testing](docs/runbooks/e2e-testing.md)) |
 | `bun run mobile` | Expo dev server for the app |
 | `bun run electron` / `electron:build` / `electron:dist` | desktop app: dev mode (renderer on 4545), production build, installers |
 | `bun run electron:e2e` / `electron:smoke` | desktop app Playwright suites / checks of the built AppImage and deb |
@@ -129,7 +133,7 @@ Details: [docs/electron/README.md](docs/electron/README.md) and
 - [docs/README.md](docs/README.md): index of all notes
 - [Architecture overview](docs/architecture/overview.md) · [Blueprint (contract)](docs/architecture/00-blueprint.md) · [Protocol](docs/architecture/protocol.md)
 - [Security model](docs/architecture/security-model.md) · [Networking and Tailscale](docs/architecture/networking-tailscale.md)
-- Runbooks: [getting started](docs/runbooks/getting-started.md), [pairing](docs/runbooks/pairing-mobile.md), [Electron builds](docs/runbooks/electron-builds.md), [Android builds](docs/runbooks/android-builds.md), [Claude in the sandbox](docs/runbooks/claude-in-sandbox.md), [operations](docs/runbooks/operations.md), [testing](docs/runbooks/e2e-testing.md), [troubleshooting](docs/runbooks/troubleshooting.md)
+- Runbooks: [getting started](docs/runbooks/getting-started.md), [pairing](docs/runbooks/pairing-mobile.md), [Electron builds](docs/runbooks/electron-builds.md), [Android builds](docs/runbooks/android-builds.md), [Claude in the sandbox](docs/runbooks/claude-in-sandbox.md), [operations](docs/runbooks/operations.md), [testing](docs/runbooks/e2e-testing.md), [troubleshooting](docs/runbooks/troubleshooting.md), [upgrading from TheOne / Monolith](docs/runbooks/rebrand-migration.md)
 - Desktop app: [docs/electron/README.md](docs/electron/README.md) (specs, reference captures, conventions)
 - [SPEC.md](SPEC.md): how Claude behaves inside the sandbox
 - [Roadmap and open decisions](docs/roadmap.md)
@@ -140,9 +144,9 @@ Details: [docs/electron/README.md](docs/electron/README.md) and
 bun install
 bun run typecheck && bun run test
 bun run test:infra                    # needs docker
-bun run e2e                           # needs docker and network; builds theone/sandbox:e2e
+bun run e2e                           # needs docker and network; builds tesseract/sandbox:e2e
 bun run e2e --electron                # also runs the desktop app's Playwright suites against that stack
-THEONE_HOST=127.0.0.1 THEONE_WORKSPACE=/tmp/theone-ws bun run controller:dev
+TESSERACT_HOST=127.0.0.1 TESSERACT_WORKSPACE=/tmp/tesseract-ws bun run controller:dev
 #   controller on http://127.0.0.1:7700; display, wine and claude are reported as unavailable.
 #   The defaults (0.0.0.0, /workspace) are meant for the sandbox.
 ```
@@ -163,5 +167,5 @@ privileges, all capabilities dropped except a minimal set, no host mounts, no
 Docker socket) is the boundary, and [SPEC.md](SPEC.md) governs behavior. The
 token is equivalent to a shell in the sandbox, so treat it like one; the
 in-sandbox agent never handles it and calls the API through
-`theone-controller api`. Details:
+`tesseract-controller api`. Details:
 [docs/architecture/security-model.md](docs/architecture/security-model.md).

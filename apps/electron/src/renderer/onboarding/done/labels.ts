@@ -25,6 +25,6 @@ export const DONE_LABELS = {
   notBuilt: "Not built yet",
   skipped: "Skipped",
   pairingReady: "Pairing link ready",
-  autostart: "Start the sandbox when Monolith opens",
+  autostart: "Start the sandbox when Tesseract opens",
   finishFailed: (error: string) => `Couldn't finish setup: ${error}`,
 } as const;

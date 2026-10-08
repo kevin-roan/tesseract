@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { ChecksIcon } from "phosphor-react-native";
-import { sampleClaudeSession, sampleInbox } from "@theone/protocol/fixtures";
+import { sampleClaudeSession, sampleInbox } from "@tesseract/protocol/fixtures";
 
 import ResumeChatScreen from "@/app/chats/[id]";
 import ChatsScreen from "@/app/chats/index";

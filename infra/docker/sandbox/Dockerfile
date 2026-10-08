@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
-# TheOne sandbox image. Build context = repository root:
-#   docker build -f infra/docker/sandbox/Dockerfile --target sandbox -t theone/sandbox:dev .
+# Tesseract sandbox image. Build context = repository root:
+#   docker build -f infra/docker/sandbox/Dockerfile --target sandbox -t tesseract/sandbox:dev .
 # Stages: controller-build, base, desktop, electron, android-sdk, android, flutter-sdk, flutter,
 # whisper, sandbox (default).
 
@@ -23,10 +23,10 @@ COPY apps/mobile/package.json apps/mobile/package.json
 COPY apps/controller/ apps/controller/
 # Only the controller's dependency graph is installed; the mobile manifest is present
 # solely so the frozen lockfile resolves (bun skips the other workspaces, which are not copied).
-RUN --mount=type=cache,id=theone-bun-cache,target=/root/.bun/install/cache \
-    bun install --frozen-lockfile --filter @theone/controller
+RUN --mount=type=cache,id=tesseract-bun-cache,target=/root/.bun/install/cache \
+    bun install --frozen-lockfile --filter @tesseract/controller
 RUN bun run --cwd apps/controller build \
- && test -x apps/controller/dist/theone-controller
+ && test -x apps/controller/dist/tesseract-controller
 
 FROM ${DEBIAN_IMAGE} AS base
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
@@ -34,7 +34,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ENV LANG=en_US.UTF-8 \
     TZ=UTC \
-    THEONE_WORKSPACE=/workspace \
+    TESSERACT_WORKSPACE=/workspace \
     COREPACK_ENABLE_DOWNLOAD_PROMPT=0 \
     NPM_CONFIG_UPDATE_NOTIFIER=false \
     NPM_CONFIG_FUND=false \
@@ -48,8 +48,8 @@ RUN rm -f /etc/apt/apt.conf.d/docker-clean \
  && printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d \
  && chmod 0755 /usr/sbin/policy-rc.d
 
-RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+RUN --mount=type=cache,id=tesseract-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=tesseract-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
  && apt-get install -y --no-install-recommends \
       bash-completion build-essential bzip2 ca-certificates coreutils curl docker-buildx docker-cli \
@@ -107,8 +107,8 @@ ENV XDG_RUNTIME_DIR=/run/user/${DEV_UID}
 
 FROM base AS desktop
 ARG DEBIAN_FRONTEND=noninteractive
-RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+RUN --mount=type=cache,id=tesseract-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=tesseract-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     apt-get update \
  && apt-get install -y --no-install-recommends \
       chromium clang cmake dbus-x11 ffmpeg imagemagick libasound2t64 libatk-bridge2.0-0t64 \
@@ -118,9 +118,9 @@ RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked 
       x11-apps x11-utils x11-xserver-utils xauth xdg-utils xdotool xterm \
  && install -d -m 1777 /tmp/.X11-unix \
  && sed -i -e '/debian-menu.xml/d' -e '0,/<number>4<\/number>/s//<number>1<\/number>/' /etc/xdg/openbox/rc.xml
-ENV THEONE_DISPLAY=:1 \
-    THEONE_DISPLAY_GEOMETRY=1600x900 \
-    THEONE_VNC_PORT=5901
+ENV TESSERACT_DISPLAY=:1 \
+    TESSERACT_DISPLAY_GEOMETRY=1600x900 \
+    TESSERACT_VNC_PORT=5901
 
 FROM desktop AS electron
 ARG DEBIAN_FRONTEND=noninteractive
@@ -129,8 +129,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 # ships under /usr/lib/wine. Wine needs the i386 packages and runs x86 Windows tools, so it
 # (and mono) is installed on amd64 only: arm64 images (Apple silicon) build Linux targets only.
 ARG WITH_MONO=true
-RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+RUN --mount=type=cache,id=tesseract-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=tesseract-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     set -eux; \
     packages=(dpkg-dev fakeroot osslsigncode rpm); \
     if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
@@ -166,8 +166,8 @@ COPY --from=jdk /opt/java/openjdk /opt/java/openjdk
 # COPY/ENV instructions of the android stage stay valid. Google ships the Linux build-tools,
 # platform-tools and aapt2 for x86_64 only, so arm64 images get no SDK either (the android
 # stage installs Debian's adb there, which is enough to drive a linked host emulator).
-RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+RUN --mount=type=cache,id=tesseract-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=tesseract-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     if [ "$(dpkg --print-architecture)" != "amd64" ]; then \
       echo "the Android SDK needs amd64; skipping it on $(dpkg --print-architecture)"; \
     fi; \
@@ -199,8 +199,8 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 ARG DEBIAN_FRONTEND=noninteractive
 ARG WITH_FLUTTER=true
 ARG FLUTTER_VERSION=3.47.5
-RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+RUN --mount=type=cache,id=tesseract-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=tesseract-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     if [ "${WITH_FLUTTER}" != "true" ]; then mkdir -p /opt/flutter; exit 0; fi; \
     set -eux; \
     rm -f /etc/apt/apt.conf.d/docker-clean; \
@@ -222,8 +222,8 @@ ARG WITH_WHISPER=true
 ARG WHISPER_CPP_VERSION=1.7.6
 ARG WHISPER_MODELS="base small"
 ARG WHISPER_CMAKE_ARGS=-DGGML_NATIVE=OFF
-RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+RUN --mount=type=cache,id=tesseract-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=tesseract-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     mkdir -p /opt/whisper/bin /opt/whisper/models; \
     if [ "${WITH_WHISPER}" != "true" ]; then exit 0; fi; \
     set -eux; \
@@ -254,8 +254,8 @@ ENV JAVA_HOME=/opt/java/openjdk \
     ANDROID_SDK_ROOT=/opt/android-sdk
 ENV PATH=${JAVA_HOME}/bin:${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools
 # No SDK off amd64 (see android-sdk): Debian's adb still links the host emulator.
-RUN --mount=type=cache,id=theone-apt-cache,target=/var/cache/apt,sharing=locked \
-    --mount=type=cache,id=theone-apt-lists,target=/var/lib/apt/lists,sharing=locked \
+RUN --mount=type=cache,id=tesseract-apt-cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=tesseract-apt-lists,target=/var/lib/apt/lists,sharing=locked \
     if [ "$(dpkg --print-architecture)" = "amd64" ]; then exit 0; fi; \
     apt-get update \
  && apt-get install -y --no-install-recommends adb \
@@ -279,43 +279,43 @@ RUN if [ ! -x /opt/flutter/bin/flutter ]; then exit 0; fi; \
     flutter --version
 USER root
 # Copied late on purpose: an edit must not invalidate the heavy toolchain layers.
-COPY infra/docker/sandbox/rootfs/etc/profile.d/theone.sh /etc/profile.d/theone.sh
+COPY infra/docker/sandbox/rootfs/etc/profile.d/tesseract.sh /etc/profile.d/tesseract.sh
 
 FROM flutter AS sandbox
 # Claude Code is updated by rebuilding with a new CLAUDE_CODE_VERSION (its auto-updater is
 # disabled), so it is installed after the toolchain stages: a bump rebuilds only this layer.
 ARG CLAUDE_CODE_VERSION=latest
-RUN --mount=type=cache,id=theone-npm-cache,target=/root/.npm \
+RUN --mount=type=cache,id=tesseract-npm-cache,target=/root/.npm \
     npm install -g "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}" \
  && claude --version
 COPY --from=whisper /opt/whisper /opt/whisper
-ENV THEONE_WHISPER_BIN=/opt/whisper/bin/whisper-cli \
-    THEONE_WHISPER_MODELS_DIR=/opt/whisper/models \
-    THEONE_WHISPER_MODEL=/opt/whisper/models/ggml-model.bin
-ARG THEONE_IMAGE_VERSION=0.1.0
-LABEL org.opencontainers.image.title="theone-sandbox" \
-      org.opencontainers.image.description="TheOne sandboxed development machine: Xvnc + openbox, wine, Electron/Android/Node tooling, ffmpeg, Claude Code and theone-controller" \
-      org.opencontainers.image.version="${THEONE_IMAGE_VERSION}" \
-      org.opencontainers.image.vendor="TheOne" \
+ENV TESSERACT_WHISPER_BIN=/opt/whisper/bin/whisper-cli \
+    TESSERACT_WHISPER_MODELS_DIR=/opt/whisper/models \
+    TESSERACT_WHISPER_MODEL=/opt/whisper/models/ggml-model.bin
+ARG TESSERACT_IMAGE_VERSION=0.1.0
+LABEL org.opencontainers.image.title="tesseract-sandbox" \
+      org.opencontainers.image.description="Tesseract sandboxed development machine: Xvnc + openbox, wine, Electron/Android/Node tooling, ffmpeg, Claude Code and tesseract-controller" \
+      org.opencontainers.image.version="${TESSERACT_IMAGE_VERSION}" \
+      org.opencontainers.image.vendor="Tesseract" \
       org.opencontainers.image.base.name="debian:trixie-slim"
 COPY infra/docker/sandbox/rootfs/ /
-COPY SPEC.md /etc/theone/SPEC.md
+COPY SPEC.md /etc/tesseract/SPEC.md
 # The agent spec becomes Claude Code's managed memory (/etc/claude-code/CLAUDE.md, ahead of
 # the rootfs notes there): /home/dev/.claude is the host's Claude dir, so nothing goes there.
-RUN chmod 0755 /usr/local/bin/theone-* /usr/local/bin/monolith /etc/claude-code/.claude/skills/send-file/find-files \
+RUN chmod 0755 /usr/local/bin/tesseract-* /usr/local/bin/tesseract /etc/claude-code/.claude/skills/send-file/find-files \
  && install -d -m 1777 /tmp/.X11-unix \
- && { cat /etc/theone/SPEC.md; printf '\n'; cat /etc/claude-code/CLAUDE.md; } > /tmp/theone-claude.md \
- && install -m 0644 /tmp/theone-claude.md /etc/claude-code/CLAUDE.md \
- && rm -f /tmp/theone-claude.md
-COPY --from=controller-build --chmod=0755 /src/apps/controller/dist/theone-controller /usr/local/bin/theone-controller
-ENV THEONE_IMAGE_VERSION=${THEONE_IMAGE_VERSION} \
-    THEONE_HOST=0.0.0.0 \
-    THEONE_PORT=7700 \
-    THEONE_DATA_DIR=/workspace/.agent/controller \
-    THEONE_VNC_HOST=127.0.0.1 \
-    THEONE_ADB_TUNNEL_PORT=15555
+ && { cat /etc/tesseract/SPEC.md; printf '\n'; cat /etc/claude-code/CLAUDE.md; } > /tmp/tesseract-claude.md \
+ && install -m 0644 /tmp/tesseract-claude.md /etc/claude-code/CLAUDE.md \
+ && rm -f /tmp/tesseract-claude.md
+COPY --from=controller-build --chmod=0755 /src/apps/controller/dist/tesseract-controller /usr/local/bin/tesseract-controller
+ENV TESSERACT_IMAGE_VERSION=${TESSERACT_IMAGE_VERSION} \
+    TESSERACT_HOST=0.0.0.0 \
+    TESSERACT_PORT=7700 \
+    TESSERACT_DATA_DIR=/workspace/.agent/controller \
+    TESSERACT_VNC_HOST=127.0.0.1 \
+    TESSERACT_ADB_TUNNEL_PORT=15555
 EXPOSE 7700 5901
 WORKDIR /workspace
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
-  CMD curl -fsS "http://127.0.0.1:${THEONE_PORT}/v1/health" > /dev/null || exit 1
-ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/theone-entrypoint"]
+  CMD curl -fsS "http://127.0.0.1:${TESSERACT_PORT}/v1/health" > /dev/null || exit 1
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/tesseract-entrypoint"]

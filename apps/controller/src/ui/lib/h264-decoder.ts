@@ -1,4 +1,4 @@
-import { ANDROID_H264_FLAGS } from "@theone/protocol/constants";
+import { ANDROID_H264_FLAGS } from "@tesseract/protocol/constants";
 
 const PROBE_CODEC = "avc1.42E01F";
 const SPS_NAL_TYPE = 7;

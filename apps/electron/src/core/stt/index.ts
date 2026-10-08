@@ -1,4 +1,4 @@
-import { STT_PROFILES, type SttProfile, type SttProfileInfo, type SttStatus } from "@theone/protocol";
+import { STT_PROFILES, type SttProfile, type SttProfileInfo, type SttStatus } from "@tesseract/protocol";
 import type { MicrophoneAccess } from "../../shared/contracts/stt";
 
 export const MICROPHONE_ACCESS: readonly MicrophoneAccess[] = ["granted", "denied", "restricted", "not-determined", "unknown"];

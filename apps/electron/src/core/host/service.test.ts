@@ -1,8 +1,8 @@
 import { EventEmitter } from "node:events";
 import { PassThrough } from "node:stream";
 import type { ChildProcess } from "node:child_process";
-import type { FetchLike, HttpRequestInit } from "@theone/client";
-import { DEFAULT_ANDROID_STREAM, type HostAndroidStatus } from "@theone/protocol";
+import type { FetchLike, HttpRequestInit } from "@tesseract/client";
+import { DEFAULT_ANDROID_STREAM, type HostAndroidStatus } from "@tesseract/protocol";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HostShellState } from "../../shared/contracts/hostShell";
 import type { CommandOptions, CommandResult } from "../process";
@@ -13,7 +13,7 @@ const URL_BASE = "http://127.0.0.1:7799";
 const sampleHostAndroidStatus: HostAndroidStatus = {
   available: true,
   reason: null,
-  sdkRoot: "/home/me/.local/share/theone/android-sdk",
+  sdkRoot: "/home/me/.local/share/tesseract/android-sdk",
   isolation: "netns",
   avds: ["Pixel_9"],
   scrcpy: true,
@@ -33,7 +33,7 @@ const sampleHostAndroidStatus: HostAndroidStatus = {
   stream: { ...DEFAULT_ANDROID_STREAM },
   devices: [],
 };
-const LINK = `theone://host?url=${encodeURIComponent(URL_BASE)}&token=host-token&name=box`;
+const LINK = `tesseract://host?url=${encodeURIComponent(URL_BASE)}&token=host-token&name=box`;
 const PAIR_OUTPUT = (pinSet = true) => `${JSON.stringify({ link: LINK, url: URL_BASE, name: "box", pinSet })}\n`;
 
 class FakeChild extends EventEmitter {
@@ -109,7 +109,7 @@ function harness(options: {
   };
   const service = new HostShellService({
     command: () => ["/bin/ctl", "--x"],
-    env: () => ({ PATH: "/nowhere", THEONE_HOST_SHELL_PORT: "7799" }),
+    env: () => ({ PATH: "/nowhere", TESSERACT_HOST_SHELL_PORT: "7799" }),
     platform: "linux",
     autostart: options.autostart,
     onChange: (state) => states.push(state),
@@ -206,10 +206,10 @@ describe("HostShellService daemon lifecycle", () => {
     const first = children[0] as FakeChild;
     first.line("2026-01-01T00:00:00.000Z INFO  [host-shell] host shell listening url=http://127.0.0.1:7799 host=box");
     await flush();
-    await service.restartIfEnvChanged(["THEONE_ANDROID_SDK_ROOT"]);
+    await service.restartIfEnvChanged(["TESSERACT_ANDROID_SDK_ROOT"]);
     expect(spawned).toHaveLength(1);
-    env.THEONE_ANDROID_SDK_ROOT = "/sdk";
-    const restarting = service.restartIfEnvChanged(["THEONE_ANDROID_SDK_ROOT"]);
+    env.TESSERACT_ANDROID_SDK_ROOT = "/sdk";
+    const restarting = service.restartIfEnvChanged(["TESSERACT_ANDROID_SDK_ROOT"]);
     await flush();
     expect(first.signals).toEqual(["SIGTERM"]);
     first.exit(null, "SIGTERM");

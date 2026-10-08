@@ -2,7 +2,7 @@ import { z } from "zod";
 import { HOST_PIN_PATTERN, HOST_SHELL_SERVICE, PROTOCOL_VERSION } from "../constants";
 import { TimestampSchema } from "./primitives";
 
-/** `GET /v1/health` of the host shell daemon (`theone-controller host serve`). */
+/** `GET /v1/health` of the host shell daemon (`tesseract-controller host serve`). */
 export const HostHealthSchema = z.object({
   ok: z.literal(true),
   service: z.literal(HOST_SHELL_SERVICE),

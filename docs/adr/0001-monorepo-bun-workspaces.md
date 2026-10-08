@@ -5,7 +5,7 @@
 
 ## Context
 
-TheOne began as a single Expo app. The product now needs a daemon inside the
+Tesseract began as a single Expo app. The product now needs a daemon inside the
 sandbox (the controller), a wire contract shared by the app and the daemon, a
 client library, a Docker image and a compose stack. The protocol changes often
 while the MVP is built. A change to one endpoint touches the schema, the

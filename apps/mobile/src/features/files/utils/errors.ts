@@ -1,4 +1,4 @@
-import { isApiError } from "@theone/client";
+import { isApiError } from "@tesseract/client";
 
 import { describeError } from "@/features/sandbox/utils/errors";
 

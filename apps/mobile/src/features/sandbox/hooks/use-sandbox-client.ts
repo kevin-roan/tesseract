@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import type { TheOneClient } from "@theone/client";
+import type { TesseractClient } from "@tesseract/client";
 
 import { getSandboxClient } from "../api/client";
 import { selectActiveSandbox, selectActiveToken, useSandboxStore } from "../store/sandbox-store";
@@ -7,7 +7,7 @@ import type { PairedSandbox } from "../types";
 
 export type SandboxClientState = {
   sandbox: PairedSandbox | null;
-  client: TheOneClient | null;
+  client: TesseractClient | null;
   hydrated: boolean;
   missingToken: boolean;
 };

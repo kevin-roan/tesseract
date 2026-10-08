@@ -5,7 +5,7 @@ import type { TabHost as TabHostApi } from "../../../features/projects/hooks/use
 import type { ProjectDetailState } from "../../../features/projects/hooks/use-project-detail";
 import { DETAIL_LABELS } from "../../../features/projects/labels";
 import type { ProjectTabId } from "../../../features/projects/types";
-import type { AgentRun, Project } from "@theone/protocol";
+import type { AgentRun, Project } from "@tesseract/protocol";
 import { findTabComponent } from "./tab-registry";
 import styles from "./ProjectDetail.module.css";
 

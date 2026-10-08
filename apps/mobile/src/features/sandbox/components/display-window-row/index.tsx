@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { View } from "react-native";
 import { AppWindowIcon, SkullIcon, XIcon } from "phosphor-react-native";
-import type { DisplayWindow } from "@theone/protocol";
+import type { DisplayWindow } from "@tesseract/protocol";
 
 import IconButton from "@/components/icon-button";
 import PressableScale from "@/components/pressable-scale";

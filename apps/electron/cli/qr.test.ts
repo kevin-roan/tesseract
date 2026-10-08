@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { QR } from "./constants";
 import { qrMatrix, renderQr } from "./qr";
 
-const LINK = "theone://pair?url=http%3A%2F%2F127.0.0.1%3A7700&token=abc";
+const LINK = "tesseract://pair?url=http%3A%2F%2F127.0.0.1%3A7700&token=abc";
 
 describe("terminal QR code", () => {
   it("surrounds the code with a quiet zone", () => {

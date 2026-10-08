@@ -32,10 +32,10 @@ beforeEach(() => {
   mocks.probeDocker.mockResolvedValue({
     checks: [{ id: "cli", status: "ok", title: "Docker", detail: "Docker Engine 28.1.1" }],
   });
-  mocks.currentStack.mockResolvedValue({ project: "theone", image: "theone/sandbox:latest" });
+  mocks.currentStack.mockResolvedValue({ project: "tesseract", image: "tesseract/sandbox:latest" });
   mocks.findExisting.mockResolvedValue({
-    image: { ref: "theone/sandbox:latest", sizeBytes: 12 * 1024 ** 3, version: "1.4.0", createdAt: "2026-09-30T10:00:00Z" },
-    container: { name: "theone-sandbox-1", state: "running", image: "theone/sandbox:latest", configFiles: null, workingDir: null },
+    image: { ref: "tesseract/sandbox:latest", sizeBytes: 12 * 1024 ** 3, version: "1.4.0", createdAt: "2026-09-30T10:00:00Z" },
+    container: { name: "tesseract-sandbox-1", state: "running", image: "tesseract/sandbox:latest", configFiles: null, workingDir: null },
   });
   mocks.checkAcceleration.mockResolvedValue({
     ok: true,
@@ -72,7 +72,7 @@ describe("tesseract doctor", () => {
     const report = JSON.parse(result.out.join("\n"));
     expect(result.code).toBe(0);
     expect(report.sections.map((section: { id: string }) => section.id)).toEqual(["docker", "image", "kvm", "sdk"]);
-    expect(report.sections[1].checks[0]).toMatchObject({ status: "ok", title: "theone/sandbox:latest", detail: "12 GB · version 1.4.0 · created 2026-09-30" });
+    expect(report.sections[1].checks[0]).toMatchObject({ status: "ok", title: "tesseract/sandbox:latest", detail: "12 GB · version 1.4.0 · created 2026-09-30" });
     expect(report.sections[3].checks[0]).toMatchObject({ status: "warning", title: "No Android SDK found" });
   });
 
@@ -82,7 +82,7 @@ describe("tesseract doctor", () => {
     const result = await runCli(sandbox, ["doctor", "docker", "image"]);
     expect(result.code).toBe(1);
     expect(result.out).toContain("  FAIL Check failed: docker exploded");
-    expect(result.out).toContain("  FAIL theone/sandbox:latest is not on this computer: Run tesseract sandbox build (or --pull) to get it");
+    expect(result.out).toContain("  FAIL tesseract/sandbox:latest is not on this computer: Run tesseract sandbox build (or --pull) to get it");
     expect(result.out.at(-1)).toBe("2 problems found.");
   });
 

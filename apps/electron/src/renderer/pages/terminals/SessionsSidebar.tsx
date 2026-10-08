@@ -1,4 +1,4 @@
-import type { Project } from "@theone/protocol";
+import type { Project } from "@tesseract/protocol";
 import { AnimatedList, AnimatedListItem } from "../../components/AnimatedList";
 import { Text } from "../../components/Text";
 import { LAUNCHERS } from "../../features/terminals/constants";

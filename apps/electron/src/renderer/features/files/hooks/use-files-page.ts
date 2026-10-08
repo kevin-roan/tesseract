@@ -1,4 +1,4 @@
-import type { Artifact, BuildOutput } from "@theone/protocol";
+import type { Artifact, BuildOutput } from "@tesseract/protocol";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { useShallow } from "zustand/react/shallow";

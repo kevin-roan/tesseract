@@ -1,7 +1,7 @@
 # Controller protocol v1
 
-This is a readable reference for the API that `theone-controller` serves and
-that `@theone/client` consumes. It is normative only where it repeats
+This is a readable reference for the API that `tesseract-controller` serves and
+that `@tesseract/client` consumes. It is normative only where it repeats
 [the blueprint](00-blueprint.md) §5. The zod schemas in
 [`packages/protocol/src`](../../packages/protocol/src) are the executable
 contract. If this page disagrees with them, the schemas win: fix this page.
@@ -20,7 +20,7 @@ contract. If this page disagrees with them, the schemas win: fix this page.
 
 | Aspect | Rule |
 |---|---|
-| Base URL | Tailscale mode: `https://<THEONE_HOSTNAME>.<tailnet>.ts.net`. Local mode: `http://127.0.0.1:7700` |
+| Base URL | Tailscale mode: `https://<TESSERACT_HOSTNAME>.<tailnet>.ts.net`. Local mode: `http://127.0.0.1:7700` |
 | Version | `PROTOCOL_VERSION = 1`. REST paths start with `/v1`, browser pages with `/ui` |
 | Encoding | JSON (`Content-Type: application/json`), UTF-8 |
 | Timestamps | ISO-8601 UTC strings, e.g. `2026-09-23T14:10:03.512Z` |
@@ -31,7 +31,7 @@ contract. If this page disagrees with them, the schemas win: fix this page.
 | `error.code` | HTTP |
 |---|---|
 | `bad_request` | 400 (413 when the body exceeds 1 MiB) |
-| `unauthorized` | 401 (with `WWW-Authenticate: Bearer realm="theone"`) |
+| `unauthorized` | 401 (with `WWW-Authenticate: Bearer realm="tesseract"`) |
 | `forbidden` | 403 |
 | `not_found` | 404 |
 | `conflict` | 409 (project exists, port taken) |
@@ -47,7 +47,7 @@ contract. If this page disagrees with them, the schemas win: fix this page.
 **REST: bearer token.** Every request except `GET /v1/health` needs
 `Authorization: Bearer <token>`. The controller compares tokens in constant
 time. The token is 32 random bytes in base64url, generated on first start into
-`$THEONE_DATA_DIR/token` (mode 0600) unless `THEONE_TOKEN` is set. It reaches
+`$TESSERACT_DATA_DIR/token` (mode 0600) unless `TESSERACT_TOKEN` is set. It reaches
 the phone only through the pairing link.
 
 **WebSockets and browser URLs: one-time tickets.** Browsers cannot set headers
@@ -72,18 +72,18 @@ them with secrets in the URL **fragment**, which browsers never send to the
 server and which does not appear in access logs:
 
 ```text
-https://theone-sandbox.tail1234.ts.net/ui/terminal#ticket=<ticket>&session=trm_x1y2z3w4v5
-https://theone-sandbox.tail1234.ts.net/ui/vnc#ticket=<ticket>&password=<vnc password>
+https://tesseract-sandbox.tail1234.ts.net/ui/terminal#ticket=<ticket>&session=trm_x1y2z3w4v5
+https://tesseract-sandbox.tail1234.ts.net/ui/vnc#ticket=<ticket>&password=<vnc password>
 ```
 
 The page reads the fragment and opens `wss://…/v1/terminals/<id>/stream?ticket=…`
 or `wss://…/v1/display/vnc?ticket=…`. Auth never uses cookies, so
-`THEONE_CORS_ORIGINS=*` is safe by construction.
+`TESSERACT_CORS_ORIGINS=*` is safe by construction.
 
 ## REST endpoints
 
 All bodies and responses are JSON unless stated. Type names refer to
-[blueprint §5.4](00-blueprint.md#54-core-types-authoritative-names-zod-schemas-live-in-theoneprotocol).
+[blueprint §5.4](00-blueprint.md#54-core-types-authoritative-names-zod-schemas-live-in-tesseractprotocol).
 
 ### System
 
@@ -97,11 +97,11 @@ All bodies and responses are JSON unless stated. Type names refer to
 
 ```jsonc
 // GET /v1/health
-{ "ok": true, "version": "0.1.0", "protocolVersion": 1, "sandboxId": "theone-sandbox" }
+{ "ok": true, "version": "0.1.0", "protocolVersion": 1, "sandboxId": "tesseract-sandbox" }
 
 // GET /v1/status (abridged)
 {
-  "sandboxId": "theone-sandbox", "hostname": "sandbox", "version": "0.1.0",
+  "sandboxId": "tesseract-sandbox", "hostname": "sandbox", "version": "0.1.0",
   "startedAt": "2026-09-23T09:00:00.000Z", "uptimeSec": 18003,
   "resources": {
     "cpu": { "cores": 8, "load1": 1.2, "load5": 0.9, "load15": 0.7 },
@@ -117,7 +117,7 @@ All bodies and responses are JSON unless stated. Type names refer to
 }
 
 // GET /v1/identity (host-tailscale with --tailscale-api, called from a tailnet device)
-{ "sandboxId": "theone-sandbox",
+{ "sandboxId": "tesseract-sandbox",
   "tailscale": { "available": true, "source": "localapi", "tailnet": "tail1234.ts.net",
     "viewer": { "id": "3460960228565063", "loginName": "you@github", "displayName": "You",
                 "profilePicUrl": "https://avatars.githubusercontent.com/u/1?v=4" },
@@ -201,7 +201,7 @@ output ([00-blueprint.md §6.1](00-blueprint.md)).
 | GET | `/v1/processes/:id/logs` | `?tail=500` (max 2000) | `LogLine[]` |
 
 A string `command` runs as `bash -lc <command>` in the project directory. An
-array is executed directly. `display: true` sets `DISPLAY=$THEONE_DISPLAY` so
+array is executed directly. `display: true` sets `DISPLAY=$TESSERACT_DISPLAY` so
 the window appears in VNC. `port` declares the port the process will listen
 on. The controller answers `409 conflict` if another tracked process claims it
 or something already listens there (the message names the tracked process or
@@ -324,7 +324,7 @@ Rules (detection, commands, readiness, viewers, the host emulator link):
 | DELETE | `/v1/agent/runs/:id` | none | `AgentRun` (cancel) |
 
 The controller runs `claude -p` with streaming JSON output and
-`--permission-mode $THEONE_CLAUDE_PERMISSION_MODE` in the project directory,
+`--permission-mode $TESSERACT_CLAUDE_PERMISSION_MODE` in the project directory,
 and condenses the stream into `AgentRunEvent`s (`text`, `tool_use`,
 `tool_result`, `system`). `sessionId` is Claude's session id: pass it as
 `resumeSessionId` to continue the conversation. `usage` (input, output,
@@ -338,10 +338,10 @@ Claude's final result message; there is no dollar cost.
 | POST | `/v1/events` | `StatusEvent` without `ts` | `202` |
 
 ```bash
-theone-controller emit --status building --project expensifo --platform android \
+tesseract-controller emit --status building --project expensifo --platform android \
   --stage gradle --message "Compiling release build"
 # equivalent to
-theone-controller api POST /v1/events \
+tesseract-controller api POST /v1/events \
   '{"project":"expensifo","status":"building","platform":"android","stage":"gradle","message":"Compiling release build"}'
 ```
 
@@ -371,7 +371,7 @@ Client frames are limited to 1 MiB.
 ### `/v1/events`: server → client
 
 ```jsonc
-{ "type": "hello", "protocolVersion": 1, "sandboxId": "theone-sandbox" }   // first frame
+{ "type": "hello", "protocolVersion": 1, "sandboxId": "tesseract-sandbox" }   // first frame
 { "type": "ping" }                                                          // every 25 s; client may answer { "type": "pong" }
 { "type": "status", "event": { "project": "expensifo", "status": "building", "platform": "android",
                                "stage": "gradle", "message": "Compiling release build",
@@ -393,7 +393,7 @@ Client frames are limited to 1 MiB.
 Events carry full objects so that clients can patch caches without refetching.
 The socket does not replay history. After a reconnect, refetch the lists
 (the mobile app invalidates its queries, see [mobile-app.md](mobile-app.md)).
-A `hello` with another `protocolVersion` is fatal: `@theone/client` reports a
+A `hello` with another `protocolVersion` is fatal: `@tesseract/client` reports a
 `ProtocolVersionError` and ends the stream without retrying.
 
 ### `/v1/terminals/:id/stream`: bidirectional
@@ -435,7 +435,7 @@ Replays prior events, then follows:
 
 ### `/v1/display/vnc`: binary RFB bridge
 
-A raw TCP ↔ WebSocket bridge to `THEONE_VNC_HOST:THEONE_VNC_PORT`
+A raw TCP ↔ WebSocket bridge to `TESSERACT_VNC_HOST:TESSERACT_VNC_PORT`
 (`127.0.0.1:5901`). When the client offers `Sec-WebSocket-Protocol: binary`,
 the server echoes it, as noVNC expects. RFB authentication (VncAuth) happens
 inside the stream, using the password from `DisplayStatus.vnc.password`.
@@ -455,7 +455,7 @@ The host's own `WS /v1/android/screen` (emulator video and input) is in
 ## WebView bridge
 
 The `/ui` pages talk to the app that embeds them (react-native-webview, or an
-`<iframe>` on web). Names come from `@theone/protocol/bridge` (`PAGE_MESSAGES`,
+`<iframe>` on web). Names come from `@tesseract/protocol/bridge` (`PAGE_MESSAGES`,
 `PAGE_STATES`), a zod-free module the pages import.
 
 ```jsonc
@@ -466,8 +466,8 @@ The `/ui` pages talk to the app that embeds them (react-native-webview, or an
 { "type": "vnc-state", "state": "disconnected" }
 { "type": "vnc-need-ticket" }
 // app → page
-window.theone.reconnect("<ticket>")                          // native: injected JavaScript
-{ "type": "theone-reconnect", "ticket": "<ticket>" }          // web: postMessage to the frame
+window.tesseract.reconnect("<ticket>")                          // native: injected JavaScript
+{ "type": "tesseract-reconnect", "ticket": "<ticket>" }          // web: postMessage to the frame
 ```
 
 A page asks for a ticket after its socket dropped. The app answers only for
@@ -477,11 +477,11 @@ a limited number of times ([mobile-app.md](mobile-app.md#webview-pages)).
 ## Pairing link
 
 ```text
-theone://pair?url=<encodeURIComponent(base URL)>&token=<token>&name=<label>
+tesseract://pair?url=<encodeURIComponent(base URL)>&token=<token>&name=<label>
 ```
 
-`theone-controller pair` prints this link and an ANSI QR code of it.
-`@theone/protocol` exports `buildPairingLink` / `parsePairingLink`. The parser
+`tesseract-controller pair` prints this link and an ANSI QR code of it.
+`@tesseract/protocol` exports `buildPairingLink` / `parsePairingLink`. The parser
 ignores whitespace (QR line breaks), strips `/v1…` or `/ui…` suffixes from the
 URL, and rejects URLs with credentials. See
 [runbooks/pairing-mobile.md](../runbooks/pairing-mobile.md).
@@ -491,10 +491,10 @@ URL, and rejects URLs with credentials. See
 Inside the sandbox, use the controller CLI instead of `curl` with the token:
 
 ```bash
-theone-controller api GET /v1/status                    # VNC password printed as ***
-theone-controller api POST /v1/processes '{"projectId":"hello","command":"npm run dev","port":5173}'
-echo '{"projectId":"hello","target":"web"}' | theone-controller api POST /v1/builds -
-theone-controller api DELETE /v1/processes/prc_4k2m9a1zq0
+tesseract-controller api GET /v1/status                    # VNC password printed as ***
+tesseract-controller api POST /v1/processes '{"projectId":"hello","command":"npm run dev","port":5173}'
+echo '{"projectId":"hello","target":"web"}' | tesseract-controller api POST /v1/builds -
+tesseract-controller api DELETE /v1/processes/prc_4k2m9a1zq0
 ```
 
 It reads the token itself and never prints it, accepts `GET`, `POST` and
@@ -529,7 +529,7 @@ Source: `LIMITS` in [`packages/protocol/src/constants.ts`](../../packages/protoc
 
 - Additive changes (new optional fields, new endpoints, new `ServerEvent`
   types) keep `protocolVersion: 1`. Clients MUST ignore unknown event types and
-  fields (`@theone/client` reports unknown types to `onError` and drops them;
+  fields (`@tesseract/client` reports unknown types to `onError` and drops them;
   zod strips unknown fields).
 - A new value in an existing enum (a `BuildState`, `Framework`, `BuildTarget`…)
   is **not** additive: current clients fail to parse the whole payload. Treat
@@ -538,5 +538,5 @@ Source: `LIMITS` in [`packages/protocol/src/constants.ts`](../../packages/protoc
   `hello`; the app shows "Version mismatch" instead of retrying.
 - Breaking changes move to `/v2` and `protocolVersion: 2`. The controller
   should serve both versions for one release so that paired phones keep working.
-- Change the blueprint, the zod schemas, the controller, `@theone/client` and
+- Change the blueprint, the zod schemas, the controller, `@tesseract/client` and
   this page in the same change.

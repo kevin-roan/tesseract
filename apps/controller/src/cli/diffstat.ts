@@ -1,4 +1,4 @@
-import type { SyncFileStat } from "@theone/protocol";
+import type { SyncFileStat } from "@tesseract/protocol";
 
 export type DiffstatStyle = { width: number; color: boolean };
 

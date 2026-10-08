@@ -7,11 +7,11 @@ import {
   type ProcessInfo,
   type Project,
   type UsageReport,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 
 import { buildTargetLabel } from "@/features/sandbox/utils/labels";
 
-import type { IslandCommand, IslandRun, IslandState, IslandUsage } from "@/modules/theone-island";
+import type { IslandCommand, IslandRun, IslandState, IslandUsage } from "@/modules/tesseract-island";
 
 import { RUN_TITLE_MAX } from "./constants";
 

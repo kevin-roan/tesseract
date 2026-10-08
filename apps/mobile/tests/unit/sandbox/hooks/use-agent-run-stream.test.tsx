@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { NetworkError, TheOneClient } from "@theone/client";
-import { sampleAgentRun, sampleAgentRunDetail } from "@theone/protocol/fixtures";
+import { NetworkError, TesseractClient } from "@tesseract/client";
+import { sampleAgentRun, sampleAgentRunDetail } from "@tesseract/protocol/fixtures";
 
 import { useAgentRunStream } from "@/features/sandbox/hooks/use-agent-run-stream";
 import { useCreateTerminal } from "@/features/sandbox/hooks/use-sandbox-mutations";
@@ -16,10 +16,10 @@ import {
   type StreamHandlers,
 } from "../helpers";
 
-jest.mock("@theone/client", () => ({ ...jest.requireActual("@theone/client"), TheOneClient: jest.fn() }));
+jest.mock("@tesseract/client", () => ({ ...jest.requireActual("@tesseract/client"), TesseractClient: jest.fn() }));
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 
-const MockClient = TheOneClient as unknown as jest.Mock;
+const MockClient = TesseractClient as unknown as jest.Mock;
 let handlers: StreamHandlers;
 let connections: ReturnType<typeof createFakeConnection>[];
 const fake = {

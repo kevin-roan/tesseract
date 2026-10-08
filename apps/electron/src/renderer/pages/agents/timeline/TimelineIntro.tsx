@@ -1,4 +1,4 @@
-import type { AgentRun } from "@theone/protocol";
+import type { AgentRun } from "@tesseract/protocol";
 import { Icon } from "../../../components/Icon";
 import { StatusBadge } from "../../../components/StatusBadge";
 import { Text } from "../../../components/Text";

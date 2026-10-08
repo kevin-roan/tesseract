@@ -1,5 +1,5 @@
 import type { MiddlewareHandler } from "hono";
-import { errorBody, routePatterns, TICKET_PARAM } from "@theone/protocol";
+import { errorBody, routePatterns, TICKET_PARAM } from "@tesseract/protocol";
 import type { TicketStore } from "../../auth/tickets";
 import { tokensEqual } from "../../auth/token";
 
@@ -24,7 +24,7 @@ export function requireAuth(token: string, tickets: TicketStore): MiddlewareHand
     if (c.req.method === "GET" && path === routePatterns.rest.health) return next();
     if (isAuthorized(c.req.header("authorization"), token)) return next();
     if (c.req.method === "GET" && TICKET_DOWNLOADS.some((pattern) => pattern.test(path)) && tickets.consume(c.req.query(TICKET_PARAM))) return next();
-    c.header("WWW-Authenticate", 'Bearer realm="theone"');
+    c.header("WWW-Authenticate", 'Bearer realm="tesseract"');
     return c.json(errorBody("unauthorized", "Missing or invalid credentials"), 401);
   };
 }

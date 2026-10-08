@@ -1,4 +1,4 @@
-import type { SyncFileChange } from "@theone/protocol";
+import type { SyncFileChange } from "@tesseract/protocol";
 import { describe, expect, it } from "vitest";
 import { confirmLabel, diffDisplay, filterReviewFiles, kindCounts, sortReviewFiles, splitMiddle, splitPath } from "./model";
 

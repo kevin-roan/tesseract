@@ -43,13 +43,13 @@ beforeEach(() => {
     checks: [],
   });
   mocks.probeHealth.mockResolvedValue(true);
-  mocks.currentStack.mockResolvedValue({ envFile: "/x/.env", project: "theone", mode: "local", image: "theone/sandbox:latest", builtAt: null, components: [] });
+  mocks.currentStack.mockResolvedValue({ envFile: "/x/.env", project: "tesseract", mode: "local", image: "tesseract/sandbox:latest", builtAt: null, components: [] });
   mocks.composeStatus.mockResolvedValue({
     configured: true,
-    project: "theone",
+    project: "tesseract",
     services: [
-      { service: "sandbox", container: "theone-sandbox-1", state: "running", health: "healthy" },
-      { service: "tailscale", container: "theone-tailscale-1", state: "running", health: null },
+      { service: "sandbox", container: "tesseract-sandbox-1", state: "running", health: "healthy" },
+      { service: "tailscale", container: "tesseract-tailscale-1", state: "running", health: null },
     ],
   });
 });
@@ -107,7 +107,7 @@ describe("tesseract status", () => {
       android: { sdkRoot: "/sdk", avd: null, avds: [] },
     });
     expect(lines).toEqual([
-      "Monolith 0.1.0",
+      "Tesseract 0.1.0",
       "Sandbox:   not paired (run tesseract sandbox build or tesseract pair)",
       "Docker:    Docker Desktop 4.40",
       "Stack:     not configured",

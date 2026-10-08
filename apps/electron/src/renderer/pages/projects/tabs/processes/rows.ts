@@ -1,4 +1,4 @@
-import type { ProcessInfo } from "@theone/protocol";
+import type { ProcessInfo } from "@tesseract/protocol";
 import type { RecordRowProps, RowAction } from "../../../../components/RecordRow";
 import type { PortEntry } from "./hooks/use-ports";
 import { FIX_LABELS } from "../../../../features/projects/labels";

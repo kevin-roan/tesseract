@@ -14,7 +14,7 @@ export const GROUP_BAND_SAMPLES = {
     value: "all",
     options: [
       { id: "all", label: "All projects" },
-      { id: "monolith", label: "monolith" },
+      { id: "tesseract", label: "tesseract" },
       { id: "streaxfit", label: "streaxfit" },
     ],
   },

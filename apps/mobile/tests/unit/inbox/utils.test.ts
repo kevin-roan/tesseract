@@ -1,5 +1,5 @@
-import type { InboxItem } from "@theone/protocol";
-import { sampleInboxItem } from "@theone/protocol/fixtures";
+import type { InboxItem } from "@tesseract/protocol";
+import { sampleInboxItem } from "@tesseract/protocol/fixtures";
 
 import {
   ALL_INBOX_PROJECTS,

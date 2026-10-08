@@ -5,13 +5,13 @@ The Mac only needs Docker and Tailscale. There are two ways to install it:
 
 - **On the Mac (simplest):** clone the repo there and run `./setup-server.sh` (see below).
 - **From the Linux dev machine:** `bun run deploy:mac <mac>` builds the `tesseract` and
-  `theone-controller` binaries for the Mac, copies them over ssh and runs
+  `tesseract-controller` binaries for the Mac, copies them over ssh and runs
   `tesseract server install` there ([Deploy from Linux](#deploy-from-linux)).
 
 ## Quick start: `./setup-server.sh` on the Mac
 
 ```bash
-git clone <repo-url> theone-mobile && cd theone-mobile
+git clone <repo-url> tesseract-mobile && cd tesseract-mobile
 ./setup-server.sh                 # re-run after `git pull` to update
 ```
 
@@ -27,7 +27,7 @@ the command and waits for you to run it in another terminal. In order, it:
    Users & Groups; needs FileVault off), because Docker and the host shell only start after a
    login. On Linux it prints `sudo loginctl enable-linger $USER` instead, and adds
    `usermod -aG docker` when you are not in the docker group.
-3. Runs `bun install`, builds `tesseract` and `theone-controller` for this machine (mac-arm64 or
+3. Runs `bun install`, builds `tesseract` and `tesseract-controller` for this machine (mac-arm64 or
    mac-x64), copies them to `~/.tesseract/bin`, copies the sandbox build context to
    `~/.tesseract/sandbox`, and adds `~/.tesseract/bin` to `PATH` in `~/.zprofile`.
 4. Secrets, each read from the environment or asked for with hidden input:
@@ -54,9 +54,9 @@ Related: [tesseract-cli.md](tesseract-cli.md#server), [host-shell.md](host-shell
 [security-model.md](../architecture/security-model.md).
 
 ```
-phone ──tailnet──▶ https://theone-sandbox.<tailnet>.ts.net        sandbox controller (tailscale sidecar)
+phone ──tailnet──▶ https://tesseract-sandbox.<tailnet>.ts.net        sandbox controller (tailscale sidecar)
       ──tailnet──▶ https://<mac>.<tailnet>.ts.net:8443            host shell (tailscale serve → <mac ip>:7701)
-Linux dev box ──ssh──▶ mac: ~/.tesseract/bin/{tesseract,theone-controller}, ~/.tesseract/sandbox/
+Linux dev box ──ssh──▶ mac: ~/.tesseract/bin/{tesseract,tesseract-controller}, ~/.tesseract/sandbox/
 ```
 
 ## Prepare the Mac (once)
@@ -106,26 +106,26 @@ The script:
 5. sends `TS_AUTHKEY`, `TS_TAILNET_DOMAIN` and `CLAUDE_CODE_OAUTH_TOKEN` over ssh stdin into a 0600
    `~/.tesseract/secrets.env`, which the remote side reads and deletes before the install runs
    (secrets never appear on a command line or in the output);
-6. runs `tesseract server install` on the Mac, with `MONOLITH_SANDBOX_CONTEXT=~/.tesseract/sandbox`.
+6. runs `tesseract server install` on the Mac, with `TESSERACT_SANDBOX_CONTEXT=~/.tesseract/sandbox`.
 
 Arguments after `--` go to `tesseract server install`:
 
 ```bash
-bun run deploy:mac mac-mini -- --mode tailscale --hostname theone-sandbox
+bun run deploy:mac mac-mini -- --mode tailscale --hostname tesseract-sandbox
 bun run deploy:mac mac-mini -- --build --with whisper          # build the image on the Mac
-bun run deploy:mac mac-mini -- --image ghcr.io/you/theone-sandbox:1.2.3   # pull instead of building
+bun run deploy:mac mac-mini -- --image ghcr.io/you/tesseract-sandbox:1.2.3   # pull instead of building
 bun run deploy:mac mac-mini -- --dry-run                        # show what install would do
 ```
 
 `tesseract server install` writes the sandbox env file
-(`~/Library/Application Support/Monolith/sandbox/.env`, 0600), pulls or builds the image, starts
+(`~/Library/Application Support/Tesseract/sandbox/.env`, 0600), pulls or builds the image, starts
 the compose stack (it restarts with Docker: `restart: unless-stopped`), installs the host shell
 LaunchAgent and the `tailscale serve` HTTPS front for it, and prints both pairing links.
 
 Then, once:
 
 ```bash
-ssh -t mac-mini ~/.tesseract/bin/theone-controller host pin     # 6-12 digit PIN for the host shell
+ssh -t mac-mini ~/.tesseract/bin/tesseract-controller host pin     # 6-12 digit PIN for the host shell
 ssh -t mac-mini ~/.tesseract/bin/tesseract server pair
 ```
 
@@ -156,9 +156,14 @@ Android SDK, `adb` and `scrcpy` (`brew install scrcpy`) on the Mac.
 ## Update
 
 Run the same deploy again: `bun run deploy:mac mac-mini` (no auth key needed after the first
-start; the sidecar keeps its tailnet identity in the `theone-tailscale` volume). The stack is
+start; the sidecar keeps its tailnet identity in the `tesseract-tailscale` volume). The stack is
 recreated with the new image; volumes, the controller token and the host shell token and PIN
 stay, so nothing has to be paired again.
+
+Upgrading a server installed before the rename to Tesseract: deploy the same way.
+`tesseract server install` renames the legacy env keys, stops the old `theone` stack and copies
+its volumes first, so pairing and the host shell PIN stay; see
+[rebrand-migration.md](rebrand-migration.md) for what to check afterwards.
 
 ## Uninstall
 
@@ -181,13 +186,18 @@ tailscale serve status                              # the HTTPS front for the ho
 
 ## Troubleshooting
 
+**`launchctl bootstrap` fails with `Bootstrap failed: 5: Input/output error`**
+→ launchd had not finished removing the previous host shell service (`bootout` right before).
+`tesseract server install` retries the bootstrap 5 times, 1 s apart. → If it still fails, run
+`launchctl bootout gui/$(id -u)/dev.tesseract.host-shell`, wait a few seconds and install again.
+
 **`deploy-mac: docker is installed on <mac> but the engine is not running`**
 → OrbStack / Docker Desktop is not started (no logged-in user after a reboot). → Log in, or
 turn on automatic login and "start at login".
 
 **`deploy-mac: tailscale not found` / host shell won't start: no bind address**
 → The Tailscale CLI is not on `PATH` and not in `/Applications/Tailscale.app`. → Install the
-Tailscale app there, or set `THEONE_HOST_SHELL_BIND=<tailscale ip>` for the service.
+Tailscale app there, or set `TESSERACT_HOST_SHELL_BIND=<tailscale ip>` for the service.
 
 **Agents fail with "not logged in" in the sandbox**
 → No `CLAUDE_CODE_OAUTH_TOKEN` (the keychain login is invisible to the container). → Run
@@ -211,11 +221,11 @@ the tailnet.
   sidecar, the host shell only binds the Mac's Tailscale IP. Nothing is published on the LAN.
 - One bearer token per sandbox; there are no per-device tokens. A lost phone means rotating
   the token, a restart and re-pairing every device ([operations.md](operations.md)); for the
-  host shell, `theone-controller host token --rotate`.
+  host shell, `tesseract-controller host token --rotate`.
 - The host shell is a real shell on the Mac as the deploy user: host token **and** PIN,
   15-minute sessions, exponential lockout after 5 wrong PINs. Use a long PIN.
 - Claude inside the sandbox runs with `bypassPermissions` by default
-  (`THEONE_CLAUDE_PERMISSION_MODE`): the container is the trust boundary. Don't mount more of the
+  (`TESSERACT_CLAUDE_PERMISSION_MODE`): the container is the trust boundary. Don't mount more of the
   Mac into it than `~/.claude`, and keep `--dind` and `--tailscale-api` off unless you need them.
 - `CLAUDE_CODE_OAUTH_TOKEN` and the auth key end up in the 0600 sandbox env file on the Mac;
   the auth key is blanked after the first `up`.

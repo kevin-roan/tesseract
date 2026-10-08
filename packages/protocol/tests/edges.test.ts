@@ -177,7 +177,7 @@ describe("pairing edge cases", () => {
 
   test("blank names are dropped on both sides", () => {
     expect(buildPairingLink({ url: "https://host", token: TOKEN, name: "   " })).not.toContain("name=");
-    const parsed = parsePairingLink(`theone://pair?url=https%3A%2F%2Fhost&token=${TOKEN}&name=%20%20`);
+    const parsed = parsePairingLink(`tesseract://pair?url=https%3A%2F%2Fhost&token=${TOKEN}&name=%20%20`);
     expect(parsed).toEqual({ ok: true, value: { url: "https://host", token: TOKEN } });
   });
 
@@ -189,7 +189,7 @@ describe("pairing edge cases", () => {
 
   test("the first url/token wins and fragments are ignored", () => {
     const parsed = parsePairingLink(
-      `theone://pair/?url=https%3A%2F%2Fgood&token=${TOKEN}&url=https%3A%2F%2Fevil&token=other#url=https://x`,
+      `tesseract://pair/?url=https%3A%2F%2Fgood&token=${TOKEN}&url=https%3A%2F%2Fevil&token=other#url=https://x`,
     );
     expect(parsed).toEqual({ ok: true, value: { url: "https://good", token: TOKEN } });
   });
@@ -199,14 +199,14 @@ describe("pairing edge cases", () => {
       const parsed = parsePairingLink(input);
       return parsed.ok ? null : parsed.error.code;
     };
-    expect(code("theone:pair?url=https://h&token=t")).toBe("invalid_action");
-    expect(code("theone://pairing?url=https://h&token=t")).toBe("invalid_action");
-    expect(code("theone://pair")).toBe("missing_url");
-    expect(code("theone://pair?url=&token=t")).toBe("missing_url");
-    expect(code("theone://pair?url=https%3A%2F%2Fh%3A0&token=t")).toBe("invalid_url");
-    expect(code("theone://pair?url=https://h&token=")).toBe("missing_token");
-    expect(code(`theone://pair?url=https://h&token=${"x".repeat(1025)}`)).toBe("invalid_token");
-    expect(code("theone://pair?url=https://h&token=%01")).toBe("invalid_token");
+    expect(code("tesseract:pair?url=https://h&token=t")).toBe("invalid_action");
+    expect(code("tesseract://pairing?url=https://h&token=t")).toBe("invalid_action");
+    expect(code("tesseract://pair")).toBe("missing_url");
+    expect(code("tesseract://pair?url=&token=t")).toBe("missing_url");
+    expect(code("tesseract://pair?url=https%3A%2F%2Fh%3A0&token=t")).toBe("invalid_url");
+    expect(code("tesseract://pair?url=https://h&token=")).toBe("missing_token");
+    expect(code(`tesseract://pair?url=https://h&token=${"x".repeat(1025)}`)).toBe("invalid_token");
+    expect(code("tesseract://pair?url=https://h&token=%01")).toBe("invalid_token");
     expect(code("http://pair?url=https://h&token=t")).toBe("invalid_scheme");
   });
 

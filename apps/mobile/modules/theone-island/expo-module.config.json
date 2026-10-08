@@ -1,9 +1,0 @@
-{
-  "platforms": ["apple", "android"],
-  "apple": {
-    "modules": ["TheoneIslandModule"]
-  },
-  "android": {
-    "modules": ["com.kevinbpract.theone.island.TheoneIslandModule"]
-  }
-}

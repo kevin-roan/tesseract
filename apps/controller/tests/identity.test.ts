@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
 import type { Server } from "bun";
-import { IdentitySchema } from "@theone/protocol";
+import { IdentitySchema } from "@tesseract/protocol";
 import { loadConfig } from "../src/config";
 import { silentLogger } from "../src/core/logger";
 import {
@@ -76,10 +76,10 @@ afterAll(async () => {
 
 const configFor = (tailscaleSocket: string) =>
   loadConfig({
-    THEONE_WORKSPACE: makeTempDir("identity-ws"),
-    THEONE_TOKEN: TEST_TOKEN,
-    THEONE_SANDBOX_ID: "test-sandbox",
-    THEONE_TAILSCALE_SOCKET: tailscaleSocket,
+    TESSERACT_WORKSPACE: makeTempDir("identity-ws"),
+    TESSERACT_TOKEN: TEST_TOKEN,
+    TESSERACT_SANDBOX_ID: "test-sandbox",
+    TESSERACT_TAILSCALE_SOCKET: tailscaleSocket,
   });
 
 const noHeaders = new Headers();
@@ -212,7 +212,7 @@ describe("GET /v1/identity", () => {
   let t: TestController;
 
   beforeAll(async () => {
-    t = await startTestController({ env: { THEONE_TAILSCALE_SOCKET: socket } });
+    t = await startTestController({ env: { TESSERACT_TAILSCALE_SOCKET: socket } });
   });
 
   afterAll(async () => {

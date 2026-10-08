@@ -1,4 +1,4 @@
-import { sampleDisplay } from "@theone/protocol/fixtures";
+import { sampleDisplay } from "@tesseract/protocol/fixtures";
 
 import { displayInsets, displayOutage, displaySubtitle, nextInputMode } from "@/features/sandbox/utils/display";
 

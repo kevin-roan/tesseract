@@ -1,11 +1,11 @@
 import pytest
 
-from monolith_desktop.api.errors import ApiError, NetworkError
-from monolith_desktop.hostshell import HostPairing, HostShellState
-from monolith_desktop.hostshell.android import HostAndroidClient, HostRequestError, session_expiry
-from monolith_desktop.hostshell.model import host_token
-from monolith_desktop.pages.projects import emulator
-from monolith_desktop.pages.projects.labels import DETAIL, EMULATOR
+from tesseract_desktop.api.errors import ApiError, NetworkError
+from tesseract_desktop.hostshell import HostPairing, HostShellState
+from tesseract_desktop.hostshell.android import HostAndroidClient, HostRequestError, session_expiry
+from tesseract_desktop.hostshell.model import host_token
+from tesseract_desktop.pages.projects import emulator
+from tesseract_desktop.pages.projects.labels import DETAIL, EMULATOR
 
 TARGETS = [
     {"target": "expo-device", "label": "Expo on the phone · apps/mobile", "dir": "apps/mobile", "available": True, "reason": None, "viewer": "deeplink", "actions": []},
@@ -67,7 +67,7 @@ def test_scrcpy_command_and_error():
 
 
 SANDBOX = "http://127.0.0.1:7700"
-PAIRING = HostPairing(link="theone://host?url=http%3A%2F%2F127.0.0.1%3A7710&token=hosttok", url="http://127.0.0.1:7710", name="box", pin_set=True)
+PAIRING = HostPairing(link="tesseract://host?url=http%3A%2F%2F127.0.0.1%3A7710&token=hosttok", url="http://127.0.0.1:7710", name="box", pin_set=True)
 
 
 def _target(available=True, reason=None, dir="apps/mobile"):
@@ -232,7 +232,7 @@ def test_prepare_emulator_times_out_and_reports_a_failed_boot():
 def test_host_token_session_expiry_and_host_errors():
     assert host_token(PAIRING.link) == "hosttok"
     with pytest.raises(Exception, match="no token"):
-        host_token("theone://host?url=x")
+        host_token("tesseract://host?url=x")
     assert session_expiry({"session": "s", "expiresAt": "1970-01-01T00:01:00.000Z"}) == 60.0
 
     error = HostRequestError("Wrong PIN (4 attempts left)")

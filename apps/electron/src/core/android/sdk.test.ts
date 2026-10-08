@@ -25,18 +25,18 @@ describe("SDK discovery", () => {
   });
   afterEach(() => cleanup());
 
-  it("lists env and Studio SDKs before the Monolith default, deduplicated", async () => {
+  it("lists env and Studio SDKs before the Tesseract default, deduplicated", async () => {
     const home = join(dir, "home");
     const studio = join(home, "Android", "Sdk");
     const custom = join(dir, "custom");
     await fakeSdk(studio, "37.2.12", ["system-images;android-36;google_apis;x86_64", "system-images;android-35;google_apis;x86_64"]);
     await fakeSdk(custom, null);
-    const paths = testPaths(home, { ANDROID_HOME: custom, ANDROID_SDK_ROOT: studio, THEONE_ANDROID_SDK_ROOT: join(dir, "missing") });
+    const paths = testPaths(home, { ANDROID_HOME: custom, ANDROID_SDK_ROOT: studio, TESSERACT_ANDROID_SDK_ROOT: join(dir, "missing") });
     const candidates = await findSdkCandidates(paths);
     expect(candidates).toEqual([
       { path: studio, source: "ANDROID_SDK_ROOT", emulatorRevision: "37.2.12", systemImages: 2 },
       { path: custom, source: "ANDROID_HOME", emulatorRevision: null, systemImages: 0 },
-      { path: join(home, ".local", "share", "theone", "android-sdk"), source: "monolith-default", emulatorRevision: null, systemImages: 0 },
+      { path: join(home, ".local", "share", "tesseract", "android-sdk"), source: "tesseract-default", emulatorRevision: null, systemImages: 0 },
     ]);
     expect(preferredSdk(candidates)?.path).toBe(studio);
   });
@@ -92,16 +92,16 @@ describe("android config", () => {
     const paths = testPaths(home);
     const file = join(dir, "config.json");
     await writeFile(file, JSON.stringify({ url: "http://x", androidSdkRoot: "/old" }));
-    expect(await saveAndroidConfig(file, paths, { sdkRoot: join(home, ".local", "share", "theone", "android-sdk"), avd: "Monolith_API_36" })).toEqual({
+    expect(await saveAndroidConfig(file, paths, { sdkRoot: join(home, ".local", "share", "tesseract", "android-sdk"), avd: "Tesseract_API_36" })).toEqual({
       sdkRoot: null,
-      avd: "Monolith_API_36",
+      avd: "Tesseract_API_36",
     });
-    expect(await readAndroidConfig(file)).toEqual({ sdkRoot: null, avd: "Monolith_API_36" });
+    expect(await readAndroidConfig(file)).toEqual({ sdkRoot: null, avd: "Tesseract_API_36" });
     expect(withAndroidConfig({ url: "u" }, paths, { sdkRoot: "/custom" })).toEqual({ url: "u", androidSdkRoot: "/custom" });
   });
 
   it("builds the host daemon environment", () => {
-    expect(hostDaemonAndroidEnv(testPaths("/home/u"), "/sdk")).toEqual({ THEONE_ANDROID_SDK_ROOT: "/sdk", THEONE_ADB: join("/sdk", "platform-tools", "adb") });
-    expect(hostDaemonAndroidEnv(testPaths("C:\\Users\\u", {}, "win32"), "C:\\sdk").THEONE_ADB).toMatch(/adb\.exe$/);
+    expect(hostDaemonAndroidEnv(testPaths("/home/u"), "/sdk")).toEqual({ TESSERACT_ANDROID_SDK_ROOT: "/sdk", TESSERACT_ADB: join("/sdk", "platform-tools", "adb") });
+    expect(hostDaemonAndroidEnv(testPaths("C:\\Users\\u", {}, "win32"), "C:\\sdk").TESSERACT_ADB).toMatch(/adb\.exe$/);
   });
 });

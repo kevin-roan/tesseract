@@ -1,5 +1,5 @@
-import type { BuildJob, BuildTarget, ListeningPort, LogLine, ProcessInfo, StartBuild, StartProcess } from "@theone/protocol";
-import { sampleBuild, sampleProcess, samplePorts } from "@theone/protocol/fixtures";
+import type { BuildJob, BuildTarget, ListeningPort, LogLine, ProcessInfo, StartBuild, StartProcess } from "@tesseract/protocol";
+import { sampleBuild, sampleProcess, samplePorts } from "@tesseract/protocol/fixtures";
 import { BASE_IDS, CLONE_PROCESS_ID, REFERENCE_IDS, fixtureBuilds, fixtureProcesses } from "../projects/data";
 
 export const SCENARIOS = {

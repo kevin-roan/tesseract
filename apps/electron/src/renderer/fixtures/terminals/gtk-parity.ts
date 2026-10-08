@@ -1,4 +1,4 @@
-import type { TerminalInfo } from "@theone/protocol";
+import type { TerminalInfo } from "@tesseract/protocol";
 import { isParityVariant, PARITY_VARIANTS, parityProjectId, pending } from "../shell/parity";
 import { fixtureTerminals } from "./data";
 

@@ -1,4 +1,4 @@
-import { ApiError, NetworkError, ProtocolError, ProtocolVersionError, TimeoutError } from "@theone/client";
+import { ApiError, NetworkError, ProtocolError, ProtocolVersionError, TimeoutError } from "@tesseract/client";
 import { ERROR_DESCRIPTIONS } from "./labels";
 
 const UNAUTHORIZED_STATUS = 401;

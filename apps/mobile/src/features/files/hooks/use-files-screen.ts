@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { router, useLocalSearchParams } from "expo-router";
-import type { Artifact } from "@theone/protocol";
+import type { Artifact } from "@tesseract/protocol";
 
 import type { ChoiceOption } from "@/components/choice-group";
 import { projectLabel, projectNames } from "@/features/chats/utils/sessions";

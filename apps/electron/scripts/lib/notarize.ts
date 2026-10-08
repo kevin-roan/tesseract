@@ -1,5 +1,5 @@
 export const NOTARIZE_ENV = {
-  mode: "MONOLITH_NOTARIZE",
+  mode: "TESSERACT_NOTARIZE",
   apiKey: "APPLE_API_KEY",
   apiKeyId: "APPLE_API_KEY_ID",
   apiIssuer: "APPLE_API_ISSUER",

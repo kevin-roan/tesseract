@@ -1,4 +1,4 @@
-import { sampleProject } from "@theone/protocol/fixtures";
+import { sampleProject } from "@tesseract/protocol/fixtures";
 import { render, screen } from "@testing-library/react";
 import { MotionGlobalConfig } from "motion/react";
 import { describe, expect, it } from "vitest";

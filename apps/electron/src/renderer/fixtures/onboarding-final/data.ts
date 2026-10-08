@@ -19,19 +19,19 @@ const HOUR_MS = 3_600_000;
 export const FIXTURE_COMPLETED_AT = "2026-10-06T21:00:00.000Z";
 
 export const FIXTURE_PAIR_LINK =
-  "theone://pair?url=https%3A%2F%2Ftheone-sandbox.tail1234.ts.net&token=fixture-token-0123456789abcdef&name=theone-sandbox";
+  "tesseract://pair?url=https%3A%2F%2Ftesseract-sandbox.tail1234.ts.net&token=fixture-token-0123456789abcdef&name=tesseract-sandbox";
 
 export const FIXTURE_PAIR: PairingInfo = {
   link: FIXTURE_PAIR_LINK,
-  url: "https://theone-sandbox.tail1234.ts.net",
-  name: "theone-sandbox",
+  url: "https://tesseract-sandbox.tail1234.ts.net",
+  name: "tesseract-sandbox",
   local: false,
 };
 
 export const FIXTURE_LOCAL_PAIR: PairingInfo = {
-  link: "theone://pair?url=http%3A%2F%2F127.0.0.1%3A7700&token=fixture-token-0123456789abcdef&name=theone-sandbox",
+  link: "tesseract://pair?url=http%3A%2F%2F127.0.0.1%3A7700&token=fixture-token-0123456789abcdef&name=tesseract-sandbox",
   url: "http://127.0.0.1:7700",
-  name: "theone-sandbox",
+  name: "tesseract-sandbox",
   local: true,
 };
 
@@ -91,7 +91,7 @@ export const FIXTURE_CHOICES: SetupChoices = {
   mode: "tailscale",
   tsAuthKey: "",
   tailnetDomain: "tail1234.ts.net",
-  hostname: "theone-sandbox",
+  hostname: "tesseract-sandbox",
   bindAddr: "",
   components: ["android", "flutter", "mono", "whisper"],
   whisperModels: ["base", "small"],
@@ -99,8 +99,8 @@ export const FIXTURE_CHOICES: SetupChoices = {
   cpus: 4,
   memoryGb: 8,
   timeZone: "Europe/Paris",
-  project: "theone",
-  image: "theone/sandbox:latest",
+  project: "tesseract",
+  image: "tesseract/sandbox:latest",
   controllerPort: 7700,
   vncPort: 5901,
   claudeCodeVersion: "latest",
@@ -151,8 +151,8 @@ export function fixtureOnboardingState(overrides: Partial<OnboardingState> = {})
     },
     android: {
       kind: "done",
-      sdkRoot: "/home/dev/.local/share/theone/android-sdk",
-      avd: "Monolith_API_36",
+      sdkRoot: "/home/dev/.local/share/tesseract/android-sdk",
+      avd: "Tesseract_API_36",
       warnings: [],
     },
     androidSupport: null,

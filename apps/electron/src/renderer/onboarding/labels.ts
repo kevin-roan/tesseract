@@ -1,11 +1,11 @@
 import type { OnboardingStepId } from "../../shared/routes";
 
 export const ONBOARDING_LABELS = {
-  windowTitle: "Set up Monolith",
+  windowTitle: "Set up Tesseract",
   setUp: "Set up",
   optional: "Optional",
   stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
-  version: (version: string) => `Monolith ${version}`,
+  version: (version: string) => `Tesseract ${version}`,
   buttons: {
     getStarted: "Get started",
     continue: "Continue",
@@ -13,7 +13,7 @@ export const ONBOARDING_LABELS = {
     skip: "Skip",
     cancel: "Cancel",
     retry: "Retry",
-    openMonolith: "Open Monolith",
+    openTesseract: "Open Tesseract",
   },
   rail: {
     welcome: "Welcome",
@@ -26,13 +26,13 @@ export const ONBOARDING_LABELS = {
     finish: "Done",
   } satisfies Record<OnboardingStepId, string>,
   titles: {
-    welcome: "Welcome to Monolith",
+    welcome: "Welcome to Tesseract",
     docker: "Docker",
     claude: "Claude Code",
     sandbox: "Sandbox",
     build: "Build the sandbox",
     android: "Android emulator",
     pair: "Pair your phone",
-    finish: "Monolith is ready",
+    finish: "Tesseract is ready",
   } satisfies Record<OnboardingStepId, string>,
 } as const;

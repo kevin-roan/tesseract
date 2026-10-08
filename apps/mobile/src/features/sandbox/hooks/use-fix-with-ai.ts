@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
-import type { TheOneClient } from "@theone/client";
-import type { AppRun, BuildJob, LogLine, ProcessInfo } from "@theone/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import type { AppRun, BuildJob, LogLine, ProcessInfo } from "@tesseract/protocol";
 
 import { useIslandStore } from "@/features/island/store/island-store";
 
@@ -24,7 +24,7 @@ export function useFixWithAi() {
     async (
       id: string,
       projectId: string | null,
-      fetchLines: (client: TheOneClient) => Promise<LogLine[]>,
+      fetchLines: (client: TesseractClient) => Promise<LogLine[]>,
       toContext: (lines: LogLine[]) => FailureContext,
     ) => {
       if (!client) return;

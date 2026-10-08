@@ -1,4 +1,4 @@
-import type { TokenUsage, UsageDay } from "@theone/protocol";
+import type { TokenUsage, UsageDay } from "@tesseract/protocol";
 
 import type { ChartBucket, StackSegment, TokenKey } from "../types";
 import { formatDay, formatDayRange } from "./format";

@@ -1,4 +1,4 @@
-import { INPUT_MODES, PAGE_MESSAGES, PAGE_STATES, VNC_ACTIONS } from "@theone/protocol";
+import { INPUT_MODES, PAGE_MESSAGES, PAGE_STATES, VNC_ACTIONS } from "@tesseract/protocol";
 
 import {
   inputModeMessage,
@@ -95,11 +95,11 @@ describe("parsePageMessage actions", () => {
 });
 
 describe("page bridge calls", () => {
-  it("sets the insets and the input mode through window.theone when the page has them", () => {
+  it("sets the insets and the input mode through window.tesseract when the page has them", () => {
     const setInsets = jest.fn();
     const setInputMode = jest.fn();
-    new Function("window", insetsScript({ top: 64, bottom: 34 }))({ theone: { setInsets } });
-    new Function("window", inputModeScript("touch"))({ theone: { setInputMode } });
+    new Function("window", insetsScript({ top: 64, bottom: 34 }))({ tesseract: { setInsets } });
+    new Function("window", inputModeScript("touch"))({ tesseract: { setInputMode } });
     expect(setInsets).toHaveBeenCalledWith({ top: 64, bottom: 34 });
     expect(setInputMode).toHaveBeenCalledWith("touch");
   });
@@ -108,14 +108,14 @@ describe("page bridge calls", () => {
     for (const script of [insetsScript({ top: 0, bottom: 0 }), inputModeScript("trackpad"), pasteScript("x")]) {
       expect(script.endsWith("true;")).toBe(true);
       expect(() => new Function("window", script)({})).not.toThrow();
-      expect(() => new Function("window", script)({ theone: {} })).not.toThrow();
+      expect(() => new Function("window", script)({ tesseract: {} })).not.toThrow();
     }
   });
 
-  it("pastes text through window.theone, quoting it safely", () => {
+  it("pastes text through window.tesseract, quoting it safely", () => {
     const paste = jest.fn();
     const text = 'https://x.dev/?q="a"</script>\n';
-    new Function("window", pasteScript(text))({ theone: { paste } });
+    new Function("window", pasteScript(text))({ tesseract: { paste } });
     expect(paste).toHaveBeenCalledWith(text);
     expect(pasteMessage(text)).toEqual({ type: PAGE_MESSAGES.paste, text });
   });
@@ -154,12 +154,12 @@ describe("isDroppedPageState", () => {
 
 describe("reconnectMessage", () => {
   it("matches the framed message the controller pages listen for", () => {
-    expect(reconnectMessage("tkt")).toEqual({ type: "theone-reconnect", ticket: "tkt" });
+    expect(reconnectMessage("tkt")).toEqual({ type: "tesseract-reconnect", ticket: "tkt" });
   });
 });
 
 describe("reconnectScript", () => {
-  it("calls window.theone.reconnect with a safely quoted ticket and ends in true", () => {
+  it("calls window.tesseract.reconnect with a safely quoted ticket and ends in true", () => {
     const script = reconnectScript('ab"c</script>');
     expect(script).toContain('t.reconnect("ab\\"c</script>")');
     expect(script.endsWith("true;")).toBe(true);
@@ -168,9 +168,9 @@ describe("reconnectScript", () => {
   it("is a no-op when the page has no bridge", () => {
     const run = new Function("window", reconnectScript("tkt"));
     expect(() => run({})).not.toThrow();
-    expect(() => run({ theone: {} })).not.toThrow();
+    expect(() => run({ tesseract: {} })).not.toThrow();
     const reconnect = jest.fn();
-    run({ theone: { reconnect } });
+    run({ tesseract: { reconnect } });
     expect(reconnect).toHaveBeenCalledWith("tkt");
   });
 });

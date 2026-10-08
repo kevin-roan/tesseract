@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { ClaudeAccountList } from "@theone/protocol";
+import type { ClaudeAccountList } from "@tesseract/protocol";
 import { useCallback } from "react";
 import { describeError } from "../../../app/connection";
 import { useWorkspaceActions } from "../../../features/projects/hooks/use-workspace";

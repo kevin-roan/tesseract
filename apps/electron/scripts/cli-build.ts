@@ -9,7 +9,7 @@ const CLI_ENTRY = join(APP_DIR, "cli", "index.ts");
 const CONTROLLER_ENTRY = join(REPO_ROOT, "apps", "controller", "src", "index.ts");
 const BINARIES = [
   { name: "tesseract", entry: CLI_ENTRY },
-  { name: "theone-controller", entry: CONTROLLER_ENTRY },
+  { name: "tesseract-controller", entry: CONTROLLER_ENTRY },
 ] as const;
 
 function compile(target: BuildTarget, name: string, entry: string): void {

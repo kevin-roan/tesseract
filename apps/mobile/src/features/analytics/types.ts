@@ -1,4 +1,4 @@
-import type { TokenUsage } from "@theone/protocol";
+import type { TokenUsage } from "@tesseract/protocol";
 
 export type RangeDays = 7 | 30 | 90;
 

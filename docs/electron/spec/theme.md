@@ -1,7 +1,7 @@
 # Theme spec (design tokens, base components, motion, icons)
 
-Source of truth surveyed (read-only): `apps/desktop/monolith_desktop/theme/**`,
-`apps/desktop/monolith_desktop/widgets/{surface,text,tone,motion,feedback,badges,buttons,icon,drawing,progress,window_controls,dot_sphere}.py`,
+Source of truth surveyed (read-only): `apps/desktop/tesseract_desktop/theme/**`,
+`apps/desktop/tesseract_desktop/widgets/{surface,text,tone,motion,feedback,badges,buttons,icon,drawing,progress,window_controls,dot_sphere}.py`,
 `apps/desktop/data/fonts`, `apps/desktop/tools/{lucide_icons,brand_icons}.py`, `widgets/terminal/palette.py`.
 
 The GTK app generates one stylesheet at runtime (`theme/css.py::generate_css(scheme)`), in this order:
@@ -736,7 +736,7 @@ segment; in motion use `useReducedMotion()` / `MotionConfig reducedMotion="user"
 Non-Lucide icons:
 | app name | GTK icon | Electron |
 |---|---|---|
-| brand | `monolith-brand-symbolic` | custom SVG (copy path below), 16×16 viewBox, `fill: currentColor`; sidebar brand logo at 20px |
+| brand | `tesseract-brand-symbolic` | custom SVG (copy path below), 16×16 viewBox, `fill: currentColor`; sidebar brand logo at 20px |
 | window-minimize / maximize / restore / close | `window-*-symbolic` (unused at runtime; custom-drawn glyphs per §6.9) | draw the glyphs as inline SVG per §6.9 |
 
 Brand mark path (viewBox `0 0 16 16`):

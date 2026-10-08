@@ -1,6 +1,6 @@
 import { openAsBlob } from "node:fs";
 import { readFile } from "node:fs/promises";
-import { ApiError, NetworkError, TheOneClient, TimeoutError, type FetchLike } from "@theone/client";
+import { ApiError, NetworkError, TesseractClient, TimeoutError, type FetchLike } from "@tesseract/client";
 import {
   ProjectSchema,
   SyncGetPlanResponseSchema,
@@ -17,7 +17,7 @@ import {
   type SyncGetPlanResponse,
   type SyncHeartbeat,
   type SyncRequest,
-} from "@theone/protocol";
+} from "@tesseract/protocol";
 import { GZIP_MIME_TYPE, SYNC_TIMEOUT_MS } from "./constants";
 
 export type ByteStream = AsyncIterable<Uint8Array | Buffer | string>;
@@ -88,11 +88,11 @@ async function apiError(response: Response): Promise<ApiError> {
 }
 
 export class HttpSyncApi implements SyncApi {
-  readonly client: TheOneClient;
+  readonly client: TesseractClient;
   private readonly baseUrl: string;
 
   constructor(private readonly options: HttpSyncApiOptions) {
-    this.client = new TheOneClient({ baseUrl: options.apiUrl, token: options.token, fetch: options.fetch });
+    this.client = new TesseractClient({ baseUrl: options.apiUrl, token: options.token, fetch: options.fetch });
     this.baseUrl = this.client.baseUrl;
   }
 

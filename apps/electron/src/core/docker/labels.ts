@@ -70,14 +70,14 @@ export const PHASE_MESSAGES = {
   startCancelled: "Starting Docker was cancelled",
   acceptLicense: "Accept the Docker Subscription Service Agreement to install Docker Desktop",
   unsupportedOption: (option: string, platform: string) => `"${option}" isn't available on ${platform}`,
-  manualInstall: "Monolith can't install Docker on this system automatically. Run the commands below in a terminal.",
-  noPkexec: "pkexec isn't available, so Monolith can't ask for your password. Run the commands below in a terminal.",
+  manualInstall: "Tesseract can't install Docker on this system automatically. Run the commands below in a terminal.",
+  noPkexec: "pkexec isn't available, so Tesseract can't ask for your password. Run the commands below in a terminal.",
   noAgent: "No password prompt is available (no polkit agent). Run the commands below in a terminal.",
   checksumMismatch: (file: string) => `The download of ${file} is damaged (checksum mismatch). Try again.`,
   downloadFailed: (status: number) => `The download failed (HTTP ${status})`,
   installFailed: (code: number | null) => `The installer failed (exit code ${code ?? "unknown"})`,
   commandFailed: (detail: string) => `The command failed: ${detail}`,
-  noStartCommand: "Monolith doesn't know how to start this Docker engine. Start it yourself, then check again.",
+  noStartCommand: "Tesseract doesn't know how to start this Docker engine. Start it yourself, then check again.",
 } as const;
 
 export const LOG_MESSAGES = {

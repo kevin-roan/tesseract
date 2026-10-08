@@ -9,7 +9,7 @@ import { refreshInstallSidecar, sidecarLayout, syncSandboxContext } from "./cli-
 let root: string;
 let home: string;
 let bundle: string;
-const appImage = "/home/u/Apps/Monolith.AppImage";
+const appImage = "/home/u/Apps/Tesseract.AppImage";
 
 function writeBundle(manifest: string, compose = "services: {}\n"): void {
   mkdirSync(join(bundle, "infra", "compose"), { recursive: true });
@@ -36,9 +36,9 @@ afterEach(() => rmSync(root, { recursive: true, force: true }));
 describe("sidecarLayout", () => {
   it("puts the sidecar next to the CLI copy's bin dir, where the CLI reads it", () => {
     const layout = sidecarLayout("/home/u");
-    expect(layout.copyPath).toBe("/home/u/.local/share/monolith/bin/tesseract");
-    expect(layout.file).toBe(join("/home/u/.local/share/monolith", INSTALL_SIDECAR));
-    expect(layout.sandboxDir).toBe("/home/u/.local/share/monolith/sandbox");
+    expect(layout.copyPath).toBe("/home/u/.local/share/tesseract/bin/tesseract");
+    expect(layout.file).toBe(join("/home/u/.local/share/tesseract", INSTALL_SIDECAR));
+    expect(layout.sandboxDir).toBe("/home/u/.local/share/tesseract/sandbox");
   });
 });
 
@@ -74,13 +74,13 @@ describe("refreshInstallSidecar", () => {
     expect(written[SIDECAR_KEYS.appPath]).toBe(appImage);
     expect(written[SIDECAR_KEYS.sandboxDir]).toBe(layout.sandboxDir);
 
-    await refreshInstallSidecar({ home, appImage: "/home/u/Apps/Monolith-2.AppImage", bundledSandboxDir: bundle });
-    expect(JSON.parse(readFileSync(layout.file, "utf8"))).toMatchObject({ appPath: "/home/u/Apps/Monolith-2.AppImage" });
+    await refreshInstallSidecar({ home, appImage: "/home/u/Apps/Tesseract-2.AppImage", bundledSandboxDir: bundle });
+    expect(JSON.parse(readFileSync(layout.file, "utf8"))).toMatchObject({ appPath: "/home/u/Apps/Tesseract-2.AppImage" });
   });
 
   it("lets the CLI copy resolve the sandbox context and the AppImage", async () => {
     const copyPath = installCopy();
-    const fakeAppImage = join(root, "Monolith.AppImage");
+    const fakeAppImage = join(root, "Tesseract.AppImage");
     writeFileSync(fakeAppImage, "");
     rmSync(bundle, { recursive: true, force: true });
     bundle = join(root, "mount-2", "resources", "sandbox");

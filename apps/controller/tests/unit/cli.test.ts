@@ -1,6 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "bun:test";
 import { join } from "node:path";
-import type { SandboxStatus } from "@theone/protocol";
+import type { SandboxStatus } from "@tesseract/protocol";
 import { redactVncPasswords, REDACTED } from "../../src/cli/api";
 import { formatStatus, runCli, USAGE, type Output } from "../../src/cli/commands";
 import { callLocalApi, CliError, fetchLocalApi, isControllerUp, requireToken } from "../../src/cli/local-api";
@@ -39,11 +39,11 @@ afterEach(() => {
 
 function env(extra: Record<string, string> = {}): Record<string, string> {
   return {
-    THEONE_WORKSPACE: makeTempDir("cli-unit"),
-    THEONE_HOST: "127.0.0.1",
-    THEONE_PORT: String(server.port),
-    THEONE_TOKEN: TOKEN,
-    THEONE_SANDBOX_ID: "unit-box",
+    TESSERACT_WORKSPACE: makeTempDir("cli-unit"),
+    TESSERACT_HOST: "127.0.0.1",
+    TESSERACT_PORT: String(server.port),
+    TESSERACT_TOKEN: TOKEN,
+    TESSERACT_SANDBOX_ID: "unit-box",
     ...extra,
   };
 }
@@ -117,7 +117,7 @@ describe("formatting", () => {
 describe("local API helpers", () => {
   test("requireToken reads the environment or explains how to get one", () => {
     expect(requireToken(loadConfig(env()))).toBe(TOKEN);
-    const without = loadConfig({ ...env(), THEONE_TOKEN: "" });
+    const without = loadConfig({ ...env(), TESSERACT_TOKEN: "" });
     expect(() => requireToken(without)).toThrow(CliError);
     expect(() => requireToken(without)).toThrow(/No API token/);
   });
@@ -142,7 +142,7 @@ describe("local API helpers", () => {
     const closed = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch: () => new Response("") });
     const port = closed.port;
     closed.stop(true);
-    const config = loadConfig({ ...env(), THEONE_PORT: String(port) });
+    const config = loadConfig({ ...env(), TESSERACT_PORT: String(port) });
     await expect(fetchLocalApi(config, "GET", "/v1/status")).rejects.toThrow(`Controller not reachable at http://127.0.0.1:${port}`);
     expect(await isControllerUp(config)).toBe(false);
   });
@@ -159,7 +159,7 @@ describe("runCli", () => {
   test("help and version aliases need no configuration", async () => {
     for (const command of ["--help", "-h", "help"]) {
       const output = capture();
-      expect(await runCli([command], { env: { THEONE_PORT: "bogus" }, output })).toBe(0);
+      expect(await runCli([command], { env: { TESSERACT_PORT: "bogus" }, output })).toBe(0);
       expect(output.stdout).toEqual([USAGE]);
     }
     for (const command of ["--version", "-v", "version"]) {
@@ -171,8 +171,8 @@ describe("runCli", () => {
 
   test("configuration errors exit 1 with the message", async () => {
     const output = capture();
-    expect(await runCli(["status"], { env: { THEONE_PORT: "bogus" }, output })).toBe(1);
-    expect(output.stderr[0]).toStartWith("error: THEONE_PORT");
+    expect(await runCli(["status"], { env: { TESSERACT_PORT: "bogus" }, output })).toBe(1);
+    expect(output.stderr[0]).toStartWith("error: TESSERACT_PORT");
   });
 
   test("unknown options exit 2 with the usage", async () => {
@@ -227,23 +227,23 @@ describe("runCli", () => {
     const port = String(closed.port);
     closed.stop(true);
     const output = capture();
-    expect(await runCli(["pair"], { env: env({ THEONE_PORT: port }), output })).toBe(0);
+    expect(await runCli(["pair"], { env: env({ TESSERACT_PORT: port }), output })).toBe(0);
     expect(output.stderr).toContain("warning: the controller is not answering on the local port yet");
-    expect(output.stdout.join("\n")).toContain("theone://");
+    expect(output.stdout.join("\n")).toContain("tesseract://");
 
     const json = capture();
     expect(await runCli(["pair", "--json"], { env: env(), output: json })).toBe(0);
     expect(JSON.parse(json.stdout[0] ?? "")).toMatchObject({ name: "unit-box" });
   });
 
-  test("token --rotate warns that THEONE_TOKEN still overrides the file", async () => {
+  test("token --rotate warns that TESSERACT_TOKEN still overrides the file", async () => {
     const output = capture();
     expect(await runCli(["token", "--rotate"], { env: env(), output })).toBe(0);
     expect(output.stdout[0]).toContain("Wrote a new token");
-    expect(output.stderr[0]).toContain("THEONE_TOKEN is set");
+    expect(output.stderr[0]).toContain("TESSERACT_TOKEN is set");
 
     const quiet = capture();
-    expect(await runCli(["token", "--rotate"], { env: env({ THEONE_TOKEN: "" }), output: quiet })).toBe(0);
+    expect(await runCli(["token", "--rotate"], { env: env({ TESSERACT_TOKEN: "" }), output: quiet })).toBe(0);
     expect(quiet.stderr).toEqual([]);
   });
 
@@ -287,9 +287,9 @@ describe("entrypoint", () => {
     const unknown = await runEntry(["frobnicate"]);
     expect(unknown.code).toBe(2);
     expect(unknown.stderr).toStartWith('Unknown command "frobnicate"');
-    const badConfig = await runEntry(["status"], { THEONE_LOG_LEVEL: "loud" });
+    const badConfig = await runEntry(["status"], { TESSERACT_LOG_LEVEL: "loud" });
     expect(badConfig.code).toBe(1);
-    expect(badConfig.stderr).toContain("THEONE_LOG_LEVEL");
+    expect(badConfig.stderr).toContain("TESSERACT_LOG_LEVEL");
   });
 
   test("flushOutput resolves even with nothing queued", async () => {

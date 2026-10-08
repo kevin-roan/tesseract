@@ -1,4 +1,4 @@
-import type { InboxItem, InboxKind, PushData, PushDevice, PushPlatform, RegisterPushDevice } from "@theone/protocol";
+import type { InboxItem, InboxKind, PushData, PushDevice, PushPlatform, RegisterPushDevice } from "@tesseract/protocol";
 import type { Config } from "../config";
 import { notFound } from "../core/errors";
 import type { EventHub } from "../core/events";
@@ -35,7 +35,7 @@ const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_DEDUPE_MS = 15_000;
 const DEFAULT_RUN_DEDUPE_MS = 6 * 60 * 60_000;
 /** Every push is titled with the app's name; what happened goes in the subtitle (iOS) or the body (Android). */
-export const PUSH_TITLE = "Monolith";
+export const PUSH_TITLE = "Tesseract";
 const CHANNEL_ID = "inbox";
 
 const isObject = (value: unknown): value is Json => typeof value === "object" && value !== null && !Array.isArray(value);

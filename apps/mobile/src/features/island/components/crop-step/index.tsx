@@ -10,7 +10,7 @@ import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { Durations } from "@/theme";
 
-import type { CropRect } from "@/modules/theone-island";
+import type { CropRect } from "@/modules/tesseract-island";
 
 import { useCropBox } from "../../hooks/use-crop-box";
 import { useCropHandle } from "../../hooks/use-crop-handle";

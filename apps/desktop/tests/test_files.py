@@ -5,16 +5,16 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 
 import pytest
 
-from monolith_desktop.api.client import ControllerClient
-from monolith_desktop.api.errors import ApiError
-from monolith_desktop.api.paths import rest
-from monolith_desktop.api.types import SERVER_EVENT_TYPES
-from monolith_desktop.pages.files import model
-from monolith_desktop.pages.files.download import ChecksumMismatch, checksum_matches, download_artifact, download_file
-from monolith_desktop.pages.files.labels import FILES, SOURCES
-from monolith_desktop.paths import ICONS_DIR
-from monolith_desktop.theme.icons import icon_candidates
-from monolith_desktop.util.format import parse_iso
+from tesseract_desktop.api.client import ControllerClient
+from tesseract_desktop.api.errors import ApiError
+from tesseract_desktop.api.paths import rest
+from tesseract_desktop.api.types import SERVER_EVENT_TYPES
+from tesseract_desktop.pages.files import model
+from tesseract_desktop.pages.files.download import ChecksumMismatch, checksum_matches, download_artifact, download_file
+from tesseract_desktop.pages.files.labels import FILES, SOURCES
+from tesseract_desktop.paths import ICONS_DIR
+from tesseract_desktop.theme.icons import icon_candidates
+from tesseract_desktop.util.format import parse_iso
 
 NOW = parse_iso("2026-09-28T12:00:00Z")
 

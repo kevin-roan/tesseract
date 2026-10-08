@@ -1,4 +1,4 @@
-import type { SandboxStatus } from "@theone/protocol";
+import type { SandboxStatus } from "@tesseract/protocol";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 

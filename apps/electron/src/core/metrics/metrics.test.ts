@@ -27,7 +27,7 @@ describe("metrics cache", () => {
   });
 
   it("round-trips through the file", async () => {
-    const dir = mkdtempSync(join(tmpdir(), "monolith-test-metrics-"));
+    const dir = mkdtempSync(join(tmpdir(), "tesseract-test-metrics-"));
     dirs.push(dir);
     await saveMetrics(dir, { version: 1, sandboxes: { a: [row(NOW - 5)] } }, NOW);
     expect((await loadMetrics(dir, NOW)).sandboxes.a).toHaveLength(1);

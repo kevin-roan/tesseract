@@ -1,4 +1,4 @@
-import type { Artifact } from "@theone/protocol";
+import type { Artifact } from "@tesseract/protocol";
 import { EmptyState } from "../../components/EmptyState";
 import { GroupedList } from "../../components/GroupedList";
 import { BAND_ICON, SHARED_EMPTY_ICON } from "../../features/files/constants";

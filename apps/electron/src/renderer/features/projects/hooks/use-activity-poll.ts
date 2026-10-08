@@ -1,4 +1,4 @@
-import type { BuildJob, ProcessInfo } from "@theone/protocol";
+import type { BuildJob, ProcessInfo } from "@tesseract/protocol";
 import { useCallback, useState } from "react";
 import { useConnectionClient, useIsOnline, usePoller, useServerEvent, useWindowVisible } from "../../../app/connection";
 import { LIST_ACTIVITY_INTERVAL_MS } from "../constants";

@@ -1,5 +1,5 @@
-import { PAGE_MESSAGES, type InputMode } from "@theone/protocol/bridge";
-import { LIMITS } from "@theone/protocol/constants";
+import { PAGE_MESSAGES, type InputMode } from "@tesseract/protocol/bridge";
+import { LIMITS } from "@tesseract/protocol/constants";
 import type { ITheme } from "@xterm/xterm";
 import type { MouseButton, TrackpadOptions } from "./gestures";
 
@@ -215,9 +215,9 @@ export const MESSAGES = {
   connected: "Connected",
   disconnected: "Disconnected",
   exited: "Session ended",
-  missingTicket: "This page must be opened from the TheOne app (no ticket in the link).",
+  missingTicket: "This page must be opened from the Tesseract app (no ticket in the link).",
   missingSession: "No terminal session in the link.",
-  reconnectFromApp: "Reopen this page from the TheOne app to reconnect.",
+  reconnectFromApp: "Reopen this page from the Tesseract app to reconnect.",
   passwordRequired: "The VNC server asked for a password, but none was provided.",
   reconnect: "Reconnect",
   keyboard: "Keyboard",

@@ -1,4 +1,4 @@
-import { routePatterns } from "@theone/protocol";
+import { routePatterns } from "@tesseract/protocol";
 import { currentScenario } from "../scenario";
 import { defineSocketFixtures } from "../types";
 import { FIXTURE_EXIT_CODE, fixtureScreen, TERMINAL_SCENARIOS } from "./data";

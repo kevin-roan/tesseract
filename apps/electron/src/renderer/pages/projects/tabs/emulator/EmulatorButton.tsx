@@ -1,4 +1,4 @@
-import type { AppRun, RunTargetInfo } from "@theone/protocol";
+import type { AppRun, RunTargetInfo } from "@tesseract/protocol";
 import { useCallback, useMemo } from "react";
 import { useNavigateTo } from "../../../../app/navigation";
 import { ActionButton } from "../../../../components/ActionButton";

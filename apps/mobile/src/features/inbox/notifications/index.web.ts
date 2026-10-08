@@ -1,4 +1,4 @@
-import type { InboxItem } from "@theone/protocol";
+import type { InboxItem } from "@tesseract/protocol";
 
 export function prepareNotifications(): void {}
 

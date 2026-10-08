@@ -38,7 +38,7 @@ describe("PairDialog", () => {
     expect(props.onRefreshHost).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId("dialog-context").textContent).toBe("Sandbox");
     expect(screen.getByTestId("pair-qr")).toBeTruthy();
-    expect(screen.getByText("Sandbox theone-sandbox · https://theone-sandbox.tail511d9d.ts.net")).toBeTruthy();
+    expect(screen.getByText("Sandbox tesseract-sandbox · https://tesseract-sandbox.tail511d9d.ts.net")).toBeTruthy();
     expect(screen.getByRole("radio", { name: "Sandbox" }).getAttribute("aria-checked")).toBe("true");
   });
 

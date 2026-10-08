@@ -1,6 +1,6 @@
 import { closeSync, fstatSync, mkdirSync, openSync, readSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { AVD_NAME_PATTERN, LIMITS, type EmulatorInfo, type StartEmulator } from "@theone/protocol";
+import { AVD_NAME_PATTERN, LIMITS, type EmulatorInfo, type StartEmulator } from "@tesseract/protocol";
 import { conflict, errorMessage, notFound, unavailable } from "../../core/errors";
 import { run, type RunResult } from "../../core/exec";
 import type { Logger } from "../../core/logger";
@@ -48,9 +48,9 @@ const RISK = "without it, anything with adb access to the emulator (the linked s
 export const EMULATOR_MESSAGES = {
   notIsolated: "Emulator is not isolated; start it from the app",
   exited: "The emulator exited",
-  noIsolationTools: `Emulator network isolation needs a Linux host with unshare (util-linux) and ip (iproute2); THEONE_EMULATOR_ISOLATION=none runs the emulator without isolation, but ${RISK}`,
+  noIsolationTools: `Emulator network isolation needs a Linux host with unshare (util-linux) and ip (iproute2); TESSERACT_EMULATOR_ISOLATION=none runs the emulator without isolation, but ${RISK}`,
   noUserNamespaces: (detail: string) =>
-    `Emulator network isolation could not create a user and network namespace (${detail}); enable unprivileged user namespaces, or set THEONE_EMULATOR_ISOLATION=none to run without isolation, but ${RISK}`,
+    `Emulator network isolation could not create a user and network namespace (${detail}); enable unprivileged user namespaces, or set TESSERACT_EMULATOR_ISOLATION=none to run without isolation, but ${RISK}`,
 } as const;
 
 const stoppedInfo = (state: "stopped" | "unavailable" = "stopped", error: string | null = null): EmulatorInfo => ({
@@ -164,9 +164,9 @@ export class EmulatorManager {
 
   /** Why the emulator cannot be started, or null. */
   unavailableReason(): string | null {
-    if (!this.config.sdkRoot) return "No Android SDK found; set THEONE_ANDROID_SDK_ROOT";
+    if (!this.config.sdkRoot) return "No Android SDK found; set TESSERACT_ANDROID_SDK_ROOT";
     if (!this.config.emulator) return `The Android emulator is not installed in ${this.config.sdkRoot}`;
-    if (!this.config.adb) return "adb is not installed on the host; set THEONE_ADB";
+    if (!this.config.adb) return "adb is not installed on the host; set TESSERACT_ADB";
     if (this.config.isolation === "netns") return this.probeIsolation();
     return null;
   }
@@ -197,7 +197,7 @@ export class EmulatorManager {
 
   /** Adopts an emulator already running (isolated or on `emulator-<port>`) and starts watching for outside changes. */
   async init(): Promise<void> {
-    if (this.config.isolation === "none") this.logger.warn("emulator network isolation is off (THEONE_EMULATOR_ISOLATION=none)");
+    if (this.config.isolation === "none") this.logger.warn("emulator network isolation is off (TESSERACT_EMULATOR_ISOLATION=none)");
     await this.adoptIfPresent();
     if (this.watchMs > 0 && this.config.adb) {
       this.watchTimer = setInterval(() => void this.watch(), this.watchMs);
@@ -258,7 +258,7 @@ export class EmulatorManager {
     const { unshare, ip } = this.config;
     if (!unshare || !ip) return (this.isolationReason = EMULATOR_MESSAGES.noIsolationTools);
     try {
-      const result = Bun.spawnSync([unshare, "--user", "--map-root-user", "--net", "--", ip, "link", "add", "theone0", "type", "dummy"], {
+      const result = Bun.spawnSync([unshare, "--user", "--map-root-user", "--net", "--", ip, "link", "add", "tesseract0", "type", "dummy"], {
         stdout: "ignore",
         stderr: "pipe",
         timeout: COMMAND_TIMEOUT_MS,

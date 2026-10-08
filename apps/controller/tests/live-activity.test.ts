@@ -2,8 +2,8 @@ import { afterAll, afterEach, describe, expect, test } from "bun:test";
 import { generateKeyPairSync, verify } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { IslandStateSchema, LiveActivityTokenSchema, restPaths, type AgentRun, type BuildJob, type LiveActivityToken, type ProcessInfo } from "@theone/protocol";
-import { sampleAgentRun, sampleBuild, sampleProcess, sampleUsageReport } from "@theone/protocol/fixtures";
+import { IslandStateSchema, LiveActivityTokenSchema, restPaths, type AgentRun, type BuildJob, type LiveActivityToken, type ProcessInfo } from "@tesseract/protocol";
+import { sampleAgentRun, sampleBuild, sampleProcess, sampleUsageReport } from "@tesseract/protocol/fixtures";
 import { loadConfig } from "../src/config";
 import { silentLogger } from "../src/core/logger";
 import { openDatabase } from "../src/db/database";
@@ -38,10 +38,10 @@ function fakeApns(respond: (request: ApnsRequest) => { status: number; body?: st
   return { sent, transport, closed: () => closed };
 }
 
-function apnsEnv(dir: string): { THEONE_APNS_KEY_FILE: string; THEONE_APNS_KEY_ID: string; THEONE_APNS_TEAM_ID: string } {
+function apnsEnv(dir: string): { TESSERACT_APNS_KEY_FILE: string; TESSERACT_APNS_KEY_ID: string; TESSERACT_APNS_TEAM_ID: string } {
   const keyFile = join(dir, "AuthKey_ABC123DEF4.p8");
   writeFileSync(keyFile, PEM);
-  return { THEONE_APNS_KEY_FILE: keyFile, THEONE_APNS_KEY_ID: "ABC123DEF4", THEONE_APNS_TEAM_ID: "TEAM123456" };
+  return { TESSERACT_APNS_KEY_FILE: keyFile, TESSERACT_APNS_KEY_ID: "ABC123DEF4", TESSERACT_APNS_TEAM_ID: "TEAM123456" };
 }
 
 type Fakes = { runs: AgentRun[]; processes: ProcessInfo[]; builds: BuildJob[]; usageFails: boolean };
@@ -49,8 +49,8 @@ type Fakes = { runs: AgentRun[]; processes: ProcessInfo[]; builds: BuildJob[]; u
 function makeService(options: { apns?: boolean; transport?: ApnsTransport; fakes?: Partial<Fakes>; env?: Record<string, string> } = {}) {
   const dir = makeTempDir("island");
   const config = loadConfig({
-    THEONE_WORKSPACE: dir,
-    THEONE_SANDBOX_ID: "sbx-1",
+    TESSERACT_WORKSPACE: dir,
+    TESSERACT_SANDBOX_ID: "sbx-1",
     ...(options.apns === false ? {} : apnsEnv(dir)),
     ...options.env,
   });
@@ -89,14 +89,14 @@ afterEach(async () => {
 afterAll(removeTempDirs);
 
 describe("apns config", () => {
-  const base = { THEONE_WORKSPACE: makeTempDir("apns-config") };
+  const base = { TESSERACT_WORKSPACE: makeTempDir("apns-config") };
 
   test("is disabled by default and enabled when the key file, key id and team id are set", () => {
-    expect(loadConfig(base).apns).toEqual({ enabled: false, keyFile: null, keyId: null, teamId: null, bundleId: "com.kevinbpract.theone", environment: "production" });
-    const env = apnsEnv(base.THEONE_WORKSPACE);
-    expect(loadConfig({ ...base, ...env, THEONE_APNS_BUNDLE_ID: "com.example.app", THEONE_APNS_ENV: "sandbox" }).apns).toEqual({
+    expect(loadConfig(base).apns).toEqual({ enabled: false, keyFile: null, keyId: null, teamId: null, bundleId: "com.kevinroan.tesseract", environment: "production" });
+    const env = apnsEnv(base.TESSERACT_WORKSPACE);
+    expect(loadConfig({ ...base, ...env, TESSERACT_APNS_BUNDLE_ID: "com.example.app", TESSERACT_APNS_ENV: "sandbox" }).apns).toEqual({
       enabled: true,
-      keyFile: env.THEONE_APNS_KEY_FILE,
+      keyFile: env.TESSERACT_APNS_KEY_FILE,
       keyId: "ABC123DEF4",
       teamId: "TEAM123456",
       bundleId: "com.example.app",
@@ -105,12 +105,12 @@ describe("apns config", () => {
   });
 
   test("rejects partial or invalid values", () => {
-    const env = apnsEnv(base.THEONE_WORKSPACE);
-    expect(() => loadConfig({ ...base, THEONE_APNS_KEY_ID: "ABC123DEF4" })).toThrow("THEONE_APNS_KEY_FILE and THEONE_APNS_TEAM_ID");
-    expect(() => loadConfig({ ...base, ...env, THEONE_APNS_KEY_FILE: "relative.p8" })).toThrow("THEONE_APNS_KEY_FILE");
-    expect(() => loadConfig({ ...base, ...env, THEONE_APNS_TEAM_ID: "bad id" })).toThrow("THEONE_APNS_TEAM_ID");
-    expect(() => loadConfig({ ...base, ...env, THEONE_APNS_ENV: "staging" })).toThrow("THEONE_APNS_ENV");
-    expect(() => loadConfig({ ...base, ...env, THEONE_APNS_BUNDLE_ID: "nodots" })).toThrow("THEONE_APNS_BUNDLE_ID");
+    const env = apnsEnv(base.TESSERACT_WORKSPACE);
+    expect(() => loadConfig({ ...base, TESSERACT_APNS_KEY_ID: "ABC123DEF4" })).toThrow("TESSERACT_APNS_KEY_FILE and TESSERACT_APNS_TEAM_ID");
+    expect(() => loadConfig({ ...base, ...env, TESSERACT_APNS_KEY_FILE: "relative.p8" })).toThrow("TESSERACT_APNS_KEY_FILE");
+    expect(() => loadConfig({ ...base, ...env, TESSERACT_APNS_TEAM_ID: "bad id" })).toThrow("TESSERACT_APNS_TEAM_ID");
+    expect(() => loadConfig({ ...base, ...env, TESSERACT_APNS_ENV: "staging" })).toThrow("TESSERACT_APNS_ENV");
+    expect(() => loadConfig({ ...base, ...env, TESSERACT_APNS_BUNDLE_ID: "nodots" })).toThrow("TESSERACT_APNS_BUNDLE_ID");
   });
 });
 
@@ -191,7 +191,7 @@ describe("island state", () => {
 describe("live activity pushes", () => {
   test("a run start goes to the push-to-start token with attributes and an alert", async () => {
     const apns = fakeApns();
-    const { service, repos, fakes } = makeService({ transport: apns.transport, env: { THEONE_APNS_ENV: "sandbox" } });
+    const { service, repos, fakes } = makeService({ transport: apns.transport, env: { TESSERACT_APNS_ENV: "sandbox" } });
     repos.saveLiveActivityToken(token("push-to-start", STARTER));
     await service.refresh();
     expect(apns.sent).toHaveLength(0);
@@ -203,7 +203,7 @@ describe("live activity pushes", () => {
     expect(request?.host).toBe("api.sandbox.push.apple.com");
     expect(request?.path).toBe(`/3/device/${STARTER}`);
     expect(request?.headers).toMatchObject({
-      "apns-topic": "com.kevinbpract.theone.push-type.liveactivity",
+      "apns-topic": "com.kevinroan.tesseract.push-type.liveactivity",
       "apns-push-type": "liveactivity",
       "apns-priority": "10",
       "apns-expiration": "0",
@@ -215,7 +215,7 @@ describe("live activity pushes", () => {
       "stale-date": Math.floor(NOW / 1000) + 120,
       "attributes-type": "IslandAttributes",
       attributes: { sandboxId: "sbx-1", sandboxName: "dev-box" },
-      alert: { title: "Monolith", subtitle: "Electron Hello · Claude started", body: "Build the Windows installer" },
+      alert: { title: "Tesseract", subtitle: "Electron Hello · Claude started", body: "Build the Windows installer" },
     });
     expect(IslandStateSchema.parse(request?.json.aps["content-state"]).runs.map((run) => run.id)).toEqual([sampleAgentRun.id]);
 
@@ -285,7 +285,7 @@ describe("live activity pushes", () => {
     const apns = fakeApns();
     const dir = makeTempDir("island-badkey");
     writeFileSync(join(dir, "bad.p8"), "not a key");
-    const { service } = makeService({ apns: false, transport: apns.transport, env: { THEONE_APNS_KEY_FILE: join(dir, "bad.p8"), THEONE_APNS_KEY_ID: "K1", THEONE_APNS_TEAM_ID: "T1" } });
+    const { service } = makeService({ apns: false, transport: apns.transport, env: { TESSERACT_APNS_KEY_FILE: join(dir, "bad.p8"), TESSERACT_APNS_KEY_ID: "K1", TESSERACT_APNS_TEAM_ID: "T1" } });
     expect(service.enabled).toBe(false);
   });
 });

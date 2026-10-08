@@ -1,4 +1,4 @@
-import type { AgentRun, ClaudeSession } from "@theone/protocol";
+import type { AgentRun, ClaudeSession } from "@tesseract/protocol";
 import type { RecordStatus } from "../../../../components/RecordRow";
 import { formatRelativeTime, formatTokens, joinMeta } from "../../../../features/projects/format";
 import type { PageId } from "../../../../../shared/routes";

@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { dirname, join, posix } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
-import type { SyncAck, SyncFileChange } from "@theone/protocol";
+import type { SyncAck, SyncFileChange } from "@tesseract/protocol";
 import { createLogger } from "../log";
 import type { ByteStream, SyncApi } from "./api";
 import { ACCESS_BITS, CHANGE_KINDS, CONFLICT_PREVIEW, PULL_TEMP_PREFIX, STAGED_MIN_MODE } from "./constants";

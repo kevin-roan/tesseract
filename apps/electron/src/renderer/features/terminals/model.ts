@@ -1,4 +1,4 @@
-import type { Project, TerminalInfo, TerminalKind } from "@theone/protocol";
+import type { Project, TerminalInfo, TerminalKind } from "@tesseract/protocol";
 import type { ConnectionStatus } from "../../app/connection";
 import type { IconName } from "../../theme/icons";
 import {

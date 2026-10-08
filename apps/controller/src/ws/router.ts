@@ -1,5 +1,5 @@
 import type { Server } from "bun";
-import { errorBody, isIdOfKind, routePatterns, TICKET_PARAM, VNC_WS_SUBPROTOCOL, type ErrorCode, type IdKind } from "@theone/protocol";
+import { errorBody, isIdOfKind, routePatterns, TICKET_PARAM, VNC_WS_SUBPROTOCOL, type ErrorCode, type IdKind } from "@tesseract/protocol";
 import { HttpError } from "../core/errors";
 import type { Services } from "../services";
 import { VncBridge } from "../services/vnc-bridge";

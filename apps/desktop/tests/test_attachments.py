@@ -2,11 +2,11 @@ import base64
 
 import pytest
 
-from monolith_desktop.api.client import ControllerClient
-from monolith_desktop.api.paths import rest
-from monolith_desktop.attachments import model
-from monolith_desktop.attachments.model import Drafts, PickedFile
-from monolith_desktop.pages.agents.timeline import build_timeline
+from tesseract_desktop.api.client import ControllerClient
+from tesseract_desktop.api.paths import rest
+from tesseract_desktop.attachments import model
+from tesseract_desktop.attachments.model import Drafts, PickedFile
+from tesseract_desktop.pages.agents.timeline import build_timeline
 
 
 def picked(name="notes.txt", mime="text/plain", size=10, **kw):

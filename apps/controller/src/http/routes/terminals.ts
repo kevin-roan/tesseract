@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { CreateTerminalSchema, routePatterns } from "@theone/protocol";
+import { CreateTerminalSchema, routePatterns } from "@tesseract/protocol";
 import type { Services } from "../../services";
 import { idParam, jsonBody } from "../validation";
 
