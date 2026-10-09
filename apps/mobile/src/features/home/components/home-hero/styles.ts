@@ -11,6 +11,7 @@ export default function createStyles(theme: Theme) {
     panel: {
       flex: 1,
       width: "100%",
+      overflow: "hidden",
     },
   });
 }

@@ -8,6 +8,26 @@ The Mac only needs Docker and Tailscale. There are two ways to install it:
   `tesseract-controller` binaries for the Mac, copies them over ssh and runs
   `tesseract server install` there ([Deploy from Linux](#deploy-from-linux)).
 
+## Fresh Mac: `./setup-mac.sh`
+
+On a Mac with nothing installed yet, `./setup-mac.sh` does everything, including the steps that
+need root. It asks for the admin password once (it keeps `sudo` alive while it runs) and runs
+everything else as you; `sudo ./setup-mac.sh` also works and drops back to your user. In order:
+
+1. `sudo pmset -a sleep 0 disksleep 0 autorestart 1` (`--keep-sleep` skips it, e.g. on a laptop).
+2. Homebrew (non-interactive; it installs the Xcode Command Line Tools), then
+   `brew install git rsync node` (node runs the Electron packaging scripts) and bun into `~/.bun`.
+3. OrbStack (`brew install --cask orbstack`) unless Docker is already there, starts it and waits
+   for the engine; the Tailscale app (`tailscale-app` cask), then waits while you sign in.
+4. `./setup-server.sh` with `--hostname`, `--with`, `--rebuild` and `--yes` passed through
+   (`--skip-server` skips it).
+5. `bun run electron:dist` (the universal `apps/electron/dist/Tesseract-<v>-universal.dmg`) and
+   installs `Tesseract.app` into `/Applications`, owned by you. Without a Developer ID identity
+   it builds unsigned and ad-hoc signs the installed app, which runs on this Mac only
+   (`--skip-app` skips the step).
+
+Automatic login (System Settings → Users & Groups) still has to be turned on by hand.
+
 ## Quick start: `./setup-server.sh` on the Mac
 
 ```bash

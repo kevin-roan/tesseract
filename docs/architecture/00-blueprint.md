@@ -1042,7 +1042,7 @@ login in the keychain, which the sandbox can't read). The stack restarts with Do
 | Command | `tesseract-controller host serve --bind <tailscale ip>` | same |
 | Logs | `~/Library/Logs/Tesseract/` | `journalctl --user -u tesseract-host-shell` |
 
-Installing on the server itself: `./setup-server.sh [--hostname NAME] [--with LIST] [--rebuild] [--yes]` from a repo checkout (builds the binaries for that machine, installs them into `~/.tesseract`, prompts for missing secrets and the host PIN, prints root-only steps such as `pmset` for the user to run, then runs `tesseract server install --mode tailscale`; see docs/runbooks/mac-server.md).
+Installing on the server itself: `./setup-server.sh [--hostname NAME] [--with LIST] [--rebuild] [--yes]` from a repo checkout (builds the binaries for that machine, installs them into `~/.tesseract`, prompts for missing secrets and the host PIN, prints root-only steps such as `pmset` for the user to run, then runs `tesseract server install --mode tailscale`; see docs/runbooks/mac-server.md). On a fresh Mac, `./setup-mac.sh [--skip-server] [--skip-app] [--keep-sleep] [setup-server options]` asks for the admin password once, applies `pmset`, installs Homebrew, node, OrbStack and Tailscale, runs `./setup-server.sh`, then builds the universal dmg (`electron:dist`) and installs `/Applications/Tesseract.app`.
 
 Deploying from the Linux dev box: `infra/scripts/deploy-mac <ssh-host> [--arch auto|arm64|x64] [--skip-build]
 [-- <install args>]` (`bun run deploy:mac`) builds `tesseract` + `tesseract-controller` for `mac-arm64`/`mac-x64`
