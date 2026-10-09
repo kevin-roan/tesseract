@@ -271,6 +271,17 @@ logic and the desktop entry.
 
 ## Releasing
 
+### From CI (Linux)
+
+`.github/workflows/desktop.yml` builds on every push to `production` and publishes the
+AppImage and deb as the GitHub release `v<version>` (`version` from
+`apps/electron/package.json`, release notes generated from the commits). So: bump the
+version on `main`, then merge `main` into `production`. A version that already has a release
+fails the run before building. Runs from the Actions tab or `build/**` branches only upload
+the files as workflow artifacts. The macOS job is commented out in the matrix for now.
+
+### By hand
+
 1. Bump `version` in `apps/electron/package.json`. It is the app version, the CLI version
    (`tesseract --version`) and the update version.
 2. Commit, so `manifest.json` records a clean commit (`dirty: false`).

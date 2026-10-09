@@ -1,13 +1,13 @@
-# Builds the Electron desktop app: the Linux AppImage + deb on Ubuntu and the macOS dmg + zip
-# (universal, ad-hoc signed) on macOS. Runs on pushes to build/** branches and from the Actions
-# tab (once this file is on main); a v* tag also attaches the files to a GitHub release.
+# Builds the Electron desktop app. A push to `production` builds the Linux AppImage + deb and
+# publishes them as the GitHub release `v<version>` (version from apps/electron/package.json), so
+# bump the version before merging. Other runs (Actions tab, build/** branches) only upload the
+# files as workflow artifacts. macOS is parked: add the `mac` entry back to the matrix to build it.
 name: Desktop
 
 on:
   workflow_dispatch:
   push:
-    branches: ["build/**"]
-    tags: ["v*"]
+    branches: ["production", "build/**"]
 
 permissions:
   contents: write
@@ -30,12 +30,13 @@ jobs:
             files: |
               apps/electron/dist/*.AppImage
               apps/electron/dist/*.deb
-          - platform: mac
-            os: macos-latest
-            files: |
-              apps/electron/dist/*.dmg
-              apps/electron/dist/*.zip
+          # - platform: mac
+          #   os: macos-latest
+          #   files: |
+          #     apps/electron/dist/*.dmg
+          #     apps/electron/dist/*.zip
     env:
+      RELEASE: ${{ github.ref == 'refs/heads/production' }}
       # macOS signing + notarization come from repository secrets (docs/runbooks/electron-desktop.md).
       # Without CSC_LINK dist.ts ad-hoc signs; without the APPLE_API_* secrets notarization is skipped.
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
@@ -44,13 +45,23 @@ jobs:
       APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
       APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      # One release per version: fail before building when v<version> is already taken.
+      - if: env.RELEASE == 'true'
+        run: |
+          version=$(node -p "require('./apps/electron/package.json').version")
+          if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
+            echo "::error::Release v$version already exists. Bump version in apps/electron/package.json."
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
 
@@ -67,13 +78,17 @@ jobs:
 
       - run: bun run electron:dist --platform ${{ matrix.platform }}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: tesseract-${{ matrix.platform }}
           path: ${{ matrix.files }}
           if-no-files-found: error
 
-      - if: startsWith(github.ref, 'refs/tags/v')
+      - if: env.RELEASE == 'true'
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ env.VERSION }}
+          name: Tesseract ${{ env.VERSION }}
+          target_commitish: ${{ github.sha }}
+          generate_release_notes: true
           files: ${{ matrix.files }}
