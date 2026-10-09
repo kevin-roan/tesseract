@@ -63,7 +63,8 @@ export const IPC_LABELS = {
   invalidNotification: "A notification needs a title",
   invalidTrayStatus: "The tray status must be text",
   invalidProjectId: "That is not a valid project id",
-  invalidGitAction: "Pick pull or push",
+  invalidGitAction: "Pick pull, push or commit",
+  invalidCommitMessage: "Write a commit message",
 } as const;
 
 export const WINDOW_LABELS = {

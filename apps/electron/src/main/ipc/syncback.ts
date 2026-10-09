@@ -64,8 +64,14 @@ function projectIdArg(value: unknown): string {
 }
 
 function hostGitAction(value: unknown): HostGitAction {
-  if (value !== "pull" && value !== "push") throw new IpcError("invalid_argument", IPC_LABELS.invalidGitAction);
+  if (value !== "pull" && value !== "push" && value !== "commit") throw new IpcError("invalid_argument", IPC_LABELS.invalidGitAction);
   return value;
+}
+
+function commitMessageArg(action: HostGitAction, value: unknown): string | undefined {
+  if (action !== "commit") return undefined;
+  if (typeof value !== "string" || value.trim() === "") throw new IpcError("invalid_argument", IPC_LABELS.invalidCommitMessage);
+  return value.trim();
 }
 
 function notify(projectId: string, title: string, body: string): void {
@@ -154,8 +160,11 @@ export default defineService(
         const id = projectIdArg(projectId);
         return runtime ? runtime.service.hostChanges(id) : hostChanges(environment(), id);
       }),
-    hostGit: (_context, projectId, action) =>
-      guarded(() => hostGit(syncState(environment()), projectIdArg(projectId), hostGitAction(action))),
+    hostGit: (_context, projectId, action, message) =>
+      guarded(() => {
+        const gitAction = hostGitAction(action);
+        return hostGit(syncState(environment()), projectIdArg(projectId), gitAction, commitMessageArg(gitAction, message));
+      }),
     diff: (_context, projectId, path) =>
       guarded(async () => {
         const id = projectIdArg(projectId);

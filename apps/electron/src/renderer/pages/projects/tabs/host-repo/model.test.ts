@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { HostShellState } from "../../../../../shared/contracts/hostShell";
 import { HOST_REPO_LABELS as L } from "./labels";
-import { gitSummary, hostPathFor, hostRepoButtons, hostShellBlocker } from "./model";
+import { gitSummary, gitTrigger, hostPathFor, hostRepoButton, hostShellBlocker } from "./model";
 
 const state = (patch: Partial<HostShellState> = {}): HostShellState => ({
   status: "running",
@@ -22,16 +22,21 @@ describe("host repo model", () => {
   });
 
   it("disables every action without a host copy", () => {
-    const buttons = hostRepoButtons(null, null);
-    expect(buttons.map((button) => button.id)).toEqual(["shell", "pull", "push"]);
+    const buttons = (["shell", "pull", "push", "commit"] as const).map((id) => hostRepoButton(id, null, null));
     expect(buttons.every((button) => button.disabled && button.tooltip === L.noCopy)).toBe(true);
+    expect(gitTrigger(null, null)).toMatchObject({ disabled: true, tooltip: L.noCopy });
   });
 
   it("marks the running action busy and blocks the others", () => {
-    const buttons = hostRepoButtons("/home/me/app", "pull");
-    expect(buttons.find((button) => button.id === "pull")).toMatchObject({ busy: true, label: L.pulling, disabled: true });
-    expect(buttons.find((button) => button.id === "shell")).toMatchObject({ busy: false, label: L.shell, disabled: true, tooltip: L.shellTooltip("/home/me/app") });
-    expect(hostRepoButtons("/home/me/app", null).every((button) => !button.disabled)).toBe(true);
+    expect(hostRepoButton("pull", "/home/me/app", "pull")).toMatchObject({ busy: true, label: L.pulling, disabled: true });
+    expect(hostRepoButton("shell", "/home/me/app", "pull")).toMatchObject({ busy: false, label: L.shell, disabled: true, tooltip: L.shellTooltip("/home/me/app") });
+    expect(hostRepoButton("commit", "/home/me/app", null)).toMatchObject({ busy: false, label: L.commit, disabled: false });
+  });
+
+  it("shows the running git action on the Git button", () => {
+    expect(gitTrigger("/home/me/app", null)).toMatchObject({ label: L.git, busy: false, disabled: false, tooltip: L.gitTooltip("/home/me/app") });
+    expect(gitTrigger("/home/me/app", "commit")).toMatchObject({ label: L.committing, busy: true, disabled: false });
+    expect(gitTrigger("/home/me/app", "shell")).toMatchObject({ label: L.git, busy: false });
   });
 
   it("explains why the host shell can't open", () => {

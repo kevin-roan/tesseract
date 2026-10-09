@@ -293,11 +293,13 @@ It runs `bun apps/controller/src/index.ts` from its checkout, or `TESSERACT_CONT
 then `apps/controller/dist/tesseract-controller`. It fills `TESSERACT_ANDROID_SDK_ROOT` (and `TESSERACT_ADB`) from the
 SDK its setup wizard installed when they are not already set.
 
-A project's detail page has **Host shell**, **Pull** and **Push** for the project's host copy (the
-`hostPath` of its sync-back link; all three are disabled without one). Host shell needs the daemon
+A project's detail page has **Host shell** and **Git** for the project's host copy (the
+`hostPath` of its sync-back link; both are disabled without one). Git opens a small popover with a
+commit message field, **Commit all**, **Pull** and **Push**. Host shell needs the daemon
 running with a PIN and an unlocked session (the same PIN prompt as the host emulator), then
 `POST /v1/terminals` with `cwd: hostPath` and opens the daemon's `/ui/terminal` page in its own window.
-Pull and Push run `git pull --ff-only` / `git push` in `hostPath` from the main process
+Commit runs `git add --all` then `git commit -m <message>`; Pull and Push run `git pull --ff-only` /
+`git push`. All run in `hostPath` from the main process
 (`GIT_TERMINAL_PROMPT=0`, 5 min timeout); they act on this computer's own repo like sync-back, so they
 need no PIN.
 

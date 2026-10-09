@@ -2,14 +2,20 @@ import type { HostGitAction } from "../../../../../shared/contracts/syncback";
 
 export const HOST_REPO_LABELS = {
   shell: "Host shell",
+  git: "Git",
   pull: "Pull",
   push: "Push",
+  commit: "Commit all",
   opening: "Opening…",
   pulling: "Pulling…",
   pushing: "Pushing…",
+  committing: "Committing…",
+  messagePlaceholder: "Commit message",
   shellTooltip: (path: string) => `Open a shell in ${path} on this computer`,
+  gitTooltip: (path: string) => `Commit, pull or push ${path} on this computer`,
   pullTooltip: (path: string) => `Run git pull in ${path} on this computer`,
   pushTooltip: (path: string) => `Run git push in ${path} on this computer`,
+  commitTooltip: (path: string) => `Stage every change in ${path} and commit it`,
   noCopy: "This project has no copy on this computer. Sync it from a folder here first",
   hostStopped: "The host shell isn't running. Turn on Serve host shell in Preferences.",
   hostLoading: "Tesseract is still reading the host shell settings; try again in a moment.",
@@ -20,9 +26,11 @@ export const HOST_REPO_LABELS = {
   done: {
     pull: (summary: string) => `Pulled: ${summary}`,
     push: (summary: string) => `Pushed: ${summary}`,
+    commit: (summary: string) => `Committed: ${summary}`,
   } satisfies Record<HostGitAction, (summary: string) => string>,
   failed: {
     pull: (error: string) => `git pull failed on this computer: ${error}`,
     push: (error: string) => `git push failed on this computer: ${error}`,
+    commit: (error: string) => `git commit failed on this computer: ${error}`,
   } satisfies Record<HostGitAction, (error: string) => string>,
 } as const;

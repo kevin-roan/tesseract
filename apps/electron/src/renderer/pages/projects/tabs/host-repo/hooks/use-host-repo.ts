@@ -11,9 +11,18 @@ import { ipc } from "../../../../../lib/ipc";
 import { HOST_SHELL_SECTION } from "../../emulator/constants";
 import { isAuthError } from "../../emulator/launcher";
 import { hostUnlocked } from "../../emulator/model";
-import { HOST_LINKS_KEY } from "../constants";
+import { HOST_GIT_SYNC_ACTIONS, HOST_LINKS_KEY } from "../constants";
 import { HOST_REPO_LABELS as L } from "../labels";
-import { gitSummary, hostPathFor, hostRepoButtons, hostShellBlocker, type HostRepoAction, type HostRepoButton } from "../model";
+import {
+  gitSummary,
+  gitTrigger,
+  hostPathFor,
+  hostRepoButton,
+  hostShellBlocker,
+  type GitTrigger,
+  type HostRepoAction,
+  type HostRepoButton,
+} from "../model";
 
 export interface HostRepoOptions {
   projectId: string;
@@ -22,7 +31,12 @@ export interface HostRepoOptions {
 }
 
 export interface HostRepo {
-  buttons: HostRepoButton[];
+  shell: HostRepoButton;
+  git: GitTrigger;
+  sync: HostRepoButton[];
+  commit: HostRepoButton;
+  message: string;
+  setMessage(message: string): void;
   run(action: HostRepoAction): void;
   unlockOpen: boolean;
   closeUnlock(): void;
@@ -35,6 +49,7 @@ export function useHostRepo({ projectId, projectName, report }: HostRepoOptions)
   const { openPreferences } = usePreferencesRoute();
   const [busy, setBusy] = useState<HostRepoAction | null>(null);
   const [unlockOpen, setUnlockOpen] = useState(false);
+  const [message, setMessage] = useState("");
   const pending = useRef(false);
   const links = useQuery({ queryKey: HOST_LINKS_KEY, queryFn: () => ipc.syncback.links(), retry: false });
   const hostPath = hostPathFor(links.data, projectId);
@@ -74,7 +89,8 @@ export function useHostRepo({ projectId, projectName, report }: HostRepoOptions)
     async (action: HostGitAction) => {
       setBusy(action);
       try {
-        const result = await ipc.syncback.hostGit(projectId, action);
+        const result = await ipc.syncback.hostGit(projectId, action, action === "commit" ? message : undefined);
+        if (action === "commit") setMessage("");
         showToast(L.done[action](gitSummary(result.output)));
       } catch (error) {
         say(L.failed[action](describeError(error)));
@@ -82,7 +98,7 @@ export function useHostRepo({ projectId, projectName, report }: HostRepoOptions)
         setBusy(null);
       }
     },
-    [projectId, say],
+    [projectId, message, say],
   );
 
   const run = useCallback(
@@ -108,7 +124,15 @@ export function useHostRepo({ projectId, projectName, report }: HostRepoOptions)
 
   const closeUnlock = useCallback(() => setUnlockOpen(false), []);
 
-  const buttons = useMemo(() => hostRepoButtons(hostPath, busy), [hostPath, busy]);
+  const view = useMemo(() => {
+    const commit = hostRepoButton("commit", hostPath, busy);
+    return {
+      shell: hostRepoButton("shell", hostPath, busy),
+      git: gitTrigger(hostPath, busy),
+      sync: HOST_GIT_SYNC_ACTIONS.map((id) => hostRepoButton(id, hostPath, busy)),
+      commit: { ...commit, disabled: commit.disabled || message.trim() === "" },
+    };
+  }, [hostPath, busy, message]);
 
-  return { buttons, run, unlockOpen, closeUnlock, unlock, onUnlocked };
+  return { ...view, message, setMessage, run, unlockOpen, closeUnlock, unlock, onUnlocked };
 }

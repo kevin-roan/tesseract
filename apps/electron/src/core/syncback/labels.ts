@@ -9,6 +9,7 @@ export const SYNC_LABELS = {
   insideGit: (rel: string) => `Refusing to write inside .git: ${repr(rel)}`,
   leavesRoot: (rel: string, root: string) => `Refusing path ${repr(rel)}: it leaves ${root}`,
   windowsName: (rel: string) => `Refusing path ${repr(rel)}: it is not a valid file name on this computer`,
+  commitMessageRequired: "Write a commit message",
   symlinkUnsupported: (rel: string) => `Cannot create the symlink ${rel}: this computer does not allow it`,
 
   notLinked: (id: string) => `${id} is not linked on this computer. Run tesseract --sync in the checkout first`,

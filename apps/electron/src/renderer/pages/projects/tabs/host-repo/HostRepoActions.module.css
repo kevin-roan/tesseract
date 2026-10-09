@@ -1,0 +1,20 @@
+.panel {
+  width: 280px;
+  border-radius: var(--to-radius-lg);
+  transform-origin: top left;
+}
+
+.body {
+  gap: 8px;
+  padding: 10px;
+}
+
+.header {
+  padding: 0 2px;
+}
+
+.sync {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
