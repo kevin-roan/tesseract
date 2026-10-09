@@ -1,5 +1,7 @@
+import { restPaths } from "@tesseract/protocol";
 import type { ProbeOutcome } from "../../shared/contracts/connection";
 import { DISCOVERY, HEALTH_PATH } from "./constants";
+import { VERIFY_MESSAGES } from "./labels";
 
 export type HealthProber = (url: string, timeoutMs: number, signal?: AbortSignal) => Promise<boolean>;
 
@@ -50,5 +52,30 @@ export async function pickReachable(
   } finally {
     stopAll();
     signal?.removeEventListener("abort", stopAll);
+  }
+}
+
+export type VerifyResult = { ok: true } | { ok: false; error: string };
+
+type Fetcher = (url: string, init: RequestInit) => Promise<Response>;
+
+export async function verifyConnection(
+  apiUrl: string,
+  token: string,
+  options: { timeoutMs?: number; fetcher?: Fetcher } = {},
+): Promise<VerifyResult> {
+  const { timeoutMs = DISCOVERY.remoteTimeoutMs, fetcher = fetch } = options;
+  const request = (path: string, headers: Record<string, string> = {}) =>
+    fetcher(`${apiUrl}${path}`, { headers: { Accept: "application/json", ...headers }, signal: AbortSignal.timeout(timeoutMs) });
+  try {
+    const health = await request(restPaths.health());
+    if (!health.ok) return { ok: false, error: VERIFY_MESSAGES.notTesseract(apiUrl) };
+    if (!isHealthyPayload(await health.json().catch(() => null))) return { ok: false, error: VERIFY_MESSAGES.incompatible };
+    const status = await request(restPaths.status(), { Authorization: `Bearer ${token}` });
+    if (status.status === 401 || status.status === 403) return { ok: false, error: VERIFY_MESSAGES.unauthorized };
+    if (!status.ok) return { ok: false, error: VERIFY_MESSAGES.failed(status.status) };
+    return { ok: true };
+  } catch {
+    return { ok: false, error: VERIFY_MESSAGES.unreachable(apiUrl) };
   }
 }

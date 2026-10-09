@@ -294,8 +294,10 @@ the deb update in the app.
 
 Signing uses electron-builder's standard variables: `CSC_LINK` (path or base64 of the
 `.p12` "Developer ID Application" certificate) and `CSC_KEY_PASSWORD`, or a matching
-identity already in the login keychain (`CSC_NAME` to choose one). Without an identity
-electron-builder skips code signing, and Gatekeeper will block the downloaded app.
+identity already in the login keychain (`CSC_NAME` to choose one; the keychain is not searched
+when `CSC_IDENTITY_AUTO_DISCOVERY=false`). Without an identity `scripts/dist.ts` ad-hoc signs
+the app (`mac.identity=-`): it runs on Apple Silicon, but Gatekeeper warns about the downloaded
+app until it is Developer ID signed and notarized.
 
 electron-builder's own notarization is off (`notarize: false`); `scripts/hooks/after-sign.ts`
 notarizes with `@electron/notarize` after signing. It picks the first complete set:

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { useWindowDimensions } from "react-native";
 
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
 
@@ -12,13 +11,11 @@ export function useAboutScreen() {
   const info = useAppInfo();
   const updates = useAppUpdates();
   const { status } = updates;
-  const { width } = useWindowDimensions();
 
   const rows = useMemo(() => ({ app: appRows(info), updates: updateRows(info) }), [info]);
 
   return {
     back: nav.back,
-    heroSize: Math.min(width * 0.6, 240),
     appRows: rows.app,
     updateRows: rows.updates,
     updates: {

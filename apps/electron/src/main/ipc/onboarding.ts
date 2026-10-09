@@ -30,6 +30,7 @@ export default defineService(
     androidCancel: () => onboarding.androidCancel(),
     androidUseExisting: (_context, sdkRoot, avd) => onboarding.androidUseExisting(String(sdkRoot), String(avd)),
     pairLoad: () => onboarding.pairLoad(),
+    connectRemote: (_context, input) => onboarding.connectRemote(input),
     finish: (_context, sandboxAutostart) => onboarding.finish(Boolean(sandboxAutostart)),
     openExternal: async (_context, key) => {
       if (!isUrlKey(key)) throw new IpcError("invalid_argument", "Unknown link");

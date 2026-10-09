@@ -12,3 +12,11 @@ export const CONNECTION_MESSAGES = {
   invalidInput: "Enter a valid http(s) URL and a token",
   tokenUnreadable: "The saved token could not be decrypted on this computer",
 } as const;
+
+export const VERIFY_MESSAGES = {
+  unreachable: (url: string) => `${url} did not answer. Check the address and that this computer is on the same tailnet.`,
+  notTesseract: (url: string) => `${url} answered, but it is not a Tesseract sandbox.`,
+  incompatible: "That Tesseract speaks a different protocol version; update the app or the sandbox.",
+  unauthorized: "The sandbox refused the token. Copy a fresh pairing link with tesseract server pair.",
+  failed: (status: number) => `The sandbox answered with HTTP ${status}.`,
+} as const;

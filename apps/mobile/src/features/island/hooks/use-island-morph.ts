@@ -1,6 +1,7 @@
 import { useContext, useEffect } from "react";
-import { useWindowDimensions } from "react-native";
+import { AppState, useWindowDimensions } from "react-native";
 import {
+  cancelAnimation,
   Extrapolation,
   interpolate,
   ReduceMotion,
@@ -46,8 +47,25 @@ export function useIslandMorph(
   const progress = useSharedValue(expanded ? 1 : 0);
 
   useEffect(() => {
+    const target = expanded ? 1 : 0;
+    // iOS pauses frames while the app is inactive, so a spring started then (or cut off by the lock screen) can freeze the shell half-morphed.
+    if (AppState.currentState !== "active") {
+      cancelAnimation(progress);
+      progress.set(target);
+      return;
+    }
     const spring = expanded ? ISLAND_OPEN_SPRING : ISLAND_CLOSE_SPRING;
-    progress.set(withSpring(expanded ? 1 : 0, { ...spring, reduceMotion: ReduceMotion.System }));
+    progress.set(withSpring(target, { ...spring, reduceMotion: ReduceMotion.System }));
+  }, [expanded, progress]);
+
+  /** Back in the foreground the shape snaps to the state it should be in, whatever the paused animation left behind. */
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") return;
+      cancelAnimation(progress);
+      progress.set(expanded ? 1 : 0);
+    });
+    return () => subscription.remove();
   }, [expanded, progress]);
 
   const panelWidth = Math.min(width - theme.spacing.base * 2, ISLAND_PANEL_MAX_WIDTH);

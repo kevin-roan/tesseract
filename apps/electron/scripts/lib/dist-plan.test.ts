@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { parseArgs } from "./args.ts";
 import { builderArgs, DIST_VALUE_FLAGS, distPlan, requiredCliFiles } from "./dist-plan.ts";
 
-function plan(argv: string[], env: Record<string, string | undefined> = {}, host: "linux" | "mac" | "win" = "linux") {
-  return distPlan(parseArgs(argv, DIST_VALUE_FLAGS), env, host);
+function plan(argv: string[], env: Record<string, string | undefined> = {}, host: "linux" | "mac" | "win" = "linux", keychainIdentity = false) {
+  return distPlan(parseArgs(argv, DIST_VALUE_FLAGS), env, host, keychainIdentity);
 }
 
 describe("distPlan", () => {
@@ -18,7 +18,16 @@ describe("distPlan", () => {
       cli: true,
       sandbox: true,
       smoke: false,
+      adHocSign: true,
     });
+  });
+
+  it("ad-hoc signs mac builds only when no signing certificate is configured", () => {
+    expect(plan([], {}, "mac").adHocSign).toBe(true);
+    expect(plan([], { CSC_LINK: "/certs/developer-id.p12" }, "mac").adHocSign).toBe(false);
+    expect(plan([], { CSC_NAME: "Tesseract (TEAMID)" }, "mac").adHocSign).toBe(false);
+    expect(plan([], {}, "mac", true).adHocSign).toBe(false);
+    expect(plan(["--platform", "win"], {}, "mac").adHocSign).toBe(false);
   });
 
   it("reads the update feed from flags before the environment", () => {
@@ -55,6 +64,11 @@ describe("builderArgs", () => {
       "-c.publish.url=https://u.example",
       "-c.publish.channel=beta",
     ]);
+  });
+
+  it("passes the ad-hoc identity to unsigned mac builds", () => {
+    expect(builderArgs(plan(["--platform", "mac"]))).toContain("-c.mac.identity=-");
+    expect(builderArgs(plan(["--platform", "mac"], { CSC_LINK: "/certs/developer-id.p12" }))).not.toContain("-c.mac.identity=-");
   });
 });
 

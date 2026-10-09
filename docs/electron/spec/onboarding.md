@@ -314,7 +314,21 @@ The banner `No sandbox is configured on this machine yet.` / **Set Up** *(GTK)* 
   - `Memory` — `{GB} GB`; warning below 12 GB: `The sandbox uses up to 8 GB; 16 GB or more is comfortable`.
   - `Processor` — `{cpus} cores · {arch}`; Linux arm64 / Windows arm64 warning:
     `The Android emulator isn't available for this processor`.
-- Footer: primary `Get started`. No Back.
+- Footer: primary `Get started`; start side flat `Connect to an existing Tesseract`. No Back.
+
+### 4.1 Connect to an existing Tesseract (no Docker on this computer)
+
+For a sandbox that runs on another computer (reached over Tailscale). The footer button opens a form dialog:
+
+- `Pairing link or URL`: a `tesseract://pair?…` link (what `tesseract server pair` prints) or an `http(s)://` API URL.
+- `Token`: required with a URL, disabled with a pairing link (the link carries it). Host shell links
+  (`tesseract://host`) are rejected.
+- `Connect` calls `onboarding.connectRemote(input)` (main): `GET /v1/health` must answer `{ ok: true, protocolVersion: 1 }`,
+  then `GET /v1/status` with the bearer token must not be 401/403 (8 s timeout each). Errors are shown in the dialog.
+  On success the connection is saved like Preferences → Connection, `sandboxAutostart` is turned off,
+  onboarding is marked complete (`welcome` done, every other step skipped) and the main window opens.
+- Pages that drive Docker on this computer (Containers, Preferences → Sandbox) show their Docker errors; the
+  rest of the app talks only to the remote controller.
 
 ---
 

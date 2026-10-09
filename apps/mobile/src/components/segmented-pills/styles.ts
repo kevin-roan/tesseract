@@ -7,6 +7,7 @@ export default function createStyles(theme: Theme) {
 
   return StyleSheet.create({
     row: {
+      alignSelf: "flex-start",
       flexDirection: "row",
       gap: inset,
       padding: inset,

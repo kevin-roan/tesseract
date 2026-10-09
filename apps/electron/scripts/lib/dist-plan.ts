@@ -16,6 +16,8 @@ export const CLI_TARGETS: Record<DistPlatform, readonly string[]> = {
 };
 
 export const DIST_ENV = { updateUrl: "TESSERACT_UPDATE_URL", channel: "TESSERACT_UPDATE_CHANNEL" } as const;
+// electron-builder signs macOS builds with these (or a Developer ID found in the keychain); without any, the app is ad-hoc signed.
+export const MAC_SIGNING_ENV = ["CSC_LINK", "CSC_NAME"] as const;
 
 export interface DistPlan {
   platform: DistPlatform;
@@ -27,6 +29,8 @@ export interface DistPlan {
   cli: boolean;
   sandbox: boolean;
   smoke: boolean;
+  /** Unsigned arm64 code is killed at launch on Apple Silicon, so mac builds without a certificate get an ad-hoc signature. */
+  adHocSign: boolean;
 }
 
 const CHANNEL = /^[a-z][a-z0-9-]*$/;
@@ -53,7 +57,12 @@ export function hostPlatform(): DistPlatform {
   return hostTargetId().split("-")[0] as DistPlatform;
 }
 
-export function distPlan(args: ParsedArgs, env: Readonly<Record<string, string | undefined>>, host: DistPlatform = hostPlatform()): DistPlan {
+export function distPlan(
+  args: ParsedArgs,
+  env: Readonly<Record<string, string | undefined>>,
+  host: DistPlatform = hostPlatform(),
+  keychainIdentity = false,
+): DistPlan {
   const platform = oneOf("platform", args.values.get("platform") ?? host, DIST_PLATFORMS);
   const dir = args.flags.has("dir");
   const smoke = args.flags.has("smoke");
@@ -69,6 +78,7 @@ export function distPlan(args: ParsedArgs, env: Readonly<Record<string, string |
     cli: !args.flags.has("skip-cli"),
     sandbox: !args.flags.has("skip-sandbox"),
     smoke,
+    adHocSign: platform === "mac" && !keychainIdentity && MAC_SIGNING_ENV.every((name) => !env[name]?.trim()),
   };
 }
 
@@ -77,6 +87,7 @@ export function builderArgs(plan: DistPlan, config = "electron-builder.yml"): st
   if (plan.dir) args.push("--dir");
   if (plan.updateUrl) args.push(`-c.publish.url=${plan.updateUrl}`);
   if (plan.channel) args.push(`-c.publish.channel=${plan.channel}`);
+  if (plan.adHocSign) args.push("-c.mac.identity=-");
   return args;
 }
 

@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { readConfig, updateConfig } from "../../core/config";
 import { ensureClaudeDir, readHostClaudeStates } from "../../core/claude";
 import { acceptLicense, ANDROID_LABELS, pendingLicenses } from "../../core/android";
+import { CONNECTION_MESSAGES, normalizeConnectionInput, verifyConnection } from "../../core/connection";
 import { phaseFromReport } from "../../core/docker";
 import { createLogger } from "../../core/log";
 import {
@@ -18,6 +19,7 @@ import {
 } from "../../core/onboarding";
 import { withoutSecrets } from "../../core/sandbox";
 import type { AccelResult, InstallPlan, SdkCatalog } from "../../shared/contracts/android";
+import type { ConnectionInput } from "../../shared/contracts/connection";
 import type { DockerInstallRequest } from "../../shared/contracts/docker";
 import type { AndroidPhase, OnboardingState, StepStatus } from "../../shared/contracts/onboarding";
 import type { BuildMode, SetupChoices } from "../../shared/contracts/sandbox";
@@ -38,6 +40,7 @@ import {
   installAndroid,
   adoptExistingAndroid,
 } from "../ipc/android";
+import { saveConnection } from "../ipc/connection";
 import { checkDocker, dockerLog, dockerPhase, installDockerEngine, startDocker } from "../ipc/docker";
 import {
   adoptSandbox,
@@ -58,6 +61,13 @@ const DISCOVERED_DONE_STEPS: readonly OnboardingStepId[] = ["docker", "sandbox",
 export function discoveredOnboarding(completedAt: string): PersistedOnboarding {
   const statuses = Object.fromEntries(
     ONBOARDING_STEP_IDS.map((id) => [id, DISCOVERED_DONE_STEPS.includes(id) ? "done" : "skipped"]),
+  ) as Record<OnboardingStepId, StepStatus>;
+  return { version: ONBOARDING_VERSION, step: "finish", statuses, completedAt };
+}
+
+export function remoteOnboarding(completedAt: string): PersistedOnboarding {
+  const statuses = Object.fromEntries(
+    ONBOARDING_STEP_IDS.map((id) => [id, id === "welcome" ? "done" : "skipped"]),
   ) as Record<OnboardingStepId, StepStatus>;
   return { version: ONBOARDING_VERSION, step: "finish", statuses, completedAt };
 }
@@ -259,6 +269,23 @@ export class OnboardingController {
     await updateSettings({ sandboxAutostart }).catch((error: unknown) => log.warn(message(error)));
     const next = this.patch({ step: "finish", completedAt: new Date().toISOString() });
     await this.persist();
+    return next;
+  }
+
+  async connectRemote(input: ConnectionInput): Promise<OnboardingState> {
+    await this.get();
+    const value = normalizeConnectionInput(input);
+    if (!value) throw new IpcError("invalid_argument", CONNECTION_MESSAGES.invalidInput);
+    const verified = await verifyConnection(value.apiUrl, value.token);
+    if (!verified.ok) throw new IpcError("unavailable", verified.error);
+    await saveConnection(value);
+    await updateSettings({ sandboxAutostart: false }).catch((error: unknown) => log.warn(message(error)));
+    const record = remoteOnboarding(new Date().toISOString());
+    for (const [id, status] of Object.entries(record.statuses)) {
+      if (status === "skipped") this.skipped.add(id as OnboardingStepId);
+    }
+    const next = this.patch({ step: "finish", completedAt: record.completedAt });
+    await updateConfig(mainContext().configFile, (data) => ({ ...data, [ONBOARDING_KEY]: record }));
     return next;
   }
 

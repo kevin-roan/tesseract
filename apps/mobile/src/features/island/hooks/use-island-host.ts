@@ -7,7 +7,7 @@ import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navig
 import { useSettingsStore } from "@/features/settings/store/settings-store";
 
 import { useIslandStore } from "../store/island-store";
-import { capsuleTitle, islandPanelHeight, otherChats } from "../utils/format";
+import { capsuleTitle, focusedItem, islandItems, islandPanelHeight } from "../utils/format";
 import { hasLiveWork, isBuildCommand } from "../utils/state";
 import { useIslandActions } from "./use-island-actions";
 import { useIslandDispatch } from "./use-island-dispatch";
@@ -33,6 +33,8 @@ export function useIslandHost() {
   const stopProcess = useStopProcess();
 
   const expanded = useIslandStore((store) => store.expanded);
+  const focusedId = useIslandStore((store) => store.focusedId);
+  const focus = useIslandStore((store) => store.setFocusedId);
   const toggleExpanded = useIslandStore((store) => store.toggleExpanded);
   const setExpanded = useIslandStore((store) => store.setExpanded);
   const openCapture = useIslandStore((store) => store.openCapture);
@@ -43,8 +45,10 @@ export function useIslandHost() {
 
   const live = hasLiveWork(state);
   const visible = (live && placement !== "hidden") || sharedCount > 0 || hasDraft;
-  const runId = state.runs[0]?.id ?? null;
-  const commandId = runId ? null : (state.commands[0]?.id ?? null);
+  const items = useMemo(() => islandItems(state), [state]);
+  const focused = focusedItem(items, focusedId);
+  const runId = focused?.kind === "run" ? focused.id : null;
+  const commandId = focused?.kind === "command" ? focused.id : null;
 
   const collapse = useCallback(() => setExpanded(false), [setExpanded]);
   /** Opening the chat already on screen only folds the island, rather than stacking a second copy of it. */
@@ -62,7 +66,7 @@ export function useIslandHost() {
       nav.newAgentRun();
     }
   }, [runId, openRun, nav, setExpanded]);
-  const panelHeight = islandPanelHeight(otherChats(state.runs).length);
+  const panelHeight = islandPanelHeight(items.length);
   const capture = useCallback(() => openCapture(), [openCapture]);
 
   const { mutate: cancelRunMutate } = cancelRun;
@@ -84,6 +88,9 @@ export function useIslandHost() {
 
   return {
     state,
+    items,
+    focused,
+    focus,
     visible: visible && !captureOpen && !attachOpen,
     expanded,
     title,
@@ -95,7 +102,6 @@ export function useIslandHost() {
     toggle: toggleExpanded,
     collapse,
     openChat,
-    openRun,
     panelHeight,
     stop,
     capture,

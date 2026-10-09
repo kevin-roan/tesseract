@@ -62,7 +62,7 @@ const ProfileHero = ({
   onPressBack,
   onPressMenu,
 }: ProfileHeroProps) => {
-  const theme = useAppTheme("brand");
+  const theme = useAppTheme("ink");
   const insets = useSafeAreaInsets();
   const size = AvatarSize.xl;
   const styles = useMemo(() => createStyles(theme, insets.top), [theme, insets.top]);
@@ -71,7 +71,7 @@ const ProfileHero = ({
   const statsEntrance = useEntrance(1);
 
   return (
-    <SurfaceToneContext.Provider value="brand">
+    <SurfaceToneContext.Provider value="ink">
       <View style={styles.hero}>
         <View style={styles.overscroll} />
 

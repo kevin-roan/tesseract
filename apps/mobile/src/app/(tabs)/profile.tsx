@@ -20,12 +20,10 @@ import SandboxGate from "@/features/sandbox/components/sandbox-gate";
 import SandboxNotices from "@/features/sandbox/components/sandbox-notices";
 import { useProfileScreen } from "@/features/sandbox/hooks/use-profile-screen";
 import { useEntrance } from "@/hooks/use-entrance";
-import { useStatusBarStyle } from "@/hooks/use-status-bar-style";
 
 export default function ProfileScreen() {
   const screen = useProfileScreen();
   const hostEntry = useHostEntry();
-  useStatusBarStyle("light");
   const configureEntering = useEntrance(0);
   const activityEntering = useEntrance(1);
 

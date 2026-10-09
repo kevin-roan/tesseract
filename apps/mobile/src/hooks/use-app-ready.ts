@@ -20,6 +20,7 @@ import { Poppins_400Regular } from "@expo-google-fonts/poppins/400Regular";
 import { Poppins_500Medium } from "@expo-google-fonts/poppins/500Medium";
 import { Poppins_600SemiBold } from "@expo-google-fonts/poppins/600SemiBold";
 import { Poppins_700Bold } from "@expo-google-fonts/poppins/700Bold";
+import { Saira_300Light } from "@expo-google-fonts/saira/300Light";
 
 import { usePairingState } from "@/features/sandbox/hooks/use-pairing-state";
 
@@ -44,6 +45,7 @@ export function useAppReady() {
     Poppins_500Medium,
     Poppins_600SemiBold,
     Poppins_700Bold,
+    Saira_300Light,
   });
   const { hydrated, paired } = usePairingState();
   // A font failure is not worth a permanent splash — show the UI regardless.

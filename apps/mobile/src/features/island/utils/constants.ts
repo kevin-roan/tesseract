@@ -21,9 +21,8 @@ export const ISLAND_CAPSULE_HEIGHT = 40;
 export const ISLAND_CAPSULE_GLYPH_SIZE = 18;
 /** Expanded island: a fixed panel sized so everything fits without scrolling. */
 export const ISLAND_PANEL_HEIGHT = 220;
-/** Other running chats listed under the headline, and the height each row adds to the panel. */
-export const ISLAND_CHAT_ROWS_MAX = 3;
-export const ISLAND_CHAT_ROW_HEIGHT = 44;
+/** Height the page dots add to the panel when more than one task can be swiped through. */
+export const ISLAND_PAGER_DOTS_HEIGHT = 18;
 export const ISLAND_PANEL_MAX_WIDTH = 420;
 export const ISLAND_PANEL_RADIUS = 40;
 export const ISLAND_PANEL_GLYPH_SIZE = 44;

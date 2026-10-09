@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { ActionButton } from "../../components/ActionButton";
 import { Icon } from "../../components/Icon";
 import { PreferenceRow, SettingsGroup } from "../../components/PreferenceRows";
 import { OnboardingFooter } from "../shared/OnboardingFooter";
 import { StepHero } from "../shared/StepHero";
 import { CheckRow, useOnboardingNavigation, useOnboardingStateQuery, useStatusOverrides } from "../shell";
+import { ConnectRemoteDialog } from "./ConnectRemoteDialog";
 import { WHAT_HAPPENS_ROWS } from "./constants";
 import { WELCOME_LABELS } from "./labels";
 import { requirementChecks } from "./model";
@@ -13,6 +15,7 @@ export default function WelcomeStep() {
   const query = useOnboardingStateQuery();
   const setStatus = useStatusOverrides((store) => store.set);
   const checks = requirementChecks(query.data?.host ?? null, query.isError);
+  const [remoteOpen, setRemoteOpen] = useState(false);
   const start = () => {
     setStatus("welcome", "done");
     navigation.next();
@@ -36,8 +39,10 @@ export default function WelcomeStep() {
         ))}
       </SettingsGroup>
       <OnboardingFooter
+        start={<ActionButton variant="flat" size="dialog" icon="sandbox" label={WELCOME_LABELS.connectExisting} onClick={() => setRemoteOpen(true)} />}
         end={<ActionButton variant="primary" size="dialog" label={WELCOME_LABELS.getStarted} onClick={start} />}
       />
+      <ConnectRemoteDialog open={remoteOpen} onClose={() => setRemoteOpen(false)} />
     </>
   );
 }

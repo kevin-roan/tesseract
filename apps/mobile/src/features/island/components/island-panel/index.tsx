@@ -4,19 +4,17 @@ import Animated, { type AnimatedStyle } from "react-native-reanimated";
 import { CaretUpIcon, ChatCircleIcon, CropIcon, PaperclipIcon, StopIcon } from "phosphor-react-native";
 
 import DotShape from "@/components/dot-shape";
-import PressableScale from "@/components/pressable-scale";
 import { useAppTheme } from "@/hooks/use-app-theme";
-import { useHapticPress } from "@/hooks/use-haptic-press";
 import { useLayoutMotion } from "@/hooks/use-layout-motion";
 import { MaxFontSizeMultiplier } from "@/theme";
 
 import type { IslandState } from "@/modules/tesseract-island";
 
 import { useIslandSummary } from "../../hooks/use-island-summary";
-import { useNow } from "../../hooks/use-now";
 import { HEADLINE_MIN_FONT_SCALE, ISLAND_PANEL_GLYPH_SIZE } from "../../utils/constants";
-import { clockLabel, otherChats, tokensTodayLabel } from "../../utils/format";
+import { tokensTodayLabel, type IslandItem } from "../../utils/format";
 import IslandButton from "../island-button";
+import IslandPager from "../island-pager";
 import createStyles from "./styles";
 
 export type IslandPanelProps = {
@@ -26,9 +24,11 @@ export type IslandPanelProps = {
   stopping: boolean;
   width: number;
   height: number;
+  /** Live tasks to swipe through, and the one the buttons act on. */
+  items: IslandItem[];
+  focused: IslandItem | null;
+  onFocus: (id: string) => void;
   onOpen: () => void;
-  /** Opens one of the other running chats listed under the headline. */
-  onOpenRun: (runId: string) => void;
   onStop: () => void;
   onCapture: () => void;
   onAttach: () => void;
@@ -37,7 +37,7 @@ export type IslandPanelProps = {
   testID?: string;
 };
 
-/** Expanded island: sandbox and usage on top, one big live figure, and a single row of controls. Fits without scrolling. */
+/** Expanded island: sandbox and usage on top, the live tasks to swipe through, and a single row of controls acting on the one shown. */
 const IslandPanel = ({
   state,
   sharedCount,
@@ -45,8 +45,10 @@ const IslandPanel = ({
   stopping,
   width,
   height,
+  items,
+  focused,
+  onFocus,
   onOpen,
-  onOpenRun,
   onStop,
   onCapture,
   onAttach,
@@ -58,11 +60,7 @@ const IslandPanel = ({
   const styles = useMemo(() => createStyles(theme), [theme]);
   const motion = useLayoutMotion();
   const summary = useIslandSummary(state, sharedCount, hasDraft);
-  const openRun = useHapticPress(state.runs.length > 0 ? onOpen : undefined);
   const today = tokensTodayLabel(state.usage.todayTokens);
-  const chats = otherChats(state.runs);
-  const more = summary.more - chats.length;
-  const now = useNow(chats.length > 0);
 
   return (
     <Animated.View exiting={motion.fadeOut} style={[styles.panel, { width, height }, style]} testID={testID}>
@@ -80,72 +78,35 @@ const IslandPanel = ({
         </Text>
       </View>
 
-      <PressableScale
-        depth="card"
-        accessibilityRole={openRun ? "button" : undefined}
-        accessibilityLabel={summary.caption}
-        accessibilityValue={{ text: summary.headline }}
-        accessibilityHint={openRun ? "Opens the chat" : undefined}
-        disabled={!openRun}
-        onPress={openRun}
-        style={styles.middle}
-      >
-        <DotShape
-          size={ISLAND_PANEL_GLYPH_SIZE}
-          color={summary.live ? theme.colors.text : theme.colors.textTertiary}
-          dots={24}
-          dotSize={2.5}
-          scatter={0.4}
-          animate={summary.live}
-          period={2000}
-        />
-        <View style={styles.stat}>
-          <Text
-            style={styles.headline}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            minimumFontScale={HEADLINE_MIN_FONT_SCALE}
-            maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
-          >
-            {summary.headline}
-          </Text>
-          <View style={styles.captionRow}>
+      {items.length > 0 ? (
+        <IslandPager items={items} focusedId={focused?.id ?? null} width={width} onFocus={onFocus} onOpen={onOpen} />
+      ) : (
+        <View style={styles.middle} accessible accessibilityLabel={summary.caption} accessibilityValue={{ text: summary.headline }}>
+          <DotShape
+            size={ISLAND_PANEL_GLYPH_SIZE}
+            color={theme.colors.textTertiary}
+            dots={24}
+            dotSize={2.5}
+            scatter={0.4}
+            animate={false}
+            period={2000}
+          />
+          <View style={styles.stat}>
+            <Text
+              style={styles.headline}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={HEADLINE_MIN_FONT_SCALE}
+              maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
+            >
+              {summary.headline}
+            </Text>
             <Text style={styles.caption} numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
               {summary.caption}
             </Text>
-            {more > 0 ? (
-              <Text style={styles.more} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
-                +{more}
-              </Text>
-            ) : null}
           </View>
         </View>
-      </PressableScale>
-
-      {chats.length > 0 ? (
-        <View style={styles.chats}>
-          {chats.map((chat) => (
-            <PressableScale
-              key={chat.id}
-              depth="control"
-              accessibilityRole="button"
-              accessibilityLabel={chat.title}
-              accessibilityHint="Opens this chat"
-              onPress={() => onOpenRun(chat.id)}
-              style={styles.chat}
-              testID={`island-chat-${chat.id}`}
-            >
-              <View style={styles.chatDot} />
-              <Text style={styles.chatTitle} numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
-                {chat.title}
-              </Text>
-              <Text style={styles.chatMeta} numberOfLines={1} maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}>
-                {chat.project ? `${chat.project} · ${clockLabel(chat.startedAt, now)}` : clockLabel(chat.startedAt, now)}
-              </Text>
-            </PressableScale>
-          ))}
-        </View>
-      ) : null}
+      )}
 
       <View style={styles.actions}>
         <IslandButton icon={CropIcon} label="Capture" onPress={onCapture} />
@@ -158,8 +119,8 @@ const IslandPanel = ({
           />
         ) : null}
         <IslandButton icon={ChatCircleIcon} label="Open chat" variant="primary" onPress={onOpen} />
-        {summary.primary ? (
-          <IslandButton icon={StopIcon} label={`Stop ${summary.primary}`} loading={stopping} onPress={onStop} />
+        {focused ? (
+          <IslandButton icon={StopIcon} label={`Stop ${focused.title}`} loading={stopping} onPress={onStop} />
         ) : (
           <IslandButton icon={CaretUpIcon} label="Collapse" onPress={onCollapse} />
         )}

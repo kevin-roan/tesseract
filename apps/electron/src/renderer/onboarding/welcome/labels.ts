@@ -5,6 +5,7 @@ export const WELCOME_LABELS = {
   description:
     "Tesseract runs Claude Code and your builds in a sandbox on this computer and lets you follow them from your phone. This setup installs what it needs and takes about an hour, mostly for the first image build.",
   getStarted: ONBOARDING_LABELS.buttons.getStarted,
+  connectExisting: "Connect to an existing Tesseract",
   whatHappens: "What happens",
   requirements: "Requirements",
   rows: {
@@ -31,4 +32,21 @@ export const WELCOME_LABELS = {
     processorValue: (cpus: number, arch: string) => `${cpus} cores · ${arch}`,
     processorNoEmulator: "The Android emulator isn't available for this processor",
   },
+} as const;
+
+export const REMOTE_LABELS = {
+  title: "Connect to an existing Tesseract",
+  context: "Sandbox",
+  subtitle:
+    "Use a Tesseract sandbox that runs on another computer, without Docker on this one. Run tesseract server pair on that computer and paste the tesseract:// link, or enter its URL and token.",
+  address: "Pairing link or URL",
+  addressPlaceholder: "tesseract://pair?… or https://tesseract.your-tailnet.ts.net",
+  token: "Token",
+  tokenHint: "Not needed with a pairing link",
+  connect: "Connect",
+  cancel: "Cancel",
+  addressMissing: "Paste a pairing link or enter a URL",
+  invalidUrl: "Enter a link that starts with tesseract://, http:// or https://",
+  invalidLink: (error: string) => `That pairing link doesn't work: ${error}`,
+  tokenMissing: "Enter the API token, or paste the pairing link instead",
 } as const;

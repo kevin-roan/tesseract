@@ -33,6 +33,8 @@ struct IslandAttributes: ActivityAttributes {
     let commands: [IslandCommand]
     let usage: IslandUsage
     let updatedAt: String
+    /// Task the activity was switched to; the app fills it from the app group, so pushes may leave it out.
+    var focusId: String?
 
     var runningRuns: [IslandRun] {
       runs.filter { $0.state == "running" }
@@ -46,7 +48,9 @@ struct IslandAttributes: ActivityAttributes {
 enum IslandContract {
   static let appGroup = "group.com.kevinroan.tesseract"
   static let actionsKey = "island.actions"
+  static let focusKey = "island.focus"
   static let actionNotification = "com.kevinroan.tesseract.island.action"
+  static let focusNotification = "com.kevinroan.tesseract.island.focus"
   static let sharedNotification = "com.kevinroan.tesseract.island.shared"
   static let inboxDirectory = "shared-inbox"
   static let manifestFile = "manifest.json"
@@ -67,6 +71,15 @@ enum IslandContract {
       nil,
       true
     )
+  }
+
+  static var focusId: String? {
+    UserDefaults(suiteName: appGroup)?.string(forKey: focusKey)
+  }
+
+  static func setFocus(_ id: String) {
+    UserDefaults(suiteName: appGroup)?.set(id, forKey: focusKey)
+    postDarwinNotification(focusNotification)
   }
 
   static func appendAction(_ action: String, runId: String? = nil) {

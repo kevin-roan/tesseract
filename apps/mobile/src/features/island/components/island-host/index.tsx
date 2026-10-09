@@ -56,8 +56,10 @@ const IslandHost = () => {
                   stopping={island.stopping}
                   width={morph.panelWidth}
                   height={morph.panelHeight}
+                  items={island.items}
+                  focused={island.focused}
+                  onFocus={island.focus}
                   onOpen={island.openChat}
-                  onOpenRun={island.openRun}
                   onStop={island.stop}
                   onCapture={island.capture}
                   onAttach={island.attachShared}

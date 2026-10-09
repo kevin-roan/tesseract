@@ -3,7 +3,7 @@ import { formatTokens } from "@/features/home/utils/tokens";
 
 import type { IslandState } from "@/modules/tesseract-island";
 
-import { ISLAND_CHAT_ROW_HEIGHT, ISLAND_CHAT_ROWS_MAX, ISLAND_PANEL_HEIGHT } from "./constants";
+import { ISLAND_PAGER_DOTS_HEIGHT, ISLAND_PANEL_HEIGHT } from "./constants";
 import { liveCount } from "./state";
 
 export type IslandSummary = {
@@ -31,13 +31,39 @@ export function clockLabel(startedAt: string, now: number): string {
   return hours > 0 ? `${hours}:${pad(minutes)}:${pad(rest)}` : `${pad(minutes)}:${pad(rest)}`;
 }
 
-/** Running chats besides the one the headline shows, as many as the panel lists. */
-export function otherChats(runs: IslandState["runs"]): IslandState["runs"] {
-  return runs.slice(1, 1 + ISLAND_CHAT_ROWS_MAX);
+/** One live task the panel can be swiped to: runs first, newest first, then commands. */
+export type IslandItem = {
+  id: string;
+  kind: "run" | "command";
+  title: string;
+  caption: string;
+  startedAt: string | null;
+};
+
+export function islandItems(state: Pick<IslandState, "runs" | "commands">): IslandItem[] {
+  return [
+    ...state.runs.map((run) => ({ id: run.id, kind: "run" as const, title: run.title, caption: run.title, startedAt: run.startedAt })),
+    ...state.commands.map((command) => ({
+      id: command.id,
+      kind: "command" as const,
+      title: command.label,
+      caption: command.project ?? "Running",
+      startedAt: null,
+    })),
+  ];
 }
 
-export function islandPanelHeight(chatRows: number): number {
-  return ISLAND_PANEL_HEIGHT + chatRows * ISLAND_CHAT_ROW_HEIGHT;
+/** The task the panel's buttons act on: the one swiped to, or the newest when that one is gone. */
+export function focusedItem(items: IslandItem[], focusedId: string | null): IslandItem | null {
+  return items.find((item) => item.id === focusedId) ?? items[0] ?? null;
+}
+
+export function itemHeadline(item: IslandItem, now: number): string {
+  return item.startedAt ? clockLabel(item.startedAt, now) : item.title;
+}
+
+export function islandPanelHeight(pages: number): number {
+  return ISLAND_PANEL_HEIGHT + (pages > 1 ? ISLAND_PAGER_DOTS_HEIGHT : 0);
 }
 
 export function tokensTodayLabel(tokens: number): string {

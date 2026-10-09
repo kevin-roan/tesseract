@@ -7,6 +7,7 @@ export const DISCOVERY = {
   dockerTimeoutMs: 15_000,
   healthTimeoutMs: 2_000,
   startupTimeoutMs: 2_500,
+  remoteTimeoutMs: 8_000,
   protocolVersion: 1,
 } as const;
 

@@ -74,7 +74,7 @@ describe("<IslandHost />", () => {
     expect(screen.getByText("Test box")).toBeOnTheScreen();
     expect(screen.getByText("68.4k today")).toBeOnTheScreen();
     expect(screen.getByText("Build the Windows installer")).toBeOnTheScreen();
-    expect(screen.getByText("+1")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Task 1 of 2")).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByLabelText("Build the Windows installer"));
     expect(mockNav.agentRun).toHaveBeenCalledWith(sampleAgentRun.id);
@@ -116,7 +116,7 @@ describe("<IslandHost />", () => {
     expect(useIslandStore.getState().expanded).toBe(false);
   });
 
-  it("lists the other running chats and opens the one tapped", async () => {
+  it("swipes between running chats and opens and stops the one shown", async () => {
     const second = { ...sampleAgentRun, id: "run_second", prompt: "Fix the login screen", startedAt: "2026-01-01T00:00:00.000Z" };
     fake.listAgentRuns.mockResolvedValue([sampleAgentRun, second]);
     fake.listProcesses.mockResolvedValue([]);
@@ -124,8 +124,17 @@ describe("<IslandHost />", () => {
     await fireEvent.press(await screen.findByTestId("island-capsule"));
 
     expect(screen.getByText("Fix the login screen")).toBeOnTheScreen();
-    expect(screen.queryByText("+1")).toBeNull();
-    await fireEvent.press(screen.getByTestId("island-chat-run_second"));
+    expect(screen.getByLabelText("Task 1 of 2")).toBeOnTheScreen();
+    await fireEvent(screen.getByTestId("island-pager"), "momentumScrollEnd", {
+      nativeEvent: { contentOffset: { x: 300, y: 0 }, layoutMeasurement: { width: 300, height: 100 } },
+    });
+    expect(useIslandStore.getState().focusedId).toBe("run_second");
+    expect(screen.getByLabelText("Task 2 of 2")).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByLabelText("Stop Fix the login screen"));
+    expect(fake.cancelAgentRun).toHaveBeenCalledWith("run_second");
+
+    await fireEvent.press(screen.getByLabelText("Open chat"));
     expect(mockNav.agentRun).toHaveBeenCalledWith("run_second");
     expect(useIslandStore.getState().expanded).toBe(false);
   });

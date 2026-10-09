@@ -1214,7 +1214,10 @@ Opens instead of the main window until `onboarding.completedAt` is set, unless a
 configured (file or env). Before opening it, the app runs Docker discovery ([onboarding spec](../electron/spec/onboarding.md) §3.4, 2.5 s
 timeout; off with `TESSERACT_DISABLE_DISCOVERY=1`): a sandbox whose controller answers `/v1/health` is saved as the
 connection and onboarding is marked complete (`docker`/`sandbox`/`build` done, the rest skipped), so the main
-window opens instead. Steps: `welcome` → `docker` → `claude` → `sandbox` (with its build phase; the id
+window opens instead. `welcome` also offers **Connect to an existing Tesseract**: a pairing link or URL + token
+for a sandbox on another computer, checked with `/v1/health` and an authenticated `/v1/status`, then saved; onboarding is
+marked complete (everything but `welcome` skipped) and `sandboxAutostart` turned off, so no Docker is needed
+([onboarding spec](../electron/spec/onboarding.md) §4.1). Steps: `welcome` → `docker` → `claude` → `sandbox` (with its build phase; the id
 `build` is an alias) → `android` (optional) → `pair` (optional) → `finish`.
 
 | Step | Does |
@@ -1270,7 +1273,7 @@ GTK app and the CLI can read it.
 
 | OS | Installer | `tesseract` on PATH |
 |---|---|---|
-| macOS | universal `dmg` + `zip` (hardened runtime; notarized when the `APPLE_*` variables are set) | Settings › About "Install tesseract command": admin prompt, symlink `/usr/local/bin/tesseract` (only from `/Applications`) |
+| macOS | universal `dmg` + `zip` (hardened runtime; Developer ID signed when `CSC_LINK`/`CSC_NAME` is set, ad-hoc signed otherwise; notarized when the `APPLE_*` variables are set) | Settings › About "Install tesseract command": admin prompt, symlink `/usr/local/bin/tesseract` (only from `/Applications`) |
 | Windows | per-user one-click NSIS `exe` (x64) | the installer adds `$INSTDIR\resources\bin` to the user `Path` and removes it on uninstall |
 | Linux | `AppImage` and `deb` (x64) | deb: app in `/opt/Tesseract`, postinst links `/usr/bin/tesseract` (only when free or already ours); AppImage: Settings › About copies it to `~/.local/share/tesseract/bin/tesseract` and links `~/.local/bin/tesseract`; on install and every AppImage launch the app writes `~/.local/share/tesseract/app.json` `{appPath, sandboxDir}` and syncs the bundled context to `~/.local/share/tesseract/sandbox` (marker `.bundle-hash`) |
 | Headless server (macOS/Linux, no app, §7.2) | `./setup-server.sh` on the server (repo checkout), or `infra/scripts/deploy-mac` from the dev box | `~/.tesseract/bin/{tesseract,tesseract-controller}` (add `~/.tesseract/bin` to `PATH`); sandbox context in `~/.tesseract/sandbox` (found next to `bin/`; `TESSERACT_SANDBOX_CONTEXT` overrides) |

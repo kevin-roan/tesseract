@@ -16,3 +16,6 @@ export const WHAT_HAPPENS_ROWS: readonly { id: "docker" | "claude" | "sandbox" |
   { id: "android", icon: "smartphone" },
   { id: "phone", icon: "pair" },
 ];
+
+export const REMOTE_DIALOG_WIDTH = 480;
+export const REMOTE_FIELDS = { address: "", token: "" } as const;

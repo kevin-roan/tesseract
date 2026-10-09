@@ -30,3 +30,22 @@ struct CaptureIntent: AppIntent {
     return .result()
   }
 }
+
+struct ShowTaskIntent: LiveActivityIntent {
+  static let title: LocalizedStringResource = "Show task"
+  static let description = IntentDescription("Switches the Live Activity to another running task.")
+
+  @Parameter(title: "Task")
+  var taskId: String
+
+  init() {}
+
+  init(taskId: String) {
+    self.taskId = taskId
+  }
+
+  func perform() async throws -> some IntentResult {
+    IslandContract.setFocus(taskId)
+    return .result()
+  }
+}

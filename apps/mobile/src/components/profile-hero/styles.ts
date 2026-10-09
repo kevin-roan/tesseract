@@ -4,7 +4,7 @@ import { ControlHeight, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme, topInset: number) {
   const nav = ControlHeight.md;
-  const brand = theme.surfaces.brand.fill.outer;
+  const fill = theme.surfaces.ink.fill.outer;
 
   return StyleSheet.create({
     /** Bleeds past the scaffold gutter and under the status bar; the bottom padding leaves room for the sheet corner. */
@@ -14,16 +14,16 @@ export default function createStyles(theme: Theme, topInset: number) {
       paddingHorizontal: theme.gutter,
       paddingTop: topInset + theme.spacing.sm,
       paddingBottom: theme.radius["2xl"] + theme.spacing.base,
-      backgroundColor: brand,
+      backgroundColor: fill,
     },
-    /** Keeps the brand color behind the pull-to-refresh bounce. */
+    /** Keeps the hero fill behind the pull-to-refresh bounce. */
     overscroll: {
       position: "absolute",
       left: 0,
       right: 0,
       bottom: "100%",
       height: theme.height,
-      backgroundColor: brand,
+      backgroundColor: fill,
     },
 
     navRow: {

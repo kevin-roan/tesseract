@@ -58,25 +58,40 @@ extension IslandAttributes.ContentState {
     !liveItems.isEmpty
   }
 
+  /// Index of the task the previous / next buttons switched to, falling back to the newest one.
+  var focusIndex: Int {
+    let items = liveItems
+    guard let id = focusId ?? IslandContract.focusId,
+          let index = items.firstIndex(where: { $0.id == id }) else { return 0 }
+    return index
+  }
+
+  var focused: IslandLiveItem? {
+    let items = liveItems
+    return items.isEmpty ? nil : items[focusIndex]
+  }
+
+  func neighbor(_ step: Int) -> IslandLiveItem? {
+    let items = liveItems
+    guard items.count > 1 else { return nil }
+    return items[(focusIndex + step + items.count) % items.count]
+  }
+
   var timerStart: Date? {
-    guard let startedAt = liveItems.first(where: { $0.startedAt != nil })?.startedAt else { return nil }
+    guard let startedAt = focused?.startedAt else { return nil }
     return IslandFormat.date(startedAt)
   }
 
   var caption: String {
-    let items = liveItems
-    if items.count > 1 {
-      return "\(items.count) tasks"
-    }
-    if let item = items.first {
+    if let item = focused {
       return item.title
     }
     return usage.runsToday == 1 ? "1 run today" : "\(usage.runsToday) runs today"
   }
 
   var openURL: URL {
-    if let run = runningRuns.first {
-      return IslandLinks.run(run.id)
+    if let item = focused, runningRuns.contains(where: { $0.id == item.id }) {
+      return IslandLinks.run(item.id)
     }
     return IslandLinks.open
   }
@@ -158,7 +173,11 @@ struct IslandHero: View {
           .lineLimit(1)
       }
       .frame(maxWidth: .infinity, alignment: .leading)
-      IslandPulse(active: state.isLive)
+      if let previous = state.neighbor(-1), let next = state.neighbor(1) {
+        IslandPager(previous: previous.id, next: next.id, index: state.focusIndex, count: state.liveItems.count)
+      } else {
+        IslandPulse(active: state.isLive)
+      }
     }
   }
 
@@ -174,6 +193,43 @@ struct IslandHero: View {
         .contentTransition(.interpolate)
         .transition(.push(from: .top))
     }
+  }
+}
+
+struct IslandPager: View {
+  let previous: String
+  let next: String
+  let index: Int
+  let count: Int
+
+  var body: some View {
+    HStack(spacing: 6) {
+      IslandStepButton(symbol: "chevron.left", taskId: previous)
+      Text("\(index + 1)/\(count)")
+        .font(IslandFont.semibold(12))
+        .monospacedDigit()
+        .foregroundStyle(IslandTheme.secondary)
+        .contentTransition(.numericText(value: Double(index)))
+        .fixedSize()
+      IslandStepButton(symbol: "chevron.right", taskId: next)
+    }
+  }
+}
+
+struct IslandStepButton: View {
+  let symbol: String
+  let taskId: String
+
+  var body: some View {
+    Button(intent: ShowTaskIntent(taskId: taskId)) {
+      Image(systemName: symbol)
+        .font(.system(size: 12, weight: .bold))
+        .foregroundStyle(IslandTheme.text)
+        .frame(width: 30, height: 30)
+        .background(IslandTheme.button, in: Circle())
+        .overlay(Circle().strokeBorder(IslandTheme.hairline, lineWidth: 0.5))
+    }
+    .buttonStyle(.plain)
   }
 }
 
@@ -235,8 +291,8 @@ struct IslandActions: View {
     HStack(spacing: 10) {
       IslandRoundLink(symbol: "camera.viewfinder", destination: IslandLinks.capture)
       IslandOpenPill(destination: state.openURL)
-      if let run = state.runningRuns.first {
-        IslandStopButton(id: run.id)
+      if let item = state.focused {
+        IslandStopButton(id: item.id)
           .transition(.scale.combined(with: .opacity))
       }
     }

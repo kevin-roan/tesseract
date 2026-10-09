@@ -15,13 +15,20 @@ function run(command: string, args: string[]): void {
   if (result.status !== 0) throw new Error(`${command} ${args.join(" ")} failed (exit ${result.status ?? result.signal})`);
 }
 
+// Mirrors electron-builder's keychain auto-discovery, so a Developer ID there is used instead of ad-hoc signing.
+function keychainHasDeveloperId(env: NodeJS.ProcessEnv): boolean {
+  if (process.platform !== "darwin" || env.CSC_IDENTITY_AUTO_DISCOVERY === "false") return false;
+  const result = spawnSync("/usr/bin/security", ["find-identity", "-v", "-p", "codesigning"], { encoding: "utf8" });
+  return result.status === 0 && result.stdout.includes("Developer ID Application:");
+}
+
 function main(): number {
   const args = parseArgs(process.argv.slice(2), DIST_VALUE_FLAGS);
   if (args.flags.has("help")) {
     console.log(USAGE);
     return 0;
   }
-  const plan = distPlan(args, process.env);
+  const plan = distPlan(args, process.env, undefined, keychainHasDeveloperId(process.env));
   if (plan.build) run("bun", ["run", "build"]);
   if (plan.cli) run(process.execPath, ["scripts/cli-build.ts", "--target", CLI_TARGETS[plan.platform].join(",")]);
   if (plan.sandbox) run(process.execPath, ["scripts/bundle-sandbox.ts"]);

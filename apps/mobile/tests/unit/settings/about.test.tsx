@@ -34,7 +34,6 @@ const idle: UpdateStatus = {
 function state(updates: object = {}) {
   return {
     back: jest.fn(),
-    heroSize: 240,
     appRows: appRows(info),
     updateRows: updateRows(info),
     updates: {
@@ -83,7 +82,7 @@ describe("AboutScreen", () => {
     mockScreen.mockReturnValue(value);
     await render(<AboutScreen />);
 
-    expect(screen.getByTestId("about-monolith", { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByText("Tesseract")).toBeOnTheScreen();
     expect(screen.getByText("1.0.0")).toBeOnTheScreen();
     expect(screen.getByText("production")).toBeOnTheScreen();
     expect(screen.getByText("abc123")).toBeOnTheScreen();

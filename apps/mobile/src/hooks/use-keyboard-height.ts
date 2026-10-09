@@ -29,6 +29,9 @@ export function useKeyboardHeight(enabled = true): number {
       apply(Math.max(Dimensions.get('window').height - event.endCoordinates.screenY, 0), event),
     );
     const hide = Keyboard.addListener('keyboardWillHide', (event) => apply(0, event));
+    // An autofocused field can raise the keyboard before these listeners exist (a sheet opening), so start from its current frame.
+    const shown = Keyboard.metrics();
+    if (shown) setHeight(Math.max(Dimensions.get('window').height - shown.screenY, 0));
 
     return () => {
       change.remove();

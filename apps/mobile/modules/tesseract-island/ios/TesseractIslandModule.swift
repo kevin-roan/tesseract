@@ -177,6 +177,16 @@ public class TesseractIslandModule: Module {
     }
   }
 
+  /// Re-renders the activity on the task picked with its previous / next buttons.
+  private func refreshFocus() {
+    guard let activity else { return }
+    var state = activity.content.state
+    state.focusId = IslandContract.focusId
+    Task {
+      await activity.update(ActivityContent(state: state, staleDate: nil))
+    }
+  }
+
   private func flushActions() {
     guard hasActionListeners else { return }
     for item in IslandContract.drainActions() {
@@ -192,7 +202,7 @@ public class TesseractIslandModule: Module {
       let module = Unmanaged<TesseractIslandModule>.fromOpaque(observer).takeUnretainedValue()
       module.handleDarwinNotification(name.rawValue as String)
     }
-    for name in [IslandContract.actionNotification, IslandContract.sharedNotification] {
+    for name in [IslandContract.actionNotification, IslandContract.sharedNotification, IslandContract.focusNotification] {
       CFNotificationCenterAddObserver(center, observer, callback, name as CFString, nil, .deliverImmediately)
     }
   }
@@ -210,6 +220,8 @@ public class TesseractIslandModule: Module {
         self.flushActions()
       case IslandContract.sharedNotification:
         self.sendEvent("onSharedItems", ["count": IslandInbox.count()])
+      case IslandContract.focusNotification:
+        self.refreshFocus()
       default:
         break
       }
@@ -237,7 +249,9 @@ enum IslandCoding {
     }
     let data = try JSONSerialization.data(withJSONObject: state)
     do {
-      return try JSONDecoder().decode(IslandAttributes.ContentState.self, from: data)
+      var content = try JSONDecoder().decode(IslandAttributes.ContentState.self, from: data)
+      content.focusId = IslandContract.focusId
+      return content
     } catch {
       throw IslandException("Invalid island state: \(error.localizedDescription)")
     }

@@ -1,0 +1,165 @@
+#!/usr/bin/env bash
+# Points the sandbox at the tailnet its tailscale sidecar is actually on, then re-pairs.
+# Fixes pairing links with a stale TS_TAILNET_DOMAIN (the phone never reaches the sandbox).
+# Run on the machine that runs the sandbox stack: infra/scripts/fix-tailnet [--dry-run]
+set -euo pipefail
+
+readonly HEALTH_PATH=/v1/health
+DRY_RUN=0
+
+usage() {
+  cat << 'EOF'
+Usage: fix-tailnet [--dry-run]
+
+1. reads the tailnet name and IP from the tailscale sidecar
+2. sets TS_TAILNET_DOMAIN in the sandbox env file to match (keeps a .bak copy)
+3. recreates the stack so the sandbox advertises the right URL
+4. checks /v1/health over the tailnet and this computer's DNS
+5. prints a fresh pairing link and QR code (tesseract pair)
+
+  --dry-run   show what would change, change nothing
+EOF
+}
+
+die() {
+  printf 'fix-tailnet: %s\n' "$*" >&2
+  exit 1
+}
+
+step() { printf '\n==> %s\n' "$*"; }
+info() { printf '    %s\n' "$*"; }
+warn() { printf '    warning: %s\n' "$*" >&2; }
+
+for arg in "$@"; do
+  case "${arg}" in
+    --dry-run) DRY_RUN=1 ;;
+    -h | --help) usage; exit 0 ;;
+    *) die "unknown option: ${arg}" ;;
+  esac
+done
+
+command -v docker > /dev/null || die "docker is not on PATH"
+
+label() { docker inspect -f "{{ index .Config.Labels \"$2\" }}" "$1" 2> /dev/null || true; }
+
+step "Finding the sandbox containers"
+TS_CONTAINER="$(docker ps --filter label=com.docker.compose.service=tailscale --format '{{.Names}}' | head -n1)"
+[[ -n "${TS_CONTAINER}" ]] || die "no running tailscale sidecar; start the sandbox first (tesseract sandbox up)"
+PROJECT="$(label "${TS_CONTAINER}" com.docker.compose.project)"
+SANDBOX_CONTAINER="$(docker ps --filter "label=com.docker.compose.project=${PROJECT}" --filter label=com.docker.compose.service=sandbox --format '{{.Names}}' | head -n1)"
+info "tailscale: ${TS_CONTAINER}"
+info "sandbox:   ${SANDBOX_CONTAINER:-not running}"
+
+step "Reading the tailnet from the sidecar"
+STATUS_JSON="$(docker exec "${TS_CONTAINER}" tailscale status --json)"
+# CertDomains is [ "host.tailXXXX.ts.net" ]; empty when HTTPS certificates are off for the tailnet.
+CERT_DOMAIN="$(printf '%s\n' "${STATUS_JSON}" | grep -A1 '"CertDomains"' | tail -n1 | tr -d ' ",[]' || true)"
+TS_IP="$(docker exec "${TS_CONTAINER}" tailscale ip -4 | head -n1)"
+[[ "${CERT_DOMAIN}" == *.ts.net ]] \
+  || die "the node has no HTTPS certificate domain; enable HTTPS Certificates (and MagicDNS) under DNS in the Tailscale admin console, then rerun"
+TAILNET_DOMAIN="${CERT_DOMAIN#*.}"
+PUBLIC_URL="https://${CERT_DOMAIN}"
+info "node:    ${CERT_DOMAIN} (${TS_IP})"
+info "tailnet: ${TAILNET_DOMAIN}"
+
+step "Finding the sandbox env file"
+ENV_FILE=""
+if command -v tesseract > /dev/null; then
+  CONFIG_FILE="$(tesseract config path 2> /dev/null || true)"
+  if [[ -f "${CONFIG_FILE}" ]]; then
+    ENV_FILE="$(grep -o '"envFile"[[:space:]]*:[[:space:]]*"[^"]*"' "${CONFIG_FILE}" | head -n1 | sed 's/.*"\([^"]*\)"$/\1/' || true)"
+  fi
+fi
+if [[ ! -f "${ENV_FILE}" ]]; then
+  ENV_FILE="$(label "${TS_CONTAINER}" com.docker.compose.project.environment_file | cut -d, -f1)"
+fi
+[[ -f "${ENV_FILE}" ]] || die "could not find the sandbox env file (looked in the tesseract config and the compose labels)"
+info "${ENV_FILE}"
+
+CURRENT_DOMAIN="$(grep -E '^TS_TAILNET_DOMAIN=' "${ENV_FILE}" | tail -n1 | cut -d= -f2- | tr -d '"'"'" || true)"
+CURRENT_URL=""
+[[ -n "${SANDBOX_CONTAINER}" ]] && CURRENT_URL="$(docker exec "${SANDBOX_CONTAINER}" printenv TESSERACT_PUBLIC_URL 2> /dev/null || true)"
+info "TS_TAILNET_DOMAIN now:    ${CURRENT_DOMAIN:-<unset>}"
+info "sandbox advertises now:   ${CURRENT_URL:-<unknown>}"
+
+NEEDS_RECREATE=0
+if [[ "${CURRENT_DOMAIN}" != "${TAILNET_DOMAIN}" ]]; then
+  step "Setting TS_TAILNET_DOMAIN=${TAILNET_DOMAIN}"
+  if ((DRY_RUN)); then
+    info "dry run: would update ${ENV_FILE}"
+  else
+    cp -p "${ENV_FILE}" "${ENV_FILE}.bak"
+    tmp="$(mktemp "${ENV_FILE}.XXXXXX")"
+    awk -v value="${TAILNET_DOMAIN}" '
+      /^TS_TAILNET_DOMAIN=/ { if (!done) print "TS_TAILNET_DOMAIN=" value; done = 1; next }
+      { print }
+      END { if (!done) print "TS_TAILNET_DOMAIN=" value }
+    ' "${ENV_FILE}" > "${tmp}"
+    chmod "$(stat -f '%Lp' "${ENV_FILE}" 2> /dev/null || stat -c '%a' "${ENV_FILE}")" "${tmp}"
+    mv "${tmp}" "${ENV_FILE}"
+    info "updated (backup: ${ENV_FILE}.bak)"
+  fi
+  NEEDS_RECREATE=1
+fi
+[[ "${CURRENT_URL}" != "${PUBLIC_URL}" ]] && NEEDS_RECREATE=1
+
+if ((NEEDS_RECREATE)); then
+  step "Recreating the sandbox stack"
+  if ((DRY_RUN)); then
+    info "dry run: would run tesseract sandbox down && tesseract sandbox up"
+  elif command -v tesseract > /dev/null && tesseract sandbox down && tesseract sandbox up; then
+    info "done"
+  else
+    warn "tesseract sandbox up failed; recreating with docker compose and the stack's own compose files"
+    WORKDIR="$(label "${TS_CONTAINER}" com.docker.compose.project.working_dir)"
+    FILES="$(label "${TS_CONTAINER}" com.docker.compose.project.config_files)"
+    [[ -n "${WORKDIR}" && -n "${FILES}" ]] || die "no compose labels on ${TS_CONTAINER}; run tesseract sandbox up by hand"
+    compose=(docker compose -p "${PROJECT}" --project-directory "${WORKDIR}" --env-file "${ENV_FILE}")
+    IFS=, read -r -a files <<< "${FILES}"
+    for file in "${files[@]}"; do compose+=(-f "${file}"); done
+    "${compose[@]}" up -d --force-recreate
+  fi
+else
+  step "The env file and the sandbox already match the tailnet; nothing to recreate"
+fi
+
+if ((DRY_RUN)); then
+  step "Dry run finished"
+  exit 0
+fi
+
+step "Checking ${PUBLIC_URL}${HEALTH_PATH} over the tailnet IP"
+ok=0
+for _ in $(seq 1 30); do
+  if curl -fsS --max-time 5 --resolve "${CERT_DOMAIN}:443:${TS_IP}" "${PUBLIC_URL}${HEALTH_PATH}" > /dev/null 2>&1; then
+    ok=1
+    break
+  fi
+  sleep 2
+done
+if ((ok)); then
+  info "the sandbox answers"
+else
+  warn "no answer from ${TS_IP}; is Tailscale running and connected on this computer? See: tesseract sandbox logs --tail 100"
+fi
+
+step "Checking this computer's DNS for ${CERT_DOMAIN}"
+if [[ "$(uname -s)" == Darwin ]]; then
+  RESOLVED="$(dscacheutil -q host -a name "${CERT_DOMAIN}" | awk '/^ip_address:/ { print $2; exit }')"
+else
+  RESOLVED="$(getent ahostsv4 "${CERT_DOMAIN}" | awk '{ print $1; exit }')"
+fi
+if [[ "${RESOLVED}" == 100.* ]]; then
+  info "resolves to ${RESOLVED} (Tailscale DNS works)"
+else
+  warn "resolves to ${RESOLVED:-nothing}, not a tailnet address: turn on 'Use Tailscale DNS settings' in the Tailscale menu"
+  warn "and MagicDNS in the admin console. Do the same in the Tailscale app on the phone."
+fi
+
+step "Pairing"
+if command -v tesseract > /dev/null; then
+  tesseract pair
+else
+  warn "tesseract is not on PATH; run tesseract pair by hand"
+fi
+info "On the phone: Tailscale on, signed in to ${TAILNET_DOMAIN}; open ${PUBLIC_URL}${HEALTH_PATH} to check, then scan the QR."

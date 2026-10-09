@@ -2,6 +2,7 @@ import type { DefineContract } from "../ipc-types";
 import type { OnboardingStepId } from "../routes";
 import type { AndroidHostSupport, InstallPlan, PackageProgress, SdkCatalog, AccelResult } from "./android";
 import type { HostClaudeState } from "./claude";
+import type { ConnectionInput } from "./connection";
 import type { DockerInstallRequest, DockerPhase, DockerReport } from "./docker";
 import type { BuildMode, BuildPhase, PairingInfo, SetupChoices } from "./sandbox";
 
@@ -83,6 +84,7 @@ export type OnboardingContract = DefineContract<{
     androidCancel(): OnboardingState;
     androidUseExisting(sdkRoot: string, avd: string): OnboardingState;
     pairLoad(): OnboardingState;
+    connectRemote(input: ConnectionInput): OnboardingState;
     finish(sandboxAutostart: boolean): OnboardingState;
     openExternal(key: OnboardingUrlKey): void;
   };

@@ -6,6 +6,8 @@ import type { AttachDraft, CaptureSeed } from "../types";
 
 export type IslandStore = {
   expanded: boolean;
+  /** Live task the expanded panel was swiped to. */
+  focusedId: string | null;
   pendingDraft: AttachDraft | null;
   sharedItems: SharedItem[];
   captureOpen: boolean;
@@ -14,6 +16,7 @@ export type IslandStore = {
   /** Draft being previewed in the attach-target sheet before a destination is picked. */
   stagedDraft: AttachDraft | null;
   setExpanded: (expanded: boolean) => void;
+  setFocusedId: (focusedId: string | null) => void;
   toggleExpanded: () => void;
   openCapture: (seed?: CaptureSeed | null) => void;
   closeCapture: () => void;
@@ -28,6 +31,7 @@ export type IslandStore = {
 
 const initial = {
   expanded: false,
+  focusedId: null,
   pendingDraft: null,
   sharedItems: [],
   captureOpen: false,
@@ -39,6 +43,7 @@ const initial = {
 export const useIslandStore = create<IslandStore>()((set, get) => ({
   ...initial,
   setExpanded: (expanded) => set({ expanded }),
+  setFocusedId: (focusedId) => set({ focusedId }),
   toggleExpanded: () => set((state) => ({ expanded: !state.expanded })),
   openCapture: (seed = null) => set({ captureOpen: true, captureSeed: seed, attachOpen: false, expanded: false }),
   closeCapture: () => set({ captureOpen: false, captureSeed: null }),

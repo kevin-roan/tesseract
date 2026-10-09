@@ -93,6 +93,9 @@ export const PoppinsFaces: Record<string, string> = {
   '800': 'Poppins_700Bold',
 };
 
+/** Saira Light, the face the app name is set in on the splash and wherever the wordmark appears. */
+export const WordmarkFace = 'Saira_300Light';
+
 /**
  * The face set a scheme draws its text in. `classic` pairs Exo 2 headings with
  * Noto Sans copy; `mono` sets every variant, code included, in Geist Mono.
