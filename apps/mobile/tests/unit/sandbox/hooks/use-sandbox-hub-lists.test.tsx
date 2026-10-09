@@ -15,7 +15,6 @@ import { sandboxKeys } from "@/features/sandbox/api/query-keys";
 import { useSandboxHub } from "@/features/sandbox/hooks/use-sandbox-hub";
 import { useConnectionStore } from "@/features/sandbox/store/connection-store";
 import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
-import type { PairedSandbox } from "@/features/sandbox/types";
 import { LIST_PREVIEW_LIMIT } from "@/features/sandbox/utils/constants";
 import { confirm } from "@/lib/confirm";
 
@@ -34,7 +33,6 @@ jest.mock("@/lib/confirm", () => ({ confirm: jest.fn() }));
 
 const MockClient = TesseractClient as unknown as jest.Mock;
 const mockConfirm = confirm as jest.Mock;
-const SECOND: PairedSandbox = { ...TEST_SANDBOX, id: "sbx_second", name: "Second" };
 const fake = {
   status: jest.fn(),
   listProjects: jest.fn(),
@@ -89,7 +87,6 @@ describe("useSandboxHub lists", () => {
     expect(result.current.projects).toEqual([sampleProject]);
     expect(result.current.subtitle).toBe("up 1h · sandbox · v0.1.0");
     expect(result.current.latestActivity).toBeNull();
-    expect(result.current.switcher).toEqual([{ id: TEST_SANDBOX.id, label: TEST_SANDBOX.name }]);
   });
 
   it("opens a process's project with its logs, but not a loose process", async () => {
@@ -207,15 +204,6 @@ describe("useSandboxHub quick actions", () => {
 });
 
 describe("useSandboxHub sandboxes", () => {
-  it("switches between paired sandboxes", async () => {
-    useSandboxStore.setState({ sandboxes: [TEST_SANDBOX, SECOND], tokens: { [TEST_SANDBOX.id]: "a", [SECOND.id]: "b" } });
-    const { result } = await renderHub();
-    expect(result.current.switcher.map((entry) => entry.id)).toEqual([TEST_SANDBOX.id, SECOND.id]);
-
-    await act(async () => result.current.selectSandbox(SECOND.id));
-    expect(result.current.sandbox?.id).toBe(SECOND.id);
-  });
-
   it("refreshes the active sandbox's lists but not its pages or activity", async () => {
     const { result } = await renderHub();
     await waitFor(() => expect(result.current.projects).toHaveLength(1));

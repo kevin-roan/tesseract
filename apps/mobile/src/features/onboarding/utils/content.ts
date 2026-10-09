@@ -3,7 +3,7 @@ import {
   CubeIcon,
   DesktopIcon,
   QrCodeIcon,
-  RobotIcon,
+  SparkleIcon,
   ShieldCheckIcon,
   TerminalWindowIcon,
   type Icon,
@@ -126,7 +126,7 @@ export const ONBOARDING_SLIDES: OnboardingSlide[] = [
   },
   {
     id: "claude",
-    icon: RobotIcon,
+    icon: SparkleIcon,
     eyebrow: "Autonomous",
     title: "Claude does the work",
     message: "Start runs and watch them stream live. Open a terminal or the display whenever you want a closer look.",

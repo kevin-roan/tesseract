@@ -4,6 +4,7 @@ import { FolderSimpleIcon } from "phosphor-react-native";
 import ChipRow from "@/components/chip-row";
 import EmptyState from "@/components/empty-state";
 import LogView from "@/components/log-view";
+import MenuSheet from "@/components/menu-sheet";
 import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
@@ -243,6 +244,7 @@ export default function ProjectScreen() {
         </Section>
       </MotionItem>
 
+      <MenuSheet testID="project-actions-menu" {...detail.actionsMenu} />
       <RenameProjectSheet state={detail.renameSheet} />
       <StorageSheet state={detail.storage} />
     </ScreenScaffold>

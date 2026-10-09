@@ -4,6 +4,7 @@ import { ApiError, HostShellClient } from "@tesseract/client";
 import { useHostUnlock } from "@/features/host-shell/hooks/use-host-unlock";
 import { useHostSessionStore } from "@/features/host-shell/store/host-session-store";
 import { useHostStore } from "@/features/host-shell/store/host-store";
+import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
 
 import { createTestQueryClient, createWrapper } from "../sandbox/helpers";
 
@@ -17,7 +18,8 @@ beforeEach(() => {
   fake.lockStatus.mockReset().mockResolvedValue({ pinSet: true, attemptsLeft: 5, lockedUntil: null });
   fake.unlock.mockReset();
   MockClient.mockReset().mockImplementation(() => fake);
-  useHostStore.setState({ host: HOST, token: `token-${Math.random()}`, hydrated: true });
+  useSandboxStore.setState({ activeId: "sbx_a", hydrated: true });
+  useHostStore.setState({ hosts: { sbx_a: HOST }, tokens: { sbx_a: `token-${Math.random()}` }, hydrated: true });
   useHostSessionStore.getState().clear();
 });
 

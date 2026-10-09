@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { HostAndroidStatus } from "@tesseract/protocol";
 
@@ -28,7 +28,7 @@ import { useHostNavigation } from "./use-host-navigation";
 export function useHostAndroid(enabled: boolean) {
   const nav = useHostNavigation();
   const queryClient = useQueryClient();
-  const { status, key, sessionClient, dropOnLost } = useHostAndroidStatus(enabled);
+  const { status, key, host, sessionClient, dropOnLost } = useHostAndroidStatus(enabled);
   const sandbox = useActiveSandbox();
   const sandboxToken = useSandboxStore(selectActiveToken);
   const [selected, setSelected] = useState<string | null>(null);
@@ -78,6 +78,21 @@ export function useHostAndroid(enabled: boolean) {
     onSuccess: (info) => patch({ link: info }),
     onError: dropOnLost,
   });
+
+  const hostUrl = host?.baseUrl ?? null;
+  const [scope, setScope] = useState(hostUrl);
+  if (scope !== hostUrl) {
+    setScope(hostUrl);
+    setSelected(null);
+    setSelectedDevice(null);
+  }
+  const { reset: resetStart } = start;
+  const { reset: resetStop } = stop;
+  const { reset: resetLink } = link;
+  const { reset: resetUnlink } = unlink;
+  useEffect(() => {
+    for (const reset of [resetStart, resetStop, resetLink, resetUnlink]) reset();
+  }, [hostUrl, resetStart, resetStop, resetLink, resetUnlink]);
 
   const data = status.data;
   const avd = pickAvd(data, selected);

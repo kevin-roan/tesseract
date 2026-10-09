@@ -34,7 +34,9 @@ function reportIslandError(error: unknown): void {
 
 /** Mirrors the derived island state into the Live Activity (iOS) or ongoing notification (Android). */
 export function useLiveActivity(state: IslandState, enabled = true): void {
-  const { client } = useSandboxClient();
+  const { sandbox, client } = useSandboxClient();
+  const sandboxId = sandbox?.id ?? null;
+  const sandboxRef = useRef(sandboxId);
   const signature = stateSignature(state);
   const live = enabled && hasLiveWork(state);
   const stateRef = useRef(state);
@@ -106,6 +108,25 @@ export function useLiveActivity(state: IslandState, enabled = true): void {
       clearTimers();
     };
   }, [signature, live, enabled]);
+
+  /** A new activity gets a new push token, which the listener below hands to the sandbox now active. */
+  useEffect(() => {
+    if (sandboxRef.current === sandboxId) return;
+    sandboxRef.current = sandboxId;
+    if (!isIslandAvailable() || currentActivityId() === null) return;
+    if (updateTimer.current) clearTimeout(updateTimer.current);
+    if (endTimer.current) clearTimeout(endTimer.current);
+    updateTimer.current = null;
+    endTimer.current = null;
+    lastSentAtRef.current = Date.now();
+    if (live) {
+      lastSentRef.current = stateSignature(stateRef.current);
+      startActivity(stateRef.current).catch(reportIslandError);
+    } else {
+      lastSentRef.current = null;
+      endActivity().catch(reportIslandError);
+    }
+  }, [sandboxId, live]);
 
   useEffect(() => {
     if (!client || !isIslandAvailable()) return;

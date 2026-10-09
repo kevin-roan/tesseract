@@ -1,13 +1,18 @@
 import { browserStorage } from "@/features/sandbox/store/browser-storage";
 
-import { HOST_TOKEN_KEY } from "../utils/constants";
+import { LEGACY_HOST_TOKEN_KEY } from "../utils/constants";
+import { hostTokenKey } from "../utils/pairing";
 
 export const hostTokenStorage = {
-  read: async (): Promise<string | null> => browserStorage().getItem(HOST_TOKEN_KEY),
-  write: async (token: string): Promise<void> => {
-    browserStorage().setItem(HOST_TOKEN_KEY, token);
+  read: async (sandboxId: string): Promise<string | null> => browserStorage().getItem(hostTokenKey(sandboxId)),
+  write: async (sandboxId: string, token: string): Promise<void> => {
+    browserStorage().setItem(hostTokenKey(sandboxId), token);
   },
-  remove: async (): Promise<void> => {
-    browserStorage().removeItem(HOST_TOKEN_KEY);
+  remove: async (sandboxId: string): Promise<void> => {
+    browserStorage().removeItem(hostTokenKey(sandboxId));
+  },
+  readLegacy: async (): Promise<string | null> => browserStorage().getItem(LEGACY_HOST_TOKEN_KEY),
+  removeLegacy: async (): Promise<void> => {
+    browserStorage().removeItem(LEGACY_HOST_TOKEN_KEY);
   },
 };

@@ -4,9 +4,17 @@ import { isApiError } from "@tesseract/client";
 import type { ActivityItemProps } from "@/components/activity-item";
 import { useClaudeAccountEntry } from "@/features/claude-account/hooks/use-claude-account-entry";
 
+import { useSandboxStore } from "../store/sandbox-store";
 import type { ActivityRef } from "../types";
 import { describeError } from "../utils/errors";
-import { activityActor, activityFeed, isTailscaleIdentityMissing, profileStats, profileView } from "../utils/profile";
+import {
+  activityActor,
+  activityFeed,
+  isTailscaleIdentityMissing,
+  profileStats,
+  profileView,
+  sandboxChoices,
+} from "../utils/profile";
 import { useSandboxClient } from "./use-sandbox-client";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
 import { useSandboxProblems } from "./use-sandbox-problems";
@@ -25,6 +33,9 @@ export type ProfileActivityItem = ActivityItemProps & { id: string };
 export function useProfileScreen() {
   const nav = useSandboxNavigation();
   const { sandbox, hydrated } = useSandboxClient();
+  const sandboxes = useSandboxStore((state) => state.sandboxes);
+  const activeId = useSandboxStore((state) => state.activeId);
+  const selectSandbox = useSandboxStore((state) => state.setActive);
   const identity = useSandboxIdentity();
   const status = useSandboxStatus();
   const projects = useProjects();
@@ -60,6 +71,8 @@ export function useProfileScreen() {
     ).map(({ id, ref, item }) => ({ ...item, id, testID: `activity-${id}`, onPress: open(ref) }));
   }, [sandbox, identity.data, builds.data, runs.data, processes.data, projects.data, open]);
 
+  const sandboxRows = useMemo(() => sandboxChoices(sandboxes, activeId), [sandboxes, activeId]);
+
   const identityNotFound = isApiError(identity.error, "not_found");
   const feedError = builds.error ?? runs.error ?? processes.error;
 
@@ -76,6 +89,9 @@ export function useProfileScreen() {
     profile: sandbox ? profileView(identity.data, sandbox, status.data) : null,
     stats: profileStats(status.data),
     openSettings: nav.settings,
+    sandboxes: sandboxRows,
+    selectSandbox,
+    pairSandbox: nav.pair,
     tailscaleMissing: isTailscaleIdentityMissing(identity.data) || identityNotFound,
     identityError: identity.error && !identityNotFound && !problems.issue ? describeError(identity.error) : null,
     retryIdentity: () => void identity.refetch(),

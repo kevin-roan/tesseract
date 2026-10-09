@@ -10,6 +10,7 @@ import {
 } from "@tesseract/protocol/fixtures";
 
 import { useProfileScreen } from "@/features/sandbox/hooks/use-profile-screen";
+import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
 
 import {
   NO_TAILSCALE,
@@ -69,6 +70,22 @@ describe("useProfileScreen", () => {
     expect(result.current.identityError).toBeNull();
     await act(async () => result.current.openSettings());
     expect(mockRouter.push).toHaveBeenCalledWith("/settings");
+  });
+
+  it("lists paired sandboxes, switches the active one and pairs another", async () => {
+    const second = { ...TEST_SANDBOX, id: "sbx_second", name: "Second", baseUrl: "https://second.example.ts.net/api" };
+    useSandboxStore.setState({ sandboxes: [TEST_SANDBOX, second], tokens: { [TEST_SANDBOX.id]: "a", [second.id]: "b" } });
+    const { result } = await renderScreen();
+    expect(result.current.sandboxes).toEqual([
+      { id: TEST_SANDBOX.id, label: TEST_SANDBOX.name, detail: "127.0.0.1:7700", selected: true },
+      { id: second.id, label: "Second", detail: "second.example.ts.net", selected: false },
+    ]);
+
+    await act(async () => result.current.selectSandbox(second.id));
+    expect(result.current.sandbox?.id).toBe(second.id);
+    expect(result.current.sandboxes.map((row) => row.selected)).toEqual([false, true]);
+    await act(async () => result.current.pairSandbox());
+    expect(mockRouter.push).toHaveBeenCalledWith("/pair");
   });
 
   it("summarises the Claude account and opens its screen", async () => {

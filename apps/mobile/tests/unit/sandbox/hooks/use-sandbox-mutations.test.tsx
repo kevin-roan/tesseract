@@ -1,8 +1,9 @@
-import { act, renderHook } from "@testing-library/react-native";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
 import { ApiError, TesseractClient } from "@tesseract/client";
 import type { BuildJob, ProcessInfo } from "@tesseract/protocol";
 import { sampleBuild, sampleProcess } from "@tesseract/protocol/fixtures";
 
+import { useHostStore } from "@/features/host-shell/store/host-store";
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
 import { registerPushToken } from "@/features/inbox/api/push";
 import { useRemoveSandbox, useStartBuild, useStopProcess } from "@/features/sandbox/hooks/use-sandbox-mutations";
@@ -115,8 +116,10 @@ describe("useStopProcess", () => {
 });
 
 describe("useRemoveSandbox", () => {
-  it("removes the sandbox, its cached data and its connection state", async () => {
+  it("removes the sandbox, its cached data, its connection state and its host pairing", async () => {
     const queryClient = createTestQueryClient();
+    const host = { name: "Desk", baseUrl: "http://100.64.0.1:7701", addedAt: "2026-10-03T10:00:00.000Z" };
+    useHostStore.setState({ hosts: { [SID]: host, sbx_other: host }, tokens: { [SID]: "t", sbx_other: "t" }, hydrated: true });
     queryClient.setQueryData(sandboxKeys.status(SID), { ok: true });
     queryClient.setQueryData(sandboxKeys.status("sbx_other"), { ok: true });
     useConnectionStore.getState().setLink(SID, "open");
@@ -130,6 +133,7 @@ describe("useRemoveSandbox", () => {
     expect(queryClient.getQueryData(sandboxKeys.status(SID))).toBeUndefined();
     expect(queryClient.getQueryData(sandboxKeys.status("sbx_other"))).toEqual({ ok: true });
     expect(useConnectionStore.getState().links).toEqual({});
+    await waitFor(() => expect(Object.keys(useHostStore.getState().hosts)).toEqual(["sbx_other"]));
   });
 
   it("unregisters this device's push token from the sandbox before forgetting it", async () => {

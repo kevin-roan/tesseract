@@ -8,6 +8,7 @@ import {
 import Animated from "react-native-reanimated";
 
 import { ActivityList } from "@/components/activity-item";
+import ChoiceList from "@/components/choice-list";
 import ContentSheet from "@/components/content-sheet";
 import EmptyState from "@/components/empty-state";
 import ListCard from "@/components/list-card";
@@ -24,8 +25,9 @@ import { useEntrance } from "@/hooks/use-entrance";
 export default function ProfileScreen() {
   const screen = useProfileScreen();
   const hostEntry = useHostEntry();
-  const configureEntering = useEntrance(0);
-  const activityEntering = useEntrance(1);
+  const sandboxEntering = useEntrance(0);
+  const configureEntering = useEntrance(1);
+  const activityEntering = useEntrance(2);
 
   if (!screen.sandbox || !screen.profile) {
     return <SandboxGate />;
@@ -75,6 +77,21 @@ export default function ProfileScreen() {
             onAction={screen.retryIdentity}
           />
         ) : null}
+
+        <Animated.View entering={sandboxEntering}>
+          <Section
+            title="Sandbox"
+            actionLabel="Pair another"
+            onPressAction={screen.pairSandbox}
+            testID="profile-sandbox"
+          >
+            <ChoiceList
+              rows={screen.sandboxes}
+              onSelect={screen.selectSandbox}
+              testID="profile-sandbox-choice"
+            />
+          </Section>
+        </Animated.View>
 
         <Animated.View entering={configureEntering}>
           <Section title="Configure" testID="profile-configure">

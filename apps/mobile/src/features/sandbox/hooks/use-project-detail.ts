@@ -4,12 +4,11 @@ import type { BuildProfile, BuildTarget, ProcessInfo } from "@tesseract/protocol
 import type { ChipRowItem } from "@/components/chip-row";
 import type { HeaderAction } from "@/components/screen-header";
 import { useAppRuns } from "@/features/app-runs/hooks/use-app-runs";
-import { VIEWER_ICONS } from "@/features/app-runs/utils/content";
 import { useProjectChats } from "@/features/chats/hooks/use-project-chats";
 import { useProjectClaudeAccount } from "@/features/claude-account/hooks/use-project-claude-account";
 import { useProjectStorage } from "@/features/storage/hooks/use-project-storage";
 
-import { PROJECT_ACTIONS, PROJECT_CHIPS } from "../utils/actions";
+import { PROJECT_CHIPS } from "../utils/actions";
 import { newestFirst } from "../utils/collections";
 import { LIST_PREVIEW_LIMIT } from "../utils/constants";
 import { describeError } from "../utils/errors";
@@ -19,6 +18,7 @@ import { processSite, projectSites } from "../utils/sites";
 import { useArtifactDownload } from "./use-artifact-download";
 import { useLogStream } from "./use-log-stream";
 import { useOpenSite } from "./use-open-site";
+import { useProjectActionsMenu } from "./use-project-actions-menu";
 import { useProjectRename } from "./use-project-rename";
 import { useConfirmedStop } from "./use-confirmed-stop";
 import { useFixWithAi } from "./use-fix-with-ai";
@@ -87,18 +87,17 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
   );
 
   const emulator = appRuns.emulator;
-  const headerActions = useMemo<HeaderAction[]>(
-    () => [
-      ...(emulator
-        ? [{ id: "emulator", icon: VIEWER_ICONS.android, label: emulator.label, hint: emulator.hint, disabled: emulator.busy, onPress: emulator.open }]
-        : []),
-      { ...PROJECT_ACTIONS.shell, onPress: () => nav.newTerminal({ kind: "shell", projectId }) },
-      { ...PROJECT_ACTIONS.claudeSession, onPress: () => nav.newTerminal({ kind: "claude", projectId }) },
-      { ...PROJECT_ACTIONS.askClaude, onPress: () => nav.newAgentRun(projectId) },
-      { ...PROJECT_ACTIONS.rename, onPress: () => openRename({ id: projectId, title: data?.name ?? projectId }) },
-    ],
-    [emulator, nav, projectId, openRename, data?.name],
+  const menuHandlers = useMemo(
+    () => ({
+      shell: () => nav.newTerminal({ kind: "shell", projectId }),
+      claudeSession: () => nav.newTerminal({ kind: "claude", projectId }),
+      askClaude: () => nav.newAgentRun(projectId),
+      rename: () => openRename({ id: projectId, title: data?.name ?? projectId }),
+    }),
+    [nav, projectId, openRename, data?.name],
   );
+  const actionsMenu = useProjectActionsMenu(emulator, menuHandlers);
+  const headerActions = useMemo<HeaderAction[]>(() => [actionsMenu.action], [actionsMenu.action]);
 
   const showStorage = storage.show;
   const chips = useMemo<ChipRowItem[]>(
@@ -138,6 +137,7 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     error: project.error ? describeError(project.error) : null,
     retry: () => void project.refetch(),
     headerActions,
+    actionsMenu: actionsMenu.menu,
     chips,
     storage,
     git: git.data,

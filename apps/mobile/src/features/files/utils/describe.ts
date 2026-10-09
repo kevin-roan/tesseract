@@ -1,5 +1,5 @@
 import type { Artifact, ArtifactSource, TaildropTarget } from "@tesseract/protocol";
-import { FileArrowDownIcon, HammerIcon, PackageIcon, RobotIcon, type Icon } from "phosphor-react-native";
+import { FileArrowDownIcon, HammerIcon, PackageIcon, SparkleIcon, type Icon } from "phosphor-react-native";
 
 import type { StatusBadgeProps } from "@/components/status-badge";
 import { capitalize, formatBytes, formatRelativeTime, pluralize } from "@/features/sandbox/utils/format";
@@ -9,7 +9,7 @@ import type { LocalFileStatus } from "../hooks/use-local-downloads";
 const join = (parts: (string | null | undefined | false)[]) => parts.filter(Boolean).join(" · ");
 
 const SOURCE_BADGES: Record<ArtifactSource, StatusBadgeProps> = {
-  agent: { label: "Shared", tone: "info", icon: RobotIcon },
+  agent: { label: "Shared", tone: "info", icon: SparkleIcon },
   build: { label: "Build", tone: "neutral", icon: HammerIcon },
 };
 

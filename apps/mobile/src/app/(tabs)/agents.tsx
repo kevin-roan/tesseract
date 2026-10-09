@@ -1,7 +1,6 @@
 import { FolderPlusIcon, LightningIcon, SparkleIcon } from "phosphor-react-native";
 
 import ActionTileRow from "@/components/action-tile-row";
-import ChoiceGroup from "@/components/choice-group";
 import ConnectionDot from "@/components/connection-dot";
 import ListCard from "@/components/list-card";
 import Notice from "@/components/notice";
@@ -45,18 +44,6 @@ export default function AgentsScreen() {
         />
       }
     >
-      {hub.switcher.length > 1 ? (
-        <MotionItem index={0}>
-          <ChoiceGroup
-            options={hub.switcher}
-            selectedId={hub.sandbox.id}
-            onSelect={hub.selectSandbox}
-            scrollable
-            label="Paired sandboxes"
-          />
-        </MotionItem>
-      ) : null}
-
       <SandboxNotices
         missingToken={hub.missingToken}
         onPair={hub.nav.pair}
@@ -87,24 +74,24 @@ export default function AgentsScreen() {
       ) : null}
 
       {hub.stats.length > 0 ? (
-        <MotionItem index={1}>
+        <MotionItem index={0}>
           <StatGrid items={hub.stats} />
         </MotionItem>
       ) : null}
 
       {hub.stats.length > 0 ? (
-        <MotionItem index={2}>
+        <MotionItem index={1}>
           <ResourceHistory />
         </MotionItem>
       ) : null}
 
-      <MotionItem index={3}>
+      <MotionItem index={2}>
         <Section title="Quick actions">
           <ActionTileRow items={hub.actions} />
         </Section>
       </MotionItem>
 
-      <MotionItem index={4}>
+      <MotionItem index={3}>
         <Section
           title="Projects"
           actionLabel="Add"
@@ -128,7 +115,7 @@ export default function AgentsScreen() {
       </MotionItem>
 
       {hub.runningProcesses.length > 0 ? (
-        <MotionItem index={5}>
+        <MotionItem index={4}>
           <Section title="Running">
             {hub.runningProcesses.map((process) => (
               <ProcessCard
@@ -144,7 +131,7 @@ export default function AgentsScreen() {
       ) : null}
 
       {hub.sessions.length > 0 ? (
-        <MotionItem index={6}>
+        <MotionItem index={5}>
           <Section title="Sessions">
             {hub.sessions.map((terminal) => (
               <TerminalCard
@@ -160,7 +147,7 @@ export default function AgentsScreen() {
         </MotionItem>
       ) : null}
 
-      <MotionItem index={7}>
+      <MotionItem index={6}>
         <Section
           title="Recent builds"
           isEmpty={!hub.buildsLoading && hub.recentBuilds.length === 0}
@@ -172,7 +159,7 @@ export default function AgentsScreen() {
         </Section>
       </MotionItem>
 
-      <MotionItem index={8}>
+      <MotionItem index={7}>
         <Section
           title="Claude runs"
           actionLabel="New run"

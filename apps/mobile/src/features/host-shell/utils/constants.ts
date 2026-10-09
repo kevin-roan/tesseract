@@ -1,6 +1,8 @@
 export const HOST_STORE_NAME = "tesseract.host";
-export const HOST_STORE_VERSION = 1;
-export const HOST_TOKEN_KEY = "tesseract.host.token";
+export const HOST_STORE_VERSION = 2;
+export const LEGACY_HOST_TOKEN_KEY = "tesseract.host.token";
+export const HOST_TOKEN_KEY_PREFIX = "tesseract.host.";
+export const HOST_TOKEN_KEY_SUFFIX = ".token";
 export const HOST_PROBE_TIMEOUT_MS = 10_000;
 export const HOST_FALLBACK_NAME = "Host";
 export const PIN_MIN_LENGTH = 6;

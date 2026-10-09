@@ -6,8 +6,10 @@ import IslandHost from "@/features/island/components/island-host";
 import { useIslandStore } from "@/features/island/store/island-store";
 import { useSettingsStore } from "@/features/settings/store/settings-store";
 
-import { __emitAction, __reset as resetIsland, startActivity } from "../../mocks/tesseract-island";
-import { createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../sandbox/helpers";
+import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
+
+import { __emitAction, __reset as resetIsland, currentActivityId, endActivity, startActivity, updateActivity } from "../../mocks/tesseract-island";
+import { TEST_SANDBOX, createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../sandbox/helpers";
 
 let mockPathname = "/";
 const mockNav = { agentRun: jest.fn(), sandboxHub: jest.fn(), newAgentRun: jest.fn() };
@@ -184,5 +186,27 @@ describe("<IslandHost />", () => {
       jest.useRealTimers();
     });
     expect(startActivity).toHaveBeenCalledWith(expect.objectContaining({ sandboxId: "sbx_test", runs: [expect.objectContaining({ id: sampleAgentRun.id })] }));
+  });
+
+  it("replaces the live activity when another sandbox becomes active", async () => {
+    const other = { ...TEST_SANDBOX, id: "sbx_other", name: "Other box", baseUrl: "http://127.0.0.2:7700" };
+    useSandboxStore.setState((state) => ({
+      sandboxes: [...state.sandboxes, other],
+      tokens: { ...state.tokens, [other.id]: "other-token-0123456789" },
+    }));
+    await renderHost();
+    await screen.findByTestId("island-capsule");
+    await act(async () => {
+      jest.useFakeTimers();
+      jest.advanceTimersByTime(1500);
+      jest.useRealTimers();
+    });
+    expect(currentActivityId()).not.toBeNull();
+    startActivity.mockClear();
+
+    await act(async () => useSandboxStore.getState().setActive(other.id));
+    expect(endActivity).toHaveBeenCalled();
+    const shown = () => [...startActivity.mock.calls, ...updateActivity.mock.calls].map(([state]) => state.sandboxId);
+    await waitFor(() => expect(shown()).toContain(other.id), { timeout: 3000 });
   });
 });

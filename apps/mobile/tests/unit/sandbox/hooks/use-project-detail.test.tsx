@@ -263,13 +263,23 @@ describe("useProjectDetail", () => {
     await waitFor(() => expect(result.current.actionError).toBe("not running"));
   });
 
-  it("opens shells, Claude sessions and runs scoped to the project", async () => {
+  it("opens shells, Claude sessions and runs scoped to the project from the actions menu", async () => {
     const { result } = await renderDetail();
-    const [shell, claude, ask] = result.current.headerActions;
+    const [more] = result.current.headerActions;
+    expect(result.current.headerActions).toHaveLength(1);
 
-    shell.onPress();
-    claude.onPress();
-    ask.onPress();
+    const choose = async (id: string) => {
+      await act(async () => more.onPress());
+      expect(result.current.actionsMenu.visible).toBe(true);
+      await act(async () => result.current.actionsMenu.onSelect(id));
+      expect(result.current.actionsMenu.visible).toBe(false);
+      await act(async () => result.current.actionsMenu.onDismissed());
+    };
+
+    expect(result.current.actionsMenu.options.map((option) => option.id)).toEqual(["ask-claude", "claude-session", "shell", "rename"]);
+    await choose("shell");
+    await choose("claude-session");
+    await choose("ask-claude");
     expect(mockRouter.push.mock.calls).toEqual([
       [{ pathname: "/sandbox/terminal/[id]", params: { id: "new", kind: "shell", projectId: sampleProject.id } }],
       [{ pathname: "/sandbox/terminal/[id]", params: { id: "new", kind: "claude", projectId: sampleProject.id } }],

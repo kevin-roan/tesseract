@@ -1,12 +1,15 @@
 import { useEffect, useMemo } from "react";
 
+import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
+
 import { getHostClient, getHostSessionClient } from "../api/client";
 import { useHostSessionStore } from "../store/host-session-store";
-import { useHostStore } from "../store/host-store";
+import { selectHost, selectHostToken, useHostStore } from "../store/host-store";
 
 export function useHostClient() {
-  const host = useHostStore((state) => state.host);
-  const token = useHostStore((state) => state.token);
+  const sandboxId = useSandboxStore((state) => state.activeId);
+  const host = useHostStore((state) => selectHost(state, sandboxId));
+  const token = useHostStore((state) => selectHostToken(state, sandboxId));
   const hydrated = useHostStore((state) => state.hydrated);
   const hydrate = useHostStore((state) => state.hydrate);
   const session = useHostSessionStore((state) => state.current);

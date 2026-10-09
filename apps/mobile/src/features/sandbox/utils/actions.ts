@@ -7,10 +7,12 @@ import {
   ArrowLineUpIcon,
   ArrowsDownUpIcon,
   ArrowUUpLeftIcon,
+  CodeIcon,
   CornersInIcon,
   CornersOutIcon,
   CursorClickIcon,
   DeviceRotateIcon,
+  DotsThreeIcon,
   FilesIcon,
   FolderOpenIcon,
   FolderPlusIcon,
@@ -19,8 +21,8 @@ import {
   HandPointingIcon,
   HardDrivesIcon,
   PencilSimpleIcon,
+  PencilSimpleLineIcon,
   PlusIcon,
-  RobotIcon,
   SparkleIcon,
   StopIcon,
   TerminalWindowIcon,
@@ -29,6 +31,7 @@ import {
 } from "phosphor-react-native";
 
 import type { ChipRowItem } from "@/components/chip-row";
+import type { MenuOption } from "@/components/menu-sheet";
 import type { HeaderAction } from "@/components/screen-header";
 
 import type { SyncActionId } from "./sync";
@@ -51,12 +54,14 @@ export const TASKS_HEADER_ACTIONS = {
   shell: { id: "shell", icon: TerminalWindowIcon, label: "Open a shell" },
 } satisfies Record<string, ActionTemplate>;
 
+export const PROJECT_MORE_ACTION = { id: "more", icon: DotsThreeIcon, label: "Project actions" } satisfies ActionTemplate;
+
 export const PROJECT_ACTIONS = {
-  shell: { id: "shell", icon: TerminalWindowIcon, label: "Open a shell in this project" },
-  claudeSession: { id: "claude-session", icon: RobotIcon, label: "Open an interactive Claude Code session" },
-  askClaude: { id: "ask-claude", icon: SparkleIcon, label: "Ask Claude to work on this project" },
-  rename: { id: "rename", icon: PencilSimpleIcon, label: "Rename this project" },
-} satisfies Record<string, ActionTemplate>;
+  askClaude: { id: "ask-claude", icon: SparkleIcon, label: "Ask Claude", description: "Start a run that works on this project" },
+  claudeSession: { id: "claude-session", icon: CodeIcon, label: "Claude Code session", description: "Open an interactive Claude Code terminal" },
+  shell: { id: "shell", icon: TerminalWindowIcon, label: "Shell", description: "Open a terminal in the project folder" },
+  rename: { id: "rename", icon: PencilSimpleLineIcon, label: "Rename", description: "Change the display name" },
+} satisfies Record<string, MenuOption>;
 
 export const PROJECT_CHIPS = {
   storage: { id: "storage", icon: HardDrivesIcon },

@@ -1158,9 +1158,14 @@ limits from `.env`, explicit `environment` lists (no `env_file`), json-file logs
 * A 401/403 or a protocol mismatch shows a notice with **Pair again**.
 * **Host shell** (§5.7): routes `host` (pair by scanning `tesseract-controller host pair` or the
   `tesseract://host` deep link, then a PIN pad; lists host terminals) and `host/terminal/[id]`
-  (the same xterm WebView). The host token is kept in `expo-secure-store` like sandbox
-  tokens; the session lives in memory only and is dropped on **Lock**, and on expiry
-  (the next request gets 401 → PIN pad again).
+  (the same xterm WebView). A host is paired per sandbox: the host store (`tesseract.host`,
+  v2) maps sandbox id → host, and each host token is kept in `expo-secure-store` like sandbox
+  tokens (`tesseract.host.<sandboxId>.token`; v1's single host and `tesseract.host.token`
+  move to the sandbox active at migration, else the first one). The host shell, host emulator
+  and stream screens always use the active sandbox's host; removing a sandbox forgets its host.
+  The session lives in memory only and is dropped on **Lock**, on expiry (the next request
+  gets 401 → PIN pad again), and when the active sandbox changes (the old session is also
+  locked on its host).
 * **App runs** ([app-runs-and-emulator.md](app-runs-and-emulator.md) §3): the project screen's
   **Run** lists `RunTargetInfo`s and active `AppRun`s (live via `app.updated`) with Logs, Stop,
   actions and **Open** per viewer (`url` in-app WebView, `deeplink` → `Linking.openURL`,

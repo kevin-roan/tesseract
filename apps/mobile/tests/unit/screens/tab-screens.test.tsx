@@ -51,8 +51,6 @@ function hub(overrides: object = {}) {
     retryStatus: jest.fn(),
     stats: [],
     actions: [{ id: "display", label: "Display", icon: PlusIcon, onPress: jest.fn() }],
-    switcher: [{ id: TEST_SANDBOX.id, label: TEST_SANDBOX.name }],
-    selectSandbox: jest.fn(),
     latestActivity: null,
     projects: [],
     projectsLoading: false,
@@ -101,7 +99,6 @@ describe("AgentsScreen", () => {
 
     expect(screen.getByText(TEST_SANDBOX.name)).toBeOnTheScreen();
     expect(screen.getByText("Online")).toBeOnTheScreen();
-    expect(screen.queryByLabelText("Paired sandboxes")).toBeNull();
     expect(screen.getByText(/^No builds yet/)).toBeOnTheScreen();
     expect(screen.getByText("No Claude runs yet.")).toBeOnTheScreen();
     await fireEvent.press(screen.getByLabelText("Ask Claude"));
@@ -121,10 +118,6 @@ describe("AgentsScreen", () => {
       statusError: "Can't reach the sandbox.",
       removeError: "Remove failed",
       latestActivity: sampleStatusEvent,
-      switcher: [
-        { id: TEST_SANDBOX.id, label: TEST_SANDBOX.name },
-        { id: "sbx_2", label: "Second" },
-      ],
     });
     mockHub.mockReturnValue(state);
     await render(<AgentsScreen />);
@@ -137,8 +130,6 @@ describe("AgentsScreen", () => {
     expect(state.retryStatus).toHaveBeenCalled();
     expect(screen.getByText("Remove failed")).toBeOnTheScreen();
     expect(screen.getByText(sampleStatusEvent.message)).toBeOnTheScreen();
-    await fireEvent.press(screen.getByLabelText("Second"));
-    expect(state.selectSandbox).toHaveBeenCalledWith("sbx_2");
   });
 
   it("lists projects, running work, sessions, builds and runs", async () => {
@@ -208,6 +199,9 @@ describe("ProfileScreen", () => {
         { id: "builds", value: "1", label: "Builds" },
       ],
       openSettings: jest.fn(),
+      sandboxes: [{ id: TEST_SANDBOX.id, label: TEST_SANDBOX.name, detail: "127.0.0.1:7700", selected: true }],
+      selectSandbox: jest.fn(),
+      pairSandbox: jest.fn(),
       tailscaleMissing: false,
       identityError: null,
       retryIdentity: jest.fn(),
@@ -293,6 +287,26 @@ describe("ProfileScreen", () => {
     expect(screen.getByText("Can't reach the sandbox.")).toBeOnTheScreen();
     await fireEvent.press(screen.getByLabelText("Retry"));
     expect(state.retryActivity).toHaveBeenCalled();
+  });
+
+  it("lists paired sandboxes, switches the active one and pairs another", async () => {
+    const state = profile({
+      sandboxes: [
+        { id: TEST_SANDBOX.id, label: TEST_SANDBOX.name, detail: "127.0.0.1:7700", selected: true },
+        { id: "sbx_2", label: "Second", detail: "10.0.0.2:7700", selected: false },
+      ],
+    });
+    mockProfile.mockReturnValue(state);
+    await render(<ProfileScreen />);
+
+    expect(screen.getByTestId(`profile-sandbox-choice-${TEST_SANDBOX.id}`)).toHaveProp("accessibilityState", {
+      selected: true,
+      disabled: false,
+    });
+    await fireEvent.press(screen.getByTestId("profile-sandbox-choice-sbx_2"));
+    expect(state.selectSandbox).toHaveBeenCalledWith("sbx_2");
+    await fireEvent.press(screen.getByLabelText("Pair another, Sandbox"));
+    expect(state.pairSandbox).toHaveBeenCalled();
   });
 
   it("offers a first Claude run on an empty feed", async () => {

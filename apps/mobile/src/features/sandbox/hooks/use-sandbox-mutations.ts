@@ -17,6 +17,7 @@ import type {
   UpdateStt,
 } from "@tesseract/protocol";
 
+import { useHostStore } from "@/features/host-shell/store/host-store";
 import { unregisterPushToken } from "@/features/inbox/api/push";
 
 import { forgetSandboxClient } from "../api/client";
@@ -234,6 +235,7 @@ export function useRemoveSandbox() {
   const queryClient = useQueryClient();
   const removeSandbox = useSandboxStore((state) => state.removeSandbox);
   const clearLink = useConnectionStore((state) => state.clearLink);
+  const forgetHost = useHostStore((state) => state.forget);
   return useMutation({
     mutationFn: (sandboxId: string) => {
       unregisterPushToken(sandboxId);
@@ -242,6 +244,7 @@ export function useRemoveSandbox() {
     onSuccess: (_data, sandboxId) => {
       forgetSandboxClient(sandboxId);
       clearLink(sandboxId);
+      void forgetHost(sandboxId).catch(() => undefined);
       queryClient.removeQueries({ queryKey: sandboxKeys.all(sandboxId) });
     },
   });

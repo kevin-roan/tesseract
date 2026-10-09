@@ -32,5 +32,5 @@ export function useHostAndroidStatus(enabled = true) {
 
   useEffect(() => dropOnLost(status.error), [status.error, dropOnLost]);
 
-  return { status, key, sessionClient, dropOnLost };
+  return { status, key, host, sessionClient, dropOnLost };
 }

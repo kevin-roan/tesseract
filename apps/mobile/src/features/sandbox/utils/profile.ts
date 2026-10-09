@@ -8,6 +8,7 @@ import type {
   TailscaleUser,
 } from "@tesseract/protocol";
 
+import type { ChoiceRow } from "@/components/choice-list";
 import type { ProfileStat } from "@/components/profile-hero";
 import { formatTokens } from "@/features/home/utils/tokens";
 
@@ -52,6 +53,15 @@ export function profileView(
     team: tailscale?.tailnet ?? undefined,
     photo: person?.profilePicUrl ?? undefined,
   };
+}
+
+export function sandboxChoices(sandboxes: PairedSandbox[], activeId: string | null): ChoiceRow[] {
+  return sandboxes.map((sandbox) => ({
+    id: sandbox.id,
+    label: sandbox.name,
+    detail: sandbox.baseUrl.replace(/^[a-z]+:\/\//i, "").replace(/\/.*$/, ""),
+    selected: sandbox.id === activeId,
+  }));
 }
 
 export function activityActor(identity: Identity | undefined, sandbox: PairedSandbox): ActivityActor {

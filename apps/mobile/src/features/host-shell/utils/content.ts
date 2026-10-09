@@ -95,6 +95,7 @@ export const LINK_CONFIRM = {
 } as const;
 
 export const HOST_LOCKED = "The host shell is locked.";
+export const HOST_NO_SANDBOX = "Pair a sandbox first, then pair its host.";
 
 export const PROFILE_ENTRY = {
   title: "Host shell",

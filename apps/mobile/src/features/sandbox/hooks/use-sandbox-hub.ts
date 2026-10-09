@@ -2,13 +2,11 @@ import { useCallback, useMemo } from "react";
 import type { ProcessInfo, TerminalInfo } from "@tesseract/protocol";
 
 import type { ActionTileItem } from "@/components/action-tile-row";
-import type { ChoiceOption } from "@/components/choice-group";
 import type { HeaderAction } from "@/components/screen-header";
 import type { StatItem } from "@/components/stat-grid";
 import { latestTurns } from "@/features/chat/utils/messages";
 import { confirm } from "@/lib/confirm";
 
-import { useSandboxStore } from "../store/sandbox-store";
 import type { HubActionId } from "../types";
 import { HUB_HEADER_ACTIONS } from "../utils/actions";
 import { newestFirst } from "../utils/collections";
@@ -40,8 +38,6 @@ import { useSandboxRefresh } from "./use-sandbox-refresh";
 export function useSandboxHub() {
   const nav = useSandboxNavigation();
   const { sandbox, hydrated } = useSandboxClient();
-  const sandboxes = useSandboxStore((state) => state.sandboxes);
-  const setActive = useSandboxStore((state) => state.setActive);
   const link = useSandboxLink();
   const status = useSandboxStatus();
   const projects = useProjects();
@@ -97,11 +93,6 @@ export function useSandboxHub() {
     ];
   }, [status.data, nav]);
 
-  const switcher = useMemo<ChoiceOption[]>(
-    () => sandboxes.map((entry) => ({ id: entry.id, label: entry.name })),
-    [sandboxes],
-  );
-
   const remove = useCallback(async () => {
     if (!sandbox) return;
     const confirmed = await confirm({
@@ -156,8 +147,6 @@ export function useSandboxHub() {
     retryStatus: () => void status.refetch(),
     stats,
     actions,
-    switcher,
-    selectSandbox: setActive,
     latestActivity: activity[0] ?? null,
     projects: projects.data ?? [],
     projectsLoading: projects.isLoading,

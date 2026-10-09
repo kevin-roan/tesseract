@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useAppReady } from '@/hooks/use-app-ready';
 import { useNavigationTheme } from '@/hooks/use-navigation-theme';
 import { usePortraitLock } from '@/hooks/use-orientation-lock';
+import { useSandboxSwitch } from '@/hooks/use-sandbox-switch';
 import InboxNotifier from '@/features/inbox/components/inbox-notifier';
 import IslandHost from '@/features/island/components/island-host';
 import UpdatePrompt from '@/features/settings/components/update-prompt';
@@ -24,6 +25,7 @@ SplashScreen.preventAutoHideAsync();
 function RootNavigator() {
   const navigationTheme = useNavigationTheme();
   const { ready, paired } = useAppReady();
+  useSandboxSwitch();
   const [splashDone, setSplashDone] = useState(false);
   const finishSplash = useCallback(() => setSplashDone(true), []);
 
