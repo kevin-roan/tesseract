@@ -140,7 +140,10 @@ if ((SWITCH)); then
       status="$(ts_status)"
       state="$(printf '%s\n' "${status}" | backend_state)"
       [[ "${state}" == Running && "$(printf '%s\n' "${status}" | cert_domain)" == *.ts.net ]] && break
-      [[ "${state}" == NeedsLogin ]] && die "the tailnet refused the key (expired, used up or wrong); create a new one and rerun with --switch"
+      # A fresh sidecar reports NeedsLogin until containerboot has tried the key, so only the log tells a refused key.
+      if docker logs "${TS_CONTAINER}" 2>&1 | grep -qiE 'invalid key|key expired|authkey.*(expired|invalid|not valid)'; then
+        die "the tailnet refused the key (expired, used up or wrong); create a new one and rerun with --switch"
+      fi
       sleep 2
     done
     [[ "${state}" == Running ]] || die "the sidecar did not log in (state: ${state:-unknown}); see tesseract sandbox logs --tail 100"
