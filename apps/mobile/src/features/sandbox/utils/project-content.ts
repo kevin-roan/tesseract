@@ -4,6 +4,7 @@ export const PROJECT_COPY = {
   retry: "Try again",
   loading: "Loading project…",
   waitingForOutput: "Waiting for output…",
+  chips: "Project storage and files",
   sections: {
     git: "Git",
     chats: "Chats",

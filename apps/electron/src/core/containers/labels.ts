@@ -1,0 +1,33 @@
+export const CONTAINERS_MESSAGES = {
+  busy: "Another container operation is running.",
+  invalidName: "Use 2–32 lowercase letters, digits or dashes, starting with a letter.",
+  reservedName: (name: string) => `"${name}" is reserved.`,
+  exists: (name: string) => `A container named "${name}" already exists.`,
+  notFound: (name: string) => `No container named "${name}".`,
+  noSysbox: "Sysbox is not installed. Server containers need the sysbox-runc runtime so they can run systemd and Docker without --privileged.",
+  noImage: "The server image hasn't been built yet.",
+  invalidCpus: "CPUs must be between 0.5 and 64.",
+  invalidMemory: "Memory must be between 256 MB and 256 GB.",
+  invalidPort: "Port must be between 1 and 65535.",
+  invalidHostname: "Enter a full hostname like app.example.com. Wildcards aren't allowed.",
+  noZone: (hostname: string) => `${hostname} isn't in a Cloudflare zone this token can edit.`,
+  routeExists: (hostname: string) => `${hostname} is already routed.`,
+  dnsTaken: (hostname: string) => `${hostname} already has a DNS record that Tesseract didn't create. Remove it in Cloudflare first.`,
+  routeNotFound: "That route no longer exists.",
+  noCloudflare: "Connect Cloudflare first.",
+  otherAccount: "This container's tunnel lives in a different Cloudflare account than that zone.",
+  invalidTailscaleKey: "That doesn't look like a Tailscale auth key (tskey-…).",
+  invalidTags: "Tags look like tag:name, comma separated.",
+  cloudflareFailed: (message: string) => `Cloudflare: ${message}`,
+  dockerFailed: (action: string, detail: string) => `docker ${action} failed: ${detail}`,
+  buildFailed: "The server image build failed. See the log for details.",
+  cancelled: "Cancelled.",
+  tailnetFailed: (name: string, detail: string) => `${name} is running but couldn't join the tailnet (${detail}). Run "tailscale up --ssh" inside it.`,
+} as const;
+
+export const CHECK_LABELS = {
+  sysbox: { title: "Sysbox runtime", ok: "sysbox-runc is registered with Docker.", missing: "Install Sysbox to run server containers." },
+  image: { title: "Server image", ok: (image: string) => `${image} is available.`, missing: "Build the server image once." },
+  tailscale: { title: "Tailscale auth key", ok: (tags: string) => `New containers join the tailnet as ${tags}.`, missing: "Add a tagged, pre-approved auth key so containers can join the tailnet." },
+  cloudflare: { title: "Cloudflare", ok: (count: number) => `${count} zone${count === 1 ? "" : "s"} available for public URLs.`, missing: "Connect a Cloudflare API token to publish URLs.", noZones: "The token works but sees no active domain. Add your domain to Cloudflare, or give the token your account and zone under Account/Zone Resources." },
+} as const;

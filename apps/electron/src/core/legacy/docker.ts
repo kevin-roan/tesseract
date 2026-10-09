@@ -35,7 +35,6 @@ export interface LegacyStackTarget {
 
 export interface LegacyDockerReport {
   stoppedLegacy: boolean;
-  taggedImage: boolean;
   copiedVolumes: string[];
 }
 
@@ -79,15 +78,6 @@ async function imagePresent(deps: LegacyDockerDeps, target: LegacyStackTarget, i
   return (await docker(deps, target, ["image", "inspect", "--format", "{{.Id}}", image])).code === 0;
 }
 
-async function tagLegacyImage(deps: LegacyDockerDeps, target: LegacyStackTarget, log: Log): Promise<boolean> {
-  if (target.image !== DEFAULT_IMAGE || (await imagePresent(deps, target, target.image))) return false;
-  if (!(await imagePresent(deps, target, LEGACY_IMAGE))) return false;
-  const tagged = await docker(deps, target, ["tag", LEGACY_IMAGE, target.image]);
-  if (tagged.code !== 0) return false;
-  log(LEGACY_LABELS.taggedImage(LEGACY_IMAGE, target.image));
-  return true;
-}
-
 async function volumeExists(deps: LegacyDockerDeps, target: LegacyStackTarget, name: string): Promise<boolean> {
   return (await docker(deps, target, ["volume", "inspect", name])).code === 0;
 }
@@ -99,7 +89,9 @@ async function copyImage(deps: LegacyDockerDeps, target: LegacyStackTarget): Pro
   return null;
 }
 
-async function copyVolumes(deps: LegacyDockerDeps, target: LegacyStackTarget, log: Log): Promise<string[]> {
+// Docker cannot rename a volume: each one is copied and the old one removed right after, so a
+// large workspace never sits on the disk twice.
+async function moveVolumes(deps: LegacyDockerDeps, target: LegacyStackTarget, log: Log): Promise<string[]> {
   const copied: string[] = [];
   let image: string | null | undefined;
   for (const suffix of VOLUME_SUFFIXES) {
@@ -109,7 +101,7 @@ async function copyVolumes(deps: LegacyDockerDeps, target: LegacyStackTarget, lo
     if (!(await volumeExists(deps, target, from))) continue;
     image ??= await copyImage(deps, target);
     if (!image) throw new IpcError("unavailable", LEGACY_LABELS.noCopyImage(from));
-    log(LEGACY_LABELS.copyingVolume(from, to));
+    log(LEGACY_LABELS.movingVolume(from, to));
     const labels = ["--label", `${COMPOSE_LABELS.project}=${target.project}`, "--label", `${COMPOSE_LABELS.volume}=${DEFAULT_PROJECT}-${suffix}`];
     const created = await docker(deps, target, ["volume", "create", ...labels, to]);
     if (created.code !== 0) throw new IpcError("unavailable", LEGACY_LABELS.copyFailed(from, to, commandError("docker", ["volume", "create", to], created)));
@@ -120,19 +112,19 @@ async function copyVolumes(deps: LegacyDockerDeps, target: LegacyStackTarget, lo
       throw new IpcError("unavailable", LEGACY_LABELS.copyFailed(from, to, commandError("docker", args, result)));
     }
     copied.push(to);
+    if ((await docker(deps, target, ["volume", "rm", from])).code !== 0) log(LEGACY_LABELS.oldVolumeKept(from, to));
   }
   return copied;
 }
 
 export async function migrateLegacyStack(deps: LegacyDockerDeps, target: LegacyStackTarget, log: Log = () => undefined): Promise<LegacyDockerReport> {
-  const report: LegacyDockerReport = { stoppedLegacy: false, taggedImage: false, copiedVolumes: [] };
+  const report: LegacyDockerReport = { stoppedLegacy: false, copiedVolumes: [] };
   if (target.hostEnv[SKIP_MIGRATION_ENV] || target.project !== DEFAULT_PROJECT) return report;
   report.stoppedLegacy = await stopLegacyProject(deps, target, log);
-  report.taggedImage = await tagLegacyImage(deps, target, log);
   if (target.volumePrefix !== DEFAULT_PROJECT) return report;
   const marker = volumeMarker(target);
   if (existsSync(marker)) return report;
-  report.copiedVolumes = await copyVolumes(deps, target, log);
+  report.copiedVolumes = await moveVolumes(deps, target, log);
   mkdirSync(join(marker, ".."), { recursive: true });
   writeFileSync(marker, "");
   return report;

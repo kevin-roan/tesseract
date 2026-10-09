@@ -3,9 +3,12 @@ import type { PageSection } from "../../shared/routes";
 export const SHELL_LABELS = {
   appName: "Tesseract",
   search: "Search conversations",
+  pairPhone: "Pair a phone",
   compose: "New conversation (Ctrl+N)",
   projects: "Projects",
   newProject: "New project",
+  containers: "Containers",
+  newContainer: "New container",
   noProject: "No project",
   untitledRun: "Untitled conversation",
   back: "Back",
@@ -15,6 +18,13 @@ export const SHELL_LABELS = {
     offline: "Connect to the sandbox to see your projects.",
     empty: "No projects yet.",
     createProject: "Create a project",
+  },
+  containerStates: {
+    loading: "Loading containers…",
+    unavailable: "Containers need Docker and sysbox on this computer.",
+    setUp: "Set up containers",
+    empty: "No containers yet.",
+    create: "Create a container",
   },
   menu: {
     label: "Main menu",

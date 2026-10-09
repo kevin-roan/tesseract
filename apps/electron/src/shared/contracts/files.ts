@@ -8,6 +8,8 @@ export interface FileDownloadRequest {
   useHeaderChecksum: boolean;
 }
 
+export type FileHandoff = "share" | "open";
+
 export interface FileSaveResult {
   path: string;
   name: string;
@@ -22,6 +24,9 @@ export interface FileProgress {
 export type FilesContract = DefineContract<{
   methods: {
     download(id: string, request: FileDownloadRequest): FileSaveResult | null;
+    /** Downloads to a temp folder, then opens the macOS share menu or the default app. */
+    handoff(id: string, request: FileDownloadRequest, mode: FileHandoff): FileSaveResult;
+    canShare(): boolean;
     saveBytes(suggestedName: string, dataBase64: string): FileSaveResult | null;
     cancel(id: string): void;
     readClipboard(): string;

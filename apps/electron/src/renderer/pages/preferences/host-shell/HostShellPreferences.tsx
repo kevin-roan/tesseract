@@ -1,23 +1,19 @@
-import { usePreferencesRoute } from "../../../app/navigation";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { HostPinDialog } from "../../../components/HostPinDialog";
 import { IconButton } from "../../../components/IconButton";
-import { PairDialog } from "../../../components/PairDialog";
 import { ButtonRow, ExpanderRow, SettingsGroup, SwitchRow } from "../../../components/PreferenceRows";
 import { PREFERENCES_TOAST_SCOPE } from "../constants";
+import { PairPhoneDialog } from "../shared/PairPhoneDialog";
 import { PreferencesPage } from "../shared/PreferencesPage";
 import { HostLog } from "./HostLog";
 import { HOST_SHELL_LABELS as L } from "./labels";
 import { logText, pinButtonLabel, pinSubtitle, serveChecked, serveLocked, serveSubtitle } from "./model";
 import { useHostDialogs } from "./use-host-dialogs";
 import { useHostShell } from "./use-host-shell";
-import { useSandboxPairing } from "./use-sandbox-pairing";
 
 export default function HostShellPreferences() {
   const host = useHostShell();
   const dialogs = useHostDialogs();
-  const sandbox = useSandboxPairing();
-  const { openPreferences } = usePreferencesRoute();
   const state = host.state;
   const status = state?.status ?? "stopped";
   const pairing = state?.pairing ?? null;
@@ -64,20 +60,7 @@ export default function HostShellPreferences() {
         onConfirm={host.rotateToken}
         onClose={dialogs.close}
       />
-      <PairDialog
-        open={dialogs.dialog === "pair"}
-        initialTarget="host"
-        sandbox={sandbox}
-        host={state}
-        onClose={dialogs.close}
-        onOpenPreferences={() => {
-          dialogs.close();
-          openPreferences("connection");
-        }}
-        onStartHost={() => host.setServe(true)}
-        onRefreshHost={host.refresh}
-        onSavePin={host.savePin}
-      />
+      <PairPhoneDialog open={dialogs.dialog === "pair"} target="host" onClose={dialogs.close} />
     </PreferencesPage>
   );
 }

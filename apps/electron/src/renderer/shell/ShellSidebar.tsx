@@ -8,6 +8,7 @@ import { ActionMenu } from "../components/ActionMenu";
 import { IconButton } from "../components/IconButton";
 import {
   Sidebar,
+  SidebarContainers,
   SidebarNav,
   SidebarNavRow,
   SidebarProjects,
@@ -23,7 +24,9 @@ import { AttachmentChip, AttachmentTray } from "../components/Composer";
 import { useComposerProject } from "./hooks/use-composer-project";
 import { useMainMenu } from "./hooks/use-main-menu";
 import { useSidebarComposer } from "./hooks/use-sidebar-composer";
+import { useSidebarContainers } from "./hooks/use-sidebar-containers";
 import { useSidebarProjects } from "./hooks/use-sidebar-projects";
+import { openShellDialog } from "./hooks/use-shell-dialogs";
 import { SHELL_LABELS } from "./labels";
 
 export interface ShellSidebarProps {
@@ -49,6 +52,7 @@ function SidebarHeader({ collapsed }: ShellSidebarProps) {
         }
         end={
           <>
+            <IconButton icon="smartphone" label={SHELL_LABELS.pairPhone} onClick={() => openShellDialog("pair")} />
             <IconButton icon="search" label={SHELL_LABELS.search} onClick={() => navigateTo("agents", { search: true })} />
             <IconButton icon="compose" label={SHELL_LABELS.compose} variant="filled" onClick={() => navigateTo("agents", { new: true })} />
           </>
@@ -118,6 +122,9 @@ export function ShellSidebar({ collapsed }: ShellSidebarProps) {
     navigateTo("agents", id ? { new: true, projectId: id } : { new: true });
   };
   const createProject = () => navigateTo("projects", { create: true });
+  const containers = useSidebarContainers();
+  const { openPreferences } = usePreferencesRoute();
+  const createContainer = () => navigateTo("containers", { create: true });
   return (
     <Sidebar header={<SidebarHeader collapsed={collapsed} />} footer={<SidebarFooter />}>
       <SidebarNav>
@@ -152,6 +159,22 @@ export function ShellSidebar({ collapsed }: ShellSidebarProps) {
           onNewConversation={newConversation}
           onOpenRun={(runId) => navigateTo("agents", { runId })}
           onCreateProject={createProject}
+        />
+      </SidebarSection>
+      <SidebarSection
+        title={SHELL_LABELS.containers}
+        actions={<IconButton icon="add" label={SHELL_LABELS.newContainer} size={22} onClick={createContainer} />}
+      >
+        <SidebarContainers
+          state={containers.state}
+          items={containers.items}
+          selected={containers.selected}
+          labels={SHELL_LABELS.containerStates}
+          onOpen={(name) => navigateTo("containers", undefined, encodeURIComponent(name))}
+          onStart={containers.start}
+          onStop={containers.stop}
+          onCreate={createContainer}
+          onSetUp={() => openPreferences("containers")}
         />
       </SidebarSection>
     </Sidebar>

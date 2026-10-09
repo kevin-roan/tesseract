@@ -1,13 +1,18 @@
+import { useCallback, useState } from "react";
 import { ActionButton } from "../../../components/ActionButton";
 import { ButtonRow, EntryRow, PreferenceRow, SettingsActions, SettingsGroup } from "../../../components/PreferenceRows";
 import { StatusBadge } from "../../../components/StatusBadge";
 import { SetupEntryGroup } from "../../../onboarding/done/setup-entry";
+import { PairPhoneDialog } from "../shared/PairPhoneDialog";
 import { PreferencesPage } from "../shared/PreferencesPage";
 import { SECTION_LABELS } from "./labels";
 import { useConnectionForm } from "./use-connection-form";
 
 export default function ConnectionPreferences() {
   const { form, fields, saving, status, save, rediscover, forget } = useConnectionForm();
+  const [pairOpen, setPairOpen] = useState(false);
+  const openPair = useCallback(() => setPairOpen(true), []);
+  const closePair = useCallback(() => setPairOpen(false), []);
   return (
     <PreferencesPage>
       <SettingsGroup
@@ -26,6 +31,14 @@ export default function ConnectionPreferences() {
       </SettingsGroup>
       <SettingsGroup title={SECTION_LABELS.pairingGroup} description={SECTION_LABELS.pairingDescription}>
         <EntryRow title={SECTION_LABELS.pairingUrl} type="url" value={form.pairingUrl} onChange={fields.pairingUrl} onActivate={save} />
+        <ButtonRow
+          title={SECTION_LABELS.pair}
+          subtitle={SECTION_LABELS.pairSubtitle}
+          label={SECTION_LABELS.showQr}
+          variant="primary"
+          disabled={status.discovering}
+          onActivate={openPair}
+        />
       </SettingsGroup>
       <SettingsGroup title={SECTION_LABELS.statusGroup}>
         <PreferenceRow
@@ -37,6 +50,7 @@ export default function ConnectionPreferences() {
         <ButtonRow title={SECTION_LABELS.forget} subtitle={SECTION_LABELS.forgetSubtitle} label={SECTION_LABELS.forgetButton} variant="destructive" disabled={status.discovering} onActivate={forget} />
       </SettingsGroup>
       <SetupEntryGroup />
+      <PairPhoneDialog open={pairOpen} target="sandbox" onClose={closePair} />
     </PreferencesPage>
   );
 }

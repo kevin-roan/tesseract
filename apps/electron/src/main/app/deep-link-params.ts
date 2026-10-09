@@ -11,6 +11,8 @@ const PAGE_PARAMS: Record<PageId, Record<string, ParamKind>> = {
   files: { view: "text" },
   terminals: { terminalId: "text" },
   display: {},
+  containers: { create: "flag" },
+  domains: {},
 };
 
 function flag(value: string): boolean {

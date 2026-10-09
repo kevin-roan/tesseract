@@ -9,6 +9,7 @@ import styles from "./ProjectDetail.module.css";
 export interface DetailActionsProps {
   display: DisplayButtonModel;
   displaySlot: ReactNode;
+  hostSlot?: ReactNode;
   accountOptions: readonly ChoiceOption[] | null;
   accountValue: string;
   accountBusy: boolean;
@@ -22,6 +23,7 @@ export interface DetailActionsProps {
 export function DetailActions({
   display,
   displaySlot,
+  hostSlot,
   accountOptions,
   accountValue,
   accountBusy,
@@ -36,6 +38,7 @@ export function DetailActions({
       <ActionButton variant="primary" icon={PROJECTS_ICONS.agents} label={DETAIL_LABELS.askClaude} onClick={onAsk} />
       <ActionButton icon={PROJECTS_ICONS.terminal} label={DETAIL_LABELS.claudeTerminal} onClick={onClaudeTerminal} />
       <ActionButton icon={PROJECTS_ICONS.terminal} label={DETAIL_LABELS.shell} onClick={onShell} />
+      {hostSlot}
       {displaySlot ?? (
         <ActionButton
           icon={display.icon}

@@ -4,7 +4,7 @@ import type { TicketStore } from "../../auth/tickets";
 import { tokensEqual } from "../../auth/token";
 
 const BEARER = /^Bearer\s+(\S+)\s*$/i;
-const TICKET_DOWNLOADS = [routePatterns.rest.artifactDownload, routePatterns.rest.buildOutputDownload, routePatterns.rest.uploadContent].map(
+const TICKET_DOWNLOADS = [routePatterns.rest.artifactDownload, routePatterns.rest.buildOutputDownload, routePatterns.rest.projectFileDownload, routePatterns.rest.uploadContent].map(
   (pattern) => new RegExp(`^${pattern.replace(":id", "[^/]+")}$`),
 );
 
@@ -17,7 +17,7 @@ export function isAuthorized(header: string | undefined | null, token: string): 
   return presented !== null && tokensEqual(presented, token);
 }
 
-/** Bearer auth for every /v1 route except GET /v1/health; artifact and build output downloads and upload content also accept a one-time ticket. */
+/** Bearer auth for every /v1 route except GET /v1/health; artifact, build output and project file downloads and upload content also accept a one-time ticket. */
 export function requireAuth(token: string, tickets: TicketStore): MiddlewareHandler {
   return async (c, next) => {
     const path = c.req.path;

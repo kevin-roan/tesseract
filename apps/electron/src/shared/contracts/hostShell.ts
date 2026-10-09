@@ -24,6 +24,11 @@ export interface EmulatorViewerRequest {
   title: string;
 }
 
+export interface HostTerminalRequest {
+  projectId: string;
+  title: string;
+}
+
 export type HostShellContract = DefineContract<{
   methods: {
     state(): HostShellState;
@@ -40,6 +45,7 @@ export type HostShellContract = DefineContract<{
     stopEmulator(): HostAndroidStatus;
     linkSandbox(sandboxUrl: string, token: string): AndroidLinkInfo;
     openEmulatorViewer(request: EmulatorViewerRequest): void;
+    openTerminal(request: HostTerminalRequest): void;
   };
   events: {
     state: HostShellState;

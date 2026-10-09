@@ -7,5 +7,9 @@ export default function createStyles(theme: Theme) {
     guide: {
       gap: theme.spacing.xl,
     },
+    mode: {
+      alignItems: "flex-start",
+      gap: theme.spacing.sm,
+    },
   });
 }

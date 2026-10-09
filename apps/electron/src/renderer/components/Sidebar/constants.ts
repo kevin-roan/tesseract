@@ -7,6 +7,7 @@ export const SIDEBAR = {
   projectIndicatorSpinner: 16,
   runIndicatorSpinner: 12,
   runDotSize: 8,
+  containerDotSize: 6,
   unassignedKey: "\u0000no-project",
   statusLines: 3,
 } as const;

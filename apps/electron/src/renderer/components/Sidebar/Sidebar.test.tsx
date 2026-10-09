@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { SidebarContainers } from "./SidebarContainers";
 import { SidebarNav, SidebarNavRow } from "./SidebarNav";
 import { SidebarProjectRow } from "./SidebarProjectRow";
 import { SidebarProjects } from "./SidebarProjects";
@@ -90,5 +91,57 @@ describe("SidebarProjects", () => {
     expect(screen.getByText("No conversations yet")).toBeTruthy();
     fireEvent.click(screen.getAllByRole("button", { name: "Hide conversations" })[0]!);
     await waitFor(() => expect(screen.queryByText("Port the sidebar")).toBeNull());
+  });
+});
+
+const CONTAINER_LABELS = {
+  loading: "Loading containers…",
+  unavailable: "Containers need Docker.",
+  setUp: "Set up containers",
+  empty: "No containers yet.",
+  create: "Create a container",
+};
+
+describe("SidebarContainers", () => {
+  it("opens, starts and stops containers", () => {
+    const onOpen = vi.fn();
+    const onStart = vi.fn();
+    const onStop = vi.fn();
+    render(
+      <SidebarContainers
+        state="ready"
+        selected="viglis-prod"
+        labels={CONTAINER_LABELS}
+        items={[
+          { name: "viglis-prod", activity: "running", status: "Running" },
+          { name: "staging-db", activity: "stopped", status: "Stopped" },
+          { name: "scratch", activity: "busy", status: "Starting" },
+        ]}
+        onOpen={onOpen}
+        onStart={onStart}
+        onStop={onStop}
+      />,
+    );
+    const open = screen.getByRole("button", { name: "Open viglis-prod" });
+    expect(open.getAttribute("aria-current")).toBe("page");
+    fireEvent.click(open);
+    expect(onOpen).toHaveBeenCalledWith("viglis-prod");
+    fireEvent.click(screen.getByRole("button", { name: "Stop viglis-prod" }));
+    expect(onStop).toHaveBeenCalledWith("viglis-prod");
+    fireEvent.click(screen.getByRole("button", { name: "Start staging-db" }));
+    expect(onStart).toHaveBeenCalledWith("staging-db");
+    expect(screen.queryByRole("button", { name: /(Start|Stop) scratch/ })).toBeNull();
+    expect(screen.getByRole("status", { name: "Starting" })).toBeTruthy();
+  });
+
+  it("renders the status states", () => {
+    const onCreate = vi.fn();
+    const onSetUp = vi.fn();
+    const { rerender } = render(<SidebarContainers state="unavailable" items={[]} labels={CONTAINER_LABELS} onSetUp={onSetUp} />);
+    fireEvent.click(screen.getByRole("button", { name: "Set up containers" }));
+    expect(onSetUp).toHaveBeenCalledOnce();
+    rerender(<SidebarContainers state="empty" items={[]} labels={CONTAINER_LABELS} onCreate={onCreate} />);
+    fireEvent.click(screen.getByRole("button", { name: "Create a container" }));
+    expect(onCreate).toHaveBeenCalledOnce();
   });
 });

@@ -4,4 +4,5 @@ export const FILES_LABELS = {
   cancelled: "The download was cancelled",
   invalidUrl: "Downloads only work over http or https",
   invalidName: "The file name is missing",
+  openFailed: (error: string) => `Couldn't open the file: ${error}`,
 } as const;

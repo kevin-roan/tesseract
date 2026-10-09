@@ -1,5 +1,7 @@
+import { statSync } from "node:fs";
 import { hostname } from "node:os";
-import { createId, LIMITS, type CreateTerminal, type TerminalInfo } from "@tesseract/protocol";
+import { basename, isAbsolute } from "node:path";
+import { createId, LIMITS, type CreateHostTerminal, type TerminalInfo } from "@tesseract/protocol";
 import { badRequest, errorMessage, notFound, unavailable } from "../core/errors";
 import type { Env } from "../core/exec";
 import type { Logger } from "../core/logger";
@@ -28,6 +30,16 @@ export function hostShellEnv(source: Env = process.env): Env {
   return env;
 }
 
+function requireFolder(path: string): string {
+  if (!isAbsolute(path)) throw badRequest("The terminal folder must be an absolute path");
+  let folder = false;
+  try {
+    folder = statSync(path).isDirectory();
+  } catch {}
+  if (!folder) throw notFound(`Folder ${path.slice(0, 200)} not found on this host`);
+  return path;
+}
+
 export class HostTerminals {
   private readonly sessions = new Map<string, Session>();
 
@@ -39,15 +51,16 @@ export class HostTerminals {
     private readonly stopGraceMs: number = LIMITS.processStopGraceMs,
   ) {}
 
-  create(input: CreateTerminal): TerminalInfo {
+  create(input: CreateHostTerminal): TerminalInfo {
     if (input.kind !== "shell") throw badRequest("The host shell only opens shell terminals");
     if (input.projectId !== undefined) throw badRequest("Host terminals have no project");
+    const cwd = input.cwd === undefined ? this.cwd : requireFolder(input.cwd);
     const info: TerminalInfo = {
       id: createId("terminal"),
       kind: "shell",
       projectId: null,
-      title: `Host · ${hostname()}`,
-      cwd: this.cwd,
+      title: input.cwd === undefined ? `Host · ${hostname()}` : `Host · ${hostname()} · ${basename(cwd)}`,
+      cwd,
       pid: null,
       cols: input.cols,
       rows: input.rows,
@@ -65,7 +78,7 @@ export class HostTerminals {
     let proc: Bun.Subprocess;
     try {
       proc = Bun.spawn(this.shell, {
-        cwd: this.cwd,
+        cwd,
         env: { ...hostShellEnv(), TERM: "xterm-256color", COLORTERM: "truecolor", LANG: process.env.LANG ?? "C.UTF-8" },
         terminal: {
           cols: input.cols,

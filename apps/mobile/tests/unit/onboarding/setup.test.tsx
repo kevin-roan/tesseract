@@ -7,7 +7,7 @@ import ActionButton from "@/components/action-button";
 import SchemeScope from "@/components/scheme-scope";
 import ScreenHeader from "@/components/screen-header";
 import SetupGuide from "@/features/onboarding/components/setup-guide";
-import { SETUP_LABELS, SETUP_STEPS, commandLine, setupSummary, stepIndex, stepLabel } from "@/features/onboarding/utils/content";
+import { SETUP_LABELS, SETUP_MODES, SETUP_STEPS, commandLine, setupSummary, stepIndex, stepLabel } from "@/features/onboarding/utils/content";
 
 const clipboard = Clipboard as typeof Clipboard & { __reset: () => void; setStringAsync: jest.Mock };
 
@@ -21,26 +21,40 @@ describe("setup utils", () => {
   });
 
   it("summarizes the steps", () => {
-    const summary = setupSummary(SETUP_STEPS);
+    const summary = setupSummary(SETUP_STEPS.cli);
     expect(summary.stats.map((stat) => stat.value)).toEqual(["3", "2", SETUP_LABELS.tailnet]);
     expect(summary.segments.map((segment) => segment.active)).toEqual([false, false, true]);
+    expect(setupSummary(SETUP_STEPS.desktop).stats.map((stat) => stat.value)).toEqual(["3", "0", SETUP_LABELS.tailnet]);
   });
 });
 
 describe("<SetupGuide />", () => {
   it("renders the summary, every step and copies a command", async () => {
     jest.useFakeTimers();
+    const steps = SETUP_STEPS.cli;
+    const onModeChange = jest.fn();
     await render(
       <SchemeScope scheme="graphite">
-        <SetupGuide summary={setupSummary(SETUP_STEPS)} steps={SETUP_STEPS} testID="guide" />
+        <SetupGuide
+          summary={setupSummary(steps)}
+          steps={steps}
+          mode="cli"
+          modes={SETUP_MODES}
+          modeLabel="How do you run Tesseract?"
+          onModeChange={onModeChange}
+          testID="guide"
+        />
       </SchemeScope>,
     );
     expect(screen.getByTestId("setup-summary")).toBeOnTheScreen();
-    for (const step of SETUP_STEPS) expect(screen.getByTestId(`setup-step-${step.id}`)).toBeOnTheScreen();
-    expect(screen.queryByTestId(`setup-command-${SETUP_STEPS[2].id}`)).toBeNull();
+    for (const step of steps) expect(screen.getByTestId(`setup-step-${step.id}`)).toBeOnTheScreen();
+    expect(screen.queryByTestId(`setup-command-${steps[2].id}`)).toBeNull();
+
+    await fireEvent.press(screen.getByLabelText("Desktop app"));
+    expect(onModeChange).toHaveBeenCalledWith("desktop");
 
     await fireEvent.press(screen.getAllByLabelText(SETUP_LABELS.copy)[0]);
-    expect(clipboard.setStringAsync).toHaveBeenCalledWith(SETUP_STEPS[0].command);
+    expect(clipboard.setStringAsync).toHaveBeenCalledWith(steps[0].command);
     expect(screen.getByLabelText(SETUP_LABELS.copied)).toBeOnTheScreen();
 
     await act(async () => {

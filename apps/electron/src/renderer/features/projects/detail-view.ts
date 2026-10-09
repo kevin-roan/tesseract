@@ -74,6 +74,7 @@ export function detailTabs(input: TabCountInput): { id: ProjectTabId; label: str
     processes: input.processes ? runningCount(input.processes) : null,
     builds: input.builds ? activeBuildCount(input.builds) : null,
     artifacts: input.artifacts?.length ?? null,
+    files: null,
     git: null,
     sync: input.syncCount,
     conversations: input.sessions?.length ?? null,

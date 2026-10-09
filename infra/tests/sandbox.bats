@@ -698,7 +698,7 @@ ${prefix} config --quiet"
 
 # A docker stub with state: STUB_VOLUMES lists existing volumes, STUB_LEGACY_RUNNING makes
 # `docker ps` report a running theone project, STUB_IMAGES lists local images and
-# STUB_FAIL_RUN makes `docker run` fail.
+# STUB_FAIL_RUN makes `docker run` fail, STUB_FAIL_RM `docker volume rm`.
 legacy_stub() {
   unset TESSERACT_SKIP_LEGACY_MIGRATION
   STATE="${BATS_TEST_TMPDIR}/state"
@@ -713,9 +713,9 @@ case "$1 $2" in
   "volume create") printf "%s\n" "${@: -1}" >> "${STUB_STATE}/created" ;;
   "volume inspect") [[ " ${STUB_VOLUMES:-} " == *" $3 "* ]] || grep -qxF -- "$3" "${STUB_STATE}/created" || exit 1 ;;
   "image inspect") [[ " ${STUB_IMAGES:-} " == *" $3 "* ]] || grep -qxF -- "$3" "${STUB_STATE}/created" || exit 1 ;;
-  "tag theone/sandbox:latest") printf "%s\n" "$3" >> "${STUB_STATE}/created" ;;
   "compose --project-name") [[ "$3 $4" != "theone down" ]] || pwd > "${STUB_STATE}/down.cwd" ;;
   "run --rm") [[ -z "${STUB_FAIL_RUN:-}" ]] || exit 1 ;;
+  "volume rm") [[ -z "${STUB_FAIL_RM:-}" ]] || exit 1 ;;
 esac
 exit 0'
 }
@@ -767,8 +767,8 @@ exit 0'
   write_env THEONE_MODE=local THEONE_COMPOSE_PROJECT=theone
   STUB_LEGACY_RUNNING=1 STUB_VOLUMES="theone-workspace" STUB_IMAGES="theone/sandbox:latest" run "${SANDBOX}" up
   assert_success
-  assert_line "sandbox: tagging the existing theone/sandbox:latest image as tesseract/sandbox:latest"
-  assert_line "sandbox: copying volume theone-workspace to tesseract-workspace with tesseract/sandbox:latest (theone-workspace is kept)"
+  refute_output --partial tagging
+  assert_line "sandbox: moving volume theone-workspace to tesseract-workspace with theone/sandbox:latest"
   assert_equal "$(calls_of docker | tail -n 1)" "$(compose_prefix tesseract local) up --detach"
 }
 
@@ -793,33 +793,33 @@ exit 0'
   assert_equal "$(last_env)" "127.0.0.1|new|new|7712|5912"
 }
 
-@test "legacy: up stops a running theone project, copies its volumes once and keeps them" {
+@test "legacy: up stops a running theone project and moves its volumes once" {
   legacy_stub
   write_env TESSERACT_MODE=local
   STUB_LEGACY_RUNNING=1 STUB_IMAGES="theone/sandbox:latest" \
     STUB_VOLUMES="theone-workspace theone-home theone-tailscale theone-tailscale-run tesseract-home" run "${SANDBOX}" up
   assert_success
   assert_line "sandbox: stopping the legacy compose project 'theone' (theone-sandbox-1 theone-tailscale-1) so it does not clash with 'tesseract'; its volumes are kept"
-  assert_line "sandbox: copying volume theone-workspace to tesseract-workspace with tesseract/sandbox:latest (theone-workspace is kept)"
-  assert_line "sandbox: once the new stack works, the old volumes can be removed with: docker volume rm theone-workspace theone-tailscale"
+  assert_line "sandbox: moving volume theone-workspace to tesseract-workspace with theone/sandbox:latest"
+  refute_output --partial "could not remove"
   assert_line --partial "set TESSERACT_HOSTNAME=theone-sandbox to keep the old URL"
   local copy="run --rm --network none --user 0:0 --entrypoint /bin/sh"
-  assert_line "sandbox: tagging the existing theone/sandbox:latest image as tesseract/sandbox:latest"
-  assert_equal "$(calls_of docker)" "image inspect tesseract/sandbox:latest
-image inspect theone/sandbox:latest
-tag theone/sandbox:latest tesseract/sandbox:latest
-ps --filter label=com.docker.compose.project=theone --format \{\{.Names\}\}
+  refute_output --partial tagging
+  assert_equal "$(calls_of docker)" "ps --filter label=com.docker.compose.project=theone --format \{\{.Names\}\}
 compose --project-name theone down
 volume inspect tesseract-workspace
 volume inspect theone-workspace
 image inspect tesseract/sandbox:latest
+image inspect theone/sandbox:latest
 volume create --label com.docker.compose.project=tesseract --label com.docker.compose.volume=tesseract-workspace tesseract-workspace
-${copy} -v theone-workspace:/from:ro -v tesseract-workspace:/to tesseract/sandbox:latest -c cp\ -a\ /from/.\ /to/
+${copy} -v theone-workspace:/from:ro -v tesseract-workspace:/to theone/sandbox:latest -c cp\ -a\ /from/.\ /to/
+volume rm theone-workspace
 volume inspect tesseract-home
 volume inspect tesseract-tailscale
 volume inspect theone-tailscale
 volume create --label com.docker.compose.project=tesseract --label com.docker.compose.volume=tesseract-tailscale tesseract-tailscale
-${copy} -v theone-tailscale:/from:ro -v tesseract-tailscale:/to tesseract/sandbox:latest -c cp\ -a\ /from/.\ /to/
+${copy} -v theone-tailscale:/from:ro -v tesseract-tailscale:/to theone/sandbox:latest -c cp\ -a\ /from/.\ /to/
+volume rm theone-tailscale
 volume inspect tesseract-dind-certs
 volume inspect theone-dind-certs
 volume inspect tesseract-dind-data
@@ -833,8 +833,7 @@ $(compose_prefix tesseract local) up --detach"
   : > "${STUB_LOG}"
   STUB_VOLUMES="theone-workspace" run "${SANDBOX}" up
   assert_success
-  assert_equal "$(calls_of docker)" "image inspect tesseract/sandbox:latest
-ps --filter label=com.docker.compose.project=theone --format \{\{.Names\}\}
+  assert_equal "$(calls_of docker)" "ps --filter label=com.docker.compose.project=theone --format \{\{.Names\}\}
 $(compose_prefix tesseract local) up --detach"
 }
 
@@ -845,7 +844,17 @@ $(compose_prefix tesseract local) up --detach"
   assert_success
   refute_output --partial "TS_AUTHKEY is required"
   refute_output --partial "TESSERACT_HOSTNAME=theone-sandbox"
-  assert_line "sandbox: copying volume theone-tailscale to tesseract-tailscale with alpine:latest (theone-tailscale is kept)"
+  assert_line "sandbox: moving volume theone-tailscale to tesseract-tailscale with alpine:latest"
+}
+
+@test "legacy: an old volume that cannot be removed is reported and the stack still starts" {
+  legacy_stub
+  write_env TESSERACT_MODE=local
+  STUB_FAIL_RM=1 STUB_VOLUMES="theone-home" run "${SANDBOX}" up
+  assert_success
+  assert_line "sandbox: copied theone-home to tesseract-home but could not remove theone-home; remove it with: docker volume rm theone-home"
+  assert_equal "$(calls_of docker | tail -n 1)" "$(compose_prefix tesseract local) up --detach"
+  assert_file_exists "${STATE}/tesseract/legacy-volumes.tesseract.migrated"
 }
 
 @test "legacy: a failed copy removes the new volume again and stops before compose up" {
@@ -870,9 +879,7 @@ $(compose_prefix tesseract local) up --detach"
   write_env TESSERACT_MODE=local TESSERACT_VOLUME_PREFIX=mine
   STUB_LEGACY_RUNNING= STUB_VOLUMES="theone-home" run "${SANDBOX}" up
   assert_success
-  assert_equal "$(calls_of docker)" "image inspect tesseract/sandbox:latest
-image inspect theone/sandbox:latest
-ps --filter label=com.docker.compose.project=theone --format \{\{.Names\}\}
+  assert_equal "$(calls_of docker)" "ps --filter label=com.docker.compose.project=theone --format \{\{.Names\}\}
 $(compose_prefix tesseract local) up --detach"
 
   : > "${STUB_LOG}"

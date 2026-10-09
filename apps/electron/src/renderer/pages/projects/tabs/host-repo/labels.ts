@@ -1,0 +1,28 @@
+import type { HostGitAction } from "../../../../../shared/contracts/syncback";
+
+export const HOST_REPO_LABELS = {
+  shell: "Host shell",
+  pull: "Pull",
+  push: "Push",
+  opening: "Opening…",
+  pulling: "Pulling…",
+  pushing: "Pushing…",
+  shellTooltip: (path: string) => `Open a shell in ${path} on this computer`,
+  pullTooltip: (path: string) => `Run git pull in ${path} on this computer`,
+  pushTooltip: (path: string) => `Run git push in ${path} on this computer`,
+  noCopy: "This project has no copy on this computer. Sync it from a folder here first",
+  hostStopped: "The host shell isn't running. Turn on Serve host shell in Preferences.",
+  hostLoading: "Tesseract is still reading the host shell settings; try again in a moment.",
+  hostNoPin: "Set a host shell PIN in Preferences to open a host shell.",
+  preferences: "Preferences",
+  shellFailed: (error: string) => `Couldn't open the host shell: ${error}`,
+  upToDate: "Already up to date",
+  done: {
+    pull: (summary: string) => `Pulled: ${summary}`,
+    push: (summary: string) => `Pushed: ${summary}`,
+  } satisfies Record<HostGitAction, (summary: string) => string>,
+  failed: {
+    pull: (error: string) => `git pull failed on this computer: ${error}`,
+    push: (error: string) => `git push failed on this computer: ${error}`,
+  } satisfies Record<HostGitAction, (error: string) => string>,
+} as const;

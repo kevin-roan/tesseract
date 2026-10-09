@@ -25,6 +25,7 @@ The desktop app (`apps/electron`) has its own folder:
 | [electron-windows-wine.md](architecture/electron-windows-wine.md) | how Windows builds work on Linux, builder vs forge, targets, signing, wine smoke tests, limits |
 | [mobile-app.md](architecture/mobile-app.md) | the sandbox feature module, stores, react-query + events socket, reconnect and re-pair, screens (incl. add project), WebView pages, web build, dev builds |
 | [security-model.md](architecture/security-model.md) | threat model, controls, dind risk, Claude `bypassPermissions`, secrets, prompt injection, token blast radius, same-user limit, audit results |
+| [server-containers.md](architecture/server-containers.md) | server containers (Sysbox, systemd + Docker, own tailnet node with Tailscale SSH) and public URLs through per-container Cloudflare Tunnels |
 | [ios-simulator-macos.md](architecture/ios-simulator-macos.md) | proposal (not implemented): iOS Simulator and Android emulator on a macOS host |
 
 ## Desktop app (`apps/electron`)
@@ -49,6 +50,8 @@ The desktop app (`apps/electron`) has its own folder:
 | [0007](adr/0007-auth-bearer-token-and-one-time-tickets.md) | Bearer token plus one-time tickets |
 | [0008](adr/0008-mobile-server-state-react-query-and-events.md) | Mobile server state via react-query and an events socket |
 | [0009](adr/0009-supervisord-process-supervision.md) | supervisord for in-container process supervision |
+| [0010](adr/0010-electron-desktop.md) | Electron desktop app, Docker required, renderer dev port 4545 |
+| [0011](adr/0011-server-containers-and-cloudflare-tunnel.md) | Server containers on Sysbox with Tailscale SSH; public URLs only through per-container Cloudflare Tunnels |
 
 New ADRs: copy the structure (Status, Date, Context, Decision, Consequences,
 Alternatives considered), use the next number, and never rewrite an accepted
@@ -71,6 +74,7 @@ ADR. Supersede it with a new one instead.
 | [e2e-testing.md](runbooks/e2e-testing.md) | run the unit, infra (bats) and end-to-end suites, including the desktop app's Playwright suite; what they cover; what to do when they fail |
 | [live-activities.md](runbooks/live-activities.md) | turn on iOS Live Activity (Dynamic Island) pushes with an APNs key |
 | [tailscale-https-setup.md](runbooks/tailscale-https-setup.md) | switch the sandbox to HTTPS when the iPhone app cannot reach it |
+| [server-containers.md](runbooks/server-containers.md) | install Sysbox, set up the Tailscale tag and key and the Cloudflare token, create a server container, publish a URL |
 | [troubleshooting.md](runbooks/troubleshooting.md) | symptom → cause → fix |
 | [rebrand-migration.md](runbooks/rebrand-migration.md) | upgrade an install from the old product names to Tesseract: env keys, volumes, tailnet name, re-pairing, new EAS project |
 

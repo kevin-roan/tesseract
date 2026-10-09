@@ -12,11 +12,14 @@ import {
   type HostEnv,
 } from "../../core/host";
 import { createLogger } from "../../core/log";
-import { defaultAndroidSdkRoot } from "../../core/paths";
-import type { EmulatorViewerRequest, HostShellState } from "../../shared/contracts/hostShell";
+import { defaultAndroidSdkRoot, stateDir } from "../../core/paths";
+import { requireLink, syncState } from "../../core/syncback";
+import type { EmulatorViewerRequest, HostShellState, HostTerminalRequest } from "../../shared/contracts/hostShell";
 import { mainContext } from "../context";
+import { isPlainProjectId } from "../services/project-id";
 import { repoRoot } from "../services/resources";
 import { currentSettings, updateSettings } from "../services/settings";
+import { createHostTerminalWindow } from "../windows/manager";
 import { defineService } from "./_framework/define";
 import { serviceEmitter } from "./_framework/events";
 
@@ -81,6 +84,25 @@ function requireViewerRequest(request: EmulatorViewerRequest): EmulatorViewerReq
   };
 }
 
+function requireTerminalRequest(request: HostTerminalRequest): HostTerminalRequest {
+  if (typeof request !== "object" || request === null || !isPlainProjectId(request.projectId)) {
+    throw new HostShellError(HOST_LABELS.noFolder, "invalid_argument");
+  }
+  return { projectId: request.projectId, title: typeof request.title === "string" && request.title ? request.title : request.projectId };
+}
+
+async function openTerminal(input: HostTerminalRequest): Promise<void> {
+  const request = requireTerminalRequest(input);
+  let hostPath: string;
+  try {
+    hostPath = (await requireLink(syncState({ stateDir: stateDir(mainContext().paths) }), request.projectId)).hostPath;
+  } catch (error) {
+    throw new HostShellError(error instanceof Error ? error.message : HOST_LABELS.noFolder, "not_found");
+  }
+  const url = await host().openTerminal(hostPath);
+  await createHostTerminalWindow(url, HOST_LABELS.terminalTitle(request.title));
+}
+
 export function applyAndroidSdkChange(): Promise<HostShellState | null> {
   return service ? service.restartIfEnvChanged(HOST_ANDROID_ENV_KEYS) : Promise.resolve(null);
 }
@@ -114,6 +136,7 @@ export default defineService(
         requireString(token, HOST_LABELS.invalidSandbox),
       ),
     openEmulatorViewer: (_context, request) => emulatorViewer().open(requireViewerRequest(request)),
+    openTerminal: (_context, request) => openTerminal(request),
   },
   {
     start: () => {

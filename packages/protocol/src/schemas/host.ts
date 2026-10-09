@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { HOST_PIN_PATTERN, HOST_SHELL_SERVICE, PROTOCOL_VERSION } from "../constants";
 import { TimestampSchema } from "./primitives";
+import { CreateTerminalSchema } from "./processes";
 
 /** `GET /v1/health` of the host shell daemon (`tesseract-controller host serve`). */
 export const HostHealthSchema = z.object({
@@ -34,3 +35,9 @@ export type HostSession = z.infer<typeof HostSessionSchema>;
 
 export const HostLockSchema = z.object({ session: z.string().min(1) });
 export type HostLock = z.infer<typeof HostLockSchema>;
+
+/** `POST /v1/terminals` on the host shell; `cwd` is an absolute host folder (a project's host copy) and defaults to the home folder. */
+export const CreateHostTerminalSchema = CreateTerminalSchema.extend({
+  cwd: z.string().min(1).max(4096).optional(),
+});
+export type CreateHostTerminal = z.infer<typeof CreateHostTerminalSchema>;

@@ -39,6 +39,7 @@ function RootNavigator() {
               <Stack.Screen name="sandbox/terminal/[id]" options={{ gestureEnabled: false, title: 'Terminal' }} />
               <Stack.Screen name="sandbox/projects/new" options={{ title: 'New project' }} />
               <Stack.Screen name="sandbox/projects/[id]" options={{ title: 'Project' }} />
+              <Stack.Screen name="sandbox/files/[id]" options={{ title: 'Files' }} />
               <Stack.Screen name="sandbox/builds/[id]" options={{ title: 'Build' }} />
               <Stack.Screen name="sandbox/agent/[id]" options={{ title: 'Claude run' }} />
               <Stack.Screen name="sandbox/claude" options={{ title: 'Claude accounts' }} />

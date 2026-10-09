@@ -1,0 +1,23 @@
+#!/bin/bash
+# Logs in once with the auth key the host dropped in /etc/tesseract, then deletes it.
+set -euo pipefail
+key_file=/etc/tesseract/authkey
+if tailscale status --json 2>/dev/null | jq -e '.BackendState == "Running"' >/dev/null; then
+  rm -f "$key_file"
+  exit 0
+fi
+if [[ ! -s "$key_file" ]]; then
+  echo "tesseract: no auth key; run 'tailscale up --ssh' inside the container" >&2
+  exit 0
+fi
+args=(up --ssh --auth-key="file:$key_file" --hostname="${TESSERACT_TAILNET_HOSTNAME:-$(hostname)}" --accept-dns=false)
+[[ -n "${TESSERACT_TAILNET_TAGS:-}" ]] && args+=(--advertise-tags="$TESSERACT_TAILNET_TAGS")
+for _ in $(seq 1 30); do
+  if tailscale "${args[@]}"; then
+    shred -u "$key_file" 2>/dev/null || rm -f "$key_file"
+    exit 0
+  fi
+  sleep 2
+done
+echo "tesseract: tailscale up failed" >&2
+exit 1

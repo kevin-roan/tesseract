@@ -2,7 +2,7 @@ import type { Server, ServerWebSocket } from "bun";
 import {
   AndroidScreenClientMessageSchema,
   AndroidScreenQuerySchema,
-  CreateTerminalSchema,
+  CreateHostTerminalSchema,
   errorBody,
   HOST_SHELL_SERVICE,
   HostLockSchema,
@@ -164,7 +164,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
 
     if (path === restPaths.authTicket() && method === "POST") return respond(tickets.issue());
     if (path === restPaths.terminals() && method === "GET") return respond(terminals.list());
-    if (path === restPaths.terminals() && method === "POST") return respond(terminals.create(await readBody(request, CreateTerminalSchema)), 201);
+    if (path === restPaths.terminals() && method === "POST") return respond(terminals.create(await readBody(request, CreateHostTerminalSchema)), 201);
     if (terminalId !== null && method === "DELETE") {
       if (!isIdOfKind("terminal", terminalId)) throw notFound(`Terminal ${terminalId.slice(0, 80)} not found`);
       return respond(await terminals.close(terminalId));

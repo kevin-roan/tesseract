@@ -11,7 +11,7 @@ import { useSetupScreen } from "@/features/onboarding/hooks/use-setup-screen";
 import { Durations } from "@/theme";
 
 export default function SetupScreen() {
-  const { steps, summary, labels, back, pair } = useSetupScreen();
+  const { mode, modes, setMode, steps, summary, labels, back, pair } = useSetupScreen();
   const styles = useOnboardingStyles();
 
   return (
@@ -26,7 +26,15 @@ export default function SetupScreen() {
         </Animated.View>
       }
     >
-      <SetupGuide summary={summary} steps={steps} testID="onboarding-setup" />
+      <SetupGuide
+        summary={summary}
+        steps={steps}
+        mode={mode}
+        modes={modes}
+        modeLabel={labels.setupMode}
+        onModeChange={setMode}
+        testID="onboarding-setup"
+      />
     </ScreenScaffold>
   );
 }

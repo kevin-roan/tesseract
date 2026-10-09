@@ -13,6 +13,7 @@ export { connectSandbox, connectionFor, resolveConnection, type CliIo, type Sync
 export { describeError, NotConfiguredError, isAuthError } from "./describe";
 export { diffFile as diffBytes, extractMember, previewDiff, readHostFile, toContractDiff, type FileDiff as RawFileDiff } from "./diff";
 export { NotLinked, SyncBackError, SyncConflict, TooLarge } from "./errors";
+export { hostGit, type GitRunner } from "./host-git";
 export { hostChangeList, planChanges, planGit, runGet, writeGetArchive } from "./get";
 export { DigestCache, buildManifest, checkRelative, hashPath, resolveInside } from "./manifest";
 export { pseudonym } from "./pseudonym";

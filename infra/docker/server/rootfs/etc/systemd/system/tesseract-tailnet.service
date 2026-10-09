@@ -1,0 +1,14 @@
+[Unit]
+Description=Join the tailnet with the one-time Tesseract auth key
+After=tailscaled.service network-online.target
+Requires=tailscaled.service
+ConditionPathExists=/etc/tesseract/tailnet.env
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/tesseract/tailnet.env
+ExecStart=/usr/local/sbin/tesseract-tailnet-up
+
+[Install]
+WantedBy=multi-user.target

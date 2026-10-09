@@ -16,11 +16,11 @@ export type ObeliskGeometry = {
   scale: number;
 };
 
-/** Maps the obelisk onto a `cover`-fitted, centered splash — the same fit the native splash uses. */
-export function obeliskGeometry(width: number, height: number): ObeliskGeometry {
-  const scale = Math.max(width / SOURCE.width, height / SOURCE.height);
-  const dx = (width - SOURCE.width * scale) / 2;
-  const dy = (height - SOURCE.height * scale) / 2;
+/** Where the splash image is drawn: its scale and top-left offset. */
+export type SplashPlacement = { scale: number; dx: number; dy: number; width: number; height: number };
+
+/** Maps the obelisk landmarks onto a splash image drawn at `placement`; the ridge runs to `bottom`. */
+function placeObelisk({ scale, dx, dy }: SplashPlacement, bottom: number): ObeliskGeometry {
   const map = (x: number, y: number) => ({
     x: dx + x * scale,
     y: dy + y * scale,
@@ -30,9 +30,36 @@ export function obeliskGeometry(width: number, height: number): ObeliskGeometry 
     tip: map(TIP.x, TIP.y),
     leftShoulder: map(SHOULDER.left, SHOULDER.y),
     rightShoulder: map(SHOULDER.right, SHOULDER.y),
-    ridgeBottom: height,
+    ridgeBottom: bottom,
     scale,
   };
+}
+
+/** Maps the obelisk onto a `cover`-fitted, centered splash — the same fit the native splash uses. */
+export function obeliskGeometry(width: number, height: number): ObeliskGeometry {
+  const scale = Math.max(width / SOURCE.width, height / SOURCE.height);
+  const dx = (width - SOURCE.width * scale) / 2;
+  const dy = (height - SOURCE.height * scale) / 2;
+  return placeObelisk({ scale, dx, dy, width: SOURCE.width * scale, height: SOURCE.height * scale }, height);
+}
+
+/**
+ * Crops the splash around the obelisk for a `width` × `height` box: the obelisk
+ * spans `span` of the width and its tip sits `tipAt` of the way down. The image
+ * always covers the box, so a short crop zooms in rather than leaving gaps.
+ */
+export function obeliskCrop(width: number, height: number, span = 0.42, tipAt = 0.3) {
+  // The tip is centred, so the image must reach both edges from there.
+  const halfWidth = Math.min(TIP.x, SOURCE.width - TIP.x);
+  const scale = Math.max((width * span) / (SHOULDER.right - SHOULDER.left), width / 2 / halfWidth, height / SOURCE.height);
+  const placement: SplashPlacement = {
+    scale,
+    dx: width / 2 - TIP.x * scale,
+    dy: Math.min(0, Math.max(height - SOURCE.height * scale, height * tipAt - TIP.y * scale)),
+    width: SOURCE.width * scale,
+    height: SOURCE.height * scale,
+  };
+  return { placement, geometry: placeObelisk(placement, height) };
 }
 
 export type GlyphLayout = { id: number; x: number }[];

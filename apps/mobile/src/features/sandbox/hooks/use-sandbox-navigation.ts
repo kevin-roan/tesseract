@@ -22,6 +22,7 @@ export function useSandboxNavigation() {
         ),
       project: (id: string, processId?: string) =>
         router.push({ pathname: "/sandbox/projects/[id]", params: processId ? { id, process: processId } : { id } }),
+      projectFiles: (id: string) => router.push({ pathname: "/sandbox/files/[id]", params: { id } }),
       newProject: () => router.push("/sandbox/projects/new"),
       replaceWithProject: (id: string) => router.replace({ pathname: "/sandbox/projects/[id]", params: { id } }),
       build: (id: string) => router.push({ pathname: "/sandbox/builds/[id]", params: { id } }),

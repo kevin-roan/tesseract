@@ -50,6 +50,14 @@ export const ARTIFACT_LABELS = {
   saveUnavailable: "Saving files isn't available in this window.",
 } as const;
 
+export const PROJECT_FILE_LABELS = {
+  share: "Share…",
+  open: "Open",
+  opened: "Opened {name}",
+  missing: "{name} is no longer in the project. Refresh the folder.",
+  handoffFailed: "Couldn't open {name}: {error}",
+} as const;
+
 export const DELETE_LABELS = {
   title: "Delete {name}?",
   body: "The file is removed from the sandbox. This can't be undone.",

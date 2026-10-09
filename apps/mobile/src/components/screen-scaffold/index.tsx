@@ -1,5 +1,5 @@
 import { useContext, useMemo, type ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, RefreshControl, ScrollView, View } from "react-native";
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import Animated from "react-native-reanimated";
 import { SafeAreaInsetsContext, SafeAreaView, type Edge } from "react-native-safe-area-context";
 
@@ -63,7 +63,10 @@ const ScreenScaffold = ({
       {children}
     </ScrollView>
   ) : (
-    <View style={[styles.fill, styles.body]}>{children}</View>
+    // Tapping empty space dismisses the keyboard, as the ScrollView's "handled" taps do; children's own presses win.
+    <Pressable style={[styles.fill, styles.body]} onPress={Keyboard.dismiss} accessible={false}>
+      {children}
+    </Pressable>
   );
 
   return (

@@ -36,7 +36,7 @@ export const CONFLICT_STATUS = 409;
 
 export const LIST_TABS: readonly ListTab[] = ["all", "active", "idle"];
 export const GROUP_ORDER: readonly ActivityKind[] = ["agent", "building", "running", "idle"];
-export const PROJECT_TABS: readonly ProjectTabId[] = ["processes", "builds", "artifacts", "git", "sync", "conversations"];
+export const PROJECT_TABS: readonly ProjectTabId[] = ["processes", "builds", "artifacts", "files", "git", "sync", "conversations"];
 export const CREATE_DIALOG_PARAM = "create";
 export const TAB_SEARCH_PARAM = "tab";
 export const TAB_COMPONENT_EXPORTS: Record<ProjectTabId, { folder: string; name: string }> = {
@@ -45,6 +45,7 @@ export const TAB_COMPONENT_EXPORTS: Record<ProjectTabId, { folder: string; name:
   artifacts: { folder: "artifacts", name: "ArtifactsTab" },
   git: { folder: "git", name: "GitTab" },
   sync: { folder: "sync", name: "SyncTab" },
+  files: { folder: "files", name: "FilesTab" },
   conversations: { folder: "conversations", name: "ConversationsTab" },
 };
 export const EMULATOR_EXPORT = { folder: "emulator", name: "EmulatorButton" } as const;
@@ -102,6 +103,7 @@ export const PROJECTS_ICONS = {
   idle: "status-todo",
   busy: "status-progress",
   clean: "status-done",
+  storage: "disk",
 } as const;
 
 export const PSEUDONYM_ADJECTIVES: readonly string[] = [

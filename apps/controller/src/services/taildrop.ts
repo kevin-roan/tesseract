@@ -61,6 +61,12 @@ export class TaildropService {
 
   async send(artifactId: string, targetId: string): Promise<Artifact> {
     const { artifact, path } = this.artifacts.download(artifactId);
+    await this.sendFile(path, artifact.fileName, targetId);
+    return artifact;
+  }
+
+  /** Streams `path` to a tailnet device as `fileName`. */
+  async sendFile(path: string, fileName: string, targetId: string): Promise<void> {
     const { available, targets } = await this.targets();
     if (!available) throw unavailable("Taildrop is not available: the Tailscale LocalAPI socket is not shared with this sandbox");
     const target = targets.find((candidate) => candidate.id === targetId);
@@ -69,7 +75,7 @@ export class TaildropService {
     let response: Response;
     try {
       response = await this.fetcher(
-        `/localapi/v0/file-put/${encodeURIComponent(target.id)}/${encodeURIComponent(artifact.fileName)}`,
+        `/localapi/v0/file-put/${encodeURIComponent(target.id)}/${encodeURIComponent(fileName)}`,
         AbortSignal.timeout(this.sendTimeoutMs),
         { method: "PUT", body: file, headers: { "Content-Length": String(file.size), "Content-Type": "application/octet-stream" } },
       );
@@ -83,7 +89,6 @@ export class TaildropService {
       throw unavailable(`Taildrop to ${target.hostName} failed: ${detail}`);
     }
     await response.body?.cancel();
-    this.logger.info("artifact sent with taildrop", { id: artifact.id, target: target.hostName, bytes: file.size });
-    return artifact;
+    this.logger.info("file sent with taildrop", { fileName, target: target.hostName, bytes: file.size });
   }
 }

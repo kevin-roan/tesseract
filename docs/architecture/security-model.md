@@ -370,7 +370,10 @@ Regression tests: `apps/controller/tests/hardening.test.ts` and
 
 ## What is never exposed
 
-- No published host ports in the default mode, no Funnel, no public DNS.
+- No published host ports in the default mode, no Funnel, no public DNS. The only exception is
+  public URLs the user adds for **server containers** (ADR 0011): proxied Cloudflare hostnames
+  served by an outbound tunnel. Each URL goes to one `container:port`, everything else returns 404,
+  and the sandbox, host and tailnet names are never published ([server-containers.md](server-containers.md)).
 - The host Docker socket and host filesystem (the host's tailscale socket directory only
   with the opt-in `--tailscale-api`).
 - The controller token, in any API response. The only exceptions are the

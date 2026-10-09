@@ -3,7 +3,8 @@ import { ipcFetch } from "../../app/data";
 import { bridge, isFixtureMode } from "../../app/runtime";
 import { ipc } from "../../lib/ipc";
 import { fixtureFetch } from "../../fixtures/fetch";
-import { downloadUrl, runDownload, type FileSaver, type SaveTarget } from "./download";
+import type { FileHandoff } from "../../../shared/contracts/files";
+import { downloadUrl, runDownload, type DownloadSource, type FileSaver, type SaveTarget } from "./download";
 import { ARTIFACT_LABELS } from "./labels";
 
 interface WritableFile {
@@ -83,6 +84,23 @@ function mainProcessSaver(client: TesseractClient): FileSaver {
       stop();
     }
   };
+}
+
+export function canHandOff(): boolean {
+  return !isFixtureMode() && bridge() !== null;
+}
+
+/** Downloads into a temp folder in the main process, then shares (macOS) or opens it with the default app. */
+export async function handOffFile(client: TesseractClient, source: DownloadSource, suggestedName: string, mode: FileHandoff): Promise<string> {
+  if (!canHandOff()) throw new SaveUnavailableError();
+  const saved = await ipc.files.handoff(crypto.randomUUID(), {
+    url: downloadUrl(client, source),
+    headers: client.authHeaders(),
+    suggestedName,
+    expectedSha256: null,
+    useHeaderChecksum: true,
+  }, mode);
+  return saved.name;
 }
 
 export function rendererFileSaver(client: TesseractClient): FileSaver {

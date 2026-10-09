@@ -7,6 +7,7 @@ import type { PathEnvironment } from "../paths";
 import { migrateLegacyInstall } from "./dirs";
 import { migrateLegacyStack, volumeMarker, type LegacyStackTarget } from "./docker";
 import { migrateEnvFile, migrateEnvText } from "./env";
+import { LEGACY_LABELS } from "./labels";
 
 let dir: string;
 let home: string;
@@ -164,9 +165,10 @@ describe("migrateLegacyStack", () => {
     return docker.calls.map((call) => call.args.join(" "));
   }
 
-  function legacyDocker(existing: string[], images: string[], copy = ok()): FakeDocker {
+  function legacyDocker(existing: string[], images: string[], copy = ok(), inUse: string[] = []): FakeDocker {
     return new FakeDocker().onRun((args) => {
       const line = args.join(" ");
+      if (args[0] === "volume" && args[1] === "rm" && inUse.includes(args[2] as string)) return failed("volume is in use");
       if (line.startsWith("ps --quiet")) return ok("abc123\n");
       if (line.startsWith("compose --project-name theone down")) return ok();
       if (args[0] === "volume" && args[1] === "inspect") return existing.includes(args[2] as string) ? ok("[]") : failed("no such volume");
@@ -177,16 +179,16 @@ describe("migrateLegacyStack", () => {
     });
   }
 
-  it("stops the theone project, tags the old image and copies missing volumes once", async () => {
+  it("stops the theone project and moves missing volumes once, without reusing the old image", async () => {
     const docker = legacyDocker(["theone-workspace", "theone-home", "theone-tailscale", "theone-tailscale-run", "tesseract-home"], ["theone/sandbox:latest"]);
     const logs: string[] = [];
     const report = await migrateLegacyStack(docker.deps() as never, target(), (line) => logs.push(line));
-    expect(report).toEqual({ stoppedLegacy: true, taggedImage: true, copiedVolumes: ["tesseract-workspace", "tesseract-tailscale"] });
+    expect(report).toEqual({ stoppedLegacy: true, copiedVolumes: ["tesseract-workspace", "tesseract-tailscale"] });
     const calls = lines(docker);
     expect(calls).toContain("ps --quiet --filter label=com.docker.compose.project=theone");
     expect(calls).toContain("compose --project-name theone down --remove-orphans");
     expect(calls.filter((line) => line.startsWith("compose")).some((line) => /--volumes|\s-v\b/.test(line))).toBe(false);
-    expect(calls).toContain("tag theone/sandbox:latest tesseract/sandbox:latest");
+    expect(calls.some((line) => line.startsWith("tag "))).toBe(false);
     expect(calls).toContain(
       "volume create --label com.docker.compose.project=tesseract --label com.docker.compose.volume=tesseract-workspace tesseract-workspace",
     );
@@ -194,7 +196,8 @@ describe("migrateLegacyStack", () => {
       "run --rm --network none --user 0:0 --entrypoint /bin/sh -v theone-workspace:/from:ro -v tesseract-workspace:/to theone/sandbox:latest -c cp -a /from/. /to/",
     );
     expect(calls.some((line) => line.includes("tailscale-run"))).toBe(false);
-    expect(calls.some((line) => line.startsWith("volume rm"))).toBe(false);
+    expect(calls.filter((line) => line.startsWith("volume rm"))).toEqual(["volume rm theone-workspace", "volume rm theone-tailscale"]);
+    expect(calls.indexOf("volume rm theone-workspace")).toBeGreaterThan(calls.findIndex((line) => line.includes("-v theone-workspace:/from:ro")));
     expect(existsSync(volumeMarker(target()))).toBe(true);
     expect(logs.some((line) => line.includes("theone-workspace"))).toBe(true);
 
@@ -207,7 +210,17 @@ describe("migrateLegacyStack", () => {
     const docker = legacyDocker(["theone-workspace"], ["tesseract/sandbox:latest"], failed("disk full"));
     await expect(migrateLegacyStack(docker.deps() as never, target())).rejects.toThrow(/theone-workspace to tesseract-workspace failed/);
     expect(lines(docker)).toContain("volume rm tesseract-workspace");
+    expect(lines(docker)).not.toContain("volume rm theone-workspace");
     expect(existsSync(volumeMarker(target()))).toBe(false);
+  });
+
+  it("reports an old volume it cannot remove and still finishes", async () => {
+    const docker = legacyDocker(["theone-home"], ["tesseract/sandbox:latest"], ok(), ["theone-home"]);
+    const logs: string[] = [];
+    const report = await migrateLegacyStack(docker.deps() as never, target(), (line) => logs.push(line));
+    expect(report.copiedVolumes).toEqual(["tesseract-home"]);
+    expect(logs).toContain(LEGACY_LABELS.oldVolumeKept("theone-home", "tesseract-home"));
+    expect(existsSync(volumeMarker(target()))).toBe(true);
   });
 
   it("skips custom projects, custom prefixes and TESSERACT_SKIP_LEGACY_MIGRATION", async () => {

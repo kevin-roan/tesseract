@@ -2,12 +2,12 @@ import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process"
 import { createInterface } from "node:readline";
 import type { Readable } from "node:stream";
 import { HostShellClient, TesseractClient, type FetchLike } from "@tesseract/client";
-import type { AndroidLinkInfo, HostAndroidStatus } from "@tesseract/protocol";
+import type { AndroidLinkInfo, CreateHostTerminal, HostAndroidStatus } from "@tesseract/protocol";
 import type { HostPairing, HostShellState } from "../../shared/contracts/hostShell";
 import { redact } from "../log";
 import { runCommand, type CommandOptions, type CommandResult } from "../process";
 import { nodeFileProbe, supervisedCommand, type FileProbe } from "./command";
-import { HOST_ARGS, HOST_SHELL, INITIAL_HOST_SHELL_STATE, LOG_FLUSH_MS } from "./constants";
+import { HOST_ARGS, HOST_SHELL, HOST_TERMINAL_GRID, INITIAL_HOST_SHELL_STATE, LOG_FLUSH_MS } from "./constants";
 import type { HostEnv } from "./env";
 import { HOST_LABELS } from "./labels";
 import {
@@ -213,6 +213,15 @@ export class HostShellService {
       throw new HostShellError(HOST_LABELS.invalidSandbox, "invalid_argument");
     }
     return this.hostCall((client) => client.linkSandbox({ sandboxUrl: sandboxUrl.trim(), token }));
+  }
+
+  openTerminal(cwd: string): Promise<string> {
+    if (typeof cwd !== "string" || !cwd) throw new HostShellError(HOST_LABELS.noFolder, "invalid_argument");
+    return this.hostCall(async (client) => {
+      const request: CreateHostTerminal = { kind: "shell", cwd, ...HOST_TERMINAL_GRID };
+      const terminal = await client.createTerminal(request);
+      return client.terminalPageUrl(terminal.id);
+    });
   }
 
   shutdown(): Promise<void> {

@@ -372,7 +372,9 @@ Targets are `electron-linux`, `electron-windows`, `android-apk`, `web` and
   reproducible installs. Remote access goes only through Tailscale and the
   controller. You MUST NOT expose services to the internet (public IPs,
   Funnel, ngrok, cloudflared, port forwarding) unless the user explicitly asks
-  and confirms.
+  and confirms. Public URLs for server containers are made only by the user,
+  from the desktop app or `tesseract domains` on the host (ADR 0011), never
+  from inside the sandbox.
 - **Secrets:** never handle the controller token; use the API only as in 8.2. Never print or copy
   the VNC password (`TESSERACT_VNC_PASSWORD`, `/home/dev/.vnc/`,
   `/run/tesseract/controller.env`) or the Claude login (`/home/dev/.claude/`, the host's `~/.claude`). The

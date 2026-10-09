@@ -55,6 +55,7 @@ apps/controller/dist/
 
 # sandbox infrastructure secrets
 infra/compose/.env
+infra/compose/.env.legacy-backup
 infra/compose/secrets/
 
 # Sentry auth token

@@ -46,6 +46,20 @@ export const useProjectGit = (projectId: string, enabled = true) =>
     { enabled: enabled && projectId.length > 0 },
   );
 
+export const useProjectFiles = (projectId: string, path: string) =>
+  useSandboxQuery(
+    (sandboxId) => sandboxKeys.projectFiles(sandboxId, projectId, path),
+    (client, signal) => client.listProjectFiles(projectId, path, { signal }),
+    { enabled: projectId.length > 0 },
+  );
+
+export const useProjectStorage = (projectId: string) =>
+  useSandboxQuery(
+    (sandboxId) => sandboxKeys.projectStorage(sandboxId, projectId),
+    (client, signal) => client.projectStorage(projectId, { signal }),
+    { enabled: projectId.length > 0 },
+  );
+
 export const useSyncChanges = (projectId: string, refetchInterval?: number) =>
   useSandboxQuery(
     (sandboxId) => sandboxKeys.syncChanges(sandboxId, projectId),

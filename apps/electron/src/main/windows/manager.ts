@@ -10,7 +10,7 @@ import { mainContext, platform } from "../context";
 import { trackRendererLoad } from "../services/idle";
 import { bundledResource } from "../services/resources";
 import { currentSettings } from "../services/settings";
-import { MAIN_WINDOW, ONBOARDING_WINDOW, PRELOAD_FILE, TRAFFIC_LIGHT_POSITION, WINDOW_BACKGROUND } from "./config";
+import { HOST_TERMINAL_WINDOW, MAIN_WINDOW, ONBOARDING_WINDOW, PRELOAD_FILE, TRAFFIC_LIGHT_POSITION, WINDOW_BACKGROUND } from "./config";
 import { rendererEntryFile } from "./entry";
 import { persistWindowState, restoredMainWindow } from "./window-state-store";
 
@@ -151,6 +151,22 @@ export async function createOnboardingWindow(step: OnboardingStepId = "welcome")
   window.webContents.setZoomFactor(currentSettings().zoom);
   window.once("ready-to-show", () => window.show());
   await loadRoute(window, ROUTE.onboarding(step));
+  return window;
+}
+
+export async function createHostTerminalWindow(url: string, title: string): Promise<BrowserWindow> {
+  const window = new BrowserWindow({
+    ...HOST_TERMINAL_WINDOW,
+    title,
+    show: false,
+    backgroundColor: WINDOW_BACKGROUND.graphite,
+    icon: windowIcon(),
+    autoHideMenuBar: true,
+    webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, spellcheck: false },
+  });
+  window.on("page-title-updated", (event) => event.preventDefault());
+  window.once("ready-to-show", () => window.show());
+  await window.loadURL(url);
   return window;
 }
 

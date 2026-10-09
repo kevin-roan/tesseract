@@ -1,5 +1,5 @@
 import type { IconName } from "../../theme/icons";
-import type { SidebarProjectItem, SidebarProjectsState } from "./model";
+import type { SidebarContainerItem, SidebarContainersState, SidebarProjectItem, SidebarProjectsState } from "./model";
 
 export interface NavSample {
   id: string;
@@ -95,3 +95,22 @@ export const MOTION_SAMPLE = {
   crossfadeA: "First label",
   crossfadeB: "Second label",
 } as const;
+
+export const CONTAINER_SAMPLES: readonly SidebarContainerItem[] = [
+  { name: "viglis-prod", activity: "running", status: "Running" },
+  { name: "staging-db", activity: "stopped", status: "Stopped" },
+  { name: "scratch", activity: "busy", status: "Starting" },
+  { name: "legacy-api", activity: "error", status: "Error" },
+];
+
+export const CONTAINER_STATE_SAMPLES: readonly SidebarContainersState[] = ["loading", "unavailable", "empty"];
+
+export const CONTAINERS_LABEL_SAMPLE = {
+  loading: "Loading containers…",
+  unavailable: "Containers need Docker and sysbox on this computer.",
+  setUp: "Set up containers",
+  empty: "No containers yet.",
+  create: "Create a container",
+} as const;
+
+export const CONTAINERS_GALLERY_SAMPLE = { id: "sidebar-containers", title: "SidebarContainers", selected: "viglis-prod" } as const;

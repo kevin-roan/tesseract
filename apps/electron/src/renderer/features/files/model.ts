@@ -164,6 +164,10 @@ export function viewTabs(artifacts: readonly Artifact[] | null, outputs: readonl
   ];
 }
 
+export function projectFileKey(projectId: string, path: string): string {
+  return `${projectId}:${path}`;
+}
+
 export function outputKey(output: Pick<BuildOutput, "projectId" | "path">): string {
   return `${output.projectId}/${output.path}`;
 }

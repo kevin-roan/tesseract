@@ -137,6 +137,7 @@ from an automated agent MUST go through `flock /tmp/tesseract-bun-install.lock b
 | Host Android emulator | console `5554`, adbd `5555` (`DEFAULT_EMULATOR_PORT`, `TESSERACT_EMULATOR_PORT`); adb serial `127.0.0.1:<bridge port>` in `netns` isolation (`TESSERACT_EMULATOR_ADB_PORT`), `emulator-<port>` for a plain (`none` or adopted non-isolated) emulator |
 | Desktop renderer dev server | `http://127.0.0.1:4545` (`RENDERER_DEV_PORT`, `strictPort`, dev and preview); never the Electron/Vite defaults |
 | Desktop app id / deep link | `dev.tesseract.Desktop`; `tesseract://<page>[?…]`, `tesseract://preferences/<section>`, `tesseract://onboarding/<step>`, `tesseract://pair`, … (§12.3) |
+| Server containers | `tesseract-ct-<name>` (sysbox-runc, image `tesseract/server:1`, network `tesseract-ct-<name>`, volume `tesseract-ct-<name>-docker`), connector `tesseract-ct-<name>-tunnel`; route state `$TESSERACT_STATE_DIR/containers.json`; tailnet tag `tag:tesseract-server` ([server-containers.md](server-containers.md), ADR 0011) |
 | Host shell state | `$XDG_CONFIG_HOME/tesseract/host-shell/state.json` (default `~/.config/…`, `TESSERACT_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters, `androidLink` (sandbox URL + token), `androidStream` (the `AndroidStreamSettings` fields changed from the defaults; invalid fields fall back to them) |
 
 `projectId` = directory name under `/workspace/projects`, must match
@@ -147,11 +148,11 @@ Installs from before the rename to Tesseract are migrated once, by `bun run sand
 file on every command; stack on `up`), the desktop app's sandbox start and `tesseract server install`:
 legacy env keys become `TESSERACT_*` (original kept as `<env file>.legacy-backup`; old default
 project/prefix/image values become the `tesseract` ones, the hostname is kept), the legacy project
-is stopped (`down`, volumes kept), its image is tagged `tesseract/sandbox:latest` if that is
-missing, and its volumes (all but `tailscale-run`) are copied to missing `tesseract-*` ones, once
-per prefix (marker `$XDG_STATE_HOME/tesseract/legacy-volumes.<prefix>.migrated`, default
+is stopped (`down`, volumes kept) and its volumes (all but `tailscale-run`) are moved to missing
+`tesseract-*` ones (copied, then the old one removed), once per prefix (marker `$XDG_STATE_HOME/tesseract/legacy-volumes.<prefix>.migrated`, default
 `~/.local/state/…`); only for the default project and prefix, never with
-`TESSERACT_SKIP_LEGACY_MIGRATION=1`. The desktop app, the `tesseract` CLI, the host shell
+`TESSERACT_SKIP_LEGACY_MIGRATION=1`. The old image is never reused: its controller only speaks
+the old names, so the new image is built. The desktop app, the `tesseract` CLI, the host shell
 daemon and the sandbox entrypoint each copy or move their own legacy dirs once. Details and the
 manual steps: [rebrand-migration.md](../runbooks/rebrand-migration.md). The mobile app and the
 controller are upgraded together (renamed deep-link scheme and in-page message names).
@@ -292,6 +293,14 @@ It runs `bun apps/controller/src/index.ts` from its checkout, or `TESSERACT_CONT
 then `apps/controller/dist/tesseract-controller`. It fills `TESSERACT_ANDROID_SDK_ROOT` (and `TESSERACT_ADB`) from the
 SDK its setup wizard installed when they are not already set.
 
+A project's detail page has **Host shell**, **Pull** and **Push** for the project's host copy (the
+`hostPath` of its sync-back link; all three are disabled without one). Host shell needs the daemon
+running with a PIN and an unlocked session (the same PIN prompt as the host emulator), then
+`POST /v1/terminals` with `cwd: hostPath` and opens the daemon's `/ui/terminal` page in its own window.
+Pull and Push run `git pull --ff-only` / `git push` in `hostPath` from the main process
+(`GIT_TERMINAL_PROMPT=0`, 5 min timeout); they act on this computer's own repo like sync-back, so they
+need no PIN.
+
 ### 4.4 Desktop app and `tesseract` CLI (`apps/electron`, runs on the host)
 
 | Var | Default | Meaning |
@@ -310,6 +319,8 @@ SDK its setup wizard installed when they are not already set.
 | `TESSERACT_ANDROID_REPOSITORY_URL` / `TESSERACT_ANDROID_SYSIMG_URL` | Google's `…/repository/repository2-3.xml` / `…/sys-img/google_apis/sys-img2-3.xml` | Android catalog mirror (app and CLI): a full `.xml` URL, or a base URL the default file name is appended to; `http`/`https` only, else `invalid_argument` |
 | `TESSERACT_APP_PATH` | installed app (AppImage copy: `appPath` in `~/.local/share/tesseract/app.json`, §12.5) | CLI: the app executable `tesseract open` launches |
 | `TESSERACT_SANDBOX_CONTEXT` | bundled `resources/sandbox`, else (AppImage copy) `sandboxDir` in `~/.local/share/tesseract/app.json`, else the checkout | CLI: directory holding `infra/compose` and the Dockerfile |
+| `TESSERACT_SERVER_TS_AUTHKEY` | saved key | Tailscale auth key new server containers join with (overrides `config.json`) |
+| `TESSERACT_CLOUDFLARE_TOKEN` | saved token | Cloudflare API token for public URLs (overrides `config.json`) |
 | `ELECTRON_RENDERER_URL` | — | set by `electron-vite dev` to `http://127.0.0.1:4545` |
 | `TESSERACT_COMPOSE_PROJECT`, `TESSERACT_CONTROLLER_HOST_PORT`, `TESSERACT_BIND_ADDR` | §4.2 | read by sandbox discovery (find a running `tesseract` stack and its controller port) |
 | `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, `XDG_CACHE_HOME` | — | move config, state and cache dirs as usual (also on macOS/Windows when set) |
@@ -361,6 +372,11 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | DELETE | `/v1/projects/:id` | `?force=1` (or `true`) | `200 DeletedProject { id, trashPath }`: moves `/workspace/projects/<id>` to `<os tmpdir>/tesseract-deleted-projects/<id>-<ts>` (the host copy is never touched), drops the sync-back baseline and blobs (the confidential mark stays), publishes `sync.changed`, `project.deleted`; without `force`, 409 when the project has changes not synced back to the host or no baseline (never pushed from a host); 409 (even with `force`) while a process, build, terminal or agent run of the project is running or a `pending`/`claimed` sync request exists; 404 unknown project |
 | POST | `/v1/projects/:id/sync` | `?confidential=1`; tar archive body, `Content-Type` `application/x-tar` or `application/gzip` (body limit 1 GiB) | `201 Project` when the directory was created, else `200 Project`: `confidential=1` (exactly `1`) first marks the project confidential (one-way; other values or none leave the mark as is); extracts with `tar --no-same-owner` over `/workspace/projects/<id>`; files missing from the archive are kept; a bad archive is 400 (a directory created for it is removed), another content type 400; publishes `project.updated`. Sent by `tesseract --sync` (desktop), which archives the cwd (in a git checkout: tracked and unignored files, plus `.git` at the top level) |
 | GET | `/v1/projects/:id/git` | — | `GitDetails { branch, ahead, behind, files: GitFileStatus[], log: GitCommit[] }`; in a confidential project every `author` is `REDACTED` |
+| GET | `/v1/projects/:id/files` | `?path=` (project-relative, default the root) | `ProjectDirectory { projectId, path, entries: ProjectFile[], truncated }`: folders first, then by name; `ProjectFile { name, path, kind: "dir" \| "file" \| "symlink" \| "other", sizeBytes (files only), modifiedAt }`; at most 2000 entries (`truncated`); 404 unless the realpath stays inside the project, 400 for a non-directory |
+| GET | `/v1/projects/:id/files/download` | `?path=`; bearer **or** `?ticket=` | file stream (`Content-Disposition: attachment`, single `Range` → 206); 404 unless the realpath stays inside the project, 400 for a non-regular file |
+| POST | `/v1/projects/:id/files/taildrop` | `SendProjectFile { path, targetId }` | `ProjectFile` once LocalAPI `file-put` accepted the file; errors as `POST /v1/artifacts/:id/taildrop` |
+| GET | `/v1/projects/:id/storage` | — | `ProjectStorage { projectId, totalBytes, sourceBytes, entries: { category: "dependencies" \| "builds" \| "caches", sizeBytes, paths }[], measuredAt }`: `du -sk` of the project folder (`.git` included) and of regenerable folders found by name (`node_modules`, `.venv`, `Pods`…; `build`, `dist`, `out`, `release`, `target`…; `.gradle`, `.expo`, `.next`, `__pycache__`…; not descending into them or `.git`, depth 8). In a git work tree a folder counts only when `git check-ignore` matches it; outside git only `dependencies` and `caches` count. Cached 30 s per project |
+| POST | `/v1/projects/:id/storage/clear` | `ClearProjectStorage { categories?: StorageCategory[] }` (omitted: all) | `200 ProjectStorage` re-measured after deleting the folders a fresh scan finds for those categories (source is never touched); 409 while a process, build, terminal or agent run of the project is running |
 | GET | `/v1/projects/:id/sync/changes` | — | `SyncChanges`: current tree vs the baseline recorded by the last push ([sync-back.md](sync-back.md)); 404 unknown project |
 | POST | `/v1/projects/:id/sync/export` | `SyncExport { paths: SyncPath[] (1–5000) }`, each a current `added`/`modified` change | `200 application/gzip` tar of those files (regular files and symlinks only); 400 for a path that is not a current change |
 | POST | `/v1/projects/:id/sync/ack` | `SyncAck { changes: { path, sha256 \| null, executable? }[] }` | `200 SyncChanges`; moves the baseline entries to the acked hashes and executable bits (null removes; `executable` omitted: the sandbox file's, when its hash matches); stores the blob of each acked hash the sandbox file has; publishes `sync.changed` |
@@ -814,7 +830,7 @@ changes). Neither is accepted where the other is expected.
 | POST | `/v1/host/lock` | host token | `HostLock { session }` | `204`; ends that session |
 | POST | `/v1/auth/ticket` | session | — | `Ticket` (one-time, 60 s) |
 | GET | `/v1/terminals` | session | — | `TerminalInfo[]` (newest first) |
-| POST | `/v1/terminals` | session | `CreateTerminal` with `kind: "shell"` and no `projectId` (else 400) | `201 TerminalInfo` (`projectId: null`, `title` `Host · <hostname>`, `cwd` `$HOME`) |
+| POST | `/v1/terminals` | session | `CreateHostTerminal` = `CreateTerminal` with `kind: "shell"`, no `projectId` (else 400), optional `cwd` (absolute host folder; 400 if relative, 404 if not a directory) | `201 TerminalInfo` (`projectId: null`, `title` `Host · <hostname>` or `Host · <hostname> · <folder name>`, `cwd` the given folder or `$HOME`) |
 | DELETE | `/v1/terminals/:id` | session | — | `TerminalInfo` (SIGHUP to the group) |
 | WS | `/v1/terminals/:id/stream?ticket=` | ticket | §5.3 terminal frames | scrollback replay, survives disconnects; an attached stream stays open after its session expires |
 | GET | `/ui/terminal` | — | — | the controller's xterm page |
@@ -972,7 +988,7 @@ sandbox env file and Android SDK. Every command takes `--json`, `--verbose`, `--
 
 ```
 tesseract status [--json]                                # config, setup progress, connection, Docker, stack, Android
-tesseract open [overview|agents|projects|files|terminals|display]   # start or focus the app (else tesseract://<page>)
+tesseract open [overview|agents|projects|files|terminals|display|containers|domains]   # start or focus the app (else tesseract://<page>)
 tesseract doctor [docker|image|kvm|sdk]... [--json]      # Docker, sandbox image, hardware acceleration, Android SDK
 tesseract sandbox status|up|down [--volumes]|restart [service]|logs [--tail N] [--follow]
 tesseract sandbox build [--with android,flutter,mono,whisper|all|none] [--pull | --existing] [--verbose]
@@ -983,6 +999,9 @@ tesseract android [avd] [list]                           # bare `android` / `and
 tesseract android avd create [name] [--image API|package] [--device pixel_5|pixel_8|medium_phone|pixel_tablet]
                     [--storage GB] [--ram MB] [--cores N] [--default]   # storage 2–64 GB, default 6
 tesseract android avd start [name] [--detach] [--headless] [--gpu MODE] | delete <name>
+tesseract containers [ls] | create <name> [--cpus N] [--memory MB] | start|stop|restart|logs|ssh <name> | rm <name> --yes
+tesseract containers build [--verbose] | doctor | tailscale-key [--tags …] [--clear] < key   # server containers (ADR 0011)
+tesseract domains [ls] | add <hostname> <container> <port> [--https] | rm <hostname|id> | zones | sync | login < token | logout
 tesseract pair [--no-qr]                                 # pairing link + QR for the phone
 tesseract sync [push] [--confidential] | pull [--dry-run] [--force] | revert [--force] | status
 tesseract config path | get [key] [--reveal] | set <key> <value> [--force] | unset <key>
@@ -1213,8 +1232,8 @@ Contract details: [docs/electron/spec/onboarding.md](../electron/spec/onboarding
 
 | What | Values |
 |---|---|
-| Pages (`#/<page>`) | `overview`, `agents`, `projects`, `files`, `terminals`, `display` |
-| Settings (`?preferences=<section>`) | `connection`, `appearance`, `claude`, `host-shell`, `stt`, `sandbox`, `android`, `about` |
+| Pages (`#/<page>`) | `overview`, `agents`, `projects`, `files`, `terminals`, `display`, `containers` (`#/containers/<name>`), `domains` |
+| Settings (`?preferences=<section>`) | `connection`, `appearance`, `claude`, `host-shell`, `stt`, `sandbox`, `containers`, `android`, `about` |
 | Wizard (`#/onboarding/<step>`) | as §12.2 |
 | Deep links | `tesseract://<page>[?params]`, `tesseract://preferences|settings[/<section>]`, `tesseract://onboarding|setup[/<step>]`, `tesseract://new-conversation`, `pair`, `pair-host`, `refresh`, `rediscover`, `about`; registered only in packaged builds |
 | Launch flags | `--hidden`, `--page <id>`, `--quit` (ask the running instance to quit), `--debug`; `--sync`, `--pull`, `--revert`, `--sync-status`, `--get` run the CLI (§7.1) and exit |

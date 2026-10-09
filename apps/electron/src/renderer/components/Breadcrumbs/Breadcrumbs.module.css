@@ -1,0 +1,44 @@
+.trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.separator {
+  color: var(--to-text-tertiary);
+  font-size: 12px;
+}
+
+.crumb {
+  min-width: 0;
+  max-width: 240px;
+  overflow: hidden;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--to-radius-xs);
+  background: transparent;
+  color: var(--to-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--to-state-transition);
+}
+
+.crumb:hover:not(:disabled) {
+  background: var(--to-background-element);
+  color: var(--to-text);
+}
+
+.crumb:focus-visible {
+  outline: 1px solid var(--to-focus-ring);
+}
+
+.crumb:disabled {
+  color: var(--to-text);
+  cursor: default;
+}

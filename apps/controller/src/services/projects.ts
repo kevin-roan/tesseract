@@ -54,6 +54,12 @@ export class ProjectService {
     return location;
   }
 
+  /** 409 while processes, builds, terminals or agent runs use the project. */
+  assertNoActiveWork(id: string): void {
+    const busy = this.activeWork(id);
+    if (busy.length > 0) throw conflict(`Stop ${busy.join(", ")} in project ${id} first`);
+  }
+
   ids(): string[] {
     let entries;
     try {
@@ -210,8 +216,7 @@ export class ProjectService {
    */
   async remove(id: string, options: { force?: boolean } = {}): Promise<DeletedProject> {
     const location = this.require(id);
-    const busy = this.activeWork(location.id);
-    if (busy.length > 0) throw conflict(`Stop ${busy.join(", ")} in project ${location.id} first`);
+    this.assertNoActiveWork(location.id);
     this.syncBack.assertIdle(location.id);
     if (!options.force) {
       const { baselineAt, changes } = await this.syncBack.changes(location.id);

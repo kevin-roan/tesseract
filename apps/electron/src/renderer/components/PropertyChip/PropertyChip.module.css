@@ -26,3 +26,18 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+.interactive {
+  font: inherit;
+  cursor: pointer;
+}
+
+.interactive:hover,
+.interactive[data-open] {
+  background: var(--to-background-element);
+  color: var(--to-text);
+}
+
+.interactive:focus-visible {
+  outline: 1px solid var(--to-focus-ring);
+}

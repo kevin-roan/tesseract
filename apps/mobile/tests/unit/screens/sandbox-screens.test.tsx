@@ -29,6 +29,7 @@ import { buildTargetOptions } from "@/features/sandbox/utils/labels";
 import { SYNC_ACTIONS } from "@/features/sandbox/utils/actions";
 import { describeSyncRequest, describeSyncSheet, SYNC_COPY, type SyncSheetMode } from "@/features/sandbox/utils/sync";
 import { useDisplayStore } from "@/features/sandbox/store/display-store";
+import { storageRows } from "@/features/storage/utils/content";
 import { injectJavaScript } from "../../mocks/react-native-webview";
 import { TEST_SITE } from "../sandbox/helpers";
 import { chatComposerState } from "../chat/fixtures";
@@ -691,10 +692,44 @@ describe("ProjectScreen", () => {
     downloads: { download: jest.fn(), pendingId: null, error: null },
     sync: syncState(),
     claudeAccount: claudeAccountState(),
+    chips: [
+      { id: "storage", label: "1.5 MB", onPress: jest.fn() },
+      { id: "files", label: "Files", onPress: jest.fn() },
+    ],
+    storage: storageState(),
     renameSheet: { visible: false, name: "", setName: jest.fn(), hint: "", error: null, saving: false, save: jest.fn(), close: jest.fn() },
     appRuns: appRunsState(),
     chats: chatsState(),
     actionError: null,
+    ...overrides,
+  });
+  const STORAGE = {
+    projectId: sampleProject.id,
+    totalBytes: 1_572_864,
+    sourceBytes: 524_288,
+    entries: [
+      { category: "dependencies" as const, sizeBytes: 1_048_576, paths: ["node_modules"] },
+      { category: "builds" as const, sizeBytes: 0, paths: [] },
+      { category: "caches" as const, sizeBytes: 0, paths: [] },
+    ],
+    measuredAt: "2026-10-09T10:00:00.000Z",
+  };
+  const storageState = (overrides: object = {}) => ({
+    chipLabel: "1.5 MB",
+    open: false,
+    show: jest.fn(),
+    close: jest.fn(),
+    subtitle: "1.5 MB",
+    rows: storageRows(STORAGE),
+    loading: false,
+    error: null,
+    retry: jest.fn(),
+    canClearAll: true,
+    clear: jest.fn(),
+    clearAll: jest.fn(),
+    clearingCategory: null,
+    clearError: null,
+    clearedMessage: null,
     ...overrides,
   });
   const chatsState = (overrides: object = {}) => ({
@@ -758,6 +793,24 @@ describe("ProjectScreen", () => {
     expect(mockNav.build).toHaveBeenCalledWith(sampleBuild.id);
     await fireEvent.press(screen.getByLabelText(`Download ${sampleArtifact.fileName}`));
     expect(state.downloads.download).toHaveBeenCalledWith(sampleArtifact.id);
+  });
+
+  it("shows storage and files chips and the storage sheet", async () => {
+    mockParams = { id: sampleProject.id };
+    const state = detail({ storage: storageState({ open: true, clearError: "Stop process dev in project electron-hello first" }) });
+    mockHooks.project.mockReturnValue(state);
+    await render(<ProjectScreen />);
+    await fireEvent.press(screen.getByLabelText("1.5 MB"));
+    expect(state.chips[0]!.onPress).toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText("Files"));
+    expect(state.chips[1]!.onPress).toHaveBeenCalled();
+    expect(screen.getByText("Stop process dev in project electron-hello first")).toBeOnTheScreen();
+    expect(screen.getByText("node_modules")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByLabelText("Clear Dependencies"));
+    expect(state.storage.clear).toHaveBeenCalledWith("dependencies");
+    expect(screen.queryByLabelText("Clear Builds")).toBeNull();
+    await fireEvent.press(screen.getByText("Clear all"));
+    expect(state.storage.clearAll).toHaveBeenCalled();
   });
 
   it("lists the project's chats and starts a new one", async () => {

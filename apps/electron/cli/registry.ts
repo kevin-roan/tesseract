@@ -1,6 +1,8 @@
 import android from "./commands/android";
 import config from "./commands/config";
+import containers from "./commands/containers";
 import doctor from "./commands/doctor";
+import domains from "./commands/domains";
 import open from "./commands/open";
 import pair from "./commands/pair";
 import sandbox from "./commands/sandbox";
@@ -18,6 +20,8 @@ export const COMMANDS: readonly CliCommand[] = [
   doctor,
   sandbox,
   server,
+  containers,
+  domains,
   android,
   pair,
   sync,

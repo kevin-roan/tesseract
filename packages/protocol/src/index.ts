@@ -18,6 +18,7 @@ export * from "./schemas/sync";
 export * from "./schemas/push";
 export * from "./schemas/island";
 export * from "./schemas/builds";
+export * from "./schemas/files";
 export * from "./schemas/uploads";
 export * from "./schemas/stt";
 export * from "./schemas/agent";

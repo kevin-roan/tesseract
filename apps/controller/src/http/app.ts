@@ -11,6 +11,7 @@ import { redactUrl, requestLog } from "./middleware/request-log";
 import { registerAgentRoutes } from "./routes/agent";
 import { registerAppRoutes } from "./routes/apps";
 import { registerArtifactRoutes } from "./routes/artifacts";
+import { registerFileRoutes } from "./routes/files";
 import { registerBuildRoutes } from "./routes/builds";
 import { registerInboxRoutes } from "./routes/inbox";
 import { registerProcessRoutes } from "./routes/processes";
@@ -81,6 +82,7 @@ export function createApp(services: Services): Hono {
   registerTerminalRoutes(app, services);
   registerBuildRoutes(app, services);
   registerArtifactRoutes(app, services);
+  registerFileRoutes(app, services);
   registerAgentRoutes(app, services);
   registerInboxRoutes(app, services);
   registerPushRoutes(app, services);

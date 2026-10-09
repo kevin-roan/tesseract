@@ -32,3 +32,6 @@ export const FractalNoise = () => null;
 export const SweepGradient = () => null;
 export const vec = (x = 0, y = 0) => ({ x, y });
 export const usePathValue = () => ({ value: Skia.Path.Make() });
+export const Mask = Passthrough;
+export const Image = () => null;
+export const useImage = () => null;

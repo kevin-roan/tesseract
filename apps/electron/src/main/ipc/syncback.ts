@@ -13,12 +13,15 @@ import {
   SyncState,
   describeError,
   hostChanges,
+  hostGit,
   listSnapshots,
   previewDiff,
   readLinks,
+  syncState,
   toContractDiff,
 } from "../../core/syncback";
 import { CONFIG_POLL_MS } from "../../core/syncback/constants";
+import type { HostGitAction } from "../../shared/contracts/syncback";
 import { IpcError, type IpcErrorCode } from "../../shared/ipc-types";
 import { mainContext } from "../context";
 import { IPC_LABELS } from "../labels";
@@ -57,6 +60,11 @@ async function guarded<T>(work: () => Promise<T>): Promise<T> {
 
 function projectIdArg(value: unknown): string {
   if (!isPlainProjectId(value)) throw new IpcError("invalid_argument", IPC_LABELS.invalidProjectId);
+  return value;
+}
+
+function hostGitAction(value: unknown): HostGitAction {
+  if (value !== "pull" && value !== "push") throw new IpcError("invalid_argument", IPC_LABELS.invalidGitAction);
   return value;
 }
 
@@ -146,6 +154,8 @@ export default defineService(
         const id = projectIdArg(projectId);
         return runtime ? runtime.service.hostChanges(id) : hostChanges(environment(), id);
       }),
+    hostGit: (_context, projectId, action) =>
+      guarded(() => hostGit(syncState(environment()), projectIdArg(projectId), hostGitAction(action))),
     diff: (_context, projectId, path) =>
       guarded(async () => {
         const id = projectIdArg(projectId);

@@ -1,13 +1,15 @@
 import { useCallback, useMemo, useState } from "react";
 import type { BuildProfile, BuildTarget, ProcessInfo } from "@tesseract/protocol";
 
+import type { ChipRowItem } from "@/components/chip-row";
 import type { HeaderAction } from "@/components/screen-header";
 import { useAppRuns } from "@/features/app-runs/hooks/use-app-runs";
 import { VIEWER_ICONS } from "@/features/app-runs/utils/content";
 import { useProjectChats } from "@/features/chats/hooks/use-project-chats";
 import { useProjectClaudeAccount } from "@/features/claude-account/hooks/use-project-claude-account";
+import { useProjectStorage } from "@/features/storage/hooks/use-project-storage";
 
-import { PROJECT_ACTIONS } from "../utils/actions";
+import { PROJECT_ACTIONS, PROJECT_CHIPS } from "../utils/actions";
 import { newestFirst } from "../utils/collections";
 import { LIST_PREVIEW_LIMIT } from "../utils/constants";
 import { describeError } from "../utils/errors";
@@ -47,6 +49,7 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
   const appRuns = useAppRuns(projectId);
   const chats = useProjectChats(projectId);
   const fix = useFixWithAi();
+  const storage = useProjectStorage(projectId);
   const [openLogs, setOpenLogs] = useState<{ id: string; in: LogsHost } | null>(
     initialProcessId ? { id: initialProcessId, in: "process" } : null,
   );
@@ -97,6 +100,15 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     [emulator, nav, projectId, openRename, data?.name],
   );
 
+  const showStorage = storage.show;
+  const chips = useMemo<ChipRowItem[]>(
+    () => [
+      { ...PROJECT_CHIPS.storage, label: storage.chipLabel, onPress: showStorage },
+      { ...PROJECT_CHIPS.files, onPress: () => nav.projectFiles(projectId) },
+    ],
+    [storage.chipLabel, showStorage, nav, projectId],
+  );
+
   const sortedProcesses = useMemo(() => newestFirst(processes.data ?? [], (process) => process.startedAt), [processes.data]);
 
   const scripts = useMemo(() => {
@@ -126,6 +138,8 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     error: project.error ? describeError(project.error) : null,
     retry: () => void project.refetch(),
     headerActions,
+    chips,
+    storage,
     git: git.data,
     scripts,
     toggleBookmark: bookmarks.toggle,

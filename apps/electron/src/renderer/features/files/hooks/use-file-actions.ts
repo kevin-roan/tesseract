@@ -1,6 +1,6 @@
 import type { TesseractClient } from "@tesseract/client";
 import type { Artifact, BuildOutput } from "@tesseract/protocol";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { describeError } from "../../../app/connection";
 import { useApiClient } from "../../../app/data";
 import type { ConfirmOption } from "../../../components/ConfirmDialog";
@@ -11,7 +11,8 @@ import { describeDownloadError, type DownloadSource } from "../download";
 import { ARTIFACT_LABELS, DELETE_LABELS, formatLabel, OUTPUT_LABELS, TAILDROP_LABELS } from "../labels";
 import { findArtifact, isMissing, onlineTargets, outputKey, safeFileName, taildropAvailable, targetLabel } from "../model";
 import { rendererFileSaver } from "../saver";
-import { filesStore, scopedData, useFilesStore, type DownloadState } from "../store";
+import { filesStore, useFilesStore, type DownloadState } from "../store";
+import { useTaildrop } from "./use-taildrop";
 
 export type { DownloadState } from "../store";
 
@@ -47,27 +48,10 @@ interface DownloadJob {
 
 export function useFileActions(report: (message: string) => void, onDeleted: (id: string) => void): FileActions {
   const client = useApiClient();
-  const scope = client?.baseUrl ?? null;
   const downloads = useFilesStore((state) => state.downloads);
-  const taildrop = useFilesStore((state) => scopedData(state, scope).taildrop);
+  const { taildrop, load: loadTaildrop } = useTaildrop();
   const [dialog, setDialog] = useState<FilesDialog | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const taildropLoading = useRef(false);
-
-  const loadTaildrop = useCallback(() => {
-    if (!client || !scope || taildropLoading.current) return;
-    taildropLoading.current = true;
-    client
-      .taildropTargets()
-      .then((targets) => filesStore.setTaildrop(scope, targets), () => undefined)
-      .finally(() => {
-        taildropLoading.current = false;
-      });
-  }, [client, scope]);
-
-  useEffect(() => {
-    if (scope && !scopedData(useFilesStore.getState(), scope).taildrop) loadTaildrop();
-  }, [scope, loadTaildrop]);
 
   const download = useCallback(
     async (job: DownloadJob) => {

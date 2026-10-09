@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from "expo-router";
 import { FolderSimpleIcon } from "phosphor-react-native";
 
+import ChipRow from "@/components/chip-row";
 import EmptyState from "@/components/empty-state";
 import LogView from "@/components/log-view";
 import Notice from "@/components/notice";
@@ -19,6 +20,7 @@ import ProcessCard from "@/features/sandbox/components/process-card";
 import RenameProjectSheet from "@/features/sandbox/components/rename-project-sheet";
 import ScriptCard from "@/features/sandbox/components/script-card";
 import SyncSection from "@/features/sandbox/components/sync-section";
+import StorageSheet from "@/features/storage/components/storage-sheet";
 import WebLinkCard from "@/features/sandbox/components/web-link-card";
 import { useProjectDetail } from "@/features/sandbox/hooks/use-project-detail";
 import { GIT_PREVIEW } from "@/features/sandbox/utils/constants";
@@ -63,6 +65,10 @@ export default function ProjectScreen() {
         />
       }
     >
+      <MotionItem index={0}>
+        <ChipRow items={detail.chips} label={PROJECT_COPY.chips} testID="project-chips" />
+      </MotionItem>
+
       {detail.actionError ? (
         <MotionItem>
           <Notice tone="danger" message={detail.actionError} />
@@ -238,6 +244,7 @@ export default function ProjectScreen() {
       </MotionItem>
 
       <RenameProjectSheet state={detail.renameSheet} />
+      <StorageSheet state={detail.storage} />
     </ScreenScaffold>
   );
 }

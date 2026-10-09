@@ -72,10 +72,9 @@ Upgrading from theone/Monolith: every command first renames THEONE_*/MONOLITH_* 
 env file to TESSERACT_* (the original is kept as <env file>.legacy-backup; old default
 project, volume prefix and image values become the tesseract ones, the hostname is kept);
 exported legacy variables are used under their new name. `up` on the default project then
-tags theone/sandbox:latest as tesseract/sandbox:latest when only the old image exists,
 stops a running "theone" project (`docker compose -p theone down`, volumes kept) and
-copies each theone-<name> volume to a missing tesseract-<name> volume once (old volumes
-are kept). TESSERACT_SKIP_LEGACY_MIGRATION=1 skips the docker part.
+moves each theone-<name> volume to a missing tesseract-<name> volume once (copied, then
+the old one is removed). TESSERACT_SKIP_LEGACY_MIGRATION=1 skips the docker part.
 EOF
 }
 
@@ -490,12 +489,14 @@ stop_legacy_project() {
   ((status == 0)) || die "could not stop the legacy project (docker compose -p ${LEGACY_PROJECT} down failed)"
 }
 
-# Copies theone-<name> into a missing tesseract-<name> once (a marker in the state dir keeps a
-# later `down -v` from bringing the old data back). Only for the default names: an explicit
+# Moves theone-<name> into a missing tesseract-<name> once: Docker cannot rename a volume, so
+# it is copied and the old one removed right after, which keeps a second copy of a large
+# workspace from filling the disk (a marker in the state dir keeps a later `down -v` from
+# bringing the old data back). Only for the default names: an explicit
 # TESSERACT_COMPOSE_PROJECT/TESSERACT_VOLUME_PREFIX (e.g. "theone" carried over from the old
 # env file) keeps using its own volumes.
 migrate_legacy_volumes() {
-  local marker suffix legacy target image="" copied=() renamed_node=""
+  local marker suffix legacy target image="" moved="" renamed_node=""
   marker="$(state_dir)/legacy-volumes.${volume_prefix}.migrated"
   [[ ! -e "${marker}" ]] || return 0
   for suffix in ${LEGACY_VOLUME_SUFFIXES}; do
@@ -504,7 +505,7 @@ migrate_legacy_volumes() {
     ! docker volume inspect "${target}" > /dev/null 2>&1 || continue
     docker volume inspect "${legacy}" > /dev/null 2>&1 || continue
     [[ -n "${image}" ]] || image="$(copy_image)"
-    info "copying volume ${legacy} to ${target} with ${image} (${legacy} is kept)"
+    info "moving volume ${legacy} to ${target} with ${image}"
     docker volume create --label "com.docker.compose.project=${project}" \
       --label "com.docker.compose.volume=tesseract-${suffix}" "${target}" > /dev/null \
       || die "could not create volume ${target}"
@@ -513,33 +514,22 @@ migrate_legacy_volumes() {
       docker volume rm "${target}" > /dev/null 2>&1 || true
       die "copying ${legacy} to ${target} failed (${target} removed again, ${legacy} untouched)"
     fi
-    copied+=("${legacy}")
+    moved=1
+    docker volume rm "${legacy}" > /dev/null 2>&1 \
+      || info "copied ${legacy} to ${target} but could not remove ${legacy}; remove it with: docker volume rm ${legacy}"
     [[ "${suffix}" != tailscale ]] || renamed_node=1
   done
   mkdir -p "${marker%/*}"
   : > "${marker}"
-  ((${#copied[@]} > 0)) || return 0
+  [[ -n "${moved}" ]] || return 0
   if [[ -n "${renamed_node}" && -z "$(config_value TESSERACT_HOSTNAME)" ]]; then
     info "the tailnet node keeps its identity but is now named tesseract-sandbox; set TESSERACT_HOSTNAME=theone-sandbox to keep the old URL, or re-pair the phone (sandbox pair)"
   fi
-  info "once the new stack works, the old volumes can be removed with: docker volume rm ${copied[*]}"
-}
-
-# An image built before the rename serves until the next build.
-tag_legacy_image() {
-  local image
-  image="$(config_value TESSERACT_IMAGE)"
-  [[ "${image:-tesseract/sandbox:latest}" == tesseract/sandbox:latest ]] || return 0
-  ! docker image inspect tesseract/sandbox:latest > /dev/null 2>&1 || return 0
-  docker image inspect theone/sandbox:latest > /dev/null 2>&1 || return 0
-  info "tagging the existing theone/sandbox:latest image as tesseract/sandbox:latest"
-  docker tag theone/sandbox:latest tesseract/sandbox:latest || die "docker tag failed"
 }
 
 migrate_legacy_stack() {
   [[ -z "${TESSERACT_SKIP_LEGACY_MIGRATION:-}" ]] || return 0
   [[ "${project}" == "${DEFAULT_PROJECT}" ]] || return 0
-  tag_legacy_image
   stop_legacy_project
   [[ "${volume_prefix}" == "${DEFAULT_PROJECT}" ]] || return 0
   migrate_legacy_volumes

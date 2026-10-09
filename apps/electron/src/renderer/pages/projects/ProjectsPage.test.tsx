@@ -64,6 +64,7 @@ describe("ProjectsPage", () => {
       "Processes",
       "Builds",
       "Artifacts",
+      "Files",
       "Git",
       "Sync back",
       "Chats",

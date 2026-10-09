@@ -2,7 +2,10 @@ export { Sidebar, type SidebarProps } from "./Sidebar";
 export { SidebarSection, type SidebarSectionProps } from "./SidebarSection";
 export { SidebarNav, SidebarNavRow, type SidebarNavProps, type SidebarNavRowProps } from "./SidebarNav";
 export { SidebarCount, type SidebarCountProps } from "./SidebarCount";
+export { SidebarItemRow, type SidebarItemRowProps } from "./SidebarItemRow";
 export { SidebarProjectRow, type SidebarProjectRowProps } from "./SidebarProjectRow";
+export { SidebarContainerRow, type SidebarContainerRowProps } from "./SidebarContainerRow";
+export { SidebarContainers, type SidebarContainersLabels, type SidebarContainersProps } from "./SidebarContainers";
 export { SidebarRunRow, type SidebarRunRowProps } from "./SidebarRunRow";
 export { SidebarRunList, type SidebarRunListProps } from "./SidebarRunList";
 export { SidebarProjects, type SidebarProjectsLabels, type SidebarProjectsProps } from "./SidebarProjects";
@@ -16,6 +19,9 @@ export {
   runTitle,
   runTone,
   workspaceState,
+  type SidebarContainerActivity,
+  type SidebarContainerItem,
+  type SidebarContainersState,
   type SidebarProjectItem,
   type SidebarProjectsState,
   type SidebarRunItem,

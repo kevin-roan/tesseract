@@ -125,4 +125,10 @@ describe("PreferencesDialog", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save & connect" }));
     expect(await screen.findByText("Enter a valid http(s) URL and a token")).toBeTruthy();
   });
+
+  it("opens phone pairing from the connection section", async () => {
+    renderRoutes(routes, "/overview?preferences=connection");
+    fireEvent.click(await screen.findByRole("button", { name: "Show QR…" }));
+    expect(await screen.findByText("Pair a device")).toBeTruthy();
+  });
 });

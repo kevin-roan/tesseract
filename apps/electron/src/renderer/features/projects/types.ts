@@ -3,7 +3,7 @@ import type { IconName } from "../../theme/icons";
 
 export type ActivityKind = "agent" | "building" | "running" | "idle";
 export type ListTab = "all" | "active" | "idle";
-export type ProjectTabId = "processes" | "builds" | "artifacts" | "git" | "sync" | "conversations";
+export type ProjectTabId = "processes" | "builds" | "artifacts" | "files" | "git" | "sync" | "conversations";
 export type GroupId = ActivityKind | "all";
 
 export interface ToneLabel {

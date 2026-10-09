@@ -114,6 +114,7 @@ describe("detail view", () => {
       ["Processes", 0],
       ["Builds", null],
       ["Artifacts", 0],
+      ["Files", null],
       ["Git", null],
       ["Sync back", 11],
       ["Chats", 23],

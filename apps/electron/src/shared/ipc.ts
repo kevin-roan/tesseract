@@ -3,6 +3,7 @@ import type { AppContract } from "./contracts/app";
 import type { AttachmentsContract } from "./contracts/attachments";
 import type { ClaudeContract } from "./contracts/claude";
 import type { ConnectionContract } from "./contracts/connection";
+import type { ContainersContract } from "./contracts/containers";
 import type { DockerContract } from "./contracts/docker";
 import type { FilesContract } from "./contracts/files";
 import type { HostShellContract } from "./contracts/hostShell";
@@ -27,6 +28,7 @@ export type IpcContract = {
   connection: ConnectionContract;
   docker: DockerContract;
   sandbox: SandboxContract;
+  containers: ContainersContract;
   android: AndroidContract;
   onboarding: OnboardingContract;
   syncback: SyncBackContract;
@@ -47,6 +49,7 @@ export const SERVICE_NAMES = [
   "connection",
   "docker",
   "sandbox",
+  "containers",
   "android",
   "onboarding",
   "syncback",

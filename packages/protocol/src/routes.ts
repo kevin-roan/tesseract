@@ -5,6 +5,8 @@ export type ProjectFilter = { projectId?: string };
 export type LogTail = { tail?: number };
 export type TicketParam = { ticket?: string };
 export type BuildOutputParams = { path: string; ticket?: string };
+export type ProjectPathParams = { path?: string };
+export type ProjectFileParams = { path: string; ticket?: string };
 export type UsageFilter = { days?: number };
 export type SessionsFilter = { limit?: number; projectId?: string };
 export type InboxFilter = { limit?: number; unread?: boolean };
@@ -64,6 +66,11 @@ export const restPaths = {
   buildOutputs: (query?: ProjectFilter) => api(`/outputs${buildQuery(query)}`),
   buildOutputDownload: (projectId: string, query: BuildOutputParams) =>
     api(`/projects/${segment(projectId)}/outputs/download${buildQuery(query)}`),
+  projectFiles: (id: string, query?: ProjectPathParams) => api(`/projects/${segment(id)}/files${buildQuery(query)}`),
+  projectFileDownload: (id: string, query: ProjectFileParams) => api(`/projects/${segment(id)}/files/download${buildQuery(query)}`),
+  projectFileTaildrop: (id: string) => api(`/projects/${segment(id)}/files/taildrop`),
+  projectStorage: (id: string) => api(`/projects/${segment(id)}/storage`),
+  projectStorageClear: (id: string) => api(`/projects/${segment(id)}/storage/clear`),
   ports: () => api("/ports"),
   usage: (query?: UsageFilter) => api(`/usage${buildQuery(query)}`),
   sessions: (query?: SessionsFilter) => api(`/sessions${buildQuery(query)}`),
@@ -166,6 +173,11 @@ export const routePatterns = {
     taildropTargets: api("/taildrop/targets"),
     buildOutputs: api("/outputs"),
     buildOutputDownload: api("/projects/:id/outputs/download"),
+    projectFiles: api("/projects/:id/files"),
+    projectFileDownload: api("/projects/:id/files/download"),
+    projectFileTaildrop: api("/projects/:id/files/taildrop"),
+    projectStorage: api("/projects/:id/storage"),
+    projectStorageClear: api("/projects/:id/storage/clear"),
     ports: api("/ports"),
     usage: api("/usage"),
     sessions: api("/sessions"),

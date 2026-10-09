@@ -12,10 +12,12 @@ import {
   CursorClickIcon,
   DeviceRotateIcon,
   FilesIcon,
+  FolderOpenIcon,
   FolderPlusIcon,
   GearSixIcon,
   GlobeIcon,
   HandPointingIcon,
+  HardDrivesIcon,
   PencilSimpleIcon,
   PlusIcon,
   RobotIcon,
@@ -26,6 +28,7 @@ import {
   XCircleIcon,
 } from "phosphor-react-native";
 
+import type { ChipRowItem } from "@/components/chip-row";
 import type { HeaderAction } from "@/components/screen-header";
 
 import type { SyncActionId } from "./sync";
@@ -54,6 +57,11 @@ export const PROJECT_ACTIONS = {
   askClaude: { id: "ask-claude", icon: SparkleIcon, label: "Ask Claude to work on this project" },
   rename: { id: "rename", icon: PencilSimpleIcon, label: "Rename this project" },
 } satisfies Record<string, ActionTemplate>;
+
+export const PROJECT_CHIPS = {
+  storage: { id: "storage", icon: HardDrivesIcon },
+  files: { id: "files", icon: FolderOpenIcon, label: "Files" },
+} satisfies Record<string, Partial<ChipRowItem>>;
 
 export const PROJECT_MENU_ACTIONS = {
   rename: { id: "rename", icon: PencilSimpleIcon, label: "Rename" },

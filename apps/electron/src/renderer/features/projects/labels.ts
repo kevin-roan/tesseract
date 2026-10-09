@@ -123,10 +123,32 @@ export const TAB_LABELS: Record<ProjectTabId, string> = {
   processes: "Processes",
   builds: "Builds",
   artifacts: "Artifacts",
+  files: "Files",
   git: "Git",
   sync: "Sync back",
   conversations: "Chats",
 };
+
+export const STORAGE_LABELS = {
+  measuring: "Measuring…",
+  unknown: "Size unknown",
+  title: "Storage",
+  total: "Total",
+  source: "Source and git",
+  categories: { dependencies: "Dependencies", builds: "Build outputs", caches: "Caches" },
+  clear: "Clear",
+  clearAll: "Clear all",
+  clearing: "Clearing…",
+  hint: "Clearing removes regenerable folders only. Reinstall dependencies or rebuild to run the project again.",
+  confirmHeading: (what: string) => `Clear ${what}?`,
+  confirmBody: (paths: string, size: string) => `Deletes ${paths} (${size}) from the sandbox. Source files are kept.`,
+  confirmAllWhat: "all regenerable data",
+  confirm: "Clear",
+  cancel: "Cancel",
+  cleared: (size: string) => `Freed ${size}`,
+  failed: (error: string) => `Couldn't clear storage: ${error}`,
+  more: (paths: string, extra: number) => `${paths} and ${extra} more`,
+} as const;
 
 export const CLAUDE_ACCOUNT_LABELS = {
   tooltip: "Claude account for this project",

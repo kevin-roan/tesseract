@@ -5,6 +5,7 @@ import { PROJECTS_ICONS } from "../../../features/projects/constants";
 import { DETAIL_LABELS } from "../../../features/projects/labels";
 import type { PropertyChipModel } from "../../../features/projects/types";
 import { PropertyChips } from "./PropertyChips";
+import { StorageChip } from "./StorageChip";
 import styles from "./ProjectDetail.module.css";
 
 export interface DetailHeaderProps {
@@ -15,9 +16,10 @@ export interface DetailHeaderProps {
   onCopyPath(): void;
   onRename(): void;
   onDelete(): void;
+  onError(error: unknown): void;
 }
 
-export function DetailHeader({ project, title, chips, removing, onCopyPath, onRename, onDelete }: DetailHeaderProps) {
+export function DetailHeader({ project, title, chips, removing, onCopyPath, onRename, onDelete, onError }: DetailHeaderProps) {
   return (
     <>
       <div className={styles.crumb}>
@@ -36,7 +38,9 @@ export function DetailHeader({ project, title, chips, removing, onCopyPath, onRe
       <Text as="h1" variant="h1" selectable className={styles.title}>
         {title}
       </Text>
-      <PropertyChips chips={chips} />
+      <PropertyChips chips={chips}>
+        <StorageChip projectId={project.id} report={onError} />
+      </PropertyChips>
     </>
   );
 }

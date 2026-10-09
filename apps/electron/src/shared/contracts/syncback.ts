@@ -48,6 +48,14 @@ export type FileDiff =
   | { kind: "too_large"; path: string; size: number }
   | { kind: "error"; path: string; message: string };
 
+export type HostGitAction = "pull" | "push";
+
+export interface HostGitResult {
+  action: HostGitAction;
+  hostPath: string;
+  output: string;
+}
+
 export type SyncBackContract = DefineContract<{
   methods: {
     state(): SyncBackState;
@@ -56,6 +64,7 @@ export type SyncBackContract = DefineContract<{
     snapshots(projectId: string): SnapshotSummary[];
     hostChanges(projectId: string): HostChange[];
     diff(projectId: string, path: string): FileDiff;
+    hostGit(projectId: string, action: HostGitAction): HostGitResult;
   };
   events: {
     state: SyncBackState;

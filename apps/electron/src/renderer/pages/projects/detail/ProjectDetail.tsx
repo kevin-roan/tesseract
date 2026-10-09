@@ -15,6 +15,7 @@ import { reveal } from "../../../theme/motion";
 import { RemoveProjectDialog } from "../dialogs/RemoveProjectDialog";
 import { RenameProjectDialog } from "../dialogs/RenameProjectDialog";
 import { HeaderActions } from "../HeaderActions";
+import { HostRepoActions } from "../tabs/host-repo";
 import { DetailActions } from "./DetailActions";
 import { DetailHeader } from "./DetailHeader";
 import { DetailTabs } from "./DetailTabs";
@@ -76,6 +77,7 @@ export function ProjectDetail({ projectId, initialTab, tabAt, onBack, onRemoved 
                 onCopyPath={page.copyPath}
                 onRename={page.openRename}
                 onDelete={page.removal.start}
+                onError={detail.report}
               />
               <DetailActions
                 display={page.display}
@@ -93,6 +95,7 @@ export function ProjectDetail({ projectId, initialTab, tabAt, onBack, onRemoved 
                     />
                   ) : null
                 }
+                hostSlot={<HostRepoActions projectId={project.id} projectName={page.title} report={detail.report} />}
                 accountOptions={page.accountOptions}
                 accountValue={page.accountValue}
                 accountBusy={page.account.busy}

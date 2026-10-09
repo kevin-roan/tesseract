@@ -1,11 +1,11 @@
-export const PAGE_IDS = ["overview", "agents", "projects", "files", "terminals", "display"] as const;
+export const PAGE_IDS = ["overview", "agents", "projects", "files", "terminals", "display", "containers", "domains"] as const;
 export type PageId = (typeof PAGE_IDS)[number];
 export const DEFAULT_PAGE: PageId = "overview";
 
 export const PAGE_SECTIONS = ["sandbox", "host", "app"] as const;
 export type PageSection = (typeof PAGE_SECTIONS)[number];
 
-export const PREFERENCES_SECTION_IDS = ["connection", "appearance", "claude", "host-shell", "stt", "sandbox", "android", "about"] as const;
+export const PREFERENCES_SECTION_IDS = ["connection", "appearance", "claude", "host-shell", "containers", "stt", "sandbox", "android", "about"] as const;
 export type PreferencesSectionId = (typeof PREFERENCES_SECTION_IDS)[number];
 
 export const ONBOARDING_STEP_IDS = ["welcome", "docker", "claude", "sandbox", "build", "android", "pair", "finish"] as const;

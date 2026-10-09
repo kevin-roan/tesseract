@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { TesseractClient } from "@tesseract/client";
 import type {
+  ClearProjectStorage,
   CreateProject,
   CreateSyncRequest,
   CreateTerminal,
@@ -8,6 +9,7 @@ import type {
   CreateUpload,
   RenameProject,
   SendArtifact,
+  SendProjectFile,
   StartAgentRun,
   StartBuild,
   StartProcess,
@@ -166,6 +168,25 @@ export const useSendArtifactToTaildrop = () =>
     (client, { artifactId, ...body }: SendArtifact & { artifactId: string }) =>
       client.sendArtifactToTaildrop(artifactId, body, { timeoutMs: UPLOAD_TIMEOUT_MS }),
     (queryClient, sandboxId, artifact) => storeArtifact(queryClient, sandboxId, artifact),
+  );
+
+export const useSendProjectFileToTaildrop = () =>
+  useSandboxMutation(
+    (client, { projectId, ...body }: SendProjectFile & { projectId: string }) =>
+      client.sendProjectFileToTaildrop(projectId, body, { timeoutMs: UPLOAD_TIMEOUT_MS }),
+    () => undefined,
+  );
+
+export const useClearProjectStorage = () =>
+  useSandboxMutation(
+    (client, { projectId, ...body }: ClearProjectStorage & { projectId: string }) => client.clearProjectStorage(projectId, body),
+    (queryClient, sandboxId, storage, { projectId }) => {
+      queryClient.setQueryData(sandboxKeys.projectStorage(sandboxId, projectId), storage);
+      return Promise.all([
+        queryClient.invalidateQueries({ queryKey: sandboxKeys.project(sandboxId, projectId), exact: true }),
+        queryClient.invalidateQueries({ queryKey: [...sandboxKeys.project(sandboxId, projectId), "files"] }),
+      ]);
+    },
   );
 
 export const useCreateSyncRequest = () =>

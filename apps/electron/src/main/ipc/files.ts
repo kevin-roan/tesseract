@@ -1,14 +1,17 @@
-import { writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
-import { app, clipboard, dialog, net, type BrowserWindow } from "electron";
+import { app, clipboard, dialog, net, shell, ShareMenu, type BrowserWindow } from "electron";
 import { contentLength, expectedSha, FILES_LABELS, streamToFile } from "../../core/files";
-import type { FileDownloadRequest, FileSaveResult } from "../../shared/contracts/files";
+import type { FileDownloadRequest, FileHandoff, FileSaveResult } from "../../shared/contracts/files";
 import { IpcError } from "../../shared/ipc-types";
 import { defineService, type HandlerContext } from "./_framework/define";
 import { serviceEmitter } from "./_framework/events";
 
 const ALLOWED_PROTOCOLS = new Set(["http:", "https:"]);
 const NOT_FOUND = 404;
+const HANDOFF_DIR = "tesseract-files";
+const canShare = () => process.platform === "darwin";
 const events = serviceEmitter("files");
 const inflight = new Map<string, AbortController>();
 
@@ -47,6 +50,24 @@ async function download(context: HandlerContext, id: string, request: FileDownlo
   const url = validUrl(request.url);
   const path = await chooseTarget(context.window, safeName(request.suggestedName));
   if (!path) return null;
+  return fetchTo(id, url, request, path);
+}
+
+async function handoff(context: HandlerContext, id: string, request: FileDownloadRequest, mode: FileHandoff): Promise<FileSaveResult> {
+  const url = validUrl(request.url);
+  const dir = join(app.getPath("temp"), HANDOFF_DIR, randomUUID());
+  await mkdir(dir, { recursive: true });
+  const saved = await fetchTo(id, url, request, join(dir, safeName(request.suggestedName)));
+  if (mode === "share" && canShare()) {
+    new ShareMenu({ filePaths: [saved.path] }).popup(context.window ? { window: context.window } : {});
+    return saved;
+  }
+  const failure = await shell.openPath(saved.path);
+  if (failure) throw new IpcError("unavailable", FILES_LABELS.openFailed(failure));
+  return saved;
+}
+
+async function fetchTo(id: string, url: string, request: FileDownloadRequest, path: string): Promise<FileSaveResult> {
   const controller = new AbortController();
   inflight.set(id, controller);
   try {
@@ -76,6 +97,8 @@ export default defineService(
   "files",
   {
     download: (context, id, request) => download(context, String(id), request),
+    handoff: (context, id, request, mode) => handoff(context, String(id), request, mode === "share" ? "share" : "open"),
+    canShare: () => canShare(),
     saveBytes: async (context, suggestedName, dataBase64) => {
       const path = await chooseTarget(context.window, safeName(suggestedName));
       if (!path) return null;

@@ -1,12 +1,12 @@
 import { useCallback } from "react";
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { TesseractClient } from "@tesseract/client";
-import type { Artifact, BuildOutput } from "@tesseract/protocol";
+import type { Artifact, BuildOutput, ProjectFile } from "@tesseract/protocol";
 
 import { sandboxKeys } from "@/features/sandbox/api/query-keys";
 import { useSandboxClient } from "@/features/sandbox/hooks/use-sandbox-client";
 
-import { artifactDownload, buildOutputDownload } from "../utils/local-downloads";
+import { artifactDownload, buildOutputDownload, projectFileDownload } from "../utils/local-downloads";
 import { MissingFileError } from "../utils/errors";
 import { useLocalDownloads, type LocalDownload } from "./use-local-downloads";
 
@@ -62,6 +62,17 @@ export function useBuildOutputDownload() {
   const toItem = useCallback(
     (output: BuildOutput): LocalDownload => buildOutputDownload(output, sandboxId, () => paired().client.buildOutputDownloadUrl(output)),
     [sandboxId, paired],
+  );
+  return bindDownloads(local, toItem);
+}
+
+export function useProjectFileDownload(projectId: string) {
+  const { sandboxId, paired } = usePairedClient();
+  const local = useLocalDownloads();
+  const toItem = useCallback(
+    (file: ProjectFile): LocalDownload =>
+      projectFileDownload(projectId, file, sandboxId, () => paired().client.projectFileDownloadUrl(projectId, file.path)),
+    [projectId, sandboxId, paired],
   );
   return bindDownloads(local, toItem);
 }

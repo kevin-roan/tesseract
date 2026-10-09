@@ -6,13 +6,11 @@ export default function createStyles(theme: Theme) {
   return StyleSheet.create({
     container: {
       flex: 1,
-      alignItems: "center",
-      justifyContent: "center",
-      paddingHorizontal: theme.gutter,
+      paddingVertical: theme.spacing.sm,
     },
-    headline: {
-      marginTop: theme.spacing.xs,
-      alignItems: "center",
+    panel: {
+      flex: 1,
+      width: "100%",
     },
   });
 }

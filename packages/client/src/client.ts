@@ -30,6 +30,9 @@ import {
   AgentStreamMessageSchema,
   appendQuery,
   ArtifactListSchema,
+  ProjectDirectorySchema,
+  ProjectFileSchema,
+  ProjectStorageSchema,
   BuildOutputListSchema,
   ArtifactSchema,
   BrowserStatusSchema,
@@ -105,6 +108,11 @@ import {
   type ArchiveAgentRuns,
   type AgentStreamMessage,
   type Artifact,
+  type ClearProjectStorage,
+  type ProjectDirectory,
+  type ProjectFile,
+  type ProjectStorage,
+  type SendProjectFile,
   type BuildOutput,
   type SendArtifact,
   type ShareArtifact,
@@ -423,6 +431,25 @@ export class TesseractClient {
     return this.request("GET", restPaths.projectGit(id), { read: json(GitDetailsSchema), options });
   }
 
+  /** One directory of the project; `path` is relative to the project root ("" for the root). */
+  listProjectFiles(id: string, path = "", options?: RequestOptions): Promise<ProjectDirectory> {
+    return this.request("GET", restPaths.projectFiles(id, path ? { path } : undefined), { read: json(ProjectDirectorySchema), options });
+  }
+
+  sendProjectFileToTaildrop(id: string, body: SendProjectFile, options?: RequestOptions): Promise<ProjectFile> {
+    return this.request("POST", restPaths.projectFileTaildrop(id), { read: json(ProjectFileSchema), body, options });
+  }
+
+  /** Disk usage of the project folder, split into source and regenerable categories (cached for a short while). */
+  projectStorage(id: string, options?: RequestOptions): Promise<ProjectStorage> {
+    return this.request("GET", restPaths.projectStorage(id), { read: json(ProjectStorageSchema), options });
+  }
+
+  /** Deletes regenerable folders (all categories when `categories` is omitted); 409 while anything runs in the project. */
+  clearProjectStorage(id: string, body: ClearProjectStorage = {}, options?: RequestOptions): Promise<ProjectStorage> {
+    return this.request("POST", restPaths.projectStorageClear(id), { read: json(ProjectStorageSchema), body, options });
+  }
+
   syncChanges(id: string, options?: RequestOptions): Promise<SyncChanges> {
     return this.request("GET", restPaths.projectSyncChanges(id), { read: json(SyncChangesSchema), options });
   }
@@ -720,6 +747,11 @@ export class TesseractClient {
   async artifactDownloadUrl(id: string, options?: RequestOptions): Promise<string> {
     const { ticket } = await this.createTicket(options);
     return this.httpUrl(restPaths.artifactDownload(id, { ticket }));
+  }
+
+  async projectFileDownloadUrl(projectId: string, path: string, options?: RequestOptions): Promise<string> {
+    const { ticket } = await this.createTicket(options);
+    return this.httpUrl(restPaths.projectFileDownload(projectId, { path, ticket }));
   }
 
   async buildOutputDownloadUrl(output: Pick<BuildOutput, "projectId" | "path">, options?: RequestOptions): Promise<string> {

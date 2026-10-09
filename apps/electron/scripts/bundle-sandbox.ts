@@ -17,6 +17,7 @@ const INCLUDED = [
   "apps/mobile/package.json",
   "apps/electron/package.json",
   "infra/docker/sandbox",
+  "infra/docker/server",
   "infra/compose/.env.example",
   "infra/compose/tailscale/serve.json",
 ] as const;

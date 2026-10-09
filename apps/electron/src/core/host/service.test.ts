@@ -3,6 +3,7 @@ import { PassThrough } from "node:stream";
 import type { ChildProcess } from "node:child_process";
 import type { FetchLike, HttpRequestInit } from "@tesseract/client";
 import { DEFAULT_ANDROID_STREAM, type HostAndroidStatus } from "@tesseract/protocol";
+import { sampleTerminal } from "@tesseract/protocol/fixtures";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HostShellState } from "../../shared/contracts/hostShell";
 import type { CommandOptions, CommandResult } from "../process";
@@ -407,6 +408,23 @@ describe("HostShellService Android session", () => {
     await service.refresh();
     await expect(service.androidStatus()).rejects.toMatchObject({ message: "The host shell is not running" });
     await expect(service.unlock("123456")).rejects.toMatchObject({ message: "The host shell is not running" });
+  });
+
+  it("opens a host terminal in a folder and returns its page", async () => {
+    const terminalRoute: Route = (url, init) => {
+      if (url.endsWith("/v1/terminals")) return { status: 201, body: { ...sampleTerminal, id: "trm_host", projectId: null, cwd: "/home/me/app" } };
+      if (url.endsWith("/v1/auth/ticket")) return { status: 200, body: { ticket: "tkt", expiresAt } };
+      return route(url, init);
+    };
+    const { service, requests } = harness({ route: terminalRoute });
+    await service.refresh();
+    await expect(service.openTerminal("/home/me/app")).rejects.toMatchObject({ code: "forbidden" });
+    await service.unlock("123456");
+    const url = await service.openTerminal("/home/me/app");
+    expect(url).toBe(`${URL_BASE}/ui/terminal#ticket=tkt&session=trm_host`);
+    const create = requests.find((request) => request.url.endsWith("/v1/terminals"));
+    expect(create?.init.headers.Authorization).toBe("Bearer pin-session");
+    expect(JSON.parse(create?.init.body ?? "{}")).toEqual({ kind: "shell", cwd: "/home/me/app", cols: 120, rows: 32 });
   });
 
   it("locks the session", async () => {

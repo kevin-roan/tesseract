@@ -1,4 +1,4 @@
-import { PaperPlaneTiltIcon, TrashIcon } from "phosphor-react-native";
+import { TrashIcon } from "phosphor-react-native";
 import type { Artifact } from "@tesseract/protocol";
 import Animated from "react-native-reanimated";
 
@@ -40,17 +40,13 @@ const FileCard = ({ artifact, project, local, onDownload, onShare, onTaildrop, o
         onPress={local.downloaded || local.progress !== undefined ? undefined : onDownload}
         footer={
           <>
-            <LocalFileActions fileName={artifact.fileName} status={local} onDownload={onDownload} onShare={onShare} />
-            {onTaildrop ? (
-              <ActionButton
-                label="Taildrop"
-                icon={PaperPlaneTiltIcon}
-                variant="secondary"
-                size="sm"
-                onPress={onTaildrop}
-                accessibilityLabel={`Send ${artifact.fileName} with Taildrop`}
-              />
-            ) : null}
+            <LocalFileActions
+              fileName={artifact.fileName}
+              status={local}
+              onDownload={onDownload}
+              onShare={onShare}
+              onTaildrop={onTaildrop}
+            />
             {onDelete ? (
               <ActionButton
                 label="Delete"

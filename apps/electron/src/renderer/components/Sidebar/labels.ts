@@ -10,4 +10,8 @@ export const SIDEBAR_LABELS = {
   running: (count: number) => `${count} running`,
   openProject: (name: string) => `Open ${name}`,
   newInProject: (name: string) => `New conversation in ${name}`,
+  openContainer: (name: string) => `Open ${name}`,
+  containerTooltip: (name: string, status: string) => `${name} · ${status}`,
+  startContainer: (name: string) => `Start ${name}`,
+  stopContainer: (name: string) => `Stop ${name}`,
 } as const;

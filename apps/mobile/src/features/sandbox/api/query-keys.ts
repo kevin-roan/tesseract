@@ -17,6 +17,9 @@ export const sandboxKeys = {
   projects: (sandboxId: string) => ["sandbox", sandboxId, "projects"] as const,
   project: (sandboxId: string, projectId: string) => ["sandbox", sandboxId, "projects", projectId] as const,
   projectGit: (sandboxId: string, projectId: string) => ["sandbox", sandboxId, "projects", projectId, "git"] as const,
+  projectFiles: (sandboxId: string, projectId: string, path: string) =>
+    ["sandbox", sandboxId, "projects", projectId, "files", path] as const,
+  projectStorage: (sandboxId: string, projectId: string) => ["sandbox", sandboxId, "projects", projectId, "storage"] as const,
   syncChanges: (sandboxId: string, projectId: string) =>
     ["sandbox", sandboxId, "projects", projectId, "sync", "changes"] as const,
   syncRequests: (sandboxId: string, projectId: string) =>

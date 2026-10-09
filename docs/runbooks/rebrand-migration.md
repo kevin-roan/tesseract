@@ -25,13 +25,13 @@ skipped when there is nothing to do.
 | Env file | `THEONE_*` / `MONOLITH_*` keys become `TESSERACT_*` (when both exist, `THEONE_` wins; an existing `TESSERACT_*` key is left alone). The original is saved as `<env file>.legacy-backup` (a timestamp is appended if that exists). Values that were the old defaults change too: project and volume prefix `theone`/`monolith` → `tesseract`, image `theone/sandbox:latest` → `tesseract/sandbox:latest`. **The hostname value is kept** (§3) |
 | Shell environment | exported `THEONE_*` / `MONOLITH_*` variables count as `TESSERACT_*`, with a warning (`bun run sandbox` only). Rename them in your shell profile |
 | Old stack | a running compose project `theone` is stopped with `docker compose -p theone down` (no `-v`: volumes are kept) |
-| Image | `theone/sandbox:latest` is tagged `tesseract/sandbox:latest` when only the old one exists, so no rebuild is needed |
-| Volumes | `theone-{workspace,home,tailscale,dind-certs,dind-data}` are copied to the missing `tesseract-*` ones, once (marker `~/.local/state/tesseract/legacy-volumes.tesseract.migrated`, `$XDG_STATE_HOME` honoured). `tailscale-run` is not copied (runtime socket only). A failed copy removes the new volume and stops; the old one is untouched. The old volumes are kept |
+| Image | not reused: `tesseract/sandbox:latest` is built (`up` builds it when missing; the desktop app asks for a build). The old image's controller is `theone-controller` and hands out `theone://` links, which the new apps cannot discover or pair with |
+| Volumes | `theone-{workspace,home,tailscale,dind-certs,dind-data}` are moved to the missing `tesseract-*` ones, once (marker `~/.local/state/tesseract/legacy-volumes.tesseract.migrated`, `$XDG_STATE_HOME` honoured). Docker cannot rename a volume, so each is copied and the old one removed right after the copy succeeds; only one large volume is ever on the disk twice. A failed copy removes the new volume and stops; the old one is untouched. An old volume that cannot be removed is reported and kept. `tailscale-run` is not moved (runtime socket only) |
 
 The Docker steps only run for the default project `tesseract` (volumes only for the default
 prefix); other stacks keep their own names. `TESSERACT_SKIP_LEGACY_MIGRATION=1` skips them.
 
-Because the volumes are copied, the sandbox keeps its projects, `.agent/` memory, controller
+Because the volumes are moved, the sandbox keeps its projects, `.agent/` memory, controller
 history and token, Claude login, wine prefix and Tailscale node identity. On first start the
 new image also moves `/workspace/.theone` (uploads) to `/workspace/.tesseract` and the
 Chromium profile `~/.config/chromium-theone` to `chromium-tesseract`.
@@ -127,8 +127,7 @@ eas update:configure            # writes the updates URL for the new project
 After a few days of the new stack working (projects there, phone paired, Claude logged in):
 
 ```bash
-docker volume rm theone-workspace theone-home theone-tailscale \
-  theone-tailscale-run theone-dind-certs theone-dind-data  # ignore "no such volume"
+docker volume rm theone-tailscale-run                    # the others were moved; ignore "no such volume"
 docker image rm theone/sandbox:latest                    # if present
 rm infra/compose/.env.legacy-backup*                     # contains secrets
 ```

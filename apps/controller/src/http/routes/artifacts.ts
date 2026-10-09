@@ -16,7 +16,7 @@ const MIME_TYPES: Record<string, string> = {
   ".mp4": "video/mp4",
 };
 
-function contentType(fileName: string): string {
+export function contentType(fileName: string): string {
   const extension = /\.[^.]+$/.exec(fileName)?.[0]?.toLowerCase() ?? "";
   return MIME_TYPES[extension] ?? "application/octet-stream";
 }

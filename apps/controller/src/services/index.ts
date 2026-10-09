@@ -35,6 +35,7 @@ import { RuntimeMirror } from "./runtime-mirror";
 import { StatusService } from "./status";
 import { SyncBackService, type SyncBackOptions } from "./sync-back";
 import { TaildropService, type TaildropOptions } from "./taildrop";
+import { ProjectFileService } from "./project-files";
 import { TerminalService } from "./terminals";
 import { defaultProbes, ToolService, type ToolProbe } from "./tools";
 import { TranscriptionService, type TranscriptionOptions } from "./transcriptions";
@@ -75,6 +76,7 @@ export type Services = {
   terminals: TerminalService;
   artifacts: ArtifactService;
   buildOutputs: BuildOutputService;
+  projectFiles: ProjectFileService;
   builds: BuildService;
   display: DisplayService;
   browser: BrowserService;
@@ -142,6 +144,7 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
   push.follow(hub);
   const artifacts = new ArtifactService(config, repos, hub, inbox, projects, logger.child("artifacts"));
   const buildOutputs = new BuildOutputService(projects);
+  const projectFiles = new ProjectFileService(projects, logger.child("files"));
   const builds = new BuildService(config, repos, logs, hub, projects, artifacts, tools, logger.child("builds"), stopGraceMs);
   const display = new DisplayService(config);
   const uploads = new UploadService(config, repos, logger.child("uploads"));
@@ -219,6 +222,7 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
     terminals,
     artifacts,
     buildOutputs,
+    projectFiles,
     builds,
     display,
     browser,

@@ -293,6 +293,21 @@ describe("terminals", () => {
     await call("DELETE", `/v1/terminals/${info.id}`, session);
   });
 
+  test("opens in a host folder and refuses relative or missing ones", async () => {
+    await start();
+    const { session } = await unlock();
+    const folder = join(config.home, "repo");
+    mkdirSync(folder, { recursive: true });
+    const created = await call("POST", "/v1/terminals", session, { kind: "shell", cols: 80, rows: 24, cwd: folder });
+    expect(created.status).toBe(201);
+    const info = TerminalInfoSchema.parse(created.body);
+    expect(info.cwd).toBe(folder);
+    expect(info.title).toEndWith("· repo");
+    expect((await call("POST", "/v1/terminals", session, { kind: "shell", cols: 80, rows: 24, cwd: "repo" })).status).toBe(400);
+    expect((await call("POST", "/v1/terminals", session, { kind: "shell", cols: 80, rows: 24, cwd: join(folder, "missing") })).status).toBe(404);
+    await call("DELETE", `/v1/terminals/${info.id}`, session);
+  });
+
   test("serves the terminal page", async () => {
     await start();
     const response = await fetch(`${base}/ui/terminal`);

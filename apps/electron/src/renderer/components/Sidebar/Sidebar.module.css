@@ -185,6 +185,11 @@
   background: var(--to-background-element);
 }
 
+.sideRowSelected,
+.sideRowSelected:hover {
+  background: var(--to-background-selected);
+}
+
 .tinted {
   background: rgba(var(--side-tint), var(--to-tint-rest));
 }
@@ -226,6 +231,14 @@
 
 .activitySpinner {
   color: var(--to-info);
+}
+
+.activityMuted {
+  color: var(--to-text-tertiary);
+}
+
+.activityError {
+  color: var(--to-warning);
 }
 
 .projectName {

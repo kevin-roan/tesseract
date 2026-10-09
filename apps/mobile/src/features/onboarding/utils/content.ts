@@ -1,5 +1,7 @@
 import {
+  AppWindowIcon,
   CubeIcon,
+  DesktopIcon,
   QrCodeIcon,
   RobotIcon,
   ShieldCheckIcon,
@@ -58,6 +60,10 @@ export type SetupStep = {
   message: string;
   command?: string;
 };
+
+export type SetupMode = "desktop" | "cli";
+
+export type SetupModeOption = { value: SetupMode; label: string };
 
 export type SetupStat = { id: string; label: string; value: string };
 
@@ -175,28 +181,54 @@ export const ONBOARDING_SLIDES: OnboardingSlide[] = [
   },
 ];
 
-export const SETUP_STEPS: SetupStep[] = [
-  {
-    id: "start",
-    icon: CubeIcon,
-    title: "Start the sandbox",
-    message: "On the host, from the Tesseract repository.",
-    command: "bun run sandbox up",
-  },
-  {
-    id: "code",
-    icon: TerminalWindowIcon,
-    title: "Show the pairing code",
-    message: "It prints a QR code and a tesseract://pair link. Inside the sandbox, run tesseract-controller pair.",
-    command: "bun run sandbox pair",
-  },
-  {
-    id: "scan",
-    icon: QrCodeIcon,
-    title: "Scan it with this phone",
-    message: "Your phone must be on the same tailnet. You can also enter the URL and token by hand.",
-  },
+const SCAN_STEP: SetupStep = {
+  id: "scan",
+  icon: QrCodeIcon,
+  title: "Scan it with this phone",
+  message: "Your phone must be on the same tailnet. You can also enter the URL and token by hand.",
+};
+
+export const SETUP_STEPS: Record<SetupMode, SetupStep[]> = {
+  desktop: [
+    {
+      id: "install",
+      icon: DesktopIcon,
+      title: "Open the desktop app",
+      message: "Install Tesseract and finish its setup wizard. It checks Docker, then builds and starts the sandbox.",
+    },
+    {
+      id: "code",
+      icon: AppWindowIcon,
+      title: "Show the pairing code",
+      message: "The wizard's last step shows it. Later, choose Pair a device… in the File menu or the tray icon.",
+    },
+    SCAN_STEP,
+  ],
+  cli: [
+    {
+      id: "start",
+      icon: CubeIcon,
+      title: "Start the sandbox",
+      message: "On the host, from the Tesseract repository.",
+      command: "bun run sandbox up",
+    },
+    {
+      id: "code",
+      icon: TerminalWindowIcon,
+      title: "Show the pairing code",
+      message: "It prints a QR code and a tesseract://pair link. Inside the sandbox, run tesseract-controller pair.",
+      command: "bun run sandbox pair",
+    },
+    SCAN_STEP,
+  ],
+};
+
+export const SETUP_MODES: readonly SetupModeOption[] = [
+  { value: "desktop", label: "Desktop app" },
+  { value: "cli", label: "CLI only" },
 ];
+
+export const DEFAULT_SETUP_MODE: SetupMode = "desktop";
 
 export const ONBOARDING_LABELS = {
   brand: "Tesseract",
@@ -205,6 +237,7 @@ export const ONBOARDING_LABELS = {
   start: "Get started",
   setupTitle: "Pair your sandbox",
   setupSubtitle: "Three steps, about a minute",
+  setupMode: "How do you run Tesseract?",
   scan: "Scan pairing code",
   footnote: "The token gives full control of the sandbox. Only pair with one you run yourself.",
 } as const;

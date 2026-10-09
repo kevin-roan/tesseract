@@ -81,3 +81,13 @@ export function toggleExpansion(state: ExpansionState, id: string | null): Expan
   const key = projectKey(id);
   return { ...state, toggled: { ...state.toggled, [key]: !isExpanded(state, id) } };
 }
+
+export type SidebarContainersState = "loading" | "unavailable" | "empty" | "ready";
+
+export type SidebarContainerActivity = "running" | "busy" | "stopped" | "error";
+
+export interface SidebarContainerItem {
+  name: string;
+  activity: SidebarContainerActivity;
+  status: string;
+}

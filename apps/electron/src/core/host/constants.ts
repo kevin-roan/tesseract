@@ -44,6 +44,8 @@ export const SETPRIV = { binary: "setpriv", args: ["--pdeathsig", "TERM", "--"] 
 
 export const SESSION_REQUIRED = "pin-session";
 
+export const HOST_TERMINAL_GRID = { cols: 120, rows: 32 } as const;
+
 export const HOST_ENV = {
   sdkRoot: "TESSERACT_ANDROID_SDK_ROOT",
   adb: "TESSERACT_ADB",

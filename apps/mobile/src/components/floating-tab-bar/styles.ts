@@ -1,6 +1,6 @@
 import { StyleSheet } from "react-native";
 
-import { ControlHeight, Shadows, type Theme } from "@/theme";
+import { BorderWidth, ControlHeight, Shadows, type Theme } from "@/theme";
 
 export default function createStyles(theme: Theme, bottom: number) {
   const graphite = theme.look === "graphite";
@@ -26,11 +26,13 @@ export default function createStyles(theme: Theme, bottom: number) {
     float: {
       width: "100%",
       maxWidth: theme.maxContentWidth,
-      borderRadius: theme.radius.pill,
+      borderRadius: theme.radius.full,
       ...(graphite ? Shadows.none : Shadows.float),
     },
     glass: {
-      borderRadius: theme.radius.pill,
+      borderRadius: theme.radius.full,
+      borderWidth: BorderWidth.thin,
+      borderColor: theme.colors.borderStrong,
     },
     bar: {
       flexDirection: "row",
@@ -42,7 +44,7 @@ export default function createStyles(theme: Theme, bottom: number) {
       top: theme.spacing.xs,
       bottom: theme.spacing.xs,
       left: 0,
-      borderRadius: theme.radius.pill,
+      borderRadius: theme.radius.full,
       borderCurve: "continuous",
       backgroundColor: theme.colors.backgroundSelected,
       borderWidth: graphite ? StyleSheet.hairlineWidth : 0,
@@ -55,7 +57,7 @@ export default function createStyles(theme: Theme, bottom: number) {
       gap: theme.spacing.xxs,
       minHeight: ControlHeight.xl,
       paddingHorizontal: theme.spacing.xs,
-      borderRadius: theme.radius.pill,
+      borderRadius: theme.radius.full,
       borderCurve: "continuous",
     },
   });

@@ -12,7 +12,10 @@ export interface SaveTarget {
   discard(): Promise<void>;
 }
 
-export type DownloadSource = { kind: "artifact"; id: string } | { kind: "output"; projectId: string; path: string };
+export type DownloadSource =
+  | { kind: "artifact"; id: string }
+  | { kind: "output"; projectId: string; path: string }
+  | { kind: "project-file"; projectId: string; path: string };
 
 export interface SaveRequest {
   source: DownloadSource;
@@ -28,9 +31,14 @@ export interface SaveCallbacks {
 export type FileSaver = (request: SaveRequest, callbacks: SaveCallbacks) => Promise<string | null>;
 
 export function downloadUrl(client: TesseractClient, source: DownloadSource): string {
-  return source.kind === "artifact"
-    ? client.httpUrl(restPaths.artifactDownload(source.id))
-    : client.httpUrl(restPaths.buildOutputDownload(source.projectId, { path: source.path }));
+  switch (source.kind) {
+    case "artifact":
+      return client.httpUrl(restPaths.artifactDownload(source.id));
+    case "output":
+      return client.httpUrl(restPaths.buildOutputDownload(source.projectId, { path: source.path }));
+    case "project-file":
+      return client.httpUrl(restPaths.projectFileDownload(source.projectId, { path: source.path }));
+  }
 }
 
 export interface DownloadRequest {

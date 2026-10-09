@@ -33,9 +33,11 @@ beforeEach(() => {
 describe("onboarding content", () => {
   it("has three slides and three setup steps with unique ids", () => {
     expect(ONBOARDING_SLIDES).toHaveLength(3);
-    expect(SETUP_STEPS).toHaveLength(3);
+    expect(SETUP_STEPS.desktop).toHaveLength(3);
+    expect(SETUP_STEPS.cli).toHaveLength(3);
     expect(new Set(ONBOARDING_SLIDES.map((slide) => slide.id)).size).toBe(3);
-    expect(SETUP_STEPS.filter((step) => step.command).map((step) => step.command)).toEqual([
+    expect(SETUP_STEPS.desktop.some((step) => step.command)).toBe(false);
+    expect(SETUP_STEPS.cli.filter((step) => step.command).map((step) => step.command)).toEqual([
       "bun run sandbox up",
       "bun run sandbox pair",
     ]);
@@ -93,7 +95,10 @@ describe("useWelcomeScreen", () => {
 describe("useSetupScreen", () => {
   it("opens the pair screen", async () => {
     const { result } = await renderHook(() => useSetupScreen());
-    expect(result.current.steps).toBe(SETUP_STEPS);
+    expect(result.current.mode).toBe("desktop");
+    expect(result.current.steps).toBe(SETUP_STEPS.desktop);
+    await act(async () => result.current.setMode("cli"));
+    expect(result.current.steps).toBe(SETUP_STEPS.cli);
     result.current.pair();
     expect(mockRouter.push).toHaveBeenCalledWith("/pair");
   });
@@ -136,7 +141,7 @@ describe("onboarding components", () => {
   });
 
   it("renders a setup step with its number and command", async () => {
-    const [step] = SETUP_STEPS;
+    const [step] = SETUP_STEPS.cli;
     await render(<SetupStep step={step} position={0} />);
     expect(screen.getByTestId(`setup-step-${step.id}`)).toBeOnTheScreen();
     expect(screen.getByText("Step 1")).toBeOnTheScreen();
@@ -145,7 +150,7 @@ describe("onboarding components", () => {
   });
 
   it("leaves out the command chip when a step has none", async () => {
-    const step = SETUP_STEPS[2];
+    const step = SETUP_STEPS.cli[2];
     await render(<SetupStep step={step} position={2} last />);
     expect(screen.getByText("Step 3")).toBeOnTheScreen();
     expect(screen.queryByText(/^\$ /)).toBeNull();
@@ -204,7 +209,12 @@ describe("onboarding screens", () => {
   it("lists the setup steps and opens pairing", async () => {
     await render(<SetupScreen />);
     expect(screen.getByTestId("onboarding-setup")).toBeOnTheScreen();
-    for (const step of SETUP_STEPS) expect(screen.getByText(step.title)).toBeOnTheScreen();
+    for (const step of SETUP_STEPS.desktop) expect(screen.getByTestId(`setup-step-${step.id}`)).toBeOnTheScreen();
+    expect(screen.queryByText(/^\$ /)).toBeNull();
+
+    await fireEvent.press(screen.getByLabelText("CLI only"));
+    for (const step of SETUP_STEPS.cli) expect(screen.getByTestId(`setup-step-${step.id}`)).toBeOnTheScreen();
+    expect(screen.getByText("$ bun run sandbox up")).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByTestId("onboarding-pair"));
     expect(mockRouter.push).toHaveBeenCalledWith("/pair");

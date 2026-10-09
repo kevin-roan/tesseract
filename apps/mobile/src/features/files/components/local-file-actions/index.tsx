@@ -1,4 +1,4 @@
-import { CheckCircleIcon, DownloadSimpleIcon, ShareNetworkIcon } from "phosphor-react-native";
+import { CheckCircleIcon, DownloadSimpleIcon, PaperPlaneTiltIcon, ShareNetworkIcon } from "phosphor-react-native";
 
 import ActionButton from "@/components/action-button";
 import ProgressBar from "@/components/progress-bar";
@@ -11,9 +11,10 @@ export type LocalFileActionsProps = {
   status: LocalFileStatus;
   onDownload: () => void;
   onShare: () => void;
+  onTaildrop?: () => void;
 };
 
-const LocalFileActions = ({ fileName, status, onDownload, onShare }: LocalFileActionsProps) => {
+const LocalFileActions = ({ fileName, status, onDownload, onShare, onTaildrop }: LocalFileActionsProps) => {
   const downloading = status.progress !== undefined;
   return (
     <>
@@ -35,6 +36,16 @@ const LocalFileActions = ({ fileName, status, onDownload, onShare }: LocalFileAc
         onPress={onShare}
         accessibilityLabel={`Share ${fileName}`}
       />
+      {onTaildrop ? (
+        <ActionButton
+          label="Taildrop"
+          icon={PaperPlaneTiltIcon}
+          variant="secondary"
+          size="sm"
+          onPress={onTaildrop}
+          accessibilityLabel={`Send ${fileName} with Taildrop`}
+        />
+      ) : null}
     </>
   );
 };

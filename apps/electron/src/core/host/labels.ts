@@ -16,6 +16,8 @@ export const HOST_LABELS = {
   invalidAvd: "Pick an Android virtual device",
   invalidSandbox: "The sandbox URL and token are required",
   scrcpyMissing: "The app runs on the emulator; install scrcpy to see its screen here",
+  noFolder: "This project has no copy on this computer",
+  terminalTitle: (name: string) => `Host shell · ${name}`,
   noSerial: "The emulator is not reachable from this machine",
   scrcpyExited: (code: number | null) => `scrcpy exited with code ${code ?? "unknown"}`,
 } as const;

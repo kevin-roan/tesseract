@@ -33,7 +33,6 @@ Claude runs) goes through its token-authenticated REST and WebSocket API.
 apps/mobile/          @tesseract/mobile      Expo SDK 56 / React Native 0.85 / expo-router app
 apps/controller/      @tesseract/controller  Bun + Hono daemon that runs inside the sandbox
 apps/electron/        @tesseract/electron  Tesseract desktop app (Electron): setup wizard, pages, `tesseract` CLI
-apps/desktop/         Tesseract GTK4/libadwaita app (Python), the design reference for apps/electron
 packages/protocol/    @tesseract/protocol    zod schemas and types: the wire contract
 packages/client/      @tesseract/client      typed REST/WS client (React Native, browser, Bun)
 infra/docker/sandbox/ sandbox image (Dockerfile + rootfs)
