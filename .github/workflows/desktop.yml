@@ -1,0 +1,79 @@
+# Builds the Electron desktop app: the Linux AppImage + deb on Ubuntu and the macOS dmg + zip
+# (universal, ad-hoc signed) on macOS. Runs on pushes to build/** branches and from the Actions
+# tab (once this file is on main); a v* tag also attaches the files to a GitHub release.
+name: Desktop
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["build/**"]
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dist:
+    name: ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux
+            os: ubuntu-latest
+            files: |
+              apps/electron/dist/*.AppImage
+              apps/electron/dist/*.deb
+          - platform: mac
+            os: macos-latest
+            files: |
+              apps/electron/dist/*.dmg
+              apps/electron/dist/*.zip
+    env:
+      # macOS signing + notarization come from repository secrets (docs/runbooks/electron-desktop.md).
+      # Without CSC_LINK dist.ts ad-hoc signs; without the APPLE_API_* secrets notarization is skipped.
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
+      CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - run: bun install --frozen-lockfile
+
+      # notarytool wants the App Store Connect key as a file, so write the secret to one.
+      - if: matrix.platform == 'mac' && env.APPLE_API_KEY_ID != ''
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          key="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+          printf '%s\n' "$APPLE_API_KEY_P8" > "$key"
+          echo "APPLE_API_KEY=$key" >> "$GITHUB_ENV"
+
+      - run: bun run electron:dist --platform ${{ matrix.platform }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tesseract-${{ matrix.platform }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+      - if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.files }}
