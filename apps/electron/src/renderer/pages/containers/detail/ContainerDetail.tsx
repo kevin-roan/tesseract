@@ -8,6 +8,7 @@ import { Notice } from "../../../components/Notice";
 import { PageBody } from "../../../components/PageBody";
 import { Crossfade } from "../../../components/Presence";
 import { Section } from "../../../components/Section";
+import { TerminalPanel } from "../../../components/TerminalPanel";
 import { CONTAINER_LOGS_MIN_HEIGHT } from "../../../features/containers/constants";
 import { useContainerDetail } from "../../../features/containers/hooks/use-container-detail";
 import { CONTAINERS_LABELS as L } from "../../../features/containers/labels";
@@ -27,7 +28,7 @@ export interface ContainerDetailProps {
 
 export function ContainerDetail({ name, onBack, onSettings }: ContainerDetailProps) {
   const detail = useContainerDetail(name, { onBack, onSettings });
-  const { container, reload } = detail;
+  const { container, reload, shell } = detail;
   const headerActions = useMemo(() => <HeaderActions items={[{ id: "refresh", icon: "refresh", label: L.refresh, onClick: reload }]} />, [reload]);
   usePageHeader({ parent: L.title, title: name, actions: headerActions, onBack });
   return (
@@ -54,6 +55,16 @@ export function ContainerDetail({ name, onBack, onSettings }: ContainerDetailPro
               <Notice message={L.detail.offTailnet} actionLabel={L.detail.openSettings} onAction={onSettings} />
             )}
           </Section>
+          <TerminalPanel
+            title={L.detail.shell}
+            host={shell.host}
+            background={shell.background}
+            status={shell.view.status}
+            action={shell.view.action ? { label: shell.view.action === "open" ? L.detail.openShell : L.detail.reopenShell, icon: "terminal", onClick: shell.open } : null}
+            placeholder={shell.view.placeholder}
+            closeLabel={L.detail.closeShell}
+            onClose={shell.host ? shell.close : undefined}
+          />
           <ListGroup
             icon="globe"
             title={L.detail.urls}

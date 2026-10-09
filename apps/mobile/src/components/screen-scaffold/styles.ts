@@ -4,6 +4,8 @@ import type { Theme } from "@/theme";
 
 export default function createStyles(theme: Theme, tabBarInset: number, hasFooter: boolean) {
   const bodyInset = hasFooter ? 0 : tabBarInset;
+  // The tab bar inset already leaves `base` of breathing room for scrolling content; a footer docks closer.
+  const footerInset = tabBarInset > 0 ? tabBarInset - theme.spacing.base + theme.spacing.sm : theme.spacing.md;
 
   return StyleSheet.create({
     root: {
@@ -30,7 +32,7 @@ export default function createStyles(theme: Theme, tabBarInset: number, hasFoote
     footer: {
       paddingHorizontal: theme.gutter,
       paddingTop: theme.spacing.md,
-      paddingBottom: theme.spacing.md + tabBarInset,
+      paddingBottom: footerInset,
     },
   });
 }

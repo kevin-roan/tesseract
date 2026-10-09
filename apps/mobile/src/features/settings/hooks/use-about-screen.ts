@@ -18,7 +18,7 @@ export function useAboutScreen() {
 
   return {
     back: nav.back,
-    heroSize: Math.min(width * 0.72, 300),
+    heroSize: Math.min(width * 0.6, 240),
     appRows: rows.app,
     updateRows: rows.updates,
     updates: {

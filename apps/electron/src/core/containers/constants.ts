@@ -56,3 +56,16 @@ export const TIMEOUTS = {
   api: 20_000,
   build: 30 * 60_000,
 } as const;
+
+export const SHELL = {
+  unixSocket: "/var/run/docker.sock",
+  windowsPipe: "\\\\.\\pipe\\docker_engine",
+  tcpPort: 2375,
+  user: "root",
+  workdir: "/root",
+  env: ["TERM=xterm-256color", "COLORTERM=truecolor", "LANG=C.UTF-8"],
+  command: ["/bin/bash", "-l"],
+  idPattern: /^[A-Za-z0-9_-]{8,64}$/,
+  maxCols: 1000,
+  maxRows: 500,
+} as const;

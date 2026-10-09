@@ -80,6 +80,23 @@ export type ContainersPhase =
   | { kind: "creating"; name: string }
   | { kind: "routing"; hostname: string };
 
+export interface OpenShellRequest {
+  id: string;
+  name: string;
+  cols: number;
+  rows: number;
+}
+
+export interface ShellOutput {
+  id: string;
+  data: string;
+}
+
+export interface ShellExit {
+  id: string;
+  code: number | null;
+}
+
 export type ContainersContract = DefineContract<{
   methods: {
     report(): ContainersReport;
@@ -99,11 +116,17 @@ export type ContainersContract = DefineContract<{
     addRoute(request: AddRouteRequest): DomainRoute;
     removeRoute(id: string): void;
     syncRoutes(): DomainRoute[];
+    openShell(request: OpenShellRequest): void;
+    writeShell(id: string, data: string): void;
+    resizeShell(id: string, cols: number, rows: number): void;
+    closeShell(id: string): void;
   };
   events: {
     containers: ServerContainer[];
     routes: DomainRoute[];
     phase: ContainersPhase;
     log: string;
+    shellData: ShellOutput;
+    shellExit: ShellExit;
   };
 }>;

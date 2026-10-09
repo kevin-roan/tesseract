@@ -83,7 +83,7 @@ describe("AboutScreen", () => {
     mockScreen.mockReturnValue(value);
     await render(<AboutScreen />);
 
-    expect(screen.getByTestId("about-tesseract", { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.getByTestId("about-monolith", { includeHiddenElements: true })).toBeTruthy();
     expect(screen.getByText("1.0.0")).toBeOnTheScreen();
     expect(screen.getByText("production")).toBeOnTheScreen();
     expect(screen.getByText("abc123")).toBeOnTheScreen();

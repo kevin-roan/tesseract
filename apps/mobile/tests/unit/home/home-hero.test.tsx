@@ -1,14 +1,32 @@
-import { render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { obeliskCrop } from "@/components/splash-overlay/geometry";
 import HomeHero from "@/features/home/components/home-hero";
+import { heroBox } from "@/features/home/utils/hero";
 
 jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 
 describe("<HomeHero />", () => {
   it("draws the splash obelisk", async () => {
     await render(<HomeHero />);
-    expect(screen.getByTestId("home-obelisk", { includeHiddenElements: true })).toBeTruthy();
+    const panel = screen.getByTestId("home-obelisk", {
+      includeHiddenElements: true,
+    });
+    await fireEvent(panel, "layout", {
+      nativeEvent: { layout: { width: 360, height: 420 } },
+    });
+    expect(panel.children.length).toBeGreaterThan(0);
+  });
+});
+
+describe("heroBox", () => {
+  it("keeps the monolith narrower than the panel and no taller than it", () => {
+    expect(heroBox({ width: 360, height: 420 })).toEqual({
+      width: 360 * 0.62,
+      height: 360 * 0.62 * 1.4,
+    });
+    expect(heroBox({ width: 360, height: 200 }).height).toBe(200);
+    expect(heroBox({ width: 900, height: 900 }).width).toBe(260);
   });
 });
 

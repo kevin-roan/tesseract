@@ -12,6 +12,7 @@ import {
   parseOptionalNumber,
   parsePort,
   routeCounts,
+  shellPanelView,
   sidebarContainerItems,
   sshCommand,
   toMemoryMb,
@@ -139,5 +140,19 @@ describe("containers model", () => {
     expect(containersListState([container()], null)).toBeNull();
     expect(containerDetailState([container()], "viglis-prod", null)).toBeNull();
     expect(containerDetailState([container()], "missing", null)?.action?.id).toBe("back");
+  });
+});
+
+describe("shellPanelView", () => {
+  it("only offers a shell for running containers", () => {
+    expect(shellPanelView({ kind: "idle" }, true)).toMatchObject({ action: "open", status: null });
+    expect(shellPanelView({ kind: "idle" }, false)).toMatchObject({ action: null, placeholder: "Start the container to open a shell." });
+  });
+
+  it("tracks the session", () => {
+    expect(shellPanelView({ kind: "connecting" }, true)).toMatchObject({ action: null, status: { label: "Connecting", live: true } });
+    expect(shellPanelView({ kind: "open" }, true)).toMatchObject({ action: null, status: { label: "Connected", tone: "success" } });
+    expect(shellPanelView({ kind: "exited", code: 0 }, true)).toMatchObject({ action: "reopen", status: { label: "Exited 0" } });
+    expect(shellPanelView({ kind: "error", message: "boom" }, true)).toMatchObject({ action: "open", placeholder: "boom", status: { tone: "danger" } });
   });
 });

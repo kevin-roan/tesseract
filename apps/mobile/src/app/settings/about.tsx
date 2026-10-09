@@ -7,8 +7,8 @@ import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
 import Section from "@/components/section";
-import Tesseract from "@/components/tesseract";
 import { ThemedText } from "@/components/themed-text";
+import MonolithEgg from "@/features/settings/components/monolith-egg";
 import { useAboutScreen } from "@/features/settings/hooks/use-about-screen";
 import { ABOUT_COPY } from "@/features/settings/utils/constants";
 
@@ -19,7 +19,7 @@ export default function AboutScreen() {
   return (
     <ScreenScaffold header={<ScreenHeader title={ABOUT_COPY.title} subtitle={ABOUT_COPY.subtitle} onBack={screen.back} />}>
       <MotionItem index={0} style={{ alignItems: "center" }}>
-        <Tesseract size={screen.heroSize} testID="about-tesseract" />
+        <MonolithEgg size={screen.heroSize} testID="about-monolith" />
       </MotionItem>
 
       <MotionItem index={1}>

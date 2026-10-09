@@ -1,0 +1,1 @@
+export const TERMINAL_PANEL_DEFAULT_HEIGHT = 380;

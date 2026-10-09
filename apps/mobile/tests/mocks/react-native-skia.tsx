@@ -8,7 +8,16 @@ export const Shader = () => null;
 export const Skia = {
   Color: () => new Float32Array([0, 0, 0, 1]),
   RuntimeEffect: { Make: () => ({}) },
-  Path: { Make: () => ({ moveTo: () => undefined, lineTo: () => undefined, close: () => undefined }) },
+  Path: {
+    Make: () => ({
+      moveTo: () => undefined,
+      lineTo: () => undefined,
+      quadTo: () => undefined,
+      cubicTo: () => undefined,
+      addCircle: () => undefined,
+      close: () => undefined,
+    }),
+  },
 };
 export const useClock = () => ({ value: 0 });
 export const Group = Passthrough;

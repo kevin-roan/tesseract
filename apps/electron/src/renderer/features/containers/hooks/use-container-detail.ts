@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
 import { errorMessage } from "../../../components/FormDialog";
-import { containerDetailState, containerProperties, formatCreated, routesFor, sortRoutes, sshCommand, type ListStateAction } from "../model";
+import { containerDetailState, containerProperties, formatCreated, routesFor, shellPanelView, sortRoutes, sshCommand, type ListStateAction } from "../model";
 import { useContainerActions, usePendingContainers } from "./use-container-actions";
 import { useContainerLogs } from "./use-container-logs";
+import { useContainerShell } from "./use-container-shell";
 import { useContainers } from "./use-containers";
 import { useDomainRoutes } from "./use-domain-routes";
 
@@ -18,6 +19,8 @@ export function useContainerDetail(name: string, { onBack, onSettings }: Contain
   const actions = useContainerActions();
   const container = containers?.find((entry) => entry.name === name) ?? null;
   const logs = useContainerLogs(name, container !== null);
+  const shell = useContainerShell(name);
+  const shellView = useMemo(() => shellPanelView(shell.status, container?.state === "running"), [shell.status, container?.state]);
   const own = useMemo(() => sortRoutes(routesFor(routes ?? [], name)), [routes, name]);
   const properties = useMemo(() => (container ? containerProperties(container, formatCreated) : []), [container]);
   const [removeOpen, setRemoveOpen] = useState(false);
@@ -48,6 +51,7 @@ export function useContainerDetail(name: string, { onBack, onSettings }: Contain
     ssh: container ? sshCommand(container) : null,
     routes: own,
     logs,
+    shell: { ...shell, view: shellView },
     actions,
     reload,
     onAction,

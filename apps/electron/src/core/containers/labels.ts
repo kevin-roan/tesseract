@@ -22,6 +22,10 @@ export const CONTAINERS_MESSAGES = {
   dockerFailed: (action: string, detail: string) => `docker ${action} failed: ${detail}`,
   buildFailed: "The server image build failed. See the log for details.",
   cancelled: "Cancelled.",
+  shellFailed: (detail: string) => `Couldn't open a shell: ${detail}`,
+  invalidShell: "Invalid shell session.",
+  dockerUnreachable: "Docker didn't answer.",
+  unsupportedDockerHost: (host: string) => `The shell can't reach Docker at ${host}. Use a unix socket, named pipe or plain tcp:// endpoint.`,
   tailnetFailed: (name: string, detail: string) => `${name} is running but couldn't join the tailnet (${detail}). Run "tailscale up --ssh" inside it.`,
 } as const;
 

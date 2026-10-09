@@ -15,7 +15,7 @@ import type { Tone } from "../../theme/colors";
 import type { IconName } from "../../theme/icons";
 import { MB_PER_GB, MEMORY_UNITS, PORT_RANGE, ROUTE_SCHEMES, type MemoryUnit } from "./constants";
 import { CONTAINERS_LABELS as L, DOMAINS_LABELS } from "./labels";
-import type { CreateBlocker } from "./types";
+import type { ContainerShellStatus, CreateBlocker } from "./types";
 
 export function containerTone(state: ContainerState): Tone {
   switch (state) {
@@ -267,4 +267,26 @@ export function containerDetailState(containers: readonly ServerContainer[] | nu
 export function formatCreated(iso: string): string {
   const date = new Date(iso);
   return Number.isNaN(date.getTime()) ? L.none : date.toLocaleString();
+}
+
+export interface ShellPanelView {
+  status: (BadgeView & { live: boolean }) | null;
+  action: "open" | "reopen" | null;
+  placeholder: string | null;
+}
+
+export function shellPanelView(status: ContainerShellStatus, running: boolean): ShellPanelView {
+  const action = !running ? null : status.kind === "idle" || status.kind === "error" ? "open" : status.kind === "exited" ? "reopen" : null;
+  switch (status.kind) {
+    case "idle":
+      return { status: null, action, placeholder: running ? L.detail.shellHint : L.detail.shellStopped };
+    case "connecting":
+      return { status: { label: L.detail.shellStatus.connecting, tone: "info", live: true }, action, placeholder: null };
+    case "open":
+      return { status: { label: L.detail.shellStatus.open, tone: "success", live: true }, action, placeholder: null };
+    case "exited":
+      return { status: { label: L.detail.shellStatus.exited(status.code), tone: "neutral", live: false }, action, placeholder: null };
+    case "error":
+      return { status: { label: L.detail.shellStatus.error, tone: "danger", live: false }, action, placeholder: status.message };
+  }
 }

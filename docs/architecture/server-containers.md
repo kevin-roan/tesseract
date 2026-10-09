@@ -67,7 +67,12 @@ Cloudflare Tunnel → Edit**. Limit it to the zones you want to use.
 ## Surfaces
 
 - Desktop: a **Containers** sidebar section and page (list, detail with SSH target, public
-  URLs and logs), a **Domains** page (Cloudflare connection, all routes, add URL) and
+  URLs, an in-app shell and logs), a **Domains** page (Cloudflare connection, all routes, add URL) and
   **Preferences → Containers** (checks, Tailscale key, Cloudflare token). IPC service:
   `containers` (`src/shared/contracts/containers.ts`).
+- In-app shell: the detail page runs `bash -l` as root in `tesseract-ct-<name>` through the
+  Docker Engine API (`POST /containers/{id}/exec` with a TTY, then a hijacked
+  `/exec/{id}/start`), so it works without the tailnet. The endpoint comes from `DOCKER_HOST`
+  or the current `docker context` (unix socket, named pipe or plain `tcp://`). Output streams to
+  the requesting window only (`shellData`/`shellExit` events); sessions close with the window.
 - CLI: `tesseract containers …` and `tesseract domains …` (blueprint §7.1).

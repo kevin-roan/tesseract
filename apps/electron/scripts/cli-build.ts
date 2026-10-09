@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "./lib/args.ts";
 import { APP_DIR, CLI_DIST_DIR, REPO_ROOT } from "./lib/paths.ts";
@@ -12,8 +12,18 @@ const BINARIES = [
   { name: "tesseract-controller", entry: CONTROLLER_ENTRY },
 ] as const;
 
+const outDirOf = (target: BuildTarget) => join(CLI_DIST_DIR, `${target.builderOs}-${target.arch}`);
+
+/** electron-builder ships the whole directory, so stale binaries (e.g. theone-controller) break the universal merge. */
+function pruneStale(target: BuildTarget): void {
+  const outDir = outDirOf(target);
+  if (!existsSync(outDir)) return;
+  const keep = new Set<string>(BINARIES.map((binary) => `${binary.name}${target.exe}`));
+  for (const file of readdirSync(outDir)) if (!keep.has(file)) rmSync(join(outDir, file), { recursive: true, force: true });
+}
+
 function compile(target: BuildTarget, name: string, entry: string): void {
-  const outDir = join(CLI_DIST_DIR, `${target.builderOs}-${target.arch}`);
+  const outDir = outDirOf(target);
   mkdirSync(outDir, { recursive: true });
   const outfile = join(outDir, `${name}${target.exe}`);
   const result = spawnSync("bun", ["build", entry, "--compile", "--minify", `--target=${target.bunTarget}`, "--outfile", outfile], {
@@ -30,6 +40,7 @@ function main(): number {
     ? BUILD_TARGETS
     : (args.values.get("target") ?? hostTargetId()).split(",").map((id) => findTarget(id.trim()));
   const binaries = args.flags.has("no-controller") ? BINARIES.filter((binary) => binary.name === "tesseract") : BINARIES;
+  for (const target of targets) pruneStale(target);
   for (const target of targets) for (const binary of binaries) compile(target, binary.name, binary.entry);
   return 0;
 }
