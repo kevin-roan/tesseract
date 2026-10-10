@@ -46,8 +46,10 @@ export async function probeTailnet(context: CliContext): Promise<TailnetFacts> {
   const configuredMode = values.TESSERACT_MODE || "tailscale";
   const tailscale = resolveTailscale(context.env, context.runtime.platform);
 
-  const hostStatusText = tailscale ? await output(context, tailscale, ["status", "--json"]) : "";
+  const hostResult = tailscale ? await run(context, tailscale, ["status", "--json"]) : null;
+  const hostStatusText = hostResult?.code === 0 ? hostResult.stdout : "";
   const host = parseStatus(hostStatusText);
+  const hostError = hostResult && !host ? (hostResult.timedOut ? "timed out" : hostResult.stderr.trim().split("\n").pop() || `exit ${hostResult.code}`) : null;
   const hostServe = tailscale && host ? parseServe(await output(context, tailscale, ["serve", "status", "--json"])) : [];
   const hostShellTarget = hostServe.find((proxy) => proxy.target.includes(`:${HOST_SHELL_PORT}`))?.target;
 
@@ -63,6 +65,7 @@ export async function probeTailnet(context: CliContext): Promise<TailnetFacts> {
     authKeySaved: Boolean(values.TS_AUTHKEY),
     tailscaleCli: Boolean(tailscale),
     host,
+    hostError,
     sidecarContainer,
     sidecar: null,
     sidecarLogErrors: [],

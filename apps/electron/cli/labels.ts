@@ -202,6 +202,7 @@ export const CLI_LABELS = {
     host: "This computer's Tailscale",
     hostDown: (state: string) => `This computer's Tailscale is not connected (${state})`,
     hostDownFix: "Open the Tailscale app and sign in to the tailnet your phones use",
+    hostCliFailed: "tailscale status failed on this computer",
     hostHealth: "This computer's Tailscale reports problems",
     noSidecar: "The sandbox's tailscale sidecar is not running",
     noSidecarFix: "Run tesseract sandbox up, or tesseract server status to see why it stopped",

@@ -22,6 +22,7 @@ function facts(overrides: Partial<TailnetFacts> = {}): TailnetFacts {
     authKeySaved: false,
     tailscaleCli: true,
     host: node("tailnew.ts.net", "mac.tailnew.ts.net", "100.80.0.1"),
+    hostError: null,
     sidecarContainer: "tesseract-tailscale-1",
     sidecar: node("tailnew.ts.net", "tesseract-sandbox.tailnew.ts.net", "100.90.0.2"),
     sidecarLogErrors: [],
@@ -110,6 +111,12 @@ describe("analyzeTailnet", () => {
     const items = analyzeTailnet(facts({ sidecarReachesController: false, httpsCode: "000" }));
     expect(errors(items)).toEqual(["netns", "health"]);
     expect(items.find((item) => item.id === "netns")?.detail).toContain("tesseract sandbox restart");
+  });
+
+  it("shows why tailscale status failed on the host", () => {
+    const items = analyzeTailnet(facts({ host: null, hostError: "The Tailscale GUI failed to start" }));
+    expect(items[0]).toMatchObject({ status: "error", title: "tailscale status failed on this computer" });
+    expect(items[0]?.detail).toContain("The Tailscale GUI failed to start");
   });
 
   it("treats a relayed ping as a warning, not a failure", () => {

@@ -37,6 +37,7 @@ export interface TailnetFacts {
   authKeySaved: boolean;
   tailscaleCli: boolean;
   host: TailnetNode | null;
+  hostError: string | null;
   sidecarContainer: string | null;
   sidecar: TailnetNode | null;
   sidecarLogErrors: string[];
@@ -144,6 +145,7 @@ function check(id: string, status: CheckItem["status"], title: string, detail = 
 function hostChecks(facts: TailnetFacts): CheckItem[] {
   if (!facts.tailscaleCli) return [check("host", "warning", LABELS.noCli, LABELS.noCliFix)];
   const host = facts.host;
+  if (!host && facts.hostError) return [check("host", "error", LABELS.hostCliFailed, `${facts.hostError}\n${LABELS.hostDownFix}`)];
   if (host?.state !== "Running") return [check("host", "error", LABELS.hostDown(host?.state ?? LABELS.unknown), LABELS.hostDownFix)];
   const items = [check("host", "ok", LABELS.host, LABELS.node(host.dnsName, host.ip, host.suffix))];
   if (host.health.length > 0) items.push(check("host-health", "warning", LABELS.hostHealth, host.health.join("\n")));
