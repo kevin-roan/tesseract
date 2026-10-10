@@ -55,6 +55,7 @@ export interface TailnetFacts {
   hostServe: ServeProxy[];
   hostShellPort: number;
   hostShellAnswers: boolean | null;
+  hostShellHttpsCode: string | null;
   restartHostShell: string;
 }
 
@@ -251,9 +252,16 @@ function hostShellChecks(facts: TailnetFacts): CheckItem[] {
       return [check("host-shell", "error", LABELS.staleServe(proxy.front, proxy.target, hostIp), LABELS.staleServeFix(facts.restartHostShell))];
     }
     if (!proxy.target.includes(`:${facts.hostShellPort}`)) return [];
-    return facts.hostShellAnswers === false
-      ? [check("host-shell", "error", LABELS.hostShellDown(proxy.target), LABELS.hostShellDownFix(facts.restartHostShell))]
-      : [check("host-shell", "ok", LABELS.hostShell, `https://${proxy.front} → ${proxy.target}`)];
+    if (facts.hostShellAnswers === false) {
+      return [check("host-shell", "error", LABELS.hostShellDown(proxy.target), LABELS.hostShellDownFix(facts.restartHostShell))];
+    }
+    const items = [check("host-shell", "ok", LABELS.hostShell, `https://${proxy.front} → ${proxy.target}`)];
+    const url = `https://${proxy.front.replace(/\/$/, "")}/v1/health`;
+    if (facts.hostShellHttpsCode === "200") items.push(check("host-shell-https", "ok", LABELS.hostShellHttpsOk, url));
+    else if (facts.hostShellHttpsCode !== null) {
+      items.push(check("host-shell-https", "error", LABELS.hostShellHttpsFailed(facts.hostShellHttpsCode), `${url}\n${LABELS.hostShellHttpsFix}`));
+    }
+    return items;
   });
 }
 

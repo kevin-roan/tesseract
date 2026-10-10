@@ -37,6 +37,16 @@ function restartHostShell(platform: NodeJS.Platform): string {
     : `systemctl --user restart ${SERVER.systemdUnit}`;
 }
 
+/** HTTP status of https://<front>/v1/health, dialing `ip` directly; "000" on timeout or no connection. */
+async function httpsCode(context: CliContext, front: string, ip: string): Promise<string> {
+  const [name = "", port = "443"] = front.split(":");
+  const result = await run(context, "curl", [
+    "-sk", "-o", "/dev/null", "-w", "%{http_code}", "--max-time", "15",
+    "--resolve", `${name}:${port}:${ip}`, `https://${front}${HEALTH_PATH}`,
+  ]);
+  return result.stdout.trim() || "000";
+}
+
 export async function probeTailnet(context: CliContext): Promise<TailnetFacts> {
   const sandbox = await context.runtime.sandboxContext();
   const values = (await readEnvValues(sandbox.envFile)) ?? {};
@@ -51,7 +61,8 @@ export async function probeTailnet(context: CliContext): Promise<TailnetFacts> {
   const host = parseStatus(hostStatusText);
   const hostError = hostResult && !host ? (hostResult.timedOut ? "timed out" : hostResult.stderr.trim().split("\n").pop() || `exit ${hostResult.code}`) : null;
   const hostServe = tailscale && host ? parseServe(await output(context, tailscale, ["serve", "status", "--json"])) : [];
-  const hostShellTarget = hostServe.find((proxy) => proxy.target.includes(`:${HOST_SHELL_PORT}`))?.target;
+  const hostShellProxy = hostServe.find((proxy) => proxy.target.includes(`:${HOST_SHELL_PORT}`));
+  const hostShellTarget = hostShellProxy?.target;
 
   const filter = ["--filter", `label=com.docker.compose.project=${project}`, "--filter", "label=com.docker.compose.service=tailscale"];
   const sidecarContainer = (await output(context, "docker", ["ps", ...filter, "--format", "{{.Names}}"])).split("\n")[0] || null;
@@ -83,6 +94,7 @@ export async function probeTailnet(context: CliContext): Promise<TailnetFacts> {
     hostServe,
     hostShellPort: HOST_SHELL_PORT,
     hostShellAnswers: hostShellTarget ? await answers(`${hostShellTarget}${HEALTH_PATH}`, context.signal) : null,
+    hostShellHttpsCode: hostShellProxy && host?.ip ? await httpsCode(context, hostShellProxy.front.replace(/\/$/, ""), host.ip) : null,
     restartHostShell: restartHostShell(context.runtime.platform),
   };
   if (mode !== "tailscale") return facts;

@@ -40,6 +40,7 @@ function facts(overrides: Partial<TailnetFacts> = {}): TailnetFacts {
     hostServe: [{ front: "mac.tailnew.ts.net:8443/", target: "http://100.80.0.1:7701" }],
     hostShellPort: 7701,
     hostShellAnswers: true,
+    hostShellHttpsCode: "200",
     restartHostShell: "launchctl kickstart -k gui/$(id -u)/dev.tesseract.host-shell",
     ...overrides,
   };
@@ -119,6 +120,12 @@ describe("analyzeTailnet", () => {
     expect(items[0]?.detail).toContain("The Tailscale GUI failed to start");
   });
 
+  it("flags a host shell whose HTTPS front fails while the daemon answers", () => {
+    const items = analyzeTailnet(facts({ hostShellHttpsCode: "000" }));
+    expect(errors(items)).toEqual(["host-shell-https"]);
+    expect(items.find((item) => item.id === "host-shell-https")?.detail).toContain("https://mac.tailnew.ts.net:8443/v1/health");
+  });
+
   it("treats a relayed ping as a warning, not a failure", () => {
     const items = analyzeTailnet(facts({ ping: { ok: false, detail: "direct connection not established" } }));
     expect(items.find((item) => item.id === "ping")).toMatchObject({ status: "warning" });
@@ -131,7 +138,7 @@ describe("analyzeTailnet", () => {
   });
 
   it("only checks the host outside tailscale mode", () => {
-    expect(analyzeTailnet(facts({ mode: "local", configuredMode: "local" })).map((item) => item.id)).toEqual(["host", "mode", "host-shell"]);
+    expect(analyzeTailnet(facts({ mode: "local", configuredMode: "local" })).map((item) => item.id)).toEqual(["host", "mode", "host-shell", "host-shell-https"]);
   });
 
   it("warns when the running stack is not the configured mode", () => {

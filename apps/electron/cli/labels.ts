@@ -261,6 +261,10 @@ export const CLI_LABELS = {
     staleServe: (front: string, target: string, ip: string) => `https://${front} → ${target}, but this computer's Tailscale IP is now ${ip}`,
     staleServeFix: (restart: string) => `The host shell still uses the old IP.\nFix: ${restart}, then tesseract server install`,
     hostShell: "Host shell",
+    hostShellHttpsOk: "The host shell's HTTPS front answers (what the phone uses)",
+    hostShellHttpsFailed: (code: string) => `The host shell's HTTPS front fails (${code === "000" ? "timeout or no connection" : code}); the phone cannot pair`,
+    hostShellHttpsFix:
+      "tailscale serve or its certificate is broken: check tailscale serve status, that HTTPS Certificates are on for the tailnet, then tesseract server install to re-create the front",
     hostShellDown: (target: string) => `The host shell does not answer on ${target}`,
     hostShellDownFix: (restart: string) => `Fix: ${restart}`,
     modeDrift: (mode: string) => `The config says mode ${mode}, but a tailscale sidecar stack is running`,
