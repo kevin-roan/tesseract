@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
 
-import { appRows, updateRows, updateStatusText } from "../utils/about";
+import { appRows, developerLinks, updateRows, updateStatusText } from "../utils/about";
 import { useAppInfo } from "./use-app-info";
 import { useAppUpdates } from "./use-app-updates";
 
@@ -13,11 +13,13 @@ export function useAboutScreen() {
   const { status } = updates;
 
   const rows = useMemo(() => ({ app: appRows(info), updates: updateRows(info) }), [info]);
+  const developer = useMemo(() => developerLinks(), []);
 
   return {
     back: nav.back,
     appRows: rows.app,
     updateRows: rows.updates,
+    developer,
     updates: {
       enabled: status.enabled,
       statusText: updateStatusText(status),

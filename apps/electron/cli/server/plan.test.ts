@@ -32,6 +32,7 @@ const OPTIONS: ServerOptions = {
   claudeToken: null,
   hostShell: true,
   httpsPort: 8443,
+  resetTailscale: false,
   dryRun: false,
 };
 

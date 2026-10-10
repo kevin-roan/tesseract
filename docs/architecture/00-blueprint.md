@@ -991,7 +991,7 @@ sandbox env file and Android SDK. Every command takes `--json`, `--verbose`, `--
 ```
 tesseract status [--json]                                # config, setup progress, connection, Docker, stack, Android
 tesseract open [overview|agents|projects|files|terminals|display|containers|domains]   # start or focus the app (else tesseract://<page>)
-tesseract doctor [docker|image|kvm|sdk]... [--json]      # Docker, sandbox image, hardware acceleration, Android SDK
+tesseract doctor [docker|image|kvm|sdk|tailnet]... [--json]   # Docker, sandbox image, hardware acceleration, Android SDK; tailnet only when named
 tesseract sandbox status|up|down [--volumes]|restart [service]|logs [--tail N] [--follow]
 tesseract sandbox build [--with android,flutter,mono,whisper|all|none] [--pull | --existing] [--verbose]
 tesseract sandbox pair [--no-qr]
@@ -1025,7 +1025,7 @@ production sandbox host, e.g. a Mac on the tailnet). Runbook: `docs/runbooks/mac
 ```
 tesseract server install [--mode tailscale|host-tailscale|local] [--hostname <name>] [--tailnet-domain <x.ts.net>]
                          [--authkey <key>] [--with <components>] [--image <ref>] [--build] [--claude-token <tok>]
-                         [--no-host-shell] [--host-https-port 8443] [--dry-run]
+                         [--no-host-shell] [--host-https-port 8443] [--reset-tailscale] [--dry-run]
 tesseract server uninstall [--volumes]
 tesseract server status
 tesseract server pair                                    # sandbox and host shell pairing links + QR codes

@@ -76,6 +76,21 @@ then `supervisorctl start controller`.
 
 ## Connectivity
 
+Start with `tesseract doctor tailnet` on the machine that runs the stack. It is read-only: it
+compares the host's tailnet, the sidecar's tailnet, `TS_TAILNET_DOMAIN` and the pairing URL,
+looks for old duplicate nodes, pings the sidecar, checks HTTPS `/v1/health` and the host shell's
+serve front, and names the fix for each problem.
+
+**Timeouts after switching to another auth key or tailnet**
+→ `TS_AUTH_ONCE=true` uses `TS_AUTHKEY` only when the `<prefix>-tailscale` volume is new, so
+saving a new key leaves the sidecar on its old identity and tailnet; if `TS_TAILNET_DOMAIN`
+moved to the new tailnet, the pairing link names a host that does not exist there. On a host
+whose own Tailscale moved tailnet, the host shell and its `tailscale serve` front still use the
+old 100.x IP. → `tesseract server install --authkey <new key> --reset-tailscale` (deletes only
+the tailscale volume, workspace and home stay; it also re-creates the host shell front for the
+current IP), then re-pair. Without `--reset-tailscale`, `server install` warns that the key is
+ignored.
+
 **The phone cannot reach `https://tesseract-sandbox.<tailnet>.ts.net`**
 → One of: Tailscale on the phone is off or on another tailnet; the node never
 logged in; ACLs block it; MagicDNS is off.

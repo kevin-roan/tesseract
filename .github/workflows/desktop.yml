@@ -1,6 +1,6 @@
 # Builds the Electron desktop app. A push to `production` builds the Linux AppImage + deb and
-# publishes them as the GitHub release `v<version>` (version from apps/electron/package.json), so
-# bump the version before merging. Other runs (Actions tab, build/** branches) only upload the
+# publishes them as the GitHub release `v<version>` (version from apps/electron/package.json).
+# `bun run electron:release` bumps the version and pushes main to production. Other runs (Actions tab, build/** branches) only upload the
 # files as workflow artifacts. macOS is parked: add the `mac` entry back to the matrix to build it.
 name: Desktop
 

@@ -16,6 +16,7 @@ export interface ServerOptions {
   claudeToken: string | null;
   hostShell: boolean;
   httpsPort: number;
+  resetTailscale: boolean;
   dryRun: boolean;
 }
 

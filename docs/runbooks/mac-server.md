@@ -206,6 +206,14 @@ tailscale serve status                              # the HTTPS front for the ho
 
 ## Troubleshooting
 
+**Timeouts over Tailscale (often after switching auth keys or tailnets)**
+→ On the Mac: `tesseract doctor tailnet` (or `ssh mac-mini ~/.tesseract/bin/tesseract doctor
+tailnet`). It is read-only and names the cause (sidecar still on the old tailnet, stale
+`TS_TAILNET_DOMAIN`, old duplicate node, host shell front on the old IP) and the fix. To switch
+the sandbox to a new key: `tesseract server install --authkey <key> --reset-tailscale`, or from
+the dev box `TS_AUTHKEY=tskey-... bun run deploy:mac mac-mini -- --reset-tailscale`. See
+[troubleshooting.md](troubleshooting.md#connectivity).
+
 **`launchctl bootstrap` fails with `Bootstrap failed: 5: Input/output error`**
 → launchd had not finished removing the previous host shell service (`bootout` right before).
 `tesseract server install` retries the bootstrap 5 times, 1 s apart. → If it still fails, run

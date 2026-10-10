@@ -87,6 +87,7 @@ export function serverOptions(context: CliContext): ServerOptions {
     claudeToken: optionValue(context, "claude-token", SERVER_ENV.claudeToken),
     hostShell: !context.flags.has("no-host-shell"),
     httpsPort,
+    resetTailscale: context.flags.has("reset-tailscale"),
     dryRun: context.flags.has("dry-run"),
   };
 }
@@ -241,8 +242,12 @@ async function install(context: CliContext): Promise<number> {
     const target = { project: choices.project, volumePrefix, image: choices.image, env: context.env, hostEnv: context.env };
     await migrateLegacyStack({ run: runCommand }, target, (line) => log(context, line));
   }
+  const tailscaleVolume = `${volumePrefix}-tailscale`;
+  if (options.resetTailscale && choices.mode !== "tailscale") usageError(LABELS.resetNeedsMode);
+  if (options.resetTailscale && !options.authKey) usageError(LABELS.resetNeedsKey);
   const volumeExists =
     choices.mode === "tailscale" && (await tailscaleVolumeExists({ run: runCommand }, context.env, volumePrefix));
+  const resetVolume = options.resetTailscale && volumeExists;
   const issues = validateChoices(choices, { savedAuthKey: Boolean(existing?.TS_AUTHKEY), tailscaleVolumeExists: volumeExists });
   if (issues.length > 0) usageError(issues.map((issue) => `${issue.field}: ${issue.message}`).join("\n"));
 
@@ -261,6 +266,7 @@ async function install(context: CliContext): Promise<number> {
       LABELS.plannedEnv(sandbox.envFile),
       ...previewEnv(envText),
       LABELS.plannedImage(mode, choices.image),
+      ...(resetVolume ? [LABELS.resettingTailscale(tailscaleVolume)] : []),
       ...(plan
         ? [
             LABELS.plannedService(plan.kind, plan.file),
@@ -276,10 +282,17 @@ async function install(context: CliContext): Promise<number> {
     return EXIT.ok;
   }
 
+  if (resetVolume) {
+    log(context, LABELS.resettingTailscale(tailscaleVolume));
+    await composeDown(sandbox, false, { onLog: (line) => log(context, line) });
+    await runRequired(context, { file: "docker", args: ["volume", "rm", tailscaleVolume] });
+  } else if (options.authKey && volumeExists) {
+    log(context, LABELS.authKeyIgnored(tailscaleVolume));
+  }
   const validation = {
     maxCpus: report?.server?.ncpu || undefined,
     memBytes: report?.server?.memBytes || undefined,
-    tailscaleVolumeExists: volumeExists,
+    tailscaleVolumeExists: volumeExists && !resetVolume,
   };
   await writeStack(sandbox, choices, validation, { claudeOAuthToken: options.claudeToken ?? undefined });
   log(context, CLI_LABELS.sandbox.configured(sandbox.envFile));
@@ -418,7 +431,7 @@ export default defineCommand({
   trigger: { subcommand: "server" },
   summary: CLI_LABELS.summary.server,
   usage: CLI_LABELS.usageLines.server,
-  flags: ["build", "no-host-shell", "dry-run", "volumes", "no-qr"],
+  flags: ["build", "no-host-shell", "dry-run", "volumes", "no-qr", "reset-tailscale"],
   valueFlags: ["mode", "hostname", "tailnet-domain", "authkey", "with", "image", "claude-token", "host-https-port"],
   run: (context) =>
     guarded(context, async () => {

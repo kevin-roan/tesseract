@@ -61,7 +61,7 @@ on stdout, where `code` is one of `invalid_argument`, `not_found`, `unavailable`
 |---|---|
 | [`status`](#status) | the connection, Docker, sandbox and Android emulator at a glance |
 | [`open`](#open) | open the app (or bring it to the front) on a page |
-| [`doctor`](#doctor) | check Docker, the sandbox image, hardware acceleration and the Android SDK |
+| [`doctor`](#doctor) | check Docker, the sandbox image, hardware acceleration, the Android SDK and the tailnet |
 | [`sandbox`](#sandbox) | the local sandbox stack: status, up, down, restart, logs, build, pair |
 | [`android`](#android) | the host Android emulator: images, install, avd create/list/start/delete |
 | [`pair`](#pair) | the pairing link and a QR code for the phone app |
@@ -115,8 +115,9 @@ installed app), then at `/opt/Tesseract/tesseract-desktop` (Linux),
 ### doctor
 
 ```bash
-tesseract doctor                 # every section
-tesseract doctor docker kvm      # only these: docker | image | kvm | sdk
+tesseract doctor                 # docker, image, kvm and sdk
+tesseract doctor docker kvm      # only these: docker | image | kvm | sdk | tailnet
+tesseract doctor tailnet         # why the phone times out over Tailscale (only when named)
 tesseract doctor sdk --sdk ~/Android/Sdk
 tesseract doctor --json
 ```
@@ -127,6 +128,7 @@ tesseract doctor --json
 | `image` | the configured stack exists; its image is present (size, version, creation date); the sandbox container exists and is running |
 | `kvm` | hardware acceleration: KVM access and network isolation (Linux), WHPX (Windows), Hypervisor.framework (macOS), and `emulator -accel-check` once the emulator is installed; on hosts without an emulator, a warning |
 | `sdk` | the Android SDK: emulator revision, number of system images and AVDs |
+| `tailnet` | read-only: this computer's Tailscale; the sandbox sidecar's state, key expiry, health and auth errors in its log; that the host, the sidecar, `TS_TAILNET_DOMAIN` and the pairing URL agree on one tailnet; a saved auth key the sidecar ignores; old duplicate sandbox nodes; `tailscale ping`, the controller, the sidecar's serve and HTTPS `/v1/health`; the host shell's serve front is on the current Tailscale IP. Checks the running stack when it differs from the configured mode |
 
 ```
 Docker
@@ -390,6 +392,7 @@ tesseract server uninstall --volumes        # also delete the workspace and home
 | `--claude-token <tok>` | long-lived Claude token for the sandbox (`claude setup-token`); env `CLAUDE_CODE_OAUTH_TOKEN` |
 | `--no-host-shell` | skip the host shell service |
 | `--host-https-port` | HTTPS port `tailscale serve` uses for the host shell (default `8443`) |
+| `--reset-tailscale` | switch the sandbox to the new `--authkey`/`TS_AUTHKEY` (another key or tailnet): stops the stack and deletes only `<prefix>-tailscale`, so the sidecar logs in again; workspace and home stay. Without it, a key given while that volume exists is ignored (with a warning) |
 
 The host shell service is a LaunchAgent (`~/Library/LaunchAgents/dev.tesseract.host-shell.plist`,
 logs in `~/Library/Logs/Tesseract/`) on macOS and the systemd user unit

@@ -24,7 +24,8 @@
     "dist": "node scripts/dist.ts",
     "smoke": "node scripts/smoke.ts",
     "icons": "node scripts/make-icons.ts",
-    "check:nsis": "node scripts/check-nsis-path.ts"
+    "check:nsis": "node scripts/check-nsis-path.ts",
+    "release": "node scripts/release.ts"
   },
   "devDependencies": {
     "@electron/notarize": "^2.5.0",

@@ -83,6 +83,22 @@ describe("tesseract server", () => {
     expect(result.out).toContain("Host shell: skipped (--no-host-shell)");
   });
 
+  it("plans the tailscale volume reset with --reset-tailscale", async () => {
+    core.tailscaleVolumeExists.mockResolvedValueOnce(true);
+    const result = await runCli(sandbox, ["server", "install", "--dry-run", "--reset-tailscale"]);
+    expect(result.code).toBe(0);
+    expect(result.out.join("\n")).toContain("Removing tesseract-tailscale so the sandbox logs in with the new key");
+  });
+
+  it("refuses --reset-tailscale without a key or outside tailscale mode", async () => {
+    const noKey = await runCli(sandbox, ["server", "install", "--dry-run", "--reset-tailscale", "--authkey", ""]);
+    expect(noKey.code).toBe(64);
+    expect(noKey.err.join("\n")).toContain("--reset-tailscale needs a new auth key");
+    const local = await runCli(sandbox, ["server", "install", "--dry-run", "--reset-tailscale", "--mode", "local"]);
+    expect(local.code).toBe(64);
+    expect(local.err.join("\n")).toContain("--reset-tailscale only applies to --mode tailscale");
+  });
+
   it("refuses to install without Docker", async () => {
     const result = await runCli(sandbox, ["server", "install"]);
     expect(result.code).toBe(1);
