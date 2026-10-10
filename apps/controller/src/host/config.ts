@@ -65,11 +65,10 @@ export function hostToolPath(env: Env, platform: NodeJS.Platform = process.platf
   return [path, ...DARWIN_TOOL_DIRS].filter(Boolean).join(":");
 }
 
-/** `tailscale` on PATH (plus Homebrew's prefixes), else the CLI inside the macOS app, which installs no symlink. */
+/** The CLI inside the macOS app (it crashes when run through a symlink on PATH), else `tailscale` on PATH plus Homebrew's prefixes. */
 export function tailscaleBin(env: Env = process.env, platform: NodeJS.Platform = process.platform, exists: (path: string) => boolean = existsSync): string | null {
-  const found = Bun.which("tailscale", { PATH: hostToolPath(env, platform) });
-  if (found) return found;
-  return platform === "darwin" && exists(TAILSCALE_APP_CLI) ? TAILSCALE_APP_CLI : null;
+  if (platform === "darwin" && exists(TAILSCALE_APP_CLI)) return TAILSCALE_APP_CLI;
+  return Bun.which("tailscale", { PATH: hostToolPath(env, platform) });
 }
 
 export function tailscaleIpv4(env: Env = process.env): string {

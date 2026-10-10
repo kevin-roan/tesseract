@@ -116,7 +116,7 @@ describe("bind validation", () => {
     expect(tailscaleBin({ PATH: bin }, "linux", () => false)).toBe(join(bin, "tailscale"));
     expect(tailscaleBin({ PATH: "" }, "linux", () => true)).toBeNull();
     const homebrew = Bun.which("tailscale", { PATH: "/opt/homebrew/bin:/usr/local/bin" });
-    expect(tailscaleBin({ PATH: "" }, "darwin", () => true)).toBe(homebrew ?? "/Applications/Tailscale.app/Contents/MacOS/Tailscale");
+    expect(tailscaleBin({ PATH: bin }, "darwin", () => true)).toBe("/Applications/Tailscale.app/Contents/MacOS/Tailscale");
     expect(tailscaleBin({ PATH: "" }, "darwin", () => false)).toBe(homebrew);
   });
 

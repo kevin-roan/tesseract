@@ -60,6 +60,8 @@ export function resolveTailscale(
   platform: NodeJS.Platform,
   files: FileProbe = nodeFileProbe,
 ): string | null {
+  // The macOS app's CLI crashes ("bundleIdentifier is unknown") when run through a symlink on PATH.
+  if (platform === "darwin" && files.isExecutable(SERVER.tailscaleApp)) return SERVER.tailscaleApp;
   const onPath = findExecutable(SERVER.tailscaleBinary, env, platform, files);
   if (onPath) return onPath;
   const fallbacks: readonly string[] = platform === "darwin" || platform === "linux" ? SERVER.tailscaleFallbacks[platform] : [];

@@ -74,6 +74,7 @@ export const SERVER = {
   servicePath: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"],
   serviceEnvKeys: ["HOME", "SHELL", "LANG", "USER"],
   tailscaleBinary: "tailscale",
+  tailscaleApp: "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
   tailscaleFallbacks: {
     darwin: ["/Applications/Tailscale.app/Contents/MacOS/Tailscale", "/opt/homebrew/bin/tailscale", "/usr/local/bin/tailscale"],
     linux: ["/usr/bin/tailscale", "/usr/local/bin/tailscale"],

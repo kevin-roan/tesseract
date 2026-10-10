@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# Fixes the Mac server's `tailscale` command and installs the current tesseract CLI.
+# The Tailscale app's CLI crashes ("The current bundleIdentifier is unknown to the registry")
+# when it runs through a symlink such as /usr/local/bin/tailscale; a wrapper script that execs
+# the app's binary by its full path works. Then rebuilds tesseract + tesseract-controller from
+# this checkout as the normal user, restarts the host shell and runs tesseract doctor tailnet.
+# Run from the repo on the Mac: sudo infra/scripts/fix-mac-tailscale
+# Written for the bash 3.2 that ships with macOS.
+set -euo pipefail
+
+readonly APP_CLI=/Applications/Tailscale.app/Contents/MacOS/Tailscale
+readonly LINK=/usr/local/bin/tailscale
+readonly HOST_SHELL_LABEL=dev.tesseract.host-shell
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+readonly REPO_ROOT
+
+die() {
+  printf 'fix-mac-tailscale: %s\n' "$*" >&2
+  exit 1
+}
+step() { printf '\n==> %s\n' "$*"; }
+info() { printf '    %s\n' "$*"; }
+
+[[ "$(uname -s)" == Darwin ]] || die "this is for the Mac server (macOS only)"
+[[ "$(id -u)" -eq 0 ]] || die "run it with sudo: sudo infra/scripts/fix-mac-tailscale"
+[[ -n "${SUDO_USER:-}" && "${SUDO_USER}" != root ]] || die "run it with sudo from your own account, not as root"
+[[ -x "${APP_CLI}" ]] || die "the Tailscale app is not installed at /Applications/Tailscale.app"
+
+USER_HOME="$(dscl . -read "/Users/${SUDO_USER}" NFSHomeDirectory | awk '{ print $2 }')"
+USER_UID="$(id -u "${SUDO_USER}")"
+readonly USER_HOME USER_UID
+USER_PATH="${USER_HOME}/.tesseract/bin:${USER_HOME}/.bun/bin:/opt/homebrew/bin:/usr/local/bin:${USER_HOME}/.orbstack/bin:/Applications/Docker.app/Contents/Resources/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+readonly USER_PATH
+
+# as_user CMD...: runs a command as the person who ran sudo, with their home and tool PATH.
+as_user() { sudo -u "${SUDO_USER}" -H env HOME="${USER_HOME}" PATH="${USER_PATH}" "$@"; }
+
+step "Fixing ${LINK}"
+if [[ -L "${LINK}" ]]; then
+  target="$(readlink "${LINK}")"
+  info "it is a symlink to ${target}"
+  [[ "${target}" == *Tailscale.app* ]] || die "${LINK} points somewhere else (${target}); leaving it alone"
+  rm "${LINK}"
+elif [[ -f "${LINK}" ]] && grep -q "exec ${APP_CLI}" "${LINK}" 2> /dev/null; then
+  info "already the wrapper script"
+elif [[ -e "${LINK}" ]]; then
+  cp -p "${LINK}" "${LINK}.bak"
+  info "replacing a copied binary (backup: ${LINK}.bak)"
+  rm "${LINK}"
+fi
+if [[ ! -e "${LINK}" ]]; then
+  mkdir -p "$(dirname "${LINK}")"
+  printf '#!/bin/sh\nexec %s "$@"\n' "${APP_CLI}" > "${LINK}"
+  chmod 0755 "${LINK}"
+  info "wrote a wrapper that runs the app's CLI by its full path"
+fi
+as_user tailscale version > /dev/null 2>&1 || die "tailscale still fails; open the Tailscale app and check it is running"
+info "tailscale works: $(as_user tailscale ip -4 2> /dev/null | head -n1 || echo 'no IPv4 yet')"
+
+step "Building tesseract and tesseract-controller from ${REPO_ROOT}"
+case "$(uname -m)" in
+  arm64) target=mac-arm64 ;;
+  x86_64) target=mac-x64 ;;
+  *) die "unsupported CPU $(uname -m)" ;;
+esac
+as_user bun --version > /dev/null 2>&1 || die "bun is not installed for ${SUDO_USER} (run ./setup-server.sh once)"
+as_user bash -c "cd '${REPO_ROOT}' && ELECTRON_SKIP_BINARY_DOWNLOAD=1 bun install --frozen-lockfile && cd apps/electron && bun scripts/cli-build.ts --target ${target}"
+
+step "Installing into ${USER_HOME}/.tesseract/bin"
+for binary in tesseract tesseract-controller; do
+  built="${REPO_ROOT}/apps/electron/dist-cli/${target}/${binary}"
+  [[ -x "${built}" ]] || die "build produced no ${built}"
+  as_user install -m 0755 "${built}" "${USER_HOME}/.tesseract/bin/${binary}"
+done
+xattr -dr com.apple.quarantine "${USER_HOME}/.tesseract/bin" 2> /dev/null || true
+info "$(as_user "${USER_HOME}/.tesseract/bin/tesseract" --version 2> /dev/null || echo installed)"
+
+step "Restarting the host shell"
+if launchctl print "gui/${USER_UID}/${HOST_SHELL_LABEL}" > /dev/null 2>&1; then
+  launchctl kickstart -k "gui/${USER_UID}/${HOST_SHELL_LABEL}"
+  info "restarted ${HOST_SHELL_LABEL}"
+else
+  info "no host shell service loaded; skipped"
+fi
+
+step "Checking the tailnet"
+as_user "${USER_HOME}/.tesseract/bin/tesseract" doctor tailnet || true
