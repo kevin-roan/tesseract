@@ -79,6 +79,17 @@ step "Restarting the host shell"
 if launchctl print "gui/${USER_UID}/${HOST_SHELL_LABEL}" > /dev/null 2>&1; then
   launchctl kickstart -k "gui/${USER_UID}/${HOST_SHELL_LABEL}"
   info "restarted ${HOST_SHELL_LABEL}"
+  host_ip="$(as_user tailscale ip -4 2> /dev/null | head -n1 || true)"
+  for _ in $(seq 1 30); do
+    curl -fsS --max-time 2 "http://${host_ip}:7701/v1/health" > /dev/null 2>&1 && break
+    sleep 1
+  done
+  if curl -fsS --max-time 2 "http://${host_ip}:7701/v1/health" > /dev/null 2>&1; then
+    info "the host shell answers on ${host_ip}:7701"
+  else
+    info "the host shell does not answer yet; last log lines:"
+    tail -n 15 "${USER_HOME}"/Library/Logs/Tesseract/*.log 2> /dev/null | sed 's/^/      /' || true
+  fi
 else
   info "no host shell service loaded; skipped"
 fi
