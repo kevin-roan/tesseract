@@ -1,0 +1,221 @@
+#!/usr/bin/env bash
+# Builds, signs and ships the iOS app from the command line. Runs ON A MAC (Xcode is macOS-only):
+# clone the repo there, `bun install`, then `infra/scripts/build-ios <command>`.
+# Run `infra/scripts/build-ios --help`.
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd -P)"
+MOBILE_DIR="${REPO_ROOT}/apps/mobile"
+IOS_DIR="${MOBILE_DIR}/ios"
+OUT_DIR="${MOBILE_DIR}/build/ios"
+readonly SCRIPT_DIR REPO_ROOT MOBILE_DIR IOS_DIR OUT_DIR
+
+# apps/mobile/app.json has the same team id; override only for another team.
+TEAM_ID="${APPLE_TEAM_ID:-K26L46GQQ8}"
+# production = com.kevinroan.tesseract, development = com.kevinroan.tesseract.dev (see app.config.ts).
+export APP_VARIANT="${APP_VARIANT:-production}"
+
+usage() {
+  cat << 'EOF'
+Usage: build-ios <command> [options]
+
+Commands:
+  doctor              check Xcode, signing identities, the Apple account and the API key
+  setup               one-time sudo steps: select Xcode, accept the license, first-launch components
+  prebuild            regenerate apps/mobile/ios from app.json (ios/ is gitignored, always rebuilt clean)
+  device [UDID]       build Release and install on a connected iPhone (first one if no UDID)
+  archive             build a signed .xcarchive and export an .ipa to apps/mobile/build/ios/
+  testflight          archive and upload to App Store Connect / TestFlight
+
+Options:
+  --dev               build the development variant (APP_VARIANT=development, bundle id ...tesseract.dev)
+  --skip-prebuild     reuse the existing apps/mobile/ios
+  -h, --help
+
+Signing. Two ways, both use automatic signing (-allowProvisioningUpdates):
+  1. The Apple account you are signed in with in Xcode (Settings > Accounts). Nothing to configure.
+  2. An App Store Connect API key (recommended for headless / ssh / CI). Create it at
+     appstoreconnect.apple.com > Users and Access > Integrations > Keys (role: Admin or App Manager)
+     and export:
+       ASC_KEY_ID=ABC123DEFG  ASC_ISSUER_ID=<uuid>  ASC_KEY_PATH=~/.appstoreconnect/AuthKey_ABC123DEFG.p8
+     With the key set, xcodebuild creates certificates/profiles itself and needs no keychain UI.
+
+Over ssh the login keychain is locked. Unlock it first (this is the "sudo script" part, no sudo needed):
+  security unlock-keychain ~/Library/Keychains/login.keychain-db
+or set KEYCHAIN_PASSWORD and this script does it for you.
+
+Env: APPLE_TEAM_ID (default K26L46GQQ8), APP_VARIANT, BUILD_NUMBER (default: timestamp), ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_PATH, KEYCHAIN_PASSWORD
+EOF
+}
+
+log() { printf '\033[1m==> %s\033[0m\n' "$*" >&2; }
+die() { printf 'error: %s\n' "$*" >&2; exit 1; }
+
+require_mac() { [[ "$(uname -s)" == Darwin ]] || die "Xcode builds only run on macOS. Copy the repo to your Mac and run this there (this is ${OSTYPE})."; }
+
+have_api_key() { [[ -n "${ASC_KEY_ID:-}" && -n "${ASC_ISSUER_ID:-}" && -n "${ASC_KEY_PATH:-}" ]]; }
+
+# Auth flags shared by xcodebuild build/archive/-exportArchive.
+auth_args() {
+  AUTH_ARGS=(-allowProvisioningUpdates)
+  if have_api_key; then
+    [[ -f "${ASC_KEY_PATH/#\~/$HOME}" ]] || die "ASC_KEY_PATH not found: ${ASC_KEY_PATH}"
+    AUTH_ARGS+=(-authenticationKeyPath "${ASC_KEY_PATH/#\~/$HOME}" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+  fi
+}
+
+unlock_keychain() {
+  [[ -n "${KEYCHAIN_PASSWORD:-}" ]] || return 0
+  log "unlocking login keychain"
+  security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$HOME/Library/Keychains/login.keychain-db"
+  # Let codesign use the key without a GUI prompt.
+  security set-keychain-settings -t 3600 "$HOME/Library/Keychains/login.keychain-db"
+}
+
+cmd_doctor() {
+  require_mac
+  local bad=0
+  if xcode_path="$(xcode-select -p 2>/dev/null)" && [[ "$xcode_path" == *Xcode*.app* ]]; then
+    echo "ok   Xcode: $xcode_path ($(xcodebuild -version | tr '\n' ' '))"
+  else
+    echo "FAIL full Xcode not selected (got '${xcode_path:-none}'): run  build-ios setup"; bad=1
+  fi
+  xcodebuild -checkFirstLaunchStatus >/dev/null 2>&1 && echo "ok   Xcode first-launch components installed" \
+    || { echo "FAIL Xcode first launch / license not done: run  build-ios setup"; bad=1; }
+  command -v bun >/dev/null && echo "ok   bun $(bun --version)" || { echo "FAIL bun missing"; bad=1; }
+  command -v pod >/dev/null && echo "ok   cocoapods $(pod --version)" || { echo "FAIL cocoapods missing: brew install cocoapods"; bad=1; }
+  local ids
+  ids="$(security find-identity -v -p codesigning 2>/dev/null | grep -c 'Apple Development\|Apple Distribution' || true)"
+  if [[ "$ids" -gt 0 ]]; then echo "ok   $ids signing identit(y/ies) in keychain"
+  else echo "warn no signing identity in keychain yet; automatic signing creates one on first build (needs Xcode account or API key)"; fi
+  if defaults read com.apple.dt.Xcode IDEProvisioningTeams 2>/dev/null | grep -q "$TEAM_ID"; then
+    echo "ok   Xcode account is a member of team $TEAM_ID"
+  else
+    echo "warn team $TEAM_ID not found in Xcode accounts (ok if you use the API key)"
+  fi
+  if have_api_key; then echo "ok   API key configured ($ASC_KEY_ID)"; else echo "info no ASC_KEY_* set: using the Xcode account"; fi
+  xcrun devicectl list devices 2>/dev/null | sed -n '1,10p' || true
+  return "$bad"
+}
+
+cmd_setup() {
+  require_mac
+  local app
+  app="$(ls -d /Applications/Xcode*.app 2>/dev/null | head -1)" || true
+  [[ -n "$app" ]] || die "Xcode not found in /Applications. Install it from the App Store (or xcodes) first."
+  log "selecting $app (sudo)"
+  sudo xcode-select -s "$app/Contents/Developer"
+  log "accepting license (sudo)"
+  sudo xcodebuild -license accept
+  log "installing first-launch components (sudo)"
+  sudo xcodebuild -runFirstLaunch
+  command -v pod >/dev/null || { log "installing cocoapods"; brew install cocoapods; }
+  log "setup done; now run  build-ios doctor"
+}
+
+cmd_prebuild() {
+  require_mac
+  log "bun install"
+  (cd "$REPO_ROOT" && bun install --frozen-lockfile)
+  log "expo prebuild (variant: $APP_VARIANT)"
+  (cd "$MOBILE_DIR" && bunx expo prebuild --platform ios --clean --no-install >&2 && cd ios && pod install >&2)
+}
+
+# Sets WORKSPACE and SCHEME from whatever prebuild generated.
+find_project() {
+  WORKSPACE="$(ls -d "$IOS_DIR"/*.xcworkspace 2>/dev/null | head -1)" || true
+  [[ -n "$WORKSPACE" ]] || die "no .xcworkspace in $IOS_DIR; run  build-ios prebuild"
+  SCHEME="$(basename "$WORKSPACE" .xcworkspace)"
+}
+
+xcb() { # xcodebuild, with xcpretty if available
+  if command -v xcbeautify >/dev/null; then xcodebuild "$@" | xcbeautify; else xcodebuild "$@"; fi
+}
+
+prepare() {
+  require_mac
+  unlock_keychain
+  [[ "$SKIP_PREBUILD" == 1 && -d "$IOS_DIR" ]] || cmd_prebuild
+  find_project
+  mkdir -p "$OUT_DIR"
+  auth_args
+}
+
+cmd_device() {
+  prepare
+  local udid="${1:-}"
+  if [[ -z "$udid" ]]; then
+    udid="$(xcrun devicectl list devices --json-output /dev/stdout -q 2>/dev/null \
+      | python3 -c 'import json,sys; d=json.load(sys.stdin)["result"]["devices"]; print(next((x["hardwareProperties"]["udid"] for x in d if x["connectionProperties"]["tunnelState"]!="unavailable" and x["hardwareProperties"]["platform"]=="iOS"),""))')"
+    [[ -n "$udid" ]] || die "no connected iPhone (plug it in, unlock it, tap Trust; Developer Mode must be on)"
+  fi
+  log "building Release for device $udid"
+  xcb -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
+    -destination "id=$udid" -derivedDataPath "$OUT_DIR/dd" \
+    DEVELOPMENT_TEAM="$TEAM_ID" "${AUTH_ARGS[@]}" build
+  local app
+  app="$(ls -d "$OUT_DIR"/dd/Build/Products/Release-iphoneos/*.app | head -1)"
+  log "installing $app"
+  xcrun devicectl device install app --device "$udid" "$app"
+  log "installed. Open it from the home screen."
+}
+
+cmd_archive() {
+  prepare
+  local archive="$OUT_DIR/$SCHEME.xcarchive"
+  rm -rf "$archive" "$OUT_DIR/export"
+  log "archiving"
+  xcb -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
+    -destination 'generic/platform=iOS' -archivePath "$archive" \
+    DEVELOPMENT_TEAM="$TEAM_ID" ${BUILD_NUMBER:+CURRENT_PROJECT_VERSION="$BUILD_NUMBER"} "${AUTH_ARGS[@]}" archive
+  write_export_options "${1:-export}"
+  log "exporting"
+  xcodebuild -exportArchive -archivePath "$archive" -exportPath "$OUT_DIR/export" \
+    -exportOptionsPlist "$OUT_DIR/ExportOptions.plist" "${AUTH_ARGS[@]}"
+}
+
+# $1 = export (write .ipa) | upload (send straight to App Store Connect)
+write_export_options() {
+  cat > "$OUT_DIR/ExportOptions.plist" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>method</key><string>app-store-connect</string>
+  <key>teamID</key><string>${TEAM_ID}</string>
+  <key>signingStyle</key><string>automatic</string>
+  <key>destination</key><string>$([[ "$1" == upload ]] && echo upload || echo export)</string>
+  <key>uploadSymbols</key><true/>
+</dict></plist>
+EOF
+}
+
+cmd_testflight() {
+  # Build number must increase per upload; EAS's remote counter is not used for local builds.
+  BUILD_NUMBER="${BUILD_NUMBER:-$(date +%y%m%d%H%M)}"
+  cmd_archive upload
+  log "uploaded. It shows up in App Store Connect > TestFlight after processing (~10 min)."
+}
+
+SKIP_PREBUILD=0
+CMD=""
+ARGS=()
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -h|--help) usage; exit 0 ;;
+    --dev) export APP_VARIANT=development ;;
+    --skip-prebuild) SKIP_PREBUILD=1 ;;
+    *) if [[ -z "$CMD" ]]; then CMD="$1"; else ARGS+=("$1"); fi ;;
+  esac
+  shift
+done
+
+case "$CMD" in
+  doctor) cmd_doctor ;;
+  setup) cmd_setup ;;
+  prebuild) cmd_prebuild ;;
+  device) cmd_device "${ARGS[@]:-}" ;;
+  archive) cmd_archive ;;
+  testflight) cmd_testflight ;;
+  *) usage; exit 1 ;;
+esac

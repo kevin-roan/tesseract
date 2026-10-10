@@ -39,7 +39,7 @@ const LogView = ({ lines, emptyLabel = "No output yet.", inline = false, style }
   const listRef = useRef<FlatList<LogViewLine>>(null);
   const scrollRef = useRef<ScrollView>(null);
   const getScrollable = useCallback(() => (inline ? scrollRef.current : listRef.current), [inline]);
-  const { following, onScroll, onContentSizeChange, jumpToEnd } = useStickToBottom(getScrollable);
+  const { following, scrollProps, jumpToEnd } = useStickToBottom(getScrollable);
   const renderItem: ListRenderItem<LogViewLine> = useCallback(({ item }) => <LogRow line={item} />, []);
   const text = useMemo(() => logText(lines), [lines]);
   const { copied, copy, canCopy } = useCopyText(text);
@@ -56,8 +56,7 @@ const LogView = ({ lines, emptyLabel = "No output yet.", inline = false, style }
         <ScrollView
           ref={scrollRef}
           nestedScrollEnabled
-          onScroll={onScroll}
-          onContentSizeChange={onContentSizeChange}
+          {...scrollProps}
           scrollEventThrottle={32}
           contentContainerStyle={styles.content}
         >
@@ -69,8 +68,7 @@ const LogView = ({ lines, emptyLabel = "No output yet.", inline = false, style }
           data={lines}
           keyExtractor={keyOf}
           renderItem={renderItem}
-          onScroll={onScroll}
-          onContentSizeChange={onContentSizeChange}
+          {...scrollProps}
           scrollEventThrottle={32}
           initialNumToRender={40}
           maxToRenderPerBatch={40}
