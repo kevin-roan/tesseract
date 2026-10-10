@@ -131,7 +131,7 @@ from an automated agent MUST go through `flock /tmp/tesseract-bun-install.lock b
 | Browser pages | `/ui/terminal`, `/ui/vnc` (controller), `/ui/android` (host shell daemon); their bundled assets are served at root paths (`/chunk-<hash>.js`, `.css`) |
 | Mobile app id | iOS bundle id and Android package `com.kevinroan.tesseract` (development build `com.kevinroan.tesseract.dev`); iOS app group `group.com.kevinroan.tesseract` (shared with the widget/Live Activity and share extensions); URL scheme `tesseract`; EAS owner and project id set by `eas init` (`owner`, `extra.eas.projectId` in `app.json`) |
 | Mobile deep link | `tesseract://pair?url=<encoded base url>&token=<token>&name=<label>`; host shell: `tesseract://host?url=…&token=<host token>&name=<host name>` |
-| Host shell daemon | `tesseract-controller host serve` on the host, `<host Tailscale IPv4>:7701` (`HOST_SHELL_PORT`, `TESSERACT_HOST_SHELL_PORT`); only loopback or `100.64.0.0/10` binds |
+| Host shell daemon | `tesseract-controller host serve` on the host, `<host Tailscale IPv4>:7701` (macOS: `127.0.0.1:7701` behind `tailscale serve`, because the macOS app's serve proxy cannot reach the Mac's own tailnet IP) (`HOST_SHELL_PORT`, `TESSERACT_HOST_SHELL_PORT`); only loopback or `100.64.0.0/10` binds |
 | Headless server install | `~/.tesseract/{bin,sandbox}` (`./setup-server.sh` on the server, or `infra/scripts/deploy-mac` from the dev box); host shell service LaunchAgent `dev.tesseract.host-shell` (logs `~/Library/Logs/Tesseract/`) or systemd user unit `tesseract-host-shell.service` (§7.2) |
 | ADB tunnel | `127.0.0.1:15555` in the sandbox (`DEFAULT_ADB_TUNNEL_PORT`, `TESSERACT_ADB_TUNNEL_PORT`), adb serial `127.0.0.1:15555`; open only while the host emulator is linked and `running` ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2.3). Shared host emulators (`TESSERACT_ANDROID_SHARE_EMULATORS`): `emulator-<n>` → `127.0.0.1:<15555 + 1 + (n − 5554)/2>` (`sharedEmulatorTunnelPort`), e.g. `emulator-5556` → `127.0.0.1:15557` |
 | Host Android emulator | console `5554`, adbd `5555` (`DEFAULT_EMULATOR_PORT`, `TESSERACT_EMULATOR_PORT`); adb serial `127.0.0.1:<bridge port>` in `netns` isolation (`TESSERACT_EMULATOR_ADB_PORT`), `emulator-<port>` for a plain (`none` or adopted non-isolated) emulator |
@@ -1033,7 +1033,7 @@ tesseract server pair                                    # sandbox and host shel
 
 `install` writes the sandbox env file (§12.4: macOS `~/Library/Application Support/Tesseract/sandbox/.env`,
 Linux `~/.config/Tesseract/sandbox/.env`), pulls `--image` or builds (`--build`, `--with`), runs `compose up`,
-installs the host shell service and runs `tailscale serve --bg --https=<host-https-port> http://<tailscale ip>:7701`,
+installs the host shell service and runs `tailscale serve --bg --https=<host-https-port> http://<tailscale ip>:7701` (`http://127.0.0.1:7701` on macOS),
 then prints the pairing. `--authkey`, `--tailnet-domain` and `--claude-token` fall back to `TS_AUTHKEY`,
 `TS_TAILNET_DOMAIN` and `CLAUDE_CODE_OAUTH_TOKEN` (passed to the sandbox, because Claude Code on macOS keeps its
 login in the keychain, which the sandbox can't read). The stack restarts with Docker (`restart: unless-stopped`).

@@ -33,6 +33,7 @@ import { CLI_LABELS } from "../labels";
 import { renderQr } from "../qr";
 import {
   controllerCommand,
+  hostShellBind,
   imageMode,
   installChoices,
   parseServerState,
@@ -252,7 +253,7 @@ async function install(context: CliContext): Promise<number> {
   if (issues.length > 0) usageError(issues.map((issue) => `${issue.field}: ${issue.message}`).join("\n"));
 
   const command = options.hostShell ? controllerCommand(context.runtime.execPath, context.env, platform) : null;
-  const bind = ip ?? "<tailscale-ip>";
+  const bind = hostShellBind(platform, ip ?? "<tailscale-ip>");
   const plan = options.hostShell ? servicePlan(context, command ?? [join(dirname(context.runtime.execPath), CONTROLLER_BINARY)], bind, tailscale) : null;
   const present = await imagePresent(context, choices.image);
   const mode = imageMode(options, present);
@@ -304,18 +305,19 @@ async function install(context: CliContext): Promise<number> {
     return printPairing(context, null, null);
   }
   const controller = command ?? requireController(context);
-  const finalPlan = servicePlan(context, controller, ip, tailscale);
+  const hostBind = hostShellBind(platform, ip);
+  const finalPlan = servicePlan(context, controller, hostBind, tailscale);
   log(context, LABELS.writing(finalPlan.file));
   await mkdir(dirname(finalPlan.file), { recursive: true });
   if (finalPlan.logDir) await mkdir(finalPlan.logDir, { recursive: true });
   await writeFile(finalPlan.file, finalPlan.text, { mode: 0o644 });
   for (const step of finalPlan.install) await runRequired(context, step);
   log(context, LABELS.serviceStarted(finalPlan.kind));
-  await runRequired(context, { file: tailscale, args: tailscaleServeArgs(options.httpsPort, ip) });
+  await runRequired(context, { file: tailscale, args: tailscaleServeArgs(options.httpsPort, hostBind) });
   log(context, LABELS.serveAdded(options.httpsPort));
-  await writeState(context, { httpsPort: options.httpsPort, bind: ip, serviceFile: finalPlan.file, tailscale });
+  await writeState(context, { httpsPort: options.httpsPort, bind: hostBind, serviceFile: finalPlan.file, tailscale });
 
-  const hostUrl = `http://${ip}:${HOST_SHELL_PORT}`;
+  const hostUrl = `http://${hostBind}:${HOST_SHELL_PORT}`;
   if (await waitHostShell(context, hostUrl)) log(context, LABELS.hostShellReady(hostUrl));
   else log(context, LABELS.hostShellNotReady(hostUrl, finalPlan.logDir ?? `journalctl --user -u ${SERVER.systemdUnit}`));
   log(context, platform === "darwin" ? LABELS.autoLogin : LABELS.linger(context.env.USER || userInfo().username));

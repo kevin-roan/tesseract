@@ -9,6 +9,7 @@ import {
   parseServerState,
   planHostService,
   resolveTailscale,
+  hostShellBind,
   serveEntry,
   serviceEnv,
   systemdUnit,
@@ -45,6 +46,13 @@ const BASE = {
   components: ["android", "flutter", "mono", "whisper"],
   image: "tesseract/sandbox:latest",
 } as unknown as SetupChoices;
+
+describe("hostShellBind", () => {
+  it("uses loopback behind serve on macOS and the tailnet IP elsewhere", () => {
+    expect(hostShellBind("darwin", "100.72.32.55")).toBe("127.0.0.1");
+    expect(hostShellBind("linux", "100.72.32.55")).toBe("100.72.32.55");
+  });
+});
 
 describe("resolveTailscale", () => {
   it("prefers the macOS app bundle, then PATH and Homebrew", () => {

@@ -3,14 +3,14 @@
 # The Tailscale app's CLI crashes ("The current bundleIdentifier is unknown to the registry")
 # when it runs through a symlink such as /usr/local/bin/tailscale; a wrapper script that execs
 # the app's binary by its full path works. Then rebuilds tesseract + tesseract-controller from
-# this checkout as the normal user, restarts the host shell and runs tesseract doctor tailnet.
+# this checkout as the normal user, re-runs tesseract server install (host shell on loopback behind
+# tailscale serve) and runs tesseract doctor tailnet.
 # Run from the repo on the Mac: sudo infra/scripts/fix-mac-tailscale
 # Written for the bash 3.2 that ships with macOS.
 set -euo pipefail
 
 readonly APP_CLI=/Applications/Tailscale.app/Contents/MacOS/Tailscale
 readonly LINK=/usr/local/bin/tailscale
-readonly HOST_SHELL_LABEL=dev.tesseract.host-shell
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd -P)"
 readonly REPO_ROOT
 
@@ -27,8 +27,7 @@ info() { printf '    %s\n' "$*"; }
 [[ -x "${APP_CLI}" ]] || die "the Tailscale app is not installed at /Applications/Tailscale.app"
 
 USER_HOME="$(dscl . -read "/Users/${SUDO_USER}" NFSHomeDirectory | awk '{ print $2 }')"
-USER_UID="$(id -u "${SUDO_USER}")"
-readonly USER_HOME USER_UID
+readonly USER_HOME
 USER_PATH="${USER_HOME}/.tesseract/bin:${USER_HOME}/.bun/bin:/opt/homebrew/bin:/usr/local/bin:${USER_HOME}/.orbstack/bin:/Applications/Docker.app/Contents/Resources/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 readonly USER_PATH
 
@@ -75,23 +74,20 @@ done
 xattr -dr com.apple.quarantine "${USER_HOME}/.tesseract/bin" 2> /dev/null || true
 info "$(as_user "${USER_HOME}/.tesseract/bin/tesseract" --version 2> /dev/null || echo installed)"
 
-step "Restarting the host shell"
-if launchctl print "gui/${USER_UID}/${HOST_SHELL_LABEL}" > /dev/null 2>&1; then
-  launchctl kickstart -k "gui/${USER_UID}/${HOST_SHELL_LABEL}"
-  info "restarted ${HOST_SHELL_LABEL}"
-  host_ip="$(as_user tailscale ip -4 2> /dev/null | head -n1 || true)"
-  for _ in $(seq 1 30); do
-    curl -fsS --max-time 2 "http://${host_ip}:7701/v1/health" > /dev/null 2>&1 && break
-    sleep 1
-  done
-  if curl -fsS --max-time 2 "http://${host_ip}:7701/v1/health" > /dev/null 2>&1; then
-    info "the host shell answers on ${host_ip}:7701"
-  else
-    info "the host shell does not answer yet; last log lines:"
-    tail -n 15 "${USER_HOME}"/Library/Logs/Tesseract/*.log 2> /dev/null | sed 's/^/      /' || true
-  fi
+step "Re-creating the host shell service and its HTTPS front"
+# Moves the daemon to 127.0.0.1 behind tailscale serve: the macOS app's serve cannot reach the
+# Mac's own tailnet IP. Keeps the saved sandbox settings, tokens and PIN.
+as_user "${USER_HOME}/.tesseract/bin/tesseract" server install --no-qr \
+  || info "tesseract server install failed; see the output above"
+for _ in $(seq 1 30); do
+  curl -fsS --max-time 2 "http://127.0.0.1:7701/v1/health" > /dev/null 2>&1 && break
+  sleep 1
+done
+if curl -fsS --max-time 2 "http://127.0.0.1:7701/v1/health" > /dev/null 2>&1; then
+  info "the host shell answers on 127.0.0.1:7701"
 else
-  info "no host shell service loaded; skipped"
+  info "the host shell does not answer yet; last log lines:"
+  tail -n 15 "${USER_HOME}"/Library/Logs/Tesseract/*.log 2> /dev/null | sed 's/^/      /' || true
 fi
 
 step "Checking the tailnet"

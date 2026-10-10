@@ -206,6 +206,15 @@ export function planHostService(input: HostServiceInput): HostServicePlan {
   };
 }
 
+/**
+ * The address the host shell daemon listens on. The macOS Tailscale app's serve proxy cannot reach
+ * the Mac's own tailnet IP (requests hang), so on macOS the daemon listens on loopback and only the
+ * HTTPS front is reachable from the tailnet.
+ */
+export function hostShellBind(platform: NodeJS.Platform, tailscaleIp: string): string {
+  return platform === "darwin" ? SERVER.loopbackBind : tailscaleIp;
+}
+
 export function tailscaleServeArgs(httpsPort: number, bind: string, port: number = HOST_SHELL_PORT): string[] {
   return ["serve", "--bg", `--https=${httpsPort}`, `http://${bind}:${port}`];
 }

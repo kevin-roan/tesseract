@@ -75,6 +75,7 @@ export const SERVER = {
   serviceEnvKeys: ["HOME", "SHELL", "LANG", "USER"],
   tailscaleBinary: "tailscale",
   tailscaleApp: "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
+  loopbackBind: "127.0.0.1",
   tailscaleFallbacks: {
     darwin: ["/Applications/Tailscale.app/Contents/MacOS/Tailscale", "/opt/homebrew/bin/tailscale", "/usr/local/bin/tailscale"],
     linux: ["/usr/bin/tailscale", "/usr/local/bin/tailscale"],

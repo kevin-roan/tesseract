@@ -38,6 +38,7 @@ export type HostCliIo = {
   readSecret?: (prompt: string) => Promise<string>;
 };
 
+const LOOPBACK = "127.0.0.1";
 const CTRL_C = "\u0003";
 const BACKSPACE = new Set(["\u007f", "\b"]);
 const ENTER = new Set(["\r", "\n"]);
@@ -111,7 +112,9 @@ function pair(args: string[], io: HostCliIo): number {
   const { values } = parseArgs({ args, options: { json: { type: "boolean", default: false } }, strict: true });
   const settings = config(io.env, {}, !io.env.TESSERACT_HOST_SHELL_PUBLIC_URL);
   // iOS refuses plain http to the Tailscale IP, so prefer the HTTPS name `tailscale serve` gives this daemon.
-  const url = io.env.TESSERACT_HOST_SHELL_PUBLIC_URL ? settings.publicUrl : (tailscaleServeUrl(settings.bind, settings.port, io.env) ?? settings.publicUrl);
+  // On macOS the daemon listens on loopback behind serve, while settings.bind is the tailnet IP.
+  const served = tailscaleServeUrl(settings.bind, settings.port, io.env) ?? tailscaleServeUrl(LOOPBACK, settings.port, io.env);
+  const url = io.env.TESSERACT_HOST_SHELL_PUBLIC_URL ? settings.publicUrl : (served ?? settings.publicUrl);
   const store = new HostStateStore(settings.stateDir, settings.stateFile);
   const token = store.ensureToken();
   const link = buildPairingLink({ url, token, name: settings.hostId }, HOST_PAIRING_ACTION);
