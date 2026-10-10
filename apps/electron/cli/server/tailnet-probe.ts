@@ -73,6 +73,7 @@ export async function probeTailnet(context: CliContext): Promise<TailnetFacts> {
     otherPeers: [],
     ping: null,
     controllerUp: null,
+    sidecarReachesController: null,
     sidecarServesController: null,
     httpsCode: null,
     resolvedIp: null,
@@ -92,6 +93,8 @@ export async function probeTailnet(context: CliContext): Promise<TailnetFacts> {
   const sidecar = parseStatus(await output(context, "docker", ["exec", sidecarContainer, "tailscale", "status", "--json"]));
   facts.sidecar = sidecar;
   const logs = await run(context, "docker", ["logs", "--tail", LOG_LINES, sidecarContainer]);
+  const health = `http://127.0.0.1:7700${HEALTH_PATH}`;
+  facts.sidecarReachesController = (await run(context, "docker", ["exec", sidecarContainer, "wget", "-q", "-T", "5", "-O", "/dev/null", health])).code === 0;
   facts.sidecarLogErrors = authErrors(`${logs.stdout}\n${logs.stderr}`);
   const serve = parseServe(await output(context, "docker", ["exec", sidecarContainer, "tailscale", "serve", "status", "--json"]));
   facts.sidecarServesController = serve.some((proxy) => proxy.target.includes("127.0.0.1:7700"));

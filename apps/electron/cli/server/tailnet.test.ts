@@ -32,6 +32,7 @@ function facts(overrides: Partial<TailnetFacts> = {}): TailnetFacts {
     otherPeers: [],
     ping: { ok: true, detail: "pong" },
     controllerUp: true,
+    sidecarReachesController: true,
     sidecarServesController: true,
     httpsCode: "200",
     resolvedIp: "100.90.0.2",
@@ -102,6 +103,18 @@ describe("analyzeTailnet", () => {
     expect(loggedOut.find((item) => item.id === "sidecar")).toMatchObject({ status: "error", title: "The sandbox sidecar is logged out of the tailnet" });
     const renamed = analyzeTailnet(facts({ sidecar: node("tailnew.ts.net", "tesseract-sandbox-1.tailnew.ts.net", "100.90.0.2") }));
     expect(renamed.find((item) => item.id === "url")?.detail).toContain("An old tesseract-sandbox node still exists");
+    expect(renamed.find((item) => item.id === "url")?.detail).toContain("tesseract sandbox restart");
+  });
+
+  it("flags a sidecar that lost the sandbox's network after a lone restart", () => {
+    const items = analyzeTailnet(facts({ sidecarReachesController: false, httpsCode: "000" }));
+    expect(errors(items)).toEqual(["netns", "health"]);
+    expect(items.find((item) => item.id === "netns")?.detail).toContain("tesseract sandbox restart");
+  });
+
+  it("treats a relayed ping as a warning, not a failure", () => {
+    const items = analyzeTailnet(facts({ ping: { ok: false, detail: "direct connection not established" } }));
+    expect(items.find((item) => item.id === "ping")).toMatchObject({ status: "warning" });
   });
 
   it("flags a host shell front on the host's old IP", () => {

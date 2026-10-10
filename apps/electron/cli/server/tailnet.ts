@@ -47,6 +47,7 @@ export interface TailnetFacts {
   otherPeers: TailnetPeer[];
   ping: { ok: boolean; detail: string } | null;
   controllerUp: boolean | null;
+  sidecarReachesController: boolean | null;
   sidecarServesController: boolean | null;
   httpsCode: string | null;
   resolvedIp: string | null;
@@ -58,6 +59,7 @@ export interface TailnetFacts {
 
 const AUTH_ERROR = /invalid key|key expired|not valid|unauthorized|node not found|logged out|machine.*not authorized|requires.*approval|backend error|auth.*fail/i;
 const ZERO_TIME = "0001-";
+const RELAYED = /direct connection not established|via DERP/i;
 
 interface RawStatus {
   BackendState?: string;
@@ -218,13 +220,16 @@ function reachChecks(facts: TailnetFacts): CheckItem[] {
     const lines = facts.otherPeers.map((peer) => LABELS.peerLine(peer.dnsName, peer.ip, peer.online, peer.lastSeen));
     items.push(check("stale", "warning", LABELS.stalePeers, [...lines, LABELS.stalePeersFix].join("\n")));
   }
-  if (facts.ping) {
-    items.push(facts.ping.ok ? check("ping", "ok", LABELS.ping, facts.ping.detail) : check("ping", "error", LABELS.pingFailed, `${facts.ping.detail}\n${LABELS.pingFix}`));
-  }
+  if (facts.ping?.ok) items.push(check("ping", "ok", LABELS.ping, facts.ping.detail));
+  else if (facts.ping && RELAYED.test(facts.ping.detail)) items.push(check("ping", "warning", LABELS.pingRelayed, facts.ping.detail));
+  else if (facts.ping) items.push(check("ping", "error", LABELS.pingFailed, `${facts.ping.detail}\n${LABELS.pingFix}`));
   if (facts.controllerUp === false) items.push(check("controller", "error", LABELS.controllerDown, LABELS.controllerDownFix));
   if (facts.controllerUp) items.push(check("controller", "ok", LABELS.controllerUp));
+  if (facts.controllerUp && facts.sidecarReachesController === false) {
+    items.push(check("netns", "error", LABELS.splitNetwork, LABELS.splitNetworkFix));
+  }
   if (facts.sidecarServesController === false && sidecar?.state === "Running") {
-    items.push(check("serve", "error", LABELS.noServe, LABELS.noServeFix(facts.sidecarContainer ?? "")));
+    items.push(check("serve", "error", LABELS.noServe, LABELS.noServeFix));
   }
   if (facts.httpsCode !== null && sidecar?.dnsName) {
     const url = `https://${sidecar.dnsName}/v1/health`;
