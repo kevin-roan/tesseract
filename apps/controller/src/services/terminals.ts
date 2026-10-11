@@ -14,7 +14,7 @@ import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";
 import type { Repositories } from "../db/repositories";
 import type { Config } from "../config";
-import type { ClaudeAccountResolver } from "./claude-accounts";
+import { claudeAccountEnv, type ClaudeAccountResolver } from "./claude-accounts";
 import { confidentialPrompt, type ConfidentialProjects } from "./confidential";
 
 export type TerminalClient = {
@@ -92,12 +92,12 @@ export class TerminalService {
     }
 
     let argv = this.config.shell;
-    let accountEnv: Record<string, string> = {};
+    let env = childEnv();
     if (input.kind === "claude") {
       const claude = resolveExecutable(this.config.claudeBin);
       if (!claude) throw unavailable(`Claude Code (${this.config.claudeBin}) is not installed in this sandbox`);
       argv = projectId !== null && this.projects.isConfidential(projectId) ? [claude, "--append-system-prompt", confidentialPrompt(projectId)] : [claude];
-      accountEnv = this.accounts.resolve(projectId).env;
+      env = claudeAccountEnv(this.accounts.resolve(projectId), env);
     }
 
     const info: TerminalInfo = {
@@ -125,8 +125,7 @@ export class TerminalService {
       proc = Bun.spawn(argv, {
         cwd,
         env: {
-          ...childEnv(),
-          ...accountEnv,
+          ...env,
           TERM: "xterm-256color",
           COLORTERM: "truecolor",
           LANG: process.env.LANG ?? "C.UTF-8",

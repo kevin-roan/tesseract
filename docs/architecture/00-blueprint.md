@@ -121,7 +121,7 @@ from an automated agent MUST go through `flock /tmp/tesseract-bun-install.lock b
 | Agent memory | `/workspace/.agent/` (§6.4, SPEC.md) |
 | Controller data | `/workspace/.agent/controller/` (`TESSERACT_DATA_DIR`, 0700) → `state.db`, `token`, `logs/`, `sync/` (baselines, `blobs/`, `backups/`, `staging/`), `claude-import.json` |
 | Claude credentials | the host's `~/.claude` bind-mounted at `/home/dev/.claude` (`CLAUDE_CONFIG_DIR`): login (`.credentials.json`), settings, CLAUDE.md; the host's Claude Max subscription login. On macOS the login lives in the keychain, not in `.credentials.json`, so a Mac host passes a long-lived `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token` on the Mac; `tesseract server install --claude-token`, §7.2) to the sandbox instead |
-| Claude accounts | primary account `claude` = the dir above; each `TESSERACT_HOST_CLAUDE_ACCOUNTS` name `<n>` adds the host's `~/.claude-<n>` (what `CLAUDE_CONFIG_DIR=~/.claude-<n> claude` uses on the host) bind-mounted at `/home/dev/.claude-<n>`, account id `claude-<n>`, global config `<dir>/.claude.json`. Live bind mounts, never copies: token refreshes by either side stay valid for both. The controller never writes into these dirs; the default account and per-project picks live in `state.db` |
+| Claude accounts | primary account `claude` = the dir above; each `TESSERACT_HOST_CLAUDE_ACCOUNTS` name `<n>` adds the host's `~/.claude-<n>` (what `CLAUDE_CONFIG_DIR=~/.claude-<n> claude` uses on the host) bind-mounted at `/home/dev/.claude-<n>`, account id `claude-<n>`, global config `<dir>/.claude.json`. Live bind mounts, never copies: token refreshes by either side stay valid for both. The controller writes into these dirs only to move a resumed session's transcript to the account it now runs on (below); the default account and per-project picks live in `state.db` |
 | Home | `/home/dev` (volume `<prefix>-home`: wine prefix, caches; `.claude` is the host bind mount above) |
 | Wine prefix | `/home/dev/.wine` (`WINEPREFIX`), `WINEARCH=win64`, `WINEDEBUG=-all` |
 | Android SDK | `/opt/android-sdk` (`ANDROID_HOME`, `ANDROID_SDK_ROOT`, owned by `dev`); with `TESSERACT_HOST_ANDROID_SDK` the host's SDK, read-only, in its place |
@@ -215,8 +215,10 @@ controller's environment **without** `TESSERACT_TOKEN`, `TESSERACT_VNC_PASSWORD`
 Agent runs also drop `CLAUDECODE`. The controller does not store or inject Claude
 credentials: children use the host's Claude Max login in `/home/dev/.claude` (the host's
 `~/.claude`, bind-mounted), the only supported authentication. Agent runs and `claude`
-terminals on another account (§5.2 `/v1/claude/accounts`) get `CLAUDE_CONFIG_DIR=/home/dev/.claude-<n>`;
-the account is the resumed session's (newest run with that session id), else the project's, else the default.
+terminals on another account (§5.2 `/v1/claude/accounts`) get `CLAUDE_CONFIG_DIR=/home/dev/.claude-<n>`
+without `CLAUDE_CODE_OAUTH_TOKEN`/`ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` (those are the primary's and would
+override the dir's login); the account is the project's, else the default. Resuming a session first moves its
+transcript (`projects/<cwd>/<sessionId>.jsonl` and `<sessionId>/`) from another account's dir into that account's.
 
 ### 4.2 Stack and operator (`infra/compose/.env`, `infra/scripts/sandbox`)
 

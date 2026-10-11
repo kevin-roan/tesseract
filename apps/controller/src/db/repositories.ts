@@ -568,14 +568,6 @@ export class Repositories {
       .run(projectId, name, at);
   }
 
-  /** Account of the newest agent run with this Claude session id. */
-  sessionClaudeAccount(sessionId: string): string | null {
-    const row = this.db
-      .query<Row, [string]>("SELECT claude_account_id FROM agent_runs WHERE session_id = ? ORDER BY started_at DESC, rowid DESC LIMIT 1")
-      .get(sessionId);
-    return row ? textOrNull(row, "claude_account_id") : null;
-  }
-
   pushDevices(): PushDevice[] {
     return this.db.query<Row, []>("SELECT * FROM push_devices ORDER BY updated_at DESC, rowid DESC").all().map(pushDeviceFromRow);
   }
