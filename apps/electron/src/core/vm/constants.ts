@@ -21,6 +21,8 @@ export const DOCKER_CONFIG_DIR = ".docker";
 export const DOCKER_CONFIG_FILE = "config.json";
 export const CLI_PLUGINS_DIR = "lib/docker/cli-plugins";
 export const CLI_PLUGINS_KEY = "cliPluginsExtraDirs";
+export const CREDS_STORE_KEY = "credsStore";
+export const DESKTOP_CREDS_STORE = "desktop";
 
 export const MANAGED_MARKER = "tesseract-managed";
 
@@ -60,4 +62,6 @@ export const SYSBOX_WAIT_MS = 5 * 60_000;
 export const SYSBOX_POLL_MS = 3_000;
 export const SYSBOX_SETTLE_MS = 30_000;
 export const SYSBOX_PROVISION_TIMEOUT_MS = 15 * 60_000;
-export const PROVISION_RETRY = { dnsAttempts: 60, dnsDelaySeconds: 2, aptAttempts: 3, aptDelaySeconds: 5, curlAttempts: 5, curlDelaySeconds: 2 } as const;
+export const PROVISION_REVISION = 2;
+export const FALLBACK_DNS = ["1.1.1.1", "8.8.8.8"] as const;
+export const PROVISION_RETRY = { dnsAttempts: 60, dnsFallbackAttempt: 15, dnsDelaySeconds: 2, aptAttempts: 3, aptDelaySeconds: 5, curlAttempts: 5, curlDelaySeconds: 2 } as const;

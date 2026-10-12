@@ -90,8 +90,15 @@ provision:
   - mode: system
     script: |
       #!/bin/sh
-      # tesseract-managed: installs sysbox-ce 0.7.1 for the sysbox-runc docker runtime
+      # tesseract-managed: installs sysbox-ce 0.7.1 for the sysbox-runc docker runtime (provision 2)
       set -eu
+      use_public_dns() {
+        rm -f /etc/resolv.conf
+        printf 'nameserver 1.1.1.1\nnameserver 8.8.8.8\n' > /etc/resolv.conf
+      }
+      if ! grep -qs '^nameserver' /etc/resolv.conf; then
+        use_public_dns
+      fi
       sysbox_active() {
         systemctl is-active --quiet sysbox-mgr && systemctl is-active --quiet sysbox-fs
       }
@@ -107,6 +114,7 @@ provision:
         n=0
         until getent hosts downloads.nestybox.com >/dev/null 2>&1; do
           n=$((n + 1))
+          if [ "$n" -eq 15 ]; then use_public_dns; fi
           if [ "$n" -ge 60 ]; then echo "tesseract: can't resolve downloads.nestybox.com" >&2; exit 1; fi
           sleep 2
         done
@@ -226,6 +234,11 @@ else
   ok "macOS ${macos} on $(uname -m), no installed app; using the repo checkout ${REPO_ROOT}"
 fi
 ok "tesseract command: ${TESSERACT_BIN}"
+free_gb=$(( $(df -k "$HOME" | awk 'NR == 2 {print $4}') / 1024 / 1024 ))
+if [ "$free_gb" -lt 20 ]; then
+  die "Only ${free_gb} GB free on this Mac. The VM disk grows into free space and the sandbox build needs about 40 GB; free some space first (Docker Desktop's data lives in ~/Library/Containers/com.docker.docker)."
+fi
+[ "$free_gb" -ge 50 ] || warn "Only ${free_gb} GB free; the sandbox build needs about 40 GB."
 mem_gb=$(( $(sysctl -n hw.memsize) / 1024 / 1024 / 1024 ))
 [ "$mem_gb" -ge 8 ] || warn "Only ${mem_gb} GB of RAM; the VM takes 5 GB."
 
@@ -270,8 +283,31 @@ else
   mv "$tmp" "$DOCKER_CONFIG_FILE"
   ok "added ${plugins_dir} (backup: ${DOCKER_CONFIG_FILE}.bak)"
 fi
+if [ "$(jq -r '.credsStore // ""' "$DOCKER_CONFIG_FILE")" = "desktop" ]; then
+  cp "$DOCKER_CONFIG_FILE" "${DOCKER_CONFIG_FILE}.bak"
+  tmp="$(mktemp)"
+  jq 'del(.credsStore)' "$DOCKER_CONFIG_FILE" >"$tmp"
+  mv "$tmp" "$DOCKER_CONFIG_FILE"
+  ok "removed Docker Desktop's credential helper (it needs the keychain and Docker Desktop)"
+fi
+if [ "$(jq -r '.credsStore // ""' "$DOCKER_CONFIG_FILE")" = "osxkeychain" ] && [ -n "${SSH_CONNECTION:-}" ]; then
+  warn "credsStore is osxkeychain; over SSH the keychain may be locked and pulls fail. Unlock it: security -v unlock-keychain ~/Library/Keychains/login.keychain-db"
+fi
 docker compose version >/dev/null 2>&1 || die "docker compose is not working."
 docker buildx version >/dev/null 2>&1 || die "docker buildx is not working."
+compose_version="$(docker compose version --short 2>/dev/null || true)"
+case "$compose_version" in
+  [0-9]*) ok "compose ${compose_version}" ;;
+  *)
+    warn "docker compose reports version \"${compose_version}\"; upgrading it"
+    brew upgrade docker-compose || true
+    compose_version="$(docker compose version --short 2>/dev/null || true)"
+    case "$compose_version" in
+      [0-9]*) ok "compose ${compose_version}" ;;
+      *) warn "compose still reports \"${compose_version}\"; Tesseract 0.1.x treats that as too old (newer builds accept it)" ;;
+    esac
+    ;;
+esac
 
 step "Docker Desktop"
 if docker_desktop_running; then
@@ -311,7 +347,8 @@ if [ ! -f "$CONFIG" ]; then
 elif grep -q "$MARKER" "$CONFIG"; then
   current_size="$(grep -E '^(cpu|memory|disk):' "$CONFIG" | sort)"
   wanted_size="$(printf '%s\n' "$wanted" | grep -E '^(cpu|memory|disk):' | sort)"
-  if [ "$current_size" != "$wanted_size" ] || ! grep -q "sysbox-runc" "$CONFIG" || ! grep -q "^sshConfig: false" "$CONFIG"; then
+  provision_line="$(printf '%s\n' "$wanted" | grep -m1 "${MARKER}: installs" | sed 's/^ *//')"
+  if [ "$current_size" != "$wanted_size" ] || ! grep -q "sysbox-runc" "$CONFIG" || ! grep -q "^sshConfig: false" "$CONFIG" || ! grep -qF "$provision_line" "$CONFIG"; then
     cp "$CONFIG" "${CONFIG}.bak"
     printf '%s\n' "$wanted" >"$CONFIG"
     changed=1

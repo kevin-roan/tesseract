@@ -126,6 +126,7 @@ tesseract containers doctor
 
 | Symptom | Fix |
 |---|---|
+| `can't resolve downloads.nestybox.com` | The VM has no DNS (`colima ssh -p tesseract -- cat /etc/resolv.conf` fails). Current Tesseract repairs it on boot; by hand: `colima ssh -p tesseract -- sudo sh -c 'rm -f /etc/resolv.conf && printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" > /etc/resolv.conf'`, then `tesseract vm setup` |
 | Containers check says Sysbox is missing | `tesseract vm setup` (safe to re-run: it checks that `sysbox-mgr` and `sysbox-fs` are active and runs the Sysbox install again if not). Check the services: `colima ssh -p tesseract -- systemctl status sysbox-mgr sysbox-fs`; the install log: `colima ssh -p tesseract -- sudo tail -n 50 /var/log/cloud-init-output.log` |
 | `colima list` shows the `tesseract` VM as `Broken` (after a crash) | `tesseract vm start` (force-stops it, then starts it) |
 | `docker` talks to the wrong daemon (Docker Desktop, another Colima profile) | `docker context use colima-tesseract` |

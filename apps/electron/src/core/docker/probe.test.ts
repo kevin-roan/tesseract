@@ -118,6 +118,13 @@ describe("probeDocker on Linux", () => {
     expect(phaseFromReport(report, "linux")).toEqual({ kind: "blocked", reason: "The Docker engine isn't running" });
   });
 
+  it("accepts a compose build that reports no version number, with a warning", async () => {
+    const info = INFO_JSON_ENGINE.replace('"Version": "5.5.1"', '"Version": "dev"');
+    const { report } = await probe({ commands: { ...runningEngine, "docker info": { stdout: info }, "docker compose version --short": { stdout: "dev\n" } } });
+    expect(report.compose).toBe("dev");
+    expect(statusOf(report, "compose")).toMatchObject({ status: "warning", detail: 'Docker Compose reports version "dev"; assuming it is recent enough' });
+  });
+
   it("treats a timeout as unresponsive", async () => {
     const { report } = await probe({ commands: { ...runningEngine, "docker version": { code: null, timedOut: true } } });
     expect(report.daemon).toBe("unresponsive");

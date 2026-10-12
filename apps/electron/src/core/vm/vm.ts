@@ -17,6 +17,8 @@ import {
   BREW_TOOLS,
   CLI_PLUGINS_DIR,
   CLI_PLUGINS_KEY,
+  CREDS_STORE_KEY,
+  DESKTOP_CREDS_STORE,
   COLIMA_LOG_LINE,
   COLIMA_SOCKET_FILE,
   COLIMA_SSH,
@@ -248,8 +250,11 @@ export function mergePluginsDir(text: string | null, dir: string): string | null
     data = parsed as Record<string, unknown>;
   }
   const current = Array.isArray(data[CLI_PLUGINS_KEY]) ? (data[CLI_PLUGINS_KEY] as unknown[]) : [];
-  if (current.includes(dir)) return null;
-  return `${JSON.stringify({ ...data, [CLI_PLUGINS_KEY]: [...current, dir] }, null, "\t")}\n`;
+  const desktopCreds = data[CREDS_STORE_KEY] === DESKTOP_CREDS_STORE;
+  if (current.includes(dir) && !desktopCreds) return null;
+  const next: Record<string, unknown> = { ...data, [CLI_PLUGINS_KEY]: current.includes(dir) ? current : [...current, dir] };
+  if (desktopCreds) delete next[CREDS_STORE_KEY];
+  return `${JSON.stringify(next, null, "\t")}\n`;
 }
 
 async function ensurePluginsDir(runtime: DockerRuntime, brew: string): Promise<void> {

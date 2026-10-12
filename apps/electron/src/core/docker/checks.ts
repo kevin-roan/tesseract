@@ -49,6 +49,7 @@ function daemonCheck(report: DockerReport): DockerCheck {
 function composeCheck(report: DockerReport): DockerCheck {
   const title = CHECK_TITLES.compose;
   if (!report.compose) return { id: "compose", status: "error", title, detail: CHECK_DETAILS.composeMissing, action: "compose-docs" };
+  if (!/^\d/.test(report.compose)) return { id: "compose", status: "warning", title, detail: CHECK_DETAILS.composeUnversioned(report.compose) };
   if (!isAtLeast(report.compose, MIN_COMPOSE_VERSION)) {
     return { id: "compose", status: "error", title, detail: CHECK_DETAILS.composeOld(report.compose), action: "compose-docs" };
   }

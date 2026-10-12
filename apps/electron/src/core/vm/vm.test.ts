@@ -467,4 +467,9 @@ describe("parsers", () => {
     expect(JSON.parse(mergePluginsDir(null, "/b") ?? "")).toEqual({ cliPluginsExtraDirs: ["/b"] });
     expect(() => mergePluginsDir("[1]", "/b")).toThrow();
   });
+
+  it("drops Docker Desktop's credential helper but keeps other credential stores", () => {
+    expect(JSON.parse(mergePluginsDir('{"credsStore":"desktop","cliPluginsExtraDirs":["/b"],"auths":{}}', "/b") ?? "")).toEqual({ auths: {}, cliPluginsExtraDirs: ["/b"] });
+    expect(mergePluginsDir('{"credsStore":"osxkeychain","cliPluginsExtraDirs":["/b"]}', "/b")).toBeNull();
+  });
 });

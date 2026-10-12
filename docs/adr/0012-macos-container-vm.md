@@ -28,7 +28,12 @@ Android emulator and Android builds, within 8 GB.
    downloads a pinned `sysbox-ce` `.deb` for the VM arch, verifies its sha256 and installs
    it. It does nothing when `sysbox-runc` is installed and `sysbox-mgr`/`sysbox-fs` are
    active. It waits for guest DNS first and retries `apt-get update` and the download,
-   because Lima runs it during cloud-init, often before name resolution works. It leaves
+   because Lima runs it during cloud-init, often before name resolution works. Colima's
+   image has no `systemd-resolved`, and on a Mac running Tailscale the VM came up with no
+   `/etc/resolv.conf` at all, so on every boot the script writes `1.1.1.1`/`8.8.8.8` when
+   the file has no nameserver, and switches to them if names still don't resolve after
+   30 s. Nothing in Tesseract uses `host.docker.internal`, which only Lima's resolver
+   answers. It leaves
    restarting Docker to the `sysbox-ce` package. Lima ignores provision failures and
    `colima start` still exits 0, so setup does not trust the `sysbox-runc` entry in
    `docker info` (it comes from `colima.yaml` even when Sysbox is missing): it also

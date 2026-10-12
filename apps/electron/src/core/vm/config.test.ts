@@ -113,6 +113,14 @@ describe("sysboxProvisionScript", () => {
     expect(script).toContain("--retry-connrefused --retry-delay 2");
   });
 
+  it("repairs a missing resolv.conf on every boot, before the early exit, and falls back to public DNS while waiting", () => {
+    const script = sysboxProvisionScript();
+    expect(script).toContain("printf 'nameserver 1.1.1.1\\nnameserver 8.8.8.8\\n' > /etc/resolv.conf");
+    expect(script.indexOf("if ! grep -qs '^nameserver' /etc/resolv.conf")).toBeLessThan(script.indexOf("  exit 0"));
+    expect(script).toContain('if [ "$n" -eq 15 ]; then use_public_dns; fi');
+    expect(script).toContain("(provision 2)");
+  });
+
   it("leaves restarting docker to the sysbox-ce package", () => {
     const script = sysboxProvisionScript();
     expect(script).not.toContain("installed");

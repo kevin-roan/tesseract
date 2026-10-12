@@ -1,6 +1,8 @@
 import {
+  FALLBACK_DNS,
   MANAGED_MARKER,
   PROVISION_RETRY,
+  PROVISION_REVISION,
   SYSBOX_CACHE_DIR,
   SYSBOX_DOWNLOAD_HOST,
   SYSBOX_PACKAGES,
@@ -23,8 +25,15 @@ export function sysboxProvisionScript(): string {
   const retry = PROVISION_RETRY;
   return [
     "#!/bin/sh",
-    `# ${MANAGED_MARKER}: installs sysbox-ce ${SYSBOX_VERSION} for the sysbox-runc docker runtime`,
+    `# ${MANAGED_MARKER}: installs sysbox-ce ${SYSBOX_VERSION} for the sysbox-runc docker runtime (provision ${PROVISION_REVISION})`,
     "set -eu",
+    "use_public_dns() {",
+    "  rm -f /etc/resolv.conf",
+    `  printf '${FALLBACK_DNS.map((server) => `nameserver ${server}\\n`).join("")}' > /etc/resolv.conf`,
+    "}",
+    "if ! grep -qs '^nameserver' /etc/resolv.conf; then",
+    "  use_public_dns",
+    "fi",
     "sysbox_active() {",
     `  ${SYSBOX_SERVICES.map((service) => `systemctl is-active --quiet ${service}`).join(" && ")}`,
     "}",
@@ -39,6 +48,7 @@ export function sysboxProvisionScript(): string {
     "  n=0",
     `  until getent hosts ${SYSBOX_DOWNLOAD_HOST} >/dev/null 2>&1; do`,
     "    n=$((n + 1))",
+    `    if [ "$n" -eq ${retry.dnsFallbackAttempt} ]; then use_public_dns; fi`,
     `    if [ "$n" -ge ${retry.dnsAttempts} ]; then echo "tesseract: can't resolve ${SYSBOX_DOWNLOAD_HOST}" >&2; exit 1; fi`,
     `    sleep ${retry.dnsDelaySeconds}`,
     "  done",

@@ -34,6 +34,7 @@ export const CHECK_DETAILS = {
   daemonUnresponsive: "The Docker engine doesn't answer",
   daemonUnknown: "Checking the engine…",
   composeMissing: "Docker Compose v2 is missing",
+  composeUnversioned: (version: string) => `Docker Compose reports version "${version}"; assuming it is recent enough`,
   composeOld: (version: string) => `Docker Compose ${version} is too old; 2.24 or newer is needed`,
   buildxOk: (version: string) => `buildx ${version}`,
   buildxMissing: "docker buildx is missing; the image needs BuildKit",

@@ -96,7 +96,8 @@ async function readInfo(runtime: DockerRuntime, cli: string): Promise<InfoSummar
 
 async function readCompose(runtime: DockerRuntime, cli: string): Promise<string | null> {
   const result = await runQuiet(runtime, cli, ["compose", "version", "--short"]);
-  return result.code === 0 ? cleanVersion(result.stdout) : null;
+  if (result.code !== 0) return null;
+  return cleanVersion(result.stdout) ?? (result.stdout.trim() || null);
 }
 
 async function readBuildx(runtime: DockerRuntime, cli: string): Promise<string | null> {
