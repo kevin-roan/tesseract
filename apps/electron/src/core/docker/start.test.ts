@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { DockerPhase, DockerReport } from "../../shared/contracts/docker";
 import { IpcError } from "../../shared/ipc-types";
 import { probeDocker } from "./probe";
-import { startEngine } from "./start";
+import { createRuntime } from "./runtime";
+import { startCommand, startEngine } from "./start";
 import type { DockerHost } from "./system";
 import { fakeSystem, type FakeSystem } from "./testing/fake-system";
 import { CLI_VERSION, INFO_JSON_ENGINE, STOPPED_ERROR, VERSION_JSON_ENGINE, VERSION_JSON_NO_SERVER } from "./testing/fixtures";
@@ -120,5 +121,21 @@ describe("startEngine", () => {
     });
     const report = await probeDocker({ system, host: LINUX, env: {} });
     await expect(startEngine(report, { system, host: LINUX, env: {}, signal: controller.signal })).rejects.toMatchObject({ code: "cancelled" });
+  });
+});
+
+describe("startCommand", () => {
+  const MAC: Partial<DockerHost> = { platform: "darwin", arch: "arm64", home: "/Users/dev", user: "dev", release: "24.1.0" };
+  const command = (kind: DockerReport["kind"], context: string | null, host = MAC) =>
+    startCommand(createRuntime({ system: fakeSystem(), host, env: {} }), { kind, context, linux: { systemd: true } } as DockerReport);
+
+  it("starts the colima profile named by the context", async () => {
+    expect(await command("colima", "colima")).toEqual({ mode: "run", file: "colima", args: ["start"], elevated: false });
+    expect(await command("colima", "colima-tesseract")).toEqual({ mode: "run", file: "colima", args: ["start", "tesseract"], elevated: false });
+  });
+
+  it("keeps Docker Desktop and Linux unchanged", async () => {
+    expect(await command("desktop", "desktop-linux")).toEqual({ mode: "run", file: "open", args: ["-a", "Docker"], elevated: false });
+    expect(await command("rootless", "rootless", LINUX)).toEqual({ mode: "run", file: "systemctl", args: ["--user", "start", "docker.service"], elevated: false });
   });
 });

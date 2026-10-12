@@ -34,6 +34,10 @@ export const DOCKER_LABELS = {
   install: {
     title: "Install Docker",
     options: {
+      colima: "Tesseract VM (recommended)",
+      colimaSubtitle: "Installs Colima with Homebrew and runs a Linux VM with Sysbox for server containers",
+      desktop: "Docker Desktop",
+      desktopSubtitle: "Can't run server containers on macOS",
       desktopRecommended: "Docker Desktop (recommended)",
       desktopUser: "Docker Desktop for my user only",
       engine: "Docker Engine (recommended)",

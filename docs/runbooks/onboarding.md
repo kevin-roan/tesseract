@@ -102,8 +102,15 @@ Tesseract adds.
 
 #### macOS
 
-Options: **Docker Desktop (recommended)** or **I'll install it myself** (opens Docker's
-instructions).
+Options: **Tesseract VM (recommended)**, **Docker Desktop** or **I'll install it myself**
+(opens Docker's instructions).
+
+**Tesseract VM** installs Colima and the Docker CLI with Homebrew and starts the `tesseract`
+Colima VM with Sysbox, which server containers need ([ADR 0012](../adr/0012-macos-container-vm.md),
+[server-containers.md](server-containers.md#macos)). No licence is needed. Without Homebrew it
+stops and shows the Homebrew install command.
+
+**Docker Desktop** (can't run server containers on macOS):
 
 1. Tick **I accept the Docker Subscription Service Agreement** (**Read the agreement** opens it).
 2. **Install** downloads `Docker.dmg` for your Mac (Apple silicon or Intel; an Intel build
@@ -114,8 +121,8 @@ instructions).
 4. It starts Docker Desktop (`open -a Docker`) and waits for the engine.
 
 Docker Desktop needs macOS 14 or newer; older versions get `Docker Desktop needs macOS
-{version} or newer`. Colima and OrbStack are detected and started with `colima start` /
-`orb start`.
+{version} or newer`. Colima and OrbStack are detected and started with `colima start` (`colima start <profile>`
+for a `colima-<profile>` context) / `orb start`.
 
 #### Windows
 

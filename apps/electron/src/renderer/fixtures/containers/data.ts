@@ -4,6 +4,7 @@ export const CONTAINERS_SCENARIOS = {
   empty: "containers-empty",
   unavailable: "containers-unavailable",
   noSysbox: "containers-no-sysbox",
+  noVm: "containers-no-vm",
   noImage: "containers-no-image",
   noCloudflare: "containers-no-cloudflare",
 } as const;
@@ -76,7 +77,7 @@ export const FIXTURE_LOGS = [
   "cloudflared[401]: Registered tunnel connection connIndex=0 location=fra08",
 ];
 
-export function fixtureReport({ sysbox = true, image = true, cloudflare = true }: { sysbox?: boolean; image?: boolean; cloudflare?: boolean } = {}): ContainersReport {
+export function fixtureReport({ sysbox = true, image = true, cloudflare = true, vm = false }: { sysbox?: boolean; image?: boolean; cloudflare?: boolean; vm?: boolean } = {}): ContainersReport {
   return {
     sysbox,
     image: image ? FIXTURE_SERVER_IMAGE : null,
@@ -88,8 +89,12 @@ export function fixtureReport({ sysbox = true, image = true, cloudflare = true }
         id: "sysbox",
         status: sysbox ? "ok" : "error",
         title: "Sysbox runtime",
-        detail: sysbox ? "sysbox-runc is registered with Docker" : "Install sysbox to run containers with their own Docker",
-        action: sysbox ? undefined : "install-sysbox",
+        detail: sysbox
+          ? "sysbox-runc is registered with Docker"
+          : vm
+            ? "Server containers run in the Tesseract VM (Colima with Sysbox). Set it up once; Docker Desktop must not be running."
+            : "Install sysbox to run containers with their own Docker",
+        action: sysbox ? undefined : vm ? "setup-vm" : "install-sysbox",
       },
       {
         id: "image",

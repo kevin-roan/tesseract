@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DOWNLOAD_URLS } from "../onboarding/urls";
 import { commandError } from "../process";
+import { setupWithRuntime as setupVmWithRuntime } from "../vm/vm";
 import type { DockerInstallOption, DockerInstallRequest, DockerPhase } from "../../shared/contracts/docker";
 import type { OnboardingUrlKey } from "../../shared/contracts/onboarding";
 import { IpcError } from "../../shared/ipc-types";
@@ -43,7 +44,7 @@ import { createRuntime, describeCommand, isCancelled, runQuiet, streamLogged, th
 import { refreshPhase, startWithRuntime } from "./start";
 
 const PLATFORM_OPTIONS: Partial<Record<NodeJS.Platform, readonly DockerInstallOption[]>> = {
-  darwin: ["desktop", "manual"],
+  darwin: ["colima", "desktop", "manual"],
   win32: ["desktop", "desktop-user", "wsl", "manual"],
   linux: ["engine", "desktop-linux", "manual", "docker-group", "kvm-group"],
 };
@@ -247,6 +248,10 @@ export async function installWithRuntime(runtime: DockerRuntime, request: Docker
     throw new IpcError("invalid_argument", PHASE_MESSAGES.acceptLicense);
   }
   switch (request.option) {
+    case "colima": {
+      const phase = await setupVmWithRuntime(runtime, { resourcesDir: runtime.resourcesDir });
+      return phase.kind === "ready" ? startAfterInstall(runtime) : phase;
+    }
     case "desktop":
       return platform === "darwin" ? installMacDesktop(runtime) : installWindowsDesktop(runtime, false);
     case "desktop-user":

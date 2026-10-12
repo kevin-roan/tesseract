@@ -15,7 +15,7 @@ import type { Tone } from "../../theme/colors";
 import type { IconName } from "../../theme/icons";
 import { MB_PER_GB, MEMORY_UNITS, PORT_RANGE, ROUTE_SCHEMES, type MemoryUnit } from "./constants";
 import { CONTAINERS_LABELS as L, DOMAINS_LABELS } from "./labels";
-import type { ContainerShellStatus, CreateBlocker } from "./types";
+import type { ContainersTaskPhase, ContainerShellStatus, CreateBlocker } from "./types";
 
 export function containerTone(state: ContainerState): Tone {
   switch (state) {
@@ -126,12 +126,16 @@ export function createErrors(values: CreateValues): Partial<Record<CreateField, 
 
 export function createBlocker(report: ContainersReport | null): CreateBlocker | null {
   if (!report) return null;
-  if (!report.sysbox) return "sysbox";
+  if (!report.sysbox) return report.checks.some((check) => check.action === "setup-vm") ? "vm" : "sysbox";
   return report.image ? null : "image";
 }
 
-export function buildStep(phase: ContainersPhase | null): string | null {
-  return phase?.kind === "building" ? phase.step : null;
+export function phaseStep(phase: ContainersPhase | null, kind: ContainersTaskPhase): string | null {
+  return phase?.kind === kind ? phase.step : null;
+}
+
+export function isTaskPhase(phase: ContainersPhase | undefined): boolean {
+  return phase?.kind === "building" || phase?.kind === "setting-up-vm";
 }
 
 export function normalizeHostPart(text: string): string {

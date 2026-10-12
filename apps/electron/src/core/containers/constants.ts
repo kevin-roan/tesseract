@@ -3,6 +3,7 @@ export const SERVER_IMAGE = "tesseract/server:1";
 export const SERVER_IMAGE_DIR = ["infra", "docker", "server"] as const;
 export const SYSBOX_RUNTIME = "sysbox-runc";
 export const CLOUDFLARED_IMAGE = "cloudflare/cloudflared:2026.10.0";
+export const DARWIN_DEFAULT_MEMORY_MB = 1024;
 export const DEFAULT_TAILNET_TAGS = "tag:tesseract-server";
 
 export const DOCKER_LABELS = {
@@ -55,6 +56,13 @@ export const TIMEOUTS = {
   exec: 10_000,
   api: 20_000,
   build: 30 * 60_000,
+} as const;
+
+export const BOOT_WAIT = {
+  budgetMs: TIMEOUTS.docker * 4,
+  pollMs: 2_000,
+  attempts: (TIMEOUTS.docker * 4) / 2_000,
+  busDown: /Failed to connect to (?:system scope )?bus|^offline$/m,
 } as const;
 
 export const SHELL = {

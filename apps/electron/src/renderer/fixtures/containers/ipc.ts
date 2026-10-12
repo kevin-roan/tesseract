@@ -12,7 +12,7 @@ let routes: DomainRoute[] | null = null;
 let report: ContainersReport | null = null;
 
 function currentContainers(): ServerContainer[] {
-  containers ??= isScenario(CONTAINERS_SCENARIOS.empty) || isScenario(CONTAINERS_SCENARIOS.noSysbox) ? [] : FIXTURE_CONTAINERS.map((entry) => ({ ...entry }));
+  containers ??= isScenario(CONTAINERS_SCENARIOS.empty) || isScenario(CONTAINERS_SCENARIOS.noSysbox) || isScenario(CONTAINERS_SCENARIOS.noVm) ? [] : FIXTURE_CONTAINERS.map((entry) => ({ ...entry }));
   return containers;
 }
 
@@ -23,7 +23,8 @@ function currentRoutes(): DomainRoute[] {
 
 function currentReport(): ContainersReport {
   report ??= fixtureReport({
-    sysbox: currentScenario() !== CONTAINERS_SCENARIOS.noSysbox,
+    sysbox: currentScenario() !== CONTAINERS_SCENARIOS.noSysbox && currentScenario() !== CONTAINERS_SCENARIOS.noVm,
+    vm: currentScenario() === CONTAINERS_SCENARIOS.noVm,
     image: currentScenario() !== CONTAINERS_SCENARIOS.noImage,
     cloudflare: currentScenario() !== CONTAINERS_SCENARIOS.noCloudflare,
   });
@@ -83,6 +84,10 @@ export default defineIpcFixtures({
     logs: () => FIXTURE_LOGS,
     buildImage: () => {
       report = fixtureReport({ sysbox: currentReport().sysbox, image: true, cloudflare: currentReport().cloudflare.connected });
+      return report;
+    },
+    setupVm: () => {
+      report = fixtureReport({ sysbox: true, image: currentReport().image !== null, cloudflare: currentReport().cloudflare.connected });
       return report;
     },
     cancel: () => ({ kind: "idle" }),

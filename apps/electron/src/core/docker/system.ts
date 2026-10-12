@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import { accessSync, constants as fsConstants, existsSync, statSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { arch as osArch, homedir, release, userInfo } from "node:os";
-import { delimiter, join } from "node:path";
+import { delimiter, dirname, join } from "node:path";
 import { runCommand, type CommandOptions, type CommandResult } from "../process";
 
 export type CommandRunner = (file: string, args: readonly string[], options?: CommandOptions) => Promise<CommandResult>;
@@ -25,6 +25,7 @@ export interface DockerSystem {
   which(name: string, env: NodeJS.ProcessEnv, platform: NodeJS.Platform): string | null;
   exists(path: string): boolean;
   readText(path: string): Promise<string | null>;
+  writeText(path: string, text: string): Promise<void>;
   socketGid(path: string): number | null;
   fetch: typeof fetch;
   sleep(ms: number, signal?: AbortSignal): Promise<void>;
@@ -144,6 +145,10 @@ export const defaultSystem: DockerSystem = {
     } catch {
       return null;
     }
+  },
+  writeText: async (path, text) => {
+    await mkdir(dirname(path), { recursive: true });
+    await writeFile(path, text, "utf8");
   },
   socketGid: (path) => {
     try {

@@ -45,7 +45,7 @@ export interface CloudflareZone {
   accountId: string;
 }
 
-export type ContainersActionKey = "install-sysbox" | "build-image" | "tailscale-key" | "cloudflare-token";
+export type ContainersActionKey = "install-sysbox" | "setup-vm" | "build-image" | "tailscale-key" | "cloudflare-token";
 
 export interface ContainersReport {
   sysbox: boolean;
@@ -77,6 +77,7 @@ export interface TailscaleKeyRequest {
 export type ContainersPhase =
   | { kind: "idle" }
   | { kind: "building"; step: string }
+  | { kind: "setting-up-vm"; step: string }
   | { kind: "creating"; name: string }
   | { kind: "routing"; hostname: string };
 
@@ -108,6 +109,7 @@ export type ContainersContract = DefineContract<{
     remove(name: string): void;
     logs(name: string): string[];
     buildImage(): ContainersReport;
+    setupVm(): ContainersReport;
     cancel(): ContainersPhase;
     phase(): ContainersPhase;
     setTailscaleKey(request: TailscaleKeyRequest): ContainersReport;

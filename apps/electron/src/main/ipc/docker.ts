@@ -7,6 +7,7 @@ import { downloadsDir } from "../../core/paths";
 import type { DockerInstallRequest, DockerPhase, DockerReport } from "../../shared/contracts/docker";
 import { IpcError } from "../../shared/ipc-types";
 import { mainContext } from "../context";
+import { sandboxContextDir } from "../services/resources";
 import { defineService } from "./_framework/define";
 import { serviceEmitter } from "./_framework/events";
 
@@ -31,6 +32,7 @@ function options(signal?: AbortSignal): DockerRunOptions {
     env: effectiveEnv(),
     signal,
     downloadsDir: downloadsDir(mainContext().paths),
+    resourcesDir: sandboxContextDir(),
     onLog: (line) => log.push(line).forEach((entry) => events.emit("log", entry)),
     onPhase: setPhase,
     onReport: emitReport,

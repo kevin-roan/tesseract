@@ -57,6 +57,7 @@ export const CONTAINERS_ACTIONS: Record<string, Action> = {
   doctor: async (context) => {
     const report = await containersService(context).report();
     emit(context, report, describeReport);
+    if (report.checks.some((check) => check.action === "setup-vm")) log(context, LABELS.setupVm);
     return report.checks.some((check) => check.status === "error") ? EXIT.error : EXIT.ok;
   },
   build: async (context) => {

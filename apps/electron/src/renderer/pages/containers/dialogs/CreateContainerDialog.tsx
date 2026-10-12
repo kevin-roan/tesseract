@@ -47,7 +47,7 @@ export function CreateContainerDialog({ open, onClose, onCreated }: CreateContai
           </div>
         ) : (
           <div className={styles.stack}>
-            <CreateBlockerNotice blocker={form.blocker} build={form.build} tailscaleMissing={form.tailscaleMissing} />
+            <CreateBlockerNotice blocker={form.blocker} build={form.build} vm={form.vm} tailscaleMissing={form.tailscaleMissing} />
             <FieldGroup description={L.nameHint} errors={form.fields.errorsFor("name")}>
               <TitleEntry autoFocus spellCheck={false} placeholder={L.name} aria-label={L.name} {...form.fields.field("name")} />
             </FieldGroup>

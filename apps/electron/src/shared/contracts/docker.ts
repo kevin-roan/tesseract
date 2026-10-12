@@ -52,6 +52,7 @@ export type DockerPhase =
   | { kind: "blocked"; reason: string; commands?: string[] };
 
 export type DockerInstallOption =
+  | "colima"
   | "desktop"
   | "desktop-user"
   | "engine"

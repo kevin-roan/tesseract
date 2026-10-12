@@ -11,6 +11,7 @@ import {
   SYSTEMD_RUN_DIR,
 } from "./constants";
 import { pkexecOutcome } from "./elevate";
+import { colimaProfile } from "./parse";
 import { LOG_MESSAGES, PHASE_MESSAGES } from "./labels";
 import { collectReport, readDaemon, windowsDesktopExeCandidates } from "./probe";
 import { createRuntime, describeCommand, runQuiet, streamLogged, throwIfAborted, type DockerRunOptions, type DockerRuntime } from "./runtime";
@@ -23,7 +24,10 @@ export async function startCommand(runtime: DockerRuntime, report: DockerReport)
   const { platform } = runtime.host;
   const which = (name: string) => runtime.system.which(name, runtime.env, platform);
   if (platform === "darwin") {
-    if (report.kind === "colima") return { mode: "run", file: "colima", args: ["start"], elevated: false };
+    if (report.kind === "colima") {
+      const profile = colimaProfile(report.context);
+      return { mode: "run", file: "colima", args: profile ? ["start", profile] : ["start"], elevated: false };
+    }
     if (report.kind === "orbstack") return { mode: "run", file: "orb", args: ["start"], elevated: false };
     return { mode: "run", file: "open", args: ["-a", "Docker"], elevated: false };
   }

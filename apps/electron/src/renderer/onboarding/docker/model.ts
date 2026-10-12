@@ -100,8 +100,12 @@ export function installChoices(platform: Platform, host: HostInfo | null): Insta
   const distro = host?.distro?.prettyName ?? labels.thisDistro;
   return PLATFORM_INSTALL_OPTIONS[platform].map((option) => {
     switch (option) {
+      case "colima":
+        return { option, title: labels.colima, subtitle: labels.colimaSubtitle };
       case "desktop":
-        return { option, title: labels.desktopRecommended, subtitle: null };
+        return platform === "darwin"
+          ? { option, title: labels.desktop, subtitle: labels.desktopSubtitle }
+          : { option, title: labels.desktopRecommended, subtitle: null };
       case "desktop-user":
         return { option, title: labels.desktopUser, subtitle: null };
       case "engine":

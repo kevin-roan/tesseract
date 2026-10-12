@@ -138,6 +138,7 @@ from an automated agent MUST go through `flock /tmp/tesseract-bun-install.lock b
 | Desktop renderer dev server | `http://127.0.0.1:4545` (`RENDERER_DEV_PORT`, `strictPort`, dev and preview); never the Electron/Vite defaults |
 | Desktop app id / deep link | `dev.tesseract.Desktop`; `tesseract://<page>[?…]`, `tesseract://preferences/<section>`, `tesseract://onboarding/<step>`, `tesseract://pair`, … (§12.3) |
 | Server containers | `tesseract-ct-<name>` (sysbox-runc, image `tesseract/server:1`, network `tesseract-ct-<name>`, volume `tesseract-ct-<name>-docker`), connector `tesseract-ct-<name>-tunnel`; route state `$TESSERACT_STATE_DIR/containers.json`; tailnet tag `tag:tesseract-server` ([server-containers.md](server-containers.md), ADR 0011) |
+| macOS container VM | Colima profile `tesseract`, Docker context `colima-tesseract`; config `<colima home>/tesseract/colima.yaml` (colima home = `$COLIMA_HOME`, else `~/.colima`); defaults 6 CPUs, 5 GiB memory, 120 GiB disk, `vmType: vz`, `mountType: virtiofs`, arch `aarch64` (Intel `x86_64`), Rosetta + binfmt on arm64; mounts `~` (writable) and the sandbox context read-only when outside `~`; runtime `sysbox-runc` (`/usr/bin/sysbox-runc`) declared in `colima.yaml`, Sysbox (`sysbox-ce`, pinned, sha256-checked) installed by its `provision` script (waits for guest DNS, retries apt and the download), which carries the `tesseract-managed` marker that identifies the file (Colima strips comments); `sshConfig: false`. Sysbox counts as ready only when `docker info` lists `sysbox-runc` and `colima ssh -p tesseract -- systemctl is-active sysbox-mgr sysbox-fs` reports both active; otherwise setup re-runs the provision script (`colima ssh -p tesseract -- sudo sh -s`). A `Broken` VM is shown as stopped and force-stopped (`colima stop -f tesseract`) before start. Containers action `setup-vm` (`ContainersActionKey`) when Sysbox is missing; new server containers default to `--memory 1024`. macOS only (ADR 0012) |
 | Host shell state | `$XDG_CONFIG_HOME/tesseract/host-shell/state.json` (default `~/.config/…`, `TESSERACT_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters, `androidLink` (sandbox URL + token), `androidStream` (the `AndroidStreamSettings` fields changed from the defaults; invalid fields fall back to them) |
 
 `projectId` = directory name under `/workspace/projects`, must match
@@ -1005,6 +1006,7 @@ tesseract android avd create [name] [--image API|package] [--device pixel_5|pixe
 tesseract android avd start [name] [--detach] [--headless] [--gpu MODE] | delete <name>
 tesseract containers [ls] | create <name> [--cpus N] [--memory MB] | start|stop|restart|logs|ssh <name> | rm <name> --yes
 tesseract containers build [--verbose] | doctor | tailscale-key [--tags …] [--clear] < key   # server containers (ADR 0011)
+tesseract vm status|setup|start|stop                    # macOS only: the `tesseract` Colima VM with Sysbox (ADR 0012); elsewhere exits 64
 tesseract domains [ls] | add <hostname> <container> <port> [--https] | rm <hostname|id> | zones | sync | login < token | logout
 tesseract pair [--no-qr]                                 # pairing link + QR for the phone
 tesseract sync [push] [--confidential] | pull [--dry-run] [--force] | revert [--force] | status
@@ -1015,6 +1017,7 @@ tesseract --gemini-key=KEY                               # save the Gemini key f
 ```
 
 `--get` on the host only prints that it runs inside the sandbox, where `tesseract` is the controller wrapper (`tesseract-controller tesseract --get`, §7).
+On macOS `containers create` without `--memory` uses 1024 MB (other platforms: no limit).
 `config get` prints the token as `…` unless `--reveal`. The packaged app forwards the sync flags to the
 bundled CLI (`Tesseract --sync` = `tesseract --sync`). Exit codes: 0 ok, 1 failure, 2 sync conflict,
 64 bad arguments, 130 interrupted.
@@ -1231,7 +1234,7 @@ marked complete (everything but `welcome` skipped) and `sandboxAutostart` turned
 
 | Step | Does |
 |---|---|
-| `docker` | checks the CLI, daemon, Compose, buildx and resources; Podman is reported as unsupported. Install options: macOS Docker Desktop; Windows Docker Desktop (machine or user) or WSL; Linux Docker Engine (convenience script through `pkexec`), Docker Desktop for Linux, `docker`/`kvm` group membership; always a manual path. Starts a stopped engine |
+| `docker` | checks the CLI, daemon, Compose, buildx and resources; Podman is reported as unsupported. Install options: macOS Tesseract VM (`colima`, recommended: the `tesseract` Colima VM with Sysbox through Homebrew, ADR 0012; no licence) or Docker Desktop; Windows Docker Desktop (machine or user) or WSL; Linux Docker Engine (convenience script through `pkexec`), Docker Desktop for Linux, `docker`/`kvm` group membership; always a manual path. Starts a stopped engine |
 | `claude` | reads the host's `~/.claude` and `~/.claude-<n>` login state (never secrets); can create the dir |
 | `sandbox` | stack choices (mode `local`/`tailscale`/`host-tailscale`, Tailscale key and tailnet, components `android`/`flutter`/`mono`/`whisper` = the Dockerfile's `WITH_*` args, Whisper models, CPUs, memory, ports, project, image, dind), writes `<userData>/sandbox/.env` (0600), then builds the image from the bundled context with `docker buildx build --progress=rawjson` (or pulls `sandboxImageRef`, or reuses an existing image), runs compose `up`, waits for `/v1/health`, pairs with `tesseract-controller pair --json` |
 | `android` | its own SDK manager: Google's `repository2-3.xml` and `sys-img2-3.xml`, downloads `emulator`, `platform-tools` and one `system-images;android-<api>;google_apis;<abi>` with sha1 checks and license acceptance, unzips into the SDK root, writes the AVD (`<name>.ini` + `config.ini` with the device profile `pixel_5`/`pixel_8`/`medium_phone`/`pixel_tablet` → `hw.device.*`, `hw.lcd.*`, `skin.name`, and internal storage 2–64 GB, default 6 → `disk.dataPartition.size`); checks KVM (Linux x64, `x86_64` images), WHPX (Windows x64) or HVF (macOS, `arm64-v8a` on Apple silicon) with `emulator -accel-check`; Linux and Windows on arm64 are unsupported, and only Linux can link the emulator to the sandbox. The host shell daemon uses this SDK for the host emulator ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2) |

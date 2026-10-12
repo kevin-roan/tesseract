@@ -9,7 +9,9 @@ import {
   createErrors,
   formatMemory,
   formatResources,
+  isTaskPhase,
   parseOptionalNumber,
+  phaseStep,
   parsePort,
   routeCounts,
   shellPanelView,
@@ -110,6 +112,15 @@ describe("containers model", () => {
     expect(createBlocker(report({ sysbox: false, image: null }))).toBe("sysbox");
     expect(createBlocker(report({ image: null }))).toBe("image");
     expect(createBlocker(report())).toBeNull();
+    const vm = { id: "sysbox", status: "error", title: "Sysbox runtime", detail: "Set up the VM", action: "setup-vm" } as const;
+    expect(createBlocker(report({ sysbox: false, checks: [vm] }))).toBe("vm");
+  });
+
+  it("tracks the progress of long container tasks", () => {
+    expect(phaseStep({ kind: "setting-up-vm", step: "colima start" }, "setting-up-vm")).toBe("colima start");
+    expect(phaseStep({ kind: "building", step: "RUN apt-get" }, "setting-up-vm")).toBeNull();
+    expect(isTaskPhase({ kind: "setting-up-vm", step: "" })).toBe(true);
+    expect(isTaskPhase({ kind: "routing", hostname: "a.example.com" })).toBe(false);
   });
 
   it("composes hostnames and parses ports", () => {

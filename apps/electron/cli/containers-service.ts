@@ -20,6 +20,7 @@ export function containersService(context: CliContext): ContainersService {
     env: context.env,
     cipher: null,
     seal: false,
+    platform: context.runtime.platform,
   });
 }
 

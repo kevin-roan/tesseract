@@ -1,8 +1,10 @@
+import { setTimeout as delay } from "node:timers/promises";
 import type { CommandResult } from "../process";
 import type { StreamOptions, StreamResult } from "../sandbox/spawn";
 import type { ContainerState, ContainerTailnet, ServerContainer } from "../../shared/contracts/containers";
 import { IpcError } from "../../shared/ipc-types";
 import {
+  BOOT_WAIT,
   CLOUDFLARED_IMAGE,
   CONTAINER_PREFIX,
   DOCKER_LABELS,
@@ -19,6 +21,7 @@ export interface DockerDeps {
   run(file: string, args: readonly string[], options?: { timeoutMs?: number; input?: string; extraEnv?: Record<string, string> }): Promise<CommandResult>;
   stream(file: string, args: readonly string[], options?: StreamOptions): Promise<StreamResult>;
   log(line: string): void;
+  sleep?(ms: number): Promise<void>;
 }
 
 export interface CreateSpec {
@@ -98,6 +101,11 @@ export function parseTailnet(name: string, json: string): ContainerTailnet | nul
 export async function hasSysbox(deps: DockerDeps): Promise<boolean> {
   const result = await deps.run("docker", ["info", "--format", "{{json .Runtimes}}"], { timeoutMs: TIMEOUTS.docker });
   return result.code === 0 && result.stdout.includes(`"${SYSBOX_RUNTIME}"`);
+}
+
+export async function activeContext(deps: DockerDeps): Promise<string | null> {
+  const result = await deps.run("docker", ["context", "show"], { timeoutMs: TIMEOUTS.docker });
+  return result.code === 0 ? result.stdout.trim() || null : null;
 }
 
 export async function imagePresent(deps: DockerDeps): Promise<boolean> {
@@ -185,8 +193,19 @@ export function createArgs(spec: CreateSpec): string[] {
   ];
 }
 
+export function systemdBusDown(result: CommandResult): boolean {
+  return BOOT_WAIT.busDown.test(`${result.stdout}\n${result.stderr}`);
+}
+
 async function waitForBoot(deps: DockerDeps, name: string): Promise<void> {
-  await deps.run("docker", ["exec", serverName(name), "systemctl", "is-system-running", "--wait"], { timeoutMs: TIMEOUTS.docker * 4 });
+  const sleep = deps.sleep ?? ((ms: number) => delay(ms));
+  const deadline = Date.now() + BOOT_WAIT.budgetMs;
+  for (let attempt = 1; ; attempt += 1) {
+    const timeoutMs = Math.max(deadline - Date.now(), TIMEOUTS.exec);
+    const result = await deps.run("docker", ["exec", serverName(name), "systemctl", "is-system-running", "--wait"], { timeoutMs });
+    if (!systemdBusDown(result) || attempt >= BOOT_WAIT.attempts || Date.now() >= deadline) return;
+    await sleep(BOOT_WAIT.pollMs);
+  }
 }
 
 export async function joinTailnet(deps: DockerDeps, name: string, tailnet: { authKey: string; tags: string }): Promise<void> {

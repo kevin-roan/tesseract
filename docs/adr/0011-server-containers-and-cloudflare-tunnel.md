@@ -58,7 +58,9 @@ routes, and only to server containers, never to the sandbox or the controller.
 - Services inside a server container must listen on `0.0.0.0` (or be Docker-published
   inside it) to be reachable through the tunnel. Tailnet access works for loopback-only
   services too, because netstack forwards to localhost.
-- Linux hosts only for now (Sysbox). Docker Desktop on macOS and Windows has no Sysbox.
+- Needs a Linux Docker host (Sysbox). Docker Desktop on macOS and Windows has no Sysbox.
+  On macOS, Tesseract runs its own Colima VM with Sysbox instead
+  ([ADR 0012](0012-macos-container-vm.md)). Windows is not supported.
 - A server container can reach the internet, and through the bridge gateway it can reach
   ports on the host. Host services that must stay private should not listen on `0.0.0.0`.
   The tailnet ACL should give `tag:tesseract-server` no outbound grants.

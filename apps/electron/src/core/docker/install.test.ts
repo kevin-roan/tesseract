@@ -203,6 +203,23 @@ describe("installDocker on Windows", () => {
     expect(elevated[1]).toContain("'install','--quiet','--accept-license','--backend=wsl-2','--always-run-service'");
   });
 
+  it("lists the options per platform", () => {
+    expect(installOptions("darwin")).toEqual(["colima", "desktop", "manual"]);
+    expect(installOptions("linux")).toEqual(["engine", "desktop-linux", "manual", "docker-group", "kvm-group"]);
+    expect(installOptions("win32")).toEqual(["desktop", "desktop-user", "wsl", "manual"]);
+    expect(installDocsKey("colima", "darwin")).toBeNull();
+  });
+
+  it("sets up the Tesseract VM on macOS without a license", async () => {
+    const { result } = await install({ option: "colima", acceptLicense: false }, {}, MAC);
+    expect(result).toMatchObject({ kind: "blocked", commands: [expect.stringContaining("Homebrew/install")] });
+  });
+
+  it("rejects the Tesseract VM on Linux", async () => {
+    const { result } = await install({ option: "colima", acceptLicense: false }, {});
+    expect(result).toMatchObject({ code: "invalid_argument" });
+  });
+
   it("maps the docs options", () => {
     expect(installOptions("win32")).toContain("desktop-user");
     expect(installDocsKey("manual", "win32")).toBe("docker_windows_docs");

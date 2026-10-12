@@ -15,9 +15,11 @@ import type {
 } from "../../shared/contracts/containers";
 import type { CheckItem } from "../../shared/contracts/common";
 import { IpcError } from "../../shared/ipc-types";
+import { setupVm, VM_CONTEXT } from "../vm";
 import { CloudflareApi, isManaged, type Fetch } from "./cloudflare";
-import { CONFIG_KEYS, DEFAULT_TAILNET_TAGS, SECRET_ENV, SERVER_IMAGE, SERVER_IMAGE_DIR, STATE_FILE, TUNNEL_TARGET_SUFFIX } from "./constants";
+import { CONFIG_KEYS, DARWIN_DEFAULT_MEMORY_MB, DEFAULT_TAILNET_TAGS, SECRET_ENV, SERVER_IMAGE, SERVER_IMAGE_DIR, STATE_FILE, TUNNEL_TARGET_SUFFIX } from "./constants";
 import {
+  activeContext,
   buildServerImage,
   containerLogs,
   createContainer,
@@ -48,6 +50,7 @@ export interface ContainersServiceOptions {
   cipher: TokenCipher | null;
   seal: boolean;
   fetch?: Fetch;
+  platform?: NodeJS.Platform;
   onContainers?(containers: ServerContainer[]): void;
   onRoutes?(routes: DomainRoute[]): void;
   onPhase?(phase: ContainersPhase): void;
@@ -75,6 +78,10 @@ export class ContainersService {
   private routeQueue: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly options: ContainersServiceOptions) {}
+
+  private get darwin(): boolean {
+    return (this.options.platform ?? process.platform) === "darwin";
+  }
 
   phase(): ContainersPhase {
     return this.phaseValue;
@@ -137,12 +144,19 @@ export class ContainersService {
       this.cloudflareStatus(),
     ]);
     const checks: CheckItem<ContainersActionKey>[] = [
-      { id: "sysbox", status: sysbox ? "ok" : "error", title: CHECK_LABELS.sysbox.title, detail: sysbox ? CHECK_LABELS.sysbox.ok : CHECK_LABELS.sysbox.missing, action: sysbox ? undefined : "install-sysbox" },
+      sysbox || !this.darwin
+        ? { id: "sysbox", status: sysbox ? "ok" : "error", title: CHECK_LABELS.sysbox.title, detail: sysbox ? CHECK_LABELS.sysbox.ok : CHECK_LABELS.sysbox.missing, action: sysbox ? undefined : "install-sysbox" }
+        : { id: "sysbox", status: "error", title: CHECK_LABELS.sysbox.title, detail: await this.vmDetail(), action: "setup-vm" },
       { id: "image", status: image ? "ok" : "warning", title: CHECK_LABELS.image.title, detail: image ? CHECK_LABELS.image.ok(SERVER_IMAGE) : CHECK_LABELS.image.missing, action: image ? undefined : "build-image" },
       { id: "tailscale", status: tailscaleKey ? "ok" : "warning", title: CHECK_LABELS.tailscale.title, detail: tailscaleKey ? CHECK_LABELS.tailscale.ok(tags) : CHECK_LABELS.tailscale.missing, action: "tailscale-key" },
       { id: "cloudflare", status: cloudflareStatus(cloudflare), title: CHECK_LABELS.cloudflare.title, detail: cloudflare.error ?? (!cloudflare.connected ? CHECK_LABELS.cloudflare.missing : cloudflare.zones.length ? CHECK_LABELS.cloudflare.ok(cloudflare.zones.length) : CHECK_LABELS.cloudflare.noZones), action: "cloudflare-token" },
     ];
     return { sysbox, image: image ? SERVER_IMAGE : null, tailscaleKey: Boolean(tailscaleKey), tailscaleTags: tags, cloudflare, checks };
+  }
+
+  private async vmDetail(): Promise<string> {
+    const context = await activeContext(this.options.docker);
+    return context && context !== VM_CONTEXT ? CHECK_LABELS.vm.otherContext(context, VM_CONTEXT) : CHECK_LABELS.vm.missing;
   }
 
   private async cloudflareStatus(): Promise<ContainersReport["cloudflare"]> {
@@ -175,11 +189,28 @@ export class ContainersService {
     return this.report();
   }
 
+  async setupVm(): Promise<ContainersReport> {
+    if (!this.darwin) throw new IpcError("unavailable", CONTAINERS_MESSAGES.vmOnlyMac);
+    const phase = await this.exclusive({ kind: "setting-up-vm", step: "" }, (signal) =>
+      setupVm({
+        resourcesDir: this.options.contextDir,
+        env: this.options.env,
+        signal,
+        onLog: (line) => {
+          this.options.docker.log(line);
+          if (line.trim()) this.setPhase({ kind: "setting-up-vm", step: line.trim() });
+        },
+      }),
+    );
+    if (phase.kind === "blocked") throw new IpcError("unavailable", CONTAINERS_MESSAGES.vmBlocked(phase.reason), phase.commands?.join("\n"));
+    return this.report();
+  }
+
   async create(request: CreateContainerRequest): Promise<ServerContainer> {
     const name = validName(request?.name);
     const cpus = validCpus(request.cpus);
-    const memoryMb = validMemory(request.memoryMb);
-    if (!(await hasSysbox(this.options.docker))) throw new IpcError("unavailable", CONTAINERS_MESSAGES.noSysbox);
+    const memoryMb = validMemory(request.memoryMb) ?? (this.darwin ? DARWIN_DEFAULT_MEMORY_MB : null);
+    if (!(await hasSysbox(this.options.docker))) throw new IpcError("unavailable", this.darwin ? CONTAINERS_MESSAGES.noVmSysbox : CONTAINERS_MESSAGES.noSysbox);
     if (!(await imagePresent(this.options.docker))) throw new IpcError("unavailable", CONTAINERS_MESSAGES.noImage);
     const authKey = await this.secret(TAILSCALE_KEYS);
     const tags = await this.tailnetTags();

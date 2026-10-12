@@ -1,13 +1,17 @@
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CommandResult } from "../process";
 import { CloudflareApi } from "./cloudflare";
-import { CATCH_ALL_SERVICE, MANAGED_COMMENT, SYSBOX_RUNTIME } from "./constants";
-import { containerState, createArgs, parseLabels, parseTailnet, tunnelArgs, type DockerDeps } from "./docker";
+import { CATCH_ALL_SERVICE, DARWIN_DEFAULT_MEMORY_MB, MANAGED_COMMENT, SYSBOX_RUNTIME } from "./constants";
+import { containerState, createArgs, joinTailnet, parseLabels, parseTailnet, tunnelArgs, type DockerDeps } from "./docker";
 import { ContainersService } from "./service";
 import { validHostname, validName, validPort, zoneFor } from "./validate";
+
+const vm = vi.hoisted(() => ({ setupVm: vi.fn() }));
+
+vi.mock("../vm", async (importOriginal) => ({ ...(await importOriginal<typeof import("../vm")>()), setupVm: vm.setupVm }));
 
 const ZONES = [
   { id: "z1", name: "example.com", accountId: "acc" },
@@ -192,5 +196,165 @@ describe("public routes", () => {
     await expect(instance.removeRoute(route.id)).resolves.toBeUndefined();
     expect(cloudflare.calls.some((call) => call.method === "DELETE" && /cfd_tunnel\/tun1$/.test(call.path))).toBe(true);
     expect(docker.runs.some((entry) => entry.args[0] === "rm" && entry.args.includes("tesseract-ct-api-tunnel"))).toBe(true);
+  });
+});
+
+describe("platform behaviour", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "tesseract-containers-"));
+    vm.setupVm.mockReset();
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  function service(platform: NodeJS.Platform, { sysbox = false, context = "desktop-linux" }: { sysbox?: boolean; context?: string } = {}) {
+    const runs: (readonly string[])[] = [];
+    const logs: string[] = [];
+    const phases: string[] = [];
+    let sysboxReady = sysbox;
+    const ok = (stdout = ""): CommandResult => ({ code: 0, stdout, stderr: "", timedOut: false });
+    const docker: DockerDeps = {
+      run: async (_file, args) => {
+        runs.push(args);
+        if (args[0] === "info") return ok(sysboxReady ? `{"runc":{},"${SYSBOX_RUNTIME}":{}}` : `{"runc":{}}`);
+        if (args[0] === "context") return ok(`${context}\n`);
+        if (args[0] === "container") return { code: 1, stdout: "", stderr: "no such container", timedOut: false };
+        if (args[0] === "network" && args[1] === "inspect") return { code: 1, stdout: "", stderr: "", timedOut: false };
+        if (args[0] === "ps") {
+          return ok(JSON.stringify({ ID: "c1", Names: "tesseract-ct-api", Image: "tesseract/server:1", State: "running", Status: "Up", CreatedAt: "now", Labels: "dev.tesseract.container=api,dev.tesseract.role=server" }));
+        }
+        if (args[0] === "inspect") return ok(JSON.stringify([{ Id: "c1", HostConfig: {} }]));
+        return ok();
+      },
+      stream: async () => ({ code: 0, cancelled: false, error: null }),
+      log: (line) => void logs.push(line),
+    };
+    const instance = new ContainersService({
+      docker,
+      configFile: join(dir, "config.json"),
+      stateFile: join(dir, "containers.json"),
+      contextDir: dir,
+      env: {},
+      cipher: null,
+      seal: false,
+      platform,
+      onPhase: (phase) => void phases.push(phase.kind),
+    });
+    return { instance, runs, logs, phases, installSysbox: () => (sysboxReady = true) };
+  }
+
+  const sysboxCheck = async (instance: ContainersService) => (await instance.report()).checks.find((check) => check.id === "sysbox")!;
+  const created = (runs: (readonly string[])[]) => runs.find((args) => args[0] === "create")!;
+
+  it("keeps the Linux sysbox check and asks for the install guide", async () => {
+    const { instance, runs } = service("linux");
+    expect(await sysboxCheck(instance)).toEqual({ id: "sysbox", status: "error", title: "Sysbox runtime", detail: "Install Sysbox to run server containers.", action: "install-sysbox" });
+    expect(runs.some((args) => args[0] === "context")).toBe(false);
+  });
+
+  it("points macOS at the Tesseract VM", async () => {
+    const check = await sysboxCheck(service("darwin", { context: "colima-tesseract" }).instance);
+    expect(check.action).toBe("setup-vm");
+    expect(check.detail).toMatch(/Tesseract VM/);
+    expect(check.detail).not.toMatch(/context/);
+  });
+
+  it("names the wrong Docker context on macOS", async () => {
+    const check = await sysboxCheck(service("darwin", { context: "desktop-linux" }).instance);
+    expect(check.action).toBe("setup-vm");
+    expect(check.detail).toMatch(/"desktop-linux" context, not colima-tesseract/);
+  });
+
+  it("reports sysbox as ready on both platforms", async () => {
+    for (const platform of ["linux", "darwin"] as const) {
+      const check = await sysboxCheck(service(platform, { sysbox: true }).instance);
+      expect(check).toMatchObject({ status: "ok", action: undefined });
+    }
+  });
+
+  it("caps new macOS containers at 1 GB unless memory is given", async () => {
+    const mac = service("darwin", { sysbox: true });
+    await mac.instance.create({ name: "api" });
+    expect(created(mac.runs)).toEqual(expect.arrayContaining(["--memory", `${DARWIN_DEFAULT_MEMORY_MB}m`]));
+    const sized = service("darwin", { sysbox: true });
+    await sized.instance.create({ name: "api", memoryMb: 2048 });
+    expect(created(sized.runs)).toEqual(expect.arrayContaining(["--memory", "2048m"]));
+  });
+
+  it("leaves Linux containers without a memory limit by default", async () => {
+    const { instance, runs } = service("linux", { sysbox: true });
+    await instance.create({ name: "api" });
+    expect(created(runs)).not.toContain("--memory");
+  });
+
+  it("sets up the VM with the sandbox resources and refreshes the report", async () => {
+    const { instance, logs, phases, installSysbox } = service("darwin", { context: "colima-tesseract" });
+    vm.setupVm.mockImplementation(async (options: { resourcesDir: string; onLog?(line: string): void }) => {
+      expect(options.resourcesDir).toBe(dir);
+      options.onLog?.("colima start tesseract");
+      installSysbox();
+      return { kind: "ready" };
+    });
+    const report = await instance.setupVm();
+    expect(report.sysbox).toBe(true);
+    expect(logs).toEqual(["colima start tesseract"]);
+    expect(phases).toEqual(["setting-up-vm", "setting-up-vm", "idle"]);
+    expect(instance.phase()).toEqual({ kind: "idle" });
+  });
+
+  it("surfaces a blocked VM setup", async () => {
+    const { instance } = service("darwin");
+    vm.setupVm.mockResolvedValue({ kind: "blocked", reason: "Homebrew is missing", commands: ["install brew"] });
+    await expect(instance.setupVm()).rejects.toThrow(/Homebrew is missing/);
+  });
+
+  it("refuses VM setup off macOS", async () => {
+    await expect(service("linux").instance.setupVm()).rejects.toThrow(/only needed on macOS/);
+    expect(vm.setupVm).not.toHaveBeenCalled();
+  });
+});
+
+describe("waiting for systemd before joining the tailnet", () => {
+  const BUS_DOWN: CommandResult = { code: 1, stdout: "", stderr: "Failed to connect to system scope bus via local transport: No such file or directory", timedOut: false };
+
+  function boot(replies: CommandResult[]) {
+    const runs: (readonly string[])[] = [];
+    const sleeps: number[] = [];
+    const deps: DockerDeps = {
+      run: async (_file, args) => {
+        runs.push(args);
+        if (args.includes("is-system-running")) return replies.shift() ?? { code: 0, stdout: "running\n", stderr: "", timedOut: false };
+        return { code: 0, stdout: "", stderr: "", timedOut: false };
+      },
+      stream: async () => ({ code: 0, cancelled: false, error: null }),
+      log: () => undefined,
+      sleep: async (ms) => void sleeps.push(ms),
+    };
+    const waits = () => runs.filter((args) => args.includes("is-system-running")).length;
+    return { deps, runs, sleeps, waits };
+  }
+
+  it("retries while the system bus is not up yet", async () => {
+    const { deps, runs, sleeps, waits } = boot([BUS_DOWN, BUS_DOWN, { code: 0, stdout: "running\n", stderr: "", timedOut: false }]);
+    await joinTailnet(deps, "api", { authKey: "k", tags: "tag:x" });
+    expect(waits()).toBe(3);
+    expect(sleeps).toEqual([2000, 2000]);
+    expect(runs.findIndex((args) => args.includes("-i"))).toBeGreaterThan(runs.findLastIndex((args) => args.includes("is-system-running")));
+  });
+
+  it("accepts a degraded system and other results without retrying", async () => {
+    const degraded = boot([{ code: 1, stdout: "degraded\n", stderr: "", timedOut: false }]);
+    await joinTailnet(degraded.deps, "api", { authKey: "k", tags: "tag:x" });
+    expect(degraded.waits()).toBe(1);
+    expect(degraded.sleeps).toEqual([]);
+    const running = boot([]);
+    await joinTailnet(running.deps, "api", { authKey: "k", tags: "tag:x" });
+    expect(running.waits()).toBe(1);
+  });
+
+  it("gives up after the boot budget", async () => {
+    const { deps, waits } = boot(Array.from({ length: 200 }, () => BUS_DOWN));
+    await joinTailnet(deps, "api", { authKey: "k", tags: "tag:x" });
+    expect(waits()).toBe(60);
   });
 });

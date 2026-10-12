@@ -92,7 +92,14 @@ describe("install", () => {
   it("offers the platform options", () => {
     expect(installChoices("linux", null).map((choice) => choice.option)).toEqual(["engine", "desktop-linux", "manual"]);
     expect(installChoices("win32", null).map((choice) => choice.option)).toEqual(["desktop", "desktop-user", "manual"]);
-    expect(installChoices("darwin", null)[0]?.title).toBe("Docker Desktop (recommended)");
+    expect(installChoices("win32", null)[0]?.title).toBe("Docker Desktop (recommended)");
+  });
+
+  it("recommends the Tesseract VM first on macOS", () => {
+    const choices = installChoices("darwin", null);
+    expect(choices.map((choice) => choice.option)).toEqual(["colima", "desktop", "manual"]);
+    expect(choices[0]?.title).toBe("Tesseract VM (recommended)");
+    expect(choices[1]?.title).toBe("Docker Desktop");
   });
 
   it("names the distro in the engine subtitle", () => {
@@ -103,6 +110,7 @@ describe("install", () => {
   it("requires the license for Docker Desktop only", () => {
     expect(needsLicense("desktop")).toBe(true);
     expect(needsLicense("engine")).toBe(false);
+    expect(needsLicense("colima")).toBe(false);
   });
 
   it("describes download progress", () => {

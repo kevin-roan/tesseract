@@ -12,6 +12,7 @@ import sync from "./commands/sync";
 import { geminiKeyFlag } from "./commands/gemini";
 import { SYNC_FLAG_COMMANDS } from "./commands/sync-flags";
 import version, { versionFlag } from "./commands/version";
+import vm from "./commands/vm";
 import type { CliCommand } from "./types";
 
 export const COMMANDS: readonly CliCommand[] = [
@@ -21,6 +22,7 @@ export const COMMANDS: readonly CliCommand[] = [
   sandbox,
   server,
   containers,
+  vm,
   domains,
   android,
   pair,

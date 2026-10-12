@@ -108,6 +108,7 @@ export default defineService("containers", {
   remove: (_context, name) => containersService().remove(name),
   logs: (_context, name) => containersService().logs(name),
   buildImage: () => containersService().buildImage(),
+  setupVm: () => containersService().setupVm(),
   cancel: () => containersService().cancel(),
   phase: () => containersService().phase(),
   setTailscaleKey: (_context, request) => containersService().setTailscaleKey(request),

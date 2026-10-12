@@ -1,5 +1,6 @@
 import type { DockerDaemon, DockerKind } from "../../shared/contracts/docker";
 import {
+  COLIMA_CONTEXT_PREFIX,
   DAEMON_PERMISSION_MARKERS,
   DAEMON_SOCKET_MARKER,
   GIB,
@@ -195,9 +196,14 @@ export function isSupportedWindowsBuild(build: number): boolean {
   return build >= WIN11_FIRST_BUILD ? build >= MIN_WIN11_BUILD : build >= MIN_WIN10_BUILD;
 }
 
-export function kindFromContext(context: string | null): DockerKind | null {
+export function kindFromContext(context: string | null, platform: NodeJS.Platform): DockerKind | null {
   if (!context) return null;
+  if (platform === "darwin" && colimaProfile(context)) return "colima";
   return (KNOWN_CONTEXT_KINDS as Record<string, DockerKind>)[context] ?? null;
+}
+
+export function colimaProfile(context: string | null): string | null {
+  return context?.startsWith(COLIMA_CONTEXT_PREFIX) ? context.slice(COLIMA_CONTEXT_PREFIX.length) || null : null;
 }
 
 export function parseGroups(stdout: string): string[] {

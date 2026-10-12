@@ -14,6 +14,8 @@ export interface FakeSystemOptions {
 
 export interface FakeSystem extends DockerSystem {
   calls: string[];
+  files: Record<string, string>;
+  written: string[];
   launched: string[];
   clock: { now: number };
   set(command: string, reply: FakeReply): void;
@@ -30,6 +32,8 @@ function result(reply: Partial<CommandResult>): CommandResult {
 export function fakeSystem(options: FakeSystemOptions = {}): FakeSystem {
   const commands: Record<string, FakeReply> = { ...options.commands };
   const calls: string[] = [];
+  const files: Record<string, string> = { ...options.files };
+  const written: string[] = [];
   const launched: string[] = [];
   const clock = { now: 1_000_000 };
   const lookup = (file: string, args: readonly string[]): CommandResult => {
@@ -45,6 +49,8 @@ export function fakeSystem(options: FakeSystemOptions = {}): FakeSystem {
   };
   return {
     calls,
+    files,
+    written,
     launched,
     clock,
     set: (command, reply) => {
@@ -60,8 +66,12 @@ export function fakeSystem(options: FakeSystemOptions = {}): FakeSystem {
       launched.push([basename(file), ...args].join(" "));
     },
     which: (name) => options.binaries?.[name] ?? null,
-    exists: (path) => (options.paths ?? []).includes(path) || path in (options.files ?? {}),
-    readText: async (path) => options.files?.[path] ?? null,
+    exists: (path) => (options.paths ?? []).includes(path) || path in files,
+    readText: async (path) => files[path] ?? null,
+    writeText: async (path, text) => {
+      files[path] = text;
+      written.push(path);
+    },
     socketGid: () => options.socketGid ?? null,
     fetch: options.fetch ?? (async () => new Response("", { status: 404 })),
     sleep: async (ms) => {

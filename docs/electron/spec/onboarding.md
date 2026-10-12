@@ -415,7 +415,7 @@ a `LogDisclosure` and footer actions. Before any `--accept-license` install, a c
 `I accept the Docker Subscription Service Agreement` with a link `Read the agreement` (`docker_ssa`). The primary
 `Install` stays disabled until it is ticked.
 
-**macOS** (options: `Docker Desktop (recommended)`; `I'll install it myself` → opens `docker_mac_docs`):
+**macOS** (options: `Tesseract VM (recommended)` = option `colima`, runs `setupVm` (Homebrew, Colima profile `tesseract` with Sysbox, ADR 0012), no licence; `Docker Desktop` (subtitle `Can't run server containers on macOS`); `I'll install it myself` → opens `docker_mac_docs`). Docker Desktop:
 1. URL: arm64 hosts (including translated ones) → `https://desktop.docker.com/mac/main/arm64/Docker.dmg`; Intel →
    `https://desktop.docker.com/mac/main/amd64/Docker.dmg`. Checksums: same dir + `checksums.txt`; line format
    `<sha256> *Docker.dmg` (verified). Download to `<userData>/downloads/Docker.dmg.part` with HTTP Range resume,
@@ -484,7 +484,7 @@ Footer primary `Quit Tesseract`. **Needs-reboot** panel: same layout, title `Res
 | Host | Command |
 |---|---|
 | macOS Docker Desktop | `open -a Docker` (or `open -b com.docker.docker`) |
-| macOS Colima / OrbStack | `colima start` / `orb start` |
+| macOS Colima / OrbStack | `colima start` (`colima start <profile>` for a `colima-<profile>` context) / `orb start` |
 | Windows | spawn `Docker Desktop.exe` detached (`windowsHide`), or `docker desktop start` when `docker desktop version` works |
 | Linux engine | `pkexec systemctl start docker.service` (a ticked `Start Docker when this computer starts` row adds `enable --now`) |
 | Linux rootless | `systemctl --user start docker.service` |

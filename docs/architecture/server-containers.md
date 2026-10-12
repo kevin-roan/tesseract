@@ -16,6 +16,14 @@ Docker │  systemd, dockerd,    │◄── http://tesseract-ct-api:3000 ─�
        └───────────────────────┘
 ```
 
+On macOS, "host Docker" is the Tesseract-managed Colima VM (profile `tesseract`, context
+`colima-tesseract`, [ADR 0012](../adr/0012-macos-container-vm.md)). Sysbox is installed in
+the VM, and the sandbox stack runs on the same daemon. The VM is the host boundary there:
+it mounts the user's home for the sandbox's compose bind mounts, but server containers
+still get no bind mounts and run under `sysbox-runc`, so they cannot see it. When Sysbox is
+missing, the containers check offers `setup-vm` instead of `install-sysbox`. New server
+containers default to 1024 MB of memory, since the VM has 5 GiB in total.
+
 ## Names
 
 | Thing | Value |
@@ -35,7 +43,8 @@ Docker │  systemd, dockerd,    │◄── http://tesseract-ct-api:3000 ─�
 
 - **Create:** the app checks Sysbox and the image, then creates the network and volume
   and runs `docker create --runtime sysbox-runc --restart unless-stopped …`. No `-p`, no
-  bind mounts. It starts the container and waits for `systemctl is-system-running --wait`.
+  bind mounts. It starts the container and waits for `systemctl is-system-running --wait`,
+  retrying every 2 s (up to 2 minutes) while systemd's bus is not up yet.
   If a Tailscale key is saved, it writes the key and the tags into `/etc/tesseract`
   through `docker exec -i` and starts `tesseract-tailnet.service`.
 - **Start, stop, restart:** the server and its tunnel connector start and stop together.

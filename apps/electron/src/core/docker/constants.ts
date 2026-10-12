@@ -58,6 +58,7 @@ export const KNOWN_CONTEXT_KINDS = {
   colima: "colima",
   orbstack: "orbstack",
 } as const;
+export const COLIMA_CONTEXT_PREFIX = "colima-";
 
 export const REQUIRED_CHECKS = ["cli", "daemon", "compose", "buildx", "resources", "podman"] as const;
 export const REQUIRED_WINDOWS_CHECKS = ["wsl"] as const;

@@ -39,7 +39,7 @@ export const LICENSED_OPTIONS: readonly DockerInstallOption[] = ["desktop", "des
 export const BROWSER_OPTIONS: readonly DockerInstallOption[] = ["desktop-linux", "manual"];
 
 export const PLATFORM_INSTALL_OPTIONS: Record<Platform, readonly DockerInstallOption[]> = {
-  darwin: ["desktop", "manual"],
+  darwin: ["colima", "desktop", "manual"],
   win32: ["desktop", "desktop-user", "manual"],
   linux: ["engine", "desktop-linux", "manual"],
 };

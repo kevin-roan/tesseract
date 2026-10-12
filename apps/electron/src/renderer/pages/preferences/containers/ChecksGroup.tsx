@@ -21,9 +21,9 @@ export function ChecksGroup() {
         )
       }
       actions={
-        checks.build.building ? (
+        checks.active ? (
           <SettingsActions>
-            <ActionButton size="dialog" label={L.cancelBuild} busy={checks.build.cancelling} disabled={checks.build.cancelling} onClick={checks.build.cancel} />
+            <ActionButton size="dialog" label={L.cancel[checks.active.action]} busy={checks.active.cancelling} disabled={checks.active.cancelling} onClick={checks.active.cancel} />
           </SettingsActions>
         ) : null
       }
@@ -35,7 +35,7 @@ export function ChecksGroup() {
           title={row.title}
           subtitle={row.subtitle}
           status={row.status}
-          action={row.action ? { label: L.actions[row.action], primary: row.action === "build-image", onClick: () => checks.run(row.action!) } : null}
+          action={row.action ? { label: L.actions[row.action], primary: row.primary, onClick: () => checks.run(row.action!) } : null}
         />
       ))}
     </SettingsGroup>

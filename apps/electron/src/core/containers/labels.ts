@@ -5,6 +5,9 @@ export const CONTAINERS_MESSAGES = {
   exists: (name: string) => `A container named "${name}" already exists.`,
   notFound: (name: string) => `No container named "${name}".`,
   noSysbox: "Sysbox is not installed. Server containers need the sysbox-runc runtime so they can run systemd and Docker without --privileged.",
+  noVmSysbox: "Sysbox isn't available. On macOS server containers run in the Tesseract VM; set it up first.",
+  vmOnlyMac: "The Tesseract VM is only needed on macOS.",
+  vmBlocked: (reason: string) => `The Tesseract VM isn't ready: ${reason}`,
   noImage: "The server image hasn't been built yet.",
   invalidCpus: "CPUs must be between 0.5 and 64.",
   invalidMemory: "Memory must be between 256 MB and 256 GB.",
@@ -31,6 +34,11 @@ export const CONTAINERS_MESSAGES = {
 
 export const CHECK_LABELS = {
   sysbox: { title: "Sysbox runtime", ok: "sysbox-runc is registered with Docker.", missing: "Install Sysbox to run server containers." },
+  vm: {
+    missing: "Server containers run in the Tesseract VM (Colima with Sysbox). Set it up once; Docker Desktop must not be running.",
+    otherContext: (active: string, expected: string) =>
+      `Docker is using the "${active}" context, not ${expected}. Server containers run in the Tesseract VM; set it up or start it.`,
+  },
   image: { title: "Server image", ok: (image: string) => `${image} is available.`, missing: "Build the server image once." },
   tailscale: { title: "Tailscale auth key", ok: (tags: string) => `New containers join the tailnet as ${tags}.`, missing: "Add a tagged, pre-approved auth key so containers can join the tailnet." },
   cloudflare: { title: "Cloudflare", ok: (count: number) => `${count} zone${count === 1 ? "" : "s"} available for public URLs.`, missing: "Connect a Cloudflare API token to publish URLs.", noZones: "The token works but sees no active domain. Add your domain to Cloudflare, or give the token your account and zone under Account/Zone Resources." },

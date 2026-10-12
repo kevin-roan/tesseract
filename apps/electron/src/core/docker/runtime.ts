@@ -18,6 +18,7 @@ export interface DockerRunOptions extends DockerCallbacks {
   system?: Partial<DockerSystem>;
   host?: Partial<DockerHost>;
   downloadsDir?: string;
+  resourcesDir?: string;
 }
 
 export interface DockerRuntime {
@@ -26,6 +27,7 @@ export interface DockerRuntime {
   system: DockerSystem;
   host: DockerHost;
   downloadsDir: string;
+  resourcesDir: string;
   log(line: string): void;
   phase(phase: DockerPhase): void;
   report(report: DockerReport): void;
@@ -39,6 +41,7 @@ export function createRuntime(options: DockerRunOptions = {}): DockerRuntime {
     system: { ...defaultSystem, ...options.system },
     host,
     downloadsDir: options.downloadsDir ?? downloadsDir(currentPathEnvironment()),
+    resourcesDir: options.resourcesDir ?? "",
     log: (line) => options.onLog?.(line),
     phase: (phase) => options.onPhase?.(phase),
     report: (report) => options.onReport?.(report),

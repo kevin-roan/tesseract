@@ -183,7 +183,7 @@ function resolveKind(
   if (cli.podman || daemon.server?.podman || info?.podman) return "podman";
   if (info?.desktop) return "desktop";
   if (info?.rootless) return "rootless";
-  const fromContext = kindFromContext(daemon.context);
+  const fromContext = kindFromContext(daemon.context, runtime.host.platform);
   if (fromContext) return fromContext;
   if (runtime.host.platform === "linux") return "engine";
   return desktopInstalled ? "desktop" : "unknown";

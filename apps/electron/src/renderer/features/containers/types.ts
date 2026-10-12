@@ -1,6 +1,8 @@
 export type ContainerAction = "start" | "stop" | "restart";
 
-export type CreateBlocker = "sysbox" | "image";
+export type CreateBlocker = "sysbox" | "vm" | "image";
+
+export type ContainersTaskPhase = "building" | "setting-up-vm";
 
 export type ContainerShellStatus =
   | { kind: "idle" }

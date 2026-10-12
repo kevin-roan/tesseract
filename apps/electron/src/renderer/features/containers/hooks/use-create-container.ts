@@ -10,6 +10,7 @@ import { createBlocker, createErrors, parseOptionalNumber, toMemoryMb, upsertCon
 import { useBuildImage } from "./use-build-image";
 import { useContainersPhase } from "./use-containers-phase";
 import { useContainersReport } from "./use-containers-report";
+import { useSetupVm } from "./use-setup-vm";
 
 const EMPTY: CreateValues = { name: "", cpus: "", memory: "" };
 const DEFAULT_UNIT: MemoryUnit = "gb";
@@ -22,6 +23,7 @@ export function useCreateContainer(onCreated: (container: ServerContainer) => vo
   const { report } = useContainersReport();
   const phase = useContainersPhase();
   const build = useBuildImage();
+  const vm = useSetupVm();
   const blocker = createBlocker(report);
   const creating = phase.kind === "creating" ? phase.name : null;
   const { reset: resetFields, fail, values } = fields;
@@ -64,6 +66,7 @@ export function useCreateContainer(onCreated: (container: ServerContainer) => vo
     blocker,
     tailscaleMissing: report !== null && !report.tailscaleKey,
     build,
+    vm,
     submit,
     reset,
   };

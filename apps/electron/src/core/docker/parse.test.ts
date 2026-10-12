@@ -6,6 +6,7 @@ import {
   decodeWslOutput,
   formatGb,
   isSupportedWindowsBuild,
+  colimaProfile,
   kindFromContext,
   parseBuildxVersion,
   parseChecksums,
@@ -97,10 +98,20 @@ describe("docker version / info", () => {
   });
 
   it("maps contexts to engine kinds", () => {
-    expect(kindFromContext("desktop-linux")).toBe("desktop");
-    expect(kindFromContext("colima")).toBe("colima");
-    expect(kindFromContext("orbstack")).toBe("orbstack");
-    expect(kindFromContext("default")).toBeNull();
+    expect(kindFromContext("desktop-linux", "linux")).toBe("desktop");
+    expect(kindFromContext("colima", "linux")).toBe("colima");
+    expect(kindFromContext("orbstack", "darwin")).toBe("orbstack");
+    expect(kindFromContext("default", "linux")).toBeNull();
+    expect(kindFromContext("colima-tesseract", "darwin")).toBe("colima");
+    expect(kindFromContext("colima-", "darwin")).toBeNull();
+    expect(kindFromContext("colima-tesseract", "linux")).toBeNull();
+  });
+
+  it("reads the colima profile from the context", () => {
+    expect(colimaProfile("colima-tesseract")).toBe("tesseract");
+    expect(colimaProfile("colima")).toBeNull();
+    expect(colimaProfile("desktop-linux")).toBeNull();
+    expect(colimaProfile(null)).toBeNull();
   });
 });
 

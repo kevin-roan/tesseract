@@ -206,6 +206,13 @@ kernel patched. Seccomp and AppArmor defaults from Docker stay enabled: never
 set `seccomp=unconfined` for the sandbox. The sandbox cannot use
 `no-new-privileges`, because sudo needs setuid. The Tailscale sidecar does use it.
 
+On macOS the Docker host is a VM: Docker Desktop's, or the Tesseract-managed Colima VM
+`tesseract` ([ADR 0012](../adr/0012-macos-container-vm.md)). The VM is the host boundary
+there. A container escape lands in the VM, which mounts the user's home (`~`, writable) so
+compose bind mounts such as `~/.claude` work, so treat it as reaching the user's files.
+Server containers have no bind mounts and run under Sysbox (user namespaces) in that VM;
+there is no privileged fallback.
+
 ### Tailscale LocalAPI (opt-in)
 
 `--tailscale-api` (`TESSERACT_TAILSCALE_LOCALAPI=1`) mounts a tailscaled LocalAPI socket into
