@@ -33,7 +33,7 @@
     },
     "apps/electron": {
       "name": "@tesseract/electron",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "devDependencies": {
         "@electron/notarize": "^2.5.0",
         "@novnc/novnc": "^1.7.0",
