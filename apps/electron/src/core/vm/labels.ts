@@ -16,6 +16,7 @@ export const VM_MESSAGES = {
 } as const;
 
 export const VM_LOG_MESSAGES = {
+  contextMissing: (context: string) => `Docker context ${context} is missing; creating it`,
   brewMissing: "Homebrew isn't installed",
   installingTools: (formulas: readonly string[]) => `Installing ${formulas.join(", ")} with Homebrew`,
   toolsPresent: "Colima and the Docker tools are installed",

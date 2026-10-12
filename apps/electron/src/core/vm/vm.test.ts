@@ -70,6 +70,7 @@ describe("setupVm", () => {
         "colima list --json": { code: 0, stdout: "" },
         "colima start tesseract": { code: 0, stdout: "INFO[0001] starting colima [profile=tesseract]" },
         "docker context use colima-tesseract": { code: 0 },
+        "docker context inspect": { code: 0 },
         "docker --context colima-tesseract info": () => {
           infos += 1;
           return { stdout: infos > 2 ? RUNTIMES_SYSBOX : RUNTIMES_PLAIN };
@@ -87,6 +88,7 @@ describe("setupVm", () => {
       "brew install colima docker docker-compose docker-buildx",
       "colima list --json",
       "colima start tesseract",
+      "docker context inspect colima-tesseract",
       "docker context use colima-tesseract",
     ]);
     expect(infos).toBe(3);
@@ -102,6 +104,7 @@ describe("setupVm", () => {
         "colima list --json": { stdout: LIST_RUNNING },
         "colima start tesseract": { code: 0 },
         "docker context use": { code: 0 },
+        "docker context inspect": { code: 0 },
         "docker --context colima-tesseract info": { stdout: RUNTIMES_SYSBOX },
         [SERVICES]: SERVICES_ACTIVE,
         "pgrep -x Docker Desktop": { code: 0, stdout: "123" },
@@ -126,6 +129,7 @@ describe("setupVm", () => {
           return { code: 0 };
         },
         "docker context use": { code: 0 },
+        "docker context inspect": { code: 0 },
         "docker --context colima-tesseract info": () => ({ stdout: started ? RUNTIMES_SYSBOX : RUNTIMES_PLAIN }),
         [SERVICES]: SERVICES_ACTIVE,
         pgrep: { code: 1 },
@@ -143,6 +147,7 @@ describe("setupVm", () => {
         "colima list --json": { stdout: "" },
         "colima start tesseract": { code: 0 },
         "docker context use": { code: 0 },
+        "docker context inspect": { code: 0 },
         "docker --context colima-tesseract info": { stdout: RUNTIMES_SYSBOX },
         [SERVICES]: () => (provisioned ? SERVICES_ACTIVE : SERVICES_INACTIVE),
         [PROVISION]: () => {
@@ -171,6 +176,7 @@ describe("setupVm", () => {
         "colima list --json": { stdout: "" },
         "colima start tesseract": { code: 0 },
         "docker context use": { code: 0 },
+        "docker context inspect": { code: 0 },
         "docker --context colima-tesseract info": { stdout: RUNTIMES_SYSBOX },
         [SERVICES]: SERVICES_INACTIVE,
         [PROVISION]: { code: 0 },
@@ -194,6 +200,7 @@ describe("setupVm", () => {
         "colima list --json": { stdout: "" },
         "colima start tesseract": { code: 0 },
         "docker context use": { code: 0 },
+        "docker context inspect": { code: 0 },
         "docker --context colima-tesseract info": { stdout: RUNTIMES_PLAIN },
         [PROVISION]: { code: 1, stderr: "tesseract: can't resolve downloads.nestybox.com\ntime=\"2026-10-12T10:00:00Z\" level=fatal msg=\"exit status 1\"" },
         pgrep: { code: 1 },
@@ -210,6 +217,7 @@ describe("setupVm", () => {
         "colima stop -f tesseract": { code: 0 },
         "colima start tesseract": { code: 0 },
         "docker context use": { code: 0 },
+        "docker context inspect": { code: 0 },
         "docker --context colima-tesseract info": { stdout: RUNTIMES_SYSBOX },
         [SERVICES]: SERVICES_ACTIVE,
         pgrep: { code: 1 },
@@ -229,6 +237,7 @@ describe("setupVm", () => {
         "colima list --json": { stdout: LIST_RUNNING },
         "colima start tesseract": { code: 0 },
         "docker context use": { code: 0 },
+        "docker context inspect": { code: 0 },
         "docker --context colima-tesseract info": { stdout: RUNTIMES_SYSBOX },
         [SERVICES]: () => (provisioned ? SERVICES_ACTIVE : SERVICES_INACTIVE),
         [PROVISION]: () => {
@@ -251,6 +260,7 @@ describe("setupVm", () => {
         "colima list --json": { stdout: LIST_RUNNING },
         "colima start tesseract": { code: 0 },
         "docker context use": { code: 0 },
+        "docker context inspect": { code: 0 },
         "docker --context colima-tesseract info": { stdout: RUNTIMES_SYSBOX },
         [SERVICES]: SERVICES_ACTIVE,
         pgrep: { code: 1 },
@@ -262,6 +272,30 @@ describe("setupVm", () => {
     expect(logs).toContain(`${CONFIG} is up to date`);
   });
 
+  it("recreates a missing docker context for a running VM instead of restarting it", async () => {
+    let contextExists = false;
+    const system = macSystem({
+      commands: {
+        "colima list --json": { stdout: LIST_RUNNING },
+        "colima start tesseract": { code: 0 },
+        "docker context inspect": () => ({ code: contextExists ? 0 : 1 }),
+        "docker context create": () => {
+          contextExists = true;
+          return { code: 0 };
+        },
+        "docker context use": { code: 0 },
+        "docker --context colima-tesseract info": () => ({ code: contextExists ? 0 : 1, stdout: contextExists ? RUNTIMES_SYSBOX : "" }),
+        [SERVICES]: SERVICES_ACTIVE,
+        pgrep: { code: 1 },
+      },
+    });
+    const { result, logs } = await setup(system);
+    expect(result).toEqual({ kind: "ready" });
+    expect(system.calls).toContain("docker context create colima-tesseract --docker host=unix:///Users/dev/.colima/tesseract/docker.sock");
+    expect(system.calls.some((call) => call.startsWith("colima stop"))).toBe(false);
+    expect(logs).toContain("Docker context colima-tesseract is missing; creating it");
+  });
+
   it("rewrites a managed config whose settings changed", async () => {
     const old = colimaRewrite(colimaConfig({ arch: "aarch64", size: resolveSize({ cpus: 2 }), home: "/Users/dev", resourcesDir: RESOURCES }));
     const system = macSystem({
@@ -270,6 +304,7 @@ describe("setupVm", () => {
         "colima list --json": { stdout: "" },
         "colima start tesseract": { code: 0 },
         "docker context use": { code: 0 },
+        "docker context inspect": { code: 0 },
         "docker --context colima-tesseract info": { stdout: RUNTIMES_SYSBOX },
         [SERVICES]: SERVICES_ACTIVE,
         pgrep: { code: 1 },
@@ -316,6 +351,7 @@ describe("startVm and stopVm", () => {
         "colima start tesseract": { code: 0 },
         "colima stop tesseract": { code: 0 },
         "docker context use": { code: 0 },
+        "docker context inspect": { code: 0 },
         "docker --context colima-tesseract info": { stdout: RUNTIMES_SYSBOX },
         [SERVICES]: SERVICES_ACTIVE,
         pgrep: { code: 1 },

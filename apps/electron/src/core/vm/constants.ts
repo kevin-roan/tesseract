@@ -14,6 +14,7 @@ export const VM_DEFAULT_SIZE: VmSize = { cpus: 6, memoryGb: 5, diskGb: 120 };
 
 export const COLIMA_DIR = ".colima";
 export const COLIMA_CONFIG_FILE = "colima.yaml";
+export const COLIMA_SOCKET_FILE = "docker.sock";
 export const COLIMA_HOME_ENV = "COLIMA_HOME";
 export const DOCKER_CONFIG_ENV = "DOCKER_CONFIG";
 export const DOCKER_CONFIG_DIR = ".docker";

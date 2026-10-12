@@ -8,7 +8,7 @@ import { LOG_MESSAGES } from "../docker/labels";
 import { applyPathFix } from "../docker/path-fix";
 import { createRuntime, describeCommand, isCancelled, runLogged, runQuiet, streamLogged, throwIfAborted, type DockerRuntime } from "../docker/runtime";
 import type { DockerHost, DockerSystem } from "../docker/system";
-import { colimaConfig, colimaConfigPath, configSize, isManagedConfig, resolveSize, sameManagedConfig, vmArch } from "./config";
+import { colimaConfig, colimaConfigPath, colimaHome, configSize, isManagedConfig, resolveSize, sameManagedConfig, vmArch } from "./config";
 import { sysboxProvisionScript } from "./provision";
 import {
   BREW_CANDIDATES,
@@ -18,6 +18,7 @@ import {
   CLI_PLUGINS_DIR,
   CLI_PLUGINS_KEY,
   COLIMA_LOG_LINE,
+  COLIMA_SOCKET_FILE,
   COLIMA_SSH,
   COLIMA_STATUS,
   DOCKER_CONFIG_DIR,
@@ -342,6 +343,14 @@ async function ensureSysbox(runtime: DockerRuntime, colima: string, docker: stri
   return { kind: "ready" };
 }
 
+async function ensureContext(runtime: DockerRuntime, docker: string): Promise<CommandResult | null> {
+  if ((await runQuiet(runtime, docker, ["context", "inspect", VM_CONTEXT])).code === 0) return null;
+  runtime.log(VM_LOG_MESSAGES.contextMissing(VM_CONTEXT));
+  const socket = posix.join(colimaHome(runtime.env, runtime.host.home), VM_PROFILE, COLIMA_SOCKET_FILE);
+  const created = await runLogged(runtime, docker, ["context", "create", VM_CONTEXT, "--docker", `host=unix://${socket}`]);
+  return created.code === 0 ? null : created;
+}
+
 async function bootVm(runtime: DockerRuntime, colima: string, docker: string): Promise<DockerPhase> {
   if (await dockerDesktopRunning(runtime)) runtime.log(VM_LOG_MESSAGES.dockerDesktopRunning);
   const instance = await readInstance(runtime, colima);
@@ -349,16 +358,22 @@ async function bootVm(runtime: DockerRuntime, colima: string, docker: string): P
     runtime.log(VM_LOG_MESSAGES.broken);
     const failed = await stopInstance(runtime, colima, ["stop", "-f", VM_PROFILE]);
     if (failed) return failed;
-  } else if (instance?.status === COLIMA_STATUS.running && !(await hasSysboxRuntime(runtime, docker))) {
-    runtime.log(VM_LOG_MESSAGES.restarting);
-    const failed = await stopInstance(runtime, colima, ["stop", VM_PROFILE]);
-    if (failed) return failed;
+  } else if (instance?.status === COLIMA_STATUS.running) {
+    const created = await ensureContext(runtime, docker);
+    if (created) return failedRun("docker", ["context", "create", VM_CONTEXT], created, VM_MESSAGES.contextFailed);
+    if (!(await hasSysboxRuntime(runtime, docker))) {
+      runtime.log(VM_LOG_MESSAGES.restarting);
+      const failed = await stopInstance(runtime, colima, ["stop", VM_PROFILE]);
+      if (failed) return failed;
+    }
   }
   runtime.phase({ kind: "starting", since: runtime.system.now() });
   const startArgs = ["start", VM_PROFILE];
   const start = await streamLogged(runtime, colima, startArgs, VM_START_TIMEOUT_MS);
   throwIfAborted(runtime, VM_MESSAGES.cancelled);
   if (start.code !== 0) return failedRun("colima", startArgs, start, VM_MESSAGES.startFailed, [VM_COMMANDS.start]);
+  const created = await ensureContext(runtime, docker);
+  if (created) return failedRun("docker", ["context", "create", VM_CONTEXT], created, VM_MESSAGES.contextFailed);
   const contextArgs = ["context", "use", VM_CONTEXT];
   const context = await runLogged(runtime, docker, contextArgs);
   if (context.code !== 0) return failedRun("docker", contextArgs, context, VM_MESSAGES.contextFailed);

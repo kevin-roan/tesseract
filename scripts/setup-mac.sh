@@ -340,8 +340,18 @@ if [ "$status" = "Running" ] && [ "$changed" = 1 ]; then
   colima stop "$PROFILE"
   status="Stopped"
 fi
+socket="${COLIMA_DIR}/${PROFILE}/docker.sock"
+if [ "$status" = "Running" ] && [ ! -S "$socket" ]; then
+  warn "VM reports running but ${socket} is missing; restarting it"
+  colima stop -f "$PROFILE" || true
+  status="Stopped"
+fi
 if [ "$status" != "Running" ]; then
   colima start "$PROFILE"
+fi
+if ! docker context inspect "$CONTEXT" >/dev/null 2>&1; then
+  warn "Docker context ${CONTEXT} is missing; creating it"
+  docker context create "$CONTEXT" --docker "host=unix://${socket}" >/dev/null
 fi
 docker context use "$CONTEXT" >/dev/null
 ok "VM running, docker context ${CONTEXT}"
