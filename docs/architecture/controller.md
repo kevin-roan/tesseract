@@ -351,10 +351,14 @@ reach both and the host login keeps working. The controller only reads these dir
   `PUT /v1/claude/accounts/default` stores the default in `settings` (`claude.defaultAccount`).
 - `PUT /v1/projects/:id/claude-account` pins a project (`project_claude_accounts`); null
   follows the default.
-- Agent runs and `claude` terminals resolve the account as: the resumed session's (newest
-  run with that session id, `agent_runs.claude_account_id`), else the project's, else the
-  default. A non-primary account adds `CLAUDE_CONFIG_DIR=<dir>` to the child; the primary
-  adds nothing, so Claude Code keeps using `$HOME/.claude.json`. An account that is no
+- Agent runs and `claude` terminals resolve the account as: the project's, else the default.
+  A resumed session whose transcript (`projects/<cwd>/<sessionId>.jsonl` and its
+  `<sessionId>/` dir) lives in another account's dir is moved into the chosen account's dir
+  first, so switching accounts carries the chat over. A non-primary account adds
+  `CLAUDE_CONFIG_DIR=<dir>` to the child and drops `CLAUDE_CODE_OAUTH_TOKEN`,
+  `ANTHROPIC_API_KEY` and `ANTHROPIC_AUTH_TOKEN` (Claude Code prefers them over the dir's
+  login, and they belong to the primary); the primary adds nothing, so Claude Code keeps
+  using `$HOME/.claude.json`. An account that is no
   longer configured or mounted makes the start fail with 503 instead of falling back.
 - Usage and sessions read transcripts from every account's dir.
 

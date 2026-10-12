@@ -1,6 +1,9 @@
+import type { ExternalPathString } from "expo-router";
+import { GithubLogoIcon, GlobeIcon, UserIcon, type Icon } from "phosphor-react-native";
+
 import type { KeyValueItem } from "@/components/key-value-list";
 
-import { ABOUT_COPY, UPDATE_PROMPT_HIDDEN_ROUTES } from "./constants";
+import { ABOUT_COPY, DEVELOPER, UPDATE_PROMPT_HIDDEN_ROUTES } from "./constants";
 
 export type AboutInfo = {
   version: string | null;
@@ -58,6 +61,26 @@ export function updateRows(info: AboutInfo): KeyValueItem[] {
   if (info.updateId) rows.push({ id: "update", label: ABOUT_COPY.update, value: info.updateId, monospace: true });
   if (info.createdAt) rows.push({ id: "published", label: ABOUT_COPY.published, value: formatTimestamp(info.createdAt) });
   return rows;
+}
+
+export type DeveloperLink = {
+  id: "name" | "website" | "github";
+  label: string;
+  value?: string;
+  icon: Icon;
+  href: ExternalPathString;
+};
+
+export function displayUrl(url: string): string {
+  return url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+}
+
+export function developerLinks(): DeveloperLink[] {
+  return [
+    { id: "name", label: DEVELOPER.name, icon: UserIcon, href: DEVELOPER.website },
+    { id: "website", label: ABOUT_COPY.website, value: displayUrl(DEVELOPER.website), icon: GlobeIcon, href: DEVELOPER.website },
+    { id: "github", label: ABOUT_COPY.github, value: displayUrl(DEVELOPER.github), icon: GithubLogoIcon, href: DEVELOPER.github },
+  ];
 }
 
 export function updateStatusText(status: UpdateStatus): string {

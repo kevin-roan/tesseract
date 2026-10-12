@@ -8,12 +8,15 @@ import { errorMessage, formatBytes, shortDate } from "../format";
 import { emit, guarded, usageError } from "../io";
 import { CLI_LABELS } from "../labels";
 import { sdkRootFor } from "../sdk-root";
+import { analyzeTailnet } from "../server/tailnet";
+import { probeTailnet } from "../server/tailnet-probe";
 import { defineCommand, EXIT, type CliContext } from "../types";
 
 const LABELS = CLI_LABELS.doctor;
 
-export const DOCTOR_SECTIONS = ["docker", "image", "kvm", "sdk"] as const;
+export const DOCTOR_SECTIONS = ["docker", "image", "kvm", "sdk", "tailnet"] as const;
 export type DoctorSectionId = (typeof DOCTOR_SECTIONS)[number];
+const DEFAULT_SECTIONS: readonly DoctorSectionId[] = ["docker", "image", "kvm", "sdk"];
 
 export interface DoctorSection {
   id: DoctorSectionId;
@@ -75,15 +78,20 @@ async function sdkChecks(context: CliContext): Promise<CheckItem[]> {
   return [item("sdk", status, LABELS.sdkFound(sdkRoot), LABELS.sdkDetail(sdk.emulatorRevision || null, sdk.systemImages, avds.length))];
 }
 
+async function tailnetChecks(context: CliContext): Promise<CheckItem[]> {
+  return analyzeTailnet(await probeTailnet(context));
+}
+
 const RUNNERS: Record<DoctorSectionId, (context: CliContext) => Promise<CheckItem[]>> = {
   docker: dockerChecks,
   image: imageChecks,
   kvm: accelChecks,
   sdk: sdkChecks,
+  tailnet: tailnetChecks,
 };
 
 export function selectedSections(args: readonly string[]): DoctorSectionId[] {
-  if (args.length === 0) return [...DOCTOR_SECTIONS];
+  if (args.length === 0) return [...DEFAULT_SECTIONS];
   return args.map((arg) => {
     const id = DOCTOR_SECTIONS.find((section) => section === arg);
     if (!id) usageError(LABELS.unknownSection(arg, DOCTOR_SECTIONS.join(", ")));

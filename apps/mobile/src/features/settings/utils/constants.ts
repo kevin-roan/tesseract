@@ -111,7 +111,6 @@ export const SETTINGS_COPY = {
 
 export const ABOUT_COPY = {
   title: "About",
-  subtitle: "Version and update details for this install",
   entryTitle: "About Tesseract",
   entrySubtitle: (version: string, channel: string) => `Version ${version} · ${channel}`,
   sectionTitle: "About",
@@ -145,6 +144,15 @@ export const ABOUT_COPY = {
   checkFailed: "Couldn't check for updates",
   downloadFailed: "Couldn't download the update",
   lastChecked: (time: string) => `Last checked ${time}`,
+  developerTitle: "Developer",
+  website: "Website",
+  github: "GitHub",
+} as const;
+
+export const DEVELOPER = {
+  name: "Kevin Roan",
+  website: "https://kevinroan.com",
+  github: "https://github.com/kevin-roan",
 } as const;
 
 export const UPDATE_SHEET_COPY = {

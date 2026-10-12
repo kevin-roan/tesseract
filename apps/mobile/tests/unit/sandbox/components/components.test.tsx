@@ -64,13 +64,17 @@ describe("<LogView />", () => {
     await render(<LogView lines={lines} />);
     expect(screen.queryByLabelText("Jump to latest output")).toBeNull();
 
-    await fireEvent.scroll(screen.getByLabelText("Log output").children[0] as never, {
+    const list = screen.getByLabelText("Log output").children[0] as never;
+    const scrolledUp = {
       nativeEvent: {
         contentOffset: { x: 0, y: 0 },
         contentSize: { width: 300, height: 2000 },
         layoutMeasurement: { width: 300, height: 400 },
       },
-    });
+    };
+    await fireEvent(list, "scrollBeginDrag");
+    await fireEvent.scroll(list, scrolledUp);
+    await fireEvent(list, "scrollEndDrag", scrolledUp);
 
     expect(screen.getByLabelText("Jump to latest output")).toBeOnTheScreen();
   });

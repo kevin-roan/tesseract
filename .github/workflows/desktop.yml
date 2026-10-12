@@ -1,7 +1,8 @@
-# Builds the Electron desktop app. A push to `production` builds the Linux AppImage + deb and
-# publishes them as the GitHub release `v<version>` (version from apps/electron/package.json), so
-# bump the version before merging. Other runs (Actions tab, build/** branches) only upload the
-# files as workflow artifacts. macOS is parked: add the `mac` entry back to the matrix to build it.
+# Builds the Electron desktop app. A push to `production` builds the Linux AppImage + deb and the
+# signed, notarized macOS dmg + zip, and publishes them as the GitHub release `v<version>`
+# (version from apps/electron/package.json). `bun run electron:release` bumps the version and
+# pushes main to production. Other runs (Actions tab, build/** branches) only upload the files
+# as workflow artifacts.
 name: Desktop
 
 on:
@@ -30,15 +31,17 @@ jobs:
             files: |
               apps/electron/dist/*.AppImage
               apps/electron/dist/*.deb
-          # - platform: mac
-          #   os: macos-latest
-          #   files: |
-          #     apps/electron/dist/*.dmg
-          #     apps/electron/dist/*.zip
+          - platform: mac
+            os: macos-latest
+            files: |
+              apps/electron/dist/*.dmg
+              apps/electron/dist/*.zip
     env:
       RELEASE: ${{ github.ref == 'refs/heads/production' }}
       # macOS signing + notarization come from repository secrets (docs/runbooks/electron-desktop.md).
-      # Without CSC_LINK dist.ts ad-hoc signs; without the APPLE_API_* secrets notarization is skipped.
+      # Without CSC_LINK dist.ts ad-hoc signs; TESSERACT_NOTARIZE=1 fails the mac build when the
+      # APPLE_API_* secrets are missing instead of shipping an app Gatekeeper blocks.
+      TESSERACT_NOTARIZE: "1"
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
       CSC_LINK: ${{ secrets.MAC_CERT_P12_BASE64 }}
       CSC_KEY_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}

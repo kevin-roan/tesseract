@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { chmodSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { AgentRunDetailSchema, AgentRunSchema, ClaudeAccountListSchema, ProjectSchema, type AgentRun } from "@tesseract/protocol";
 import { loadConfig } from "../src/config";
+import { claudeAccountEnv } from "../src/services/claude-accounts";
 import { makeTempDir, removeTempDirs, startTestController, waitFor, writeFiles, type TestController } from "./helpers";
 
 const FAKE_CLAUDE = `#!/usr/bin/env bash
@@ -44,7 +45,7 @@ beforeAll(async () => {
   const claude = join(makeTempDir("accounts-bin"), "claude");
   writeFileSync(claude, FAKE_CLAUDE);
   chmodSync(claude, 0o755);
-  t = await startTestController({ workspace, env: { HOME: home, TESSERACT_CLAUDE_BIN: claude, TESSERACT_CLAUDE_ACCOUNTS: "work, gone" } });
+  t = await startTestController({ workspace, env: { HOME: home, TESSERACT_CLAUDE_BIN: claude, TESSERACT_CLAUDE_ACCOUNTS: "work, gone", CLAUDE_CONFIG_DIR: join(home, ".claude") } });
 });
 
 afterAll(async () => {
@@ -61,6 +62,15 @@ describe("config", () => {
       { id: "claude-personal", configDir: "/home/dev/.claude-personal", globalConfig: "/home/dev/.claude-personal/.claude.json", env: { CLAUDE_CONFIG_DIR: "/home/dev/.claude-personal" } },
     ]);
     expect(() => loadConfig({ TESSERACT_CLAUDE_ACCOUNTS: "../etc" })).toThrow("TESSERACT_CLAUDE_ACCOUNTS");
+  });
+});
+
+describe("claudeAccountEnv", () => {
+  test("keeps the env credentials for the primary and drops them for other accounts", () => {
+    const [primary, work] = loadConfig({ HOME: "/home/dev", TESSERACT_CLAUDE_ACCOUNTS: "work" }).claudeAccounts;
+    const base = { PATH: "/bin", CLAUDE_CODE_OAUTH_TOKEN: "tok", ANTHROPIC_API_KEY: "key", ANTHROPIC_AUTH_TOKEN: "auth" };
+    expect(claudeAccountEnv(primary!, base)).toEqual(base);
+    expect(claudeAccountEnv(work!, base)).toEqual({ PATH: "/bin", CLAUDE_CONFIG_DIR: "/home/dev/.claude-work" });
   });
 });
 
@@ -93,7 +103,7 @@ describe("accounts", () => {
     expect((await t.json("PUT", "/v1/projects/missing/claude-account", { accountId: null })).status).toBe(404);
   });
 
-  test("runs use the session's, then the project's, then the default account", async () => {
+  test("runs use the project's, then the default account, also when resuming", async () => {
     const list = ClaudeAccountListSchema.parse((await t.json("PUT", "/v1/claude/accounts/default", { accountId: "claude-work" })).body);
     expect(list.defaultAccountId).toBe("claude-work");
 
@@ -109,8 +119,13 @@ describe("accounts", () => {
     expect(primary.run.claudeAccountId).toBe("claude");
     expect(primary.configText).not.toContain(".claude-work");
 
-    const resumed = await finishedRun({ projectId: "app", prompt: "again", resumeSessionId: work.run.sessionId });
-    expect(resumed.run.claudeAccountId).toBe("claude-work");
+    const session = work.run.sessionId!;
+    writeFiles(home, { [`.claude-work/projects/-app/${session}.jsonl`]: "{}\n", [`.claude-work/projects/-app/${session}/subagents/a.jsonl`]: "{}\n" });
+    const resumed = await finishedRun({ projectId: "app", prompt: "again", resumeSessionId: session });
+    expect(resumed.run.claudeAccountId).toBe("claude");
+    expect(existsSync(join(home, `.claude/projects/-app/${session}.jsonl`))).toBe(true);
+    expect(existsSync(join(home, `.claude/projects/-app/${session}/subagents/a.jsonl`))).toBe(true);
+    expect(existsSync(join(home, `.claude-work/projects/-app/${session}.jsonl`))).toBe(false);
 
     const cleared = ProjectSchema.parse((await t.json("PUT", "/v1/projects/app/claude-account", { accountId: null })).body);
     expect(cleared.claudeAccountId).toBeNull();

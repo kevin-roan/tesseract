@@ -109,37 +109,80 @@ describe("useStickToBottom", () => {
       },
     }) as NativeSyntheticEvent<NativeScrollEvent>;
 
+  // The user drags the list to an offset and lets go.
+  const dragTo = async (result: { current: ReturnType<typeof useStickToBottom> }, offset: number) => {
+    const { scrollProps } = result.current;
+    await act(async () => {
+      scrollProps.onScrollBeginDrag();
+      scrollProps.onScroll(scrollEvent(offset));
+      scrollProps.onScrollEndDrag(scrollEvent(offset));
+    });
+  };
+
   it("follows new content until the user scrolls away, then jumps back on request", async () => {
     const scrollable = { scrollToEnd: jest.fn() };
     const { result } = await renderHook(() => useStickToBottom(() => scrollable));
 
     expect(result.current.following).toBe(true);
-    result.current.onContentSizeChange();
+    result.current.scrollProps.onContentSizeChange();
     expect(scrollable.scrollToEnd).toHaveBeenLastCalledWith({ animated: false });
 
-    await act(async () => result.current.onScroll(scrollEvent(100)));
+    await dragTo(result, 100);
     expect(result.current.following).toBe(false);
     scrollable.scrollToEnd.mockClear();
-    result.current.onContentSizeChange();
+    result.current.scrollProps.onContentSizeChange();
     expect(scrollable.scrollToEnd).not.toHaveBeenCalled();
 
-    await act(async () => result.current.onScroll(scrollEvent(560)));
+    await dragTo(result, 560);
     expect(result.current.following).toBe(true);
 
-    await act(async () => result.current.onScroll(scrollEvent(0)));
+    await dragTo(result, 0);
     await act(async () => result.current.jumpToEnd());
     expect(result.current.following).toBe(true);
     expect(scrollable.scrollToEnd).toHaveBeenLastCalledWith({ animated: true });
   });
 
+  it("never snaps to the end while a drag or fling is moving the list", async () => {
+    const scrollable = { scrollToEnd: jest.fn() };
+    const { result } = await renderHook(() => useStickToBottom(() => scrollable));
+    const { scrollProps } = result.current;
+
+    // Still within the threshold of the end, but the finger is down: growing content must not pull the list back.
+    await act(async () => {
+      scrollProps.onScrollBeginDrag();
+      scrollProps.onScroll(scrollEvent(580));
+    });
+    scrollProps.onContentSizeChange();
+    expect(scrollable.scrollToEnd).not.toHaveBeenCalled();
+
+    await act(async () => {
+      scrollProps.onScrollEndDrag(scrollEvent(400));
+      scrollProps.onMomentumScrollBegin();
+    });
+    scrollProps.onContentSizeChange();
+    expect(scrollable.scrollToEnd).not.toHaveBeenCalled();
+
+    await act(async () => result.current.scrollProps.onMomentumScrollEnd(scrollEvent(600)));
+    expect(result.current.following).toBe(true);
+    result.current.scrollProps.onContentSizeChange();
+    expect(scrollable.scrollToEnd).toHaveBeenCalledWith({ animated: false });
+  });
+
+  it("ignores scrolls the user didn't make", async () => {
+    const { result } = await renderHook(() => useStickToBottom(() => null));
+
+    await act(async () => result.current.scrollProps.onScroll(scrollEvent(0)));
+    expect(result.current.following).toBe(true);
+  });
+
   it("honours a custom threshold and a missing scroll view", async () => {
     const { result } = await renderHook(() => useStickToBottom(() => null, 0));
 
-    await act(async () => result.current.onScroll(scrollEvent(599)));
+    await dragTo(result, 599);
     expect(result.current.following).toBe(false);
-    await act(async () => result.current.onScroll(scrollEvent(600)));
+    await dragTo(result, 600);
     expect(result.current.following).toBe(true);
-    expect(() => result.current.onContentSizeChange()).not.toThrow();
+    expect(() => result.current.scrollProps.onContentSizeChange()).not.toThrow();
     expect(() => result.current.jumpToEnd()).not.toThrow();
   });
 });

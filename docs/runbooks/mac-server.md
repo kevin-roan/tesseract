@@ -75,7 +75,7 @@ Related: [tesseract-cli.md](tesseract-cli.md#server), [host-shell.md](host-shell
 
 ```
 phone ──tailnet──▶ https://tesseract-sandbox.<tailnet>.ts.net        sandbox controller (tailscale sidecar)
-      ──tailnet──▶ https://<mac>.<tailnet>.ts.net:8443            host shell (tailscale serve → <mac ip>:7701)
+      ──tailnet──▶ https://<mac>.<tailnet>.ts.net:8443            host shell (tailscale serve → 127.0.0.1:7701)
 Linux dev box ──ssh──▶ mac: ~/.tesseract/bin/{tesseract,tesseract-controller}, ~/.tesseract/sandbox/
 ```
 
@@ -206,6 +206,14 @@ tailscale serve status                              # the HTTPS front for the ho
 
 ## Troubleshooting
 
+**Timeouts over Tailscale (often after switching auth keys or tailnets)**
+→ On the Mac: `tesseract doctor tailnet` (or `ssh mac-mini ~/.tesseract/bin/tesseract doctor
+tailnet`). It is read-only and names the cause (sidecar still on the old tailnet, stale
+`TS_TAILNET_DOMAIN`, old duplicate node, host shell front on the old IP) and the fix. To switch
+the sandbox to a new key: `tesseract server install --authkey <key> --reset-tailscale`, or from
+the dev box `TS_AUTHKEY=tskey-... bun run deploy:mac mac-mini -- --reset-tailscale`. See
+[troubleshooting.md](troubleshooting.md#connectivity).
+
 **`launchctl bootstrap` fails with `Bootstrap failed: 5: Input/output error`**
 → launchd had not finished removing the previous host shell service (`bootout` right before).
 `tesseract server install` retries the bootstrap 5 times, 1 s apart. → If it still fails, run
@@ -228,8 +236,16 @@ Tailscale app there, or set `TESSERACT_HOST_SHELL_BIND=<tailscale ip>` for the s
 
 **The phone can't reach the host shell over http**
 → iOS refuses plain http to the Tailscale IP. → Check `tailscale serve status` shows
-`https://<mac>.<tailnet>.ts.net:8443 → http://<ip>:7701`, and HTTPS certificates are enabled for
+`https://<mac>.<tailnet>.ts.net:8443 → http://127.0.0.1:7701`, and HTTPS certificates are enabled for
 the tailnet.
+
+**The phone says "The host took too long to answer"**
+→ `tesseract doctor tailnet` reports "The host shell's HTTPS front fails". Two causes seen with the
+App Store Tailscale app: it never fetched the certificate (the TLS handshake hangs; fix with
+`cd /tmp && tailscale cert <mac>.<tailnet>.ts.net`, then delete the files it wrote), or serve
+proxies to the Mac's own tailnet IP, which the app cannot reach (the request hangs after TLS).
+`tesseract server install` now puts the daemon on `127.0.0.1` behind serve on macOS; from the repo:
+`git pull && sudo infra/scripts/fix-mac-tailscale`.
 
 **Image build fails on Apple silicon in the wine or Android stage**
 → An arm64 build with `--with mono` or `--with android`. → Build without them, or for

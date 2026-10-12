@@ -123,7 +123,9 @@ Whether release builds should is an [open decision](../roadmap.md#open-decisions
   pre-approved on, tags `tag:tesseract`.
 - The key is used on first login only (`TS_AUTH_ONCE=true`). After that the
   node key lives in the `<prefix>-tailscale` volume and `TS_AUTHKEY` can be
-  removed from `.env`. Deleting that volume requires a new key.
+  removed from `.env`. Deleting that volume requires a new key. A new key on its own is
+  ignored while the volume exists: switch with `tesseract server install --authkey <key>
+  --reset-tailscale`, and diagnose with `tesseract doctor tailnet`.
 - Suggested policy (grants syntax):
 
   ```jsonc

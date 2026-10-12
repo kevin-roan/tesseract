@@ -15,6 +15,7 @@
     "electron:e2e": "bun run --cwd apps/electron e2e",
     "electron:dist": "bun run --cwd apps/electron dist",
     "electron:smoke": "bun run --cwd apps/electron smoke",
+    "electron:release": "bun run --cwd apps/electron release",
     "typecheck": "bun run --filter '*' typecheck",
     "test": "bun run --filter '*' test",
     "lint": "bun run --filter '*' lint",

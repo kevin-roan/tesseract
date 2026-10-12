@@ -16,6 +16,7 @@ export interface ServerOptions {
   claudeToken: string | null;
   hostShell: boolean;
   httpsPort: number;
+  resetTailscale: boolean;
   dryRun: boolean;
 }
 
@@ -59,6 +60,8 @@ export function resolveTailscale(
   platform: NodeJS.Platform,
   files: FileProbe = nodeFileProbe,
 ): string | null {
+  // The macOS app's CLI crashes ("bundleIdentifier is unknown") when run through a symlink on PATH.
+  if (platform === "darwin" && files.isExecutable(SERVER.tailscaleApp)) return SERVER.tailscaleApp;
   const onPath = findExecutable(SERVER.tailscaleBinary, env, platform, files);
   if (onPath) return onPath;
   const fallbacks: readonly string[] = platform === "darwin" || platform === "linux" ? SERVER.tailscaleFallbacks[platform] : [];
@@ -201,6 +204,15 @@ export function planHostService(input: HostServiceInput): HostServicePlan {
     ],
     status: { file: "systemctl", args: ["--user", "is-active", unit] },
   };
+}
+
+/**
+ * The address the host shell daemon listens on. The macOS Tailscale app's serve proxy cannot reach
+ * the Mac's own tailnet IP (requests hang), so on macOS the daemon listens on loopback and only the
+ * HTTPS front is reachable from the tailnet.
+ */
+export function hostShellBind(platform: NodeJS.Platform, tailscaleIp: string): string {
+  return platform === "darwin" ? SERVER.loopbackBind : tailscaleIp;
 }
 
 export function tailscaleServeArgs(httpsPort: number, bind: string, port: number = HOST_SHELL_PORT): string[] {

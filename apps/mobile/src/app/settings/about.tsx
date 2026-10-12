@@ -1,7 +1,9 @@
+import { Link } from "expo-router";
 import { ArrowClockwiseIcon, ArrowsClockwiseIcon, InfoIcon, WarningIcon } from "phosphor-react-native";
 
 import ActionButton from "@/components/action-button";
 import KeyValueList from "@/components/key-value-list";
+import { ListGroup, ListRow } from "@/components/list-group";
 import MotionItem from "@/components/motion-item";
 import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
@@ -17,9 +19,9 @@ export default function AboutScreen() {
   const { updates } = screen;
 
   return (
-    <ScreenScaffold header={<ScreenHeader title={ABOUT_COPY.title} subtitle={ABOUT_COPY.subtitle} onBack={screen.back} />}>
+    <ScreenScaffold header={<ScreenHeader title={ABOUT_COPY.title} onBack={screen.back} />}>
       <MotionItem index={0} style={{ alignItems: "center" }}>
-        <Wordmark testID="about-wordmark" />
+        <Wordmark decodeOnLongPress testID="about-wordmark" />
       </MotionItem>
 
       <MotionItem index={1}>
@@ -67,6 +69,24 @@ export default function AboutScreen() {
           ) : (
             <Notice tone="info" icon={InfoIcon} title={ABOUT_COPY.disabledTitle} message={ABOUT_COPY.disabledMessage} />
           )}
+        </Section>
+      </MotionItem>
+
+      <MotionItem index={3}>
+        <Section title={ABOUT_COPY.developerTitle} testID="about-developer">
+          <ListGroup>
+            {screen.developer.map((link) => (
+              <Link key={link.id} href={link.href} asChild>
+                <ListRow
+                  label={link.label}
+                  value={link.value}
+                  icon={link.icon}
+                  chevron
+                  testID={`about-developer-${link.id}`}
+                />
+              </Link>
+            ))}
+          </ListGroup>
         </Section>
       </MotionItem>
     </ScreenScaffold>

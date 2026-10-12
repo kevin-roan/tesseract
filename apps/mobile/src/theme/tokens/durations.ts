@@ -98,3 +98,13 @@ export const SplashMotion = {
   /** How long one letter takes to settle, as a fraction of the intro. */
   letterSettle: 0.45,
 } as const;
+
+/** Wordmark easter egg: letters cycle through random capitals, then settle left to right. */
+export const ScrambleMotion = {
+  /** From the first scrambled frame to the last letter settling. */
+  duration: Durations.slowest * 2,
+  /** How often the unsettled letters pick a new glyph. */
+  frame: 45,
+  /** Share of the run spent fully scrambled before the first letter settles. */
+  hold: 0.25,
+} as const;

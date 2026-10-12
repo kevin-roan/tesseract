@@ -121,7 +121,7 @@ from an automated agent MUST go through `flock /tmp/tesseract-bun-install.lock b
 | Agent memory | `/workspace/.agent/` (§6.4, SPEC.md) |
 | Controller data | `/workspace/.agent/controller/` (`TESSERACT_DATA_DIR`, 0700) → `state.db`, `token`, `logs/`, `sync/` (baselines, `blobs/`, `backups/`, `staging/`), `claude-import.json` |
 | Claude credentials | the host's `~/.claude` bind-mounted at `/home/dev/.claude` (`CLAUDE_CONFIG_DIR`): login (`.credentials.json`), settings, CLAUDE.md; the host's Claude Max subscription login. On macOS the login lives in the keychain, not in `.credentials.json`, so a Mac host passes a long-lived `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token` on the Mac; `tesseract server install --claude-token`, §7.2) to the sandbox instead |
-| Claude accounts | primary account `claude` = the dir above; each `TESSERACT_HOST_CLAUDE_ACCOUNTS` name `<n>` adds the host's `~/.claude-<n>` (what `CLAUDE_CONFIG_DIR=~/.claude-<n> claude` uses on the host) bind-mounted at `/home/dev/.claude-<n>`, account id `claude-<n>`, global config `<dir>/.claude.json`. Live bind mounts, never copies: token refreshes by either side stay valid for both. The controller never writes into these dirs; the default account and per-project picks live in `state.db` |
+| Claude accounts | primary account `claude` = the dir above; each `TESSERACT_HOST_CLAUDE_ACCOUNTS` name `<n>` adds the host's `~/.claude-<n>` (what `CLAUDE_CONFIG_DIR=~/.claude-<n> claude` uses on the host) bind-mounted at `/home/dev/.claude-<n>`, account id `claude-<n>`, global config `<dir>/.claude.json`. Live bind mounts, never copies: token refreshes by either side stay valid for both. The controller writes into these dirs only to move a resumed session's transcript to the account it now runs on (below); the default account and per-project picks live in `state.db` |
 | Home | `/home/dev` (volume `<prefix>-home`: wine prefix, caches; `.claude` is the host bind mount above) |
 | Wine prefix | `/home/dev/.wine` (`WINEPREFIX`), `WINEARCH=win64`, `WINEDEBUG=-all` |
 | Android SDK | `/opt/android-sdk` (`ANDROID_HOME`, `ANDROID_SDK_ROOT`, owned by `dev`); with `TESSERACT_HOST_ANDROID_SDK` the host's SDK, read-only, in its place |
@@ -131,7 +131,7 @@ from an automated agent MUST go through `flock /tmp/tesseract-bun-install.lock b
 | Browser pages | `/ui/terminal`, `/ui/vnc` (controller), `/ui/android` (host shell daemon); their bundled assets are served at root paths (`/chunk-<hash>.js`, `.css`) |
 | Mobile app id | iOS bundle id and Android package `com.kevinroan.tesseract` (development build `com.kevinroan.tesseract.dev`); iOS app group `group.com.kevinroan.tesseract` (shared with the widget/Live Activity and share extensions); URL scheme `tesseract`; EAS owner and project id set by `eas init` (`owner`, `extra.eas.projectId` in `app.json`) |
 | Mobile deep link | `tesseract://pair?url=<encoded base url>&token=<token>&name=<label>`; host shell: `tesseract://host?url=…&token=<host token>&name=<host name>` |
-| Host shell daemon | `tesseract-controller host serve` on the host, `<host Tailscale IPv4>:7701` (`HOST_SHELL_PORT`, `TESSERACT_HOST_SHELL_PORT`); only loopback or `100.64.0.0/10` binds |
+| Host shell daemon | `tesseract-controller host serve` on the host, `<host Tailscale IPv4>:7701` (macOS: `127.0.0.1:7701` behind `tailscale serve`, because the macOS app's serve proxy cannot reach the Mac's own tailnet IP) (`HOST_SHELL_PORT`, `TESSERACT_HOST_SHELL_PORT`); only loopback or `100.64.0.0/10` binds |
 | Headless server install | `~/.tesseract/{bin,sandbox}` (`./setup-server.sh` on the server, or `infra/scripts/deploy-mac` from the dev box); host shell service LaunchAgent `dev.tesseract.host-shell` (logs `~/Library/Logs/Tesseract/`) or systemd user unit `tesseract-host-shell.service` (§7.2) |
 | ADB tunnel | `127.0.0.1:15555` in the sandbox (`DEFAULT_ADB_TUNNEL_PORT`, `TESSERACT_ADB_TUNNEL_PORT`), adb serial `127.0.0.1:15555`; open only while the host emulator is linked and `running` ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2.3). Shared host emulators (`TESSERACT_ANDROID_SHARE_EMULATORS`): `emulator-<n>` → `127.0.0.1:<15555 + 1 + (n − 5554)/2>` (`sharedEmulatorTunnelPort`), e.g. `emulator-5556` → `127.0.0.1:15557` |
 | Host Android emulator | console `5554`, adbd `5555` (`DEFAULT_EMULATOR_PORT`, `TESSERACT_EMULATOR_PORT`); adb serial `127.0.0.1:<bridge port>` in `netns` isolation (`TESSERACT_EMULATOR_ADB_PORT`), `emulator-<port>` for a plain (`none` or adopted non-isolated) emulator |
@@ -215,8 +215,10 @@ controller's environment **without** `TESSERACT_TOKEN`, `TESSERACT_VNC_PASSWORD`
 Agent runs also drop `CLAUDECODE`. The controller does not store or inject Claude
 credentials: children use the host's Claude Max login in `/home/dev/.claude` (the host's
 `~/.claude`, bind-mounted), the only supported authentication. Agent runs and `claude`
-terminals on another account (§5.2 `/v1/claude/accounts`) get `CLAUDE_CONFIG_DIR=/home/dev/.claude-<n>`;
-the account is the resumed session's (newest run with that session id), else the project's, else the default.
+terminals on another account (§5.2 `/v1/claude/accounts`) get `CLAUDE_CONFIG_DIR=/home/dev/.claude-<n>`
+without `CLAUDE_CODE_OAUTH_TOKEN`/`ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` (those are the primary's and would
+override the dir's login); the account is the project's, else the default. Resuming a session first moves its
+transcript (`projects/<cwd>/<sessionId>.jsonl` and `<sessionId>/`) from another account's dir into that account's.
 
 ### 4.2 Stack and operator (`infra/compose/.env`, `infra/scripts/sandbox`)
 
@@ -991,7 +993,7 @@ sandbox env file and Android SDK. Every command takes `--json`, `--verbose`, `--
 ```
 tesseract status [--json]                                # config, setup progress, connection, Docker, stack, Android
 tesseract open [overview|agents|projects|files|terminals|display|containers|domains]   # start or focus the app (else tesseract://<page>)
-tesseract doctor [docker|image|kvm|sdk]... [--json]      # Docker, sandbox image, hardware acceleration, Android SDK
+tesseract doctor [docker|image|kvm|sdk|tailnet]... [--json]   # Docker, sandbox image, hardware acceleration, Android SDK; tailnet only when named
 tesseract sandbox status|up|down [--volumes]|restart [service]|logs [--tail N] [--follow]
 tesseract sandbox build [--with android,flutter,mono,whisper|all|none] [--pull | --existing] [--verbose]
 tesseract sandbox pair [--no-qr]
@@ -1025,7 +1027,7 @@ production sandbox host, e.g. a Mac on the tailnet). Runbook: `docs/runbooks/mac
 ```
 tesseract server install [--mode tailscale|host-tailscale|local] [--hostname <name>] [--tailnet-domain <x.ts.net>]
                          [--authkey <key>] [--with <components>] [--image <ref>] [--build] [--claude-token <tok>]
-                         [--no-host-shell] [--host-https-port 8443] [--dry-run]
+                         [--no-host-shell] [--host-https-port 8443] [--reset-tailscale] [--dry-run]
 tesseract server uninstall [--volumes]
 tesseract server status
 tesseract server pair                                    # sandbox and host shell pairing links + QR codes
@@ -1033,7 +1035,7 @@ tesseract server pair                                    # sandbox and host shel
 
 `install` writes the sandbox env file (§12.4: macOS `~/Library/Application Support/Tesseract/sandbox/.env`,
 Linux `~/.config/Tesseract/sandbox/.env`), pulls `--image` or builds (`--build`, `--with`), runs `compose up`,
-installs the host shell service and runs `tailscale serve --bg --https=<host-https-port> http://<tailscale ip>:7701`,
+installs the host shell service and runs `tailscale serve --bg --https=<host-https-port> http://<tailscale ip>:7701` (`http://127.0.0.1:7701` on macOS),
 then prints the pairing. `--authkey`, `--tailnet-domain` and `--claude-token` fall back to `TS_AUTHKEY`,
 `TS_TAILNET_DOMAIN` and `CLAUDE_CODE_OAUTH_TOKEN` (passed to the sandbox, because Claude Code on macOS keeps its
 login in the keychain, which the sandbox can't read). The stack restarts with Docker (`restart: unless-stopped`).

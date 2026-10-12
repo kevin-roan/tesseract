@@ -33,6 +33,7 @@ import { CLI_LABELS } from "../labels";
 import { renderQr } from "../qr";
 import {
   controllerCommand,
+  hostShellBind,
   imageMode,
   installChoices,
   parseServerState,
@@ -87,6 +88,7 @@ export function serverOptions(context: CliContext): ServerOptions {
     claudeToken: optionValue(context, "claude-token", SERVER_ENV.claudeToken),
     hostShell: !context.flags.has("no-host-shell"),
     httpsPort,
+    resetTailscale: context.flags.has("reset-tailscale"),
     dryRun: context.flags.has("dry-run"),
   };
 }
@@ -241,13 +243,17 @@ async function install(context: CliContext): Promise<number> {
     const target = { project: choices.project, volumePrefix, image: choices.image, env: context.env, hostEnv: context.env };
     await migrateLegacyStack({ run: runCommand }, target, (line) => log(context, line));
   }
+  const tailscaleVolume = `${volumePrefix}-tailscale`;
+  if (options.resetTailscale && choices.mode !== "tailscale") usageError(LABELS.resetNeedsMode);
+  if (options.resetTailscale && !options.authKey) usageError(LABELS.resetNeedsKey);
   const volumeExists =
     choices.mode === "tailscale" && (await tailscaleVolumeExists({ run: runCommand }, context.env, volumePrefix));
+  const resetVolume = options.resetTailscale && volumeExists;
   const issues = validateChoices(choices, { savedAuthKey: Boolean(existing?.TS_AUTHKEY), tailscaleVolumeExists: volumeExists });
   if (issues.length > 0) usageError(issues.map((issue) => `${issue.field}: ${issue.message}`).join("\n"));
 
   const command = options.hostShell ? controllerCommand(context.runtime.execPath, context.env, platform) : null;
-  const bind = ip ?? "<tailscale-ip>";
+  const bind = hostShellBind(platform, ip ?? "<tailscale-ip>");
   const plan = options.hostShell ? servicePlan(context, command ?? [join(dirname(context.runtime.execPath), CONTROLLER_BINARY)], bind, tailscale) : null;
   const present = await imagePresent(context, choices.image);
   const mode = imageMode(options, present);
@@ -261,6 +267,7 @@ async function install(context: CliContext): Promise<number> {
       LABELS.plannedEnv(sandbox.envFile),
       ...previewEnv(envText),
       LABELS.plannedImage(mode, choices.image),
+      ...(resetVolume ? [LABELS.resettingTailscale(tailscaleVolume)] : []),
       ...(plan
         ? [
             LABELS.plannedService(plan.kind, plan.file),
@@ -276,10 +283,17 @@ async function install(context: CliContext): Promise<number> {
     return EXIT.ok;
   }
 
+  if (resetVolume) {
+    log(context, LABELS.resettingTailscale(tailscaleVolume));
+    await composeDown(sandbox, false, { onLog: (line) => log(context, line) });
+    await runRequired(context, { file: "docker", args: ["volume", "rm", tailscaleVolume] });
+  } else if (options.authKey && volumeExists) {
+    log(context, LABELS.authKeyIgnored(tailscaleVolume));
+  }
   const validation = {
     maxCpus: report?.server?.ncpu || undefined,
     memBytes: report?.server?.memBytes || undefined,
-    tailscaleVolumeExists: volumeExists,
+    tailscaleVolumeExists: volumeExists && !resetVolume,
   };
   await writeStack(sandbox, choices, validation, { claudeOAuthToken: options.claudeToken ?? undefined });
   log(context, CLI_LABELS.sandbox.configured(sandbox.envFile));
@@ -291,18 +305,19 @@ async function install(context: CliContext): Promise<number> {
     return printPairing(context, null, null);
   }
   const controller = command ?? requireController(context);
-  const finalPlan = servicePlan(context, controller, ip, tailscale);
+  const hostBind = hostShellBind(platform, ip);
+  const finalPlan = servicePlan(context, controller, hostBind, tailscale);
   log(context, LABELS.writing(finalPlan.file));
   await mkdir(dirname(finalPlan.file), { recursive: true });
   if (finalPlan.logDir) await mkdir(finalPlan.logDir, { recursive: true });
   await writeFile(finalPlan.file, finalPlan.text, { mode: 0o644 });
   for (const step of finalPlan.install) await runRequired(context, step);
   log(context, LABELS.serviceStarted(finalPlan.kind));
-  await runRequired(context, { file: tailscale, args: tailscaleServeArgs(options.httpsPort, ip) });
+  await runRequired(context, { file: tailscale, args: tailscaleServeArgs(options.httpsPort, hostBind) });
   log(context, LABELS.serveAdded(options.httpsPort));
-  await writeState(context, { httpsPort: options.httpsPort, bind: ip, serviceFile: finalPlan.file, tailscale });
+  await writeState(context, { httpsPort: options.httpsPort, bind: hostBind, serviceFile: finalPlan.file, tailscale });
 
-  const hostUrl = `http://${ip}:${HOST_SHELL_PORT}`;
+  const hostUrl = `http://${hostBind}:${HOST_SHELL_PORT}`;
   if (await waitHostShell(context, hostUrl)) log(context, LABELS.hostShellReady(hostUrl));
   else log(context, LABELS.hostShellNotReady(hostUrl, finalPlan.logDir ?? `journalctl --user -u ${SERVER.systemdUnit}`));
   log(context, platform === "darwin" ? LABELS.autoLogin : LABELS.linger(context.env.USER || userInfo().username));
@@ -418,7 +433,7 @@ export default defineCommand({
   trigger: { subcommand: "server" },
   summary: CLI_LABELS.summary.server,
   usage: CLI_LABELS.usageLines.server,
-  flags: ["build", "no-host-shell", "dry-run", "volumes", "no-qr"],
+  flags: ["build", "no-host-shell", "dry-run", "volumes", "no-qr", "reset-tailscale"],
   valueFlags: ["mode", "hostname", "tailnet-domain", "authkey", "with", "image", "claude-token", "host-https-port"],
   run: (context) =>
     guarded(context, async () => {

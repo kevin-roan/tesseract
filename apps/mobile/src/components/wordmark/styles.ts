@@ -23,6 +23,9 @@ export default function createStyles(theme: Theme, size: number) {
       textTransform: "uppercase",
       textAlign: "center",
     },
+    scrambled: {
+      color: theme.colors.textTertiary,
+    },
     rule: {
       width: size * 3.8,
       height: StyleSheet.hairlineWidth,

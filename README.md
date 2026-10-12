@@ -10,6 +10,16 @@ Windows Electron installers built through wine), download artifacts, and watch
 or click through the running app on the sandbox display. The host only runs
 Docker: nothing is installed on it and nothing is exposed to the internet.
 
+
+## Screenshots
+<img width="1724" height="933" alt="image" src="https://github.com/user-attachments/assets/974b18fb-8f77-4bd7-af09-0d35b3d64496" />
+<img width="3839" height="1079" alt="image" src="https://github.com/user-attachments/assets/673da098-0bf2-48d6-8313-395d0aef7c7d" />
+<img width="1729" height="938" alt="image" src="https://github.com/user-attachments/assets/0ea82a3e-9617-4d31-bae5-eecf3dd28ed8" />
+
+<img width="1722" height="934" alt="image" src="https://github.com/user-attachments/assets/fcbf4552-7a43-4d7c-97e2-f5eb44fd4b7f" />
+
+
+
 ```text
  phone (apps/mobile, Expo)
    │  HTTPS + WSS over Tailscale (WireGuard, tailnet only)

@@ -22,7 +22,7 @@ import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";
 import type { Repositories } from "../db/repositories";
 import type { Config } from "../config";
-import type { ClaudeAccountResolver } from "./claude-accounts";
+import { claudeAccountEnv, type ClaudeAccountResolver } from "./claude-accounts";
 import { confidentialPrompt, type ConfidentialProjects } from "./confidential";
 import { AgentStreamParser, toEvent, type AgentEventBody, type AgentStreamResult } from "./agent-stream";
 import type { UploadService } from "./uploads";
@@ -141,7 +141,7 @@ export class AgentRunService {
     try {
       proc = Bun.spawn([claude, ...argv], {
         cwd,
-        env: { ...env, ...account.env, TESSERACT_AGENT_RUN_ID: run.id },
+        env: { ...claudeAccountEnv(account, env), TESSERACT_AGENT_RUN_ID: run.id },
         stdin: "pipe",
         stdout: "pipe",
         stderr: "pipe",

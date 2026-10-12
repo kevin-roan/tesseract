@@ -1,8 +1,9 @@
-import { existsSync, statSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { ClaudeAccountList, ClaudeAccountProfile } from "@tesseract/protocol";
 import type { ClaudeAccountDir, Config } from "../config";
 import { badRequest, notFound, unavailable } from "../core/errors";
+import type { Env } from "../core/exec";
 import type { Repositories } from "../db/repositories";
 import { nowIso } from "../core/time";
 import { expiresAtIso, isObject, mapAccount, readJson, text } from "./claude-auth";
@@ -10,6 +11,17 @@ import { expiresAtIso, isObject, mapAccount, readJson, text } from "./claude-aut
 export type ClaudeAccountResolver = Pick<ClaudeAccountService, "resolve">;
 
 export const DEFAULT_ACCOUNT_SETTING = "claude.defaultAccount";
+
+/** Credentials Claude Code prefers over its config dir's login; they belong to the primary account. */
+export const CLAUDE_ENV_CREDENTIALS = ["CLAUDE_CODE_OAUTH_TOKEN", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN"] as const;
+
+/** `base` set up for `account`: another account's dir must log in with its own credentials, not the primary's env token. */
+export function claudeAccountEnv(account: ClaudeAccountDir, base: Env): Env {
+  if (Object.keys(account.env).length === 0) return base;
+  const env = { ...base };
+  for (const name of CLAUDE_ENV_CREDENTIALS) delete env[name];
+  return { ...env, ...account.env };
+}
 
 const isDirectory = (path: string): boolean => {
   try {
@@ -61,14 +73,49 @@ export class ClaudeAccountService {
     return account;
   }
 
-  /** The account a new Claude process uses: the session's, else the project's, else the default. */
+  /**
+   * The account a new Claude process uses: the project's, else the default. A resumed session whose
+   * transcript lives in another account's dir is moved there first, so switching accounts carries the chat over.
+   */
   resolve(projectId: string | null, sessionId?: string): ClaudeAccountDir {
-    const pinned = sessionId === undefined ? null : this.repos.sessionClaudeAccount(sessionId);
-    const id = pinned ?? (projectId === null ? null : this.repos.projectClaudeAccount(projectId)) ?? this.defaultId();
+    const id = (projectId === null ? null : this.repos.projectClaudeAccount(projectId)) ?? this.defaultId();
     const account = this.find(id);
     if (!account) throw unavailable(`Claude account ${id} is no longer configured: pick another account for this project`);
     if (account !== this.primary && !this.present(account)) throw unavailable(`Claude account ${id} is not linked into the sandbox (${account.configDir} is missing)`);
+    if (sessionId !== undefined) this.moveSession(sessionId, account);
     return account;
+  }
+
+  /** Moves `<dir>/projects/<cwd>/<sessionId>.jsonl` (and its `<sessionId>/` subagent dir) into `target`'s config dir. */
+  private moveSession(sessionId: string, target: ClaudeAccountDir): void {
+    const file = `${sessionId}.jsonl`;
+    for (const account of this.config.claudeAccounts) {
+      if (account === target) continue;
+      const projects = join(account.configDir, "projects");
+      let dirs: string[];
+      try {
+        dirs = readdirSync(projects);
+      } catch {
+        continue;
+      }
+      for (const dir of dirs) {
+        const from = join(projects, dir);
+        if (!existsSync(join(from, file))) continue;
+        const to = join(target.configDir, "projects", dir);
+        if (existsSync(join(to, file))) return;
+        try {
+          mkdirSync(to, { recursive: true });
+          for (const name of [file, sessionId]) {
+            if (!existsSync(join(from, name))) continue;
+            cpSync(join(from, name), join(to, name), { recursive: true, preserveTimestamps: true });
+            rmSync(join(from, name), { recursive: true, force: true });
+          }
+        } catch (error) {
+          throw unavailable(`Could not move Claude session ${sessionId} to account ${target.id}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+        return;
+      }
+    }
   }
 
   private profile(account: ClaudeAccountDir): ClaudeAccountProfile {

@@ -9,6 +9,7 @@ import {
   parseServerState,
   planHostService,
   resolveTailscale,
+  hostShellBind,
   serveEntry,
   serviceEnv,
   systemdUnit,
@@ -32,6 +33,7 @@ const OPTIONS: ServerOptions = {
   claudeToken: null,
   hostShell: true,
   httpsPort: 8443,
+  resetTailscale: false,
   dryRun: false,
 };
 
@@ -45,10 +47,18 @@ const BASE = {
   image: "tesseract/sandbox:latest",
 } as unknown as SetupChoices;
 
+describe("hostShellBind", () => {
+  it("uses loopback behind serve on macOS and the tailnet IP elsewhere", () => {
+    expect(hostShellBind("darwin", "100.72.32.55")).toBe("127.0.0.1");
+    expect(hostShellBind("linux", "100.72.32.55")).toBe("100.72.32.55");
+  });
+});
+
 describe("resolveTailscale", () => {
-  it("prefers PATH, then the macOS app bundle and Homebrew", () => {
-    expect(resolveTailscale({ PATH: "/usr/bin:/opt/bin" }, "darwin", files(["/opt/bin/tailscale"]))).toBe("/opt/bin/tailscale");
+  it("prefers the macOS app bundle, then PATH and Homebrew", () => {
     const app = "/Applications/Tailscale.app/Contents/MacOS/Tailscale";
+    expect(resolveTailscale({ PATH: "/usr/local/bin" }, "darwin", files([app, "/usr/local/bin/tailscale"]))).toBe(app);
+    expect(resolveTailscale({ PATH: "/usr/bin:/opt/bin" }, "darwin", files(["/opt/bin/tailscale"]))).toBe("/opt/bin/tailscale");
     expect(resolveTailscale({ PATH: "/usr/bin" }, "darwin", files([app, "/opt/homebrew/bin/tailscale"]))).toBe(app);
     expect(resolveTailscale({ PATH: "/usr/bin" }, "darwin", files(["/opt/homebrew/bin/tailscale"]))).toBe("/opt/homebrew/bin/tailscale");
     expect(resolveTailscale({ PATH: "" }, "darwin", files([]))).toBeNull();

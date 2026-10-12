@@ -39,7 +39,7 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
   const { run, composer } = screen;
   const listRef = useRef<FlatList<TranscriptBlock>>(null);
   const getScrollable = useCallback(() => listRef.current, []);
-  const { onScroll, onContentSizeChange } = useStickToBottom(getScrollable);
+  const { scrollProps } = useStickToBottom(getScrollable);
   const orders = useMemo(() => screen.transcript.map(orderOf), [screen.transcript]);
   const entranceFor = useFreshEntrance(orders, Boolean(run));
   const tabs = useMemo(
@@ -106,8 +106,7 @@ const AgentRunView = ({ runId }: AgentRunViewProps) => {
           data={screen.transcript}
           keyExtractor={keyOf}
           renderItem={renderItem}
-          onScroll={onScroll}
-          onContentSizeChange={onContentSizeChange}
+          {...scrollProps}
           scrollEventThrottle={32}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="interactive"
