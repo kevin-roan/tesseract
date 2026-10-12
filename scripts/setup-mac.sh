@@ -13,9 +13,11 @@ set -euo pipefail
 
 PROFILE="tesseract"
 CONTEXT="colima-${PROFILE}"
-APP="/Applications/Tesseract.app"
-RESOURCES="${APP}/Contents/Resources/sandbox"
-BUNDLED_CLI="${APP}/Contents/Resources/bin/tesseract"
+APP_ID="dev.tesseract.Desktop"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+APP=""
+RESOURCES=""
+TESSERACT_BIN=""
 COLIMA_DIR="${COLIMA_HOME:-${HOME}/.colima}"
 CONFIG="${COLIMA_DIR}/${PROFILE}/colima.yaml"
 DOCKER_CONFIG_FILE="${DOCKER_CONFIG:-${HOME}/.docker}/config.json"
@@ -171,6 +173,40 @@ wait_for_sysbox() {
   return 1
 }
 
+app_of() {
+  case "$1" in
+    */Contents/Resources/bin/tesseract) printf '%s\n' "${1%/Contents/Resources/bin/tesseract}" ;;
+  esac
+}
+
+find_install() {
+  local on_path real candidate
+  on_path="$(command -v tesseract || true)"
+  if [ -n "$on_path" ]; then
+    real="$(realpath "$on_path" 2>/dev/null || printf '%s' "$on_path")"
+    APP="$(app_of "$real")"
+  fi
+  for candidate in /Applications/Tesseract.app "${HOME}/Applications/Tesseract.app"; do
+    if [ -z "$APP" ] && [ -d "$candidate" ]; then APP="$candidate"; fi
+  done
+  if [ -z "$APP" ]; then
+    APP="$(mdfind "kMDItemCFBundleIdentifier == '${APP_ID}'" 2>/dev/null | grep '\.app$' | head -n1 || true)"
+  fi
+  if [ -n "$APP" ] && [ -d "${APP}/Contents/Resources/sandbox" ]; then
+    RESOURCES="${APP}/Contents/Resources/sandbox"
+    TESSERACT_BIN="${on_path:-${APP}/Contents/Resources/bin/tesseract}"
+    if [ -n "$on_path" ] && [ -z "$(app_of "$real")" ]; then TESSERACT_BIN="${APP}/Contents/Resources/bin/tesseract"; fi
+    return 0
+  fi
+  APP=""
+  if [ -d "${REPO_ROOT}/infra/compose" ] && [ -n "$on_path" ]; then
+    RESOURCES="$REPO_ROOT"
+    TESSERACT_BIN="$on_path"
+    return 0
+  fi
+  return 1
+}
+
 docker_desktop_running() {
   pgrep -x "Docker Desktop" >/dev/null 2>&1 || pgrep -x com.docker.backend >/dev/null 2>&1
 }
@@ -182,8 +218,14 @@ step "Checking this Mac"
 [ "$(id -u)" != 0 ] || die "Run it as your normal user, not with sudo."
 macos="$(sw_vers -productVersion)"
 [ "${macos%%.*}" -ge 13 ] || die "macOS 13 or newer is needed for the VM (found ${macos})."
-[ -d "$APP" ] || die "Install Tesseract into /Applications first (${APP} not found)."
-ok "macOS ${macos} on $(uname -m), Tesseract app found"
+find_install || die "Tesseract not found. Install the app (drag it to Applications), or run this from a repo checkout with the tesseract command on PATH."
+export TESSERACT_SANDBOX_CONTEXT="$RESOURCES"
+if [ -n "$APP" ]; then
+  ok "macOS ${macos} on $(uname -m), Tesseract app at ${APP}"
+else
+  ok "macOS ${macos} on $(uname -m), no installed app; using the repo checkout ${REPO_ROOT}"
+fi
+ok "tesseract command: ${TESSERACT_BIN}"
 mem_gb=$(( $(sysctl -n hw.memsize) / 1024 / 1024 / 1024 ))
 [ "$mem_gb" -ge 8 ] || warn "Only ${mem_gb} GB of RAM; the VM takes 5 GB."
 
@@ -314,11 +356,10 @@ docker run --rm --runtime sysbox-runc busybox true || die "A test container unde
 ok "sysbox-mgr and sysbox-fs active, sysbox-runc works"
 
 step "Tesseract command"
-tesseract_bin="$(command -v tesseract || true)"
-[ -n "$tesseract_bin" ] || tesseract_bin="$BUNDLED_CLI"
-[ -x "$tesseract_bin" ] || die "tesseract CLI not found (${BUNDLED_CLI})."
+tesseract_bin="$TESSERACT_BIN"
+[ -x "$tesseract_bin" ] || die "tesseract command not found (${tesseract_bin})."
 if ! command -v tesseract >/dev/null 2>&1; then
-  warn "tesseract is not on PATH; using ${BUNDLED_CLI}. Add it with the app menu: Install 'tesseract' Command…"
+  warn "tesseract is not on PATH; using ${tesseract_bin}. Add it with the app menu: Install 'tesseract' Command…"
 fi
 ok "$("$tesseract_bin" version 2>/dev/null || echo "$tesseract_bin")"
 
