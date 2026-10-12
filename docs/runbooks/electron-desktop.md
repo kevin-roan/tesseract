@@ -292,6 +292,11 @@ the files as workflow artifacts. The macOS job signs and notarizes with the repo
 `MAC_CERT_P12_BASE64`, `MAC_CERT_PASSWORD`, `APPLE_API_KEY_P8`, `APPLE_API_KEY_ID` and
 `APPLE_API_ISSUER` ([macOS signing and notarization](#macos-signing-and-notarization)); with
 `TESSERACT_NOTARIZE=1` set in the workflow, it fails when the notarization secrets are missing.
+The workflow imports the certificate into its own keychain and passes `CSC_KEYCHAIN` +
+`CSC_NAME`, not `CSC_LINK`: electron-builder 26 unlocks the keychain it creates for `CSC_LINK`
+with the `.p12` password, so `security set-key-partition-list` fails. A version whose tag already
+points at another commit fails before building; re-running a failed job on the release commit
+uploads into the existing release.
 
 ### By hand
 
