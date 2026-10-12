@@ -271,10 +271,10 @@ logic and the desktop entry.
 
 ## Releasing
 
-### From CI (Linux)
+### From CI (Linux and macOS)
 
 `.github/workflows/desktop.yml` builds on every push to `production` and publishes the
-AppImage and deb as the GitHub release `v<version>` (`version` from
+AppImage, deb and the signed, notarized macOS dmg + zip as the GitHub release `v<version>` (`version` from
 `apps/electron/package.json`, release notes generated from the commits). A version that
 already has a release fails the run before building.
 
@@ -288,7 +288,10 @@ bun run electron:release --dry-run # print the next version, change nothing
 
 It bumps the version in `apps/electron/package.json` and `bun.lock`, commits `release; v<version>`,
 and pushes `main` to both `main` and `production` in one atomic push, which starts the CI release. Runs from the Actions tab or `build/**` branches only upload
-the files as workflow artifacts. The macOS job is commented out in the matrix for now.
+the files as workflow artifacts. The macOS job signs and notarizes with the repository secrets
+`MAC_CERT_P12_BASE64`, `MAC_CERT_PASSWORD`, `APPLE_API_KEY_P8`, `APPLE_API_KEY_ID` and
+`APPLE_API_ISSUER` ([macOS signing and notarization](#macos-signing-and-notarization)); with
+`TESSERACT_NOTARIZE=1` set in the workflow, it fails when the notarization secrets are missing.
 
 ### By hand
 

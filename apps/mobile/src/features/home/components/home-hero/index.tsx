@@ -15,7 +15,7 @@ const HomeHero = () => {
 
   return (
     <Animated.View entering={markEntering} style={styles.panel}>
-      <Wordmark testID="home-wordmark" />
+      <Wordmark decodeOnLongPress testID="home-wordmark" />
     </Animated.View>
   );
 };
