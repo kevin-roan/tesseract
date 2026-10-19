@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ERROR_CODES, PROTOCOL_VERSION } from "../constants";
+import { ERROR_CODES, PROJECT_RUNTIMES, PROTOCOL_VERSION } from "../constants";
 import { ByteCountSchema, PortSchema, TimestampSchema } from "./primitives";
 
 export const ErrorCodeSchema = z.enum(ERROR_CODES);
@@ -12,11 +12,16 @@ export const ErrorBodySchema = z.object({
 });
 export type ErrorBody = z.infer<typeof ErrorBodySchema>;
 
+export const ProjectRuntimeSchema = z.enum(PROJECT_RUNTIMES);
+export type ProjectRuntime = z.infer<typeof ProjectRuntimeSchema>;
+
 export const HealthSchema = z.object({
   ok: z.literal(true),
   version: z.string(),
   protocolVersion: z.literal(PROTOCOL_VERSION),
   sandboxId: z.string(),
+  /** Older controllers omit it. */
+  runtime: ProjectRuntimeSchema.default("sandbox"),
 });
 export type Health = z.infer<typeof HealthSchema>;
 
@@ -120,6 +125,8 @@ export type SandboxCounts = z.infer<typeof SandboxCountsSchema>;
 
 export const SandboxStatusSchema = z.object({
   sandboxId: z.string(),
+  /** Older controllers omit it. */
+  runtime: ProjectRuntimeSchema.default("sandbox"),
   hostname: z.string(),
   version: z.string(),
   startedAt: TimestampSchema,

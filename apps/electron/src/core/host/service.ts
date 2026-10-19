@@ -2,8 +2,9 @@ import { spawn, type ChildProcess, type SpawnOptions } from "node:child_process"
 import { createInterface } from "node:readline";
 import type { Readable } from "node:stream";
 import { HostShellClient, TesseractClient, type FetchLike } from "@tesseract/client";
-import type { AndroidLinkInfo, CreateHostTerminal, HostAndroidStatus } from "@tesseract/protocol";
-import type { HostPairing, HostShellState } from "../../shared/contracts/hostShell";
+import type { AndroidLinkInfo, CreateHostTerminal, HostAndroidStatus, HostIosStatus, IosLinkInfo } from "@tesseract/protocol";
+import type { EmulatorStopSignal, HostPairing, HostShellState } from "../../shared/contracts/hostShell";
+import type { HttpProxyRequest, HttpProxyResponse } from "../../shared/contracts/http";
 import { redact } from "../log";
 import { runCommand, type CommandOptions, type CommandResult } from "../process";
 import { nodeFileProbe, supervisedCommand, type FileProbe } from "./command";
@@ -27,6 +28,7 @@ import {
   sessionLive,
   sessionRequiredError,
 } from "./model";
+import { isUnauthorized, lockedResponse, proxyHeaders, proxyTarget, proxyTimeout, toProxyResponse } from "./proxy";
 
 export type SpawnFn = (file: string, args: readonly string[], options: SpawnOptions) => ChildProcess;
 export type RunFn = (file: string, args: readonly string[], options: CommandOptions) => Promise<CommandResult>;
@@ -62,6 +64,19 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function requireStopSignal(signal: unknown): void {
+  if (signal !== undefined && signal !== "SIGTERM" && signal !== "SIGKILL") {
+    throw new HostShellError(HOST_LABELS.invalidSignal, "invalid_argument");
+  }
+}
+
+function sandboxBody(sandboxUrl: unknown, token: unknown): { sandboxUrl: string; token: string } {
+  if (typeof sandboxUrl !== "string" || !sandboxUrl.trim() || typeof token !== "string" || !token) {
+    throw new HostShellError(HOST_LABELS.invalidSandbox, "invalid_argument");
+  }
+  return { sandboxUrl: sandboxUrl.trim(), token };
+}
+
 export class HostShellService {
   private current: HostShellState;
   private child: ChildProcess | null = null;
@@ -76,7 +91,7 @@ export class HostShellService {
   private starting: Promise<HostShellState> | null = null;
   private shuttingDown: Promise<void> | null = null;
 
-  constructor(private readonly deps: HostShellDeps) {
+  constructor(protected readonly deps: HostShellDeps) {
     this.current = { ...INITIAL_HOST_SHELL_STATE, autostart: deps.autostart === true };
   }
 
@@ -201,18 +216,71 @@ export class HostShellService {
     });
   }
 
-  stopEmulator(): Promise<HostAndroidStatus> {
+  stopEmulator(signal?: EmulatorStopSignal): Promise<HostAndroidStatus> {
+    requireStopSignal(signal);
     return this.hostCall(async (client) => {
-      await client.stopEmulator();
+      await client.stopEmulator(signal ? { signal } : undefined);
       return client.hostAndroidStatus();
     });
   }
 
-  linkSandbox(sandboxUrl: string, token: string): Promise<AndroidLinkInfo> {
-    if (typeof sandboxUrl !== "string" || !sandboxUrl.trim() || typeof token !== "string" || !token) {
-      throw new HostShellError(HOST_LABELS.invalidSandbox, "invalid_argument");
+  iosStatus(): Promise<HostIosStatus> {
+    return this.hostCall((client) => client.hostIosStatus());
+  }
+
+  bootSimulator(udid: string): Promise<HostIosStatus> {
+    if (typeof udid !== "string" || !udid.trim()) throw new HostShellError(HOST_LABELS.invalidUdid, "invalid_argument");
+    return this.hostCall(async (client) => {
+      await client.bootSimulator({ udid: udid.trim() });
+      return client.hostIosStatus();
+    });
+  }
+
+  shutdownSimulator(signal?: EmulatorStopSignal): Promise<HostIosStatus> {
+    requireStopSignal(signal);
+    return this.hostCall(async (client) => {
+      await client.shutdownSimulator(signal ? { signal } : undefined);
+      return client.hostIosStatus();
+    });
+  }
+
+  linkIosSandbox(sandboxUrl: string, token: string): Promise<IosLinkInfo> {
+    const body = sandboxBody(sandboxUrl, token);
+    return this.hostCall((client) => client.linkIosSandbox(body));
+  }
+
+  async proxy(request: HttpProxyRequest, signal?: AbortSignal): Promise<HttpProxyResponse> {
+    const state = this.current;
+    if (!isServing(state) || !state.pairing) throw new HostShellError(HOST_LABELS.notRunning);
+    const target = proxyTarget(request.url, state.pairing.url);
+    const session = this.session;
+    if (!session || !sessionLive(session.expiresAt, this.now())) {
+      this.forgetSession();
+      return lockedResponse();
     }
-    return this.hostCall((client) => client.linkSandbox({ sandboxUrl: sandboxUrl.trim(), token }));
+    const fetchImpl = this.deps.fetch ?? (globalThis.fetch as unknown as FetchLike);
+    const timeout = AbortSignal.timeout(proxyTimeout(request.timeoutMs));
+    try {
+      const response = await toProxyResponse(
+        await fetchImpl(target.toString(), {
+          method: request.method,
+          headers: proxyHeaders(request.headers, session.token),
+          body: request.body,
+          signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+        }),
+      );
+      if (isUnauthorized(response) && this.session === session) this.forgetSession();
+      return response;
+    } catch (error) {
+      if (signal?.aborted) throw new HostShellError(HOST_LABELS.proxyCancelled, "cancelled");
+      if (timeout.aborted) throw new HostShellError(HOST_LABELS.notAnswering(state.pairing.url), "timeout");
+      throw new HostShellError(describeHostError(error, state.pairing.url));
+    }
+  }
+
+  linkSandbox(sandboxUrl: string, token: string): Promise<AndroidLinkInfo> {
+    const body = sandboxBody(sandboxUrl, token);
+    return this.hostCall((client) => client.linkSandbox(body));
   }
 
   openTerminal(cwd: string): Promise<string> {
@@ -286,7 +354,7 @@ export class HostShellService {
     }
   }
 
-  private forgetSession(): void {
+  protected forgetSession(): void {
     this.session = null;
     if (this.current.sessionExpiresAt !== null) this.set({ sessionExpiresAt: null });
   }
@@ -321,7 +389,7 @@ export class HostShellService {
     }
   }
 
-  private async probe(): Promise<HostShellState> {
+  protected async probe(): Promise<HostShellState> {
     const owned = isOwned(this.current);
     try {
       const pairing = parsePairing(await this.cli(HOST_ARGS.pair));
@@ -436,7 +504,7 @@ export class HostShellService {
     this.killTimer = null;
   }
 
-  private set(patch: Partial<HostShellState>): void {
+  protected set(patch: Partial<HostShellState>): void {
     this.clearFlushTimer();
     this.current = { ...this.current, ...patch };
     this.deps.onChange(this.current);

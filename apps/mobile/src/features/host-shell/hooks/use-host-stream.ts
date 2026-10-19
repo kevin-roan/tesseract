@@ -76,10 +76,10 @@ export function useHostStream() {
     if (isSessionLost(failure)) clear();
   }, [failure, clear]);
 
-  const { setup } = nav;
+  const { lockScreen } = nav;
   useEffect(() => {
-    if (hydrated && !session) setup();
-  }, [hydrated, session, setup]);
+    if (hydrated && !session) lockScreen();
+  }, [hydrated, session, lockScreen]);
 
   const saved = settings.data;
   const values: AndroidStreamSettings = { ...(saved ?? DEFAULT_ANDROID_STREAM), ...draft };

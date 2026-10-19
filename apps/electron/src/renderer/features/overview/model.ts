@@ -83,7 +83,7 @@ export interface RangeOption {
 type StatusState = Pick<ConnectionState, "status" | "errorMessage" | "health" | "config">;
 
 export function overviewTitle(status: SandboxStatus | null, state: Pick<ConnectionState, "health" | "config">): string {
-  return status?.sandboxId || sandboxName(state) || OVERVIEW_LABELS.fallbackTitle;
+  return state.config?.name || status?.sandboxId || sandboxName(state) || OVERVIEW_LABELS.fallbackTitle;
 }
 
 export function overviewMeta(status: SandboxStatus | null): string | null {

@@ -17,6 +17,7 @@ export interface MainOptions {
 }
 
 const FLAG_COMMANDS = COMMANDS.filter((command) => "flag" in command.trigger);
+const FLAG_COMMAND_VALUES = FLAG_COMMANDS.flatMap((command) => command.valueFlags ?? []);
 
 function print(io: CliIo, lines: readonly string[]): number {
   for (const line of lines) io.stdout(line);
@@ -46,7 +47,7 @@ function allowedFlags(command: CliCommand): Set<string> {
 export async function main(argv: string[], options: MainOptions = {}): Promise<number> {
   const io = options.io ?? processIo;
   const json = argv.includes("--json");
-  const subcommand = firstSubcommand(argv);
+  const subcommand = firstSubcommand(argv, FLAG_COMMAND_VALUES);
   if (subcommand === "help") {
     const target = argv.filter((arg) => !arg.startsWith("-"))[1];
     const command = target ? findCommand(target) : null;

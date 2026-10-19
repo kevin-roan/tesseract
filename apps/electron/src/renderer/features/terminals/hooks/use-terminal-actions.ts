@@ -1,11 +1,9 @@
 import type { TerminalInfo } from "@tesseract/protocol";
 import { useCallback, useMemo, useRef } from "react";
-import { useApiClient } from "../../../app/data";
 import { showToast } from "../../../components/Toast";
 import { ERROR_LABELS } from "../labels";
 import { estimateGrid, nextSelection } from "../model";
-import { terminalSessions } from "../sessions";
-import { useTerminalsUi } from "../store";
+import { useTerminalsScope } from "../scope";
 import type { LaunchRequest } from "../types";
 import { useTerminalsCache } from "./use-terminals-list";
 
@@ -26,7 +24,8 @@ export interface TerminalActions {
 }
 
 export function useTerminalActions(sessions: readonly TerminalInfo[] | null, measureStage: () => StageMeasure | null): TerminalActions {
-  const client = useApiClient();
+  const { sessions: terminalSessions, ui: useTerminalsUi, useClient } = useTerminalsScope();
+  const client = useClient();
   const cache = useTerminalsCache();
   const busy = useRef(false);
   const latest = useRef({ sessions, measureStage });
@@ -38,7 +37,7 @@ export function useTerminalActions(sessions: readonly TerminalInfo[] | null, mea
     ui.setSelected(id);
     ui.setDrawerOpen(false);
     terminalSessions.attach(id);
-  }, []);
+  }, [terminalSessions, useTerminalsUi]);
 
   const launch = useCallback(
     async ({ kind, projectId }: LaunchRequest) => {
@@ -64,7 +63,7 @@ export function useTerminalActions(sessions: readonly TerminalInfo[] | null, mea
         useTerminalsUi.getState().setCreating(false);
       }
     },
-    [client, cache, select],
+    [client, cache, select, terminalSessions, useTerminalsUi],
   );
 
   const remove = useCallback(
@@ -88,7 +87,7 @@ export function useTerminalActions(sessions: readonly TerminalInfo[] | null, mea
         if (next) terminalSessions.attach(next);
       }
     },
-    [client, cache],
+    [client, cache, terminalSessions, useTerminalsUi],
   );
 
   const requestClose = useCallback(
@@ -100,7 +99,7 @@ export function useTerminalActions(sessions: readonly TerminalInfo[] | null, mea
       if (ended) void remove(id);
       else ui.setConfirmId(id);
     },
-    [remove],
+    [remove, useTerminalsUi],
   );
 
   const restart = useCallback(
@@ -111,7 +110,7 @@ export function useTerminalActions(sessions: readonly TerminalInfo[] | null, mea
     [launch],
   );
 
-  const reconnect = useCallback((id: string) => terminalSessions.get(id)?.link.reconnect(), []);
+  const reconnect = useCallback((id: string) => terminalSessions.get(id)?.link.reconnect(), [terminalSessions]);
 
   return useMemo(() => ({ select, launch, requestClose, remove, restart, reconnect }), [select, launch, requestClose, remove, restart, reconnect]);
 }

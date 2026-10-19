@@ -1,10 +1,11 @@
 import { FolderPlusIcon } from "phosphor-react-native";
 
-import ConnectionDot from "@/components/connection-dot";
 import MenuSheet from "@/components/menu-sheet";
 import Notice from "@/components/notice";
 import ProjectCard from "@/components/project-card";
+import LinkStatus from "@/components/link-status";
 import ScreenHeader from "@/components/screen-header";
+import StatusBadge from "@/components/status-badge";
 import ScreenScaffold from "@/components/screen-scaffold";
 import SegmentedPills from "@/components/segmented-pills";
 import Section from "@/components/section";
@@ -17,7 +18,7 @@ import SandboxGate from "@/features/sandbox/components/sandbox-gate";
 import SandboxNotices from "@/features/sandbox/components/sandbox-notices";
 import WebLinkCard from "@/features/sandbox/components/web-link-card";
 import { useProjectsScreen } from "@/features/sandbox/hooks/use-projects-screen";
-import { linkLabel, linkTone } from "@/features/sandbox/utils/states";
+import { linkBroken, linkIconTone, linkLabel } from "@/features/sandbox/utils/states";
 
 export default function ProjectsScreen() {
   const screen = useProjectsScreen();
@@ -35,7 +36,12 @@ export default function ProjectsScreen() {
           title="Projects"
           subtitle={screen.sandbox.name}
           size="medium"
-          status={<ConnectionDot tone={linkTone(screen.link)} label={linkLabel(screen.link)} variant="chip" />}
+          status={
+            <>
+              <LinkStatus tone={linkIconTone(screen.link)} label={linkLabel(screen.link)} broken={linkBroken(screen.link)} />
+              {screen.runtimeBadge ? <StatusBadge {...screen.runtimeBadge} /> : null}
+            </>
+          }
           actions={screen.headerActions}
         />
       }
@@ -107,13 +113,13 @@ export default function ProjectsScreen() {
           <Section
             title="All projects"
             testID="projects-list"
-            actionLabel="Add"
+            actionLabel={screen.addProject ? "Add" : undefined}
             onPressAction={screen.addProject}
             loading={screen.projectsLoading && screen.projects.length === 0}
             loadingLabel="Loading projects…"
             isEmpty={!screen.projectsLoading && screen.projects.length === 0}
-            emptyLabel="No projects in /workspace/projects yet. Clone a repository or start an empty one, or ask Claude to."
-            emptyActionLabel="Add a project"
+            emptyLabel={screen.emptyLabel}
+            emptyActionLabel={screen.addProject ? "Add a project" : undefined}
             emptyActionIcon={FolderPlusIcon}
             onEmptyAction={screen.addProject}
           >

@@ -132,6 +132,7 @@ function detectRunTargets(dir: string, framework: Framework, deps: Set<string>, 
     targets.push("expo-device");
     if (deps.has("react-native-web")) targets.push("expo-web");
     targets.push("expo-android");
+    targets.push("expo-ios");
   }
   if (framework === "react-native" && existsSync(join(dir, "android", "gradlew"))) targets.push("rn-android");
   if (framework === "flutter") {

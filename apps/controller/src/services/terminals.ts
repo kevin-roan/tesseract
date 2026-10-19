@@ -1,13 +1,15 @@
 import {
   createId,
+  DEFAULT_STOP_SIGNAL,
   LIMITS,
   type CreateTerminal,
+  type StopSignal,
   type TerminalInfo,
   type TerminalServerMessage,
 } from "@tesseract/protocol";
 import { errorMessage, notFound, unavailable } from "../core/errors";
 import { childEnv, resolveExecutable } from "../core/exec";
-import { locateProject } from "../core/paths";
+import { locateConfiguredProject } from "../core/paths";
 import { describeLeftovers, reapGroup, terminateGroup } from "../core/process-group";
 import { nowIso } from "../core/time";
 import type { EventHub } from "../core/events";
@@ -85,7 +87,7 @@ export class TerminalService {
     let cwd = this.config.workspace;
     let projectId: string | null = null;
     if (input.projectId !== undefined) {
-      const location = locateProject(this.config.projectsDir, input.projectId);
+      const location = locateConfiguredProject(this.config, input.projectId);
       if (!location.exists) throw notFound(`Project ${location.id} not found`);
       cwd = location.path;
       projectId = location.id;
@@ -229,7 +231,8 @@ export class TerminalService {
     this.commit(session.info);
   }
 
-  async close(id: string): Promise<TerminalInfo> {
+  /** SIGHUP to the shell's process group (SIGKILL after the grace period); `SIGKILL` kills it at once. */
+  async close(id: string, signal: StopSignal = DEFAULT_STOP_SIGNAL): Promise<TerminalInfo> {
     const session = this.sessions.get(id);
     if (!session) {
       const stored = this.repos.terminals.get(id);
@@ -238,7 +241,9 @@ export class TerminalService {
     }
     if (session.info.state === "running") {
       session.closing = true;
-      await terminateGroup(session.proc.pid, session.proc.exited, this.stopGraceMs, "SIGHUP");
+      await (signal === "SIGKILL"
+        ? terminateGroup(session.proc.pid, session.proc.exited, 0, "SIGKILL")
+        : terminateGroup(session.proc.pid, session.proc.exited, this.stopGraceMs, "SIGHUP"));
     }
     const info = await session.finished;
     this.sessions.delete(id);

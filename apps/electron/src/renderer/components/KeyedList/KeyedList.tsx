@@ -4,6 +4,7 @@ import { cx } from "../../lib/cx";
 import { reveal, transition } from "../../theme/motion";
 import { useExitInert } from "../Presence/use-exit-inert";
 import { RowListContext } from "../Row";
+import { ANIMATED_ITEMS_LIMIT } from "./constants";
 import styles from "./KeyedList.module.css";
 
 export interface KeyedListProps<T> {
@@ -18,14 +19,23 @@ export interface KeyedListProps<T> {
 export function KeyedList<T>({ items, getKey, renderItem, divided = false, label, className }: KeyedListProps<T>) {
   const context = useMemo(() => ({ divided }), [divided]);
   if (items.length === 0) return null;
+  const animated = items.length <= ANIMATED_ITEMS_LIMIT;
   return (
     <RowListContext.Provider value={context}>
       <div role="list" aria-label={label} className={cx(styles.list, divided && styles.divided, className)}>
-        <AnimatePresence initial={false}>
-          {items.map((item, index) => (
-            <KeyedListItem key={getKey(item, index)}>{renderItem(item, index)}</KeyedListItem>
-          ))}
-        </AnimatePresence>
+        {animated ? (
+          <AnimatePresence initial={false}>
+            {items.map((item, index) => (
+              <KeyedListItem key={getKey(item, index)}>{renderItem(item, index)}</KeyedListItem>
+            ))}
+          </AnimatePresence>
+        ) : (
+          items.map((item, index) => (
+            <div key={getKey(item, index)} role="listitem" className={cx(styles.item, styles.static)}>
+              {renderItem(item, index)}
+            </div>
+          ))
+        )}
       </div>
     </RowListContext.Provider>
   );

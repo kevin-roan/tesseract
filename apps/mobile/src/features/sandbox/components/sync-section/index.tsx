@@ -74,6 +74,7 @@ const SyncSection = ({ sync }: SyncSectionProps) => {
               {sync.files.map((change) => (
                 <SyncFileRow key={change.path} change={change} />
               ))}
+              {sync.hiddenFilesLabel ? <ListRow label={sync.hiddenFilesLabel} /> : null}
               {sync.fileToggleLabel ? <ListRow label={sync.fileToggleLabel} onPress={sync.toggleExpanded} /> : null}
             </ListGroup>
           </MotionItem>

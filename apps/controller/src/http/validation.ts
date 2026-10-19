@@ -1,5 +1,17 @@
 import type { Context } from "hono";
-import { isIdOfKind, LIMITS, LogTailQuerySchema, parseJson, ProjectFilterQuerySchema, validate, type IdKind, type Schema } from "@tesseract/protocol";
+import {
+  DEFAULT_STOP_SIGNAL,
+  isIdOfKind,
+  LIMITS,
+  LogTailQuerySchema,
+  parseJson,
+  ProjectFilterQuerySchema,
+  StopSignalQuerySchema,
+  validate,
+  type IdKind,
+  type Schema,
+  type StopSignal,
+} from "@tesseract/protocol";
 import { badRequest, notFound } from "../core/errors";
 
 const ID_LABELS: Record<IdKind, string> = {
@@ -13,6 +25,9 @@ const ID_LABELS: Record<IdKind, string> = {
   sync: "Sync request",
   appRun: "App run",
   adbStream: "ADB stream",
+  iosStream: "iOS stream",
+  iosInstall: "iOS install",
+  iosRequest: "iOS request",
 };
 
 export function parseWith<T>(schema: Schema<T>, data: unknown, what: string): T {
@@ -49,4 +64,9 @@ export function projectFilter(c: Context): string | undefined {
 
 export function logTail(c: Context): number {
   return parseWith(LogTailQuerySchema, c.req.query(), "query").tail ?? LIMITS.defaultLogTail;
+}
+
+/** `?signal=SIGTERM|SIGKILL` of stop routes; SIGTERM when absent. */
+export function stopSignal(c: Context): StopSignal {
+  return parseWith(StopSignalQuerySchema, c.req.query(), "query").signal ?? DEFAULT_STOP_SIGNAL;
 }

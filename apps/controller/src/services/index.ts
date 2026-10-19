@@ -13,6 +13,7 @@ import { Repositories } from "../db/repositories";
 import { VERSION } from "../version";
 import { AgentRunService } from "./agent-runs";
 import { AndroidLinkService, type AndroidLinkOptions } from "./android-link";
+import { IosLinkService, type IosLinkOptions } from "./ios-link";
 import { AppRunService, type AppRunOptions } from "./app-runs";
 import { ArtifactService } from "./artifacts";
 import { BuildOutputService } from "./build-outputs";
@@ -32,6 +33,7 @@ import { ProcessService } from "./processes";
 import { ProjectService } from "./projects";
 import { PushService, type PushOptions } from "./push";
 import { RuntimeMirror } from "./runtime-mirror";
+import { SandboxRuntimeService, type SandboxRuntimeOptions } from "./sandbox-runtime";
 import { StatusService } from "./status";
 import { SyncBackService, type SyncBackOptions } from "./sync-back";
 import { TaildropService, type TaildropOptions } from "./taildrop";
@@ -41,6 +43,7 @@ import { defaultProbes, ToolService, type ToolProbe } from "./tools";
 import { TranscriptionService, type TranscriptionOptions } from "./transcriptions";
 import { UploadService } from "./uploads";
 import { UsageService } from "./usage";
+import { VncSessionRegistry } from "./vnc-bridge";
 
 export type ServiceOptions = {
   logger?: Logger;
@@ -56,6 +59,8 @@ export type ServiceOptions = {
   syncBack?: SyncBackOptions;
   appRuns?: AppRunOptions;
   androidLink?: AndroidLinkOptions;
+  iosLink?: IosLinkOptions;
+  sandboxRuntime?: SandboxRuntimeOptions;
 };
 
 export type Services = {
@@ -92,11 +97,14 @@ export type Services = {
   claudeHooks: ClaudeHookService;
   ports: PortService;
   android: AndroidLinkService;
+  ios: IosLinkService;
   appRuns: AppRunService;
   usage: UsageService;
   uploads: UploadService;
   transcriptions: TranscriptionService;
   runtime: RuntimeMirror;
+  vncSessions: VncSessionRegistry;
+  sandboxRuntime: SandboxRuntimeService;
   context: () => ReturnType<typeof readAgentContext>;
   close: () => Promise<void>;
 };
@@ -165,7 +173,8 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
   const ports = new PortService(config, processes, identity);
   const browser = new BrowserService(config, identity);
   const android = new AndroidLinkService(config, logger.child("android"), options.androidLink);
-  const appRuns = new AppRunService(config, hub, processes, projects, display, android, identity, logger.child("app-runs"), options.appRuns);
+  const ios = new IosLinkService(logger.child("ios"), options.iosLink);
+  const appRuns = new AppRunService(config, hub, processes, projects, display, android, ios, identity, logger.child("app-runs"), options.appRuns);
   const usage = new UsageService(config, { runs: () => [...agentRuns.list(), ...agentRuns.list({ archived: true })], terminals: () => terminals.list() });
   const liveActivity = new LiveActivityService(
     config,
@@ -189,13 +198,20 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
     options.runtimeDebounceMs,
   );
   runtime.start(hub);
+  const vncSessions = new VncSessionRegistry();
+  const sandboxRuntime = new SandboxRuntimeService(
+    config,
+    { processes, appRuns, agentRuns, terminals, vncSessions },
+    logger.child("sandbox-runtime"),
+    { stopGraceMs, ...options.sandboxRuntime },
+  );
 
   let closing: Promise<void> | null = null;
   const close = () => {
     closing ??= (async () => {
       syncBack.stop();
       await appRuns.shutdown();
-      await Promise.allSettled([android.shutdown(), builds.shutdown(), processes.shutdown(), terminals.shutdown(), agentRuns.shutdown()]);
+      await Promise.allSettled([android.shutdown(), ios.shutdown(), builds.shutdown(), processes.shutdown(), terminals.shutdown(), agentRuns.shutdown()]);
       await runtime.stop();
       await liveActivity.stop();
       logs.flushAll();
@@ -238,11 +254,14 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
     claudeHooks,
     ports,
     android,
+    ios,
     appRuns,
     usage,
     uploads,
     transcriptions,
     runtime,
+    vncSessions,
+    sandboxRuntime,
     context: () => readAgentContext(config.agentDir),
     close,
   };

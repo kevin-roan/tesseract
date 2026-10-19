@@ -14,6 +14,7 @@ import { LIST_PREVIEW_LIMIT } from "../utils/constants";
 import { describeError } from "../utils/errors";
 import { buildTargetOptions, frameworkLabel } from "../utils/labels";
 import { gitSummaryLabel, prefersDisplay, runScriptCommand, scriptCommand } from "../utils/projects";
+import { HOST_RUNTIME_COPY, isHostRuntime, runtimeBadge } from "../utils/runtime";
 import { processSite, projectSites } from "../utils/sites";
 import { useArtifactDownload } from "./use-artifact-download";
 import { useLogStream } from "./use-log-stream";
@@ -86,7 +87,8 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     [nav, projectId, startBuild],
   );
 
-  const emulator = appRuns.emulator;
+  const onHost = isHostRuntime(data?.runtime);
+  const emulator = onHost ? null : appRuns.emulator;
   const menuHandlers = useMemo(
     () => ({
       shell: () => nav.newTerminal({ kind: "shell", projectId }),
@@ -143,8 +145,11 @@ export function useProjectDetail(projectId: string, initialProcessId: string | n
     git: git.data,
     scripts,
     toggleBookmark: bookmarks.toggle,
-    preferDisplay: data ? prefersDisplay(data.framework) : false,
-    offerDisplay: emulator === null,
+    runtimeBadge: runtimeBadge(data?.runtime),
+    hostNotice: onHost && data ? HOST_RUNTIME_COPY.notice(data.path) : null,
+    onHost,
+    preferDisplay: data && !onHost ? prefersDisplay(data.framework) : false,
+    offerDisplay: !onHost && emulator === null,
     runScript,
     runningScript: startProcess.isPending ? (startProcess.variables?.name ?? null) : null,
     targets: buildTargetOptions(data?.buildTargets ?? []),

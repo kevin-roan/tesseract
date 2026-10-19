@@ -11,7 +11,7 @@ describe("page bridge contract", () => {
   test("message names are unique and page-prefixed", () => {
     const names = Object.values(PAGE_MESSAGES);
     expect(new Set(names).size).toBe(names.length);
-    for (const name of names) expect(name).toMatch(/^(terminal-(state|need-ticket)|vnc-(state|need-ticket|action)|android-(state|need-ticket)|tesseract-[a-z-]+)$/);
+    for (const name of names) expect(name).toMatch(/^(terminal-(state|need-ticket)|vnc-(state|need-ticket|action)|android-(state|need-ticket)|ios-(state|need-ticket)|tesseract-[a-z-]+)$/);
     expect(PAGE_MESSAGES.reconnect).toBe("tesseract-reconnect");
     expect(PAGE_MESSAGES.inputMode).toBe("tesseract-input-mode");
     expect(PAGE_MESSAGES.insets).toBe("tesseract-insets");

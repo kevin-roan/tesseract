@@ -19,6 +19,17 @@ export type NewSandbox = {
   token: string;
 };
 
+export type RenameSheetState = {
+  visible: boolean;
+  name: string;
+  setName: (text: string) => void;
+  hint: string;
+  error: string | null;
+  saving: boolean;
+  save: () => void;
+  close: () => void;
+};
+
 export type SandboxLink = "idle" | ConnectionState;
 
 export type SandboxIssue = "unauthorized" | "incompatible";
@@ -44,7 +55,7 @@ export type PairingStatus = "idle" | "validating" | "error" | "paired";
 
 export type LogSource = { kind: "process" | "build"; id: string };
 
-export type PageKind = "vnc" | "terminal" | "android";
+export type PageKind = "vnc" | "terminal" | "android" | "ios";
 
 export type PageMessage =
   | { page: PageKind; kind: "state"; state: string }

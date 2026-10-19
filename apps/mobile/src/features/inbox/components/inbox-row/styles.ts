@@ -1,16 +1,14 @@
 import { StyleSheet } from "react-native";
 
-import { ToneColors, type Tone } from "@/lib/tone";
-import { FontWeights, type Theme } from "@/theme";
+import type { Theme } from "@/theme";
 
-export default function createStyles(theme: Theme, tone: Tone, emphasized: boolean) {
-  const colors = ToneColors[tone];
+export default function createStyles(theme: Theme, emphasized: boolean) {
   return StyleSheet.create({
     card: {
       gap: theme.spacing.xxs,
       paddingVertical: theme.spacing.md,
       paddingHorizontal: theme.spacing.base,
-      ...(emphasized && { borderColor: theme.colors[colors.foreground] }),
+      ...(emphasized && { borderColor: theme.colors.borderStrong }),
     },
     top: {
       flexDirection: "row",
@@ -23,8 +21,16 @@ export default function createStyles(theme: Theme, tone: Tone, emphasized: boole
     time: {
       fontVariant: ["tabular-nums"],
     },
-    title: {
-      fontWeight: FontWeights.medium,
+    body: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: theme.spacing.sm,
+    },
+    icon: {
+      marginTop: 2,
+    },
+    preview: {
+      flex: 1,
     },
   });
 }

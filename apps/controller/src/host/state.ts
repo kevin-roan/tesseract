@@ -1,5 +1,5 @@
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { DEFAULT_ANDROID_STREAM, UpdateAndroidStreamSchema, type AndroidStreamSettings, type UpdateAndroidStream } from "@tesseract/protocol";
+import { DEFAULT_ANDROID_STREAM, LIMITS, SHA256_PATTERN, UpdateAndroidStreamSchema, type AndroidStreamSettings, type UpdateAndroidStream } from "@tesseract/protocol";
 import { generateToken } from "../auth/token";
 
 export type AndroidLinkConfig = { sandboxUrl: string; token: string };
@@ -14,12 +14,15 @@ export type HostState = {
   androidLink: AndroidLinkConfig | null;
   /** Only the stream settings changed from `DEFAULT_ANDROID_STREAM`. */
   androidStream: UpdateAndroidStream;
+  iosLink: AndroidLinkConfig | null;
+  /** sha256 of sandbox simulator builds the user approved for install (newest last). */
+  iosApprovedBundles: string[];
 };
 
 const DIR_MODE = 0o700;
 const FILE_MODE = 0o600;
 
-const EMPTY: HostState = { token: null, pinHash: null, pinSetAt: null, failures: 0, lockedUntil: null, lockouts: 0, androidLink: null, androidStream: {} };
+const EMPTY: HostState = { token: null, pinHash: null, pinSetAt: null, failures: 0, lockedUntil: null, lockouts: 0, androidLink: null, androidStream: {}, iosLink: null, iosApprovedBundles: [] };
 
 const text = (value: unknown) => (typeof value === "string" && value ? value : null);
 function androidLink(value: unknown): AndroidLinkConfig | null {
@@ -38,6 +41,7 @@ function androidStream(value: unknown): UpdateAndroidStream {
   }
   return kept as UpdateAndroidStream;
 }
+const hashes = (value: unknown) => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string" && SHA256_PATTERN.test(entry)) : []);
 const count = (value: unknown) => (typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0);
 
 /** state.json (0600) in a 0700 directory; every change rewrites it atomically. */
@@ -65,6 +69,8 @@ export class HostStateStore {
       lockouts: count(parsed.lockouts),
       androidLink: androidLink(parsed.androidLink),
       androidStream: androidStream(parsed.androidStream),
+      iosLink: androidLink(parsed.iosLink),
+      iosApprovedBundles: hashes(parsed.iosApprovedBundles),
     };
   }
 
@@ -95,6 +101,17 @@ export class HostStateStore {
 
   setAndroidLink(link: AndroidLinkConfig | null): void {
     this.update((current) => ({ ...current, androidLink: link }));
+  }
+
+  setIosLink(link: AndroidLinkConfig | null): void {
+    this.update((current) => ({ ...current, iosLink: link }));
+  }
+
+  approveIosBundle(sha256: string): void {
+    this.update((current) => ({
+      ...current,
+      iosApprovedBundles: [...current.iosApprovedBundles.filter((entry) => entry !== sha256), sha256].slice(-LIMITS.maxIosApprovedBundles),
+    }));
   }
 
   androidStreamSettings(): AndroidStreamSettings {

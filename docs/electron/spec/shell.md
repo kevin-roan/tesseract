@@ -334,10 +334,13 @@ The left side holds the **workspace switcher**, a menu button showing `BrandMark
   - open: `backgroundSelected`
 - `BrandMark`, with an 8 px gap:
   - the app logo at **20 px**
-  - `Tesseract` in `bodyStrong` (13/20 500)
+  - the active Tesseract's label in `bodyStrong` (13/20 500): its local name, `This computer` for the
+    unnamed local machine, the address host (`office.ts.net:7700`) otherwise, `Tesseract` when nothing is
+    saved, and `Connecting…` while connecting or discovering
   - a `chevron-down` caret at 10 px, `textSecondary`
-- Tooltip: `Main menu`.
-- Clicking opens the **main menu** popover (§3.6).
+- Tooltip: `Switch Tesseract` (`Connecting to {name}…` while connecting).
+- Clicking opens the **Tesseract menu** popover (§3.6) and asks main for a fresh status probe
+  (`connection.refreshStatus()`, errors ignored).
 
 The right side holds two buttons, then the window controls when collapsed:
 
@@ -527,7 +530,9 @@ Run list:
      `Online · Live`.
   4. A `settings` icon, 16, `textTertiary`.
 - Tooltip: the `error_message` when there is one, otherwise `Connection settings`.
-- Click opens Preferences.
+- Click toggles a plain menu (aria label `Tesseracts`): one item per saved Tesseract (`host` icon for the local
+  one, `sandbox` otherwise, check on the active one; selecting switches), then `Rename this Tesseract…` (when one
+  is active), `Add Tesseract…` and `Manage…` (Preferences → Connection).
 
 ### 3.4 Platform notes for Electron
 
@@ -544,7 +549,7 @@ Run list:
 - The "Sandbox" section header is at y≈58. The "Projects" header is at y≈274.
 - The composer sits at y 653–723, and the status row centre is at y≈744.
 
-### 3.6 Main menu (workspace switcher popover)
+### 3.6 Tesseract menu (workspace switcher popover)
 
 Popover style:
 
@@ -552,7 +557,21 @@ Popover style:
 - items: min-height 28, padding `0 8px`, radius 4. Hover/selected background `backgroundSelected`.
 - separator: margin `4px 0`, colour `divider`
 
-There are two sections with a separator between them:
+The popover starts with the saved Tesseracts (`connection.load().machines`, services-data §3.4), local one first.
+Each is a `menuitemradio` row: a status `ToneDot` (`online` success "Online", `offline` danger "Offline",
+`unknown` neutral "Not checked"), the label (as in §3.1) over the address in `caption` `textTertiary`
+(`This computer · 127.0.0.1:7700` for a renamed local machine), a `host` icon when a host is known
+(label `Host linked: {host name or address}`) and a check on the active one. Tooltip
+`{apiUrl} · {status} · {host}`. Selecting a row closes the menu and calls `connection.switchTo(id)`; success
+toasts `Switched to {name}`, failure toasts the error. Selecting the active row does nothing.
+
+Then, after a separator:
+
+1. `Rename this Tesseract…` (only when one is active) → Rename dialog (§3.7)
+2. `Add Tesseract…` → Add dialog (§3.7)
+3. `Manage…` → Preferences → Connection
+
+Then the app sections, each after a separator:
 
 1. `New Conversation` (app.new-conversation)
 2. `Preferences` (app.preferences)
@@ -567,6 +586,40 @@ There are two sections with a separator between them:
 
 Show the accelerators on the right, in `textTertiary`, as Linear does. GTK shows them automatically for
 actions that have accels.
+
+### 3.7 Tesseract dialogs
+
+Form dialogs, 460 px wide, opened from the menus above and from Preferences → Connection (one shared store, so
+only one is open at a time). Successful actions toast (in the Preferences toast scope when Settings is open).
+
+- **Add a Tesseract** (`Add` / `Cancel`):
+  - `Pairing link or address` (monospace, autofocus, placeholder `tesseract://pair?… or https://…`, hint
+    `Paste the tesseract://pair link of the sandbox, or its http(s) address and token.`) and, unless the field
+    starts with `tesseract:`, a `Token` password entry. Errors: `Paste a pairing link or enter an address.`,
+    `This is not a valid tesseract://pair link.`, `This is a host link. Paste it under Host link, and the
+    sandbox's tesseract://pair link here.`, `Enter an http(s) address, for example https://office.ts.net:7700.`,
+    `Enter the sandbox token.`
+  - `Host link` (optional, placeholder `tesseract://host?…`, hint about `tesseract server pair` on that machine);
+    error `Paste a tesseract://host link, or leave the field empty.`
+  - `Name` (optional; a typed name wins over the link's name).
+  - `Switch to it now` checkbox, on by default.
+  - Submit → `connection.add(input, { hostLink, activate })`; toast `Switched to {name}` or `Added {name}`.
+    Main errors are shown in the dialog.
+- **Rename Tesseract** (`Save` / `Cancel`): `Name`, prefilled with the saved name; empty resets
+  (`Using the sandbox name`), otherwise toast `Renamed to {name}`. Only changes the name on this computer.
+- **Link host / Replace host link** (`Link` / `Cancel`): one `Host link` entry, validated as a
+  `tesseract://host` link before `connection.setHostLink(id, link)`; toast `Linked host to {name}`.
+- **Remove {name}?** confirm (destructive `Remove`): `Removes the saved address, token and host link from this
+  computer. The sandbox itself keeps running.` → `connection.remove(id)`, toast `Removed {name}`. Not offered for
+  the local machine.
+
+### 3.8 Switching Tesseracts in the renderer
+
+The connection controller keeps `machines` from every snapshot. When the active endpoint (URL or token) changes
+it reconnects, resets the inbox counts and re-polls health/status. Controller data is cached per API base URL
+(`["api", baseUrl, …]`), so every page refetches for the new machine; the host-scoped queries
+(`hostShell` state and emulator, `masterHost` state) are invalidated when the active machine id changes, and
+`hostShell:state` / `masterHost:state` are pushed by main as host routing follows the switch.
 
 ---
 
@@ -884,8 +937,12 @@ Property chips:
 - The breadcrumb chip follows the selected tab:
   - `Sandbox` with the `box` icon
   - `This computer` with the `monitor` icon
+  - `Master host` with the `server` icon
 - Body, top to bottom:
-  1. A **segmented control**, centred, aria-label `Pair a device`, segments `Sandbox` | `This computer`.
+  1. A **segmented control**, centred, aria-label `Pair a device`, segments `Sandbox` | `This computer` |
+     `Master host`. The `Master host` segment is hidden when the active sandbox runs on this computer
+     (`masterHost` state `local`: `This computer` already is the master host; opening on `master` then
+     selects `This computer`), and when the caller passes no master state.
      - track: padding 2, pill, border `1px border`, background `surface` inside dialogs, 2 px gap
      - segment: min-height 24, padding `0 12px`, pill, 12 px / 500, `textSecondary`, hover `text`
      - checked: background `backgroundSelected`, text `text`
@@ -899,6 +956,15 @@ Property chips:
        - inline copy button (24×24, tooltip `Copy link`)
      - Caption: `caption` `textTertiary`, centred, margin-top −4.
      - Notices: an 8 px gap between them, hidden when empty.
+     - **Setup steps** (hidden when the panel has none): an ordered list (aria-label `Setup steps`), padding
+       12, radius 8, border `1px border`, background `surfaceNested`, 12 px between steps. Each step = a
+       20 px round number badge (11 px / 600, `textSecondary`, background `surfaceElevated`, border
+       `1px border`) and a column (6 px gap) with the text in `body` `textSecondary` plus, when the step has
+       a command, a CopyField with the command (same as the link field, copy tooltip `Copy command`). Copying
+       a command toasts `Command copied` (failure: `Couldn't copy the command`) inside the dialog. A step can
+       hold the **link paste field** instead: a mono text field (placeholder `tesseract://host?…`, aria-label
+       `Host pairing link`) and a `Link` button (disabled while empty, busy while linking; Enter submits).
+       A rejected link shows the IPC error message under the field in `caption` `danger`; editing clears it.
      - The secret warning **Notice** (tone warning), always last.
 - Footer (end): `Done` (flat, closes), then `Copy link` (primary). Copy link is disabled when the active
   panel has no link.
@@ -933,8 +999,36 @@ this order:
   - pairing loaded but no PIN → warning `No PIN is set yet. Phones need it to unlock the shell.`, action
     `Set PIN` (opens the Host PIN dialog stacked on top)
 - link = `pairing.link` (`tesseract://host...`), caption `Host {name} · {url}`
+- status `stopped` or `failed` → setup steps below the notices (the notice keeps its `Start`/`Retry`):
+  1. `Start it now with Start above.`
+  2. `To keep it running, turn on Settings › Host shell › Start with Tesseract.`
 
-Opening the dialog triggers `host_shell.refresh()`.
+Master host panel logic, based on the `masterHost` state (the host shell of the machine that runs the active
+sandbox; `masterHost.link` saves its `tesseract://host?…` link per sandbox API URL). Instructions and secret
+warning are the host ones (`Scan with the Tesseract app (Host shell), or open this link on the phone.`,
+`The link contains the host token: … Phones also need the PIN.`):
+
+- not loaded yet → neutral `Checking the master host…`
+- `none` → no link, warning `Connect to a sandbox before pairing a device.` with action `Set up`
+- `local` → neutral `This computer runs the sandbox, so This computer is its master host.` (normally not
+  reached: the tab is hidden)
+- `unlinked` → no link, neutral `Link the host shell of the machine that runs {sandboxUrl} to pair a phone
+  with it.`, then the setup steps:
+  1. `On the machine that runs the sandbox, install the host shell:` command `tesseract server install`
+  2. `Print its pairing links:` command `tesseract server pair`
+  3. `Copy the tesseract://host?… link and paste it here.` with the link paste field; `Link` calls
+     `masterHost.link(link)` (trimmed). On success the panel switches to the linked state.
+- `linked`, online → link = `host.link`, caption `Master host {name} · {url}` (just the url without a name),
+  no notices.
+- `linked`, offline → the QR stays (the phone can pair), warning `The master host isn't answering. The
+  phone can pair, but it will connect once the host shell runs on that machine.` with action `Unlink`
+  (`masterHost.unlink()`; a failure toasts `Couldn't unlink the master host: {error}` in the dialog; after
+  unlinking the panel shows the paste steps, which is how the link is changed), then the steps:
+  1. `On that machine, start the host shell as a service:` command `tesseract server install`
+  2. `Check it:` command `tesseract server status`
+
+Opening the dialog triggers `host_shell.refresh()` and a fresh `masterHost.state()`; `masterHost:state`
+events keep the panel current.
 
 ### 8.6 Host PIN dialog (`widgets/host_pin_dialog.py`)
 

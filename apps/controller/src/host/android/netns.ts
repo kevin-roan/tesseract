@@ -269,7 +269,8 @@ export class IsolatedRuntime {
    * `graceMs`, sweeps the namespace (helper, the emulator's own adb server, netsimd) and
    * removes the runtime directory.
    */
-  async teardown(graceMs: number, leader: { pid: number; exited: Promise<unknown> } | null = null): Promise<void> {
+  /** `SIGKILL` kills the emulator processes at once instead of waiting `graceMs` after SIGTERM. */
+  async teardown(graceMs: number, leader: { pid: number; exited: Promise<unknown> } | null = null, first: "SIGTERM" | "SIGKILL" = "SIGTERM"): Promise<void> {
     const recorded = readText(this.paths.netns) ?? (leader ? netnsOf(leader.pid) : null);
     const ns = recorded && recorded !== netnsOf("self") ? recorded : null;
     const pid = this.emulatorPid();
@@ -279,9 +280,10 @@ export class IsolatedRuntime {
       if (pid !== null && netnsOf(pid) === ns) inNs.push(pid);
       return [...new Set(inNs)].filter(alive);
     };
-    signal(targets(), "SIGTERM");
-    const group = leader ? terminateGroup(leader.pid, leader.exited, graceMs) : Promise.resolve();
-    if (!(await waitGone(targets, graceMs))) signal(targets(), "SIGKILL");
+    signal(targets(), first);
+    const grace = first === "SIGKILL" ? 0 : graceMs;
+    const group = leader ? terminateGroup(leader.pid, leader.exited, grace, first) : Promise.resolve();
+    if (!(await waitGone(targets, grace))) signal(targets(), "SIGKILL");
     await group;
     if (ns) {
       await sweepNetns(ns);

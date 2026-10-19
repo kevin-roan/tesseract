@@ -45,8 +45,8 @@ export function useHostUnlock(enabled: boolean) {
       playHaptic("success");
       start(session);
     },
-    onError: () => {
-      dispatch({ type: "reject" });
+    onError: (error) => {
+      if (isPinRejected(error)) dispatch({ type: "reject" });
       playHaptic("error");
       void refetch();
     },

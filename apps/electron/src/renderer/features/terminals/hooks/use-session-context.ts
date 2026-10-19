@@ -1,28 +1,28 @@
 import { useEffect, useRef } from "react";
-import { useIsOnline } from "../../../app/connection";
-import { useApiClient } from "../../../app/data";
 import { useScheme } from "../../../app/scheme";
 import { ipc } from "../../../lib/ipc";
-import { terminalSessions } from "../sessions";
+import { useTerminalsScope } from "../scope";
 
 const openLink = (url: string) => void ipc.app.openExternal(url).catch(() => undefined);
 const readClipboard = () => navigator.clipboard.readText();
 const writeClipboard = (text: string) => navigator.clipboard.writeText(text);
 
 export function useSessionContext(): boolean {
-  const client = useApiClient();
+  const scope = useTerminalsScope();
+  const { sessions } = scope;
+  const client = scope.useClient();
   const scheme = useScheme();
-  const online = useIsOnline();
+  const online = scope.useOnline();
 
   useEffect(() => {
-    if (client) terminalSessions.configure({ client, scheme, openLink, readClipboard, writeClipboard });
-  }, [client, scheme]);
+    if (client) sessions.configure({ client, scheme, openLink, readClipboard, writeClipboard });
+  }, [sessions, client, scheme]);
 
   const wasOnline = useRef(online);
   useEffect(() => {
-    if (online && !wasOnline.current) terminalSessions.reconnectStale();
+    if (online && !wasOnline.current) sessions.reconnectStale();
     wasOnline.current = online;
-  }, [online]);
+  }, [sessions, online]);
 
   return client !== null;
 }

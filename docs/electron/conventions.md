@@ -191,7 +191,7 @@ Wrap calls in hooks (react-query `useQuery`/`useMutation`, or a zustand store fe
 | `tray` | state, setStatus(label) | `state` |
 | `updates` | state, check, download, install | `state` |
 | `http` | request(id, req) → base64 body, abort(id) — the renderer's `@tesseract/client` fetch goes through this (`net.fetch`, no CORS) | — |
-| `connection` | load, save, forget (config.json read-modify-write), discover (docker discovery) | `changed` |
+| `connection` | load, save, forget (config.json read-modify-write), discover (docker discovery), switchTo, rename, remove, add, setHostLink, refreshStatus (saved machines, see services-data §3.4) | `changed` |
 | `docker` | check, phase, install, start, cancel, log | `report`, `phase`, `log` |
 | `sandbox` | defaults, validate, save (env file), stack, existing, build(mode), cancel, phase, up, down, status, logs, pairing | `phase`, `status`, `log` |
 | `android` | support, sdkCandidates, catalog, acceptLicense, install(plan), cancel, accel, avds, createAvd, deleteAvd, emulator, startEmulator, stopEmulator, log | `progress`, `emulator`, `log` |
@@ -199,7 +199,7 @@ Wrap calls in hooks (react-query `useQuery`/`useMutation`, or a zustand store fe
 | `syncback` | state, submit, links, snapshots, hostChanges, diff | `state` |
 | `attachments` | pick(kind), read(path) (only paths from the last `pick`), clipboardHasImage, clipboardHasText, pasteImage | — |
 | `files` | download(id, req) (native save dialog, streamed to a part file, SHA-256 checked, then renamed), saveBytes(name, base64), cancel(id), readClipboard, writeClipboard | `progress` ({ id, received, total }) |
-| `hostShell` | state, start, stop, refresh, setPin, rotateToken, setAutostart, unlock, lock, androidStatus, startEmulator, stopEmulator, linkSandbox, openEmulatorViewer | `state` |
+| `hostShell` | state, start, stop, refresh, setPin, rotateToken, setAutostart, unlock, lock, androidStatus, startEmulator, stopEmulator(signal? `SIGTERM`\|`SIGKILL`), linkSandbox, iosStatus, bootSimulator(udid), shutdownSimulator(signal? `SIGTERM`\|`SIGKILL`), linkIosSandbox, openEmulatorViewer, openTerminal, request(id, req) / abort(id) (session-authenticated proxy to the host daemon; every call goes to the active machine's host, see [page-host.md](spec/page-host.md)) | `state` |
 | `claude` | hostAccounts, ensureConfigDir | — |
 | `stt` | microphone, requestMicrophone | — |
 | `metrics` | load, save (`metrics.json`) | — |
@@ -236,7 +236,7 @@ The `onboarding` controller composes `src/core/{docker,sandbox,android,claude}`;
 
 | Route | Shows |
 |---|---|
-| `#/<pageId>[/<sub…>]` | Shell + page. Page ids (GTK order): `overview`, `agents`, `projects`, `files`, `terminals`, `display` |
+| `#/<pageId>[/<sub…>]` | Shell + page. Page ids (`PAGE_IDS` order): sandbox `overview`, `agents`, `projects`, `files`, `terminals`, `display`, `processes`; host `containers`, `domains`, `shell`, `emulator` |
 | `#/<pageId>?preferences=<section>` | Shell + Settings dialog. Sections (`PREFERENCES_SECTION_IDS`): `connection`, `appearance`, `claude`, `host-shell`, `stt`, `sandbox`, `android`, `about` |
 | `#/onboarding/<step>` | Setup wizard window. Steps: `welcome`, `docker`, `claude`, `sandbox`, `build`, `android`, `pair`, `finish` |
 | `#/gallery[/<entryId>]` | Component gallery (all entries, or one entry alone for snapshots) |

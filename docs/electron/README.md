@@ -37,6 +37,7 @@ The contract (names, ports, env vars, files, CLI, packaging) is in the
 | [page-terminals.md](spec/page-terminals.md) | the Terminals page and the xterm.js widget |
 | [page-display.md](spec/page-display.md) | the Display page (noVNC over the controller bridge) |
 | [preferences.md](spec/preferences.md) | the Settings dialog and `config.json` |
+| [page-host.md](spec/page-host.md) | the host pages: Shell (host terminals), Emulator (Android emulator and iOS Simulator), host routing per machine, the host gate, host devices on the Processes page |
 | [host-android.md](spec/host-android.md) | host shell daemon control, host Android emulator, Claude accounts, speech-to-text settings |
 | [services-data.md](spec/services-data.md) | sandbox discovery, connection, polling, event stream, caches |
 | [services-sync.md](spec/services-sync.md) | sync-back, the `tesseract` sync CLI, composer attachments |

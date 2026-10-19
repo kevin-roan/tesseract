@@ -1,0 +1,1 @@
+export const ANIMATED_ITEMS_LIMIT = 150;

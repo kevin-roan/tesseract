@@ -198,8 +198,8 @@ const graphiteTone = (highlight: string): SurfaceStyle => ({
 
 const graphite: Record<SurfaceTone, SurfaceStyle> = {
   neutral: {
-    fill: { inner: Palette.graphite[850], outer: Palette.graphite[900], cx: 0.2, cy: 0, r: 1.2 },
-    border: 'rgba(255, 255, 255, 0.07)',
+    fill: flat(Palette.black),
+    border: 'rgba(255, 255, 255, 0.09)',
     ink: {},
     glass: graphiteGlass,
   },
@@ -252,7 +252,7 @@ const graphiteLightTone = (highlight: string): SurfaceStyle => ({
 
 const graphiteLight: Record<SurfaceTone, SurfaceStyle> = {
   neutral: {
-    fill: { inner: Palette.white, outer: '#FAFAFA', cx: 0.2, cy: 0, r: 1.2 },
+    fill: flat(Palette.white),
     border: 'rgba(0, 0, 0, 0.08)',
     ink: {},
     glass: graphiteLightGlass,

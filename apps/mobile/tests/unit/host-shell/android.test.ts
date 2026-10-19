@@ -4,6 +4,7 @@ import { sampleAndroidLink, sampleEmulator, sampleHostAndroidStatus } from "@tes
 import {
   androidPollInterval,
   androidScreenMaxSize,
+  canKillEmulator,
   canStartEmulator,
   canStopEmulator,
   deviceLabel,
@@ -45,6 +46,17 @@ describe("android device helpers", () => {
     expect(deviceLabel(genymotion!)).toBe("Google Pixel 3");
     expect(deviceLabel(offline)).toBe("R5CT20ABCDE");
     expect(deviceMeta(genymotion!)).toBe("Genymotion · 192.168.56.101:5555");
+  });
+});
+
+describe("android force kill", () => {
+  it("kills a live emulator, including one stuck shutting down", () => {
+    expect(canKillEmulator("starting")).toBe(true);
+    expect(canKillEmulator("running")).toBe(true);
+    expect(canKillEmulator("stopping")).toBe(true);
+    expect(canKillEmulator("stopped")).toBe(false);
+    expect(canKillEmulator("failed")).toBe(false);
+    expect(canKillEmulator("unavailable")).toBe(false);
   });
 });
 

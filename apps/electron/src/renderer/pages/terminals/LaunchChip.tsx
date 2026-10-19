@@ -15,7 +15,7 @@ export interface LaunchChipProps {
   label: string;
   tooltip: string;
   disabled: boolean;
-  projects: readonly Project[] | null;
+  projects?: readonly Project[] | null;
   onLaunch(projectId: string | null): void;
 }
 
@@ -42,45 +42,49 @@ export function LaunchChip({ icon, label, tooltip, disabled, projects, onLaunch 
           </span>
         </button>
       </Tooltip>
-      <span className={styles.separator} aria-hidden />
-      <Tooltip label={LAUNCH_LABELS.pickerTooltip}>
-        <button
-          ref={arrowRef}
-          type="button"
-          className={styles.arrow}
-          disabled={disabled}
-          aria-label={LAUNCH_LABELS.pickerTooltip}
-          aria-haspopup="menu"
-          aria-expanded={menu.open}
-          data-open={menu.open || undefined}
-          onClick={toggle}
-        >
-          <span className={styles.triangle} />
-        </button>
-      </Tooltip>
-      <Floating open={menu.open} anchor={menu.anchor} onClose={menu.close} ignoreRef={arrowRef} ariaLabel={LAUNCH_LABELS.pickerTitle} className={styles.picker} bodyClassName={styles.pickerBody}>
-        <Text variant="overline" color="text-tertiary" className={styles.pickerTitle}>
-          {LAUNCH_LABELS.pickerTitle}
-        </Text>
-        <div className={styles.pickerList}>
-          <MenuItem label={TERMINALS_LABELS.workspace} icon={WORKSPACE_ICON} className={styles.pickerItem} onClick={() => pick(null)} />
-          {projects === null ? (
-            <Text variant="caption" color="text-secondary" className={styles.pickerLoading}>
-              {LAUNCH_LABELS.loadingProjects}
+      {projects === undefined ? null : (
+        <>
+          <span className={styles.separator} aria-hidden />
+          <Tooltip label={LAUNCH_LABELS.pickerTooltip}>
+            <button
+              ref={arrowRef}
+              type="button"
+              className={styles.arrow}
+              disabled={disabled}
+              aria-label={LAUNCH_LABELS.pickerTooltip}
+              aria-haspopup="menu"
+              aria-expanded={menu.open}
+              data-open={menu.open || undefined}
+              onClick={toggle}
+            >
+              <span className={styles.triangle} />
+            </button>
+          </Tooltip>
+          <Floating open={menu.open} anchor={menu.anchor} onClose={menu.close} ignoreRef={arrowRef} ariaLabel={LAUNCH_LABELS.pickerTitle} className={styles.picker} bodyClassName={styles.pickerBody}>
+            <Text variant="overline" color="text-tertiary" className={styles.pickerTitle}>
+              {LAUNCH_LABELS.pickerTitle}
             </Text>
-          ) : (
-            projects.map((project) => (
-              <MenuItem
-                key={project.id}
-                label={truncateName(project.name || project.id, PICKER_NAME_MAX)}
-                icon={PROJECT_ICON}
-                className={styles.pickerItem}
-                onClick={() => pick(project.id)}
-              />
-            ))
-          )}
-        </div>
-      </Floating>
+            <div className={styles.pickerList}>
+              <MenuItem label={TERMINALS_LABELS.workspace} icon={WORKSPACE_ICON} className={styles.pickerItem} onClick={() => pick(null)} />
+              {projects === null ? (
+                <Text variant="caption" color="text-secondary" className={styles.pickerLoading}>
+                  {LAUNCH_LABELS.loadingProjects}
+                </Text>
+              ) : (
+                projects.map((project) => (
+                  <MenuItem
+                    key={project.id}
+                    label={truncateName(project.name || project.id, PICKER_NAME_MAX)}
+                    icon={PROJECT_ICON}
+                    className={styles.pickerItem}
+                    onClick={() => pick(project.id)}
+                  />
+                ))
+              )}
+            </div>
+          </Floating>
+        </>
+      )}
     </div>
   );
 }

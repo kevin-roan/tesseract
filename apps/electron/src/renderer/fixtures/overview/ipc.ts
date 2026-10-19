@@ -22,6 +22,7 @@ function overviewConnection() {
           source: "file" as const,
         },
     configFile: CONFIG_FILE,
+    machines: isScenario(SCENARIOS.unconfigured) ? [] : [{ id: FIXTURE_API_URL, apiUrl: FIXTURE_API_URL, name: FIXTURE_SANDBOX, active: true, local: true, status: "online" as const, host: null }],
   };
 }
 

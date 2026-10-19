@@ -2,13 +2,13 @@ import type { TesseractClient } from "@tesseract/client";
 import type { SandboxStatus, ServerEventType } from "@tesseract/protocol";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useStore } from "zustand";
-import type { ConnectionInput, ConnectionSnapshot, DiscoveryResult } from "../../../shared/contracts/connection";
+import type { ConnectionInput, ConnectionSnapshot, DiscoveryResult, SavedMachine } from "../../../shared/contracts/connection";
 import { createApiClient } from "../data/client";
 import type { ServerEventListener } from "./controller";
 import type { MetricsHistory } from "./metrics-history";
 import { Poller } from "./poller";
 import { connectionController, ensureConnectionRuntime, metricsHistory } from "./runtime";
-import type { ConnectionState, InboxCounts } from "./types";
+import type { AddMachineOptions, ConnectionState, InboxCounts } from "./types";
 import { connectionView, type ConnectionView } from "./view";
 
 export function useConnectionState<T>(selector: (state: ConnectionState) => T): T {
@@ -28,6 +28,14 @@ export function useConnection(): ConnectionState {
 export function useConnectionView(): ConnectionView {
   const state = useConnection();
   return useMemo(() => connectionView(state), [state]);
+}
+
+export function useSavedMachines(): SavedMachine[] {
+  return useConnectionState((state) => state.machines);
+}
+
+export function useConnectionStatus(): ConnectionState["status"] {
+  return useConnectionState((state) => state.status);
 }
 
 export function useSandboxStatus(): SandboxStatus | null {
@@ -51,6 +59,12 @@ export interface ConnectionActions {
   rediscover(): Promise<DiscoveryResult>;
   save(input: ConnectionInput): Promise<ConnectionSnapshot>;
   forget(): Promise<DiscoveryResult>;
+  switchTo(id: string): Promise<ConnectionSnapshot>;
+  rename(id: string, name: string): Promise<ConnectionSnapshot>;
+  remove(id: string): Promise<ConnectionSnapshot>;
+  add(input: ConnectionInput, options?: AddMachineOptions): Promise<ConnectionSnapshot>;
+  setHostLink(id: string, link: string | null): Promise<ConnectionSnapshot>;
+  refreshStatus(): Promise<ConnectionSnapshot>;
 }
 
 export function useConnectionActions(): ConnectionActions {
@@ -61,6 +75,12 @@ export function useConnectionActions(): ConnectionActions {
       rediscover: () => controller.rediscover(),
       save: (input) => controller.save(input),
       forget: () => controller.forget(),
+      switchTo: (id) => controller.switchTo(id),
+      rename: (id, name) => controller.rename(id, name),
+      remove: (id) => controller.remove(id),
+      add: (input, options) => controller.add(input, options),
+      setHostLink: (id, link) => controller.setHostLink(id, link),
+      refreshStatus: () => controller.refreshStatus(),
     }),
     [controller],
   );

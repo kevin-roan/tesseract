@@ -38,10 +38,13 @@ export function parseArgs(argv: readonly string[], valueFlags: readonly string[]
   return { flags, values, positional };
 }
 
-export function firstSubcommand(argv: readonly string[]): string | null {
-  for (const arg of argv) {
+/** The first positional; the argument after a `--<flag>` in `valueFlags` is that flag's value, not a subcommand. */
+export function firstSubcommand(argv: readonly string[], valueFlags: readonly string[] = []): string | null {
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index] ?? "";
     if (arg === "--") return null;
     if (!arg.startsWith("-")) return arg;
+    if (valueFlags.includes(arg.replace(/^--/, ""))) index += 1;
   }
   return null;
 }

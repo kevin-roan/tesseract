@@ -14,12 +14,17 @@ export type KeyId = "esc" | "tab" | "ctrl" | "ctrl-c" | "left" | "up" | "down" |
 
 export type VncHostKeyId = "keyboard" | "browser" | "paste";
 
-export type AndroidBarKeyId = "back" | "home" | "app_switch" | "keyboard" | "rotate";
+export type DeviceBarKeyId = "back" | "home" | "app_switch" | "power" | "keyboard" | "rotate";
+export type AndroidBarKeyId = DeviceBarKeyId;
+
+/** `data-device` on the screen page's `<body>`: which device API the shared page drives. */
+export type DeviceKind = "android" | "ios";
 
 export const API_PATHS = {
   terminalStream: (id: string) => `/v1/terminals/${encodeURIComponent(id)}/stream`,
   vnc: "/v1/display/vnc",
   androidScreen: "/v1/android/screen",
+  iosScreen: "/v1/ios/screen",
 } as const;
 
 export const FRAGMENT_KEYS = {
@@ -30,6 +35,7 @@ export const FRAGMENT_KEYS = {
   input: "input",
   maxSize: "maxSize",
   serial: "serial",
+  udid: "udid",
 } as const;
 
 export const ANDROID_QUERY = { maxSize: "maxSize", serial: "serial", codec: "codec" } as const;
@@ -109,6 +115,12 @@ export const ANDROID_BAR: readonly KeyDefinition<AndroidBarKeyId>[] = [
   { id: "rotate", label: "⟳", title: "Rotate" },
 ];
 
+export const IOS_BAR: readonly KeyDefinition<DeviceBarKeyId>[] = [
+  { id: "home", label: "○", title: "Home" },
+  { id: "power", label: "⏻", title: "Lock" },
+  { id: "keyboard", label: "⌨", title: "Keyboard" },
+];
+
 /** Hardware keys of the phone keyboard forwarded as Android keys. */
 export const ANDROID_HARDWARE_KEYS: Record<string, "enter" | "tab" | "escape" | "up" | "down" | "left" | "right"> = {
   Enter: "enter",
@@ -127,6 +139,41 @@ export const ANDROID_INPUT = {
   wheelPixelsPerStep: 100,
   wheelLinesPerStep: 3,
 } as const;
+
+export type DeviceProfile = {
+  screenPath: string;
+  title: string;
+  bar: readonly KeyDefinition<DeviceBarKeyId>[];
+  stateMessage: string;
+  needTicketMessage: string;
+  /** Fragment key and query parameter naming the device. */
+  deviceParam: string;
+  /** Whether the daemon can send H.264 (else always JPEG). */
+  h264: boolean;
+};
+
+export const DEVICE_PROFILES: Record<DeviceKind, DeviceProfile> = {
+  android: {
+    screenPath: API_PATHS.androidScreen,
+    title: "Android emulator",
+    bar: ANDROID_BAR,
+    stateMessage: PAGE_MESSAGES.androidState,
+    needTicketMessage: PAGE_MESSAGES.androidNeedTicket,
+    deviceParam: FRAGMENT_KEYS.serial,
+    h264: true,
+  },
+  ios: {
+    screenPath: API_PATHS.iosScreen,
+    title: "iOS Simulator",
+    bar: IOS_BAR,
+    stateMessage: PAGE_MESSAGES.iosState,
+    needTicketMessage: PAGE_MESSAGES.iosNeedTicket,
+    deviceParam: FRAGMENT_KEYS.udid,
+    h264: false,
+  },
+};
+
+export const DEFAULT_DEVICE_KIND: DeviceKind = "android";
 
 export const TRACKPAD_OPTIONS: TrackpadOptions = {
   tapMs: 250,

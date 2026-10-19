@@ -71,6 +71,7 @@ function hub(overrides: object = {}) {
     refreshing: false,
     refresh: jest.fn(),
     headerActions: [{ id: "remove", icon: TrashIcon, label: "Remove this sandbox", onPress: jest.fn() }],
+    renameSheet: { visible: false, name: "", setName: jest.fn(), hint: "", error: null, saving: false, save: jest.fn(), close: jest.fn() },
     removeError: null,
     ...overrides,
   };
@@ -98,7 +99,7 @@ describe("AgentsScreen", () => {
     await render(<AgentsScreen />);
 
     expect(screen.getByText(TEST_SANDBOX.name)).toBeOnTheScreen();
-    expect(screen.getByText("Online")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Online")).toBeOnTheScreen();
     expect(screen.getByText(/^No builds yet/)).toBeOnTheScreen();
     expect(screen.getByText("No Claude runs yet.")).toBeOnTheScreen();
     await fireEvent.press(screen.getByLabelText("Ask Claude"));
@@ -351,6 +352,7 @@ describe("ProjectsScreen", () => {
       projects: [],
       projectsLoading: false,
       addProject: jest.fn(),
+      emptyLabel: "No projects in /workspace/projects yet.",
       openProject: jest.fn(),
       askClaude: jest.fn(),
       projectMenu: jest.fn(),
@@ -399,6 +401,17 @@ describe("ProjectsScreen", () => {
     await fireEvent.press(screen.getByLabelText("Add a project"));
     await fireEvent.press(screen.getByLabelText("Add, All projects"));
     expect(state.addProject).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows the host shell badge and no add action on a host workspace", async () => {
+    mockProjects.mockReturnValue(
+      projects({ addProject: undefined, emptyLabel: "No host projects yet.", runtimeBadge: { label: "Host shell", tone: "warning" } }),
+    );
+    await render(<ProjectsScreen />);
+
+    expect(screen.getByText("Host shell")).toBeOnTheScreen();
+    expect(screen.getByText("No host projects yet.")).toBeOnTheScreen();
+    expect(screen.queryByLabelText("Add a project")).toBeNull();
   });
 
   it("lists running work and project cards", async () => {

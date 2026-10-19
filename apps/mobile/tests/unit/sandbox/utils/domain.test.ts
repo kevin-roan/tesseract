@@ -18,7 +18,7 @@ import {
 } from "@/features/sandbox/utils/projects";
 import { cpuGauge, storageGauge } from "@/features/sandbox/utils/resources";
 import { firstParam, isNewRoute, projectIdParam, terminalLaunchFromParams } from "@/features/sandbox/utils/routes";
-import { agentRunTone, buildTone, linkLabel, linkTone, processTone, stateLabel } from "@/features/sandbox/utils/states";
+import { agentRunTone, buildTone, linkBroken, linkIconTone, linkLabel, linkTone, processTone, stateLabel } from "@/features/sandbox/utils/states";
 
 describe("state tones", () => {
   it("maps protocol states to tones and labels", () => {
@@ -30,6 +30,10 @@ describe("state tones", () => {
     expect(agentRunTone("succeeded")).toBe("success");
     expect(linkTone("open")).toBe("success");
     expect(linkTone("closed")).toBe("danger");
+    expect(linkIconTone("open")).toBe("neutral");
+    expect(linkIconTone("closed")).toBe("danger");
+    expect(linkBroken("open")).toBe(false);
+    expect(linkBroken("closed")).toBe(true);
     expect(linkLabel("open")).toBe("Online");
     expect(linkLabel("connecting")).toBe("Connecting");
     expect(stateLabel("succeeded")).toBe("Succeeded");

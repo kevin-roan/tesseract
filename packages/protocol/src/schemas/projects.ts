@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BUILD_TARGETS, FRAMEWORKS, GIT_REF_PATTERN, GIT_URL_PATTERN, PACKAGE_MANAGERS } from "../constants";
 import { projectIdFromName } from "../ids";
+import { ProjectRuntimeSchema } from "./system";
 import { NameSchema, ProcessIdSchema, ProjectIdSchema, TimestampSchema } from "./primitives";
 
 export const FrameworkSchema = z.enum(FRAMEWORKS);
@@ -43,6 +44,8 @@ export const ProjectSchema = z.object({
   confidential: z.boolean().default(false),
   /** Claude account pinned to the project; null follows the default. Older controllers omit it. */
   claudeAccountId: z.string().nullable().default(null),
+  /** `host`: a `tesseract --unsafe-repo` project; the agent edits the host repository at `path` directly. Older controllers omit it. */
+  runtime: ProjectRuntimeSchema.default("sandbox"),
 });
 export type Project = z.infer<typeof ProjectSchema>;
 

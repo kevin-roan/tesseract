@@ -4,7 +4,9 @@ import EmptyState from "@/components/empty-state";
 import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
+import SegmentedPills from "@/components/segmented-pills";
 import HostAndroid from "@/features/host-shell/components/host-android";
+import HostIos from "@/features/host-shell/components/host-ios";
 import HostSetup from "@/features/host-shell/components/host-setup";
 import HostShells from "@/features/host-shell/components/host-shells";
 import HostUnlock from "@/features/host-shell/components/host-unlock";
@@ -14,7 +16,7 @@ import { describeHostError } from "@/features/host-shell/utils/errors";
 
 export default function HostScreen() {
   const screen = useHostScreen();
-  const { unlock, shells } = screen;
+  const { unlock, shells, devices } = screen;
   const pinPad = screen.mode === "locked" && !screen.issue;
 
   return (
@@ -66,7 +68,11 @@ export default function HostScreen() {
           onRetry={shells.refresh}
         />
       ) : null}
-      {screen.mode === "unlocked" ? <HostAndroid android={screen.android} /> : null}
+      {screen.mode === "unlocked" && devices.offered ? (
+        <SegmentedPills options={devices.options} value={devices.kind} onChange={devices.select} label={devices.label} />
+      ) : null}
+      {screen.mode === "unlocked" && devices.kind === "android" ? <HostAndroid android={screen.android} /> : null}
+      {screen.mode === "unlocked" && devices.kind === "ios" ? <HostIos ios={screen.ios} /> : null}
     </ScreenScaffold>
   );
 }

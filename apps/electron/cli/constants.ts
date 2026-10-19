@@ -92,3 +92,14 @@ export const SERVER_ENV = {
   tailnetDomain: "TS_TAILNET_DOMAIN",
   claudeToken: "CLAUDE_CODE_OAUTH_TOKEN",
 } as const;
+
+export const UNSAFE_REPO = {
+  workspaceArgs: ["host", "workspace"],
+  serveArgs: ["serve"],
+  healthPath: "/v1/health",
+  logFile: ["logs", "host-workspace.log"],
+  cliTimeoutMs: 30_000,
+  healthTimeoutMs: 1_500,
+  startTimeoutMs: 20_000,
+  pollMs: 400,
+} as const;

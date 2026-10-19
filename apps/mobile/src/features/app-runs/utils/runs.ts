@@ -9,7 +9,8 @@ export type AppRunOpen =
   | { kind: "preview"; url: string }
   | { kind: "deeplink"; url: string; manifestUrl: string }
   | { kind: "display"; focus: boolean }
-  | { kind: "android" };
+  | { kind: "android" }
+  | { kind: "ios" };
 
 export type AppRunEntry = {
   target: RunTarget;
@@ -25,7 +26,7 @@ export const viewerKindOf = (run: AppRun): AppViewerKind => run.viewer?.kind ?? 
 
 export const deepLinkFor = (viewer: DeeplinkViewer): string => viewer.devClientUrl ?? viewer.expoGoUrl;
 
-/** How the phone opens a run: web and Expo runs once ready, the display and the emulator while the run is alive. */
+/** How the phone opens a run: web and Expo runs once ready, the display, the emulator and the Simulator while the run is alive. */
 export function openPlanFor(run: AppRun): AppRunOpen | null {
   if (!isActiveAppRun(run)) return null;
   const ready = run.state === "ready";
@@ -34,6 +35,8 @@ export function openPlanFor(run: AppRun): AppRunOpen | null {
       return { kind: "display", focus: ready && run.actions.includes("focus") };
     case "android":
       return { kind: "android" };
+    case "ios":
+      return { kind: "ios" };
     case "url":
       return ready && run.viewer?.kind === "url" && run.viewer.url ? { kind: "preview", url: run.viewer.url } : null;
     case "deeplink":

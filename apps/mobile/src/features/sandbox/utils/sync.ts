@@ -58,6 +58,7 @@ const KIND_CODES: Record<SyncChangeKind, string> = { added: "A", modified: "M", 
 const KIND_TONES: Record<SyncChangeKind, Tone> = { added: "success", modified: "warning", deleted: "danger" };
 
 export const SYNC_FILE_PREVIEW = 8;
+export const SYNC_FILE_EXPANDED = 100;
 export const SYNC_REQUEST_PREVIEW = 5;
 export const SYNC_CONFLICT_PREVIEW = 3;
 
@@ -140,15 +141,24 @@ export function previewSyncChanges(
   changes: readonly SyncFileChange[],
   expanded: boolean,
   limit: number = SYNC_FILE_PREVIEW,
+  expandedLimit: number = SYNC_FILE_EXPANDED,
 ): { visible: SyncFileChange[]; hidden: number } {
-  if (expanded || changes.length <= limit) return { visible: [...changes], hidden: 0 };
-  return { visible: changes.slice(0, limit), hidden: changes.length - limit };
+  const visible = changes.slice(0, expanded ? expandedLimit : limit);
+  return { visible, hidden: changes.length - visible.length };
 }
 
-export function syncFileToggleLabel(total: number, expanded: boolean, limit: number = SYNC_FILE_PREVIEW): string | null {
+export function syncFileToggleLabel(
+  total: number,
+  expanded: boolean,
+  limit: number = SYNC_FILE_PREVIEW,
+  expandedLimit: number = SYNC_FILE_EXPANDED,
+): string | null {
   if (total <= limit) return null;
-  return expanded ? "Show fewer files" : `Show all ${total} files`;
+  if (expanded) return "Show fewer files";
+  return total > expandedLimit ? `Show ${expandedLimit} of ${total} files` : `Show all ${total} files`;
 }
+
+export const syncHiddenFilesLabel = (hidden: number): string | null => (hidden > 0 ? `${pluralize(hidden, "more file")} not listed` : null);
 
 export function syncEmptyState(changes: SyncChanges | undefined): SyncEmptyState {
   if (!changes) return null;

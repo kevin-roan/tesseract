@@ -47,6 +47,7 @@ function project(id: string, commitDate: string | null = null, extra: Partial<Pr
     git: commitDate ? { branch: "main", dirty: false, ahead: 0, behind: 0, lastCommit: { sha: "a".repeat(40), subject: `work on ${id}`, date: commitDate } } : null,
     confidential: false,
     claudeAccountId: null,
+    runtime: "sandbox",
     ...extra,
   };
 }

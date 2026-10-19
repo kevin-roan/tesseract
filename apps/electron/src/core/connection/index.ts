@@ -5,3 +5,4 @@ export * from "./health";
 export * from "./discovery";
 export * from "./pairing";
 export * from "./token-vault";
+export * from "./machines";

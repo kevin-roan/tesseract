@@ -1,12 +1,11 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { TerminalInfo } from "@tesseract/protocol";
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import { useIsOnline, useServerEvent, useWindowVisible } from "../../../app/connection";
-import { DATA_KEYS, useApiClient, useApiQuery } from "../../../app/data";
+import { useWindowVisible } from "../../../app/connection";
+import { DATA_KEYS } from "../../../app/data";
 import { LIST_REFRESH_MS, TERMINALS_QUERY_KEYS } from "../constants";
 import { sortSessions } from "../model";
-import { terminalSessions } from "../sessions";
-import { useTerminalsUi } from "../store";
+import { useTerminalsScope } from "../scope";
 
 const upsert = (list: TerminalInfo[] | undefined, info: TerminalInfo) => {
   const current = list ?? [];
@@ -19,7 +18,7 @@ const upsert = (list: TerminalInfo[] | undefined, info: TerminalInfo) => {
 
 export function useTerminalsCache() {
   const queryClient = useQueryClient();
-  const baseUrl = useApiClient()?.baseUrl ?? "none";
+  const baseUrl = useTerminalsScope().useClient()?.baseUrl ?? "none";
   const key = useMemo(() => DATA_KEYS.api(baseUrl, ...TERMINALS_QUERY_KEYS.list), [baseUrl]);
   const upsertTerminal = useCallback((info: TerminalInfo) => queryClient.setQueryData<TerminalInfo[]>(key, (list) => upsert(list, info)), [queryClient, key]);
   const removeTerminal = useCallback(
@@ -27,17 +26,25 @@ export function useTerminalsCache() {
     [queryClient, key],
   );
   const refresh = useCallback(() => void queryClient.invalidateQueries({ queryKey: key }), [queryClient, key]);
-  return useMemo(() => ({ upsertTerminal, removeTerminal, refresh }), [upsertTerminal, removeTerminal, refresh]);
+  return useMemo(() => ({ key, upsertTerminal, removeTerminal, refresh }), [key, upsertTerminal, removeTerminal, refresh]);
 }
 
 export function useTerminalsList() {
+  const scope = useTerminalsScope();
+  const client = scope.useClient();
   const visible = useWindowVisible();
-  const online = useIsOnline();
-  const query = useApiQuery(TERMINALS_QUERY_KEYS.list, (client, signal) => client.listTerminals({ signal }), {
+  const online = scope.useOnline();
+  const cache = useTerminalsCache();
+  const query = useQuery({
+    queryKey: cache.key,
+    queryFn: ({ signal }) => {
+      if (!client) throw new Error("Not connected");
+      return client.listTerminals({ signal });
+    },
+    enabled: client !== null,
     refetchInterval: online ? (visible ? LIST_REFRESH_MS.visible : LIST_REFRESH_MS.hidden) : false,
   });
-  const hidden = useTerminalsUi((state) => state.hidden);
-  const cache = useTerminalsCache();
+  const hidden = scope.ui((state) => state.hidden);
   const { refresh } = cache;
   const wasOnline = useRef(online);
   useEffect(() => {
@@ -49,9 +56,9 @@ export function useTerminalsList() {
     if (visible && !wasVisible.current && online) refresh();
     wasVisible.current = visible;
   }, [visible, online, refresh]);
-  useServerEvent("terminal.updated", (event) => {
-    cache.upsertTerminal(event.terminal);
-    terminalSessions.applyInfo(event.terminal);
+  scope.useTerminalUpdates((info) => {
+    cache.upsertTerminal(info);
+    scope.sessions.applyInfo(info);
   });
   const sessions = useMemo(
     () => (query.data ? sortSessions(query.data.filter((terminal) => !hidden.includes(terminal.id))) : null),

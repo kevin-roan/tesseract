@@ -1,6 +1,6 @@
 import { closeSync, fstatSync, mkdirSync, openSync, readSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { AVD_NAME_PATTERN, LIMITS, type EmulatorInfo, type StartEmulator } from "@tesseract/protocol";
+import { AVD_NAME_PATTERN, DEFAULT_STOP_SIGNAL, LIMITS, type EmulatorInfo, type StartEmulator, type StopSignal } from "@tesseract/protocol";
 import { conflict, errorMessage, notFound, unavailable } from "../../core/errors";
 import { run, type RunResult } from "../../core/exec";
 import type { Logger } from "../../core/logger";
@@ -88,6 +88,26 @@ export function emulatorArgs(config: AndroidConfig, input: StartEmulator, isolat
   if (input.wipeData) args.push("-wipe-data");
   if (isolated) args.push(...isolatedEmulatorArgs());
   return args;
+}
+
+const PS_LINE = /^\s*(\d+)\s+(.*)$/;
+const EMULATOR_PROCESS = /(^|\/)(qemu-system-[\w-]+|emulator)(\s|$)/;
+
+/** Pids of `ps -axo pid=,command=` lines that are an emulator on console `port` (`-port <port>`). */
+export function parseEmulatorPids(output: string, port: number): number[] {
+  const pids: number[] = [];
+  for (const line of output.split("\n")) {
+    const match = PS_LINE.exec(line);
+    if (!match) continue;
+    const command = match[2] ?? "";
+    if (EMULATOR_PROCESS.test(command) && command.split(/\s+/).join(" ").includes(`-port ${port}`)) pids.push(Number(match[1]));
+  }
+  return pids;
+}
+
+async function emulatorPids(port: number): Promise<number[]> {
+  const result = await run(["ps", "-axo", "pid=,command="], { timeoutMs: COMMAND_TIMEOUT_MS });
+  return result.ok ? parseEmulatorPids(result.stdout, port).filter((pid) => pid !== process.pid) : [];
 }
 
 /** The last `lines` lines of a log file, read from its last 64 KiB. */
@@ -220,8 +240,11 @@ export class EmulatorManager {
     }
   }
 
-  /** Returns at once with `stopping`; the state becomes `stopped` when the emulator is gone. */
-  stop(): EmulatorInfo {
+  /**
+   * Returns at once with `stopping`; the state becomes `stopped` when the emulator is gone. `SIGKILL` kills its
+   * processes at once (an adopted emulator's are found with `ps`; `adb emu kill` only when none is found).
+   */
+  stop(signal: StopSignal = DEFAULT_STOP_SIGNAL): EmulatorInfo {
     const instance = this.instance;
     const state = this.info.state;
     const stoppable = state === "starting" || state === "running" || (state === "failed" && this.adoptionFailed);
@@ -229,7 +252,7 @@ export class EmulatorManager {
     const generation = ++this.generation;
     this.adoptionFailed = false;
     this.set({ ...this.info, state: "stopping" });
-    void this.teardown(instance, generation);
+    void this.teardown(instance, generation, signal);
     return this.current();
   }
 
@@ -503,11 +526,12 @@ export class EmulatorManager {
     this.logger.info("emulator exited", { code, requested, failure });
   }
 
-  private async teardown(instance: Instance, generation: number): Promise<void> {
+  private async teardown(instance: Instance, generation: number, signal: StopSignal): Promise<void> {
     const { runtime, proc } = instance;
+    const kill = signal === "SIGKILL";
     if (runtime) {
       try {
-        await runtime.teardown(this.stopGraceMs, proc ? { pid: proc.pid, exited: proc.exited } : null);
+        await runtime.teardown(this.stopGraceMs, proc ? { pid: proc.pid, exited: proc.exited } : null, signal);
       } catch (error) {
         this.logger.warn("emulator teardown failed", { error: errorMessage(error) });
       }
@@ -516,14 +540,20 @@ export class EmulatorManager {
       this.finish(instance, failure ? this.failedInfo(failure) : stoppedInfo());
       this.logger.info("emulator stopped", { serial: runtime.serial });
     } else if (proc) {
-      await terminateGroup(proc.pid, proc.exited, this.stopGraceMs);
+      await terminateGroup(proc.pid, proc.exited, kill ? 0 : this.stopGraceMs, signal);
     } else {
-      await this.killAdopted(instance, generation);
+      await this.killAdopted(instance, generation, kill);
     }
   }
 
-  private async killAdopted(instance: Instance, generation: number): Promise<void> {
-    await this.adb(["emu", "kill"]);
+  private async killAdopted(instance: Instance, generation: number, kill: boolean): Promise<void> {
+    const pids = kill ? await emulatorPids(this.config.emulatorPort) : [];
+    for (const pid of pids) {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch {}
+    }
+    if (pids.length === 0) await this.adb(["emu", "kill"]);
     const deadline = Date.now() + this.stopGraceMs;
     while (Date.now() < deadline) {
       if (generation !== this.generation) return;

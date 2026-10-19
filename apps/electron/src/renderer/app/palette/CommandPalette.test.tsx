@@ -3,6 +3,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 import { useLocation } from "react-router";
 import { skipMotionInTests } from "../../components/DialogShell/skip-motion";
 import { renderRoutes } from "../../test/render";
+import { PAGES } from "../registry/pages";
 import { resetConnectionRuntime } from "../connection";
 import { CommandPalette } from "./CommandPalette";
 import { registerPaletteCommands } from "./registry";
@@ -50,11 +51,14 @@ describe("CommandPalette", () => {
     const options = screen.getAllByRole("option");
     expect(options[0]?.getAttribute("aria-selected")).toBe("true");
     fireEvent.keyDown(input(), { key: "ArrowDown" });
-    expect(screen.getAllByRole("option")[1]?.getAttribute("aria-selected")).toBe("true");
+    const selected = screen.getAllByRole("option")[1];
+    expect(selected?.getAttribute("aria-selected")).toBe("true");
+    const page = PAGES.find((candidate) => selected?.textContent?.includes(`Go to ${candidate.title}`));
+    expect(page).toBeTruthy();
     fireEvent.keyDown(input(), { key: "Enter" });
-    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("/agents"));
+    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe(`/${page?.id}`));
     expect(usePaletteStore.getState().open).toBe(false);
-    expect(usePaletteStore.getState().recent).toEqual(["page:agents"]);
+    expect(usePaletteStore.getState().recent).toEqual([`page:${page?.id}`]);
   });
 
   it("opens the settings route from a settings command", async () => {

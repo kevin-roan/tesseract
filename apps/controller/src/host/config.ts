@@ -5,6 +5,7 @@ import { HOST_SHELL_PORT } from "@tesseract/protocol";
 import type { Env } from "../core/exec";
 import { adoptLegacyPath } from "../core/paths";
 import { adoptLegacySdkRoot, loadAndroidConfig, type AndroidConfig } from "./android/config";
+import { loadIosConfig, type IosConfig } from "./ios/config";
 
 export type HostConfig = {
   bind: string;
@@ -16,6 +17,7 @@ export type HostConfig = {
   home: string;
   shell: string[];
   android: AndroidConfig;
+  ios: IosConfig;
 };
 
 export type HostOverrides = { bind?: string; port?: string };
@@ -149,5 +151,6 @@ export function loadHostConfig(env: Env, overrides: HostOverrides = {}, resolveB
     home,
     shell: [env.SHELL || defaultShell(platform), "-l"],
     android: loadAndroidConfig(env, platform),
+    ios: loadIosConfig(env, platform),
   };
 }

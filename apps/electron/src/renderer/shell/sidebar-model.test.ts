@@ -15,6 +15,7 @@ function project(id: string, lastCommit: string | null = null): Project {
     git: lastCommit ? { branch: "main", dirty: false, ahead: 0, behind: 0, lastCommit: { sha: "a", subject: "s", date: lastCommit } } : null,
     confidential: false,
     claudeAccountId: null,
+    runtime: "sandbox",
   } as Project;
 }
 

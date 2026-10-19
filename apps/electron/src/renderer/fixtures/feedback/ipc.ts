@@ -6,7 +6,7 @@ import { FEEDBACK_ERRORS, SCENARIOS, feedbackScenario } from "./scenarios";
 const pending = () => new Promise<DiscoveryResult>(() => undefined);
 
 const unconfiguredConnection: IpcFixtureMethods["connection"] = {
-  load: () => ({ config: null, configFile: CONFIG_FILE_PATH }),
+  load: () => ({ config: null, configFile: CONFIG_FILE_PATH, machines: [] }),
   discover: () =>
     feedbackScenario() === SCENARIOS.discovering ? pending() : { ok: false, error: FEEDBACK_ERRORS.discoveryFailed },
 };

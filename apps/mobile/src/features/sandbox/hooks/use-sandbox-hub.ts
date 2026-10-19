@@ -34,6 +34,8 @@ import {
   useTerminals,
 } from "./use-sandbox-queries";
 import { useSandboxRefresh } from "./use-sandbox-refresh";
+import { useSandboxRename } from "./use-sandbox-rename";
+import { useSandboxRuntime } from "./use-sandbox-runtime";
 
 export function useSandboxHub() {
   const nav = useSandboxNavigation();
@@ -50,8 +52,12 @@ export function useSandboxHub() {
   const stopProcess = useConfirmedStop();
   const closeTerminal = useCloseTerminal();
   const removeSandbox = useRemoveSandbox();
+  const rename = useSandboxRename();
+  const { open: openRename } = rename;
   const problems = useSandboxProblems(status.error);
   const { refreshing, refresh } = useSandboxRefresh();
+  const runtime = useSandboxRuntime();
+  const { onHost } = runtime;
 
   const actionError = stopProcess.error ?? closeTerminal.error;
   const buildProjectId = buildShortcutProject(builds.data, projects.data);
@@ -63,13 +69,13 @@ export function useSandboxHub() {
       claude: () => nav.newAgentRun(),
       build: buildProjectId ? () => nav.project(buildProjectId) : null,
     };
-    return HUB_ACTIONS.map(({ hint, unavailableHint, ...action }) => {
+    return HUB_ACTIONS.filter((action) => !onHost || action.id !== "display").map(({ hint, unavailableHint, ...action }) => {
       const onPress = handlers[action.id];
       return onPress
         ? { ...action, onPress, accessibilityHint: hint }
         : { ...action, disabled: true, accessibilityHint: unavailableHint };
     });
-  }, [nav, buildProjectId]);
+  }, [nav, buildProjectId, onHost]);
 
   const stats = useMemo<StatItem[]>(() => {
     if (!status.data) return [];
@@ -82,16 +88,16 @@ export function useSandboxHub() {
       { id: "memory", icon: ResourceIcons.memory, label: "Memory", value: memory.value, unit: memory.unit, caption: memory.caption, progress: memory.fraction, tone: "indigo" },
       { id: "disk", icon: ResourceIcons.disk, label: "Disk", value: disk.value, unit: disk.unit, caption: disk.caption, progress: disk.fraction },
       { id: "uptime", icon: ResourceIcons.uptime, label: "Uptime", value: formatUptime(uptimeSec), caption: `since ${formatRelativeTime(startedAt)}` },
-      {
+      ...(onHost ? [] : [{
         id: "display",
         icon: ResourceIcons.display,
         label: "Display",
         value: display.available && display.width && display.height ? `${display.width}×${display.height}` : "Off",
         unit: display.vnc.available ? "VNC ready" : "VNC offline",
         onPress: nav.display,
-      },
+      }]),
     ];
-  }, [status.data, nav]);
+  }, [status.data, nav, onHost]);
 
   const remove = useCallback(async () => {
     if (!sandbox) return;
@@ -107,9 +113,10 @@ export function useSandboxHub() {
   const headerActions = useMemo<HeaderAction[]>(
     () => [
       { ...HUB_HEADER_ACTIONS.pair, onPress: nav.pair },
+      { ...HUB_HEADER_ACTIONS.rename, onPress: () => sandbox && openRename(sandbox), disabled: !sandbox },
       { ...HUB_HEADER_ACTIONS.remove, onPress: () => void remove(), disabled: removeSandbox.isPending },
     ],
-    [nav, remove, removeSandbox.isPending],
+    [nav, remove, removeSandbox.isPending, openRename, sandbox],
   );
 
   const closeSession = useCallback(
@@ -141,6 +148,7 @@ export function useSandboxHub() {
     missingToken: problems.missingToken,
     link,
     subtitle: sandboxSubtitle(status.data),
+    runtimeBadge: runtime.badge,
     issue: problems.issue,
     repair: problems.repair,
     statusError: problems.error,
@@ -165,6 +173,7 @@ export function useSandboxHub() {
     refreshing,
     refresh,
     headerActions,
+    renameSheet: rename.sheet,
     removeError: removeSandbox.error ? describeError(removeSandbox.error) : null,
     actionError: actionError ? describeError(actionError) : null,
   };

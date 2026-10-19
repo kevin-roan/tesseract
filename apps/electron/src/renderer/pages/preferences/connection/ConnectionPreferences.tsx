@@ -1,20 +1,30 @@
 import { useCallback, useState } from "react";
 import { ActionButton } from "../../../components/ActionButton";
+import type { PairTarget } from "../../../components/PairDialog";
 import { ButtonRow, EntryRow, PreferenceRow, SettingsActions, SettingsGroup } from "../../../components/PreferenceRows";
 import { StatusBadge } from "../../../components/StatusBadge";
 import { SetupEntryGroup } from "../../../onboarding/done/setup-entry";
 import { PairPhoneDialog } from "../shared/PairPhoneDialog";
 import { PreferencesPage } from "../shared/PreferencesPage";
 import { SECTION_LABELS } from "./labels";
+import { MachinesGroup } from "./MachinesGroup";
+import { MasterHostRow } from "./MasterHostRow";
 import { useConnectionForm } from "./use-connection-form";
+import { useMasterHostRow } from "./use-master-host-row";
 
 export default function ConnectionPreferences() {
   const { form, fields, saving, status, save, rediscover, forget } = useConnectionForm();
+  const master = useMasterHostRow();
   const [pairOpen, setPairOpen] = useState(false);
-  const openPair = useCallback(() => setPairOpen(true), []);
+  const [pairTarget, setPairTarget] = useState<PairTarget>("sandbox");
+  const openPair = useCallback((target: PairTarget) => {
+    setPairTarget(target);
+    setPairOpen(true);
+  }, []);
   const closePair = useCallback(() => setPairOpen(false), []);
   return (
     <PreferencesPage>
+      <MachinesGroup />
       <SettingsGroup
         title={SECTION_LABELS.sandboxGroup}
         description={SECTION_LABELS.sandboxDescription}
@@ -37,8 +47,20 @@ export default function ConnectionPreferences() {
           label={SECTION_LABELS.showQr}
           variant="primary"
           disabled={status.discovering}
-          onActivate={openPair}
+          onActivate={() => openPair("sandbox")}
         />
+        {master.row ? (
+          <MasterHostRow
+            title={SECTION_LABELS.master}
+            row={master.row}
+            pairLabel={SECTION_LABELS.masterPair}
+            unlinkLabel={SECTION_LABELS.masterUnlink}
+            busy={master.busy}
+            disabled={status.discovering}
+            onPair={() => openPair(master.row?.pairTarget ?? "master")}
+            onUnlink={master.unlink}
+          />
+        ) : null}
       </SettingsGroup>
       <SettingsGroup title={SECTION_LABELS.statusGroup}>
         <PreferenceRow
@@ -50,7 +72,7 @@ export default function ConnectionPreferences() {
         <ButtonRow title={SECTION_LABELS.forget} subtitle={SECTION_LABELS.forgetSubtitle} label={SECTION_LABELS.forgetButton} variant="destructive" disabled={status.discovering} onActivate={forget} />
       </SettingsGroup>
       <SetupEntryGroup />
-      <PairPhoneDialog open={pairOpen} target="sandbox" onClose={closePair} />
+      <PairPhoneDialog open={pairOpen} target={pairTarget} onClose={closePair} />
     </PreferencesPage>
   );
 }

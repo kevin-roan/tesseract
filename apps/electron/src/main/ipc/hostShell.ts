@@ -12,14 +12,20 @@ import {
   type HostEnv,
 } from "../../core/host";
 import { createLogger } from "../../core/log";
+import { HostRouter } from "../../core/master-host";
 import { defaultAndroidSdkRoot, stateDir } from "../../core/paths";
 import { requireLink, syncState } from "../../core/syncback";
-import type { EmulatorViewerRequest, HostShellState, HostTerminalRequest } from "../../shared/contracts/hostShell";
+import type { EmulatorStopSignal, EmulatorViewerRequest, HostShellState, HostTerminalRequest } from "../../shared/contracts/hostShell";
+import type { ConnectionSnapshot } from "../../shared/contracts/connection";
+import type { HttpProxyRequest } from "../../shared/contracts/http";
 import { mainContext } from "../context";
+import { publishLocalHost } from "../services/local-host";
 import { isPlainProjectId } from "../services/project-id";
 import { repoRoot } from "../services/resources";
 import { currentSettings, updateSettings } from "../services/settings";
 import { createHostTerminalWindow } from "../windows/manager";
+import { onConnectionChanged } from "./connection";
+import { activeHostRoute } from "./masterHost";
 import { defineService } from "./_framework/define";
 import { serviceEmitter } from "./_framework/events";
 
@@ -28,8 +34,10 @@ const events = serviceEmitter("hostShell");
 const log = createLogger("host-shell");
 
 let service: HostShellService | null = null;
+let router: HostRouter | null = null;
 let viewer: EmulatorViewer | null = null;
 let exiting = false;
+const inflight = new Map<string, AbortController>();
 
 async function daemonEnv(): Promise<HostEnv> {
   const context = mainContext();
@@ -61,9 +69,35 @@ function host(): HostShellService {
     saveAutostart: async (enabled) => {
       await updateSettings({ hostShellAutostart: enabled });
     },
-    onChange: (state) => events.emit("state", state),
+    onChange: (state) => {
+      publishLocalHost(state);
+      router?.localChanged(state);
+    },
   });
   return service;
+}
+
+function routed(): HostRouter {
+  router ??= new HostRouter({
+    local: host,
+    emit: (state) => events.emit("state", state),
+    autostart: () => host().state().autostart,
+  });
+  return router;
+}
+
+function target(): HostShellService {
+  return routed().current();
+}
+
+async function followActiveMachine(snapshot?: ConnectionSnapshot): Promise<void> {
+  routed().follow(await activeHostRoute(snapshot));
+}
+
+async function setAutostart(enabled: boolean): Promise<HostShellState> {
+  await host().setAutostart(enabled);
+  const current = target();
+  return current === host() ? current.state() : current.setAutostart(enabled);
 }
 
 function emulatorViewer(): EmulatorViewer {
@@ -89,6 +123,41 @@ function requireTerminalRequest(request: HostTerminalRequest): HostTerminalReque
     throw new HostShellError(HOST_LABELS.noFolder, "invalid_argument");
   }
   return { projectId: request.projectId, title: typeof request.title === "string" && request.title ? request.title : request.projectId };
+}
+
+function requireSignal(signal: unknown): EmulatorStopSignal | undefined {
+  if (signal === undefined || signal === null) return undefined;
+  if (signal === "SIGTERM" || signal === "SIGKILL") return signal;
+  throw new HostShellError(HOST_LABELS.invalidSignal, "invalid_argument");
+}
+
+function requireProxyRequest(request: HttpProxyRequest): HttpProxyRequest {
+  if (typeof request !== "object" || request === null || typeof request.url !== "string" || typeof request.method !== "string") {
+    throw new HostShellError(HOST_LABELS.proxyForbidden(""), "invalid_argument");
+  }
+  return {
+    url: request.url,
+    method: request.method,
+    headers: typeof request.headers === "object" && request.headers !== null ? request.headers : {},
+    body: typeof request.body === "string" ? request.body : undefined,
+    timeoutMs: typeof request.timeoutMs === "number" ? request.timeoutMs : undefined,
+  };
+}
+
+async function proxy(id: string, request: HttpProxyRequest) {
+  const key = requireString(id, HOST_LABELS.proxyForbidden(""));
+  const controller = new AbortController();
+  inflight.set(key, controller);
+  try {
+    return await target().proxy(requireProxyRequest(request), controller.signal);
+  } finally {
+    if (inflight.get(key) === controller) inflight.delete(key);
+  }
+}
+
+function abortProxy(id: string): void {
+  inflight.get(id)?.abort();
+  inflight.delete(id);
 }
 
 async function openTerminal(input: HostTerminalRequest): Promise<void> {
@@ -118,25 +187,35 @@ function onWillQuit(event: Electron.Event): void {
 export default defineService(
   "hostShell",
   {
-    state: () => host().state(),
-    start: () => host().start(),
-    stop: () => host().stop(),
-    refresh: () => host().refresh(),
-    setPin: (_context, pin) => host().setPin(requireString(pin, HOST_LABELS.invalidPin)),
-    rotateToken: () => host().rotateToken(),
-    setAutostart: (_context, enabled) => host().setAutostart(enabled === true),
-    unlock: (_context, pin) => host().unlock(requireString(pin, HOST_LABELS.invalidPin)),
-    lock: () => host().lock(),
-    androidStatus: () => host().androidStatus(),
-    startEmulator: (_context, avd) => host().startEmulator(requireString(avd, HOST_LABELS.invalidAvd)),
-    stopEmulator: () => host().stopEmulator(),
+    state: () => target().state(),
+    start: () => target().start(),
+    stop: () => target().stop(),
+    refresh: () => target().refresh(),
+    setPin: (_context, pin) => target().setPin(requireString(pin, HOST_LABELS.invalidPin)),
+    rotateToken: () => target().rotateToken(),
+    setAutostart: (_context, enabled) => setAutostart(enabled === true),
+    unlock: (_context, pin) => target().unlock(requireString(pin, HOST_LABELS.invalidPin)),
+    lock: () => target().lock(),
+    androidStatus: () => target().androidStatus(),
+    startEmulator: (_context, avd) => target().startEmulator(requireString(avd, HOST_LABELS.invalidAvd)),
+    stopEmulator: (_context, signal) => target().stopEmulator(requireSignal(signal)),
     linkSandbox: (_context, sandboxUrl, token) =>
-      host().linkSandbox(
+      target().linkSandbox(
+        requireString(sandboxUrl, HOST_LABELS.invalidSandbox),
+        requireString(token, HOST_LABELS.invalidSandbox),
+      ),
+    iosStatus: () => target().iosStatus(),
+    bootSimulator: (_context, udid) => target().bootSimulator(requireString(udid, HOST_LABELS.invalidUdid)),
+    shutdownSimulator: (_context, signal) => target().shutdownSimulator(requireSignal(signal)),
+    linkIosSandbox: (_context, sandboxUrl, token) =>
+      target().linkIosSandbox(
         requireString(sandboxUrl, HOST_LABELS.invalidSandbox),
         requireString(token, HOST_LABELS.invalidSandbox),
       ),
     openEmulatorViewer: (_context, request) => emulatorViewer().open(requireViewerRequest(request)),
     openTerminal: (_context, request) => openTerminal(request),
+    request: (_context, id, request) => proxy(id, request),
+    abort: (_context, id) => abortProxy(id),
   },
   {
     start: () => {
@@ -147,7 +226,18 @@ export default defineService(
           log.warn(`host shell startup failed: ${error instanceof Error ? error.message : String(error)}`);
         });
       }
-      return () => current.shutdown();
+      const follow = (snapshot?: ConnectionSnapshot) =>
+        void followActiveMachine(snapshot).catch((error: unknown) => {
+          log.warn(`host routing failed: ${error instanceof Error ? error.message : String(error)}`);
+        });
+      const stopFollowing = onConnectionChanged(follow);
+      follow();
+      return () => {
+        stopFollowing();
+        for (const controller of inflight.values()) controller.abort();
+        inflight.clear();
+        return current.shutdown();
+      };
     },
   },
 );

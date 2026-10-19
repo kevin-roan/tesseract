@@ -9,6 +9,7 @@ import Notice from "@/components/notice";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
 import Section from "@/components/section";
+import StatusBadge from "@/components/status-badge";
 import ChatList from "@/features/chats/components/chat-list";
 import AppRunsSection from "@/features/app-runs/components/app-runs-section";
 import ProjectClaudeAccount from "@/features/claude-account/components/project-claude-account";
@@ -61,6 +62,7 @@ export default function ProjectScreen() {
         <ScreenHeader
           title={project.name}
           subtitle={detail.subtitle}
+          status={detail.runtimeBadge ? <StatusBadge {...detail.runtimeBadge} /> : undefined}
           onBack={detail.nav.back}
           actions={detail.headerActions}
         />
@@ -69,6 +71,12 @@ export default function ProjectScreen() {
       <MotionItem index={0}>
         <ChipRow items={detail.chips} label={PROJECT_COPY.chips} testID="project-chips" />
       </MotionItem>
+
+      {detail.hostNotice ? (
+        <MotionItem index={0}>
+          <Notice tone="warning" message={detail.hostNotice} />
+        </MotionItem>
+      ) : null}
 
       {detail.actionError ? (
         <MotionItem>
@@ -111,9 +119,11 @@ export default function ProjectScreen() {
         </Section>
       </MotionItem>
 
-      <MotionItem index={1}>
-        <SyncSection sync={detail.sync} />
-      </MotionItem>
+      {detail.onHost ? null : (
+        <MotionItem index={1}>
+          <SyncSection sync={detail.sync} />
+        </MotionItem>
+      )}
 
       {detail.claudeAccount.visible ? (
         <MotionItem index={1}>
@@ -138,16 +148,18 @@ export default function ProjectScreen() {
         </MotionItem>
       ) : null}
 
-      <MotionItem index={3}>
-        <AppRunsSection
-          runs={detail.appRuns}
-          logsOpen={(id) => detail.logsOpen(id, "app")}
-          onToggleLogs={(id) => detail.toggleLogs(id, "app")}
-          logs={logView}
-          onFix={(run, label) => void detail.fixAppRun(run, label)}
-          fixingId={detail.fixingId}
-        />
-      </MotionItem>
+      {detail.onHost ? null : (
+        <MotionItem index={3}>
+          <AppRunsSection
+            runs={detail.appRuns}
+            logsOpen={(id) => detail.logsOpen(id, "app")}
+            onToggleLogs={(id) => detail.toggleLogs(id, "app")}
+            logs={logView}
+            onFix={(run, label) => void detail.fixAppRun(run, label)}
+            fixingId={detail.fixingId}
+          />
+        </MotionItem>
+      )}
 
       <MotionItem index={3}>
         <Section title={PROJECT_COPY.sections.scripts} isEmpty={detail.scripts.length === 0} emptyLabel={PROJECT_COPY.empty.scripts}>

@@ -3,7 +3,7 @@ import { PassThrough } from "node:stream";
 import type { ChildProcess } from "node:child_process";
 import type { FetchLike, HttpRequestInit } from "@tesseract/client";
 import { DEFAULT_ANDROID_STREAM, type HostAndroidStatus } from "@tesseract/protocol";
-import { sampleTerminal } from "@tesseract/protocol/fixtures";
+import { sampleHostIosStatus, sampleSimDevice, sampleTerminal } from "@tesseract/protocol/fixtures";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { HostShellState } from "../../shared/contracts/hostShell";
 import type { CommandOptions, CommandResult } from "../process";
@@ -434,6 +434,108 @@ describe("HostShellService Android session", () => {
     expect((await service.lock()).sessionExpiresAt).toBeNull();
     const lock = requests.find((request) => request.url.endsWith("/v1/host/lock"));
     expect(JSON.parse(lock?.init.body ?? "{}")).toEqual({ session: "pin-session" });
+  });
+});
+
+describe("HostShellService proxy", () => {
+  const expiresAt = new Date(Date.now() + 15 * 60_000).toISOString();
+  const route: Route = (url, init) => {
+    if (url.endsWith("/v1/health")) return healthRoute(url, init);
+    if (url.endsWith("/v1/host/unlock")) return { status: 200, body: { session: "pin-session", expiresAt } };
+    if (url.endsWith("/v1/terminals")) {
+      return init.headers.Authorization === "Bearer pin-session"
+        ? { status: 200, body: [sampleTerminal] }
+        : { status: 401, body: { error: { code: "unauthorized", message: "expired" } } };
+    }
+    if (url.includes("/v1/android/emulator")) return { status: 200, body: sampleHostAndroidStatus.emulator };
+    if (url.endsWith("/v1/android")) return { status: 200, body: sampleHostAndroidStatus };
+    if (url.includes("/v1/ios/simulator")) return { status: init.method === "POST" ? 202 : 200, body: sampleSimDevice };
+    if (url.endsWith("/v1/ios/link")) return { status: 200, body: sampleHostIosStatus.link };
+    if (url.endsWith("/v1/ios")) return { status: 200, body: sampleHostIosStatus };
+    return { status: 404, body: {} };
+  };
+  const decode = (base64: string) => JSON.parse(Buffer.from(base64, "base64").toString("utf8")) as unknown;
+  const get = (path: string, headers: Record<string, string> = {}) => ({ url: `${URL_BASE}${path}`, method: "GET", headers });
+
+  it("answers 401 without a session and never calls the host", async () => {
+    const { service, requests } = harness({ route });
+    await service.refresh();
+    const response = await service.proxy(get("/v1/terminals"));
+    expect(response.status).toBe(401);
+    expect(decode(response.bodyBase64)).toMatchObject({ error: { code: "unauthorized" } });
+    expect(requests.some((request) => request.url.endsWith("/v1/terminals"))).toBe(false);
+  });
+
+  it("forwards allowed paths with the session token in place of the renderer's", async () => {
+    const { service, requests } = harness({ route });
+    await service.refresh();
+    await service.unlock("123456");
+    const response = await service.proxy(get("/v1/terminals", { Authorization: "Bearer placeholder", Accept: "application/json", Cookie: "x" }));
+    expect(response.status).toBe(200);
+    expect(decode(response.bodyBase64)).toEqual([sampleTerminal]);
+    const sent = requests.find((request) => request.url.endsWith("/v1/terminals"));
+    expect(sent?.init.headers).toEqual({ Accept: "application/json", Authorization: "Bearer pin-session" });
+    expect(JSON.stringify(response)).not.toContain("pin-session");
+  });
+
+  it("refuses other origins and the lock routes", async () => {
+    const { service } = harness({ route });
+    await service.refresh();
+    await service.unlock("123456");
+    await expect(service.proxy(get("/v1/host/unlock"))).rejects.toMatchObject({ code: "forbidden" });
+    await expect(service.proxy({ ...get("/v1/terminals"), url: "http://evil.test/v1/terminals" })).rejects.toMatchObject({ code: "forbidden" });
+    await expect(service.proxy(get("/v1/terminalsx"))).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("forgets the session when the host answers 401", async () => {
+    let valid = true;
+    const { service } = harness({
+      route: (url, init) => (url.endsWith("/v1/terminals") && !valid ? { status: 401, body: { error: { code: "unauthorized", message: "expired" } } } : route(url, init)),
+    });
+    await service.refresh();
+    await service.unlock("123456");
+    valid = false;
+    expect((await service.proxy(get("/v1/terminals"))).status).toBe(401);
+    expect(service.state().sessionExpiresAt).toBeNull();
+  });
+
+  it("refuses while the host shell is not serving", async () => {
+    const { service } = harness();
+    await service.refresh();
+    await expect(service.proxy(get("/v1/terminals"))).rejects.toMatchObject({ message: "The host shell is not running" });
+  });
+
+  it("force-kills the emulator with signal=SIGKILL", async () => {
+    const { service, requests } = harness({ route });
+    await service.refresh();
+    await service.unlock("123456");
+    await service.stopEmulator("SIGKILL");
+    const kill = requests.find((request) => request.init.method === "DELETE");
+    expect(kill?.url).toBe(`${URL_BASE}/v1/android/emulator?signal=SIGKILL`);
+    expect(kill?.init.headers.Authorization).toBe("Bearer pin-session");
+    await service.stopEmulator();
+    expect(requests.filter((request) => request.init.method === "DELETE").at(-1)?.url).toBe(`${URL_BASE}/v1/android/emulator`);
+    expect(() => service.stopEmulator("SIGHUP" as never)).toThrow("The emulator can only be stopped or force-killed");
+  });
+
+  it("boots, shuts down, force-kills and links the iOS simulator", async () => {
+    const { service, requests } = harness({ route });
+    await service.refresh();
+    await service.unlock("123456");
+    expect(await service.iosStatus()).toEqual(sampleHostIosStatus);
+    expect(await service.bootSimulator(` ${sampleSimDevice.udid} `)).toEqual(sampleHostIosStatus);
+    const boot = requests.find((request) => request.init.method === "POST" && request.url.endsWith("/v1/ios/simulator"));
+    expect(JSON.parse(boot?.init.body ?? "{}")).toEqual({ udid: sampleSimDevice.udid });
+    await service.shutdownSimulator("SIGKILL");
+    const deletes = () => requests.filter((request) => request.init.method === "DELETE").map((request) => request.url);
+    expect(deletes()).toEqual([`${URL_BASE}/v1/ios/simulator?signal=SIGKILL`]);
+    await service.shutdownSimulator();
+    expect(deletes().at(-1)).toBe(`${URL_BASE}/v1/ios/simulator`);
+    expect(await service.linkIosSandbox(" http://100.64.0.2:7700 ", "sandbox-token")).toEqual(sampleHostIosStatus.link);
+    const link = requests.find((request) => request.url.endsWith("/v1/ios/link"));
+    expect(JSON.parse(link?.init.body ?? "{}")).toEqual({ sandboxUrl: "http://100.64.0.2:7700", token: "sandbox-token" });
+    expect(() => service.bootSimulator(" ")).toThrow("Pick an iOS simulator");
+    expect(() => service.shutdownSimulator("SIGHUP" as never)).toThrow("The emulator can only be stopped or force-killed");
   });
 });
 

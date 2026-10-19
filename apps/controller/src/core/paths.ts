@@ -34,9 +34,10 @@ export type ProjectLocation = { id: string; path: string; exists: boolean };
 
 /**
  * Resolves `<projectsDir>/<id>`. Existing entries must be real directories
- * whose realpath stays under the projects root; symlinks leading elsewhere are refused.
+ * whose realpath stays under the projects root; symlinks leading elsewhere are refused
+ * unless `external` (the host runtime, whose projects link to host repositories).
  */
-export function locateProject(projectsDir: string, input: string): ProjectLocation {
+export function locateProject(projectsDir: string, input: string, external = false): ProjectLocation {
   const id = requireProjectId(input);
   const path = join(projectsDir, id);
   let stats;
@@ -47,8 +48,13 @@ export function locateProject(projectsDir: string, input: string): ProjectLocati
   }
   const root = realpathOrNull(projectsDir) ?? projectsDir;
   const real = realpathOrNull(path);
-  if (!real || !isInside(root, real) || real === root) throw forbidden(`Project ${id} resolves outside the workspace`);
+  if (!real || real === root || (!external && !isInside(root, real))) throw forbidden(`Project ${id} resolves outside the workspace`);
   const isDirectory = stats.isSymbolicLink() ? statSync(real).isDirectory() : stats.isDirectory();
   if (!isDirectory) throw badRequest(`Project ${id} is not a directory`);
   return { id, path: real, exists: true };
+}
+
+/** `locateProject` for a controller: the host runtime follows project links to host repositories. */
+export function locateConfiguredProject(config: { projectsDir: string; runtime: string }, input: string): ProjectLocation {
+  return locateProject(config.projectsDir, input, config.runtime === "host");
 }

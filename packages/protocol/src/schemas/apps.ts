@@ -26,6 +26,8 @@ export const AppViewerSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("display") }),
   /** `serial`: the sandbox adb serial of the tunnelled host emulator. */
   z.object({ kind: z.literal("android"), serial: z.string() }),
+  /** `udid`: the booted host iOS Simulator the run was opened on (open `/ui/ios` of the linked host daemon). */
+  z.object({ kind: z.literal("ios"), udid: z.string().nullable() }),
   z.object({ kind: z.literal("none") }),
 ]);
 export type AppViewer = z.infer<typeof AppViewerSchema>;

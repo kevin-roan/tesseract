@@ -25,7 +25,7 @@ import { badRequest, conflict, HttpError, notFound } from "../core/errors";
 import { childEnv } from "../core/exec";
 import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";
-import { locateProject, realpathOrNull, type ProjectLocation } from "../core/paths";
+import { locateConfiguredProject, realpathOrNull, type ProjectLocation } from "../core/paths";
 import { nowIso } from "../core/time";
 import type { Config } from "../config";
 import type { Repositories } from "../db/repositories";
@@ -552,7 +552,7 @@ export class SyncBackService {
   }
 
   private require(id: string): ProjectLocation {
-    const location = locateProject(this.config.projectsDir, id);
+    const location = locateConfiguredProject(this.config, id);
     if (!location.exists) throw notFound(`Project ${location.id} not found`);
     return location;
   }

@@ -2,8 +2,8 @@ import type { Ref } from "react";
 import { ActionMenu, type MenuSections } from "../../components/ActionMenu";
 import { EmptyState } from "../../components/EmptyState";
 import { useTerminalContextMenu } from "../../features/terminals/hooks/use-terminal-context-menu";
-import { MENU_LABELS, PLACEHOLDER_LABELS } from "../../features/terminals/labels";
-import type { BannerAction, BannerModel } from "../../features/terminals/types";
+import { MENU_LABELS } from "../../features/terminals/labels";
+import type { BannerAction, BannerModel, PlaceholderModel } from "../../features/terminals/types";
 import { SessionBanner } from "./SessionBanner";
 import { TerminalView } from "./TerminalView";
 import styles from "./TerminalStage.module.css";
@@ -16,9 +16,10 @@ export interface TerminalStageProps {
   banner: BannerModel | null;
   creating: boolean;
   contextMenu: MenuSections;
+  placeholder: PlaceholderModel;
   onBannerAction(action: BannerAction): void;
-  onNewShell(): void;
-  onNewClaude(): void;
+  onPrimary(): void;
+  onSecondary(): void;
 }
 
 export function TerminalStage({
@@ -29,9 +30,10 @@ export function TerminalStage({
   banner,
   creating,
   contextMenu,
+  placeholder,
   onBannerAction,
-  onNewShell,
-  onNewClaude,
+  onPrimary,
+  onSecondary,
 }: TerminalStageProps) {
   const menu = useTerminalContextMenu();
   const showPlaceholder = selectedId === null || !attached.includes(selectedId);
@@ -51,12 +53,12 @@ export function TerminalStage({
           <div className={styles.placeholder} data-disabled={creating || undefined} inert={creating || undefined}>
             <EmptyState
               icon="terminal"
-              title={PLACEHOLDER_LABELS.title}
-              message={PLACEHOLDER_LABELS.message}
-              actionLabel={PLACEHOLDER_LABELS.shell}
-              onAction={onNewShell}
-              secondaryLabel={PLACEHOLDER_LABELS.claude}
-              onSecondary={onNewClaude}
+              title={placeholder.title}
+              message={placeholder.message}
+              actionLabel={placeholder.primaryLabel}
+              onAction={onPrimary}
+              secondaryLabel={placeholder.secondaryLabel ?? undefined}
+              onSecondary={placeholder.secondaryLabel ? onSecondary : undefined}
             />
           </div>
         ) : null}

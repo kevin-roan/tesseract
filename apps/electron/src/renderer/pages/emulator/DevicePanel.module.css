@@ -1,0 +1,10 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.notice {
+  margin: 0 var(--to-space-base) var(--to-space-sm);
+}

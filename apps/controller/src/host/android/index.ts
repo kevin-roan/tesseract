@@ -6,6 +6,7 @@ import type {
   HostAndroidStatus,
   LinkSandbox,
   StartEmulator,
+  StopSignal,
   UpdateAndroidStream,
 } from "@tesseract/protocol";
 import { watch, type FSWatcher } from "node:fs";
@@ -144,8 +145,8 @@ export class HostAndroid {
     return this.emulator.start(input);
   }
 
-  stop(): EmulatorInfo {
-    return this.emulator.stop();
+  stop(signal?: StopSignal): EmulatorInfo {
+    return this.emulator.stop(signal);
   }
 
   linkSandbox(input: LinkSandbox): AndroidLinkInfo {

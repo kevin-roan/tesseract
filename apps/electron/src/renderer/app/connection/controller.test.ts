@@ -2,13 +2,23 @@ import { ApiError, NetworkError, ProtocolVersionError, type EventStreamHandlers,
 import type { ServerEvent } from "@tesseract/protocol";
 import { sampleHealth, sampleStatus } from "@tesseract/protocol/fixtures";
 import { describe, expect, it, vi } from "vitest";
-import type { ConnectionConfig, ConnectionSnapshot, DiscoveryResult } from "../../../shared/contracts/connection";
+import type { ConnectionConfig, ConnectionSnapshot, DiscoveryResult, SavedMachine } from "../../../shared/contracts/connection";
 import { ConnectionController, type ConnectionDeps } from "./controller";
 import { flush, manualTimers } from "./test-helpers";
 
 const CONFIG_FILE = "/home/dev/.config/tesseract-desktop/config.json";
 const FILE_CONFIG: ConnectionConfig = { apiUrl: "http://127.0.0.1:7700", token: "tok", name: "rig", pairingUrl: null, source: "file" };
 const DOCKER_CONFIG: ConnectionConfig = { ...FILE_CONFIG, apiUrl: "http://172.22.0.2:7700", source: "docker", container: "tesseract-sandbox-1" };
+
+const REMOTE_MACHINE: SavedMachine = {
+  id: "http://10.0.0.2:7700",
+  apiUrl: "http://10.0.0.2:7700",
+  name: "mac",
+  active: false,
+  local: false,
+  status: "offline",
+  host: null,
+};
 
 function fakeClient() {
   const streams: EventStreamHandlers[] = [];
@@ -39,10 +49,20 @@ function setup(options: { config?: ConnectionConfig | null; discover?: Discovery
   const changed = new Set<(snapshot: ConnectionSnapshot) => void>();
   const configs: ConnectionConfig[] = [];
   const deps: ConnectionDeps = {
-    load: vi.fn(async () => ({ config: options.config === undefined ? FILE_CONFIG : options.config, configFile: CONFIG_FILE })),
-    save: vi.fn(async (input) => ({ config: { ...FILE_CONFIG, ...input, source: "file" as const }, configFile: CONFIG_FILE })),
-    forget: vi.fn(async () => ({ config: null, configFile: CONFIG_FILE })),
+    load: vi.fn(async () => ({ config: options.config === undefined ? FILE_CONFIG : options.config, configFile: CONFIG_FILE, machines: [] })),
+    save: vi.fn(async (input) => ({ config: { ...FILE_CONFIG, ...input, source: "file" as const }, configFile: CONFIG_FILE, machines: [] })),
+    forget: vi.fn(async () => ({ config: null, configFile: CONFIG_FILE, machines: [] })),
     discover: vi.fn(async () => options.discover ?? { ok: false as const, error: "docker is not installed on this machine" }),
+    switchTo: vi.fn(async (id) => ({ config: { ...FILE_CONFIG, apiUrl: id }, configFile: CONFIG_FILE, machines: [] })),
+    rename: vi.fn(async (_id, name) => ({ config: { ...FILE_CONFIG, name }, configFile: CONFIG_FILE, machines: [] })),
+    remove: vi.fn(async () => ({ config: null, configFile: CONFIG_FILE, machines: [] })),
+    add: vi.fn(async (input, addOptions) => ({
+      config: addOptions?.activate ? { ...FILE_CONFIG, ...input, source: "file" as const } : FILE_CONFIG,
+      configFile: CONFIG_FILE,
+      machines: [REMOTE_MACHINE],
+    })),
+    setHostLink: vi.fn(async () => ({ config: FILE_CONFIG, configFile: CONFIG_FILE, machines: [{ ...REMOTE_MACHINE, host: { url: "http://10.0.0.2:7701", name: "mac" } }] })),
+    refreshStatus: vi.fn(async () => ({ config: FILE_CONFIG, configFile: CONFIG_FILE, machines: [{ ...REMOTE_MACHINE, status: "online" as const }] })),
     onChanged: (listener) => {
       changed.add(listener);
       return () => changed.delete(listener);
@@ -198,14 +218,61 @@ describe("ConnectionController", () => {
     expect(controller.state.errorMessage).toContain("protocol v2");
   });
 
+  it("reconnects when switching machines but not when renaming", async () => {
+    const { controller, configs } = setup();
+    await controller.start();
+    await flush();
+    await controller.rename(FILE_CONFIG.apiUrl, "office");
+    expect(configs).toEqual([FILE_CONFIG]);
+    expect(controller.state.config?.name).toBe("office");
+    await controller.switchTo("http://10.0.0.2:7700");
+    expect(configs).toHaveLength(2);
+    expect(controller.state.config?.apiUrl).toBe("http://10.0.0.2:7700");
+  });
+
+  it("adds a machine without switching unless asked", async () => {
+    const { controller, deps, configs } = setup();
+    await controller.start();
+    await flush();
+    const input = { apiUrl: "http://10.0.0.2:7700", token: "tok2" };
+    await controller.add(input, { hostLink: null, activate: false });
+    expect(deps.add).toHaveBeenCalledWith(input, { hostLink: null, activate: false });
+    expect(configs).toEqual([FILE_CONFIG]);
+    expect(controller.state.machines).toEqual([REMOTE_MACHINE]);
+    await controller.add(input, { activate: true });
+    expect(configs.at(-1)).toMatchObject({ apiUrl: "http://10.0.0.2:7700" });
+    expect(controller.state.status).toBe("connecting");
+  });
+
+  it("clears inbox counts when switching to another machine", async () => {
+    const { controller } = setup();
+    await controller.start();
+    await flush();
+    expect(controller.state.inbox.unreadCount).toBe(3);
+    await controller.switchTo("http://10.0.0.2:7700");
+    expect(controller.state.inbox).toEqual({ unreadCount: 0, attentionCount: 0 });
+    expect(controller.state.sandbox).toBeNull();
+  });
+
+  it("adopts host links and refreshed statuses without reconnecting", async () => {
+    const { controller, configs } = setup();
+    await controller.start();
+    await flush();
+    await controller.setHostLink(REMOTE_MACHINE.id, "tesseract://host?url=x&token=y");
+    expect(controller.state.machines[0]?.host?.name).toBe("mac");
+    await controller.refreshStatus();
+    expect(controller.state.machines[0]?.status).toBe("online");
+    expect(configs).toEqual([FILE_CONFIG]);
+  });
+
   it("follows config changes from other windows", async () => {
     const { controller, configs, emitChanged } = setup();
     await controller.start();
     await flush();
-    emitChanged({ config: { ...FILE_CONFIG, source: "env" }, configFile: CONFIG_FILE });
+    emitChanged({ config: { ...FILE_CONFIG, source: "env" }, configFile: CONFIG_FILE, machines: [] });
     expect(configs).toHaveLength(1);
     expect(controller.state.config?.source).toBe("env");
-    emitChanged({ config: DOCKER_CONFIG, configFile: CONFIG_FILE });
+    emitChanged({ config: DOCKER_CONFIG, configFile: CONFIG_FILE, machines: [] });
     expect(configs).toEqual([FILE_CONFIG, DOCKER_CONFIG]);
   });
 

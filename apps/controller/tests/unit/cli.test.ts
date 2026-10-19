@@ -56,6 +56,7 @@ function capture(): Output & { stdout: string[]; stderr: string[] } {
 
 const STATUS: SandboxStatus = {
   sandboxId: "box",
+  runtime: "sandbox",
   hostname: "host",
   version: "1.0.0",
   startedAt: "2024-01-01T00:00:00.000Z",

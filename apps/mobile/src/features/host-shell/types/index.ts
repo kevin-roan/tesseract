@@ -21,3 +21,7 @@ export type PinState = {
 export type PinAction = { type: "digit"; digit: string } | { type: "delete" } | { type: "clear" } | { type: "reject" };
 
 export type LockLine = { tone: "neutral" | "warning" | "danger"; message: string };
+
+export type HostDeviceKind = "android" | "ios";
+
+export type HostScreenTarget = { kind: HostDeviceKind; serial?: string };

@@ -203,7 +203,7 @@ export async function runCli(argv: string[], io: CliIo = {}): Promise<number | n
   }
   if (command === "hook") return hook(io.env ?? process.env, io.readStdin ?? readProcessStdin);
   try {
-    if (command === "host") return await hostCli(rest, { env: io.env ?? process.env, output, readStdin: io.readStdin ?? readProcessStdin, readSecret: io.readSecret });
+    if (command === "host") return await hostCli(rest, { env: io.env ?? process.env, output, readStdin: io.readStdin ?? readProcessStdin, readSecret: io.readSecret, cwd: io.cwd });
     const config = loadConfig(io.env ?? process.env);
     switch (command) {
       case "serve":

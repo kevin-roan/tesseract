@@ -10,6 +10,7 @@ import { HELPER_COMMAND, runEmulatorHelper } from "./android/netns-helper";
 import { HostConfigError, loadHostConfig, tailscaleServeUrl } from "./config";
 import { startHostShell } from "./server";
 import { HostStateStore } from "./state";
+import { HOST_WORKSPACE_USAGE, hostWorkspaceCli } from "./workspace";
 
 export const HOST_USAGE = `  tesseract-controller host serve [--bind <ipv4>] [--port <n>]
                                      run the host shell daemon (on the host, not in the sandbox) on the
@@ -19,6 +20,8 @@ export const HOST_USAGE = `  tesseract-controller host serve [--bind <ipv4>] [--
                                      TESSERACT_EMULATOR_PORT, TESSERACT_EMULATOR_GPU, TESSERACT_EMULATOR_ISOLATION,
                                      TESSERACT_EMULATOR_ALLOW_NETS, TESSERACT_EMULATOR_ADB_PORT,
                                      TESSERACT_ANDROID_SHARE_EMULATORS=on to tunnel the host's other emulators too)
+                                     and, on macOS with TESSERACT_IOS=1, the iOS Simulator (TESSERACT_XCRUN,
+                                     TESSERACT_IDB, TESSERACT_IDB_COMPANION; needs Xcode, idb and idb_companion)
   tesseract-controller host pin [--stdin]
                                      set the host shell PIN (6-12 digits); ends every open session
   tesseract-controller host pair [--json]
@@ -29,13 +32,15 @@ export const HOST_USAGE = `  tesseract-controller host serve [--bind <ipv4>] [--
   tesseract-controller host stream [--json] [--stdin]
                                      print the Android screen stream settings and the adb devices;
                                      --stdin reads a JSON object of settings to change first;
-                                     --json prints { stream, devices }`;
+                                     --json prints { stream, devices }
+${HOST_WORKSPACE_USAGE}`;
 
 export type HostCliIo = {
   env: Env;
   output: Output;
   readStdin: () => Promise<string>;
   readSecret?: (prompt: string) => Promise<string>;
+  cwd?: string;
 };
 
 const LOOPBACK = "127.0.0.1";
@@ -180,6 +185,8 @@ export async function hostCli(args: string[], io: HostCliIo): Promise<number | n
       return token(rest, io);
     case "stream":
       return await stream(rest, io);
+    case "workspace":
+      return hostWorkspaceCli(rest, io);
     case HELPER_COMMAND:
       try {
         return await runEmulatorHelper(rest);
@@ -187,6 +194,6 @@ export async function hostCli(args: string[], io: HostCliIo): Promise<number | n
         throw new CliError(error instanceof Error ? error.message : String(error), 2);
       }
     default:
-      throw new CliError(`Unknown host command "${command ?? ""}"; expected serve, pin, pair, token or stream`, 2);
+      throw new CliError(`Unknown host command "${command ?? ""}"; expected serve, pin, pair, token, stream or workspace`, 2);
   }
 }

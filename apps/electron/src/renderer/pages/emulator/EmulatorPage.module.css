@@ -1,0 +1,14 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 300px;
+  min-height: 280px;
+  background: var(--to-surface);
+}
+
+.kinds {
+  display: flex;
+  justify-content: center;
+  padding: var(--to-space-md) var(--to-space-base) 0;
+}

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
-import { computeBackoffDelay, type TesseractClient } from "@tesseract/client";
+import { computeBackoffDelay, isApiError, type TesseractClient } from "@tesseract/client";
 import type { VncAction } from "@tesseract/protocol";
 
 import type { WebSurfaceHandle } from "@/components/web-surface/types";
@@ -52,17 +52,30 @@ export function useWebPageSession(
     [url],
   );
 
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
   const sendTicket = useCallback(
     (onTicketError: () => void) => {
       if (!client) return;
       client
         .createTicket()
         .then(({ ticket }) => {
+          if (!mounted.current) return;
           const surface = surfaceRef.current;
           const delivered = surface?.run(reconnectScript(ticket)) || surface?.post(reconnectMessage(ticket));
           if (!delivered) refresh();
         })
-        .catch(onTicketError);
+        .catch((error: unknown) => {
+          if (!mounted.current) return;
+          if (isApiError(error, "unauthorized")) return refresh();
+          onTicketError();
+        });
     },
     [client, refresh],
   );

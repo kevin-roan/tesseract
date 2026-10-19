@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { forwardRef, type MouseEvent, type ReactNode } from "react";
 import { cx } from "../../lib/cx";
 import { Icon } from "../Icon";
 import { Text } from "../Text";
@@ -9,13 +9,25 @@ export interface SidebarStatusRowProps {
   title: string;
   detail?: string;
   tooltip?: string;
-  onClick?: () => void;
+  open?: boolean;
+  onClick?: (event: MouseEvent<HTMLButtonElement>) => void;
   className?: string;
 }
 
-export function SidebarStatusRow({ indicator, title, detail, tooltip, onClick, className }: SidebarStatusRowProps) {
+export const SidebarStatusRow = forwardRef<HTMLButtonElement, SidebarStatusRowProps>(function SidebarStatusRow(
+  { indicator, title, detail, tooltip, open, onClick, className },
+  ref,
+) {
   return (
-    <button type="button" className={cx(styles.statusRow, className)} title={tooltip} onClick={onClick}>
+    <button
+      ref={ref}
+      type="button"
+      className={cx(styles.statusRow, className)}
+      title={tooltip}
+      aria-haspopup={open === undefined ? undefined : "menu"}
+      aria-expanded={open}
+      onClick={onClick}
+    >
       {indicator ? <span className={styles.statusIndicator}>{indicator}</span> : null}
       <Text variant="label" color="text-secondary" className={styles.statusTitle}>
         {title}
@@ -27,4 +39,4 @@ export function SidebarStatusRow({ indicator, title, detail, tooltip, onClick, c
       <Icon name="settings" color="text-tertiary" />
     </button>
   );
-}
+});

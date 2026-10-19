@@ -1,9 +1,13 @@
 import type { Socket } from "bun";
+import type { StopSignal } from "@tesseract/protocol";
 import { unavailable } from "../core/errors";
+import { nowIso } from "../core/time";
 
 export type BridgePeer = {
   send(data: Uint8Array): number;
   close(code?: number, reason?: string): void;
+  /** Drops the connection without a close handshake. */
+  terminate?(): void;
 };
 
 const CONNECT_TIMEOUT_MS = 3_000;
@@ -21,6 +25,35 @@ export class VncBridge {
   private readonly outbound: Uint8Array[] = [];
   private paused = false;
   private closed = false;
+  private readonly closeListeners = new Set<() => void>();
+
+  get isClosed(): boolean {
+    return this.closed;
+  }
+
+  /** Runs once when either side closes (immediately when already closed). */
+  onClose(listener: () => void): void {
+    if (this.closed) listener();
+    else this.closeListeners.add(listener);
+  }
+
+  /** Closes the session from the controller: the WebSocket (close frame, or dropped for SIGKILL) and the RFB connection. */
+  disconnect(signal: StopSignal, reason = "VNC session closed"): void {
+    if (this.closed) return;
+    const peer = this.peer;
+    this.markClosed();
+    if (signal === "SIGKILL" && peer?.terminate) peer.terminate();
+    else peer?.close(1000, reason);
+    this.socket?.end();
+  }
+
+  private markClosed(): void {
+    this.closed = true;
+    this.peer = null;
+    const listeners = [...this.closeListeners];
+    this.closeListeners.clear();
+    for (const listener of listeners) listener();
+  }
 
   static async open(hostname: string, port: number, timeoutMs = CONNECT_TIMEOUT_MS): Promise<VncBridge> {
     const bridge = new VncBridge();
@@ -79,8 +112,7 @@ export class VncBridge {
 
   clientClosed(): void {
     if (this.closed) return;
-    this.closed = true;
-    this.peer = null;
+    this.markClosed();
     this.socket?.end();
   }
 
@@ -129,9 +161,40 @@ export class VncBridge {
 
   private serverClosed(code: number, reason: string): void {
     if (this.closed) return;
-    this.closed = true;
     const peer = this.peer;
-    this.peer = null;
+    this.markClosed();
     peer?.close(code, reason);
+  }
+}
+
+export type VncSession = { id: string; remote: string | null; startedAt: string; bridge: VncBridge };
+
+/** The open `/v1/display/vnc` bridges, so the Processes page can list and close them. */
+export class VncSessionRegistry {
+  private readonly sessions = new Map<string, VncSession>();
+  private next = 1;
+
+  track(bridge: VncBridge, remote: string | null = null): VncSession {
+    const session: VncSession = { id: `session-${this.next++}`, remote, startedAt: nowIso(), bridge };
+    this.sessions.set(session.id, session);
+    bridge.onClose(() => this.sessions.delete(session.id));
+    return session;
+  }
+
+  list(): VncSession[] {
+    return [...this.sessions.values()];
+  }
+
+  get(id: string): VncSession | null {
+    return this.sessions.get(id) ?? null;
+  }
+
+  /** False when no such session is open. */
+  close(id: string, signal: StopSignal): boolean {
+    const session = this.sessions.get(id);
+    if (!session) return false;
+    session.bridge.disconnect(signal);
+    this.sessions.delete(id);
+    return true;
   }
 }

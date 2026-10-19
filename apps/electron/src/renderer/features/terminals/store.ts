@@ -41,7 +41,7 @@ const initial = {
   confirmId: null,
 };
 
-export const useTerminalsUi = create<TerminalsUiState>((set) => ({
+export const createTerminalsUiStore = () => create<TerminalsUiState>((set) => ({
   ...initial,
   setSelected: (selectedId) => set({ selectedId }),
   setAttached: (attached) => set({ attached }),
@@ -60,3 +60,7 @@ export const useTerminalsUi = create<TerminalsUiState>((set) => ({
   setConfirmId: (confirmId) => set({ confirmId }),
   reset: () => set(initial),
 }));
+
+export type TerminalsUiStore = ReturnType<typeof createTerminalsUiStore>;
+
+export const useTerminalsUi: TerminalsUiStore = createTerminalsUiStore();

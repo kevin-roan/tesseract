@@ -2,6 +2,7 @@ import { MotionGlobalConfig } from "motion/react";
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { Row } from "../Row";
+import { ANIMATED_ITEMS_LIMIT } from "./constants";
 import { KeyedList } from "./KeyedList";
 
 MotionGlobalConfig.skipAnimations = true;
@@ -26,5 +27,13 @@ describe("KeyedList", () => {
     const { container } = render(<KeyedList divided items={["a"]} getKey={(item) => item} renderItem={(item) => <Row>{item}</Row>} />);
     expect(container.querySelector(".list")?.className).toContain("divided");
     expect(container.querySelector(".row")?.className).toContain("divided");
+  });
+
+  it("renders long lists as static rows", () => {
+    const items = Array.from({ length: ANIMATED_ITEMS_LIMIT + 1 }, (_, index) => `file-${index}`);
+    const { getAllByRole } = render(<KeyedList items={items} getKey={(item) => item} renderItem={(item) => <span>{item}</span>} />);
+    const rows = getAllByRole("listitem");
+    expect(rows).toHaveLength(items.length);
+    expect(rows[0]?.className).toContain("static");
   });
 });

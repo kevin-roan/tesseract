@@ -1,12 +1,25 @@
 import { chmodSync, mkdirSync } from "node:fs";
 import { homedir, hostname as osHostname, tmpdir } from "node:os";
 import { dirname, isAbsolute, join, resolve } from "node:path";
-import { CLAUDE_ACCOUNT_NAME_PATTERN, CLAUDE_PRIMARY_ACCOUNT_ID, DEFAULT_ADB_TUNNEL_PORT, DEFAULT_PORT, isValidToken, parseBaseUrl, STT_PROFILES, type SttProfile } from "@tesseract/protocol";
+import {
+  CLAUDE_ACCOUNT_NAME_PATTERN,
+  CLAUDE_PRIMARY_ACCOUNT_ID,
+  DEFAULT_ADB_TUNNEL_PORT,
+  DEFAULT_PORT,
+  isValidToken,
+  parseBaseUrl,
+  PROJECT_RUNTIMES,
+  STT_PROFILES,
+  type ProjectRuntime,
+  type SttProfile,
+} from "@tesseract/protocol";
 import { isLogLevel, type LogLevel } from "./core/logger";
 import { adoptLegacyPath } from "./core/paths";
 import type { Env } from "./core/exec";
 
 export type Config = {
+  /** `host`: projects are symlinks to host repositories (`tesseract --unsafe-repo`) and run without a sandbox. */
+  runtime: ProjectRuntime;
   host: string;
   port: number;
   workspace: string;
@@ -223,6 +236,14 @@ function shellCommand(env: Env): string[] {
   return shell ? [shell, "-l"] : ["bash", "-l"];
 }
 
+function runtime(env: Env): ProjectRuntime {
+  const value = read(env, "TESSERACT_RUNTIME") ?? "sandbox";
+  if (!PROJECT_RUNTIMES.includes(value as ProjectRuntime)) {
+    throw new ConfigError(`TESSERACT_RUNTIME must be ${PROJECT_RUNTIMES.join(" or ")} (got "${value}")`);
+  }
+  return value as ProjectRuntime;
+}
+
 export function loadConfig(env: Env = process.env): Config {
   const host = read(env, "TESSERACT_HOST") ?? "0.0.0.0";
   if (!HOST_PATTERN.test(host)) throw new ConfigError(`TESSERACT_HOST is not a valid bind address (got "${host}")`);
@@ -262,6 +283,7 @@ export function loadConfig(env: Env = process.env): Config {
   const claudeGlobalConfig = read(env, "CLAUDE_CONFIG_DIR") ? join(claudeConfigDir, ".claude.json") : join(home, ".claude.json");
   const hostname = osHostname();
   return {
+    runtime: runtime(env),
     host,
     port,
     workspace,

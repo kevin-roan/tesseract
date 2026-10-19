@@ -21,7 +21,13 @@ export function OverviewContent({ overview, content }: OverviewContentProps) {
   const { notice } = overview;
   return (
     <PageBody gap={OVERVIEW_GAP} label={OVERVIEW_LABELS.title}>
-      <OverviewHeader title={overview.title} meta={overview.meta} badge={overview.badge} onRefresh={overview.refresh} />
+      <OverviewHeader
+        title={overview.title}
+        meta={overview.meta}
+        badge={overview.badge}
+        onRefresh={overview.refresh}
+        onRename={overview.canRename ? overview.rename : undefined}
+      />
       <AnimatePresence initial={false}>
         {notice ? (
           <motion.div key="attention" className={styles.notice} variants={reveal} initial="initial" animate="animate" exit="exit">

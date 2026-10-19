@@ -37,7 +37,10 @@ export function useOpenAppRun() {
           sandboxNav.display();
           return;
         case "android":
-          hostNav.android();
+          hostNav.screen({ kind: "android" });
+          return;
+        case "ios":
+          hostNav.screen({ kind: "ios" });
           return;
       }
     },

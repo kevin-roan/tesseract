@@ -63,8 +63,8 @@ export const LINK_MESSAGES = {
   emulatorError: "The host emulator reported an error",
 } as const;
 
-const trimSlash = (url: string) => url.replace(/\/+$/, "");
-const toWs = (url: string) => url.replace(/^http/, "ws");
+export const trimSlash = (url: string) => url.replace(/\/+$/, "");
+export const toWs = (url: string) => url.replace(/^http/, "ws");
 
 /** The sandbox URL without userinfo, for logs. */
 export function redactUrl(url: string): string {
@@ -84,8 +84,29 @@ export function linkEmulatorView(emulator: EmulatorInfo): EmulatorInfo {
   return { ...emulator, error: emulator.error ? LINK_MESSAGES.emulatorError : null };
 }
 
-function withoutTicket(message: string, ticket: string): string {
+export function withoutTicket(message: string, ticket: string): string {
   return message.replaceAll(encodeURIComponent(ticket), "***").replaceAll(ticket, "***");
+}
+
+/** A one-time ticket from the sandbox controller (`POST /v1/auth/ticket` with the link token). */
+export async function requestTicket(config: AndroidLinkConfig, timeoutMs = TICKET_TIMEOUT_MS): Promise<string> {
+  const response = await fetch(`${config.sandboxUrl}${restPaths.authTicket()}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${config.token}` },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!response.ok) throw new Error(`Ticket request failed (HTTP ${response.status})${await errorDetail(response)}`);
+  return TicketSchema.parse(await response.json()).ticket;
+}
+
+/** `: <message>` of a controller error body, else its first 200 characters. */
+export async function errorDetail(response: Response): Promise<string> {
+  const body = await response.text().catch(() => "");
+  let detail = body.slice(0, 200);
+  try {
+    detail = (JSON.parse(body) as { error?: { message?: string } }).error?.message ?? detail;
+  } catch {}
+  return detail ? `: ${detail}` : "";
 }
 
 type Stream = { ws: WebSocket; tcp: Socket };
@@ -172,21 +193,8 @@ export class AndroidLink {
     if (this.connected && this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(message));
   }
 
-  private async ticket(config: AndroidLinkConfig): Promise<string> {
-    const response = await fetch(`${config.sandboxUrl}${restPaths.authTicket()}`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${config.token}` },
-      signal: AbortSignal.timeout(TICKET_TIMEOUT_MS),
-    });
-    if (!response.ok) {
-      const body = await response.text().catch(() => "");
-      let detail = body.slice(0, 200);
-      try {
-        detail = (JSON.parse(body) as { error?: { message?: string } }).error?.message ?? detail;
-      } catch {}
-      throw new Error(`Ticket request failed (HTTP ${response.status})${detail ? `: ${detail}` : ""}`);
-    }
-    return TicketSchema.parse(await response.json()).ticket;
+  private ticket(config: AndroidLinkConfig): Promise<string> {
+    return requestTicket(config);
   }
 
   private async dial(generation: number): Promise<void> {

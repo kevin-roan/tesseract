@@ -1,6 +1,8 @@
 import { HOST_PAIRING_ACTION, PAIRING_SCHEME } from "@tesseract/protocol";
+import type { IosUnavailableCode, SimState } from "@tesseract/protocol";
 import {
   AndroidLogoIcon,
+  AppleLogoIcon,
   ArrowSquareOutIcon,
   DeviceMobileIcon,
   LinkBreakIcon,
@@ -8,6 +10,8 @@ import {
   LockSimpleIcon,
   PlayIcon,
   PlusIcon,
+  PowerIcon,
+  SkullIcon,
   SlidersHorizontalIcon,
   StopIcon,
   TrashIcon,
@@ -112,6 +116,7 @@ export const ANDROID_COPY = {
   avdFootnote: "AVDs from `emulator -list-avds` on the host.",
   start: "Start",
   stop: "Stop",
+  forceKill: "Force kill",
   openScreen: "Open screen",
   link: "Link sandbox",
   unlink: "Unlink",
@@ -137,6 +142,73 @@ export const ANDROID_COPY = {
   deviceSheetTitle: "Device",
   deviceFootnote: "Devices from `adb devices` on the host. The host streams H.264 when this phone can decode it.",
   deviceKinds: { emulator: "Emulator", genymotion: "Genymotion", network: "Wi-Fi", usb: "USB" },
+} as const;
+
+export const HOST_DEVICE_COPY = {
+  unsupported: "This app can't show that device's screen yet. Update the app.",
+  kindLabel: "Device",
+  kinds: { android: "Android", ios: "iOS" },
+} as const;
+
+export const EMULATOR_KILL_CONFIRM = {
+  title: "Force kill the emulator?",
+  message: "The emulator is killed at once without shutting Android down. Unsaved state in the emulator is lost.",
+  confirmLabel: "Force kill",
+  destructive: true,
+} as const;
+
+export const SIMULATOR_KILL_CONFIRM = {
+  title: "Force kill the simulator?",
+  message: "The simulator's processes are killed at once before it shuts down. Unsaved state in its apps is lost.",
+  confirmLabel: "Force kill",
+  destructive: true,
+} as const;
+
+const SIM_STATE_LABELS: Record<SimState, string> = {
+  unavailable: "Unavailable",
+  shutdown: "Shut down",
+  booting: "Booting",
+  booted: "Booted",
+  shutting_down: "Shutting down",
+  failed: "Failed",
+};
+
+const IOS_UNAVAILABLE: Record<IosUnavailableCode, { title: string; message: string }> = {
+  disabled: {
+    title: "iOS Simulator is off",
+    message: "Start the host daemon with TESSERACT_IOS=1 to use the iOS Simulator.",
+  },
+  not_macos: {
+    title: "Needs a Mac",
+    message: "The iOS Simulator only runs on a macOS host with Xcode.",
+  },
+  no_xcode: {
+    title: "Xcode is missing",
+    message: "Install Xcode with the iOS Simulator on the host, then run `sudo xcode-select -s /Applications/Xcode.app`.",
+  },
+  no_idb: {
+    title: "idb is missing",
+    message: "Install idb and idb_companion on the host (`brew install facebook/fb/idb-companion` and `pip3 install fb-idb`).",
+  },
+};
+
+export const IOS_COPY = {
+  title: "iOS Simulator",
+  screenTitle: "iOS",
+  simulator: "Simulator",
+  noDevice: "No simulator",
+  noDevices: "No simulator device on the host. Add one in Xcode under Window › Devices and Simulators.",
+  deviceSheetTitle: "Simulator",
+  deviceFootnote: "Devices from `xcrun simctl list` on the host. One device runs at a time.",
+  boot: "Boot",
+  shutdown: "Shut down",
+  forceKill: "Force kill",
+  openScreen: "Open screen",
+  otherBooted: (name: string) => `${name} is running; shut it down to boot another device.`,
+  unavailable: "The iOS Simulator is not available on this host.",
+  unavailableReasons: IOS_UNAVAILABLE,
+  states: SIM_STATE_LABELS,
+  retry: "Retry",
 } as const;
 
 export const STREAM_COPY = {
@@ -188,4 +260,14 @@ export const ANDROID_ICONS = {
   link: LinkIcon,
   unlink: LinkBreakIcon,
   settings: SlidersHorizontalIcon,
+  forceKill: SkullIcon,
+} as const;
+
+export const IOS_ICONS = {
+  simulator: AppleLogoIcon,
+  boot: PowerIcon,
+  shutdown: StopIcon,
+  forceKill: SkullIcon,
+  open: ArrowSquareOutIcon,
+  device: DeviceMobileIcon,
 } as const;

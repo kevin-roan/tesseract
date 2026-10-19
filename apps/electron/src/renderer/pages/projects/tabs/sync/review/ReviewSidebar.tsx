@@ -39,7 +39,7 @@ export function ReviewSidebar({
   onSelect,
   onListKeyDown,
 }: ReviewSidebarProps) {
-  const conflictPaths = conflicts.map((file) => file.path);
+  const conflictPaths = new Set(conflicts.map((file) => file.path));
   return (
     <div className={styles.sidebar}>
       <MiddleEllipsis text={SYNC_REVIEW_LABELS.destination(hostPath)} title={hostPath} className={styles.destination} />
@@ -68,7 +68,7 @@ export function ReviewSidebar({
           <ReviewFileRow
             key={file.path}
             change={file}
-            conflict={conflictPaths.includes(file.path)}
+            conflict={conflictPaths.has(file.path)}
             selected={file.path === selectedPath}
             onSelect={onSelect}
           />

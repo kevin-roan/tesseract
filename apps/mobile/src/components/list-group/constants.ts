@@ -1,0 +1,2 @@
+export const VIRTUAL_LIST_INITIAL_ROWS = 20;
+export const VIRTUAL_LIST_WINDOW = 5;

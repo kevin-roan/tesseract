@@ -18,6 +18,8 @@ describe("parseArgs", () => {
   it("finds the first subcommand", () => {
     expect(firstSubcommand(["--json", "status"])).toBe("status");
     expect(firstSubcommand(["--sync", "--confidential"])).toBeNull();
+    expect(firstSubcommand(["--unsafe-repo", "--name", "App"], ["name"])).toBeNull();
+    expect(firstSubcommand(["--name=App", "status"], ["name"])).toBe("status");
   });
 });
 

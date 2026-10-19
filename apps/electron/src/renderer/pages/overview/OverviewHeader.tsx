@@ -10,15 +10,17 @@ export interface OverviewHeaderProps {
   meta: string | null;
   badge: { label: string; tone: Tone };
   onRefresh: () => void;
+  onRename?: () => void;
 }
 
-export function OverviewHeader({ title, meta, badge, onRefresh }: OverviewHeaderProps) {
+export function OverviewHeader({ title, meta, badge, onRefresh, onRename }: OverviewHeaderProps) {
   return (
     <header className={styles.header}>
       <div className={styles.headerRow}>
         <Text as="h1" variant="h1" className={styles.title}>
           {title}
         </Text>
+        {onRename ? <IconButton icon="rename" label={OVERVIEW_LABELS.rename} size={24} onClick={onRename} /> : null}
         <StatusBadge label={badge.label} tone={badge.tone} />
         <span className={styles.spacer} />
         <IconButton icon="refresh" label={OVERVIEW_LABELS.refresh} onClick={onRefresh} />

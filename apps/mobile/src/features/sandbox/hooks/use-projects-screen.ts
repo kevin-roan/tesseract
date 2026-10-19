@@ -6,6 +6,7 @@ import type { HeaderAction } from "@/components/screen-header";
 import { PROJECTS_HEADER_ACTIONS } from "../utils/actions";
 import { describeError } from "../utils/errors";
 import { activeWork, activeWorkCount, projectCardModels } from "../utils/overview";
+import { projectsEmptyLabel } from "../utils/runtime";
 import { type ProjectsView, projectsViewOptions, sortSites } from "../utils/sites";
 import { useConfirmedStop } from "./use-confirmed-stop";
 import { useSandboxClient } from "./use-sandbox-client";
@@ -17,6 +18,7 @@ import { useSandboxNavigation } from "./use-sandbox-navigation";
 import { useSandboxProblems } from "./use-sandbox-problems";
 import { useAgentRuns, useBuilds, useListeningPorts, useProcesses, useProjects } from "./use-sandbox-queries";
 import { useSandboxRefresh } from "./use-sandbox-refresh";
+import { useSandboxRuntime } from "./use-sandbox-runtime";
 
 export function useProjectsScreen() {
   const nav = useSandboxNavigation();
@@ -33,6 +35,7 @@ export function useProjectsScreen() {
   const projectMenu = useProjectMenu();
   const problems = useSandboxProblems(projects.error);
   const { refreshing, refresh } = useSandboxRefresh();
+  const { onHost, badge: runtimeBadge } = useSandboxRuntime();
 
   const running = useMemo(
     () => activeWork({ processes: processes.data, builds: builds.data, runs: runs.data }),
@@ -59,11 +62,11 @@ export function useProjectsScreen() {
 
   const headerActions = useMemo<HeaderAction[]>(
     () => [
-      { ...PROJECTS_HEADER_ACTIONS.add, onPress: nav.newProject },
+      ...(onHost ? [] : [{ ...PROJECTS_HEADER_ACTIONS.add, onPress: nav.newProject }]),
       { ...PROJECTS_HEADER_ACTIONS.files, onPress: () => nav.files() },
       { ...PROJECTS_HEADER_ACTIONS.hub, onPress: nav.sandboxHub },
     ],
-    [nav],
+    [nav, onHost],
   );
 
   const processPress = useCallback(
@@ -80,6 +83,7 @@ export function useProjectsScreen() {
     sandbox,
     link,
     headerActions,
+    runtimeBadge,
     missingToken: problems.missingToken,
     issue: problems.issue,
     repair: problems.repair,
@@ -87,7 +91,8 @@ export function useProjectsScreen() {
     retryProjects: () => void projects.refetch(),
     projects: cards,
     projectsLoading: projects.isLoading,
-    addProject: nav.newProject,
+    addProject: onHost ? undefined : nav.newProject,
+    emptyLabel: projectsEmptyLabel(onHost),
     openProject: (id: string) => nav.project(id),
     askClaude: (id: string) => nav.newAgentRun(id),
     projectMenu: projectMenu.open,

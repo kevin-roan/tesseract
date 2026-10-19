@@ -1,16 +1,18 @@
 import { FolderPlusIcon, LightningIcon, SparkleIcon } from "phosphor-react-native";
 
 import ActionTileRow from "@/components/action-tile-row";
-import ConnectionDot from "@/components/connection-dot";
 import ListCard from "@/components/list-card";
 import Notice from "@/components/notice";
+import LinkStatus from "@/components/link-status";
 import ScreenHeader from "@/components/screen-header";
+import StatusBadge from "@/components/status-badge";
 import ScreenScaffold from "@/components/screen-scaffold";
 import Section from "@/components/section";
 import StatGrid from "@/components/stat-grid";
 import AgentRunCard from "@/features/sandbox/components/agent-run-card";
 import BuildCard from "@/features/sandbox/components/build-card";
 import ProcessCard from "@/features/sandbox/components/process-card";
+import RenameProjectSheet from "@/features/sandbox/components/rename-project-sheet";
 import ResourceHistory from "@/features/sandbox/components/resource-history";
 import Reveal from "@/components/reveal";
 import SandboxGate from "@/features/sandbox/components/sandbox-gate";
@@ -21,7 +23,7 @@ import { useSandboxHub } from "@/features/sandbox/hooks/use-sandbox-hub";
 import { activityTitle } from "@/features/sandbox/utils/describe";
 import { frameworkIcon } from "@/features/sandbox/utils/icons";
 import { projectSubtitle } from "@/features/sandbox/utils/projects";
-import { linkLabel, linkTone } from "@/features/sandbox/utils/states";
+import { linkBroken, linkIconTone, linkLabel } from "@/features/sandbox/utils/states";
 
 export default function AgentsScreen() {
   const hub = useSandboxHub();
@@ -39,7 +41,12 @@ export default function AgentsScreen() {
           title={hub.sandbox.name}
           subtitle={hub.subtitle}
           size="medium"
-          status={<ConnectionDot tone={linkTone(hub.link)} label={linkLabel(hub.link)} variant="chip" />}
+          status={
+            <>
+              <LinkStatus tone={linkIconTone(hub.link)} label={linkLabel(hub.link)} broken={linkBroken(hub.link)} />
+              {hub.runtimeBadge ? <StatusBadge {...hub.runtimeBadge} /> : null}
+            </>
+          }
           actions={hub.headerActions}
         />
       }
@@ -175,6 +182,8 @@ export default function AgentsScreen() {
           ))}
         </Section>
       </MotionItem>
+
+      <RenameProjectSheet state={hub.renameSheet} title="Rename sandbox" label="Sandbox name" testID="rename-sandbox" />
     </ScreenScaffold>
   );
 }

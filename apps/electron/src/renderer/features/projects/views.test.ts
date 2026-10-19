@@ -18,6 +18,7 @@ const base: Project = {
   git: { branch: "main", dirty: true, ahead: 0, behind: 0, lastCommit: null },
   confidential: false,
   claudeAccountId: null,
+  runtime: "sandbox",
 };
 
 const androidTarget: RunTargetInfo = {

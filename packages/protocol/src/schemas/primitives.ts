@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ENV_NAME_PATTERN, LIMITS, PROJECT_ID_PATTERN } from "../constants";
+import { ENV_NAME_PATTERN, LIMITS, PROJECT_ID_PATTERN, STOP_SIGNALS } from "../constants";
 import { idPattern } from "../ids";
 
 export const TimestampSchema = z.iso.datetime({ offset: true });
@@ -18,6 +18,8 @@ export const InboxIdSchema = z.string().regex(idPattern("inbox"), "Invalid inbox
 export const SyncRequestIdSchema = z.string().regex(idPattern("sync"), "Invalid sync request id");
 export const AppRunIdSchema = z.string().regex(idPattern("appRun"), "Invalid app run id");
 export const AdbStreamIdSchema = z.string().regex(idPattern("adbStream"), "Invalid adb stream id");
+export const IosStreamIdSchema = z.string().regex(idPattern("iosStream"), "Invalid iOS stream id");
+export const IosInstallIdSchema = z.string().regex(idPattern("iosInstall"), "Invalid iOS install id");
 
 export const PortSchema = z.int().min(1).max(65535);
 export const ByteCountSchema = z.int().nonnegative();
@@ -26,3 +28,8 @@ export const SequenceSchema = z.int().nonnegative();
 export const PidSchema = z.int().positive().nullable();
 export const NameSchema = z.string().trim().min(1).max(LIMITS.maxNameLength);
 export const EnvSchema = z.record(z.string().regex(ENV_NAME_PATTERN, "Invalid environment variable name"), z.string());
+
+export const StopSignalSchema = z.enum(STOP_SIGNALS);
+/** Query of stop routes (`DELETE …?signal=SIGKILL`); a missing `signal` means `SIGTERM`. */
+export const StopSignalQuerySchema = z.object({ signal: StopSignalSchema.optional() });
+export type StopSignalQuery = z.infer<typeof StopSignalQuerySchema>;

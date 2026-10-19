@@ -63,3 +63,21 @@ export type TerminalCommand =
   | "scrollTop"
   | "scrollBottom"
   | "shiftEnter";
+
+export interface TerminalsEmptyModel {
+  title: string;
+  message: string | null;
+  loading: boolean;
+  icon: IconName | null;
+  actionLabel: string | null;
+  secondaryLabel: string | null;
+}
+
+export interface PlaceholderModel {
+  title: string;
+  message: string;
+  primaryLabel: string;
+  primaryKind: TerminalKind;
+  secondaryLabel: string | null;
+  secondaryKind: TerminalKind | null;
+}

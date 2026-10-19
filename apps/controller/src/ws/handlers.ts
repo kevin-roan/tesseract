@@ -133,10 +133,17 @@ export function createWebSocketHandler(
           case "androidLinkStream":
             data.peer = { send: (chunk) => ws.send(chunk), close: (code, reason) => ws.close(code, reason) };
             return services.android.attachStream(data.id, data.peer);
+          case "iosLink":
+            data.session = services.ios.openLink({ send: (text) => ws.send(text), close: (code, reason) => ws.close(code, reason) });
+            return;
+          case "iosLinkStream":
+            data.peer = { send: (chunk) => ws.send(chunk), close: (code, reason) => ws.close(code, reason) };
+            return services.ios.attachStream(data.id, data.port, data.peer);
           case "vnc":
             return data.bridge.attach({
               send: (chunk) => ws.send(chunk),
               close: (code, reason) => ws.close(code, reason),
+              terminate: () => ws.terminate(),
             });
         }
       } catch (error) {
@@ -158,6 +165,14 @@ export function createWebSocketHandler(
         if (data.session && typeof message === "string") services.android.linkMessage(data.session, message);
         return;
       }
+      if (data.kind === "iosLinkStream") {
+        if (data.peer) services.ios.streamMessage(data.id, data.peer, message);
+        return;
+      }
+      if (data.kind === "iosLink") {
+        if (data.session && typeof message === "string") services.ios.linkMessage(data.session, message);
+        return;
+      }
       if (data.kind !== "terminal" || typeof message !== "string") return;
       const parsed = parseJsonWith(TerminalClientMessageSchema, message);
       if (!parsed.ok) {
@@ -170,6 +185,7 @@ export function createWebSocketHandler(
     drain(ws) {
       if (ws.data.kind === "vnc") ws.data.bridge.clientDrained();
       else if (ws.data.kind === "androidLinkStream" && ws.data.peer) services.android.streamDrained(ws.data.id, ws.data.peer);
+      else if (ws.data.kind === "iosLinkStream" && ws.data.peer) services.ios.streamDrained(ws.data.id, ws.data.peer);
     },
     close(ws) {
       const data = ws.data;
@@ -178,6 +194,8 @@ export function createWebSocketHandler(
       if (data.kind === "vnc") data.bridge.clientClosed();
       else if (data.kind === "androidLinkStream" && data.peer) services.android.streamClosed(data.id, data.peer);
       else if (data.kind === "androidLink" && data.session) services.android.linkClosed(data.session);
+      else if (data.kind === "iosLinkStream" && data.peer) services.ios.streamClosed(data.id, data.peer);
+      else if (data.kind === "iosLink" && data.session) services.ios.linkClosed(data.session);
     },
   };
 }

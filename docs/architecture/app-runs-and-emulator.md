@@ -7,8 +7,8 @@ Electron) draw on the sandbox display (VNC), and Android builds run on an
 emulator **on the host** (KVM) whose screen is streamed to the phone with touch
 and keys passed back.
 
-A macOS host (iOS Simulator, Android emulator without `netns`) is a proposal in
-[ios-simulator-macos.md](ios-simulator-macos.md).
+A macOS host (iOS Simulator, Android emulator without `netns`) is described in
+[ios-simulator-macos.md](ios-simulator-macos.md); its `expo-ios` run target is in §1.1.
 
 ```mermaid
 flowchart LR
@@ -52,6 +52,7 @@ flowchart LR
 | `expo-device` | framework `expo` | `npx expo start --port $P` (`--dev-client` when `expo-dev-client` is a dependency, else `--go`) with `CI=1`, `EXPO_NO_TELEMETRY=1`, `REACT_NATIVE_PACKAGER_HOSTNAME=<phone host>` | `deeplink` |
 | `expo-web` | framework `expo` and `react-native-web` is a dependency | `npx expo start --web --port $P`, `CI=1` | `url` |
 | `expo-android` | framework `expo` | `npx expo run:android --port $P --device $ANDROID_SERIAL` | `android` |
+| `expo-ios` | framework `expo` | `npx expo start --go --port $P` with `CI=1`, `EXPO_NO_TELEMETRY=1`, `REACT_NATIVE_PACKAGER_HOSTNAME=127.0.0.1`; opened in Expo Go on the Simulator of the linked Mac host daemon through the iOS link ([ios-simulator-macos.md](ios-simulator-macos.md) §3) | `ios` |
 | `rn-android` | framework `react-native` with `android/gradlew` | `npx react-native start --port $P` + `npx react-native run-android --port $P --deviceId $ANDROID_SERIAL` (two processes; the run ends with Metro) | `android` |
 | `flutter-web` | framework `flutter` | `flutter run --machine -d web-server --web-hostname 0.0.0.0 --web-port $P` | `url` |
 | `flutter-linux` | framework `flutter` and `linux/` exists | `flutter run --machine -d linux` with `DISPLAY` | `display` |
@@ -78,7 +79,9 @@ project need `flutter` on `PATH` (`Flutter SDK is not installed`); `*-android` n
 `adb` and a linked host emulator in state `running` with `isolated: true`
 (`Link the host Android emulator first` / `Start the emulator on the host` /
 `The host emulator is not isolated; start it from the app`);
-`flutter-linux`/`electron-dev` need the display (`DisplayStatus.available`).
+`flutter-linux`/`electron-dev` need the display (`DisplayStatus.available`); `*-ios` need a
+connected iOS link whose host reports `available` and a `booted` device
+(`Link the host iOS Simulator first` / `The host iOS Simulator is not available` / `Boot a Simulator on the host`).
 Unavailable targets are still listed.
 
 ### 1.2 App runs
@@ -88,7 +91,7 @@ stop and the process list work unchanged. App runs live in memory for the contro
 lifetime (like terminals); their processes are persisted as today.
 
 ```ts
-RUN_TARGETS = ["web-dev","expo-device","expo-web","expo-android","rn-android",
+RUN_TARGETS = ["web-dev","expo-device","expo-web","expo-android","expo-ios","rn-android",
                "flutter-web","flutter-linux","flutter-android","electron-dev","test"]
 APP_RUN_STATES = ["starting","ready","failed","stopped","exited"]
 APP_RUN_ACTIONS = ["reload","restart","focus"]
@@ -99,6 +102,7 @@ AppViewer =
   | { kind: "deeplink", devClientUrl: string | null, expoGoUrl: string, manifestUrl: string }
   | { kind: "display" }
   | { kind: "android", serial: string }                             // the sandbox adb serial
+  | { kind: "ios", udid: string | null }                            // the linked Mac's booted Simulator
   | { kind: "none" }
 
 RunTargetInfo { target, label, dir: string | null, available, reason: string | null, viewer: AppViewer["kind"], actions: AppRunAction[] }
@@ -124,7 +128,10 @@ AppRunActionRequest { action }
   visible window of the process tree exists (one `xdotool search --onlyvisible --name .*` per
   poll, `xdotool getwindowpid` only for windows not seen before), polled every 500 ms;
   `expo-android`/`rn-android` when the log shows `BUILD SUCCESSFUL` and Metro's port
-  accepts TCP; `test` never becomes `ready` (it ends `exited` on code 0, else `failed`).
+  accepts TCP; `expo-ios` once Metro's port accepts TCP, the host reported a listening Mac
+  tunnel for it and its `openUrl exp://127.0.0.1:$P` (with `expoSdkVersion` = the major of the
+  resolved `expo` package, e.g. `54.0.0`) ended `ok` (a taken Mac port or a failed open fails the
+  run); `test` never becomes `ready` (it ends `exited` on code 0, else `failed`).
   A run that is not ready after 15 min is stopped and `failed` with
   `Did not become ready within 15 minutes`.
 - Ending: when the main process ends the run ends (`stopped` if requested, `exited` on
@@ -142,7 +149,7 @@ AppRunActionRequest { action }
   and maximize via `wmctrl -r :ACTIVE: -b add,maximized_vert,maximized_horz` when present).
   An unsupported action or a run that is not `ready` → 409.
 - Supported actions: flutter-web/flutter-android `reload,restart`; flutter-linux
-  `reload,restart,focus`; expo-device/expo-android/rn-android `reload,restart`;
+  `reload,restart,focus`; expo-device/expo-android/expo-ios/rn-android `reload,restart`;
   electron-dev `focus`; others none.
 
 ### 1.3 REST
@@ -173,12 +180,12 @@ when the socket cannot be opened within 3 s.
 |---|---|---|
 | `TESSERACT_ANDROID_SDK_ROOT` | `$HOME/.local/share/tesseract/android-sdk` if it has `emulator/emulator`, else `$ANDROID_SDK_ROOT`, else `$ANDROID_HOME` | SDK with `emulator/` and `system-images/` |
 | `TESSERACT_ADB` | `adb` on `PATH` | host adb client (talks to the user's normal adb server on 5037) |
-| `TESSERACT_SCRCPY_SERVER` | first of `/usr/share/scrcpy/scrcpy-server`, `/usr/local/share/scrcpy/scrcpy-server` | scrcpy server jar |
+| `TESSERACT_SCRCPY_SERVER` | first of `/usr/share/scrcpy/scrcpy-server`, `/usr/local/share/scrcpy/scrcpy-server`, `/opt/homebrew/share/scrcpy/scrcpy-server` (Homebrew on Apple silicon) | scrcpy server jar |
 | `TESSERACT_SCRCPY_VERSION` | parsed from `scrcpy --version` | must equal the jar's version |
 | `TESSERACT_FFMPEG` | `ffmpeg` on `PATH` | H.264 → MJPEG for viewers without H.264 |
 | `TESSERACT_EMULATOR_PORT` | `5554` | console port; adbd = +1 (inside the namespace when isolated); serial `emulator-<port>` when not isolated |
-| `TESSERACT_EMULATOR_GPU` | `swiftshader_indirect` | `-gpu` |
-| `TESSERACT_EMULATOR_ISOLATION` | `netns` | `netns`: the emulator runs in its own user + network namespace with filtered egress (below); `none`: the old behaviour, emulator on the host network (**the guest, and so the linked sandbox, can reach the host's loopback, LAN and tailnet**) |
+| `TESSERACT_EMULATOR_GPU` | macOS: `host` (Metal); Linux: `host` when a `/dev/dri/renderD*` node can be opened, else `swiftshader_indirect` | `-gpu` |
+| `TESSERACT_EMULATOR_ISOLATION` | Linux: `netns`; macOS: `none` (no user or network namespaces; `netns` there reports `available: false`) | `netns`: the emulator runs in its own user + network namespace with filtered egress (below); `none`: the old behaviour, emulator on the host network (**the guest, and so the linked sandbox, can reach the host's loopback, LAN and tailnet**) |
 | `TESSERACT_EMULATOR_ALLOW_NETS` | — | comma-separated CIDRs the isolated guest may reach although they are private (e.g. `192.168.1.0/24` for a LAN backend); invalid entries stop startup |
 | `TESSERACT_ANDROID_SHARE_EMULATORS` | `off` | `on`: the sandbox link also tunnels the host's other emulators (§2.3, "Shared host emulators") |
 | `TESSERACT_EMULATOR_ADB_PORT` | a free port (kept in the runtime dir across daemon restarts) | host loopback port of the adb bridge; serial `127.0.0.1:<port>` |
@@ -286,7 +293,7 @@ LinkSandbox { sandboxUrl: string (http/https URL, no user:password@, no #fragmen
 |---|---|---|---|
 | GET | `/v1/android` | — | `HostAndroidStatus` (never fails because a tool is missing: `available:false` + `reason`) |
 | POST | `/v1/android/emulator` | `StartEmulator` | `202 EmulatorInfo` (`starting`); 409 when not `stopped`/`failed`; 404 unknown AVD; 503 when not `available` |
-| DELETE | `/v1/android/emulator` | — | `EmulatorInfo` (`stopping`, then `stopped`); also stops an adopted emulator that is `failed` because it never booted |
+| DELETE | `/v1/android/emulator?signal=SIGTERM\|SIGKILL` | — | `EmulatorInfo` (`stopping`, then `stopped`); also stops an adopted emulator that is `failed` because it never booted. `SIGKILL` skips the grace period: the emulator's process group (or, isolated, its namespace processes) is killed at once; an adopted plain emulator's processes are found with `ps -axo pid=,command=` (`emulator`/`qemu-system-*` with `-port <port>`) and killed, `adb emu kill` only when none is found. Screens end through the `running` → `stopping` change, link streams when adbd goes away |
 | POST | `/v1/android/link` | `LinkSandbox` | `200 AndroidLinkInfo`; saved to `state.json` (0600) as `androidLink`, the daemon (re)connects at once |
 | DELETE | `/v1/android/link` | — | `AndroidLinkInfo` (cleared, link closed) |
 | GET | `/v1/android/devices` | — | `AndroidDevice[]` (`adb devices -l`) |
@@ -436,6 +443,16 @@ The page `/ui/android` (built like `/ui/vnc`, same `window.tesseract` bridge and
 app does not retry on its own) and `android-need-ticket` like the VNC page (blueprint §5.6);
 frames are decoded with `createImageBitmap` (else `<img>`), only the newest pending frame is
 drawn, so it works in iOS WKWebView over plain http.
+
+### 2.5 iOS Simulator (macOS host)
+
+The host daemon also drives the iOS Simulator on a Mac (`TESSERACT_IOS=1`): `/v1/ios`, `/v1/ios/simulator`,
+`/v1/ios/link`, `/v1/ios/installs`, `WS /v1/ios/screen` and `/ui/ios` (blueprint §5.7). The screen page is the
+Android page's script (`device.ts`) with `data-device="ios"`, so both use `DeviceScreenClientMessage` /
+`DeviceScreenServerMessage`. The controller is the sandbox end of the iOS link (`GET /v1/ios`,
+`POST /v1/ios/installs`, `WS /v1/ios/link`, `WS /v1/ios/link/streams/:id`, `services/ios-link.ts`) and runs
+`expo-ios` (§1.1). Rules, the iOS link protocol and what is still unverified on a real Mac:
+[ios-simulator-macos.md](ios-simulator-macos.md).
 
 ## 3. Mobile
 

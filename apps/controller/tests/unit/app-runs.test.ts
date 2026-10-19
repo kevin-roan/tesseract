@@ -6,6 +6,7 @@ import type { Config } from "../../src/config";
 import type { EventHub } from "../../src/core/events";
 import { silentLogger } from "../../src/core/logger";
 import type { AndroidLinkService } from "../../src/services/android-link";
+import type { IosRunLink } from "../../src/services/app-runs";
 import { AppRunService, flutterEventText } from "../../src/services/app-runs";
 import type { DisplayService } from "../../src/services/display";
 import type { IdentityService } from "../../src/services/identity";
@@ -99,6 +100,7 @@ function harness(): Harness {
     projects,
     {} as DisplayService,
     android,
+    { unavailableReason: () => null, setRuns: () => {}, tunnel: () => null, openUrl: async () => { throw new Error("unused"); }, bootedUdid: null } as unknown as IosRunLink,
     identity as unknown as IdentityService,
     silentLogger,
   );

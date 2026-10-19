@@ -9,6 +9,7 @@ import {
 
 import AvatarStack, { type AvatarPerson } from "@/components/avatar-stack";
 import PressableScale from "@/components/pressable-scale";
+import StatusBadge, { type StatusBadgeProps } from "@/components/status-badge";
 import { SurfacePill, Surface } from "@/components/surface";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -28,6 +29,8 @@ export type ProjectCardField = {
 export type ProjectCardProps = {
   title: string;
   subtitle?: string;
+  /** Tinted chip under the title, e.g. where the project runs. */
+  badge?: StatusBadgeProps;
   /** First column: an icon tinted by tone next to the value. */
   status: ProjectCardField;
   /** Second column: the value inside a tinted pill. */
@@ -53,6 +56,7 @@ export type ProjectCardProps = {
 const ProjectCard = ({
   title,
   subtitle,
+  badge,
   status,
   tag,
   detail,
@@ -86,6 +90,7 @@ const ProjectCard = ({
               {subtitle}
             </ThemedText>
           ) : null}
+          {badge ? <StatusBadge {...badge} /> : null}
         </View>
 
         {onPressMenu ? (

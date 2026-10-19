@@ -3,7 +3,8 @@ import { ActionButton } from "../ActionButton";
 import { DialogShell, type DialogPresentation } from "../DialogShell";
 import { HostPinDialog } from "../HostPinDialog";
 import { fade } from "../../theme/motion";
-import { PAIR_TARGET_OPTIONS, PAIR_TARGETS, PAIR_TEXT, PAIR_WIDTH, type PairTarget } from "./constants";
+import type { MasterHostState } from "../../../shared/contracts/masterHost";
+import { PAIR_TARGETS, PAIR_TEXT, PAIR_WIDTH, type PairTarget } from "./constants";
 import { PAIR_LABELS } from "./labels";
 import type { HostPairingState, SandboxPairing } from "./model";
 import { SegmentedControl } from "../SegmentedControl";
@@ -15,9 +16,13 @@ export interface PairDialogProps {
   onClose(): void;
   sandbox: SandboxPairing;
   host: HostPairingState | null;
+  master?: MasterHostState | null;
   onOpenPreferences(): void;
   onStartHost(): void;
   onRefreshHost(): void;
+  onLinkMaster?: (link: string) => Promise<void>;
+  onUnlinkMaster?: () => Promise<void>;
+  onRefreshMaster?: () => void;
   onSavePin?: (pin: string) => Promise<void>;
   onCopy?: (text: string) => Promise<void> | void;
   open?: boolean;
@@ -65,7 +70,7 @@ export function PairDialog({
         }
       >
         <div className={styles.segmentedRow}>
-          <SegmentedControl tone="dialog" options={PAIR_TARGET_OPTIONS} value={pair.target} onChange={pair.setTarget} ariaLabel={PAIR_LABELS.title} />
+          <SegmentedControl tone="dialog" options={pair.targets} value={pair.target} onChange={pair.setTarget} ariaLabel={PAIR_LABELS.title} />
         </div>
         <AnimatePresence initial={false}>
           <motion.div key={pair.target} variants={fade} initial="initial" animate="animate">
@@ -75,6 +80,10 @@ export function PairDialog({
               secret={text.secret}
               copyLabel={PAIR_LABELS.copy}
               onCopy={(link) => void pair.copy(link)}
+              stepsLabel={PAIR_LABELS.stepsLabel}
+              copyCommandLabel={PAIR_LABELS.copyCommand}
+              onCopyCommand={(command) => void pair.copyCommand(command)}
+              linkDraft={pair.linkDraft}
             />
           </motion.div>
         </AnimatePresence>

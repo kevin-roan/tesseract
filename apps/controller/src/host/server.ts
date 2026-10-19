@@ -1,7 +1,11 @@
 import type { Server, ServerWebSocket } from "bun";
 import {
-  AndroidScreenClientMessageSchema,
   AndroidScreenQuerySchema,
+  BootSimulatorSchema,
+  DecideIosInstallSchema,
+  DeviceScreenClientMessageSchema,
+  IosScreenQuerySchema,
+  StopSignalQuerySchema,
   CreateHostTerminalSchema,
   errorBody,
   HOST_SHELL_SERVICE,
@@ -20,7 +24,8 @@ import {
   UpdateAndroidStreamSchema,
   validate,
   wsPaths,
-  type AndroidScreenServerMessage,
+  type DeviceScreenServerMessage,
+  type StopSignal,
   type HostHealth,
   type Schema,
   type TerminalServerMessage,
@@ -29,18 +34,28 @@ import { TicketStore } from "../auth/tickets";
 import { badRequest, errorMessage, HttpError, notFound } from "../core/errors";
 import { createLogger, type Logger } from "../core/logger";
 import androidPage from "../ui/android.html";
+import iosPage from "../ui/ios.html";
 import terminalPage from "../ui/terminal.html";
 import { VERSION } from "../version";
 import { HostAndroid, type HostAndroidOptions } from "./android";
 import type { ScreenClient, ScreenRequest } from "./android/screen";
 import { HostAuth, type HostAuthOptions } from "./auth";
 import type { HostConfig } from "./config";
+import { HostIos, type HostIosOptions } from "./ios";
+import type { IosScreenRequest } from "./ios/screen";
 import { HostStateStore } from "./state";
 import { HostTerminals } from "./terminals";
 
-type WsData = { kind: "terminal" | "screen"; id: string; request: ScreenRequest; screen: ScreenClient | null; cleanup: (() => void) | null };
+type WsData = {
+  kind: "terminal" | "screen" | "iosScreen";
+  id: string;
+  request: ScreenRequest;
+  ios: IosScreenRequest;
+  screen: ScreenClient | null;
+  cleanup: (() => void) | null;
+};
 
-export type HostShellOptions = HostAuthOptions & { logger?: Logger; stopGraceMs?: number; android?: HostAndroidOptions };
+export type HostShellOptions = HostAuthOptions & { logger?: Logger; stopGraceMs?: number; android?: HostAndroidOptions; ios?: HostIosOptions };
 
 export type HostShell = {
   server: Server<WsData>;
@@ -48,6 +63,7 @@ export type HostShell = {
   auth: HostAuth;
   terminals: HostTerminals;
   android: HostAndroid;
+  ios: HostIos;
   /** Settles once a running emulator was adopted and the stored sandbox link dialled. */
   ready: Promise<void>;
   stop: () => Promise<void>;
@@ -62,6 +78,7 @@ const HTTP_IDLE_TIMEOUT_SEC = 60;
 
 const TERMINAL_PATH = new RegExp(`^${routePatterns.rest.terminal.replace(":id", "([^/]+)")}$`);
 const STREAM_PATH = new RegExp(`^${routePatterns.ws.terminalStream.replace(":id", "([^/]+)")}$`);
+const IOS_INSTALL_PATH = new RegExp(`^${routePatterns.rest.iosInstall.replace(":id", "([^/]+)")}$`);
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -88,6 +105,12 @@ function decodeId(match: RegExpExecArray | null): string | null {
   }
 }
 
+function stopSignal(url: URL): StopSignal | undefined {
+  const query = validate(StopSignalQuerySchema, { signal: url.searchParams.get("signal") ?? undefined });
+  if (!query.ok) throw badRequest("signal must be SIGTERM or SIGKILL");
+  return query.value.signal;
+}
+
 async function readBody<T>(request: Request, schema: Schema<T>): Promise<T> {
   const text = await request.text();
   if (text.length > MAX_BODY_BYTES) throw badRequest("Request body too large");
@@ -106,7 +129,11 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
   const tickets = new TicketStore();
   const terminals = new HostTerminals(config.shell, config.home, logger, undefined, options.stopGraceMs);
   const android = new HostAndroid(config.android, store, { hostId: config.hostId, version: VERSION }, logger, options.android);
-  const ready = android.init().catch((error: unknown) => logger.error("android init failed", { error: errorMessage(error) }));
+  const ios = new HostIos(config.ios, store, { hostId: config.hostId, version: VERSION }, logger, options.ios);
+  const ready = Promise.all([
+    android.init().catch((error: unknown) => logger.error("android init failed", { error: errorMessage(error) })),
+    ios.init().catch((error: unknown) => logger.error("ios init failed", { error: errorMessage(error) })),
+  ]).then(() => undefined);
   const health: HostHealth = { ok: true, service: HOST_SHELL_SERVICE, version: VERSION, protocolVersion: PROTOCOL_VERSION, hostId: config.hostId };
 
   async function route(request: Request, server: Server<WsData>): Promise<Response | undefined> {
@@ -123,7 +150,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") throw badRequest("WebSocket upgrade required");
       if (!tickets.consume(url.searchParams.get(TICKET_PARAM))) throw new HttpError("unauthorized", "Missing, expired or already used ticket");
       if (!isIdOfKind("terminal", streamId) || !terminals.has(streamId)) throw notFound(`Terminal ${streamId.slice(0, 80)} not found`);
-      if (server.upgrade(request, { data: { kind: "terminal", id: streamId, request: {}, screen: null, cleanup: null } })) return undefined;
+      if (server.upgrade(request, { data: { kind: "terminal", id: streamId, request: {}, ios: {}, screen: null, cleanup: null } })) return undefined;
       throw badRequest("WebSocket upgrade failed");
     }
 
@@ -138,7 +165,21 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       if (!query.ok) throw badRequest(`Invalid query: ${query.error.message}`);
       if (!tickets.consume(query.value.ticket)) throw new HttpError("unauthorized", "Missing, expired or already used ticket");
       const { ticket: _ticket, ...screen } = query.value;
-      if (server.upgrade(request, { data: { kind: "screen", id: "screen", request: screen, screen: null, cleanup: null } })) return undefined;
+      if (server.upgrade(request, { data: { kind: "screen", id: "screen", request: screen, ios: {}, screen: null, cleanup: null } })) return undefined;
+      throw badRequest("WebSocket upgrade failed");
+    }
+
+    if (path === wsPaths.iosScreen()) {
+      if (request.headers.get("upgrade")?.toLowerCase() !== "websocket") throw badRequest("WebSocket upgrade required");
+      const query = validate(IosScreenQuerySchema, {
+        ticket: url.searchParams.get(TICKET_PARAM),
+        maxSize: url.searchParams.get("maxSize") ?? undefined,
+        udid: url.searchParams.get("udid") ?? undefined,
+      });
+      if (!query.ok) throw badRequest(`Invalid query: ${query.error.message}`);
+      if (!tickets.consume(query.value.ticket)) throw new HttpError("unauthorized", "Missing, expired or already used ticket");
+      const { ticket: _ticket, ...screen } = query.value;
+      if (server.upgrade(request, { data: { kind: "iosScreen", id: "ios-screen", request: {}, ios: screen, screen: null, cleanup: null } })) return undefined;
       throw badRequest("WebSocket upgrade failed");
     }
 
@@ -158,7 +199,10 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     const terminalId = decodeId(TERMINAL_PATH.exec(path));
     const androidPaths: string[] = [restPaths.android(), restPaths.androidEmulator(), restPaths.androidLink(), restPaths.androidDevices(), restPaths.androidStream()];
     const androidPath = androidPaths.includes(path);
-    const known = path === restPaths.authTicket() || path === restPaths.terminals() || terminalId !== null || androidPath;
+    const installId = decodeId(IOS_INSTALL_PATH.exec(path));
+    const iosPaths: string[] = [restPaths.ios(), restPaths.iosSimulator(), restPaths.iosLink(), restPaths.iosInstalls()];
+    const iosPath = iosPaths.includes(path) || installId !== null;
+    const known = path === restPaths.authTicket() || path === restPaths.terminals() || terminalId !== null || androidPath || iosPath;
     if (!known) throw notFound(`No route for ${method} ${path}`);
     auth.requireSession(authorization);
 
@@ -171,16 +215,26 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     }
     if (path === restPaths.android() && method === "GET") return respond(await android.status());
     if (path === restPaths.androidEmulator() && method === "POST") return respond(await android.start(await readBody(request, StartEmulatorSchema)), 202);
-    if (path === restPaths.androidEmulator() && method === "DELETE") return respond(android.stop());
+    if (path === restPaths.androidEmulator() && method === "DELETE") return respond(android.stop(stopSignal(url)));
     if (path === restPaths.androidLink() && method === "POST") return respond(android.linkSandbox(await readBody(request, LinkSandboxSchema)));
     if (path === restPaths.androidLink() && method === "DELETE") return respond(android.unlinkSandbox());
     if (path === restPaths.androidDevices() && method === "GET") return respond(await android.devices());
     if (path === restPaths.androidStream() && method === "GET") return respond(android.streamSettings());
     if (path === restPaths.androidStream() && method === "PUT") return respond(android.updateStream(await readBody(request, UpdateAndroidStreamSchema)));
+    if (path === restPaths.ios() && method === "GET") return respond(await ios.status());
+    if (path === restPaths.iosSimulator() && method === "POST") return respond(await ios.boot(await readBody(request, BootSimulatorSchema)), 202);
+    if (path === restPaths.iosSimulator() && method === "DELETE") return respond(await ios.shutdownSimulator(stopSignal(url)));
+    if (path === restPaths.iosLink() && method === "POST") return respond(await ios.linkSandbox(await readBody(request, LinkSandboxSchema)));
+    if (path === restPaths.iosLink() && method === "DELETE") return respond(ios.unlinkSandbox());
+    if (path === restPaths.iosInstalls() && method === "GET") return respond(ios.listInstalls());
+    if (installId !== null && method === "POST") {
+      if (!isIdOfKind("iosInstall", installId)) throw notFound(`Install ${installId.slice(0, 80)} not found`);
+      return respond(ios.decideInstall(installId, (await readBody(request, DecideIosInstallSchema)).approve));
+    }
     throw new HttpError("bad_request", `${method} is not supported on ${path}`, 405);
   }
 
-  const send = (ws: ServerWebSocket<WsData>, message: TerminalServerMessage | AndroidScreenServerMessage) => ws.send(JSON.stringify(message));
+  const send = (ws: ServerWebSocket<WsData>, message: TerminalServerMessage | DeviceScreenServerMessage) => ws.send(JSON.stringify(message));
 
   function openScreen(ws: ServerWebSocket<WsData>): void {
     const client: ScreenClient = {
@@ -190,7 +244,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       close: (code, reason) => ws.close(code, reason),
     };
     ws.data.screen = client;
-    ws.data.cleanup = android.screens.attach(client, ws.data.request);
+    ws.data.cleanup = ws.data.kind === "iosScreen" ? ios.screens.attach(client, ws.data.ios) : android.screens.attach(client, ws.data.request);
   }
 
   const server: Server<WsData> = Bun.serve<WsData>({
@@ -198,7 +252,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     port: config.port,
     development: false,
     idleTimeout: HTTP_IDLE_TIMEOUT_SEC,
-    routes: { [routePatterns.ui.terminal]: terminalPage, [routePatterns.ui.android]: androidPage },
+    routes: { [routePatterns.ui.terminal]: terminalPage, [routePatterns.ui.android]: androidPage, [routePatterns.ui.ios]: iosPage },
     async fetch(request, bunServer) {
       try {
         return await route(request, bunServer);
@@ -215,7 +269,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       perMessageDeflate: false,
       sendPings: true,
       open(ws) {
-        if (ws.data.kind === "screen") {
+        if (ws.data.kind === "screen" || ws.data.kind === "iosScreen") {
           openScreen(ws);
           return;
         }
@@ -230,9 +284,11 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       },
       message(ws, message) {
         if (typeof message !== "string") return;
-        if (ws.data.kind === "screen") {
-          const parsed = parseJsonWith(AndroidScreenClientMessageSchema, message);
-          if (parsed.ok && ws.data.screen) android.screens.handle(ws.data.screen, parsed.value);
+        if (ws.data.kind === "screen" || ws.data.kind === "iosScreen") {
+          const parsed = parseJsonWith(DeviceScreenClientMessageSchema, message);
+          if (!parsed.ok || !ws.data.screen) return;
+          if (ws.data.kind === "iosScreen") ios.screens.handle(ws.data.screen, parsed.value);
+          else android.screens.handle(ws.data.screen, parsed.value);
           return;
         }
         const parsed = parseJsonWith(TerminalClientMessageSchema, message);
@@ -251,7 +307,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
   const stop = () => {
     stopping ??= (async () => {
       void server.stop(false);
-      await Promise.all([terminals.shutdown(), android.shutdown()]);
+      await Promise.all([terminals.shutdown(), android.shutdown(), ios.shutdown()]);
       await server.stop(true);
     })();
     return stopping;
@@ -259,5 +315,5 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
 
   const url = new URL(server.url.href);
   logger.info("host shell listening", { url: url.href, host: config.hostId, state: config.stateFile });
-  return { server, url, auth, terminals, android, ready, stop };
+  return { server, url, auth, terminals, android, ios, ready, stop };
 }

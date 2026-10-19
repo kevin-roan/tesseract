@@ -18,3 +18,8 @@
 .divided > .item:last-child {
   border-bottom: 0;
 }
+
+.static {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 44px;
+}

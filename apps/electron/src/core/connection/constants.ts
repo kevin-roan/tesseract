@@ -27,5 +27,14 @@ export const PAIR_ARGS = ["pair", "--json"] as const;
 
 export const SEALED_TOKEN_KEY = "tokenSealed";
 export const TOKEN_KEY = "token";
+export const MACHINES_KEY = "machines";
+export const LOCAL_MACHINE_KEY = "local";
+export const PAIRING_LINK_SCHEME = "tesseract://";
+
+export const MACHINE_STATUS = {
+  intervalMs: 20_000,
+  timeoutMs: 2_000,
+  staleMs: 5_000,
+} as const;
 export const SANDBOX_STACK_KEY = "sandboxStack";
 export const PROJECT_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]*$/;

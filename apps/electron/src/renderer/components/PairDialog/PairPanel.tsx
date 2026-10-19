@@ -1,8 +1,11 @@
 import { Notice } from "../Notice";
 import { Text } from "../Text";
 import { LinkField } from "./LinkField";
+import { LinkInput } from "./LinkInput";
 import type { PairPanelModel } from "./model";
 import { QrTile } from "./QrTile";
+import { SetupSteps } from "./SetupSteps";
+import type { PairLinkDraft } from "./use-pair-dialog";
 import styles from "./PairDialog.module.css";
 
 export interface PairPanelProps {
@@ -11,9 +14,23 @@ export interface PairPanelProps {
   secret: string;
   copyLabel: string;
   onCopy(link: string): void;
+  stepsLabel?: string;
+  copyCommandLabel?: string;
+  onCopyCommand?: (command: string) => void;
+  linkDraft?: PairLinkDraft;
 }
 
-export function PairPanel({ model, instructions, secret, copyLabel, onCopy }: PairPanelProps) {
+export function PairPanel({
+  model,
+  instructions,
+  secret,
+  copyLabel,
+  onCopy,
+  stepsLabel = "",
+  copyCommandLabel = copyLabel,
+  onCopyCommand = onCopy,
+  linkDraft,
+}: PairPanelProps) {
   return (
     <div className={styles.panel}>
       {model.link ? (
@@ -42,6 +59,26 @@ export function PairPanel({ model, instructions, secret, copyLabel, onCopy }: Pa
             />
           ))}
         </div>
+      ) : null}
+      {model.steps.length > 0 ? (
+        <SetupSteps
+          steps={model.steps}
+          label={stepsLabel}
+          copyLabel={copyCommandLabel}
+          onCopy={onCopyCommand}
+          input={
+            model.linkInput && linkDraft ? (
+              <LinkInput
+                descriptor={model.linkInput}
+                value={linkDraft.value}
+                error={linkDraft.error}
+                busy={linkDraft.busy}
+                onChange={linkDraft.setValue}
+                onSubmit={linkDraft.submit}
+              />
+            ) : null
+          }
+        />
       ) : null}
       <Notice tone="warning" message={secret} />
     </div>

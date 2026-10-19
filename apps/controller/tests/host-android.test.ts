@@ -48,6 +48,7 @@ if [ -f "$D/crash" ]; then echo "PANIC: Broken AVD system path"; exit 3; fi
 echo "emulator: booting"
 echo $$ > "$D/emulator.pid"
 trap 'rm -f "$D/online" "$D/booted"; exit 0' TERM
+if [ -f "$D/ignoreterm" ]; then trap '' TERM; fi
 touch "$D/online"
 if [ ! -f "$D/noboot" ]; then (sleep 0.3; touch "$D/booted") & fi
 while true; do sleep 0.05; done`,
@@ -274,6 +275,22 @@ describe("emulator manager", () => {
     expect(emulator.current()).toEqual({ state: "stopped", avd: null, serial: null, managed: false, isolated: false, width: null, height: null, startedAt: null, error: null });
     await waitFor(() => processGone(pid));
     expect(states).toEqual(["starting", "running", "stopping", "stopped"]);
+  });
+
+  test("SIGKILL kills an emulator that ignores SIGTERM at once", async () => {
+    const fakes = fakeAndroid();
+    writeFileSync(join(fakes.dir, "ignoreterm"), "");
+    const emulator = manager(fakes, { stopGraceMs: 20_000 });
+    await emulator.init();
+    await emulator.start({ avd: "Pixel_5" });
+    await waitFor(() => emulator.current().state === "running");
+    const pid = Number(readFileSync(join(fakes.dir, "emulator.pid"), "utf8"));
+    const started = Date.now();
+    expect(emulator.stop("SIGKILL").state).toBe("stopping");
+    await waitFor(() => emulator.current().state === "stopped", 4_000);
+    expect(Date.now() - started).toBeLessThan(4_000);
+    await waitFor(() => processGone(pid));
+    expect(argv(fakes, "adb")).not.toContain("-s emulator-5554 emu kill");
   });
 
   test("adopts an emulator that is already running and stops it over the console", async () => {

@@ -30,7 +30,7 @@ export interface ConnectionView {
 }
 
 export function sandboxName(state: Pick<ConnectionState, "health" | "config">): string | null {
-  return state.health?.sandboxId || state.config?.name || null;
+  return state.config?.name || state.health?.sandboxId || null;
 }
 
 export function statusTitle(state: Pick<ConnectionState, "status" | "health" | "config">): string {

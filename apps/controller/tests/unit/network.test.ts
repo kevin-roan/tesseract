@@ -13,7 +13,7 @@ import { createApp } from "../../src/http/app";
 import { bearerToken, isAuthorized } from "../../src/http/middleware/auth";
 import { redactUrl, requestLog } from "../../src/http/middleware/request-log";
 import { createServices } from "../../src/services";
-import { VncBridge, type BridgePeer } from "../../src/services/vnc-bridge";
+import { VncBridge, VncSessionRegistry, type BridgePeer } from "../../src/services/vnc-bridge";
 import { createWebSocketHandler } from "../../src/ws/handlers";
 import { isWebSocketUpgrade, matchWsRoute, upgradeWebSocket } from "../../src/ws/router";
 import type { WsData } from "../../src/ws/types";
@@ -194,6 +194,7 @@ describe("WebSocket routing", () => {
       processes: { get: () => ({}) },
       builds: { get: () => ({}) },
       agentRuns: { get: () => ({}) },
+      vncSessions: new VncSessionRegistry(),
       ...overrides,
     } as never;
   }

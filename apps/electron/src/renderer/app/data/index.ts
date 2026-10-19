@@ -1,3 +1,3 @@
 export { createApiClient } from "./client";
-export { ipcFetch } from "./ipc-fetch";
+export { ipcFetch, proxyFetch, type ProxyTransport } from "./ipc-fetch";
 export { DATA_KEYS, useApiClient, useApiQuery, useConnectionSnapshot } from "./hooks";

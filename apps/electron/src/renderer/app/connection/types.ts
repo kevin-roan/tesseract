@@ -1,5 +1,7 @@
 import type { Health, SandboxStatus } from "@tesseract/protocol";
-import type { ConnectionConfig } from "../../../shared/contracts/connection";
+import type { ConnectionConfig, SavedMachine } from "../../../shared/contracts/connection";
+
+export type { AddMachineOptions } from "../../../shared/contracts/connection";
 
 export type ConnectionStatus =
   | "unconfigured"
@@ -21,6 +23,7 @@ export interface ConnectionState {
   status: ConnectionStatus;
   config: ConnectionConfig | null;
   configFile: string | null;
+  machines: SavedMachine[];
   health: Health | null;
   sandbox: SandboxStatus | null;
   errorMessage: string | null;

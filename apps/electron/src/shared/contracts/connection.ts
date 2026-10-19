@@ -18,9 +18,32 @@ export interface ConnectionInput {
   pairingUrl?: string | null;
 }
 
+export type MachineStatus = "online" | "offline" | "unknown";
+
+export interface MachineHost {
+  url: string;
+  name: string | null;
+}
+
+export interface SavedMachine {
+  id: string;
+  apiUrl: string;
+  name: string | null;
+  active: boolean;
+  local: boolean;
+  status: MachineStatus;
+  host: MachineHost | null;
+}
+
+export interface AddMachineOptions {
+  hostLink?: string | null;
+  activate?: boolean;
+}
+
 export interface ConnectionSnapshot {
   config: ConnectionConfig | null;
   configFile: string;
+  machines: SavedMachine[];
 }
 
 export type ProbeOutcome = "ok" | "unreachable";
@@ -35,6 +58,12 @@ export type ConnectionContract = DefineContract<{
     save(input: ConnectionInput): ConnectionSnapshot;
     forget(): ConnectionSnapshot;
     discover(): DiscoveryResult;
+    switchTo(id: string): ConnectionSnapshot;
+    rename(id: string, name: string): ConnectionSnapshot;
+    remove(id: string): ConnectionSnapshot;
+    add(input: ConnectionInput, options?: AddMachineOptions): ConnectionSnapshot;
+    setHostLink(id: string, link: string | null): ConnectionSnapshot;
+    refreshStatus(): ConnectionSnapshot;
   };
   events: {
     changed: ConnectionSnapshot;

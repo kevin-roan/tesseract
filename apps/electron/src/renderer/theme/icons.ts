@@ -1,4 +1,5 @@
 import {
+  Activity,
   AppWindow,
   Archive,
   ArchiveRestore,
@@ -81,8 +82,10 @@ import {
   Play,
   Plug,
   Plus,
+  Power,
   QrCode,
   RefreshCw,
+  RotateCw,
   Scan,
   Search,
   Server,
@@ -102,6 +105,8 @@ import {
   Trash2,
   TriangleAlert,
   Undo2,
+  Volume1,
+  Volume2,
   Wrench,
   X,
   type LucideIcon,
@@ -114,6 +119,7 @@ export const ICONS = {
   projects: Box,
   project: Box,
   processes: SquareTerminal,
+  activity: Activity,
   terminal: SquareTerminal,
   builds: Hammer,
   artifacts: Package,
@@ -229,6 +235,10 @@ export const ICONS = {
   globe: Globe,
   cloud: Cloud,
   key: KeyRound,
+  rotate: RotateCw,
+  power: Power,
+  volumeUp: Volume2,
+  volumeDown: Volume1,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

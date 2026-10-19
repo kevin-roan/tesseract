@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { HostAndroidStatus } from "@tesseract/protocol";
+import type { HostAndroidStatus, StopSignal } from "@tesseract/protocol";
 
 import type { MenuOption } from "@/components/menu-sheet/types";
 import { useActiveSandbox } from "@/features/sandbox/hooks/use-sandbox-client";
@@ -9,6 +9,7 @@ import { confirm } from "@/lib/confirm";
 import { resetSettled } from "@/lib/mutations";
 
 import {
+  canKillEmulator,
   canStartEmulator,
   canStopEmulator,
   deviceLabel,
@@ -20,7 +21,7 @@ import {
   pickDevice,
   streamableDevices,
 } from "../utils/android";
-import { ANDROID_COPY, HOST_LOCKED, LINK_CONFIRM } from "../utils/content";
+import { ANDROID_COPY, EMULATOR_KILL_CONFIRM, HOST_LOCKED, LINK_CONFIRM } from "../utils/content";
 import { describeHostError } from "../utils/errors";
 import { useHostAndroidStatus } from "./use-host-android-status";
 import { useHostNavigation } from "./use-host-navigation";
@@ -52,9 +53,9 @@ export function useHostAndroid(enabled: boolean) {
   });
 
   const stop = useMutation({
-    mutationFn: () => {
+    mutationFn: (signal?: StopSignal) => {
       if (!sessionClient) throw new Error(HOST_LOCKED);
-      return sessionClient.stopEmulator();
+      return signal ? sessionClient.stopEmulator({ signal }) : sessionClient.stopEmulator();
     },
     onSuccess: (emulator) => patch({ emulator }),
     onError: dropOnLost,
@@ -104,6 +105,12 @@ export function useHostAndroid(enabled: boolean) {
   );
   const failure = start.error ?? stop.error ?? link.error ?? unlink.error ?? status.error;
   const clearOutcomes = () => resetSettled([start, stop, link, unlink]);
+  const killing = stop.isPending && stop.variables === "SIGKILL";
+  const confirmKill = async () => {
+    if (!(await confirm(EMULATOR_KILL_CONFIRM))) return;
+    clearOutcomes();
+    stop.mutate("SIGKILL");
+  };
   const confirmLink = async () => {
     if (!(await confirm(LINK_CONFIRM))) return;
     clearOutcomes();
@@ -128,6 +135,7 @@ export function useHostAndroid(enabled: boolean) {
     },
     canStart: data ? canStartEmulator(data, avd) : false,
     canStop: data ? canStopEmulator(data.emulator.state) : false,
+    canKill: data ? canKillEmulator(data.emulator.state) : false,
     device,
     devicePicker: {
       visible: devicePickerOpen,
@@ -148,11 +156,13 @@ export function useHostAndroid(enabled: boolean) {
     starting: start.isPending,
     stop: () => {
       clearOutcomes();
-      stop.mutate();
+      stop.mutate(undefined);
     },
-    stopping: stop.isPending,
+    stopping: stop.isPending && !killing,
+    kill: () => void confirmKill(),
+    killing,
     openScreen: () => {
-      if (device) nav.android(device.serial);
+      if (device) nav.screen({ kind: "android", serial: device.serial });
     },
     openStreamSettings: nav.stream,
     sandboxName: sandbox?.name ?? null,

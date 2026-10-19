@@ -15,9 +15,13 @@ export default defineGalleryEntry({
       onClose={noop}
       sandbox={PAIR_SAMPLES.sandbox}
       host={PAIR_SAMPLES.hostNoPin}
+      master={PAIR_SAMPLES.masterLinked}
       onOpenPreferences={noop}
       onStartHost={noop}
       onRefreshHost={noop}
+      onLinkMaster={resolved}
+      onUnlinkMaster={resolved}
+      onRefreshMaster={noop}
       onSavePin={resolved}
       onCopy={noop}
     />

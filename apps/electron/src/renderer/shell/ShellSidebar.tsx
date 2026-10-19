@@ -22,12 +22,16 @@ import { ToneDot } from "../components/ToneDot";
 import { pageKeyOf } from "../app/feedback";
 import { AttachmentChip, AttachmentTray } from "../components/Composer";
 import { useComposerProject } from "./hooks/use-composer-project";
+import { useAccountMenu } from "./hooks/use-account-menu";
 import { useMainMenu } from "./hooks/use-main-menu";
 import { useSidebarComposer } from "./hooks/use-sidebar-composer";
 import { useSidebarContainers } from "./hooks/use-sidebar-containers";
 import { useSidebarProjects } from "./hooks/use-sidebar-projects";
 import { openShellDialog } from "./hooks/use-shell-dialogs";
 import { SHELL_LABELS } from "./labels";
+import { MACHINE_LABELS } from "../features/machines";
+import { useProcessesCount } from "../features/processes/hooks/use-processes-count";
+import { MachineMenu } from "./machines/MachineMenu";
 
 export interface ShellSidebarProps {
   collapsed: boolean;
@@ -46,8 +50,10 @@ function SidebarHeader({ collapsed }: ShellSidebarProps) {
         start={
           <WorkspaceSwitcher
             ref={switcher}
-            open={menu.open}
-            onClick={(event) => (menu.open ? menu.close() : menu.openBelow(event.currentTarget))}
+            name={menu.name ?? undefined}
+            tooltip={menu.tooltip}
+            open={menu.menu.open}
+            onClick={(event) => menu.toggle(event.currentTarget)}
           />
         }
         end={
@@ -58,7 +64,15 @@ function SidebarHeader({ collapsed }: ShellSidebarProps) {
           </>
         }
       />
-      <ActionMenu anchor={menu.anchor} sections={menu.sections} onClose={menu.close} ariaLabel={SHELL_LABELS.menu.label} ignoreRef={switcher} />
+      <MachineMenu
+        anchor={menu.menu.anchor}
+        machines={menu.machines}
+        sections={menu.sections}
+        onSwitch={menu.switchTo}
+        onClose={menu.menu.close}
+        ariaLabel={SHELL_LABELS.menu.label}
+        ignoreRef={switcher}
+      />
     </>
   );
 }
@@ -67,7 +81,8 @@ function SidebarFooter() {
   const composer = useSidebarComposer();
   const view = useConnectionView();
   const { projects } = useSidebarProjects();
-  const { openPreferences } = usePreferencesRoute();
+  const account = useAccountMenu();
+  const statusRow = useRef<HTMLButtonElement>(null);
   return (
     <>
       <SidebarComposer
@@ -98,12 +113,15 @@ function SidebarFooter() {
         }
       />
       <SidebarStatusRow
+        ref={statusRow}
         indicator={<ToneDot tone={view.dotTone} />}
         title={view.title}
         detail={view.detail}
         tooltip={view.tooltip}
-        onClick={() => openPreferences("connection")}
+        open={account.open}
+        onClick={(event) => (account.open ? account.close() : account.openBelow(event.currentTarget))}
       />
+      <ActionMenu anchor={account.anchor} sections={account.sections} onClose={account.close} ariaLabel={MACHINE_LABELS.menuLabel} ignoreRef={statusRow} />
     </>
   );
 }
@@ -112,6 +130,7 @@ export function ShellSidebar({ collapsed }: ShellSidebarProps) {
   const navigateTo = useNavigateTo();
   const current = pageKeyOf(useLocation().pathname);
   const sidebar = useSidebarProjects();
+  const processesCount = useProcessesCount();
   const setComposerProject = useComposerProject((store) => store.setProjectId);
   const openProject = (id: string) => {
     setComposerProject(id);
@@ -137,7 +156,7 @@ export function ShellSidebar({ collapsed }: ShellSidebarProps) {
                 icon={page.icon}
                 href={`#${ROUTE.page(page.id)}`}
                 selected={page.id === current}
-                count={page.id === "agents" ? sidebar.agentsCount : null}
+                count={page.id === "agents" ? sidebar.agentsCount : page.id === "processes" ? processesCount : null}
                 onClick={(event) => {
                   event.preventDefault();
                   navigateTo(page.id);

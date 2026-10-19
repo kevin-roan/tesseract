@@ -1,7 +1,7 @@
 import type { Project } from "@tesseract/protocol";
 import { AnimatedList, AnimatedListItem } from "../../components/AnimatedList";
 import { Text } from "../../components/Text";
-import { LAUNCHERS } from "../../features/terminals/constants";
+import type { LauncherConfig } from "../../features/terminals/constants";
 import { SIDEBAR_LABELS } from "../../features/terminals/labels";
 import type { LaunchRequest, SessionRowModel } from "../../features/terminals/types";
 import { LaunchChip } from "./LaunchChip";
@@ -13,13 +13,14 @@ export interface SessionsSidebarProps {
   count: number;
   selectedId: string | null;
   creating: boolean;
-  projects: readonly Project[] | null;
+  launchers: readonly LauncherConfig[];
+  projects?: readonly Project[] | null;
   onSelect(id: string): void;
   onDelete(id: string): void;
   onLaunch(request: LaunchRequest): void;
 }
 
-export function SessionsSidebar({ rows, count, selectedId, creating, projects, onSelect, onDelete, onLaunch }: SessionsSidebarProps) {
+export function SessionsSidebar({ rows, count, selectedId, creating, launchers, projects, onSelect, onDelete, onLaunch }: SessionsSidebarProps) {
   return (
     <div className={styles.sidebar}>
       <div className={styles.heading}>
@@ -31,7 +32,7 @@ export function SessionsSidebar({ rows, count, selectedId, creating, projects, o
         ) : null}
       </div>
       <div className={styles.launchers}>
-        {LAUNCHERS.map((launcher) => (
+        {launchers.map((launcher) => (
           <LaunchChip
             key={launcher.kind}
             icon={launcher.icon}

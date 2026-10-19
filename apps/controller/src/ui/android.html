@@ -8,7 +8,7 @@
     <title>Tesseract · Android</title>
     <link rel="stylesheet" href="./ui.css" />
   </head>
-  <body class="page">
+  <body class="page" data-device="android">
     <header class="bar" data-bar>
       <span class="status" data-status data-state="connecting">Connecting…</span>
       <span class="title" data-title>Android emulator</span>
@@ -30,6 +30,6 @@
       <button class="overlay__action" type="button" data-overlay-action hidden></button>
     </div>
     <nav class="keys keys--android" data-keys aria-label="Android keys"></nav>
-    <script type="module" src="./android.ts"></script>
+    <script type="module" src="./device.ts"></script>
   </body>
 </html>

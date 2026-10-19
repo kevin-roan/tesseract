@@ -16,6 +16,7 @@ import { formatRelativeTime, pluralize, shortSha } from "./format";
 import { buildTargetLabel, frameworkLabel } from "./labels";
 import { isActiveProcess } from "./projects";
 import { frameworkIcon, projectActivityIcon } from "./icons";
+import { runtimeBadge } from "./runtime";
 import { projectActivityLabel, projectActivityTone } from "./states";
 
 const CLAUDE = "Claude";
@@ -122,6 +123,7 @@ export function projectCardModel(
     id: project.id,
     title: project.name,
     subtitle: lastCommitLine(project, now),
+    badge: runtimeBadge(project.runtime),
     status: {
       caption: "Status",
       value: projectActivityLabel(activity),

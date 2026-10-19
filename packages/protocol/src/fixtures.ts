@@ -1,4 +1,8 @@
 import type {
+  HostIosStatus,
+  IosInstallRequest,
+  SandboxIosStatus,
+  SimDevice,
   AndroidLinkInfo,
   AppRun,
   EmulatorInfo,
@@ -40,7 +44,7 @@ import { DEFAULT_ANDROID_STREAM } from "./constants";
 const TS = "2026-09-23T10:00:00.000Z";
 const LATER = "2026-09-23T10:05:00.000Z";
 
-export const sampleHealth: Health = { ok: true, version: "0.1.0", protocolVersion: 1, sandboxId: "tesseract-sandbox" };
+export const sampleHealth: Health = { ok: true, version: "0.1.0", protocolVersion: 1, sandboxId: "tesseract-sandbox", runtime: "sandbox" };
 
 export const sampleTicket: Ticket = { ticket: "tkt_4d2c9b1e0f3a", expiresAt: "2026-09-23T10:01:00.000Z" };
 
@@ -55,6 +59,7 @@ export const sampleDisplay: DisplayStatus = {
 
 export const sampleStatus: SandboxStatus = {
   sandboxId: "tesseract-sandbox",
+  runtime: "sandbox",
   hostname: "sandbox",
   version: "0.1.0",
   startedAt: TS,
@@ -205,6 +210,7 @@ export const sampleProject: Project = {
   },
   confidential: false,
   claudeAccountId: null,
+  runtime: "sandbox",
 };
 
 export const sampleGitDetails: GitDetails = {
@@ -564,4 +570,74 @@ export const sampleSandboxAndroidStatus: SandboxAndroidStatus = {
   adbSerial: "127.0.0.1:15555",
   adbConnected: true,
   shared: [{ serial: "emulator-5556", model: "sdk gphone64 x86 64", adbSerial: "127.0.0.1:15557", adbConnected: true }],
+};
+
+export const sampleSimDevice: SimDevice = {
+  udid: "5A7C3E21-9B0D-4F6A-8E1C-2D3B4A5F6E7D",
+  name: "iPhone 17 Pro",
+  runtime: "iOS 26.0",
+  state: "booted",
+  widthPt: 402,
+  heightPt: 874,
+  scale: 3,
+  error: null,
+};
+
+export const sampleIosInstall: IosInstallRequest = {
+  id: "ins_0123456789",
+  artifactId: "art_0123456789",
+  fileName: "app-simulator.tar.gz",
+  sizeBytes: 48_213_504,
+  sha256: "a".repeat(64),
+  udid: sampleSimDevice.udid,
+  state: "pending",
+  bundleId: null,
+  createdAt: TS,
+  expiresAt: TS,
+  error: null,
+};
+
+export const sampleHostIosStatus: HostIosStatus = {
+  available: true,
+  reason: null,
+  reasonCode: null,
+  xcode: "Xcode 26.0",
+  idb: true,
+  isolation: "none",
+  devices: [sampleSimDevice, { ...sampleSimDevice, udid: "0F1E2D3C-4B5A-6978-8796-A5B4C3D2E1F0", name: "iPad Air 11-inch (M3)", state: "shutdown", widthPt: null, heightPt: null, scale: null }],
+  booted: sampleSimDevice,
+  link: sampleAndroidLink,
+  tunnels: [{ port: 8081, listening: true, connections: 2, error: null }],
+  installs: [sampleIosInstall],
+};
+
+export const sampleSandboxIosStatus: SandboxIosStatus = {
+  linked: true,
+  hostId: "macbook",
+  available: true,
+  booted: sampleSimDevice,
+  tunnels: [{ port: 8081, listening: true, connections: 2, error: null }],
+  runs: [{ port: 8081, scheme: null }],
+  requests: [
+    {
+      id: "ior_0123456789abcdef",
+      type: "openUrl",
+      url: "exp://127.0.0.1:8081",
+      artifactId: null,
+      state: "succeeded",
+      stage: "opening",
+      bundleId: null,
+      error: null,
+      createdAt: "2026-10-19T09:00:00.000Z",
+      endedAt: "2026-10-19T09:00:04.000Z",
+    },
+  ],
+};
+
+export const sampleIosAppRun: AppRun = {
+  ...sampleAppRun,
+  id: "app_ios0123456789ab",
+  target: "expo-ios",
+  port: 8081,
+  viewer: { kind: "ios", udid: sampleSimDevice.udid },
 };

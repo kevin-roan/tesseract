@@ -83,8 +83,8 @@ describe("run target detection", () => {
     const pkg = (value: unknown) => ({ "package.json": JSON.stringify(value) });
     expect(detect(pkg({ dependencies: { vite: "1" }, scripts: { dev: "vite", test: "vitest" } })).runTargets).toEqual(["web-dev", "test"]);
     expect(detect(pkg({ scripts: { build: "tsc" } })).runTargets).toEqual([]);
-    expect(detect(pkg({ dependencies: { expo: "1" } })).runTargets).toEqual(["expo-device", "expo-android"]);
-    expect(detect(pkg({ dependencies: { expo: "1", "react-native-web": "1" } })).runTargets).toEqual(["expo-device", "expo-web", "expo-android"]);
+    expect(detect(pkg({ dependencies: { expo: "1" } })).runTargets).toEqual(["expo-device", "expo-android", "expo-ios"]);
+    expect(detect(pkg({ dependencies: { expo: "1", "react-native-web": "1" } })).runTargets).toEqual(["expo-device", "expo-web", "expo-android", "expo-ios"]);
     expect(detect(pkg({ dependencies: { "react-native": "1" } })).runTargets).toEqual([]);
     expect(detect({ ...pkg({ dependencies: { "react-native": "1" } }), "android/gradlew": "" }).runTargets).toEqual(["rn-android"]);
     expect(detect(pkg({ devDependencies: { electron: "1" }, scripts: { start: "electron ." } })).runTargets).toEqual(["electron-dev"]);
@@ -112,11 +112,12 @@ describe("run target detection", () => {
       ["web-dev", null],
       ["expo-device", "apps/mobile"],
       ["expo-android", "apps/mobile"],
+      ["expo-ios", "apps/mobile"],
       ["rn-android", "apps/z-native"],
       ["test", null],
     ]);
     expect(sources[1]!.facts.packageManager).toBe("pnpm");
-    expect(detectRunTargetSources(join(dir, "apps", "mobile")).map((source) => source.dir)).toEqual([null, null, null]);
+    expect(detectRunTargetSources(join(dir, "apps", "mobile")).map((source) => source.dir)).toEqual([null, null, null, null]);
   });
 
   test("package manager commands", () => {
@@ -282,6 +283,7 @@ describe("app runs", () => {
     expect(targets.map((target) => [target.target, target.dir, target.label])).toEqual([
       ["expo-device", "apps/mobile", "Expo on the phone · apps/mobile"],
       ["expo-android", "apps/mobile", "Android emulator · apps/mobile"],
+      ["expo-ios", "apps/mobile", "iOS Simulator · apps/mobile"],
     ]);
     const run = AppRunSchema.parse((await start("mono", { target: "expo-device" })).body);
     expect(run.dir).toBe("apps/mobile");

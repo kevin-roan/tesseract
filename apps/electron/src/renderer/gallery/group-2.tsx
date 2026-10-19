@@ -7,6 +7,7 @@ import hostPinDialog from "../components/HostPinDialog/HostPinDialog.gallery";
 import hostUnlockDialog from "../components/HostUnlockDialog/HostUnlockDialog.gallery";
 import pairDialog from "../components/PairDialog/PairDialog.gallery";
 import pairDialogHost from "../components/PairDialog/PairDialogHost.gallery";
+import pairDialogMaster from "../components/PairDialog/PairDialogMaster.gallery";
 
 export const DIALOG_GALLERY_ENTRIES: readonly GalleryEntry[] = [
   dialogShell,
@@ -14,6 +15,7 @@ export const DIALOG_GALLERY_ENTRIES: readonly GalleryEntry[] = [
   confirmDialog,
   pairDialog,
   pairDialogHost,
+  pairDialogMaster,
   hostPinDialog,
   hostUnlockDialog,
   dialogModals,

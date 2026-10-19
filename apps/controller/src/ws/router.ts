@@ -1,5 +1,5 @@
 import type { Server } from "bun";
-import { errorBody, isIdOfKind, routePatterns, TICKET_PARAM, VNC_WS_SUBPROTOCOL, type ErrorCode, type IdKind } from "@tesseract/protocol";
+import { errorBody, IosLinkStreamQuerySchema, isIdOfKind, routePatterns, TICKET_PARAM, VNC_WS_SUBPROTOCOL, type ErrorCode, type IdKind } from "@tesseract/protocol";
 import { HttpError } from "../core/errors";
 import type { Services } from "../services";
 import { VncBridge } from "../services/vnc-bridge";
@@ -19,6 +19,8 @@ const ROUTES = (
     ["vnc", routePatterns.ws.vnc, null],
     ["androidLink", routePatterns.ws.androidLink, null],
     ["androidLinkStream", routePatterns.ws.androidLinkStream, "adbStream"],
+    ["iosLink", routePatterns.ws.iosLink, null],
+    ["iosLinkStream", routePatterns.ws.iosLinkStream, "iosStream"],
   ] as const
 ).map(([kind, pattern, idKind]) => ({
   kind,
@@ -90,6 +92,8 @@ export async function upgradeWebSocket(
 ): Promise<Response | undefined> {
   if (!isWebSocketUpgrade(request)) return fail("bad_request", "WebSocket upgrade required", 400);
   const url = new URL(request.url);
+  const iosStream = match.kind === "iosLinkStream" ? IosLinkStreamQuerySchema.safeParse(Object.fromEntries(url.searchParams)) : null;
+  if (iosStream && !iosStream.success) return fail("bad_request", "Invalid iOS stream port", 400);
   if (!services.tickets.consume(url.searchParams.get(TICKET_PARAM))) {
     return fail("unauthorized", "Missing, expired or already used ticket", 401);
   }
@@ -99,12 +103,17 @@ export async function upgradeWebSocket(
     assertTarget(services, match);
     if (match.kind === "vnc") {
       const bridge = await VncBridge.open(services.config.vncHost, services.config.vncPort);
+      services.vncSessions.track(bridge, server.requestIP?.(request)?.address ?? null);
       data = { kind: "vnc", bridge, cleanup: null };
       if (offersSubprotocol(request, VNC_WS_SUBPROTOCOL)) headers["Sec-WebSocket-Protocol"] = VNC_WS_SUBPROTOCOL;
     } else if (match.kind === "events") {
       data = { kind: "events", cleanup: null };
     } else if (match.kind === "androidLink") {
       data = { kind: "androidLink", session: null, cleanup: null };
+    } else if (match.kind === "iosLink") {
+      data = { kind: "iosLink", session: null, cleanup: null };
+    } else if (match.kind === "iosLinkStream") {
+      data = { kind: "iosLinkStream", id: match.id ?? "", port: iosStream?.data?.port ?? 0, cleanup: null };
     } else {
       data = { kind: match.kind, id: match.id ?? "", cleanup: null };
     }

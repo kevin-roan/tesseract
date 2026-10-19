@@ -30,6 +30,9 @@ export const canStartEmulator = (status: HostAndroidStatus, avd: string | null):
 
 export const canStopEmulator = (state: EmulatorState): boolean => state === "starting" || state === "running";
 
+/** A live emulator, including one stuck shutting down, can be killed at once. */
+export const canKillEmulator = (state: EmulatorState): boolean => canStopEmulator(state) || state === "stopping";
+
 const isLinkPending = (link: AndroidLinkInfo): boolean => link.configured && !link.connected && link.lastError === null;
 
 /** Poll fast while the emulator boots or shuts down or the link dials, and slowly while a link exists so retries and drops show up. */
@@ -63,6 +66,12 @@ export function pickDevice(status: HostAndroidStatus | undefined, selected: stri
 }
 
 export const deviceLabel = (device: AndroidDevice): string => device.model ?? device.serial;
+
+/** What a screen streams: the picked non-emulator device, else the host emulator's AVD. */
+export function androidScreenName(status: HostAndroidStatus | undefined, serial: string | undefined): string | undefined {
+  const device = status?.devices.find((item) => item.serial === serial);
+  return device && !device.hostEmulator ? deviceLabel(device) : (status?.emulator.avd ?? undefined);
+}
 
 export const deviceMeta = (device: AndroidDevice): string => [ANDROID_COPY.deviceKinds[device.kind], device.serial].join(" · ");
 

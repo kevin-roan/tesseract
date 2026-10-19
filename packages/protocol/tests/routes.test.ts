@@ -89,16 +89,17 @@ describe("route builders", () => {
     expect(routePatterns.rest.liveActivity).toBe("/v1/push/live-activities/:token");
     expect(routePatterns.ws.terminalStream).toBe("/v1/terminals/:id/stream");
     expect(routePatterns.ui.vnc).toBe("/ui/vnc");
-    const check = (builders: Record<string, (id: string) => string>, patterns: Record<string, string>) => {
+    const check = (builders: Record<string, (...ids: string[]) => string>, patterns: Record<string, string>) => {
       expect(Object.keys(builders).sort()).toEqual(Object.keys(patterns).sort());
       for (const [key, pattern] of Object.entries(patterns)) {
         const build = builders[key];
         if (!build) throw new Error(`missing builder ${key}`);
-        expect(/:\w+/.test(pattern) ? build("ID") : build(undefined as never)).toBe(pattern.replace(/:\w+/, "ID"));
+        const params = pattern.match(/:\w+/g) ?? [];
+        expect(params.length > 0 ? build(...params.map(() => "ID")) : build(undefined as never)).toBe(pattern.replace(/:\w+/g, "ID"));
       }
     };
-    check(restPaths as unknown as Record<string, (id: string) => string>, routePatterns.rest);
-    check(wsPaths as unknown as Record<string, (id: string) => string>, routePatterns.ws);
+    check(restPaths as unknown as Record<string, (...ids: string[]) => string>, routePatterns.rest);
+    check(wsPaths as unknown as Record<string, (...ids: string[]) => string>, routePatterns.ws);
   });
 });
 

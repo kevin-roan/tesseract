@@ -1,5 +1,7 @@
 import { normalizeBaseUrl } from "@tesseract/protocol";
 import type { ConnectionConfig, ConnectionInput } from "../../../../shared/contracts/connection";
+import type { MasterHostState } from "../../../../shared/contracts/masterHost";
+import type { PairTarget } from "../../../components/PairDialog";
 import { CONNECTION_LABELS, CONNECTION_STATUS_LABELS, CONNECTION_TONES, SOURCE_LABELS, sandboxName, type ConnectionState } from "../../../app/connection";
 import type { Tone } from "../../../theme/colors";
 import { SECTION_LABELS } from "./labels";
@@ -45,4 +47,33 @@ export function connectionStatusRows(state: Pick<ConnectionState, "status" | "er
     sourceSubtitle: state.configFile ? CONNECTION_LABELS.configFile(state.configFile) : "",
     discovering: state.status === "discovering",
   };
+}
+
+export interface MasterHostRow {
+  badge: { label: string; tone: Tone };
+  subtitle: string;
+  pairTarget: PairTarget;
+  canUnlink: boolean;
+}
+
+export function masterHostRow(state: MasterHostState | null): MasterHostRow | null {
+  if (state === null || state.kind === "none") return null;
+  switch (state.kind) {
+    case "local":
+      return { badge: { label: SECTION_LABELS.masterLocalBadge, tone: "neutral" }, subtitle: SECTION_LABELS.masterLocal, pairTarget: "host", canUnlink: false };
+    case "unlinked":
+      return {
+        badge: { label: SECTION_LABELS.masterUnlinked, tone: "neutral" },
+        subtitle: SECTION_LABELS.masterUnlinkedSubtitle(state.sandboxUrl),
+        pairTarget: "master",
+        canUnlink: false,
+      };
+    case "linked":
+      return {
+        badge: state.host.online ? { label: SECTION_LABELS.masterLinked, tone: "success" } : { label: SECTION_LABELS.masterOffline, tone: "warning" },
+        subtitle: SECTION_LABELS.masterHostSubtitle(state.host.name, state.host.url),
+        pairTarget: "master",
+        canUnlink: true,
+      };
+  }
 }

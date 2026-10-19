@@ -40,6 +40,7 @@ type ActionTemplate = Omit<HeaderAction, "onPress">;
 
 export const HUB_HEADER_ACTIONS = {
   pair: { id: "pair", icon: PlusIcon, label: "Pair another sandbox" },
+  rename: { id: "rename", icon: PencilSimpleIcon, label: "Rename this sandbox" },
   remove: { id: "remove", icon: TrashIcon, label: "Remove this sandbox", tone: "danger" },
 } satisfies Record<string, ActionTemplate>;
 

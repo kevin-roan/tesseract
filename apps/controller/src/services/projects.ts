@@ -12,7 +12,7 @@ import {
 import { mapLimit } from "../core/concurrency";
 import { badRequest, conflict, HttpError, notFound } from "../core/errors";
 import { childEnv, run } from "../core/exec";
-import { locateProject, type ProjectLocation } from "../core/paths";
+import { locateConfiguredProject, type ProjectLocation } from "../core/paths";
 import { nowIso } from "../core/time";
 import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";
@@ -49,7 +49,7 @@ export class ProjectService {
   ) {}
 
   require(id: string): ProjectLocation {
-    const location = locateProject(this.config.projectsDir, id);
+    const location = locateConfiguredProject(this.config, id);
     if (!location.exists) throw notFound(`Project ${location.id} not found`);
     return location;
   }
@@ -72,7 +72,7 @@ export class ProjectService {
       .map((entry) => entry.name)
       .filter((name) => {
         try {
-          return locateProject(this.config.projectsDir, name).id === name;
+          return locateConfiguredProject(this.config, name).id === name;
         } catch {
           return false;
         }
@@ -127,10 +127,16 @@ export class ProjectService {
     return { ...details, log: details.log.map((commit) => ({ ...commit, author: REDACTED })) };
   }
 
+  /** Host projects are links to host repositories, registered with `tesseract --unsafe-repo`. */
+  private assertSandboxRuntime(): void {
+    if (this.config.runtime === "host") throw badRequest("Projects on the host workspace are added on the host with tesseract --unsafe-repo");
+  }
+
   async create(input: CreateProject): Promise<CreateProjectResponse> {
+    this.assertSandboxRuntime();
     const id = projectIdFromName(input.name);
     if (!id) throw badRequest("Project name must contain letters or digits");
-    const location = locateProject(this.config.projectsDir, id);
+    const location = locateConfiguredProject(this.config, id);
     if (location.exists) throw conflict(`Project ${id} already exists`);
     try {
       mkdirSync(location.path);
@@ -171,7 +177,8 @@ export class ProjectService {
     archive: ReadableStream<Uint8Array>,
     options: { confidential?: boolean } = {},
   ): Promise<{ project: Project; created: boolean }> {
-    const location = locateProject(this.config.projectsDir, id);
+    this.assertSandboxRuntime();
+    const location = locateConfiguredProject(this.config, id);
     const created = !location.exists;
     if (created) mkdirSync(location.path, { recursive: true });
     if (options.confidential) this.markConfidential(location.id);
@@ -213,12 +220,13 @@ export class ProjectService {
   /**
    * Moves `<projectsDir>/<id>` to `<trashDir>/<id>-<timestamp>`; the host copy is never touched.
    * Without `force`, refuses (409) a project with changes not synced back to the host, or one that never came from a host.
+   * A host runtime project is only a link, so it is moved without those checks and its repository stays.
    */
   async remove(id: string, options: { force?: boolean } = {}): Promise<DeletedProject> {
     const location = this.require(id);
     this.assertNoActiveWork(location.id);
     this.syncBack.assertIdle(location.id);
-    if (!options.force) {
+    if (!options.force && this.config.runtime === "sandbox") {
       const { baselineAt, changes } = await this.syncBack.changes(location.id);
       if (baselineAt === null) throw conflict(`Project ${location.id} was never synced from a host, so the sandbox has the only copy`);
       if (changes.length > 0) throw conflict(`Project ${location.id} has ${plural(changes.length, "change")} not synced back to the host`);
@@ -265,6 +273,7 @@ export class ProjectService {
       git: await this.git.summary(location.path),
       confidential,
       claudeAccountId: this.repos.projectClaudeAccount(location.id),
+      runtime: this.config.runtime,
     };
   }
 }

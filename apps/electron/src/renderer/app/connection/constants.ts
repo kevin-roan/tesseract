@@ -33,6 +33,7 @@ export const INITIAL_CONNECTION_STATE: ConnectionState = {
   status: "unconfigured",
   config: null,
   configFile: null,
+  machines: [],
   health: null,
   sandbox: null,
   errorMessage: null,

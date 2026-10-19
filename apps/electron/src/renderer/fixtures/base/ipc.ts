@@ -1,7 +1,7 @@
 import type { WindowState } from "../../../shared/contracts/window";
 import { DEFAULT_SETTINGS } from "../../../shared/defaults";
 import { defineIpcFixtures } from "../types";
-import { FIXTURE_API_URL, FIXTURE_SANDBOX, FIXTURE_SIDEBAR_WIDTH, FIXTURE_TOKEN } from "./data";
+import { FIXTURE_API_URL, FIXTURE_REMOTE_SANDBOX, FIXTURE_REMOTE_URL, FIXTURE_SANDBOX, FIXTURE_SIDEBAR_WIDTH, FIXTURE_TOKEN } from "./data";
 
 const FIXTURE_SETTINGS = { ...DEFAULT_SETTINGS, sidebarWidth: FIXTURE_SIDEBAR_WIDTH };
 
@@ -39,6 +39,10 @@ export default defineIpcFixtures({
     load: () => ({
       config: { apiUrl: FIXTURE_API_URL, token: FIXTURE_TOKEN, name: FIXTURE_SANDBOX, pairingUrl: null, source: "file" },
       configFile: "/home/dev/.config/tesseract-desktop/config.json",
+      machines: [
+        { id: FIXTURE_API_URL, apiUrl: FIXTURE_API_URL, name: FIXTURE_SANDBOX, active: true, local: true, status: "online", host: null },
+        { id: FIXTURE_REMOTE_URL, apiUrl: FIXTURE_REMOTE_URL, name: FIXTURE_REMOTE_SANDBOX, active: false, local: false, status: "unknown", host: null },
+      ],
     }),
   },
   metrics: {
@@ -51,5 +55,10 @@ export default defineIpcFixtures({
   },
   updates: {
     state: () => ({ kind: "unsupported", reason: "Fixture mode" }),
+  },
+  masterHost: {
+    state: () => ({ kind: "local" }),
+    link: () => ({ kind: "local" }),
+    unlink: () => ({ kind: "local" }),
   },
 });

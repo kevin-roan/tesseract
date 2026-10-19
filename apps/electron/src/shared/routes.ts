@@ -1,4 +1,4 @@
-export const PAGE_IDS = ["overview", "agents", "projects", "files", "terminals", "display", "containers", "domains"] as const;
+export const PAGE_IDS = ["overview", "agents", "projects", "files", "terminals", "display", "processes", "containers", "domains", "shell", "emulator"] as const;
 export type PageId = (typeof PAGE_IDS)[number];
 export const DEFAULT_PAGE: PageId = "overview";
 

@@ -3,7 +3,7 @@ import { copyFile, link, rm, stat } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { createId, type Artifact, type ArtifactSource, type BuildProfile, type ShareArtifact } from "@tesseract/protocol";
 import { badRequest, forbidden, notFound } from "../core/errors";
-import { isInside, locateProject, realpathOrNull } from "../core/paths";
+import { isInside, locateConfiguredProject, realpathOrNull } from "../core/paths";
 import { nowIso } from "../core/time";
 import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";
@@ -216,7 +216,7 @@ export class ArtifactService {
 
   private shareProject(explicit: string | undefined, source: string): string {
     if (explicit !== undefined) {
-      const project = locateProject(this.config.projectsDir, explicit);
+      const project = locateConfiguredProject(this.config, explicit);
       if (!project.exists) throw notFound(`Project ${project.id} not found`);
       return project.id;
     }

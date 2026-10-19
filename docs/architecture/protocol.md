@@ -282,7 +282,7 @@ fraction in `[0, 1]` or `null`. Recipes are described in
 
 ### App runs and Android
 
-Run a project's app for the phone: `web-dev`, `expo-device`, `expo-web`, `expo-android`,
+Run a project's app for the phone: `web-dev`, `expo-device`, `expo-web`, `expo-android`, `expo-ios`,
 `rn-android`, `flutter-web`, `flutter-linux`, `flutter-android`, `electron-dev`, `test`.
 Rules (detection, commands, readiness, viewers, the host emulator link):
 [app-runs-and-emulator.md](app-runs-and-emulator.md).
@@ -296,6 +296,8 @@ Rules (detection, commands, readiness, viewers, the host emulator link):
 | DELETE | `/v1/app-runs/:id` | none | `AppRun` (its processes stopped) |
 | POST | `/v1/app-runs/:id/actions` | `AppRunActionRequest { action: "reload" \| "restart" \| "focus" }` | `AppRun`; `409` not ready or unsupported, `502` failed |
 | GET | `/v1/android` | none | `SandboxAndroidStatus` (link to the host emulator, adb tunnel `127.0.0.1:15555`) |
+| GET | `/v1/ios` | none | `SandboxIosStatus` (link to a Mac host daemon's iOS Simulator, announced runs, link requests) |
+| POST | `/v1/ios/installs` | `InstallOnSimulator { artifactId }` | `202 IosLinkRequest`; installs a simulator build artifact on the linked Simulator ([ios-simulator-macos.md](ios-simulator-macos.md) §3.4) |
 
 ```jsonc
 // POST /v1/projects/flutter-hello/app-runs  { "target": "flutter-web" }

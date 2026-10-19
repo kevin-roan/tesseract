@@ -66,6 +66,17 @@ const HostAndroid = ({ android }: HostAndroidProps) => {
                   onPress={android.start}
                 />
               )}
+              {android.canKill ? (
+                <ActionButton
+                  label={ANDROID_COPY.forceKill}
+                  icon={ANDROID_ICONS.forceKill}
+                  variant="danger"
+                  size="sm"
+                  loading={android.killing}
+                  onPress={android.kill}
+                  testID="host-android-kill"
+                />
+              ) : null}
             </>
           }
         >

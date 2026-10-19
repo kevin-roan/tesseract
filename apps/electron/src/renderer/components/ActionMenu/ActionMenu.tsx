@@ -25,6 +25,8 @@ export function ActionMenu({ anchor, sections, onClose, ariaLabel, ignoreRef }: 
               icon={entry.icon}
               danger={entry.danger}
               disabled={entry.disabled}
+              selected={entry.checked}
+              showCheck={entry.checked !== undefined}
               onClick={() => {
                 onClose();
                 entry.onSelect();

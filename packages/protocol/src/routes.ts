@@ -1,4 +1,5 @@
-import { API_PREFIX, UI_PREFIX, type SYNC_REQUEST_STATUSES } from "./constants";
+import { API_PREFIX, UI_PREFIX, type StopSignal, type SYNC_REQUEST_STATUSES } from "./constants";
+import type { RuntimeKind } from "./schemas/runtime";
 import { buildFragment, buildQuery } from "./url";
 
 export type ProjectFilter = { projectId?: string };
@@ -16,8 +17,12 @@ export type AgentRunFilter = { projectId?: string; archived?: boolean };
 export type TerminalPageParams = { ticket: string; session: string };
 export type VncPageParams = { ticket: string; password?: string | null };
 export type AppRunFilter = { projectId?: string };
+export type StopSignalParam = { signal?: StopSignal };
 export type AndroidScreenFilter = { maxSize?: number; serial?: string; codec?: string };
 export type AndroidScreenParams = { ticket: string; maxSize?: number; serial?: string };
+export type IosScreenFilter = { maxSize?: number; udid?: string };
+export type IosScreenParams = { ticket: string; maxSize?: number; udid?: string };
+export type IosLinkStreamParams = { port: number };
 
 const segment = (value: string) => encodeURIComponent(value);
 const api = (path: string) => `${API_PREFIX}${path}`;
@@ -51,7 +56,7 @@ export const restPaths = {
   syncRequestApply: (id: string) => api(`/sync/requests/${segment(id)}/apply`),
   syncHeartbeat: () => api("/sync/heartbeat"),
   processes: (query?: ProjectFilter) => api(`/processes${buildQuery(query)}`),
-  process: (id: string) => api(`/processes/${segment(id)}`),
+  process: (id: string, query?: StopSignalParam) => api(`/processes/${segment(id)}${buildQuery(query)}`),
   processLogs: (id: string, query?: LogTail) => api(`/processes/${segment(id)}/logs${buildQuery(query)}`),
   terminals: () => api("/terminals"),
   terminal: (id: string) => api(`/terminals/${segment(id)}`),
@@ -101,13 +106,20 @@ export const restPaths = {
   projectRunTargets: (id: string) => api(`/projects/${segment(id)}/run-targets`),
   projectAppRuns: (id: string) => api(`/projects/${segment(id)}/app-runs`),
   appRuns: (query?: AppRunFilter) => api(`/app-runs${buildQuery(query)}`),
-  appRun: (id: string) => api(`/app-runs/${segment(id)}`),
+  appRun: (id: string, query?: StopSignalParam) => api(`/app-runs/${segment(id)}${buildQuery(query)}`),
   appRunActions: (id: string) => api(`/app-runs/${segment(id)}/actions`),
+  runtime: () => api("/runtime"),
+  runtimeEntry: (kind: RuntimeKind, id: string, query?: StopSignalParam) => api(`/runtime/${segment(kind)}/${segment(id)}${buildQuery(query)}`),
   android: () => api("/android"),
   androidEmulator: () => api("/android/emulator"),
   androidLink: () => api("/android/link"),
   androidDevices: () => api("/android/devices"),
   androidStream: () => api("/android/stream"),
+  ios: () => api("/ios"),
+  iosSimulator: () => api("/ios/simulator"),
+  iosLink: () => api("/ios/link"),
+  iosInstalls: () => api("/ios/installs"),
+  iosInstall: (id: string) => api(`/ios/installs/${segment(id)}`),
 } as const;
 
 export const wsPaths = {
@@ -120,12 +132,16 @@ export const wsPaths = {
   androidLink: () => api("/android/link"),
   androidLinkStream: (streamId: string) => api(`/android/link/streams/${segment(streamId)}`),
   androidScreen: (query?: AndroidScreenFilter) => api(`/android/screen${buildQuery(query)}`),
+  iosLink: () => api("/ios/link"),
+  iosLinkStream: (streamId: string, query?: IosLinkStreamParams) => api(`/ios/link/streams/${segment(streamId)}${buildQuery(query)}`),
+  iosScreen: (query?: IosScreenFilter) => api(`/ios/screen${buildQuery(query)}`),
 } as const;
 
 export const uiPaths = {
   terminal: (params?: TerminalPageParams) => `${UI_PREFIX}/terminal${buildFragment(params)}`,
   vnc: (params?: VncPageParams) => `${UI_PREFIX}/vnc${buildFragment(params)}`,
   android: (params?: AndroidScreenParams) => `${UI_PREFIX}/android${buildFragment(params)}`,
+  ios: (params?: IosScreenParams) => `${UI_PREFIX}/ios${buildFragment(params)}`,
 } as const;
 
 /** Server-side route patterns (Hono/Express `:param` syntax), keyed like the builders above. */
@@ -210,11 +226,18 @@ export const routePatterns = {
     appRuns: api("/app-runs"),
     appRun: api("/app-runs/:id"),
     appRunActions: api("/app-runs/:id/actions"),
+    runtime: api("/runtime"),
+    runtimeEntry: api("/runtime/:kind/:id"),
     android: api("/android"),
     androidEmulator: api("/android/emulator"),
     androidLink: api("/android/link"),
     androidDevices: api("/android/devices"),
     androidStream: api("/android/stream"),
+    ios: api("/ios"),
+    iosSimulator: api("/ios/simulator"),
+    iosLink: api("/ios/link"),
+    iosInstalls: api("/ios/installs"),
+    iosInstall: api("/ios/installs/:id"),
   },
   ws: {
     events: api("/events"),
@@ -226,10 +249,14 @@ export const routePatterns = {
     androidLink: api("/android/link"),
     androidLinkStream: api("/android/link/streams/:id"),
     androidScreen: api("/android/screen"),
+    iosLink: api("/ios/link"),
+    iosLinkStream: api("/ios/link/streams/:id"),
+    iosScreen: api("/ios/screen"),
   },
   ui: {
     terminal: `${UI_PREFIX}/terminal`,
     vnc: `${UI_PREFIX}/vnc`,
     android: `${UI_PREFIX}/android`,
+    ios: `${UI_PREFIX}/ios`,
   },
 } as const;

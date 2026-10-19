@@ -55,3 +55,51 @@ export function readProcCwd(pid: number): string | null {
     return null;
   }
 }
+
+/** `ProcStat` plus CPU ticks (user + system), start time (ticks after boot) and resident memory (pages). */
+export type ProcSample = ProcStat & { cpuTicks: number; startTicks: number; rssPages: number };
+
+export const CLOCK_TICKS_PER_SECOND = 100;
+export const PAGE_BYTES = 4096;
+
+export function readProcSample(pid: number): ProcSample | null {
+  let stat: string;
+  try {
+    stat = readFileSync(`${PROC_ROOT}/${pid}/stat`, "utf8");
+  } catch {
+    return null;
+  }
+  const close = stat.lastIndexOf(")");
+  const fields = stat.slice(close + 2).split(" ");
+  const field = (index: number) => Number(fields[index] ?? 0) || 0;
+  return {
+    pid,
+    command: stat.slice(stat.indexOf("(") + 1, close),
+    state: fields[0] ?? "",
+    ppid: field(1),
+    pgrp: field(2),
+    session: field(3),
+    cpuTicks: field(11) + field(12),
+    startTicks: field(19),
+    rssPages: field(21),
+  };
+}
+
+/** argv of a process (empty for kernel threads), or null when it is gone or hidden. */
+export function readProcCmdline(pid: number): string[] | null {
+  try {
+    return readFileSync(`${PROC_ROOT}/${pid}/cmdline`, "utf8").split("\0").filter(Boolean);
+  } catch {
+    return null;
+  }
+}
+
+/** Seconds since boot, or null without procfs. */
+export function readUptimeSeconds(): number | null {
+  try {
+    const seconds = Number(readFileSync(`${PROC_ROOT}/uptime`, "utf8").split(" ")[0]);
+    return Number.isFinite(seconds) ? seconds : null;
+  } catch {
+    return null;
+  }
+}

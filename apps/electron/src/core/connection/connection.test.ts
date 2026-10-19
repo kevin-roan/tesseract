@@ -8,6 +8,7 @@ import { readConfig, updateConfig } from "../config";
 import { containerRunner, findExecutable } from "./container-cli";
 import { isHealthyPayload, pickReachable, probeHealth } from "./health";
 import { inputFromPairingLink, normalizeConnectionInput, pairingLinkFor } from "./pairing";
+import { dropMachine, findMachine, listMachines, rememberMachine, renameMachine } from "./machines";
 import {
   fileConnection,
   readStoredConnection,
@@ -96,6 +97,39 @@ describe("token vault", () => {
     expect(shouldSealTokens({ ...base, platform: "win32", env: { TESSERACT_DESKTOP_CONFIG: "/x" } })).toBe(false);
     expect(shouldSealTokens({ ...base, platform: "win32", configFile: "/other.json" })).toBe(false);
     expect(shouldSealTokens({ ...base, platform: "darwin", cipher: { ...fakeCipher, available: () => false } })).toBe(false);
+  });
+});
+
+describe("saved machines", () => {
+  const home = { apiUrl: "http://127.0.0.1:7700", token: TOKEN, name: "home", pairingUrl: null };
+  const office = { apiUrl: "https://office.ts.net", token: "office-token", name: null, pairingUrl: null };
+
+  it("remembers, renames, lists and drops machines", () => {
+    let data = rememberMachine(rememberMachine({}, home, null), office, null);
+    data = rememberMachine(data, { ...home, name: "rig" }, null);
+    expect(findMachine(data, home.apiUrl, null)).toEqual({ ...home, name: "rig", source: "file" });
+    data = renameMachine(data, office.apiUrl, " office ");
+    const active = { ...home, name: "rig", source: "file" as const };
+    expect(listMachines(data, active)).toEqual([
+      { id: home.apiUrl, apiUrl: home.apiUrl, name: "rig", active: true, local: true, status: "unknown", host: null },
+      { id: office.apiUrl, apiUrl: office.apiUrl, name: "office", active: false, local: false, status: "unknown", host: null },
+    ]);
+    expect(dropMachine(dropMachine(data, home.apiUrl), office.apiUrl)).toEqual({});
+  });
+
+  it("lists an unsaved active connection first", () => {
+    const active = { ...office, source: "docker" as const };
+    expect(listMachines(rememberMachine({}, home, null), active).map((item) => [item.id, item.active])).toEqual([
+      [office.apiUrl, true],
+      [home.apiUrl, false],
+    ]);
+  });
+
+  it("seals machine tokens", () => {
+    const data = rememberMachine({}, home, fakeCipher);
+    expect(JSON.stringify(data)).not.toContain(TOKEN);
+    expect(findMachine(data, home.apiUrl, fakeCipher)?.token).toBe(TOKEN);
+    expect(findMachine(data, home.apiUrl, null)).toBeNull();
   });
 });
 

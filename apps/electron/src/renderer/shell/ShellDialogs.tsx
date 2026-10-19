@@ -1,6 +1,7 @@
 import { PairPhoneDialog } from "../pages/preferences/shared/PairPhoneDialog";
 import { AboutDialog } from "./AboutDialog";
 import { useShellDialogs } from "./hooks/use-shell-dialogs";
+import { MachineDialogs } from "./machines/MachineDialogs";
 
 export function ShellDialogs() {
   const dialog = useShellDialogs((store) => store.dialog);
@@ -9,6 +10,7 @@ export function ShellDialogs() {
     <>
       {dialog === "pair" || dialog === "pair-host" ? <PairPhoneDialog open target={dialog === "pair-host" ? "host" : "sandbox"} onClose={close} /> : null}
       <AboutDialog open={dialog === "about"} onClose={close} />
+      <MachineDialogs />
     </>
   );
 }

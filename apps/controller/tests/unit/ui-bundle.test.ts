@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { join } from "node:path";
 
 const UI_DIR = join(import.meta.dir, "../../src/ui");
-const PAGES = ["terminal.ts", "android.ts", "vnc.ts"];
+const PAGES = ["terminal.ts", "device.ts", "vnc.ts"];
 
 describe("ui bundle", () => {
   test.each(PAGES)("%s does not pull in zod", async (page) => {

@@ -5,3 +5,4 @@ export * from "./command";
 export * from "./env";
 export * from "./service";
 export * from "./viewer";
+export * from "./proxy";

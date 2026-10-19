@@ -5,6 +5,7 @@ export const OVERVIEW_LABELS = {
   title: "Overview",
   fallbackTitle: "Sandbox",
   refresh: "Refresh",
+  rename: "Rename this Tesseract",
   separator: " · ",
 } as const;
 

@@ -11,6 +11,11 @@ export const DISCOVERY_MESSAGES = {
 export const CONNECTION_MESSAGES = {
   invalidInput: "Enter a valid http(s) URL and a token",
   tokenUnreadable: "The saved token could not be decrypted on this computer",
+  unknownMachine: "That Tesseract is no longer saved on this computer",
+  invalidLink: (reason: string) => `That is not a valid pairing link: ${reason}`,
+  invalidHostLink: (reason: string) => `That is not a valid host shell link: ${reason}`,
+  localHostLink: "This computer's host is its own host shell; it cannot be linked to another one",
+  localUnavailable: (reason: string) => `The sandbox on this computer was not found: ${reason}`,
 } as const;
 
 export const VERIFY_MESSAGES = {

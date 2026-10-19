@@ -5,6 +5,7 @@ import { ConnectionBanner, GlobalLayer, PageOutlet } from "../app/feedback";
 import { ResizeHandle } from "../components/ResizeHandle";
 import { SplitView } from "../components/SplitView";
 import { ToastHost } from "../components/Toast";
+import { useMachineScopeRefresh } from "../features/machines";
 import { PreferencesDialog } from "../pages/preferences/PreferencesDialog";
 import { useBackdrop } from "./hooks/use-backdrop";
 import { useCollapsed, useForcedPane } from "./hooks/use-collapsed";
@@ -18,6 +19,7 @@ import styles from "./Shell.module.css";
 export function Shell() {
   useAppCommands();
   useShellCommands();
+  useMachineScopeRefresh();
   const backdrop = useBackdrop();
   const collapsed = useCollapsed();
   const sidebar = useSidebarWidth();

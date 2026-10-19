@@ -2,7 +2,7 @@ import { PAGE_MESSAGES, VNC_ACTIONS, type InputMode, type VncAction } from "@tes
 
 import type { PageConnection, PageInsets, PageKind, PageMessage } from "../types";
 
-const TYPE_PATTERN = /^(vnc|terminal|android)[-:.](state|need-ticket|exit|action)$/;
+const TYPE_PATTERN = /^(vnc|terminal|android|ios)[-:.](state|need-ticket|exit|action)$/;
 
 const DROPPED_STATES: ReadonlySet<string> = new Set(["disconnected", "closed"]);
 

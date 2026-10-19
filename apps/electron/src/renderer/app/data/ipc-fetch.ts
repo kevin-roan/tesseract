@@ -1,5 +1,11 @@
 import type { FetchLike, HttpResponse } from "@tesseract/client";
+import type { HttpProxyRequest, HttpProxyResponse } from "../../../shared/contracts/http";
 import { ipc } from "../../lib/ipc";
+
+export interface ProxyTransport {
+  request(id: string, request: HttpProxyRequest): Promise<HttpProxyResponse>;
+  abort(id: string): Promise<void>;
+}
 
 let sequence = 0;
 
@@ -10,12 +16,12 @@ function decodeBase64(value: string): Uint8Array {
   return bytes;
 }
 
-export const ipcFetch: FetchLike = async (url, init) => {
+export const proxyFetch = (transport: ProxyTransport): FetchLike => async (url, init) => {
   const id = `req-${Date.now().toString(36)}-${(sequence += 1)}`;
-  const onAbort = () => void ipc.http.abort(id);
+  const onAbort = () => void transport.abort(id).catch(() => undefined);
   init.signal.addEventListener("abort", onAbort, { once: true });
   try {
-    const response = await ipc.http.request(id, { url, method: init.method, headers: init.headers, body: init.body });
+    const response = await transport.request(id, { url, method: init.method, headers: init.headers, body: init.body });
     const bytes = decodeBase64(response.bodyBase64);
     const headers = new Map(Object.entries(response.headers).map(([key, value]) => [key.toLowerCase(), value]));
     const result: HttpResponse = {
@@ -31,3 +37,5 @@ export const ipcFetch: FetchLike = async (url, init) => {
     init.signal.removeEventListener("abort", onAbort);
   }
 };
+
+export const ipcFetch: FetchLike = proxyFetch({ request: (id, request) => ipc.http.request(id, request), abort: (id) => ipc.http.abort(id) });

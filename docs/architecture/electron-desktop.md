@@ -210,7 +210,7 @@ flowchart LR
 | `syncback` | state, submit, links, snapshots, hostChanges, diff | `state` |
 | `attachments` | pick, read (only paths returned by the last `pick`), clipboardHasImage, clipboardHasText, pasteImage | — |
 | `files` | download(id, req), saveBytes(name, base64), cancel(id), readClipboard, writeClipboard | `progress` |
-| `hostShell` | state, start, stop, refresh, setPin, rotateToken, setAutostart, unlock, lock, androidStatus, startEmulator, stopEmulator, linkSandbox, openEmulatorViewer | `state` |
+| `hostShell` | state, start, stop, refresh, setPin, rotateToken, setAutostart, unlock, lock, androidStatus, startEmulator, stopEmulator(signal? `SIGTERM`\|`SIGKILL`), linkSandbox, iosStatus, bootSimulator(udid), shutdownSimulator(signal? `SIGTERM`\|`SIGKILL`), linkIosSandbox, openEmulatorViewer, openTerminal, request(id, req) / abort(id) (session-authenticated proxy to the host daemon; every call goes to the active machine's host, see [page-host.md](../electron/spec/page-host.md)) | `state` |
 | `claude` | hostAccounts, ensureConfigDir | — |
 | `stt` | microphone, requestMicrophone | — |
 | `metrics` | load, save | — |
@@ -372,8 +372,33 @@ variables from the app's environment are scrubbed before Docker runs.
   `tesseract-controller host serve` (bundled binary in packaged builds, the repo's
   controller in development; `TESSERACT_CONTROLLER_COMMAND` overrides it), reads its
   pairing info, manages the PIN, token rotation and autostart, and proxies the host
-  Android API (status, start/stop emulator, link the sandbox, open the viewer). On
+  Android API (status, start/stop/force-kill the emulator, link the sandbox, open the viewer) and
+  iOS Simulator API (status, boot, shut down/force-kill, link the sandbox). On
   Linux the child gets `setpriv --pdeathsig TERM` so it dies with the app.
+- Every `hostShell` call goes to the **active machine's host**: `HostRouter`
+  (`core/master-host/router.ts`) is re-pointed by `followActiveMachine()` in
+  `main/ipc/hostShell.ts` (from `activeHostRoute()` on every connection change), so `target()` is the
+  local daemon for the local machine, a `RemoteHostShell` for a remote machine with a linked host, and a
+  pairing-less `RemoteHostShell` (renderer gate `noHost`) for a remote machine without one.
+- Host pages (**Shell**, **Emulator**) never see the host token or the PIN session. The
+  renderer builds a `TesseractClient` for `pairing.url` (`features/host-shell/client.ts`)
+  whose fetch is `hostShell.request`: main checks the origin against the active pairing
+  and the path against `HOST_PROXY.paths` (`/v1/terminals`, `/v1/auth/ticket`,
+  `/v1/android`, `/v1/ios`), swaps the placeholder bearer for the session token, and
+  forgets the session on a 401. Without a live session it answers 401 itself. WebSockets
+  (terminal streams, `/v1/android/screen`, `/v1/ios/screen`) go straight from the renderer to the daemon
+  with a one-time ticket fetched through that proxy, like the sandbox Display page.
+  `useHostAccess()` (`features/host-shell/hooks`) is the one place the pages resolve the
+  host: it maps `hostShell:state` to `loading | stopped | starting | failed | noHost |
+  noPin | locked | ready`; everything but `ready` renders a gate (start, unlock, settings).
+- The Shell page reuses the Terminals page through a `TerminalsScope` context
+  (`features/terminals/scope.ts`: sessions, UI store, client hook); the host scope is
+  `features/shell/scope.ts`. The Emulator page draws the screen stream itself
+  (`features/emulator/screen`: JPEG or WebCodecs H.264 on a canvas, touch/scroll/keys/text
+  messages) behind a `DeviceKind` adapter (`features/emulator/devices.ts`): Android
+  (`useHostEmulator()`) and iOS Simulator (`useHostSimulator()`, MJPEG only, `udid` instead of
+  `serial`). The Processes page lists both under **Host devices** through `useHostDevices()`.
+  Spec: [page-host.md](../electron/spec/page-host.md).
 
 ## 4. CLI
 
@@ -401,8 +426,9 @@ actions and old scripts that call the app with `--sync` keep working.
 
 ## 5. Renderer
 
-- **Routes** (hash router): `#/<pageId>[/<sub>]` for the shell pages `overview`, `agents`,
-  `projects`, `files`, `terminals`, `display`; `?preferences=<section>` opens Settings
+- **Routes** (hash router): `#/<pageId>[/<sub>]` for the shell pages (`PAGE_IDS`: sandbox
+  `overview`, `agents`, `projects`, `files`, `terminals`, `display`, `processes`; host
+  `containers`, `domains`, `shell`, `emulator`); `?preferences=<section>` opens Settings
   over the shell (`connection`, `appearance`, `claude`, `host-shell`, `stt`, `sandbox`,
   `android`, `about`); `#/onboarding/<step>`; `#/gallery[/<entry>]` for the component
   gallery. Any route accepts `?fixtures`, `?scheme=light|dark` and `?scenario=<name>`.

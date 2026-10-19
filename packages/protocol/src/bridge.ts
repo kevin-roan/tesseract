@@ -11,6 +11,8 @@ export const PAGE_MESSAGES = {
   vncAction: "vnc-action",
   androidState: "android-state",
   androidNeedTicket: "android-need-ticket",
+  iosState: "ios-state",
+  iosNeedTicket: "ios-need-ticket",
   reconnect: "tesseract-reconnect",
   inputMode: "tesseract-input-mode",
   insets: "tesseract-insets",

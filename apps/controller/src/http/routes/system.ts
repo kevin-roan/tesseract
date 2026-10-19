@@ -33,6 +33,7 @@ export function registerSystemRoutes(app: Hono, services: Services): void {
       version: services.version,
       protocolVersion: PROTOCOL_VERSION,
       sandboxId: services.config.sandboxId,
+      runtime: services.config.runtime,
     };
     return c.json(health);
   });

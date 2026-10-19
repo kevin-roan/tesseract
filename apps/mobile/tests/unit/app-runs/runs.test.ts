@@ -53,6 +53,13 @@ describe("openPlanFor", () => {
     expect(openPlanFor({ ...androidRun, state: "failed" })).toBeNull();
   });
 
+  it("opens the simulator while an ios run is alive", () => {
+    const iosRun = { ...androidRun, target: "expo-ios" as const, viewer: null };
+    expect(viewerKindOf(iosRun)).toBe("ios");
+    expect(openPlanFor(iosRun)).toEqual({ kind: "ios" });
+    expect(openPlanFor({ ...iosRun, state: "failed" })).toBeNull();
+  });
+
   it("never opens test runs", () => {
     expect(openPlanFor({ ...sampleAppRun, target: "test", viewer: { kind: "none" } })).toBeNull();
   });

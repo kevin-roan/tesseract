@@ -7,14 +7,15 @@ export interface LinkFieldProps {
   value: string;
   copyLabel: string;
   onCopy(value: string): void;
+  testId?: string;
 }
 
-export function LinkField({ value, copyLabel, onCopy }: LinkFieldProps) {
+export function LinkField({ value, copyLabel, onCopy, testId = "pair-link" }: LinkFieldProps) {
   const [head, tail] = middleSplit(value);
   return (
     <div className={styles.linkField}>
       <Tooltip label={value}>
-        <span className={styles.linkValue} data-testid="pair-link">
+        <span className={styles.linkValue} data-testid={testId}>
           <span className={styles.linkHead}>{head}</span>
           <span className={styles.linkTail}>
             <span className={styles.linkTailInner}>{tail}</span>

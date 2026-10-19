@@ -1,17 +1,17 @@
-import type { AndroidKey, AndroidScreenClientMessage, AndroidScreenServerMessage } from "@tesseract/protocol";
+import type { AndroidKey, DeviceScreenClientMessage, DeviceScreenServerMessage } from "@tesseract/protocol";
 import { KeyBar, Overlay, StatusBadge, type ConnectionState } from "./lib/components";
 import {
-  ANDROID_BAR,
   ANDROID_HARDWARE_KEYS,
   ANDROID_INPUT,
   ANDROID_QUERY,
-  API_PATHS,
+  DEFAULT_DEVICE_KIND,
+  DEVICE_PROFILES,
   FRAGMENT_KEYS,
-  HOST_MESSAGES,
   MESSAGES,
   TEXT_INPUT_RESET_LENGTH,
   TEXT_INPUT_SENTINEL,
-  type AndroidBarKeyId,
+  type DeviceBarKeyId,
+  type DeviceKind,
 } from "./lib/config";
 import { applyImmersive, applyInsets, requireElement } from "./lib/dom";
 import { takeFragment } from "./lib/fragment";
@@ -21,12 +21,14 @@ import { exposeHostApi, hasHost, postToHost } from "./lib/host";
 import { PointerSlots } from "./lib/pointer-slots";
 import { webSocketUrl } from "./lib/socket";
 
+const kind = (Object.keys(DEVICE_PROFILES) as DeviceKind[]).find((name) => name === document.body.dataset.device) ?? DEFAULT_DEVICE_KIND;
+const profile = DEVICE_PROFILES[kind];
 const fragment = takeFragment();
 const firstTicket = fragment.get(FRAGMENT_KEYS.ticket);
 const maxSize = Number(fragment.get(FRAGMENT_KEYS.maxSize) ?? "");
-const serial = fragment.get(FRAGMENT_KEYS.serial);
+const device = fragment.get(profile.deviceParam);
 const embedded = hasHost();
-const h264Support = canDecodeH264();
+const h264Support = profile.h264 ? canDecodeH264() : Promise.resolve(false);
 
 const stage = requireElement("[data-stage]");
 const canvas = requireElement<HTMLCanvasElement>("[data-screen]");
@@ -59,7 +61,7 @@ function onDecoderError(): void {
 
 function setState(state: ConnectionState, text: string, extra: Record<string, unknown> = {}): void {
   status.set(state, text);
-  postToHost({ type: HOST_MESSAGES.androidState, state, ...extra });
+  postToHost({ type: profile.stateMessage, state, ...extra });
 }
 
 function requestReconnect(): void {
@@ -69,7 +71,7 @@ function requestReconnect(): void {
   }
   overlay.hide();
   setState("connecting", MESSAGES.connecting);
-  postToHost({ type: HOST_MESSAGES.androidNeedTicket });
+  postToHost({ type: profile.needTicketMessage });
 }
 
 function showDisconnected(reason: string | null): void {
@@ -83,14 +85,14 @@ function showServerError(message: string): void {
   overlay.show(message, { label: MESSAGES.reconnect, run: requestReconnect });
 }
 
-function send(message: AndroidScreenClientMessage): void {
+function send(message: DeviceScreenClientMessage): void {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
 }
 
-function receive(message: AndroidScreenServerMessage): string | null {
+function receive(message: DeviceScreenServerMessage): string | null {
   if (message.type === "error") return message.message;
   if (message.type === "meta") {
-    title.textContent = message.deviceName || MESSAGES.androidTitle;
+    title.textContent = message.deviceName || profile.title;
     setState("connected", MESSAGES.connected);
     closeDecoder();
     if (message.codec === "h264") decoder = new H264Decoder((frame) => screen.drawFrame(frame), onDecoderError);
@@ -102,7 +104,7 @@ function receive(message: AndroidScreenServerMessage): string | null {
 function screenQuery(h264: boolean): string {
   const params = new URLSearchParams();
   if (Number.isInteger(maxSize) && maxSize > 0) params.set(ANDROID_QUERY.maxSize, String(maxSize));
-  if (serial) params.set(ANDROID_QUERY.serial, serial);
+  if (device) params.set(profile.deviceParam, device);
   if (h264 && !decoderFailed) params.set(ANDROID_QUERY.codec, "h264");
   const query = params.toString();
   return query ? `&${query}` : "";
@@ -116,7 +118,7 @@ async function connect(ticket: string): Promise<void> {
   overlay.hide();
   setState("connecting", MESSAGES.connecting);
   const query = screenQuery(await h264Support);
-  const ws = new WebSocket(`${webSocketUrl(API_PATHS.androidScreen, ticket)}${query}`);
+  const ws = new WebSocket(`${webSocketUrl(profile.screenPath, ticket)}${query}`);
   ws.binaryType = "arraybuffer";
   socket = ws;
   let serverError: string | null = null;
@@ -129,7 +131,7 @@ async function connect(ticket: string): Promise<void> {
     }
     if (typeof event.data !== "string") return;
     try {
-      serverError = receive(JSON.parse(event.data) as AndroidScreenServerMessage) ?? serverError;
+      serverError = receive(JSON.parse(event.data) as DeviceScreenServerMessage) ?? serverError;
     } catch {}
   });
   ws.addEventListener("close", (event) => {
@@ -233,13 +235,13 @@ function toggleKeyboard(): void {
   }
 }
 
-function pressBarKey(key: AndroidBarKeyId): void {
+function pressBarKey(key: DeviceBarKeyId): void {
   if (key === "keyboard") toggleKeyboard();
   else if (key === "rotate") send({ type: "rotate" });
   else sendKey(key);
 }
 
-const bar = new KeyBar<AndroidBarKeyId>(requireElement("[data-keys]"), ANDROID_BAR, pressBarKey);
+const bar = new KeyBar<DeviceBarKeyId>(requireElement("[data-keys]"), profile.bar, pressBarKey);
 
 textInput.addEventListener("input", () => {
   const current = textInput.value;
@@ -266,6 +268,7 @@ textInput.addEventListener("keydown", (event) => {
 textInput.addEventListener("focus", () => bar.setActive("keyboard", true));
 textInput.addEventListener("blur", () => bar.setActive("keyboard", false));
 
+title.textContent = profile.title;
 requireElement("[data-bar]").hidden = embedded;
 exposeHostApi({ reconnect: (ticket: string) => void connect(ticket), setInsets: applyInsets, setImmersive: applyImmersive });
 resetTextInput();

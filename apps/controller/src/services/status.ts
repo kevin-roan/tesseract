@@ -86,6 +86,7 @@ export class StatusService {
     const [display, tools] = await Promise.all([this.display.status(), this.tools.list()]);
     return {
       sandboxId: this.config.sandboxId,
+      runtime: this.config.runtime,
       hostname: this.config.hostname,
       version: this.version,
       startedAt: this.startedAt.toISOString(),

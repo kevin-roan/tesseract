@@ -1,17 +1,19 @@
 import {
   createId,
+  DEFAULT_STOP_SIGNAL,
   LIMITS,
   type LogLine,
   type LogStream,
   type ProcessCommand,
   type ProcessInfo,
   type StartProcess,
+  type StopSignal,
 } from "@tesseract/protocol";
 import { conflict, errorMessage, notFound } from "../core/errors";
 import { childEnv } from "../core/exec";
 import { LineSplitter } from "../core/line-splitter";
 import { probeTcp } from "../core/net";
-import { locateProject } from "../core/paths";
+import { locateConfiguredProject } from "../core/paths";
 import { findPortOwner } from "../core/ports";
 import { describeLeftovers, reapGroup, terminateGroup } from "../core/process-group";
 import { nowIso } from "../core/time";
@@ -43,6 +45,7 @@ type LiveProcess = {
   proc: Bun.Subprocess<"ignore" | "pipe", "pipe", "pipe">;
   channel: LogChannel;
   stopRequested: boolean;
+  killRequested: boolean;
   stopping: Promise<void> | null;
   finished: Promise<ProcessInfo>;
 };
@@ -113,7 +116,7 @@ export class ProcessService {
   ) {}
 
   async start(input: StartProcess): Promise<ProcessInfo> {
-    const location = locateProject(this.config.projectsDir, input.projectId);
+    const location = locateConfiguredProject(this.config, input.projectId);
     if (!location.exists) throw notFound(`Project ${location.id} not found`);
     if (input.port !== undefined) await this.assertPortFree(input.port);
     return this.spawn({
@@ -180,7 +183,7 @@ export class ProcessService {
       pumpLines(proc.stdout, channel, "stdout", spec.transformLine),
       pumpLines(proc.stderr, channel, "stderr", spec.transformLine),
     ]);
-    const entry: LiveProcess = { info, proc, channel, stopRequested: false, stopping: null, finished: Promise.resolve(info) };
+    const entry: LiveProcess = { info, proc, channel, stopRequested: false, killRequested: false, stopping: null, finished: Promise.resolve(info) };
     entry.finished = this.watch(entry, readers, spec.onExit);
     this.live.set(info.id, entry);
     return { ...info };
@@ -200,7 +203,9 @@ export class ProcessService {
     info.state = entry.stopRequested ? "stopped" : code === 0 ? "exited" : "failed";
     channel.append(
       "system",
-      entry.stopRequested
+      entry.killRequested
+        ? "Process killed (SIGKILL)"
+        : entry.stopRequested
         ? "Process stopped"
         : proc.signalCode
           ? `Process killed by ${proc.signalCode}`
@@ -214,11 +219,17 @@ export class ProcessService {
     return { ...info };
   }
 
-  async stop(id: string): Promise<ProcessInfo> {
+  /** SIGTERM to the process group, SIGKILL after the grace period; `SIGKILL` kills the group at once (also mid-stop). */
+  async stop(id: string, signal: StopSignal = DEFAULT_STOP_SIGNAL): Promise<ProcessInfo> {
     const entry = this.live.get(id);
     if (!entry) return this.get(id);
-    if (!entry.stopRequested) entry.channel.append("system", "Stopping: SIGTERM to the process group");
-    await this.terminate(entry, this.stopGraceMs);
+    if (signal === "SIGKILL") {
+      if (!entry.killRequested) entry.channel.append("system", "Killing: SIGKILL to the process group");
+      await this.kill(entry);
+    } else {
+      if (!entry.stopRequested) entry.channel.append("system", "Stopping: SIGTERM to the process group");
+      await this.terminate(entry, this.stopGraceMs);
+    }
     return entry.finished;
   }
 
@@ -233,6 +244,16 @@ export class ProcessService {
     } catch {
       return false;
     }
+  }
+
+  private kill(entry: LiveProcess): Promise<void> {
+    entry.stopRequested = true;
+    if (!entry.killRequested) {
+      entry.killRequested = true;
+      const killing = terminateGroup(entry.proc.pid, entry.proc.exited, 0, "SIGKILL");
+      entry.stopping = entry.stopping ? Promise.all([entry.stopping, killing]).then(() => {}) : killing;
+    }
+    return entry.stopping ?? Promise.resolve();
   }
 
   private terminate(entry: LiveProcess, graceMs: number): Promise<void> {

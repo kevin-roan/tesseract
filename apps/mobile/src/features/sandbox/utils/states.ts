@@ -48,6 +48,14 @@ const LINK_LABELS: Record<SandboxLink, string> = {
   closed: "Offline",
 };
 
+/** The header link glyph stays quiet while online and only takes a color when something is off. */
+const LINK_ICON_TONES: Record<SandboxLink, Tone> = {
+  idle: "danger",
+  connecting: "warning",
+  open: "neutral",
+  closed: "danger",
+};
+
 const PAGE_TONES: Record<PageConnection, Tone> = {
   loading: "neutral",
   connecting: "warning",
@@ -82,6 +90,8 @@ export const buildTone = (state: BuildState): Tone => BUILD_TONES[state];
 export const agentRunTone = (state: AgentRunState): Tone => AGENT_RUN_TONES[state];
 export const terminalTone = (state: TerminalState): Tone => TERMINAL_TONES[state];
 export const linkTone = (link: SandboxLink): Tone => LINK_TONES[link];
+export const linkIconTone = (link: SandboxLink): Tone => LINK_ICON_TONES[link];
+export const linkBroken = (link: SandboxLink): boolean => link === "idle" || link === "closed";
 export const linkLabel = (link: SandboxLink): string => LINK_LABELS[link];
 export const issueNotice = (issue: SandboxIssue): IssueNotice => ISSUE_NOTICES[issue];
 export const projectActivityLabel = (activity: ProjectActivity): string => PROJECT_ACTIVITY[activity].label;

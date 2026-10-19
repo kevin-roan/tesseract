@@ -70,6 +70,11 @@ describe("projectCardModel", () => {
     expect(card.members.map((member) => member.name)).toEqual(["Windows installer", "Claude", "dev"]);
   });
 
+  it("badges only host runtime projects", () => {
+    expect(projectCardModel(sampleProject, idle, {}, NOW).badge).toBeUndefined();
+    expect(projectCardModel({ ...sampleProject, runtime: "host" }, idle, {}, NOW).badge).toMatchObject({ label: "Host shell", tone: "warning" });
+  });
+
   it("marks a failed, dirty or git-less project", () => {
     const dirty: Project = {
       ...sampleProject,

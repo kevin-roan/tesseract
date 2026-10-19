@@ -182,6 +182,8 @@ files. Keep key names, formats and merge behaviour exactly.
 | `appearance` | `"system" \| "light" \| "dark"` | app | default `"dark"` |
 | `sidebarWidth` | number (px, unzoomed) | app | default `244`, clamped to `[200, 420]`; non-numbers/NaN/bools → default |
 | `host_shell_autostart` | boolean | host shell service | `true` = start host daemon on launch |
+| `machines` | `[{ url, name?, pairingUrl?, local?, token \| tokenSealed }]` | connection | saved Tesseracts (§3.4) |
+| `masterHosts` | `{ "<sandbox url>": { url, name?, token \| tokenSealed } }` | connection, masterHost | host shell linked to each remote Tesseract (§3.4) |
 
 - Save connection = read file, delete `url,token,name,pairingUrl`, merge new values,
   write (other keys preserved). Forget = same delete without merge.
@@ -213,6 +215,40 @@ files. Keep key names, formats and merge behaviour exactly.
   2-space indent + newline, mode `0600`, atomic write.
 - Shared with the `tesseract` CLI. Full detail belongs to the sync-back spec; the Electron
   main process must use the same files and the same lock names so CLI and app don't race.
+
+### 3.4 Saved Tesseracts (machines)
+
+The app keeps several Tesseracts and talks to **one active Tesseract at a time**; the user switches from the
+"Tesseract ⌄" menu at the top of the sidebar. Each machine is its sandbox (controller API) plus its host
+(the host shell that runs the host terminals and the emulator/simulator).
+
+- `ConnectionSnapshot.machines: SavedMachine[]` =
+  `{ id, apiUrl, name, active, local, status: "online" | "offline" | "unknown", host: { url, name } | null }`.
+  `id` is the sandbox API URL. Tokens never appear in the list.
+- **This computer** (`local: true`) is the sandbox found by Docker discovery (main runs one discovery in the
+  background at startup, plus every `discover()`), a loopback URL, or a saved entry flagged `local: true`. It is
+  always listed first, even when another machine is active, with `name: null` unless the user renamed it (the
+  renderer shows "This computer"; the controller's own name is not used). Its `host` is this computer's host
+  shell pairing URL while that daemon is running or external, else `null`. `remove`/`forget` on it only clears
+  the saved token (the entry stays as `{ url, local: true }`), so it stays listed and rediscoverable.
+- **Remote machines** keep their host link in `masterHosts` keyed by the sandbox URL (`setHostLink(id, link)`
+  validates a `tesseract://host?…` link; `null` unlinks; a local machine refuses a link). `remove` drops both the
+  `machines` entry and its `masterHosts` entry.
+- `add(input, { hostLink?, activate? })` validates like `save` (`input.apiUrl` may also be a whole
+  `tesseract://pair?…` link), stores the machine (and its host link) and activates it unless `activate: false`.
+  `switchTo(id)` copies a saved entry into the flat `url`/`token`/`name`/`pairingUrl` keys; for the local
+  machine it uses the freshest discovered connection, then the saved token, then runs discovery.
+- Status: main probes `GET <apiUrl>/v1/health` of every listed machine (2 s timeout) on `load` (when the last
+  probe is older than 5 s), on `refreshStatus()` and every 20 s while any window is open. A status change, a
+  local host shell pairing change, a host link change and every mutation emit `connection:changed`.
+- **Host routing follows the active machine.** The `hostShell` service (state, unlock/lock, Android/emulator
+  calls, `linkSandbox`, the host HTTP proxy) talks to: this computer's daemon when the active machine is local
+  or nothing is active; the linked host (`masterHosts`, its token stays in main) when the active machine is
+  remote; and nothing (`status: "external"`, `pairing: null`, "No host shell is linked…") when a remote machine
+  has no host link. A remote host is reported `external` (or `failed` when it does not answer) with
+  `pinSet` from `GET /v1/host/lock`; start/stop are no-ops and PIN/token changes are refused (they are made on
+  that machine). Host terminals opened for a project's local copy and the emulator viewer stay on this computer.
+  `masterHost.state()` reports the same thing for the active machine.
 
 ---
 

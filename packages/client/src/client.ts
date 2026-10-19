@@ -4,6 +4,11 @@ import {
   AndroidStreamSettingsSchema,
   AppRunListSchema,
   AppRunSchema,
+  RuntimeEntrySchema,
+  RuntimeListSchema,
+  type RuntimeEntry,
+  type RuntimeKind,
+  type RuntimeList,
   EmulatorInfoSchema,
   HostAndroidStatusSchema,
   RunTargetListSchema,
@@ -22,6 +27,20 @@ import {
   type SandboxAndroidStatus,
   type StartAppRun,
   type StartEmulator,
+  type StopSignal,
+  type BootSimulator,
+  HostIosStatusSchema,
+  IosInstallRequestSchema,
+  IosLinkInfoSchema,
+  SandboxIosStatusSchema,
+  IosLinkRequestSchema,
+  SimDeviceSchema,
+  type HostIosStatus,
+  type IosInstallRequest,
+  type IosLinkInfo,
+  type SandboxIosStatus,
+  type IosLinkRequest,
+  type SimDevice,
   AgentContextSchema,
   AgentRunBatchResultSchema,
   AgentRunDetailSchema,
@@ -209,6 +228,22 @@ export interface TesseractClientOptions {
 export interface RequestOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
+}
+
+/**
+ * Options of the host stop routes: a string `signal` is the stop signal (`?signal=SIGKILL` force-kills), an
+ * `AbortSignal` (or `abort`) cancels the request as in `RequestOptions`.
+ */
+export interface StopRequestOptions {
+  signal?: StopSignal | AbortSignal;
+  abort?: AbortSignal;
+  timeoutMs?: number;
+}
+
+function splitStopOptions(options?: StopRequestOptions): { query: string; request: RequestOptions } {
+  const signal = typeof options?.signal === "string" ? options.signal : undefined;
+  const abort = options?.abort ?? (typeof options?.signal === "object" ? options.signal : undefined);
+  return { query: signal ? `?signal=${signal}` : "", request: { signal: abort, timeoutMs: options?.timeoutMs } };
 }
 
 export interface EventStreamHandlers extends ConnectionHandlers {
@@ -507,8 +542,10 @@ export class TesseractClient {
     return this.request("GET", restPaths.process(id), { read: json(ProcessInfoSchema), options });
   }
 
-  stopProcess(id: string, options?: RequestOptions): Promise<ProcessInfo> {
-    return this.request("DELETE", restPaths.process(id), { read: json(ProcessInfoSchema), options });
+  /** `signal: "SIGKILL"` kills the process group at once instead of SIGTERM plus grace period. */
+  stopProcess(id: string, options?: StopRequestOptions): Promise<ProcessInfo> {
+    const { query, request } = splitStopOptions(options);
+    return this.request("DELETE", `${restPaths.process(id)}${query}`, { read: json(ProcessInfoSchema), options: request });
   }
 
   processLogs(id: string, query?: LogTail, options?: RequestOptions): Promise<LogLine[]> {
@@ -668,8 +705,21 @@ export class TesseractClient {
     return this.request("GET", restPaths.appRun(id), { read: json(AppRunSchema), options });
   }
 
-  stopAppRun(id: string, options?: RequestOptions): Promise<AppRun> {
-    return this.request("DELETE", restPaths.appRun(id), { read: json(AppRunSchema), options });
+  /** `signal: "SIGKILL"` kills the run's process groups at once. */
+  stopAppRun(id: string, options?: StopRequestOptions): Promise<AppRun> {
+    const { query, request } = splitStopOptions(options);
+    return this.request("DELETE", `${restPaths.appRun(id)}${query}`, { read: json(AppRunSchema), options: request });
+  }
+
+  /** Everything stoppable in the sandbox: processes, app runs, agent runs, terminals, Chromium, the VNC display. */
+  runtime(options?: RequestOptions): Promise<RuntimeList> {
+    return this.request("GET", restPaths.runtime(), { read: json(RuntimeListSchema), options });
+  }
+
+  /** `SIGTERM` (default) stops gracefully, `SIGKILL` kills at once; 404 when the entry is gone. */
+  stopRuntime(kind: RuntimeKind, id: string, options?: StopRequestOptions): Promise<RuntimeEntry> {
+    const { query, request } = splitStopOptions(options);
+    return this.request("DELETE", `${restPaths.runtimeEntry(kind, id)}${query}`, { read: json(RuntimeEntrySchema), options: request });
   }
 
   /** 409 when the run is not ready or does not support the action, 502 when the action failed. */
@@ -691,8 +741,10 @@ export class TesseractClient {
     return this.request("POST", restPaths.androidEmulator(), { read: json(EmulatorInfoSchema), body, options });
   }
 
-  stopEmulator(options?: RequestOptions): Promise<EmulatorInfo> {
-    return this.request("DELETE", restPaths.androidEmulator(), { read: json(EmulatorInfoSchema), options });
+  /** `{ signal: "SIGKILL" }` kills the emulator at once; the default `SIGTERM` stops it gracefully. */
+  stopEmulator(options?: StopRequestOptions): Promise<EmulatorInfo> {
+    const { query, request } = splitStopOptions(options);
+    return this.request("DELETE", `${restPaths.androidEmulator()}${query}`, { read: json(EmulatorInfoSchema), options: request });
   }
 
   linkSandbox(body: LinkSandbox, options?: RequestOptions): Promise<AndroidLinkInfo> {
@@ -713,6 +765,53 @@ export class TesseractClient {
 
   unlinkSandbox(options?: RequestOptions): Promise<AndroidLinkInfo> {
     return this.request("DELETE", restPaths.androidLink(), { read: json(AndroidLinkInfoSchema), options });
+  }
+
+  /** The sandbox side of the iOS link (controller `GET /v1/ios`). */
+  getIosStatus(options?: RequestOptions): Promise<SandboxIosStatus> {
+    return this.request("GET", restPaths.ios(), { read: json(SandboxIosStatusSchema), options });
+  }
+
+  /**
+   * Controller: installs a simulator build artifact (`.tar.gz`/`.tgz`/`.zip` with an `.app`) on the linked host's booted
+   * Simulator. `202` with the `running` request; it ends in `SandboxIosStatus.requests` (the host may ask the user first).
+   * 503 when no iOS link is connected.
+   */
+  installOnSimulator(artifactId: string, options?: RequestOptions): Promise<IosLinkRequest> {
+    return this.request("POST", restPaths.iosInstalls(), { read: json(IosLinkRequestSchema), body: { artifactId }, options });
+  }
+
+  /** Host daemon (session client): Simulator devices, the sandbox link, tunnels and installs. */
+  hostIosStatus(options?: RequestOptions): Promise<HostIosStatus> {
+    return this.request("GET", restPaths.ios(), { read: json(HostIosStatusSchema), options });
+  }
+
+  /** `202` with `booting`; 404 unknown device, 409 when another device is booted or this one is not shut down, 503 not available. */
+  bootSimulator(body: BootSimulator, options?: RequestOptions): Promise<SimDevice> {
+    return this.request("POST", restPaths.iosSimulator(), { read: json(SimDeviceSchema), body, options });
+  }
+
+  /** Shuts the booted device down; `{ signal: "SIGKILL" }` kills its processes first. 409 when none is booted. */
+  shutdownSimulator(options?: StopRequestOptions): Promise<SimDevice> {
+    const { query, request } = splitStopOptions(options);
+    return this.request("DELETE", `${restPaths.iosSimulator()}${query}`, { read: json(SimDeviceSchema), options: request });
+  }
+
+  linkIosSandbox(body: LinkSandbox, options?: RequestOptions): Promise<IosLinkInfo> {
+    return this.request("POST", restPaths.iosLink(), { read: json(IosLinkInfoSchema), body, options });
+  }
+
+  unlinkIosSandbox(options?: RequestOptions): Promise<IosLinkInfo> {
+    return this.request("DELETE", restPaths.iosLink(), { read: json(IosLinkInfoSchema), options });
+  }
+
+  iosInstalls(options?: RequestOptions): Promise<IosInstallRequest[]> {
+    return this.request("GET", restPaths.iosInstalls(), { read: json(IosInstallRequestSchema.array()), options });
+  }
+
+  /** Approves (and remembers the bundle hash) or rejects a pending install; 409 when it is no longer pending. */
+  decideIosInstall(id: string, approve: boolean, options?: RequestOptions): Promise<IosInstallRequest> {
+    return this.request("POST", restPaths.iosInstall(id), { read: json(IosInstallRequestSchema), body: { approve }, options });
   }
 
   /** Headers for requests made outside this client (e.g. an <Image> source for the screenshot endpoint). */
@@ -742,6 +841,18 @@ export class TesseractClient {
   async androidScreenPageUrl(maxSize?: number, serial?: string, options?: RequestOptions): Promise<string> {
     const { ticket } = await this.createTicket(options);
     return this.httpUrl(uiPaths.android({ ticket, maxSize, serial }));
+  }
+
+  /** Host daemon `/ui/ios` with a fresh ticket (session client); `udid` picks another booted device than the default. */
+  async iosScreenPageUrl(maxSize?: number, udid?: string, options?: RequestOptions): Promise<string> {
+    const { ticket } = await this.createTicket(options);
+    return this.httpUrl(uiPaths.ios({ ticket, maxSize, udid }));
+  }
+
+  /** `WS /v1/ios/screen` with a fresh ticket, for viewers other than the page (same messages as the Android screen). */
+  async iosScreenSocketUrl(maxSize?: number, udid?: string, options?: RequestOptions): Promise<string> {
+    const { ticket } = await this.createTicket(options);
+    return this.wsUrl(wsPaths.iosScreen({ maxSize, udid }), ticket);
   }
 
   async artifactDownloadUrl(id: string, options?: RequestOptions): Promise<string> {

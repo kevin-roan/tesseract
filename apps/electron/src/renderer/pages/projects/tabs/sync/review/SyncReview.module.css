@@ -87,6 +87,8 @@
   border-radius: var(--to-radius-sm);
   cursor: default;
   transition: var(--to-state-transition);
+  content-visibility: auto;
+  contain-intrinsic-size: auto 26px;
 }
 
 .file:hover {

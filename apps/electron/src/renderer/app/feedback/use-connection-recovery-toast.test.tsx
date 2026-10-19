@@ -15,7 +15,7 @@ describe("useConnectionRecoveryToast", () => {
     act(() => store.setState({ status: "offline" }));
     renderHook(() => useConnectionRecoveryToast());
     expect(messages()).toEqual([]);
-    act(() => store.setState({ status: "online", config: null, health: { ok: true, version: "1", protocolVersion: 1, sandboxId: "tesseract-sandbox" } }));
+    act(() => store.setState({ status: "online", config: null, health: { ok: true, version: "1", protocolVersion: 1, sandboxId: "tesseract-sandbox", runtime: "sandbox" } }));
     expect(messages()).toEqual(["Connected to tesseract-sandbox"]);
     act(() => store.setState({ status: "online" }));
     expect(messages()).toHaveLength(1);

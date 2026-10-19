@@ -160,9 +160,10 @@ describe("InboxScreen", () => {
 
     expect(screen.getByText("Needs you")).toBeOnTheScreen();
     expect(screen.getByText("Earlier")).toBeOnTheScreen();
-    await fireEvent.press(screen.getByText(sampleInbox.items[0].title));
+    const row = screen.getByRole("button", { name: new RegExp(sampleInbox.items[0].title) });
+    await fireEvent.press(row);
     expect(state.open).toHaveBeenCalledWith(sampleInbox.items[0]);
-    await fireEvent(screen.getByText(sampleInbox.items[0].title), "longPress");
+    await fireEvent(row, "longPress");
     expect(state.markOne).toHaveBeenCalledWith(sampleInbox.items[0]);
     await fireEvent.press(screen.getByLabelText("Mark all read"));
     expect(state.headerActions[0].onPress).toHaveBeenCalled();

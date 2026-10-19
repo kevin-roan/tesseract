@@ -45,7 +45,7 @@ describe("<LogView />", () => {
 
     await fireEvent.press(screen.getByLabelText("Copy logs"));
     expect(setStringAsync).toHaveBeenCalledWith("✔ compiled\nwarning: wine not initialised\nprocess exited with code 0");
-    expect(screen.getByLabelText("Logs copied")).toBeOnTheScreen();
+    expect(await screen.findByLabelText("Logs copied")).toBeOnTheScreen();
   });
 
   it("hides the copy button while there is no output", async () => {

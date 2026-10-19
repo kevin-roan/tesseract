@@ -1,3 +1,4 @@
+import { restPaths } from "@tesseract/protocol";
 import type { HostShellState } from "../../shared/contracts/hostShell";
 
 export const HOST_SHELL = {
@@ -69,3 +70,12 @@ export const VIEWER = {
   earlyExitMs: 1_500,
   errorPrefix: /^ERROR:\s*/,
 } as const;
+
+export const HOST_PROXY = {
+  paths: [restPaths.terminals(), restPaths.authTicket(), restPaths.android(), restPaths.ios()],
+  requestHeaders: ["accept", "content-type"],
+  responseHeaders: ["content-type"],
+  timeoutMs: 60_000,
+  maxTimeoutMs: 600_000,
+} as const;
+

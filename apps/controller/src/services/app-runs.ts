@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import {
   createId,
+  DEFAULT_STOP_SIGNAL,
   isFinalAppRunState,
   LIMITS,
   RUN_TARGET_ACTIONS,
@@ -14,6 +15,7 @@ import {
   type RunTarget,
   type RunTargetInfo,
   type StartAppRun,
+  type StopSignal,
 } from "@tesseract/protocol";
 import { badRequest, conflict, errorMessage, HttpError, notFound, unavailable } from "../core/errors";
 import { childEnv, resolveExecutable, run } from "../core/exec";
@@ -25,6 +27,7 @@ import type { EventHub } from "../core/events";
 import type { Logger } from "../core/logger";
 import type { Config } from "../config";
 import type { AndroidLinkService } from "./android-link";
+import type { IosLinkService } from "./ios-link";
 import { isLocalHost } from "./browser";
 import type { DisplayService } from "./display";
 import type { IdentityService } from "./identity";
@@ -37,6 +40,7 @@ export const RUN_TARGET_LABELS: Record<RunTarget, string> = {
   "expo-device": "Expo on the phone",
   "expo-web": "Web",
   "expo-android": "Android emulator",
+  "expo-ios": "iOS Simulator",
   "rn-android": "Android emulator",
   "flutter-web": "Web",
   "flutter-linux": "Linux desktop",
@@ -47,10 +51,11 @@ export const RUN_TARGET_LABELS: Record<RunTarget, string> = {
 
 const FLUTTER_TARGETS = new Set<RunTarget>(["flutter-web", "flutter-linux", "flutter-android"]);
 const ANDROID_TARGETS = new Set<RunTarget>(["expo-android", "rn-android", "flutter-android"]);
+const IOS_TARGETS = new Set<RunTarget>(["expo-ios"]);
 const DISPLAY_TARGETS = new Set<RunTarget>(["flutter-linux", "electron-dev"]);
 const PORT_READY_TARGETS = new Set<RunTarget>(["web-dev", "expo-device", "expo-web"]);
 const BUILD_READY_TARGETS = new Set<RunTarget>(["expo-android", "rn-android"]);
-const METRO_TARGETS = new Set<RunTarget>(["expo-device", "expo-android", "rn-android"]);
+const METRO_TARGETS = new Set<RunTarget>(["expo-device", "expo-android", "expo-ios", "rn-android"]);
 
 const PORT_SEARCH_SPAN = 100;
 const PORT_PROBE_TIMEOUT_MS = 500;
@@ -69,6 +74,9 @@ export type AppRunOptions = {
   metroReloadTimeoutMs?: number;
   flutterRequestTimeoutMs?: number;
 };
+
+/** What `*-ios` runs need from the iOS link (`IosLinkService`). */
+export type IosRunLink = Pick<IosLinkService, "unavailableReason" | "setRuns" | "tunnel" | "openUrl" | "bootedUdid">;
 
 type Command = string[];
 
@@ -163,6 +171,18 @@ export function flutterEventText(message: DaemonMessage): string | null {
   }
 }
 
+/** The Expo SDK (`54.0.0`) of the `expo` package the project resolves, which picks the Expo Go build on the Simulator. */
+export function expoSdkVersion(cwd: string): string | null {
+  try {
+    const file = readRegularFile(Bun.resolveSync("expo/package.json", cwd), { maxBytes: 1024 * 1024, followSymlinks: true });
+    const version = file ? (JSON.parse(file.content) as { version?: unknown }).version : undefined;
+    const major = typeof version === "string" ? /^(\d{1,3})\./.exec(version)?.[1] : undefined;
+    return major ? `${major}.0.0` : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Trailers package managers print after a failed script; the error line is the one before them. */
 const PACKAGE_MANAGER_TRAILERS = [
   /^error: script ".*" exited with code \d+/,
@@ -196,6 +216,7 @@ export class AppRunService {
     private readonly projects: ProjectService,
     private readonly display: DisplayService,
     private readonly android: AndroidLinkService,
+    private readonly ios: IosRunLink,
     private readonly identity: IdentityService,
     private readonly logger: Logger,
     options: AppRunOptions = {},
@@ -323,15 +344,19 @@ export class AppRunService {
     return this.snapshot(live);
   }
 
-  async stop(id: string): Promise<AppRun> {
+  /** `SIGKILL` kills every process group of the run at once, also those of a run that already ended but still exits. */
+  async stop(id: string, signal: StopSignal = DEFAULT_STOP_SIGNAL): Promise<AppRun> {
     const live = this.require(id);
-    if (isFinalAppRunState(live.run.state)) return this.snapshot(live);
+    if (isFinalAppRunState(live.run.state)) {
+      if (signal === "SIGKILL") await this.stopProcesses(live, signal);
+      return this.snapshot(live);
+    }
     live.stopRequested = true;
     if (live.run.processIds.length === 0) {
       this.endUnspawned(live);
       return this.snapshot(live);
     }
-    await this.stopProcesses(live);
+    await this.stopProcesses(live, signal);
     await live.ended;
     return this.snapshot(live);
   }
@@ -379,6 +404,15 @@ export class AppRunService {
 
   private publish(live: LiveRun): void {
     this.hub.publish({ type: "app.updated", run: this.snapshot(live) });
+    if (IOS_TARGETS.has(live.run.target)) this.announceIosRuns();
+  }
+
+  /** Tells the iOS link every live `*-ios` run with its Metro port (the host listens on the same port on the Mac). */
+  private announceIosRuns(): void {
+    const runs = [...this.runs.values()]
+      .filter((live) => IOS_TARGETS.has(live.run.target) && live.run.port !== null && !isFinalAppRunState(live.run.state))
+      .map((live) => ({ port: live.run.port!, scheme: null }));
+    this.ios.setRuns(runs);
   }
 
   private async unavailableReason(target: RunTarget, facts: ProjectFacts): Promise<string | null> {
@@ -387,6 +421,10 @@ export class AppRunService {
     }
     if (ANDROID_TARGETS.has(target)) {
       const reason = this.android.unavailableReason();
+      if (reason) return reason;
+    }
+    if (IOS_TARGETS.has(target)) {
+      const reason = this.ios.unavailableReason();
       if (reason) return reason;
     }
     if (DISPLAY_TARGETS.has(target) && !(await this.display.status()).available) return `Display ${this.config.display} is not available`;
@@ -455,6 +493,12 @@ export class AppRunService {
         return single(packageExecCommand(pm, ["expo", "start", "--web", "--port", port]), { CI: "1", EXPO_NO_TELEMETRY: "1" });
       case "expo-android":
         return single(packageExecCommand(pm, ["expo", "run:android", "--port", port, "--device", serial]), { CI: "1", EXPO_NO_TELEMETRY: "1" });
+      case "expo-ios":
+        return single(packageExecCommand(pm, ["expo", "start", "--go", "--port", port]), {
+          CI: "1",
+          EXPO_NO_TELEMETRY: "1",
+          REACT_NATIVE_PACKAGER_HOSTNAME: "127.0.0.1",
+        });
       case "rn-android":
         return [
           { name: "rn-android (Metro)", command: packageExecCommand(pm, ["react-native", "start", "--port", port]), env: { ...androidEnv, CI: "1" }, display: false, port: run.port },
@@ -537,11 +581,34 @@ export class AppRunService {
       let ready = false;
       if (PORT_READY_TARGETS.has(target) && port !== null) ready = await this.portOpen(port);
       else if (BUILD_READY_TARGETS.has(target) && port !== null) ready = live.buildSucceeded && (await this.portOpen(port));
+      else if (IOS_TARGETS.has(target) && port !== null) ready = await this.openOnSimulator(live, port);
       else if (target === "electron-dev") ready = (await this.windows(live)).length > 0;
       if (ready) await this.markReady(live);
     } finally {
       live.checking = false;
     }
+  }
+
+  /**
+   * Once Metro listens and the host reported its Mac listener, asks the host to open `exp://127.0.0.1:<port>` in Expo Go.
+   * A taken Mac port or a refused / failed open fails the run.
+   */
+  private async openOnSimulator(live: LiveRun, port: number): Promise<boolean> {
+    if (live.failure || !(await this.portOpen(port))) return false;
+    const tunnel = this.ios.tunnel(port);
+    if (tunnel?.error) return this.failStarting(live, tunnel.error);
+    if (!tunnel?.listening) return false;
+    const result = await this.ios.openUrl(`exp://127.0.0.1:${port}`, expoSdkVersion(live.cwd) ?? undefined);
+    if (result.state === "failed") return this.failStarting(live, `Could not open the app on the Simulator: ${result.error ?? "unknown error"}`);
+    return live.run.state === "starting";
+  }
+
+  private failStarting(live: LiveRun, failure: string): false {
+    if (live.run.state === "starting" && !live.failure) {
+      live.failure = failure;
+      void this.stopProcesses(live);
+    }
+    return false;
   }
 
   private async portOpen(port: number): Promise<boolean> {
@@ -583,6 +650,8 @@ export class AppRunService {
         return { kind: "display" };
       case "android":
         return { kind: "android", serial: this.android.runSerial };
+      case "ios":
+        return { kind: "ios", udid: this.ios.bootedUdid };
       case "none":
         return { kind: "none" };
     }
@@ -656,10 +725,10 @@ export class AppRunService {
     void this.stopProcesses(live);
   }
 
-  private async stopProcesses(live: LiveRun): Promise<void> {
+  private async stopProcesses(live: LiveRun, signal: StopSignal = DEFAULT_STOP_SIGNAL): Promise<void> {
     await Promise.all(
       live.run.processIds.map((id) =>
-        this.processes.stop(id).catch((error) => this.logger.warn("app run process stop failed", { id, error })),
+        this.processes.stop(id, signal).catch((error) => this.logger.warn("app run process stop failed", { id, error })),
       ),
     );
   }

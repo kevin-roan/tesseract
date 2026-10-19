@@ -8,6 +8,10 @@ export const PAIRING_ACTION = "pair" as const;
 export const HOST_PAIRING_ACTION = "host" as const;
 export const HOST_SHELL_PORT = 7701;
 export const HOST_SHELL_SERVICE = "host-shell" as const;
+/** Port of the host workspace controller (`tesseract-controller host workspace serve`), which runs `tesseract --unsafe-repo` projects on the host. */
+export const HOST_WORKSPACE_PORT = 7702;
+/** Where a controller runs its projects: in the sandbox container, or directly on the host (no sandbox, no display, no emulator). */
+export const PROJECT_RUNTIMES = ["sandbox", "host"] as const;
 /** Host shell PIN: 6 to 12 digits, set on the host with `tesseract-controller host pin`. */
 export const HOST_PIN_PATTERN = /^\d{6,12}$/;
 export const TICKET_PARAM = "ticket" as const;
@@ -58,6 +62,9 @@ export const ID_PREFIXES = {
   sync: "sync_",
   appRun: "app_",
   adbStream: "adb_",
+  iosStream: "ios_",
+  iosInstall: "ins_",
+  iosRequest: "ior_",
 } as const;
 export type IdKind = keyof typeof ID_PREFIXES;
 
@@ -126,6 +133,7 @@ export const RUN_TARGETS = [
   "expo-device",
   "expo-web",
   "expo-android",
+  "expo-ios",
   "rn-android",
   "flutter-web",
   "flutter-linux",
@@ -137,7 +145,7 @@ type RunTargetName = (typeof RUN_TARGETS)[number];
 export const APP_RUN_STATES = ["starting", "ready", "failed", "stopped", "exited"] as const;
 export const FINAL_APP_RUN_STATES = ["failed", "stopped", "exited"] as const;
 export const APP_RUN_ACTIONS = ["reload", "restart", "focus"] as const;
-export const APP_VIEWER_KINDS = ["url", "deeplink", "display", "android", "none"] as const;
+export const APP_VIEWER_KINDS = ["url", "deeplink", "display", "android", "ios", "none"] as const;
 
 /** First port tried when `StartAppRun.port` is omitted; targets without an entry take no port. */
 export const RUN_TARGET_DEFAULT_PORTS = {
@@ -145,6 +153,7 @@ export const RUN_TARGET_DEFAULT_PORTS = {
   "expo-device": 8081,
   "expo-web": 8081,
   "expo-android": 8081,
+  "expo-ios": 8081,
   "rn-android": 8081,
   "flutter-web": 8090,
 } as const satisfies Partial<Record<RunTargetName, number>>;
@@ -154,6 +163,7 @@ export const RUN_TARGET_VIEWERS = {
   "expo-device": "deeplink",
   "expo-web": "url",
   "expo-android": "android",
+  "expo-ios": "ios",
   "rn-android": "android",
   "flutter-web": "url",
   "flutter-linux": "display",
@@ -167,6 +177,7 @@ export const RUN_TARGET_ACTIONS = {
   "expo-device": ["reload", "restart"],
   "expo-web": [],
   "expo-android": ["reload", "restart"],
+  "expo-ios": ["reload", "restart"],
   "rn-android": ["reload", "restart"],
   "flutter-web": ["reload", "restart"],
   "flutter-linux": ["reload", "restart", "focus"],
@@ -216,6 +227,76 @@ export const DEFAULT_ANDROID_STREAM = {
   jpegQuality: 5,
   device: null,
 } as const;
+
+/** `?signal=` of stop routes: `SIGTERM` (default) stops gracefully, `SIGKILL` kills the process group at once. */
+export const STOP_SIGNALS = ["SIGTERM", "SIGKILL"] as const;
+export type StopSignal = (typeof STOP_SIGNALS)[number];
+export const DEFAULT_STOP_SIGNAL: StopSignal = "SIGTERM";
+
+/** `GET /v1/ios`: the host's Simulator devices (`xcrun simctl list devices`); `failed` = a boot the daemon started did not finish. */
+export const SIM_STATES = ["unavailable", "shutdown", "booting", "booted", "shutting_down", "failed"] as const;
+/** Why `GET /v1/ios` is `available: false`: off (`TESSERACT_IOS`), not a Mac, no Xcode (`xcrun simctl`), no idb / idb_companion. */
+export const IOS_UNAVAILABLE_CODES = ["disabled", "not_macos", "no_xcode", "no_idb"] as const;
+/** The Simulator always shares the Mac's network stack; there is no isolated mode. */
+export const IOS_ISOLATION_MODES = ["none"] as const;
+/** CoreSimulator device UDIDs. */
+export const SIM_UDID_PATTERN = /^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$/;
+/** Keys `/v1/ios/screen` acts on (`power` = the lock button); the other `ANDROID_KEYS` are ignored on iOS. */
+export const IOS_KEYS = ["home", "power", "enter", "del", "tab", "escape", "up", "down", "left", "right"] as const;
+/** Close code of an iOS link replaced by a newer one. */
+export const IOS_LINK_REPLACED_CLOSE_CODE = 4000;
+/** Close code the sandbox uses for an iOS link stream whose `port` is not the Metro port of a running `*-ios` app run. */
+export const IOS_STREAM_REFUSED_CLOSE_CODE = 4003;
+/** A sandbox-supplied `.app` waits for the user on the phone (`POST /v1/ios/installs/:id`) unless its sha256 was approved before. */
+export const IOS_INSTALL_STATES = ["pending", "approved", "rejected", "expired", "installing", "installed", "failed"] as const;
+/** `progress` stages of an iOS link request. */
+/** A sandbox request over the iOS link (`SandboxIosStatus.requests`): `running` until the host's `result`. */
+export const IOS_LINK_REQUEST_STATES = ["running", "succeeded", "failed"] as const;
+export const IOS_LINK_REQUEST_TYPES = ["openUrl", "install"] as const;
+export const IOS_LINK_STAGES = ["awaiting_confirmation", "downloading", "installing", "installing_expo_go", "opening"] as const;
+/** Expo Go's bundle id; the host installs Expo's published simulator build when it is missing. */
+export const EXPO_GO_BUNDLE_ID = "host.exp.Exponent";
+/** Expo's version index; `sdkVersions[<sdk>].iosClientUrl` (else `iosUrl`) is the Expo Go simulator build. */
+export const EXPO_VERSIONS_URL = "https://api.expo.dev/v2/versions/latest";
+/** URL schemes of an app run (`openUrl`): lower case, not a system scheme (`IOS_RESERVED_URL_SCHEMES`). */
+export const IOS_APP_SCHEME_PATTERN = /^[a-z][a-z0-9+.-]{1,63}$/;
+/** Schemes the sandbox may never open in the Simulator, even when it announces them as an app scheme. */
+export const IOS_RESERVED_URL_SCHEMES = [
+  "http",
+  "https",
+  "file",
+  "ftp",
+  "data",
+  "javascript",
+  "about",
+  "blob",
+  "exp",
+  "exps",
+  "tel",
+  "telprompt",
+  "sms",
+  "mailto",
+  "facetime",
+  "facetime-audio",
+  "maps",
+  "itms",
+  "itms-apps",
+  "itms-services",
+  "itms-beta",
+  "prefs",
+  "app-prefs",
+  "app-settings",
+  "shortcuts",
+  "calshow",
+  "x-apple-health",
+  "x-apple-reminderkit",
+  "x-web-search",
+  "message",
+  "music",
+  "photos-redirect",
+  "wallet",
+  "shoebox",
+] as const;
 
 export const CLAUDE_AUTH_METHODS = ["oauth_token", "credentials", "api_key", "none"] as const;
 
@@ -342,4 +423,22 @@ export const LIMITS = {
   /** ffmpeg `-q:v`: 2 is the best JPEG quality, 31 the worst. */
   minAndroidJpegQuality: 2,
   maxAndroidJpegQuality: 31,
+  /** `simctl bootstatus` waits at most this long before the device is `failed`. */
+  iosBootTimeoutMs: 5 * 60_000,
+  /** The sandbox pings the host over the iOS link this often (same as Android). */
+  iosLinkPingIntervalMs: 20_000,
+  iosLinkReconnectMinMs: 1_000,
+  iosLinkReconnectMaxMs: 30_000,
+  /** Metro ports the sandbox may announce at once (one per running `*-ios` app run). */
+  maxIosRuns: 8,
+  /** Reverse-tunnel connections open at once over one iOS link. */
+  maxIosStreams: 64,
+  maxIosUrlLength: 2_048,
+  maxIosRequestIdLength: 64,
+  /** An install waiting for confirmation expires after this long. */
+  iosInstallConfirmTimeoutMs: 10 * 60_000,
+  /** Largest artifact (`.tar.gz` / `.zip` with an `.app`) the host downloads for an install. */
+  maxIosInstallBytes: 2 * 1024 * 1024 * 1024,
+  /** Bundle hashes the host remembers as approved (oldest dropped first). */
+  maxIosApprovedBundles: 100,
 } as const;

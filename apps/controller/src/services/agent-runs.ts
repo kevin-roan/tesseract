@@ -1,6 +1,7 @@
 import {
   AGENT_SESSION_ID_PATTERN,
   createId,
+  DEFAULT_STOP_SIGNAL,
   LIMITS,
   type AgentRun,
   type AgentRunBatchResult,
@@ -9,12 +10,13 @@ import {
   type ArchiveAgentRuns,
   type DeleteAgentRuns,
   type StartAgentRun,
+  type StopSignal,
   type Upload,
 } from "@tesseract/protocol";
 import { badRequest, notFound, unavailable } from "../core/errors";
 import { childEnv, resolveExecutable } from "../core/exec";
 import { LineSplitter } from "../core/line-splitter";
-import { locateProject } from "../core/paths";
+import { locateConfiguredProject } from "../core/paths";
 import { describeLeftovers, reapGroup, terminateGroup } from "../core/process-group";
 import { RingBuffer } from "../core/ring-buffer";
 import { nowIso } from "../core/time";
@@ -103,7 +105,7 @@ export class AgentRunService {
     let cwd = this.config.workspace;
     let projectId: string | null = null;
     if (input.projectId !== undefined) {
-      const location = locateProject(this.config.projectsDir, input.projectId);
+      const location = locateConfiguredProject(this.config, input.projectId);
       if (!location.exists) throw notFound(`Project ${location.id} not found`);
       cwd = location.path;
       projectId = location.id;
@@ -270,13 +272,17 @@ export class AgentRunService {
     return { run, unsubscribe: () => entry.listeners.delete(onEvent) };
   }
 
-  async cancel(id: string): Promise<AgentRun> {
+  /** SIGTERM to the run's process group (SIGKILL after the grace period); `SIGKILL` kills it at once, also mid-cancel. */
+  async cancel(id: string, signal: StopSignal = DEFAULT_STOP_SIGNAL): Promise<AgentRun> {
     const entry = this.live.get(id);
     if (!entry) {
       const { events: _events, ...run } = this.get(id);
       return run;
     }
-    if (!entry.cancelRequested) {
+    if (signal === "SIGKILL") {
+      entry.cancelRequested = true;
+      await terminateGroup(entry.proc.pid, entry.proc.exited, 0, "SIGKILL");
+    } else if (!entry.cancelRequested) {
       entry.cancelRequested = true;
       await terminateGroup(entry.proc.pid, entry.proc.exited, this.stopGraceMs);
     }
@@ -307,6 +313,11 @@ export class AgentRunService {
 
   runningCount(): number {
     return this.live.size;
+  }
+
+  /** Pid (and process group) of a live run's claude process. */
+  pidOf(id: string): number | null {
+    return this.live.get(id)?.proc.pid ?? null;
   }
 
   async shutdown(): Promise<void> {

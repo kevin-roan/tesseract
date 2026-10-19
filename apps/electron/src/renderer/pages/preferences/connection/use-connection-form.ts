@@ -10,11 +10,11 @@ export function useConnectionForm() {
   const toast = usePreferencesToast();
   const [form, setForm] = useState<ConnectionForm>(() => formFromConfig(state.config));
   const [saving, setSaving] = useState(false);
-  const filled = useRef(state.config !== null);
+  const filled = useRef<string | null>(state.config?.apiUrl ?? null);
 
   useEffect(() => {
-    if (filled.current || !state.config) return;
-    filled.current = true;
+    if (!state.config || filled.current === state.config.apiUrl) return;
+    filled.current = state.config.apiUrl;
     setForm(formFromConfig(state.config));
   }, [state.config]);
 
@@ -37,7 +37,7 @@ export function useConnectionForm() {
     setSaving(true);
     try {
       await actions.save(input);
-      filled.current = true;
+      filled.current = input.apiUrl;
       toast(CONNECTION_FORM_TOASTS.saved);
     } catch (error) {
       toast(describeError(error), true);
@@ -52,14 +52,14 @@ export function useConnectionForm() {
       toast(CONNECTION_FORM_TOASTS.discoveryFailed(result.error), true);
       return;
     }
-    filled.current = true;
+    filled.current = result.config.apiUrl;
     setForm(formFromConfig(result.config));
     toast(result.message, true);
   }, [actions, toast]);
 
   const forget = useCallback(async () => {
     if (discovering) return;
-    filled.current = true;
+    filled.current = null;
     setForm(EMPTY_FORM);
     try {
       await actions.forget();

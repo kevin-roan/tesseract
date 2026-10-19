@@ -128,10 +128,11 @@ from an automated agent MUST go through `flock /tmp/tesseract-bun-install.lock b
 | Gradle read-only cache | with `TESSERACT_HOST_GRADLE_CACHE`: the host's Gradle `caches/` at `/opt/gradle-ro-cache` (read-only, `GRADLE_RO_DEP_CACHE`); the writable Gradle home stays `/home/dev/.gradle` |
 | Java | `/opt/java/openjdk` (Temurin 17, `JAVA_HOME`) |
 | Controller binary | `/usr/local/bin/tesseract-controller` (built with `bun build --compile`) |
-| Browser pages | `/ui/terminal`, `/ui/vnc` (controller), `/ui/android` (host shell daemon); their bundled assets are served at root paths (`/chunk-<hash>.js`, `.css`) |
+| Browser pages | `/ui/terminal`, `/ui/vnc` (controller), `/ui/android` and `/ui/ios` (host shell daemon, one shared page script `device.ts`); their bundled assets are served at root paths (`/chunk-<hash>.js`, `.css`) |
 | Mobile app id | iOS bundle id and Android package `com.kevinroan.tesseract` (development build `com.kevinroan.tesseract.dev`); iOS app group `group.com.kevinroan.tesseract` (shared with the widget/Live Activity and share extensions); URL scheme `tesseract`; EAS owner and project id set by `eas init` (`owner`, `extra.eas.projectId` in `app.json`) |
 | Mobile deep link | `tesseract://pair?url=<encoded base url>&token=<token>&name=<label>`; host shell: `tesseract://host?url=…&token=<host token>&name=<host name>` |
 | Host shell daemon | `tesseract-controller host serve` on the host, `<host Tailscale IPv4>:7701` (macOS: `127.0.0.1:7701` behind `tailscale serve`, because the macOS app's serve proxy cannot reach the Mac's own tailnet IP) (`HOST_SHELL_PORT`, `TESSERACT_HOST_SHELL_PORT`); only loopback or `100.64.0.0/10` binds |
+| Host workspace controller | `tesseract-controller host workspace serve` on the host (no sandbox), `<host Tailscale IPv4>:7702` (`HOST_WORKSPACE_PORT`, `TESSERACT_HOST_WORKSPACE_PORT`), same bind rules as the host shell daemon; workspace `$XDG_DATA_HOME/tesseract/host-workspace` (default `~/.local/share/…`, `TESSERACT_HOST_WORKSPACE`) whose `projects/<id>` are symlinks to host repositories (`tesseract --unsafe-repo`, §7.1); started detached by the CLI, log `<desktop user data>/logs/host-workspace.log`; paired as a normal `tesseract://pair` connection named `<host> (host)` |
 | Headless server install | `~/.tesseract/{bin,sandbox}` (`./setup-server.sh` on the server, or `infra/scripts/deploy-mac` from the dev box); host shell service LaunchAgent `dev.tesseract.host-shell` (logs `~/Library/Logs/Tesseract/`) or systemd user unit `tesseract-host-shell.service` (§7.2) |
 | ADB tunnel | `127.0.0.1:15555` in the sandbox (`DEFAULT_ADB_TUNNEL_PORT`, `TESSERACT_ADB_TUNNEL_PORT`), adb serial `127.0.0.1:15555`; open only while the host emulator is linked and `running` ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2.3). Shared host emulators (`TESSERACT_ANDROID_SHARE_EMULATORS`): `emulator-<n>` → `127.0.0.1:<15555 + 1 + (n − 5554)/2>` (`sharedEmulatorTunnelPort`), e.g. `emulator-5556` → `127.0.0.1:15557` |
 | Host Android emulator | console `5554`, adbd `5555` (`DEFAULT_EMULATOR_PORT`, `TESSERACT_EMULATOR_PORT`); adb serial `127.0.0.1:<bridge port>` in `netns` isolation (`TESSERACT_EMULATOR_ADB_PORT`), `emulator-<port>` for a plain (`none` or adopted non-isolated) emulator |
@@ -139,7 +140,7 @@ from an automated agent MUST go through `flock /tmp/tesseract-bun-install.lock b
 | Desktop app id / deep link | `dev.tesseract.Desktop`; `tesseract://<page>[?…]`, `tesseract://preferences/<section>`, `tesseract://onboarding/<step>`, `tesseract://pair`, … (§12.3) |
 | Server containers | `tesseract-ct-<name>` (sysbox-runc, image `tesseract/server:1`, network `tesseract-ct-<name>`, volume `tesseract-ct-<name>-docker`), connector `tesseract-ct-<name>-tunnel`; route state `$TESSERACT_STATE_DIR/containers.json`; tailnet tag `tag:tesseract-server` ([server-containers.md](server-containers.md), ADR 0011) |
 | macOS container VM | Colima profile `tesseract`, Docker context `colima-tesseract`; config `<colima home>/tesseract/colima.yaml` (colima home = `$COLIMA_HOME`, else `~/.colima`); defaults 6 CPUs, 5 GiB memory, 120 GiB disk, `vmType: vz`, `mountType: virtiofs`, arch `aarch64` (Intel `x86_64`), Rosetta + binfmt on arm64; mounts `~` (writable) and the sandbox context read-only when outside `~`; runtime `sysbox-runc` (`/usr/bin/sysbox-runc`) declared in `colima.yaml`, Sysbox (`sysbox-ce`, pinned, sha256-checked) installed by its `provision` script (waits for guest DNS, retries apt and the download), which carries the `tesseract-managed` marker that identifies the file (Colima strips comments); `sshConfig: false`. Sysbox counts as ready only when `docker info` lists `sysbox-runc` and `colima ssh -p tesseract -- systemctl is-active sysbox-mgr sysbox-fs` reports both active; otherwise setup re-runs the provision script (`colima ssh -p tesseract -- sudo sh -s`). A `Broken` VM is shown as stopped and force-stopped (`colima stop -f tesseract`) before start. Containers action `setup-vm` (`ContainersActionKey`) when Sysbox is missing; new server containers default to `--memory 1024`. macOS only (ADR 0012) |
-| Host shell state | `$XDG_CONFIG_HOME/tesseract/host-shell/state.json` (default `~/.config/…`, `TESSERACT_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters, `androidLink` (sandbox URL + token), `androidStream` (the `AndroidStreamSettings` fields changed from the defaults; invalid fields fall back to them) |
+| Host shell state | `$XDG_CONFIG_HOME/tesseract/host-shell/state.json` (default `~/.config/…`, `TESSERACT_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters, `androidLink` (sandbox URL + token), `androidStream` (the `AndroidStreamSettings` fields changed from the defaults; invalid fields fall back to them), `iosLink` (sandbox URL + token of the iOS link), `iosApprovedBundles` (sha256 of sandbox simulator builds the user approved, at most 100) |
 
 `projectId` = directory name under `/workspace/projects`, must match
 `^[a-z0-9][a-z0-9._-]{0,63}$` (case-insensitive input is lower-cased). Paths are
@@ -164,6 +165,7 @@ controller are upgraded together (renamed deep-link scheme and in-page message n
 
 | Var | Default | Meaning |
 |---|---|---|
+| `TESSERACT_RUNTIME` | `sandbox` | `sandbox` \| `host`. `host` (the host workspace controller, §3): `projects/<id>` may be symlinks to any directory, `POST /v1/projects` and `/v1/projects/:id/sync` are 400, `DELETE /v1/projects/:id` moves only the link (no sync-back checks); reported as `runtime` on `Health`, `SandboxStatus` and every `Project` |
 | `TESSERACT_HOST` | `0.0.0.0` | bind address |
 | `TESSERACT_PORT` | `7700` | HTTP/WS port (`0` = ephemeral, tests) |
 | `TESSERACT_WORKSPACE` | `/workspace` | workspace root |
@@ -281,6 +283,10 @@ knob: `TESSERACT_WAIT_X_TIMEOUT` (s, default 60).
 | `TESSERACT_EMULATOR_ISOLATION` | Linux: `netns`; macOS: `none` (no user/network namespaces) | `netns`: emulator in its own user + network namespace, guest egress only to public addresses through a filtering proxy, adb via a host bridge (serial `127.0.0.1:<port>`); needs `unshare`, `ip` and unprivileged user namespaces, else `GET /v1/android` is `available: false`. `none`: emulator on the host network (the guest, and the linked sandbox, can reach host loopback, LAN, tailnet) |
 | `TESSERACT_EMULATOR_ALLOW_NETS` | — | comma-separated CIDRs the isolated guest may still reach (e.g. a LAN backend) |
 | `TESSERACT_EMULATOR_ADB_PORT` | free port, kept across daemon restarts | host loopback port of the adb bridge to the isolated emulator |
+| `TESSERACT_IOS` | `off` | `on`/`1`: iOS Simulator support (macOS only; [ios-simulator-macos.md](ios-simulator-macos.md)). Off: `GET /v1/ios` is `available: false`, `reasonCode: "disabled"`, and the iOS link is not dialled |
+| `TESSERACT_XCRUN` | `/usr/bin/xcrun` | `xcrun` used for `simctl` and `xcodebuild -version` |
+| `TESSERACT_IDB` | `idb` on `PATH` + Homebrew + `~/Library/Python/*/bin`, `~/.local/bin` | idb CLI (`pip3 install fb-idb`) |
+| `TESSERACT_IDB_COMPANION` | `idb_companion` on the same path | `brew install facebook/fb/idb-companion` |
 | `TESSERACT_ANDROID_SHARE_EMULATORS` | `off` | `on`: also tunnel every other online `emulator-<port>` the host adb lists (Android Studio, `emulator -avd …`) to the linked sandbox. They run on the host network, so **the sandbox can reach host loopback (incl. the host adb server), LAN and tailnet through them** |
 
 Host terminals get the daemon's environment without `TESSERACT_HOST_SHELL_*`, plus
@@ -295,6 +301,13 @@ It runs `bun apps/controller/src/index.ts` from its checkout, or `TESSERACT_CONT
 `resources/bin/tesseract-controller` in a packaged build, `bun apps/controller/src/index.ts` in a checkout,
 then `apps/controller/dist/tesseract-controller`. It fills `TESSERACT_ANDROID_SDK_ROOT` (and `TESSERACT_ADB`) from the
 SDK its setup wizard installed when they are not already set.
+
+Pair a Device also has a **Master host** tab: the host shell of the machine that runs the *active* sandbox
+when that sandbox is remote (e.g. a Mac reached over the tailnet; not shown as linkable when the connection is
+`docker`-discovered or its URL is loopback, where "This Computer" already is that host). Its token is not
+discoverable, so the user pastes that machine's `tesseract://host?…` link (`tesseract server pair` there) once;
+the app validates it, stores it in `config.json` `masterHosts` keyed by the sandbox URL (§12.4) and shows it
+online when `GET <url>/v1/health` answers as the host shell (IPC service `masterHost`: `state`, `link`, `unlink`).
 
 A project's detail page has **Host shell** and **Git** for the project's host copy (the
 `hostPath` of its sync-back link; both are disabled without one). Git opens a small popover with a
@@ -360,7 +373,7 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 
 | Method | Path | Body / query | Response |
 |---|---|---|---|
-| GET | `/v1/health` | — | `Health { ok, version, protocolVersion, sandboxId }` |
+| GET | `/v1/health` | — | `Health { ok, version, protocolVersion, sandboxId, runtime }` |
 | POST | `/v1/auth/ticket` | — | `200 Ticket { ticket, expiresAt }` |
 | GET | `/v1/status` | — | `SandboxStatus` |
 | GET | `/v1/identity` | — | `Identity`: Tailscale viewer, owner, node and tailnet (§5.4); never fails because Tailscale is unreachable, it reports `available: false` and nulls |
@@ -398,7 +411,7 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | GET | `/v1/processes` | `?projectId=` | `ProcessInfo[]` |
 | POST | `/v1/processes` | `StartProcess { projectId, command, name?, env?, display?, port? }` | `201 ProcessInfo`; 409 when `port` is taken (message names the tracked process or pid) |
 | GET | `/v1/processes/:id` | — | `ProcessInfo` |
-| DELETE | `/v1/processes/:id` | — | `ProcessInfo` (§6.2) |
+| DELETE | `/v1/processes/:id` | `?signal=SIGTERM\|SIGKILL` (default `SIGTERM`, 400 otherwise) | `ProcessInfo` (§6.2); `SIGKILL` kills the process group at once (also escalates a SIGTERM stop in progress), state `stopped`, log line `Process killed (SIGKILL)` |
 | GET | `/v1/processes/:id/logs` | `?tail=500` (1–2000) | `LogLine[]` |
 | GET | `/v1/terminals` | — | `TerminalInfo[]` of the current controller lifetime (newest first) |
 | POST | `/v1/terminals` | `CreateTerminal { kind: "shell"\|"claude", projectId?, cols, rows }` | `201 TerminalInfo`; 503 if `claude` or PTY support is missing. A `claude` terminal in a confidential project runs `claude --append-system-prompt <confidential prompt>` (§6.1) |
@@ -449,9 +462,13 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | GET | `/v1/app-runs` | `?projectId=` | `AppRun[]` of the current controller lifetime, newest first |
 | POST | `/v1/projects/:id/app-runs` | `StartAppRun { target, port? }` | `201 AppRun`; 400 target not offered; 503 target unavailable (message = `reason`); 409 port taken or a `starting`/`ready` run of that target exists |
 | GET | `/v1/app-runs/:id` | — | `AppRun` |
-| DELETE | `/v1/app-runs/:id` | — | `AppRun` once its processes stopped |
+| DELETE | `/v1/app-runs/:id` | `?signal=SIGTERM\|SIGKILL` | `AppRun` once its processes stopped; `SIGKILL` kills their groups at once (also for a run that already ended while its processes still exit) |
 | POST | `/v1/app-runs/:id/actions` | `AppRunActionRequest { action: "reload" \| "restart" \| "focus" }` | `200 AppRun`; 409 not `ready` or action unsupported; 502 the action failed |
+| GET | `/v1/runtime` | — | `RuntimeList { entries: RuntimeEntry[] }` for the desktop Processes page: running processes, non-final app runs, running agent runs and terminals, Chromium browser processes not owned by a tracked process, Xvnc (`vnc`/`xvnc`; listed `stopped`/`fatal`… from `supervisorctl status` when not running) and open VNC bridge sessions (`vnc`/`session-<n>`). `RuntimeEntry { kind: "process" \| "app-run" \| "agent-run" \| "terminal" \| "browser" \| "vnc", id, name, detail, pid, projectId, startedAt, state, cpuPercent, memoryBytes, supervised, canStop }`; CPU % since the previous listing (since start on the first) and RSS summed over the process group (browser: process tree) from `/proc`, null when unknown; `supervised` = supervisord restarts it after a kill |
+| DELETE | `/v1/runtime/:kind/:id` | `?signal=SIGTERM\|SIGKILL` | `RuntimeEntry` after the stop (`state` `stopped`/`killed`/`cancelled`/`exited`/`closed`, or `stopping` if it outlived the wait); 404 unknown kind, id or an entry that no longer runs. Per kind: controller.md [Runtime control](controller.md#runtime-control) |
 | GET | `/v1/android` | — | `SandboxAndroidStatus { linked, hostId, emulator, adbSerial, adbConnected, shared }` (the tunnels to the host emulator and shared emulators) |
+| GET | `/v1/ios` | — | `SandboxIosStatus { linked, hostId, available, booted, tunnels, runs, requests }`: the linked Mac host daemon's Simulator, its Metro listeners, the `*-ios` runs announced to it and the last 20 link requests (`IosLinkRequest`, newest first) |
+| POST | `/v1/ios/installs` | `InstallOnSimulator { artifactId }` | `202 IosLinkRequest` (`running`): sends `install` over the iOS link; the host downloads the artifact (`.tar.gz`/`.tgz`/`.zip` with an `.app`) from `/v1/artifacts/:id/download` with the link token and may ask the user first; the outcome lands in `GET /v1/ios` `requests` (`succeeded` + `bundleId`, or `failed` + `error`; 30 min without a `result` → failed). 404 unknown artifact, 503 no iOS link |
 | POST | `/v1/events` | `StatusEvent` (without `ts`) | `202` — lets the in-sandbox agent publish SPEC §8.1 status events |
 
 `command` in `StartProcess` is `string` (run via `bash -lc` in the project dir)
@@ -469,6 +486,8 @@ CORS allows `GET, POST, DELETE` with `Authorization, Content-Type` and exposes
 | `/v1/builds/:id/logs/stream` | `LogStreamMessage`: first `{type:"build", build}`, then the replay, `log` lines, `build` on every state/stage change, `exit` |
 | `/v1/agent/runs/:id/stream` | server → client `{type:"event", event: AgentRunEvent}` · `{type:"run", run: AgentRun}` (replays prior events first) |
 | `/v1/android/link` | host daemon → controller (host dials out): JSON `AndroidLinkHostMessage` `hello` · `emulator` · `devices` (shared emulators) · `refuse` · `pong`; controller → host `AndroidLinkSandboxMessage` `open {streamId, device?}` · `ping` (every 20 s). A newer link closes the older with 4000 |
+| `/v1/ios/link` | host daemon → controller (host dials out): `IosLinkHostMessage` `hello` · `simulator {available, booted}` · `tunnels` · `progress {requestId, stage}` · `result {requestId, ok, error, bundleId?}` · `pong`; controller → host `IosLinkSandboxMessage` `ping` · `runs {runs: IosRun[]}` · `openUrl {requestId, url, expoSdkVersion?}` · `install {requestId, artifactId}`. The controller sends `runs` on connect and on every change of its `expo-ios` runs, `ping` every 20 s; requests still open when the link closes fail. A newer link closes the older with 4000 ([ios-simulator-macos.md](ios-simulator-macos.md) §3) |
+| `/v1/ios/link/streams/:id?port=` | **binary** raw TCP bytes between a Mac connection to `127.0.0.1:<port>` (`ios_…`) and `127.0.0.1:<port>` in the sandbox; opened by the host per accepted connection. The controller closes it with 4003 (and a reason) unless an iOS link is up, `port` is the Metro port of a running `*-ios` app run and fewer than 64 streams are open; 400 on upgrade for an invalid `port`. Bytes before the TCP connect are buffered (≤ 4 MiB); Metro not listening closes it; a run that ends closes its streams |
 | `/v1/android/link/streams/:id` | **binary** raw adb bytes between the sandbox tunnel connection `:id` (`adb_…`) and the host emulator's (or a shared emulator's) adbd; opened by the host after `open`, within 10 s |
 | `/v1/display/vnc` | **binary** RFB bridge to `TESSERACT_VNC_HOST:TESSERACT_VNC_PORT` (echo `Sec-WebSocket-Protocol: binary` when offered; used by noVNC) |
 
@@ -481,7 +500,8 @@ reconnect with a fresh ticket and rely on the replay. Client frames are capped a
 ### 5.4 Core types (authoritative names; zod schemas live in `@tesseract/protocol`)
 
 ```ts
-type Health = { ok: true; version: string; protocolVersion: 1; sandboxId: string };
+type ProjectRuntime = "sandbox" | "host";  // host: tesseract --unsafe-repo, no sandbox; older controllers omit it ("sandbox")
+type Health = { ok: true; version: string; protocolVersion: 1; sandboxId: string; runtime: ProjectRuntime };
 type Ticket = { ticket: string; expiresAt: string /* ISO */ };
 
 type ToolVersion = { name: string; version: string | null };   // node, bun, git, python3, java, wine, claude, adb …
@@ -493,7 +513,7 @@ type DisplayStatus = {
 type BrowserTab = { id: string; title: string; url: string; phoneUrl: string | null };  // phoneUrl: opens over the tailnet
 type BrowserStatus = { available: boolean; tabs: BrowserTab[] };                        // tabs[0] = current tab
 type SandboxStatus = {
-  sandboxId: string; hostname: string; version: string; startedAt: string; uptimeSec: number;
+  sandboxId: string; runtime: ProjectRuntime; hostname: string; version: string; startedAt: string; uptimeSec: number;
   resources: {
     cpu: { cores: number; load1: number; load5: number; load15: number };     // cgroup-aware
     memory: { totalBytes: number; usedBytes: number };                        // cgroup-aware
@@ -534,7 +554,8 @@ type Project = { id: string; name: string; path: string; framework: Framework;
                  dependenciesInstalled: boolean | null;  // false: deps declared, node_modules missing
                  buildTargets: BuildTarget[]; git: GitSummary | null;
                  confidential: boolean;  // confidential: name is always the id, never package.json's
-                 claudeAccountId: string | null };  // null: the default Claude account
+                 claudeAccountId: string | null;  // null: the default Claude account
+                 runtime: ProjectRuntime };  // host: the agent edits the host repository at `path` directly
 type ClaudeAccountProfile = { id: string /* "claude" | "claude-<n>" */; primary: boolean; present: boolean /* dir mounted */;
                               loggedIn: boolean; account: ClaudeAccount | null; subscriptionType: string | null;
                               credentialsExpiresAt: string | null; settingsPresent: boolean; configDir: string };
@@ -684,14 +705,15 @@ type ServerEvent =
   | { type: "app.updated"; run: AppRun };  // an app run changed state
 
 // App runs and the host Android emulator: full rules in app-runs-and-emulator.md
-type RunTarget = "web-dev" | "expo-device" | "expo-web" | "expo-android" | "rn-android"
+type RunTarget = "web-dev" | "expo-device" | "expo-web" | "expo-android" | "expo-ios" | "rn-android"
                | "flutter-web" | "flutter-linux" | "flutter-android" | "electron-dev" | "test";
 type AppRunState = "starting" | "ready" | "failed" | "stopped" | "exited";
 type AppRunAction = "reload" | "restart" | "focus";
 type AppViewer =
   | { kind: "url"; url: string | null; localUrl: string }
   | { kind: "deeplink"; devClientUrl: string | null; expoGoUrl: string; manifestUrl: string }
-  | { kind: "display" } | { kind: "android"; serial: string } | { kind: "none" };
+  | { kind: "display" } | { kind: "android"; serial: string }
+  | { kind: "ios"; udid: string | null /* the linked host's booted Simulator */ } | { kind: "none" };
 type RunTargetInfo = { target: RunTarget; label: string; dir: string | null /* workspace package of a monorepo */; available: boolean; reason: string | null;
                        viewer: AppViewer["kind"]; actions: AppRunAction[] };
 type AppRun = { id: string /* app_ */; projectId: string; target: RunTarget; dir: string | null; state: AppRunState; port: number | null;
@@ -719,7 +741,32 @@ type SandboxAndroidStatus = { linked: boolean; hostId: string | null; emulator: 
                               adbSerial: string | null; adbConnected: boolean;
                               shared: (SharedEmulator & { adbSerial: string; adbConnected: boolean })[] };
 // WS frames: AndroidLinkHostMessage / AndroidLinkSandboxMessage (§5.3), AndroidScreenClientMessage /
-// AndroidScreenServerMessage (§5.7)
+// AndroidScreenServerMessage (§5.7); DeviceScreenClientMessage / DeviceScreenServerMessage are the same schemas,
+// used by /v1/ios/screen too
+
+// Stop routes: `?signal=` STOP_SIGNALS = ["SIGTERM", "SIGKILL"] (StopSignal, StopSignalQuerySchema; default SIGTERM)
+
+// iOS Simulator on a macOS host daemon: full rules in ios-simulator-macos.md
+type SimState = "unavailable" | "shutdown" | "booting" | "booted" | "shutting_down" | "failed";
+type SimDevice = { udid: string; name: string; runtime: string /* "iOS 26.0" */; state: SimState;
+                   widthPt: number | null; heightPt: number | null; scale: number | null; error: string | null };
+type IosLinkInfo = AndroidLinkInfo;
+type IosTunnel = { port: number; listening: boolean; connections: number; error: string | null };
+type IosInstallRequest = { id: string /* ins_… */; artifactId: string; fileName: string; sizeBytes: number; sha256: string;
+                           udid: string; state: "pending" | "approved" | "rejected" | "expired" | "installing" | "installed" | "failed";
+                           bundleId: string | null; createdAt: string; expiresAt: string; error: string | null };
+type HostIosStatus = { available: boolean; reason: string | null;
+                       reasonCode: "disabled" | "not_macos" | "no_xcode" | "no_idb" | null; xcode: string | null;
+                       idb: boolean; isolation: "none"; devices: SimDevice[]; booted: SimDevice | null;
+                       link: IosLinkInfo; tunnels: IosTunnel[]; installs: IosInstallRequest[] };
+type IosRun = { port: number /* 1024..65535 */; scheme: string | null };
+type IosLinkRequest = { id: string /* ior_… */; type: "openUrl" | "install"; url: string | null; artifactId: string | null;
+                        state: "running" | "succeeded" | "failed"; stage: "awaiting_confirmation" | "downloading" | "installing" | "installing_expo_go" | "opening" | null; bundleId: string | null;
+                        error: string | null; createdAt: string; endedAt: string | null };
+type SandboxIosStatus = { linked: boolean; hostId: string | null; available: boolean; booted: SimDevice | null; tunnels: IosTunnel[];
+                          runs: IosRun[]; requests: IosLinkRequest[] };
+type InstallOnSimulator = { artifactId: string };
+// WS frames: IosLinkHostMessage / IosLinkSandboxMessage (§5.3)
 ```
 
 Identity resolution (controller): `viewer` comes from the Tailscale Serve headers
@@ -732,7 +779,7 @@ TCP peer) → `source: "localapi"`. `owner`, `node` and `tailnet` come from
 Every LocalAPI call has a 1.5 s timeout. The identity is informational: the bearer token
 stays the only authentication.
 
-IDs: type prefix (`prc_`, `trm_`, `bld_`, `art_`, `run_`, `inb_`, `upl_`, `sync_`, `app_` app runs, `adb_` adb tunnel streams) + 10 random characters of
+IDs: type prefix (`prc_`, `trm_`, `bld_`, `art_`, `run_`, `inb_`, `upl_`, `sync_`, `app_` app runs, `adb_` adb tunnel streams, `ios_` iOS tunnel streams, `ins_` iOS installs, `ior_` iOS link requests) + 10 random characters of
 lowercase Crockford base32 (`0-9a-z` without `i l o u`), e.g. `bld_7f3k2q9xa1`.
 Validators accept any `<prefix>[A-Za-z0-9_-]{1,64}`. Timestamps: ISO-8601 UTC strings.
 
@@ -783,8 +830,8 @@ the pages can import it). Pages post to `window.ReactNativeWebView.postMessage`
 
 | Message | From → to | Payload |
 |---|---|---|
-| `terminal-state`, `vnc-state`, `android-state` | page → app | `{ type, state, code?, reason? }`, `state` ∈ `connecting\|connected\|disconnected\|exited\|error`; `code` = exit code on `exited`; `vnc-state` adds `inputMode`; `reason` on `disconnected` (e.g. the host's `error` message such as `The emulator is not running`) |
-| `terminal-need-ticket`, `vnc-need-ticket`, `android-need-ticket` | page → app | `{ type }` (terminal adds `session`) after the page's socket dropped |
+| `terminal-state`, `vnc-state`, `android-state`, `ios-state` | page → app | `{ type, state, code?, reason? }`, `state` ∈ `connecting\|connected\|disconnected\|exited\|error`; `code` = exit code on `exited`; `vnc-state` adds `inputMode`; `reason` on `disconnected` (e.g. the host's `error` message such as `The emulator is not running`) |
+| `terminal-need-ticket`, `vnc-need-ticket`, `android-need-ticket`, `ios-need-ticket` | page → app | `{ type }` (terminal adds `session`) after the page's socket dropped |
 | `vnc-action` | page → app | `{ type, action }`, `action` ∈ `browser\|paste` (the user tapped the key row's **URL** or **Paste** key) |
 | `tesseract-reconnect` | app → page | native: injected `window.tesseract.reconnect(ticket)`; web: `postMessage({ type: "tesseract-reconnect", ticket })` to the frame |
 | `tesseract-input-mode` | app → page | `window.tesseract.setInputMode(mode)` / `{ type, mode }`, `mode` ∈ `trackpad\|touch`; switches without reconnecting (VNC page only) |
@@ -841,7 +888,7 @@ changes). Neither is accepted where the other is expected.
 | GET | `/ui/terminal` | — | — | the controller's xterm page |
 | GET | `/v1/android` | session | — | `HostAndroidStatus`; a missing tool gives `available: false` + `reason`, never an error; `isolation` is the daemon's mode, `emulator.isolated` whether the current emulator runs in its own netns (a non-isolated one is not linked: streams get `refuse`) |
 | POST | `/v1/android/emulator` | session | `StartEmulator { avd, coldBoot?, wipeData? }` | `202 EmulatorInfo` (`starting`); 409 unless `stopped`/`failed`; 404 unknown AVD; 503 not `available` |
-| DELETE | `/v1/android/emulator` | session | — | `EmulatorInfo` (`stopping`, then `stopped`; the isolated emulator's namespace is swept and its runtime dir removed) |
+| DELETE | `/v1/android/emulator?signal=` | session | — | `EmulatorInfo` (`stopping`, then `stopped`; the isolated emulator's namespace is swept and its runtime dir removed). `signal=SIGKILL` kills the emulator processes at once (an adopted one's are found with `ps`, `adb emu kill` only when none is found); default `SIGTERM`; anything else 400 |
 | POST | `/v1/android/link` | session | `LinkSandbox { sandboxUrl (http/https, no userinfo or fragment), token }` | `200 AndroidLinkInfo`; stored in `state.json` as `androidLink`, the daemon (re)connects to the sandbox's `/v1/android/link` |
 | DELETE | `/v1/android/link` | session | — | `AndroidLinkInfo` (cleared, link closed) |
 | GET | `/v1/android/devices` | session | — | `AndroidDevice[]` from `adb devices -l` (`[]` without adb) |
@@ -849,8 +896,17 @@ changes). Neither is accepted where the other is expected.
 | PUT | `/v1/android/stream` | session | `UpdateAndroidStream` (any `AndroidStreamSettings` fields) | `AndroidStreamSettings`; stored in `state.json` as `androidStream`. Also `tesseract-controller host stream [--json] [--stdin]` (the desktop app uses it, no PIN). On a change (this route, or `state.json` rewritten, watched with a 150 ms debounce) every open screen whose session would differ moves to a new session: it gets a new `meta` (maybe another `codec`) and keeps its socket |
 | WS | `/v1/android/screen?ticket=&maxSize=&serial=&codec=` | ticket | client → daemon `AndroidScreenClientMessage` `touch` · `scroll` · `key` · `text` · `rotate`; daemon → client `AndroidScreenServerMessage` `meta` (with `codec`) · `size` · `error` + binary video | an adb device's screen via scrcpy: `serial` (default: the settings' `device`, else the host emulator; only the host emulator needs `running`), `codec=h264` when the viewer decodes H.264. With settings `encoding: "h264"` and `codec=h264`, scrcpy's H.264 is forwarded as is: each binary message is a flags byte (`ANDROID_H264_FLAGS`: 1 config, 2 key frame) + an Annex B access unit; else ffmpeg turns it into one JPEG per message. scrcpy gets `video_bit_rate`, `max_fps`, `max_size` and `i-frame-interval` from the settings. Viewers of the same device, codec and settings share one session, sized by the first viewer's `maxSize` (default 1280, at least 160, at most the settings' `maxSize`); a late H.264 viewer gets the config and the frames since the last key frame (≤ 8 MiB); a viewer with > 512 KiB buffered skips frames until the next key frame; query checked before the ticket is used; per-viewer pointer ids, lifted when a viewer leaves |
 | GET | `/ui/android` | — | — | the Android screen page (fragment `#ticket=…&maxSize=…&serial=…`, same bridge as `/ui/vnc`) |
+| GET | `/v1/ios` | session | — | `HostIosStatus`; `available: false` + `reasonCode` (`disabled` without `TESSERACT_IOS`, `not_macos`, `no_xcode`, `no_idb`) + `reason`, never an error; `isolation` is always `none` |
+| POST | `/v1/ios/simulator` | session | `BootSimulator { udid }` | `202 SimDevice` (`booting`; `simctl boot` then `simctl bootstatus`, 5 min → `failed`); 404 unknown device, 409 unless `shutdown`/`failed`, 503 not `available` |
+| DELETE | `/v1/ios/simulator?signal=` | session | — | `SimDevice` (`shutting_down`, then `shutdown`) of the booted device (409 none); its screens get `error`. `signal=SIGKILL` also drops tunnel connections and kills the device's `launchd_sim` / `idb_companion` (`ps`) before `simctl shutdown` |
+| POST, DELETE | `/v1/ios/link` | session | `LinkSandbox` (POST) | `IosLinkInfo`; stored as `iosLink`, the daemon (re)dials `<sandboxUrl>/v1/ios/link`; POST is 503 when iOS is off or not on macOS |
+| GET | `/v1/ios/installs` | session | — | `IosInstallRequest[]` of this daemon run, newest first |
+| POST | `/v1/ios/installs/:id` | session | `DecideIosInstall { approve }` | `IosInstallRequest` (`approved` remembers the sha256 in `iosApprovedBundles`, or `rejected`); 404 unknown, 409 not `pending` |
+| WS | `/v1/ios/screen?ticket=&maxSize=&udid=` | ticket | `DeviceScreenClientMessage` up, `DeviceScreenServerMessage` (`codec: "mjpeg"`) + one JPEG per binary message down | the booted (or `udid`) device via `idb_companion` + `idb video-stream --format mjpeg`; shared per device, first viewer's `maxSize`, late viewers get `meta` + the last JPEG, > 512 KiB buffered skips frames, ends with the last viewer. Touch → whole `idb ui tap`/`swipe` gestures (one pointer per device), `scroll` → short swipe, keys `home`/`power` → `ui button HOME`/`LOCK`, `enter` `del` `tab` `escape` arrows → `ui key <HID usage>`, `text` → `ui text`; `rotate` and the other keys are ignored |
+| GET | `/ui/ios` | — | — | the iOS screen page (fragment `#ticket=…&maxSize=…&udid=…`; bottom bar ○ home, ⏻ lock, ⌨ keyboard; posts `ios-state` / `ios-need-ticket`) |
 
 Android emulator details (scrcpy session, link protocol, adb tunnel): [app-runs-and-emulator.md](app-runs-and-emulator.md) §2.
+iOS Simulator details (idb session, iOS link, reverse Metro tunnel, installs): [ios-simulator-macos.md](ios-simulator-macos.md).
 
 ## 6. Supervision & persistence
 
@@ -1014,7 +1070,15 @@ tesseract config path | get [key] [--reveal] | set <key> <value> [--force] | uns
 tesseract version | help [command]
 tesseract --sync [--confidential] | --pull [--dry-run] [--force] | --revert [--force] | --sync-status   # GTK-compatible flags
 tesseract --gemini-key=KEY                               # save the Gemini key for voice notes on the sandbox (PUT /v1/stt)
+tesseract --unsafe-repo [--name <name>] [--qr]           # add the cwd as a host project (no sandbox) and print the host workspace pairing link
 ```
+
+`--unsafe-repo` runs `tesseract-controller host workspace add <cwd> --json` (a symlink in the host workspace; the
+same repository keeps its id, another one with the same name gets `-2`, `-3`, …), reads `host workspace pair --json`,
+and starts `host workspace serve` detached when `GET /v1/health` does not answer. The controller command is resolved
+like the host shell daemon's (§4.3). The phone pairs the host workspace once; its projects carry a **Host shell** badge,
+and the app hides the display, the emulator and sync-back for them. Claude, processes and terminals run as the host
+user directly in the repository: nothing isolates them.
 
 `--get` on the host only prints that it runs inside the sandbox, where `tesseract` is the controller wrapper (`tesseract-controller tesseract --get`, §7).
 On macOS `containers create` without `--memory` uses 1024 MB (other platforms: no limit).
@@ -1274,6 +1338,20 @@ Contract details: [docs/electron/spec/onboarding.md](../electron/spec/onboarding
 read-modify-write, keep unknown keys and are atomic with mode 0600. On macOS and Windows, at the default config
 path, the token is stored encrypted with Electron `safeStorage` as `tokenSealed`; on Linux it stays plain so the
 GTK app and the CLI can read it.
+
+The flat `url`/`token`/`name`/`pairingUrl` keys are the active sandbox. `machines` lists every saved sandbox
+(`[{ url, name?, pairingUrl?, local?, token | tokenSealed }]`, keyed by `url`); saving or adding a connection
+upserts it there, and switching copies an entry back into the flat keys. `name` is the local display name and wins
+over the controller's `sandboxId` in the UI. `local: true` marks this computer's own sandbox (found by Docker
+discovery or on a loopback URL); removing it only drops its token so it stays listed. One Tesseract is active at a
+time; the app's host shell features follow it (this computer's daemon for the local one, the `masterHosts` link
+for a remote one). Details: [docs/electron/spec/services-data.md](../electron/spec/services-data.md) §3.4.
+
+`masterHosts` maps a sandbox `url` to the host shell of the machine running it
+(`{ "<sandbox url>": { url, name?, token | tokenSealed } }`, sealed under the same rule as `token`). It is set from
+a pasted `tesseract://host?…` link (Pair a Device → Master host, or the machine's host link when adding or editing
+a saved Tesseract) and the entry is dropped when that sandbox is removed or forgotten. Existing entries need no
+migration: the key is still the sandbox URL.
 
 ### 12.5 Packaging and CLI install
 

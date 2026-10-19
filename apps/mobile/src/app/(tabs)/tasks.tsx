@@ -1,8 +1,8 @@
 import { SparkleIcon } from "phosphor-react-native";
 
-import ConnectionDot from "@/components/connection-dot";
 import EmptyState from "@/components/empty-state";
 import Notice from "@/components/notice";
+import LinkStatus from "@/components/link-status";
 import ScreenHeader from "@/components/screen-header";
 import ScreenScaffold from "@/components/screen-scaffold";
 import Section from "@/components/section";
@@ -14,7 +14,7 @@ import SandboxGate from "@/features/sandbox/components/sandbox-gate";
 import SandboxNotices from "@/features/sandbox/components/sandbox-notices";
 import MotionItem from "@/components/motion-item";
 import { useTasksScreen } from "@/features/sandbox/hooks/use-tasks-screen";
-import { linkLabel, linkTone } from "@/features/sandbox/utils/states";
+import { linkBroken, linkIconTone, linkLabel } from "@/features/sandbox/utils/states";
 
 export default function TasksScreen() {
   const screen = useTasksScreen();
@@ -32,7 +32,7 @@ export default function TasksScreen() {
           title="Tasks"
           subtitle={screen.sandbox.name}
           size="medium"
-          status={<ConnectionDot tone={linkTone(screen.link)} label={linkLabel(screen.link)} variant="chip" />}
+          status={<LinkStatus tone={linkIconTone(screen.link)} label={linkLabel(screen.link)} broken={linkBroken(screen.link)} />}
           actions={screen.headerActions}
         />
       }

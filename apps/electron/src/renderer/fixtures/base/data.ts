@@ -9,6 +9,8 @@ export const FIXTURE_NOW = "2026-09-23T23:16:00.000Z";
 export const FIXTURE_API_URL = "http://127.0.0.1:7700";
 export const FIXTURE_TOKEN = "fixture-token";
 export const FIXTURE_SANDBOX = "tesseract-sandbox";
+export const FIXTURE_REMOTE_URL = "https://office-rig.tail511d9d.ts.net";
+export const FIXTURE_REMOTE_SANDBOX = "office-rig";
 export const FIXTURE_SIDEBAR_WIDTH = 305;
 
 const project = (id: string, framework: Project["framework"], confidential = false): Project => ({

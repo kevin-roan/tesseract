@@ -27,7 +27,7 @@ apps/controller/src/
 ├── http/
 │   ├── app.ts          Hono: request log, CORS, 1 MiB body limit, auth, routes, error mapping
 │   ├── middleware/     auth (bearer, or ticket for artifact downloads and upload content), request-log (redacts tickets)
-│   ├── routes/         system · projects · processes · terminals · builds · artifacts · agent · inbox · push (devices, live activities) · uploads
+│   ├── routes/         system · projects · processes · terminals · builds · artifacts · agent · inbox · push (devices, live activities) · uploads · runtime
 │   └── validation.ts   zod schemas from @tesseract/protocol → 400 bad_request
 ├── ws/                 WebSocket route matching, ticket check, upgrade, per-socket handlers
 ├── services/           one class per domain (below)
@@ -51,6 +51,7 @@ apps/controller/src/
 | `identity` | `GET /v1/identity`: Tailscale serve headers (loopback peers only) or LocalAPI `whois`, plus LocalAPI `status` (30 s cache) over `TESSERACT_TAILSCALE_SOCKET`; 1.5 s timeout, unavailable → nulls |
 | `context` | `.agent/*.md` and `.agent/projects/<id>/*.md` for `GET /v1/context` (no symlinks, 64 KiB cap) |
 | `runtime-mirror` | debounced, atomic rewrite of `/workspace/.agent/RUNTIME.md` |
+| `sandbox-runtime` | `GET /v1/runtime` / `DELETE /v1/runtime/:kind/:id`: everything stoppable in the sandbox with `/proc` CPU and memory, graceful stop or force kill ([below](#runtime-control)) |
 
 ## Lifecycle
 
@@ -491,6 +492,31 @@ store tokens and the service only logs at `debug` ([runbook](../runbooks/live-ac
 - `WS /v1/display/vnc` opens a TCP socket to Xvnc per WebSocket and copies
   bytes both ways (binary frames). It echoes `Sec-WebSocket-Protocol: binary`
   when offered. Either side closing closes the other.
+
+## Runtime control
+
+`GET /v1/runtime` lists what the desktop Processes page can stop; `DELETE
+/v1/runtime/:kind/:id?signal=` stops one entry. `SIGTERM` is the default:
+
+| Kind | `SIGTERM` | `SIGKILL` |
+|---|---|---|
+| `process` | SIGTERM to the group (and other groups of its session), SIGKILL after 5 s | SIGKILL to the group at once (escalates a running SIGTERM stop); state `killed` (the `ProcessInfo` stays `stopped`) |
+| `app-run` | stops every process of the run as above | kills every process group of the run at once |
+| `agent-run` | cancel: SIGTERM to the group, SIGKILL after 5 s | SIGKILL to the group at once |
+| `terminal` | close: SIGHUP to the group, SIGKILL after 5 s | SIGKILL to the group at once |
+| `browser` | CDP `Browser.close` on the instance's `--remote-debugging-port` (else SIGTERM to the browser process), SIGKILL of its tree after 5 s | SIGKILL to the browser process and every descendant (zygote, renderers, GPU) |
+| `vnc` `xvnc` | `supervisorctl stop xvnc`: stays stopped until `supervisorctl start xvnc` or a sandbox restart (without supervisord: SIGTERM, SIGKILL after 5 s) | SIGKILL to Xvnc; supervisord restarts it (`supervised: true`) |
+| `vnc` `session-<n>` | closes the WebSocket (1000) and the RFB connection | drops the WebSocket without a close frame |
+
+- Chromium is started by openbox's autostart (and the dock/menu), not by
+  supervisord, so a stopped or killed browser stays down until reopened
+  (`supervised: false`). Browser entries are `chromium` processes without
+  `--type=` whose parent is no Chromium and whose group/session is no tracked
+  process, terminal or agent run (those are stopped through their own entry);
+  the id is the pid, and only listed pids can be signalled.
+- Stopping or killing Xvnc ends the display: VNC sessions close, openbox and every
+  X client (Chromium, display processes) lose their connection.
+- `supervised` is true when the process's parent is `supervisord`.
 
 ## Runtime mirror
 

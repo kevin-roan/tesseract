@@ -63,6 +63,7 @@ function RootNavigator() {
             <Stack.Screen name="host/index" options={{ title: 'Host shell' }} />
             <Stack.Screen name="host/terminal/[id]" options={{ gestureEnabled: false, title: 'Host shell' }} />
             <Stack.Screen name="host/android" options={{ gestureEnabled: false, title: 'Android emulator' }} />
+            <Stack.Screen name="host/ios" options={{ gestureEnabled: false, title: 'iOS Simulator' }} />
             <Stack.Screen name="host/stream" options={{ title: 'Stream settings' }} />
           </Stack>
           {paired ? <InboxNotifier /> : null}

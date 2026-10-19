@@ -1,7 +1,7 @@
 import type { Hono } from "hono";
 import { routePatterns, StartProcessSchema } from "@tesseract/protocol";
 import type { Services } from "../../services";
-import { idParam, jsonBody, logTail, projectFilter } from "../validation";
+import { idParam, jsonBody, logTail, projectFilter, stopSignal } from "../validation";
 
 export function registerProcessRoutes(app: Hono, services: Services): void {
   const { rest } = routePatterns;
@@ -16,7 +16,7 @@ export function registerProcessRoutes(app: Hono, services: Services): void {
 
   app.get(rest.process, (c) => c.json(processes.get(idParam(c, "process"))));
 
-  app.delete(rest.process, async (c) => c.json(await processes.stop(idParam(c, "process"))));
+  app.delete(rest.process, async (c) => c.json(await processes.stop(idParam(c, "process"), stopSignal(c))));
 
   app.get(rest.processLogs, (c) => c.json(processes.logTail(idParam(c, "process"), logTail(c))));
 }

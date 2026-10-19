@@ -1,10 +1,10 @@
-import { useMemo } from "react";
-import { ScrollView } from "react-native";
+import { useCallback, useMemo } from "react";
 import type { Icon } from "phosphor-react-native";
+import type { SyncFileChange } from "@tesseract/protocol";
 
 import ActionButton from "@/components/action-button";
 import BottomSheet from "@/components/bottom-sheet";
-import { ListGroup, ListSwitchRow } from "@/components/list-group";
+import { ListGroup, ListSwitchRow, VirtualListGroup } from "@/components/list-group";
 import Notice from "@/components/notice";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -27,6 +27,8 @@ export type SyncConfirmSheetProps = {
   error: string | null;
 };
 
+const keyOf = (change: SyncFileChange) => change.path;
+
 const SyncConfirmSheet = ({
   visible,
   view,
@@ -42,6 +44,16 @@ const SyncConfirmSheet = ({
 }: SyncConfirmSheetProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const renderFile = useCallback(
+    (change: SyncFileChange) => (
+      <SyncFileRow
+        change={change}
+        selected={view.selectable ? (selected?.has(change.path) ?? false) : undefined}
+        onPress={view.selectable && onToggleFile ? () => onToggleFile(change.path) : undefined}
+      />
+    ),
+    [view.selectable, selected, onToggleFile],
+  );
 
   return (
     <BottomSheet visible={visible} onClose={onClose} title={view.title} testID="sync-confirm-sheet">
@@ -49,18 +61,7 @@ const SyncConfirmSheet = ({
         {view.message}
       </ThemedText>
       {view.files.length > 0 ? (
-        <ScrollView style={styles.files}>
-          <ListGroup dividerInset="text">
-            {view.files.map((change) => (
-              <SyncFileRow
-                key={change.path}
-                change={change}
-                selected={view.selectable ? (selected?.has(change.path) ?? false) : undefined}
-                onPress={view.selectable && onToggleFile ? () => onToggleFile(change.path) : undefined}
-              />
-            ))}
-          </ListGroup>
-        </ScrollView>
+        <VirtualListGroup data={view.files} keyExtractor={keyOf} renderItem={renderFile} dividerInset="text" style={styles.files} />
       ) : null}
       {view.force ? (
         <ListGroup footnote={view.force.footnote}>

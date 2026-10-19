@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useConnection, useConnectionActions, useConnectionView } from "../../../app/connection";
 import { useNavigateTo, usePreferencesRoute } from "../../../app/navigation";
+import { openMachineDialog } from "../../machines";
 import { INBOX_TARGET, type CountTarget, type EmptyAction } from "../constants";
 import { attentionNotice, countItems, displayRows, emptyModel, overviewMeta, overviewTitle, resourceItems, toolRows } from "../model";
 
@@ -44,6 +45,10 @@ export function useOverview() {
     notice: attentionNotice(state.inbox),
     content,
     refresh: actions.refresh,
+    rename: useCallback(() => {
+      if (state.config) openMachineDialog({ kind: "rename", id: state.config.apiUrl });
+    }, [state.config]),
+    canRename: state.config !== null,
     openInbox: useCallback(() => openTarget(INBOX_TARGET), [openTarget]),
     openTarget,
     runAction,

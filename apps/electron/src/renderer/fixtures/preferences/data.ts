@@ -8,7 +8,14 @@ export const PREFERENCES_SCENARIOS = {
   outdated: "preferences-outdated",
   geminiSaved: "preferences-gemini-saved",
   gtkParity: "gtk-parity",
+  masterUnlinked: "preferences-master-unlinked",
+  masterOffline: "preferences-master-offline",
 } as const;
+
+export const MASTER_SANDBOX_URL = "https://tesseract-sandbox.tail511d9d.ts.net";
+export const MASTER_HOST_URL = "http://100.88.12.9:7701";
+export const MASTER_HOST_LINK = `tesseract://host?url=${encodeURIComponent(MASTER_HOST_URL)}&token=fixture-master-token-41c2&name=studio-mac`;
+export const MASTER_LINK_ERROR = "That is not a tesseract://host link. Copy it from tesseract server pair.";
 
 export const GTK_PARITY_DEFAULT_ACCOUNT = "claude-work";
 
@@ -35,7 +42,11 @@ export const SAVED_CONFIG: ConnectionConfig = {
 };
 
 export function snapshotFor(config: ConnectionConfig | null, live: boolean): ConnectionSnapshot {
-  return { config, configFile: live ? LIVE_CONFIG_FILE : DEFAULT_CONFIG_FILE };
+  return {
+    config,
+    configFile: live ? LIVE_CONFIG_FILE : DEFAULT_CONFIG_FILE,
+    machines: config ? [{ id: config.apiUrl, apiUrl: config.apiUrl, name: config.name, active: true, local: true, status: "online", host: null }] : [],
+  };
 }
 
 export function hostAccounts(now: number): HostClaudeState[] {

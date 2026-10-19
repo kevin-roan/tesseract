@@ -102,6 +102,7 @@ const androidState = (status: HostAndroidStatus, overrides: Partial<HostAndroidS
   avdPicker: { visible: false, options: status.avds.map((id) => ({ id, label: id })), open: jest.fn(), close: jest.fn(), select: jest.fn() },
   canStart: false,
   canStop: true,
+  canKill: true,
   device: status.devices[0] ?? null,
   devicePicker: {
     visible: false,
@@ -115,6 +116,8 @@ const androidState = (status: HostAndroidStatus, overrides: Partial<HostAndroidS
   starting: false,
   stop: jest.fn(),
   stopping: false,
+  kill: jest.fn(),
+  killing: false,
   openScreen: jest.fn(),
   openStreamSettings: jest.fn(),
   sandboxName: "workstation",
@@ -141,6 +144,8 @@ describe("HostAndroid", () => {
     expect(android.openScreen).toHaveBeenCalled();
     await fireEvent.press(screen.getByText("Stop"));
     expect(android.stop).toHaveBeenCalled();
+    await fireEvent.press(screen.getByText("Force kill"));
+    expect(android.kill).toHaveBeenCalled();
     await fireEvent.press(screen.getByText("Unlink"));
     expect(android.unlink).toHaveBeenCalled();
     expect(screen.queryByText("Link sandbox: workstation")).toBeNull();
@@ -160,9 +165,10 @@ describe("HostAndroid", () => {
       emulator: { ...sampleHostAndroidStatus.emulator, state: "stopped", avd: null },
       link: { configured: false, sandboxUrl: null, connected: false, lastError: null },
     };
-    const android = androidState(status, { canStart: true, canStop: false, canOpen: false, linkedToActive: false });
+    const android = androidState(status, { canStart: true, canStop: false, canKill: false, canOpen: false, linkedToActive: false });
     await render(<HostAndroid android={android} />);
 
+    expect(screen.queryByText("Force kill")).toBeNull();
     await fireEvent.press(screen.getByText("Start"));
     expect(android.start).toHaveBeenCalled();
     await fireEvent.press(screen.getByText("Link sandbox: workstation"));

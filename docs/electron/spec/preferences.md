@@ -262,6 +262,20 @@ Never log the token (GTK `redacted()` keeps the first 4 chars + "…").
 
 Reference: `preferences-connection.png`, `preferences-connection-light.png`.
 
+### Group 0 — "Tesseracts"
+Description: "Every Tesseract this app knows: the sandbox and the host (shell, emulator, simulator) of each machine.
+One is active at a time." Header suffix: refresh button (`connection.refreshStatus()`, disabled while refreshing;
+the page also refreshes quietly when it opens). SettingsActions: `[add] "Add Tesseract…"` (Add dialog, shell.md §3.7).
+
+- Empty list → a single row "No Tesseract saved yet".
+- One row per `SavedMachine` (local first): prefix status `ToneDot`; title = machine label (shell.md §3.1);
+  subtitle = `{address or "This computer · address"} · {Online|Offline|Not checked} · {Host linked: name|No host
+  linked}`; suffix = `Active` StatusBadge (success, check icon) for the active one, otherwise a `Switch` button
+  (disabled while connecting), then a `more` icon button (`More actions for {name}`) opening a menu:
+  `Switch` (inactive only) · `Rename…` · `Link host…` / `Replace host link…` · `Unlink host` (when linked;
+  `connection.setHostLink(id, null)`, toast `Unlinked the host of {name}`) · `Remove…` (danger, disabled for the
+  local machine; confirm dialog).
+
 ### Group 1 — "Sandbox controller"
 Description: "The desktop app talks to the controller REST API from this machine. Discovery asks Docker for the running
 sandbox and picks the first address that answers."
@@ -277,6 +291,18 @@ SettingsActions (right-aligned): `[search icon] "Rediscover"` (secondary) · `"S
 ### Group 2 — "Phone pairing"
 Description: "The URL phones use. Leave empty to reuse the API URL."
 - "Pairing URL" — EntryRow (text), value `config.pairing_url` or "".
+- "Pair a phone" row, subtitle "Show the QR code and tesseract:// link to scan with the Tesseract app", button
+  "Show QR…" (primary, disabled while discovering) → the Pair dialog (shell.md §8.5) on the `Sandbox` tab.
+- "Master host" row (the host shell of the machine that runs the active sandbox, from `masterHost.state()` and
+  `masterHost:state`). Hidden while loading and when no sandbox is connected (`none`). Suffix = StatusBadge, then
+  buttons (secondary, disabled while discovering):
+  - `local` → badge "This computer" neutral, subtitle "This computer runs the sandbox, so it is the master host";
+    button "Pair a phone…" opens the Pair dialog on `This computer`.
+  - `unlinked` → badge "Not linked" neutral, subtitle "The host shell of the machine that runs {sandboxUrl}";
+    "Pair a phone…" opens the Pair dialog on `Master host` (setup steps + paste field).
+  - `linked` → badge "Linked" success (online) or "Offline" warning, subtitle "{name} · {url}" (url alone without a
+    name); buttons "Unlink" (`masterHost.unlink()`, toast "Master host unlinked", failure "Couldn't unlink the master
+    host: {error}") and "Pair a phone…" (Pair dialog on `Master host`).
 
 ### Group 3 — "Connection status"
 - "Status" row (plain row). Subtitle = `state.error_message` ‖ sandbox name (`health.sandboxId` ‖ `config.name`) ‖ "".

@@ -8,6 +8,7 @@ import type { DockerContract } from "./contracts/docker";
 import type { FilesContract } from "./contracts/files";
 import type { HostShellContract } from "./contracts/hostShell";
 import type { HttpContract } from "./contracts/http";
+import type { MasterHostContract } from "./contracts/masterHost";
 import type { MetricsContract } from "./contracts/metrics";
 import type { OnboardingContract } from "./contracts/onboarding";
 import type { SandboxContract } from "./contracts/sandbox";
@@ -35,6 +36,7 @@ export type IpcContract = {
   attachments: AttachmentsContract;
   files: FilesContract;
   hostShell: HostShellContract;
+  masterHost: MasterHostContract;
   claude: ClaudeContract;
   stt: SttContract;
   metrics: MetricsContract;
@@ -56,6 +58,7 @@ export const SERVICE_NAMES = [
   "attachments",
   "files",
   "hostShell",
+  "masterHost",
   "claude",
   "stt",
   "metrics",

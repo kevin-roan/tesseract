@@ -1,6 +1,7 @@
 import type { AppRunAction, AppRunState, AppViewerKind } from "@tesseract/protocol";
 import {
   AndroidLogoIcon,
+  AppleLogoIcon,
   ArrowClockwiseIcon,
   ArrowsClockwiseIcon,
   ArrowSquareOutIcon,
@@ -25,6 +26,7 @@ export const VIEWER_ICONS: Record<AppViewerKind, Icon> = {
   deeplink: DeviceMobileIcon,
   display: MonitorIcon,
   android: AndroidLogoIcon,
+  ios: AppleLogoIcon,
   none: TestTubeIcon,
 };
 
@@ -33,6 +35,7 @@ export const VIEWER_DESCRIPTIONS: Record<AppViewerKind, string> = {
   deeplink: "Opens in Expo on this phone",
   display: "Draws on the sandbox display",
   android: "Runs on the host emulator",
+  ios: "Runs on the host iOS Simulator",
   none: "Logs only",
 };
 
@@ -41,6 +44,7 @@ export const OPEN_LABELS: Record<AppViewerKind, string> = {
   deeplink: "Open in Expo",
   display: "Show display",
   android: "Show emulator",
+  ios: "Show simulator",
   none: "Open",
 };
 

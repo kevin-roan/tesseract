@@ -31,7 +31,7 @@ export function shouldSealTokens(policy: SealPolicy): boolean {
   }
 }
 
-function unsealedToken(data: ConfigData, cipher: TokenCipher | null): string | null {
+export function unsealedToken(data: ConfigData, cipher: TokenCipher | null): string | null {
   const sealed = data[SEALED_TOKEN_KEY];
   if (typeof sealed !== "string" || !sealed || !cipher) return null;
   try {

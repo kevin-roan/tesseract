@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { connectionStatusRows, formFromConfig, readConnectionForm } from "./model";
+import { connectionStatusRows, formFromConfig, masterHostRow, readConnectionForm } from "./model";
 
 const config = { apiUrl: "http://172.22.0.2:7700", token: "secret", name: "tesseract-sandbox", pairingUrl: null, source: "docker" as const };
 
@@ -36,5 +36,27 @@ describe("connection preferences model", () => {
     const empty = connectionStatusRows({ status: "discovering", errorMessage: null, health: null, config: null, configFile: null });
     expect(empty.sourceTitle).toBe("Source");
     expect(empty.discovering).toBe(true);
+  });
+
+  it("describes the master host row", () => {
+    expect(masterHostRow(null)).toBeNull();
+    expect(masterHostRow({ kind: "none" })).toBeNull();
+    expect(masterHostRow({ kind: "local" })).toMatchObject({ badge: { label: "This computer", tone: "neutral" }, pairTarget: "host", canUnlink: false });
+    expect(masterHostRow({ kind: "unlinked", sandboxUrl: "https://s.ts.net" })).toEqual({
+      badge: { label: "Not linked", tone: "neutral" },
+      subtitle: "The host shell of the machine that runs https://s.ts.net",
+      pairTarget: "master",
+      canUnlink: false,
+    });
+    const host = { link: "tesseract://host?x", url: "http://100.1.2.3:7701", name: "studio-mac", online: true };
+    expect(masterHostRow({ kind: "linked", sandboxUrl: "https://s.ts.net", host })).toEqual({
+      badge: { label: "Linked", tone: "success" },
+      subtitle: "studio-mac · http://100.1.2.3:7701",
+      pairTarget: "master",
+      canUnlink: true,
+    });
+    const offline = masterHostRow({ kind: "linked", sandboxUrl: "https://s.ts.net", host: { ...host, name: null, online: false } });
+    expect(offline?.badge).toEqual({ label: "Offline", tone: "warning" });
+    expect(offline?.subtitle).toBe("http://100.1.2.3:7701");
   });
 });

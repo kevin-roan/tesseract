@@ -14,6 +14,12 @@ export function connectionController(): ConnectionController {
     save: (input) => ipc.connection.save(input),
     forget: () => ipc.connection.forget(),
     discover: () => ipc.connection.discover(),
+    switchTo: (id) => ipc.connection.switchTo(id),
+    rename: (id, name) => ipc.connection.rename(id, name),
+    remove: (id) => ipc.connection.remove(id),
+    add: (input, options) => ipc.connection.add(input, options),
+    setHostLink: (id, link) => ipc.connection.setHostLink(id, link),
+    refreshStatus: () => ipc.connection.refreshStatus(),
     onChanged: (listener) => ipc.connection.on("changed", listener),
     createClient: (config) => createApiClient(config),
   });

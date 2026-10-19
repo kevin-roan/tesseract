@@ -67,4 +67,3 @@ export function useProjectRename() {
   };
 }
 
-export type ProjectRenameSheetState = ReturnType<typeof useProjectRename>["sheet"];

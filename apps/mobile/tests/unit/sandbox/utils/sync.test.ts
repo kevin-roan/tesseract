@@ -22,6 +22,7 @@ import {
   syncEmptyState,
   syncFailureTitle,
   syncFileToggleLabel,
+  syncHiddenFilesLabel,
   syncGetBody,
   syncHostChanges,
   syncHostLabel,
@@ -75,6 +76,13 @@ describe("previewSyncChanges", () => {
     expect(syncFileToggleLabel(8, false)).toBeNull();
     expect(syncFileToggleLabel(12, false)).toBe("Show all 12 files");
     expect(syncFileToggleLabel(12, true)).toBe("Show fewer files");
+  });
+
+  it("caps the expanded list for very large change sets", () => {
+    expect(previewSyncChanges(files(5000), true)).toEqual({ visible: files(100), hidden: 4900 });
+    expect(syncFileToggleLabel(5000, false)).toBe("Show 100 of 5000 files");
+    expect(syncHiddenFilesLabel(4900)).toBe("4900 more files not listed");
+    expect(syncHiddenFilesLabel(0)).toBeNull();
   });
 });
 

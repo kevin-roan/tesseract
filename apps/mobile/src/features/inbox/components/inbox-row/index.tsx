@@ -9,7 +9,6 @@ import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useEntrance } from "@/hooks/use-entrance";
 import { useLayoutMotion } from "@/hooks/use-layout-motion";
-import { ToneColors } from "@/lib/tone";
 import { formatRelativeTime } from "@/features/sandbox/utils/format";
 import { MaxFontSizeMultiplier, StaggerCap } from "@/theme";
 
@@ -32,9 +31,10 @@ const InboxRow = ({ item, project, onPress, onLongPress, index = 0 }: InboxRowPr
   const meta = inboxKindMeta(item.kind);
   const unread = isUnread(item);
   const emphasized = needsAttention(item);
-  const styles = useMemo(() => createStyles(theme, meta.tone, emphasized), [theme, meta.tone, emphasized]);
+  const styles = useMemo(() => createStyles(theme, emphasized), [theme, emphasized]);
   const time = formatRelativeTime(item.updatedAt);
   const preview = item.body ? plainPreview(item.body) : "";
+  const KindIcon = meta.icon;
   const entering = useEntrance(index, "tight");
   const motion = useLayoutMotion();
   const animated = index < StaggerCap;
@@ -63,12 +63,12 @@ const InboxRow = ({ item, project, onPress, onLongPress, index = 0 }: InboxRowPr
               {time}
             </ThemedText>
           </View>
-          <ThemedText variant="bodySmall" color="textSecondary" numberOfLines={2}>
-            <ThemedText variant="bodySmall" color={ToneColors[meta.tone].foreground} style={styles.title}>
-              {item.title}
+          <View style={styles.body}>
+            <KindIcon size={16} color={theme.colors[unread ? "text" : "textSecondary"]} weight={emphasized ? "fill" : "regular"} style={styles.icon} />
+            <ThemedText variant="bodySmall" color="textSecondary" numberOfLines={2} style={styles.preview}>
+              {preview || item.title}
             </ThemedText>
-            {preview && preview !== item.title ? ` · ${preview}` : null}
-          </ThemedText>
+          </View>
         </Surface>
       </PressableScale>
     </Animated.View>

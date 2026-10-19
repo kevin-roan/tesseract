@@ -14,6 +14,7 @@ export interface MenuEntry {
   icon?: IconName;
   danger?: boolean;
   disabled?: boolean;
+  checked?: boolean;
 }
 
 export type MenuSection = readonly MenuEntry[];

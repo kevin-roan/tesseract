@@ -24,7 +24,7 @@ export type SegmentedPillsProps<T> = {
   label?: string;
 };
 
-/** Soft strip of segments; a lit indicator springs under the chosen one. */
+/** Bare strip of segments; a solid monochrome pill slides under the chosen one. */
 const SegmentedPills = <T extends string | number>({
   options,
   value,
@@ -54,7 +54,7 @@ const SegmentedPills = <T extends string | number>({
           >
             <ThemedText
               variant="caption"
-              color={selected ? "text" : "textSecondary"}
+              color={selected ? "textOnAccent" : "textSecondary"}
               numberOfLines={1}
               maxFontSizeMultiplier={MaxFontSizeMultiplier.chrome}
               style={selected ? styles.labelSelected : null}

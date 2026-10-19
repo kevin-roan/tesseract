@@ -17,6 +17,7 @@ import { registerInboxRoutes } from "./routes/inbox";
 import { registerProcessRoutes } from "./routes/processes";
 import { registerProjectRoutes } from "./routes/projects";
 import { registerPushRoutes } from "./routes/push";
+import { registerRuntimeRoutes } from "./routes/runtime";
 import { registerSyncRoutes } from "./routes/sync";
 import { registerSystemRoutes } from "./routes/system";
 import { registerTerminalRoutes } from "./routes/terminals";
@@ -88,6 +89,7 @@ export function createApp(services: Services): Hono {
   registerPushRoutes(app, services);
   registerUploadRoutes(app, services);
   registerAppRoutes(app, services);
+  registerRuntimeRoutes(app, services);
 
   app.notFound((c) => c.json(errorBody("not_found", `No route for ${c.req.method} ${c.req.path}`), 404));
 

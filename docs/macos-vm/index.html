@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tesseract — macOS container VM</title>
+<style>
+  :root {
+    --bg: #0d0f14; --panel: #151922; --panel-2: #1b2130; --line: #262d3d;
+    --text: #e6e9ef; --muted: #9aa3b5; --accent: #7cc4ff; --ok: #6fd49a; --warn: #ffc566; --bad: #ff7b7b;
+    --mono: ui-monospace, "JetBrains Mono", "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f7f8fa; --panel: #fff; --panel-2: #f0f2f6; --line: #dde1e8; --text: #1b1f27; --muted: #5d6577; --accent: #0b6bcb; --ok: #1a8f52; --warn: #a86400; --bad: #c62828; }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .layout { display: grid; grid-template-columns: 250px 1fr; max-width: 1200px; margin: 0 auto; }
+  nav { position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: 28px 18px; border-right: 1px solid var(--line); }
+  nav h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+  nav a { display: block; color: var(--text); text-decoration: none; padding: 5px 8px; border-radius: 6px; font-size: 14px; }
+  nav a:hover { background: var(--panel-2); }
+  main { padding: 36px 44px 80px; min-width: 0; }
+  h1 { font-size: 30px; margin: 0 0 6px; }
+  h2 { font-size: 22px; margin: 44px 0 12px; padding-top: 8px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 24px 0 8px; }
+  p, li { color: var(--text); }
+  .lead { color: var(--muted); font-size: 16px; margin-top: 0; }
+  a { color: var(--accent); }
+  code { font-family: var(--mono); font-size: 13px; background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
+  pre { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; margin: 10px 0 16px; }
+  pre code { background: none; padding: 0; font-size: 13px; line-height: 1.55; }
+  pre .c { color: var(--muted); }
+  .copy { position: absolute; top: 8px; right: 8px; font: 12px system-ui; color: var(--muted); background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 3px 8px; cursor: pointer; }
+  .copy:hover { color: var(--text); }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 18px; font-size: 14px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; background: var(--panel); }
+  .callout { border-left: 3px solid var(--accent); background: var(--panel); padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 14px 0; }
+  .callout.warn { border-color: var(--warn); }
+  .callout.bad { border-color: var(--bad); }
+  .diagram { font-family: var(--mono); font-size: 12.5px; white-space: pre; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; line-height: 1.4; }
+  .steps { counter-reset: step; list-style: none; padding: 0; }
+  .steps > li { counter-increment: step; position: relative; padding-left: 38px; margin-bottom: 14px; }
+  .steps > li::before { content: counter(step); position: absolute; left: 0; top: 0; width: 26px; height: 26px; border-radius: 50%; background: var(--panel-2); border: 1px solid var(--line); text-align: center; font-size: 13px; line-height: 25px; color: var(--accent); }
+  .check { list-style: none; padding: 0; }
+  .check li { padding-left: 26px; position: relative; }
+  .check li::before { content: "☐"; position: absolute; left: 2px; color: var(--muted); }
+  .tag { display: inline-block; font-size: 11.5px; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--line); color: var(--muted); margin-left: 6px; vertical-align: 2px; }
+  .ok { color: var(--ok); } .warn-t { color: var(--warn); }
+  footer { margin-top: 60px; color: var(--muted); font-size: 13px; }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: 1fr; }
+    nav { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
+    main { padding: 24px 18px 60px; }
+  }
+
+  .bad { color: var(--bad); }
+</style>
+</head>
+<body>
+<div class="layout">
+<nav>
+  <h2>macOS container VM</h2>
+  <a href="#overview">Overview</a>
+  <a href="#why">1. Why a VM</a>
+  <a href="#compare">2. Colima vs Docker Desktop</a>
+  <a href="#architecture">3. Architecture</a>
+  <a href="#memory">4. Fitting in 8 GB</a>
+  <a href="#built">5. What was built</a>
+  <a href="#verified">6. How it was verified</a>
+  <a href="#rollout">7. Rolling it out on the Mac</a>
+  <a href="#setup">8. Setting up (the script)</a>
+  <a href="#daily">9. Daily use</a>
+  <a href="#url">10. Testing a public URL</a>
+  <a href="#commands">Command reference</a>
+  <a href="#trouble">Troubleshooting</a>
+  <a href="#open">Open items</a>
+  <a href="#files">Files changed</a>
+</nav>
+<main>
+<h1>Tesseract on macOS: the container VM</h1>
+<p class="lead">How we got server containers, public URLs and the sandbox running end to end on an M1 Mac mini (2021, 8 GB RAM, 512 GB disk), what we built, and every problem we hit on the way.</p>
+
+<section id="overview">
+<h2>Overview</h2>
+<p>Tesseract's server containers need <strong>Sysbox</strong>, a container runtime that only runs on Linux. Docker Desktop on macOS can't run it, so on the Mac the containers page showed <code>✗ Sysbox runtime: Install Sysbox</code> and nothing could be created.</p>
+<p>The fix: on macOS, Tesseract now manages <strong>one dedicated Linux VM</strong> (Colima, profile <code>tesseract</code>) with Sysbox installed inside it. The sandbox and the server containers both run in that VM. Docker Desktop is no longer used.</p>
+<table>
+  <tr><th>Where it stands</th><th></th></tr>
+  <tr><td>VM running with Sysbox</td><td class="ok">Done</td></tr>
+  <tr><td>Server image built, Tailscale key for server containers saved</td><td class="ok">Done</td></tr>
+  <tr><td>Sandbox built, joined the tailnet, <code>tesseract doctor tailnet</code> all ok</td><td class="ok">Done</td></tr>
+  <tr><td>Cloudflare token on the Mac</td><td class="warn-t">Not connected yet</td></tr>
+  <tr><td>Phone reaching the sandbox</td><td class="warn-t">Timed out; being checked (see <a href="#open">Open items</a>)</td></tr>
+  <tr><td>Public URL test (<code>test.kevinroan.com</code>)</td><td class="warn-t">Next step</td></tr>
+</table>
+<div class="callout">Linux is unchanged. Every new code path runs only when the platform is <code>darwin</code>; tests lock that in.</div>
+</section>
+
+<section id="why">
+<h2>1. Why a VM, and why not Docker-in-Docker</h2>
+<p>Server containers are full Linux machines: systemd as PID 1, their own Docker daemon, Tailscale SSH. Sysbox makes that possible <em>without</em> giving the container root on the host. Options we weighed:</p>
+<table>
+  <tr><th>Option</th><th>Verdict</th></tr>
+  <tr><td><strong>Privileged Docker-in-Docker</strong> on Docker Desktop</td><td>Rejected. <code>--privileged</code> is root on Docker Desktop's VM, which shares <code>/Users</code>, so a compromised container could reach the Mac's files. It also breaks ADR 0011's no-privileged rule, and it would mean two code paths.</td></tr>
+  <tr><td><strong>A second VM next to Docker Desktop</strong></td><td>Rejected: two VMs don't fit in 8 GB.</td></tr>
+  <tr><td><strong>Apple's <code>container</code> tool</strong></td><td>Rejected for now: it isn't Docker (so a second backend), and it's unproven with systemd plus a nested <code>dockerd</code>.</td></tr>
+  <tr><td><strong>One Colima VM with Sysbox, replacing Docker Desktop</strong></td><td class="ok">Chosen. The same code path as Linux: only the Docker endpoint differs.</td></tr>
+</table>
+<p>The decision is recorded in <code>docs/adr/0012-macos-container-vm.md</code>. ADR 0011 now points to it instead of saying "Linux hosts only".</p>
+</section>
+
+<section id="compare">
+<h2>2. Colima vs Docker Desktop</h2>
+<p>Both run a Linux VM with the Docker engine; the <code>docker</code> command on the Mac talks to it. For Tesseract, Colima replaces Docker Desktop completely.</p>
+<table>
+  <tr><th></th><th>Docker Desktop</th><th>Colima (Tesseract VM)</th></tr>
+  <tr><td>What it is</td><td>GUI app, own VM, dashboard, extensions, Kubernetes</td><td>Command-line tool around a Linux VM</td></tr>
+  <tr><td>Sysbox</td><td class="bad">Not possible</td><td class="ok">Installed in the VM</td></tr>
+  <tr><td>Memory</td><td>VM usually 4–8 GB</td><td>Fixed at what we set (5 GB)</td></tr>
+  <tr><td>Licence</td><td>Paid for larger companies</td><td>Free, open source</td></tr>
+  <tr><td>Background processes</td><td>GUI, helpers, updater</td><td>Just the VM</td></tr>
+  <tr><td><code>docker</code>, compose, buildx</td><td>Bundled</td><td>From Homebrew</td></tr>
+</table>
+</section>
+
+<section id="architecture">
+<h2>3. Architecture</h2>
+<div class="diagram">macOS (~3 GB)
+└── Colima VM "tesseract"  ·  vz + virtiofs  ·  6 CPU · 5 GiB RAM · 120 GiB disk
+    │   Ubuntu 24.04, Docker 29, Sysbox 0.7.1 (sysbox-mgr, sysbox-fs)
+    ├── tesseract sandbox + tailscale sidecar     (runc, sized from the VM's memory)
+    ├── tsr-&lt;name&gt;           server container      (sysbox-runc, --memory 1024 by default)
+    │     └── its own dockerd, tailscaled, systemd
+    └── tsr-&lt;name&gt;-tunnel    cloudflared           (~30 MB, publishes hostname → port)</div>
+<table>
+  <tr><th>Fixed name</th><th>Value</th></tr>
+  <tr><td>Colima profile</td><td><code>tesseract</code></td></tr>
+  <tr><td>Docker context</td><td><code>colima-tesseract</code></td></tr>
+  <tr><td>VM config</td><td><code>~/.colima/tesseract/colima.yaml</code> (or <code>$COLIMA_HOME</code>)</td></tr>
+  <tr><td>Container runtime</td><td><code>sysbox-runc</code> → <code>/usr/bin/sysbox-runc</code>, declared in <code>colima.yaml</code></td></tr>
+  <tr><td>VM mounts</td><td><code>~</code> writable (compose bind-mounts <code>~/.claude</code>); the app's sandbox resources read-only when outside <code>~</code>. Server containers have no bind mounts.</td></tr>
+  <tr><td>Managed marker</td><td><code>tesseract-managed</code>, inside the provision script (Colima strips comments when it rewrites the file)</td></tr>
+</table>
+<h3>How Sysbox gets into the VM</h3>
+<p>A provision script in <code>colima.yaml</code> runs on every VM boot. It:</p>
+<ul>
+  <li>repairs DNS first: if <code>/etc/resolv.conf</code> has no nameserver, it writes <code>1.1.1.1</code> and <code>8.8.8.8</code>;</li>
+  <li>exits early if Sysbox is installed and both services are active;</li>
+  <li>otherwise waits for DNS (switching to public DNS after 30 s), downloads the pinned <code>sysbox-ce 0.7.1</code> <code>.deb</code>, verifies its sha256, installs it, and enables <code>sysbox-mgr</code> and <code>sysbox-fs</code>.</li>
+</ul>
+<p>Lima ignores provision failures and <code>colima start</code> still exits 0, so the app doesn't trust that: it checks that the runtime is registered <em>and</em> both services are active, and re-runs the script over <code>colima ssh</code> if not.</p>
+</section>
+
+<section id="memory">
+<h2>4. Fitting in 8 GB</h2>
+<p>The VM's memory is fixed at 5 GB and isn't returned to macOS while it runs. Inside the VM, Docker's <code>--memory</code> is a ceiling, not a reservation, so the sandbox and server containers share the 5 GB.</p>
+<ul>
+  <li>One heavy job at a time: stop server containers before Android builds (<code>tesseract containers stop &lt;name&gt;</code>).</li>
+  <li><code>--restart unless-stopped</code> remembers a manual stop, so stopped containers stay stopped across restarts.</li>
+  <li>New server containers on macOS get <code>--memory 1024</code> unless you pass <code>--memory</code>.</li>
+  <li><code>colima stop tesseract</code> gives all of the VM's memory back to macOS.</li>
+  <li>Don't run Docker Desktop or any other Colima VM next to it (we found a leftover <code>default</code> VM using 2 GB).</li>
+</ul>
+</section>
+
+<section id="built">
+<h2>5. What was built</h2>
+<h3>App: core</h3>
+<ul>
+  <li><strong><code>src/core/vm/</code></strong> (new): <code>vmStatus</code>, <code>setupVm</code>, <code>startVm</code>, <code>stopVm</code>. It installs the tools with Homebrew, adds Homebrew's plugin folder to <code>~/.docker/config.json</code> (dropping Docker Desktop's <code>credsStore</code>), writes <code>colima.yaml</code>, starts the VM (force-stopping a broken one), creates the Docker context if it's missing, switches to it, and waits for Sysbox.</li>
+  <li><strong>Docker detection</strong>: on macOS a <code>colima-&lt;profile&gt;</code> context counts as Colima, and its start command is <code>colima start &lt;profile&gt;</code>. A compose that reports no version number (Homebrew's 5.0.0 said "dev") is now a warning, not a block.</li>
+  <li><strong>Containers</strong>: on macOS the Sysbox check offers <strong>Set up VM</strong> (<code>setup-vm</code>); new containers default to 1 GB; waiting for systemd now retries while its bus isn't up yet.</li>
+</ul>
+<h3>App: UI and CLI</h3>
+<ul>
+  <li>Onboarding on macOS lists <strong>Tesseract VM (recommended)</strong> first; Docker Desktop is labelled "Can't run server containers on macOS".</li>
+  <li>Preferences → Containers: <strong>Set up VM</strong> button with progress and cancel; the create dialog explains when the VM is missing.</li>
+  <li>New CLI: <code>tesseract vm status|setup|start|stop</code>. <code>tesseract containers doctor</code> points at <code>tesseract vm setup</code> on macOS.</li>
+</ul>
+<h3>Script and docs</h3>
+<ul>
+  <li><code>scripts/setup-mac.sh</code>: one command for the whole Mac setup (see <a href="#setup">section 8</a>). A test keeps its embedded <code>colima.yaml</code> identical to the app's generator.</li>
+  <li>Docs: ADR 0012 (new), ADR 0011, the blueprint, the server-containers runbook (macOS section, one-command section, troubleshooting), architecture and security notes, onboarding docs.</li>
+</ul>
+</section>
+
+<section id="verified">
+<h2>6. How it was verified</h2>
+<ul>
+  <li><strong>Unit tests:</strong> typecheck clean for all workspaces; Electron suite 280 files, 1783 tests passing.</li>
+  <li><strong>Live test on Linux:</strong> real Colima 0.10.3 and Lima 2.2.1, with the generated config (QEMU in place of macOS's VM engine), isolated from the dev machine's own Docker. Results: the real server image built; a container under <code>sysbox-runc</code> with a 1 GiB limit booted systemd with no failed units; nested <code>docker run hello-world</code> worked; Docker 29 with the containerd image store works with Sysbox 0.7.1.</li>
+  <li><strong>Code review</strong> of the whole diff, focused on Linux regressions.</li>
+  <li><strong>On the Mac mini:</strong> Sysbox active, test container under <code>sysbox-runc</code> ran, server image built, sandbox built and joined the tailnet.</li>
+</ul>
+<h3>Bugs caught before the Mac</h3>
+<table>
+  <tr><th>Found by</th><th>Problem</th><th>Fix</th></tr>
+  <tr><td>Review</td><td>A <code>colima-*</code> context on <strong>Linux</strong> would have been treated as Colima instead of a plain engine</td><td>Prefix match only on macOS; test added</td></tr>
+  <tr><td>Live test</td><td>App said "ready" when the Sysbox install had failed (the runtime entry comes from config, not from Sysbox being there)</td><td>Also require both services active; re-provision if not</td></tr>
+  <tr><td>Live test</td><td>Provision ran before the VM had DNS</td><td>Wait for DNS, retry apt and the download</td></tr>
+  <tr><td>Live test</td><td>An extra Docker restart hit systemd's start limit and failed the script</td><td>Removed (Sysbox's package restarts Docker itself)</td></tr>
+  <tr><td>Live test</td><td>A crashed ("Broken") VM didn't restart cleanly</td><td>Force-stop before start</td></tr>
+  <tr><td>Live test</td><td>Colima strips all comments from <code>colima.yaml</code></td><td>Marker lives in the provision script; <code>sshConfig: false</code> so <code>~/.ssh/config</code> isn't touched</td></tr>
+  <tr><td>Live test</td><td>Tailscale setup could run before systemd was up in a new container</td><td>Retry while systemd's bus isn't ready</td></tr>
+</table>
+</section>
+
+<section id="rollout">
+<h2>7. Rolling it out on the Mac: what we hit</h2>
+<table>
+  <tr><th>#</th><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+  <tr><td>1</td><td>Cloudflare section missing in Settings</td><td>It was there, just below the Tailnet policy (scroll)</td><td>Also available from the CLI: <code>tesseract domains login</code></td></tr>
+  <tr><td>2</td><td><code>✗ Sysbox runtime</code> after connecting Cloudflare</td><td>Sysbox is Linux-only</td><td>This whole feature</td></tr>
+  <tr><td>3</td><td>Script: "Install Tesseract into /Applications first"</td><td>Script only looked in <code>/Applications</code></td><td>Finds the app via the <code>tesseract</code> command, <code>~/Applications</code>, Spotlight, or the repo checkout</td></tr>
+  <tr><td>4</td><td><code>context "colima-tesseract": context not found</code></td><td>VM already running, so Colima didn't recreate its Docker context</td><td>Script and app create the context when missing</td></tr>
+  <tr><td>5</td><td><code>can't resolve downloads.nestybox.com</code></td><td>Colima's image has no <code>systemd-resolved</code>; the VM came up with no <code>/etc/resolv.conf</code></td><td>Wrote one by hand; provision now repairs it on every boot</td></tr>
+  <tr><td>6</td><td>"Docker isn't ready; go back to the Docker step"</td><td>Homebrew's compose 5.0.0 reports version "dev", read as 0 &lt; 2.24</td><td><code>brew upgrade docker-compose</code> (5.6.0); app now accepts unversioned compose with a warning</td></tr>
+  <tr><td>7</td><td>Server image build: "keychain cannot be accessed"</td><td><code>credsStore: "desktop"</code> in <code>~/.docker/config.json</code>; keychain locked over SSH</td><td>Removed <code>credsStore</code>; script and app now drop Docker Desktop's helper</td></tr>
+  <tr><td>8</td><td>Sandbox build failed at 96%: <code>input/output error</code></td><td>The Mac's disk was full (116 MB free of 460 GB); the VM disk couldn't grow</td><td>Freed space (Docker Desktop's old data was 37 GB); script now refuses to start below 20 GB free</td></tr>
+  <tr><td>9</td><td><code>TS_AUTHKEY is required for the first start</code></td><td>The sandbox's Tailscale state lived in a Docker Desktop volume; in the VM it's new</td><td>New auth key injected into the sandbox <code>.env</code>, then <code>tesseract sandbox up</code></td></tr>
+  <tr><td>10</td><td>"no machine found" deleting the old sandbox node</td><td>It was already gone from the tailnet; the console page was stale</td><td>Nothing to do</td></tr>
+  <tr><td>11</td><td>Phone: "took too long to answer"</td><td>Under investigation; the Mac side is healthy</td><td>See <a href="#open">Open items</a></td></tr>
+</table>
+<h3>Commands used to unblock by hand</h3>
+<pre><code><span class="c"># 4. recreate the Docker context</span>
+docker context create colima-tesseract --docker "host=unix://$HOME/.colima/tesseract/docker.sock"
+
+<span class="c"># 5. give the VM DNS</span>
+colima ssh -p tesseract -- sudo sh -c 'rm -f /etc/resolv.conf &amp;&amp; printf "nameserver 1.1.1.1\nnameserver 8.8.8.8\n" &gt; /etc/resolv.conf'
+
+<span class="c"># 6. compose that reports a real version</span>
+brew upgrade docker-compose
+
+<span class="c"># 7. drop Docker Desktop's credential helper</span>
+cp ~/.docker/config.json ~/.docker/config.json.bak
+jq 'del(.credsStore)' ~/.docker/config.json.bak &gt; ~/.docker/config.json
+
+<span class="c"># 9. sandbox Tailscale auth key from a file</span>
+ENV="$HOME/Library/Application Support/Tesseract/sandbox/.env"; KEY="$(tr -d '\r\n' &lt; ~/ts-key.txt)"; case "$KEY" in tskey-auth-*) grep -q '^TS_AUTHKEY=' "$ENV" &amp;&amp; sed -i '' "s|^TS_AUTHKEY=.*|TS_AUTHKEY=${KEY}|" "$ENV" || printf 'TS_AUTHKEY=%s\n' "$KEY" &gt;&gt; "$ENV"; unset KEY; tesseract sandbox up &amp;&amp; tesseract sandbox pair ;; *) unset KEY; echo "ts-key.txt doesn't hold a tskey-auth- key" ;; esac</code></pre>
+</section>
+
+<section id="setup">
+<h2>8. Setting up a Mac (the script)</h2>
+<pre><code>./scripts/setup-mac.sh                       <span class="c"># everything, asks before quitting Docker Desktop</span>
+./scripts/setup-mac.sh --skip-sandbox        <span class="c"># VM + server containers only</span>
+./scripts/setup-mac.sh --skip-containers     <span class="c"># VM + sandbox only</span>
+TAILSCALE_KEY_FILE=~/ts-server-key.txt CLOUDFLARE_TOKEN_FILE=~/cf-token.txt ./scripts/setup-mac.sh</code></pre>
+<ol class="steps">
+  <li>Checks the Mac: macOS 13+, not run as root, at least 20 GB free, finds Tesseract (app or repo checkout).</li>
+  <li>Installs Homebrew if missing, then <code>colima docker docker-compose docker-buildx jq</code>.</li>
+  <li>Adds Homebrew's plugin folder to <code>~/.docker/config.json</code>, drops <code>credsStore: "desktop"</code>, upgrades compose if it reports no version.</li>
+  <li>Quits Docker Desktop (asks first) and turns off its login start.</li>
+  <li>Writes <code>~/.colima/tesseract/colima.yaml</code> (backs up and asks before replacing your own edits).</li>
+  <li>Starts the VM (restarting it if the config changed or it's broken), creates and switches to the <code>colima-tesseract</code> context.</li>
+  <li>Checks Sysbox; re-runs the provision script if needed; runs a test container under <code>sysbox-runc</code>.</li>
+  <li>Sandbox: <code>tesseract sandbox build</code>, then shows the pairing QR code.</li>
+  <li>Server containers: saves the Tailscale key and Cloudflare token (hidden prompts or files), <code>tesseract containers build</code>, <code>doctor</code>.</li>
+</ol>
+<div class="callout">Safe to re-run: finished steps are skipped. Everything is logged to <code>~/Library/Logs/tesseract-setup-mac.log</code>.</div>
+<div class="callout warn">Two different Tailscale keys: the <strong>sandbox</strong> key (reusable off, ephemeral off, pre-approved, tag <code>tag:tesseract</code>) goes in the sandbox <code>.env</code>; the <strong>server containers</strong> key (reusable, pre-approved, tag <code>tag:tesseract-server</code>) goes to <code>tesseract containers tailscale-key</code>.</div>
+</section>
+
+<section id="daily">
+<h2>9. Daily use</h2>
+<pre><code>tesseract vm status                    <span class="c"># state, context, Sysbox, size (new builds)</span>
+colima list                            <span class="c"># all Colima VMs; only "tesseract" should run</span>
+tesseract containers ls
+tesseract containers stop &lt;name&gt;       <span class="c"># before Android builds</span>
+tesseract containers start &lt;name&gt;
+colima stop tesseract                  <span class="c"># free all of the VM's memory</span>
+colima start tesseract</code></pre>
+</section>
+
+<section id="url">
+<h2>10. Testing a public URL</h2>
+<p>Serve a page on port 80 inside a server container and publish it as <code>test.kevinroan.com</code>.</p>
+<ol class="steps">
+  <li>Connect Cloudflare and check the zone:
+<pre><code>tesseract domains login &lt; /path/to/cloudflare-token.txt
+tesseract domains zones        <span class="c"># kevinroan.com must be listed</span></code></pre></li>
+  <li>Create the container and open a shell:
+<pre><code>tesseract containers create test
+tesseract containers ssh test</code></pre></li>
+  <li>Inside it, serve a page on <code>0.0.0.0:80</code> (Cloudflare's tunnel can't reach <code>127.0.0.1</code>):
+<pre><code>mkdir -p /root/site &amp;&amp; echo '&lt;h1&gt;Hello from test on the Mac mini&lt;/h1&gt;' &gt; /root/site/index.html
+docker run -d --name web --restart unless-stopped -p 80:80 -v /root/site:/usr/share/nginx/html:ro nginx:alpine
+curl -s localhost
+exit</code></pre></li>
+  <li>Publish and test (allow a minute for DNS):
+<pre><code>tesseract domains add test.kevinroan.com test 80
+tesseract domains ls
+curl -s https://test.kevinroan.com</code></pre></li>
+  <li>Clean up:
+<pre><code>tesseract domains rm test.kevinroan.com
+tesseract containers rm test --yes</code></pre></li>
+</ol>
+<p>The Cloudflare token needs <strong>Zone · DNS · Edit</strong>, <strong>Account · Cloudflare Tunnel · Edit</strong> and <strong>Zone · Zone · Read</strong>, created at <a href="https://dash.cloudflare.com/profile/api-tokens">dash.cloudflare.com/profile/api-tokens</a>.</p>
+</section>
+
+<section id="commands">
+<h2>Command reference</h2>
+<table>
+  <tr><th>Command</th><th>What it does</th></tr>
+  <tr><td><code>tesseract vm status|setup|start|stop</code></td><td>The Tesseract VM (macOS only; new builds)</td></tr>
+  <tr><td><code>tesseract containers create &lt;name&gt; [--cpus N] [--memory MB]</code></td><td>New server container (1024 MB default on macOS)</td></tr>
+  <tr><td><code>tesseract containers start|stop|restart|logs|ssh &lt;name&gt;</code></td><td>Manage one container</td></tr>
+  <tr><td><code>tesseract containers build</code> · <code>doctor</code></td><td>Build the server image · check Sysbox, image, Tailscale key, Cloudflare</td></tr>
+  <tr><td><code>tesseract containers tailscale-key [--tags …]</code></td><td>Save the server-container key (stdin)</td></tr>
+  <tr><td><code>tesseract domains login|logout|zones|ls|add|rm|sync</code></td><td>Cloudflare token and public URLs</td></tr>
+  <tr><td><code>tesseract sandbox build|up|down|status|pair</code></td><td>The sandbox</td></tr>
+  <tr><td><code>tesseract doctor tailnet</code></td><td>Why the phone can't reach the sandbox</td></tr>
+</table>
+</section>
+
+<section id="trouble">
+<h2>Troubleshooting</h2>
+<table>
+  <tr><th>Symptom</th><th>Check / fix</th></tr>
+  <tr><td>Sysbox missing</td><td><code>colima ssh -p tesseract -- systemctl status sysbox-mgr sysbox-fs</code>; install log: <code>colima ssh -p tesseract -- sudo tail -n 50 /var/log/cloud-init-output.log</code>; then re-run the script or <code>tesseract vm setup</code></td></tr>
+  <tr><td>VM has no DNS</td><td><code>colima ssh -p tesseract -- cat /etc/resolv.conf</code>; fix with the command in <a href="#rollout">section 7</a></td></tr>
+  <tr><td><code>context not found</code></td><td>Recreate the context (section 7, command 4)</td></tr>
+  <tr><td><code>input/output error</code> in builds</td><td><code>df -h ~</code>: the Mac is out of space. Free space, then <code>colima stop -f tesseract &amp;&amp; colima start tesseract</code></td></tr>
+  <tr><td><code>colima ssh</code> exits 255</td><td>VM stalled (often a full disk). Force-stop and start; if it won't boot, <code>colima delete tesseract</code> and re-run the script (loses the image and build cache only)</td></tr>
+  <tr><td>Keychain errors on pull</td><td>Remove <code>credsStore</code> from <code>~/.docker/config.json</code></td></tr>
+  <tr><td>"Docker isn't ready"</td><td><code>tesseract doctor docker</code>; <code>docker compose version --short</code> must print a number on 0.1.x</td></tr>
+  <tr><td>Phone times out</td><td><code>tesseract doctor tailnet</code>; open <code>https://tesseract.&lt;tailnet&gt;.ts.net/v1/health</code> on the phone; re-pair</td></tr>
+</table>
+</section>
+
+<section id="open">
+<h2>Open items</h2>
+<ul class="check">
+  <li><strong>Phone timeout.</strong> Mac side is healthy (all doctor checks ok; connection goes through a DERP relay). Next: open the health URL on the phone, re-pair, and stop the extra <code>default</code> Colima VM (<code>colima stop default</code>, or <code>colima delete default</code>).</li>
+  <li><strong>Cloudflare token</strong> isn't saved on the Mac yet: <code>tesseract domains login &lt; token-file</code>.</li>
+  <li><strong>Two <code>tesseract</code> installs</strong> on the Mac (0.1.0 and 0.1.2); the old one comes first on PATH. <code>which -a tesseract</code>, then remove the old one.</li>
+  <li><strong>New macOS build</strong> with this work (VM detection, <code>tesseract vm</code>, compose and credential fixes) still needs to be built and installed on the Mac.</li>
+  <li><strong>App: check the Mac's free space</strong>, not just the VM's disk, before big builds (the script already does).</li>
+  <li><strong>Script: ask for the sandbox auth key</strong> when the sandbox's Tailscale state is new (anyone moving from Docker Desktop hits this).</li>
+  <li><strong>Removing Docker Desktop</strong> later: delete the old links in <code>~/.docker/cli-plugins/</code> and <code>/usr/local/bin</code> that point into <code>Docker.app</code>, and <code>docker context rm desktop-linux</code>.</li>
+  <li><strong>Clean up secret files</strong>: <code>rm ~/ts-key.txt</code> and any token files.</li>
+</ul>
+</section>
+
+<section id="files">
+<h2>Files changed</h2>
+<table>
+  <tr><th>Area</th><th>Files</th></tr>
+  <tr><td>VM core (new)</td><td><code>apps/electron/src/core/vm/</code>: <code>index.ts</code>, <code>vm.ts</code>, <code>config.ts</code>, <code>provision.ts</code>, <code>constants.ts</code>, <code>labels.ts</code>, tests, <code>testing/colima-rewrite.ts</code>, <code>setup-script.test.ts</code></td></tr>
+  <tr><td>Contracts</td><td><code>src/shared/contracts/vm.ts</code> (new), <code>docker.ts</code>, <code>containers.ts</code></td></tr>
+  <tr><td>Docker</td><td><code>src/core/docker/</code>: <code>parse.ts</code>, <code>start.ts</code>, <code>install.ts</code>, <code>probe.ts</code>, <code>checks.ts</code>, <code>labels.ts</code>, <code>runtime.ts</code>, <code>system.ts</code> + tests</td></tr>
+  <tr><td>Containers</td><td><code>src/core/containers/</code>: <code>service.ts</code>, <code>docker.ts</code>, <code>labels.ts</code>, <code>constants.ts</code> + tests; <code>src/main/ipc/containers.ts</code>, <code>src/main/ipc/docker.ts</code></td></tr>
+  <tr><td>UI</td><td>onboarding Docker step; Preferences → Containers; create dialog; hooks <code>use-containers-task.ts</code>, <code>use-setup-vm.ts</code></td></tr>
+  <tr><td>CLI</td><td><code>cli/commands/vm.ts</code> (new) + test, <code>containers.ts</code>, <code>labels.ts</code>, <code>registry.ts</code></td></tr>
+  <tr><td>Script</td><td><code>scripts/setup-mac.sh</code></td></tr>
+  <tr><td>Docs</td><td><code>docs/adr/0012-macos-container-vm.md</code> (new), ADR 0011, <code>00-blueprint.md</code>, <code>server-containers.md</code> (architecture and runbook), <code>security-model.md</code>, onboarding docs, <code>docs/README.md</code>, this page</td></tr>
+</table>
+</section>
+
+<footer>Tesseract · macOS container VM · open this file directly in a browser (no server needed).</footer>
+</main>
+</div>
+<script>
+  document.querySelectorAll("pre").forEach(function (pre) {
+    var button = document.createElement("button");
+    button.className = "copy";
+    button.type = "button";
+    button.textContent = "Copy";
+    button.addEventListener("click", function () {
+      var text = pre.querySelector("code").innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        button.textContent = "Copied";
+        setTimeout(function () { button.textContent = "Copy"; }, 1200);
+      });
+    });
+    pre.appendChild(button);
+  });
+</script>
+</body>
+</html>

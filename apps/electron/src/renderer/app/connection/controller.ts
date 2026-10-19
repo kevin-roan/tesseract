@@ -18,13 +18,19 @@ import {
 import { describeError, statusForError } from "./describe-error";
 import { ERROR_MESSAGES } from "./labels";
 import { Poller, type PollerTimers } from "./poller";
-import type { ConnectionState, EventsStatus, InboxCounts } from "./types";
+import type { AddMachineOptions, ConnectionState, EventsStatus, InboxCounts } from "./types";
 
 export interface ConnectionDeps {
   load(): Promise<ConnectionSnapshot>;
   save(input: ConnectionInput): Promise<ConnectionSnapshot>;
   forget(): Promise<ConnectionSnapshot>;
   discover(): Promise<DiscoveryResult>;
+  switchTo(id: string): Promise<ConnectionSnapshot>;
+  rename(id: string, name: string): Promise<ConnectionSnapshot>;
+  remove(id: string): Promise<ConnectionSnapshot>;
+  add(input: ConnectionInput, options?: AddMachineOptions): Promise<ConnectionSnapshot>;
+  setHostLink(id: string, link: string | null): Promise<ConnectionSnapshot>;
+  refreshStatus(): Promise<ConnectionSnapshot>;
   onChanged(listener: (snapshot: ConnectionSnapshot) => void): Unsubscribe;
   createClient(config: ConnectionConfig): TesseractClient | null;
   now?(): number;
@@ -42,6 +48,11 @@ const STREAM_STATES: Record<string, EventsStatus> = { connecting: "connecting", 
 export function sameConnection(a: ConnectionConfig | null, b: ConnectionConfig | null): boolean {
   if (!a || !b) return a === b;
   return a.apiUrl === b.apiUrl && a.token === b.token && (a.name ?? null) === (b.name ?? null) && (a.pairingUrl ?? null) === (b.pairingUrl ?? null);
+}
+
+function sameEndpoint(a: ConnectionConfig | null, b: ConnectionConfig | null): boolean {
+  if (!a || !b) return a === b;
+  return a.apiUrl === b.apiUrl && a.token === b.token;
 }
 
 function stable<T>(previous: T | null, next: T): T {
@@ -105,7 +116,9 @@ export class ConnectionController {
         ? ERROR_MESSAGES.tokenRequired
         : null;
     const client = invalid ? null : this.deps.createClient(config);
+    const moved = !sameEndpoint(config, this.state.config);
     this.client = client;
+    if (moved) this.set({ inbox: INITIAL_CONNECTION_STATE.inbox });
     if (!client) {
       this.set({ status: "offline", config, health: null, errorMessage: invalid ?? ERROR_MESSAGES.invalidUrl(config.apiUrl), checkedAt: this.now() });
       return;
@@ -121,19 +134,46 @@ export class ConnectionController {
 
   async save(input: ConnectionInput): Promise<ConnectionSnapshot> {
     this.discoverySeq += 1;
-    const snapshot = await this.quietly(() => this.deps.save(input));
-    this.set({ configFile: snapshot.configFile });
-    if (snapshot.config && !sameConnection(snapshot.config, this.state.config)) this.connect(snapshot.config);
-    else if (snapshot.config) {
-      this.set({ config: snapshot.config });
-      this.refresh();
-    }
+    return this.apply(await this.quietly(() => this.deps.save(input)));
+  }
+
+  async switchTo(id: string): Promise<ConnectionSnapshot> {
+    this.discoverySeq += 1;
+    return this.apply(await this.quietly(() => this.deps.switchTo(id)));
+  }
+
+  async rename(id: string, name: string): Promise<ConnectionSnapshot> {
+    return this.apply(await this.quietly(() => this.deps.rename(id, name)));
+  }
+
+  async add(input: ConnectionInput, options?: AddMachineOptions): Promise<ConnectionSnapshot> {
+    if (options?.activate !== false) this.discoverySeq += 1;
+    return this.apply(await this.quietly(() => this.deps.add(input, options)));
+  }
+
+  async setHostLink(id: string, link: string | null): Promise<ConnectionSnapshot> {
+    const snapshot = await this.quietly(() => this.deps.setHostLink(id, link));
+    this.adopt(snapshot);
+    return snapshot;
+  }
+
+  async refreshStatus(): Promise<ConnectionSnapshot> {
+    const snapshot = await this.quietly(() => this.deps.refreshStatus());
+    this.adopt(snapshot);
+    this.refresh();
+    return snapshot;
+  }
+
+  async remove(id: string): Promise<ConnectionSnapshot> {
+    const snapshot = await this.quietly(() => this.deps.remove(id));
+    if (snapshot.config) return this.apply(snapshot);
+    this.adopt(snapshot);
+    await this.rediscover();
     return snapshot;
   }
 
   async forget(): Promise<DiscoveryResult> {
-    const snapshot = await this.quietly(() => this.deps.forget());
-    this.set({ configFile: snapshot.configFile });
+    this.adopt(await this.quietly(() => this.deps.forget()));
     return this.rediscover();
   }
 
@@ -175,21 +215,35 @@ export class ConnectionController {
     } catch {
       snapshot = null;
     }
-    if (snapshot) this.set({ configFile: snapshot.configFile });
+    if (snapshot) this.adopt(snapshot);
     if (snapshot?.config) this.connect(snapshot.config);
     else await this.rediscover();
   }
 
   private changed(snapshot: ConnectionSnapshot): void {
-    this.set({ configFile: snapshot.configFile });
+    this.adopt(snapshot);
     if (this.quiet > 0 || this.state.status === "discovering") return;
     const next = snapshot.config;
     if (!next) {
       if (this.state.config) void this.rediscover();
       return;
     }
-    if (sameConnection(next, this.state.config)) this.set({ config: next });
+    if (sameEndpoint(next, this.state.config)) this.set({ config: next });
     else this.connect(next);
+  }
+
+  private adopt(snapshot: ConnectionSnapshot): void {
+    this.set({ configFile: snapshot.configFile, machines: snapshot.machines ?? [] });
+  }
+
+  private apply(snapshot: ConnectionSnapshot): ConnectionSnapshot {
+    this.adopt(snapshot);
+    if (snapshot.config && !sameEndpoint(snapshot.config, this.state.config)) this.connect(snapshot.config);
+    else if (snapshot.config) {
+      this.set({ config: snapshot.config });
+      this.refresh();
+    }
+    return snapshot;
   }
 
   private async quietly<T>(operation: () => Promise<T>): Promise<T> {

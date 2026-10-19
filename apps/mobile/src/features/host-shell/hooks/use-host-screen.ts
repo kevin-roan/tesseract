@@ -10,19 +10,21 @@ import { confirm } from "@/lib/confirm";
 import { useHostSessionStore } from "../store/host-session-store";
 import { useHostStore } from "../store/host-store";
 import type { HostScreenMode } from "../types";
-import { HOST_NEXT } from "../utils/constants";
 import { HOST_ACTIONS, HOST_SCREEN, UNPAIR_CONFIRM } from "../utils/content";
+import { screenTargetFrom } from "../utils/devices";
 import { describeHostError, hostIssueFor } from "../utils/errors";
 import { formatCountdown, sessionRemainingMs } from "../utils/session";
 import { useHostAndroid } from "./use-host-android";
 import { useHostClient } from "./use-host-client";
+import { useHostDeviceKind } from "./use-host-device-kind";
+import { useHostIos } from "./use-host-ios";
 import { useHostNavigation } from "./use-host-navigation";
 import { useHostPairing } from "./use-host-pairing";
 import { useHostTerminals } from "./use-host-terminals";
 import { useHostUnlock } from "./use-host-unlock";
 import { useNow } from "./use-now";
 
-type LinkParams = { url?: string; token?: string; name?: string; next?: string };
+type LinkParams = { url?: string; token?: string; name?: string; next?: string; serial?: string };
 
 function screenMode(hydrated: boolean, paired: boolean, repairing: boolean, unlocked: boolean): HostScreenMode {
   if (!hydrated) return "loading";
@@ -47,7 +49,9 @@ export function useHostScreen() {
   const unlock = useHostUnlock(mode === "locked");
   const shells = useHostTerminals();
   const android = useHostAndroid(mode === "unlocked");
-  const next = useRef(params.next === HOST_NEXT.android ? params.next : null);
+  const ios = useHostIos(mode === "unlocked");
+  const devices = useHostDeviceKind(android.status, ios.supported ? ios.status : undefined);
+  const next = useRef(screenTargetFrom(params.next, params.serial));
   const now = useNow(mode === "unlocked");
   const issue = hostIssueFor(unlock.statusError);
 
@@ -64,12 +68,13 @@ export function useHostScreen() {
     setRepairing(false);
   }, [lock, unpairHost]);
 
-  const { replaceWithAndroid } = nav;
+  const { replaceWithScreen } = nav;
   useEffect(() => {
-    if (mode !== "unlocked" || !next.current) return;
+    const target = next.current;
+    if (mode !== "unlocked" || !target) return;
     next.current = null;
-    replaceWithAndroid();
-  }, [mode, replaceWithAndroid]);
+    replaceWithScreen(target);
+  }, [mode, replaceWithScreen]);
 
   const { mutate: createShell } = shells.create;
   const newShell = useCallback(() => createShell(undefined, { onSuccess: (terminal) => nav.terminal(terminal.id) }), [createShell, nav]);
@@ -101,6 +106,8 @@ export function useHostScreen() {
     issue,
     repair: () => setRepairing(true),
     android,
+    ios,
+    devices,
     sessionChip: HOST_SCREEN.sessionChip(formatCountdown(sessionRemainingMs(session, now))),
     shells: {
       list: shells.terminals.data ?? [],

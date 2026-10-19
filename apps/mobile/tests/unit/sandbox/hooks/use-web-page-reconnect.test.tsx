@@ -1,6 +1,6 @@
 import { AppState, type AppStateStatus } from "react-native";
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { TesseractClient, computeBackoffDelay } from "@tesseract/client";
+import { ApiError, TesseractClient, computeBackoffDelay } from "@tesseract/client";
 
 import { useWebPageSession } from "@/features/sandbox/hooks/use-web-page-session";
 import { PAGE_RECONNECT_DELAY_MS, PAGE_RECONNECT_LIMIT } from "@/features/sandbox/utils/constants";
@@ -133,6 +133,33 @@ describe("useWebPageSession after an abnormal close", () => {
     await waitFor(() => expect(fake.createTicket).toHaveBeenCalledTimes(PAGE_RECONNECT_LIMIT));
     await settle();
     expect(fake.createTicket).toHaveBeenCalledTimes(PAGE_RECONNECT_LIMIT);
+    expect(fake.terminalPageUrl).toHaveBeenCalledTimes(1);
+  });
+
+  it("reloads the page instead of retrying when the session behind the ticket is gone", async () => {
+    const { result } = await renderTerminalPage();
+    fake.createTicket.mockReset().mockRejectedValue(new ApiError(401, "unauthorized", "Session expired"));
+    fake.terminalPageUrl.mockReset().mockRejectedValue(new ApiError(401, "unauthorized", "Session expired"));
+
+    await act(async () => result.current.handleMessage(state("disconnected")));
+
+    await waitFor(() => expect(fake.terminalPageUrl).toHaveBeenCalled());
+    await settle();
+    expect(fake.createTicket).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(result.current.error).toBeInstanceOf(ApiError), { timeout: 4_000 });
+  });
+
+  it("drops a ticket that arrives after the screen is gone", async () => {
+    let deliver: (value: { ticket: string; expiresAt: string }) => void = () => undefined;
+    const { result, unmount } = await renderTerminalPage();
+    fake.createTicket.mockReset().mockImplementation(() => new Promise((resolve) => (deliver = resolve)));
+    await act(async () => result.current.handleMessage(JSON.stringify({ type: "terminal-need-ticket" })));
+    result.current.surfaceRef.current = null;
+    await unmount();
+
+    await act(async () => deliver({ ticket: "late", expiresAt: "2026-09-23T10:01:00.000Z" }));
+    await settle();
+    expect(run).not.toHaveBeenCalled();
     expect(fake.terminalPageUrl).toHaveBeenCalledTimes(1);
   });
 });

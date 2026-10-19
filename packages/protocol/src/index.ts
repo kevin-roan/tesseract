@@ -28,4 +28,6 @@ export * from "./schemas/lists";
 export * from "./schemas/host";
 export * from "./schemas/apps";
 export * from "./schemas/android";
+export * from "./schemas/runtime";
+export * from "./schemas/ios";
 export * from "./validate";

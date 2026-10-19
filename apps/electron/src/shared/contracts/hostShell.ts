@@ -1,5 +1,6 @@
-import type { AndroidLinkInfo, HostAndroidStatus } from "@tesseract/protocol";
+import type { AndroidLinkInfo, HostAndroidStatus, HostIosStatus, IosLinkInfo } from "@tesseract/protocol";
 import type { DefineContract } from "../ipc-types";
+import type { HttpProxyRequest, HttpProxyResponse } from "./http";
 
 export type HostShellStatus = "stopped" | "starting" | "running" | "stopping" | "external" | "failed";
 
@@ -29,6 +30,9 @@ export interface HostTerminalRequest {
   title: string;
 }
 
+export const EMULATOR_STOP_SIGNALS = ["SIGTERM", "SIGKILL"] as const;
+export type EmulatorStopSignal = (typeof EMULATOR_STOP_SIGNALS)[number];
+
 export type HostShellContract = DefineContract<{
   methods: {
     state(): HostShellState;
@@ -42,10 +46,16 @@ export type HostShellContract = DefineContract<{
     lock(): HostShellState;
     androidStatus(): HostAndroidStatus;
     startEmulator(avd: string): HostAndroidStatus;
-    stopEmulator(): HostAndroidStatus;
+    stopEmulator(signal?: EmulatorStopSignal): HostAndroidStatus;
     linkSandbox(sandboxUrl: string, token: string): AndroidLinkInfo;
+    iosStatus(): HostIosStatus;
+    bootSimulator(udid: string): HostIosStatus;
+    shutdownSimulator(signal?: EmulatorStopSignal): HostIosStatus;
+    linkIosSandbox(sandboxUrl: string, token: string): IosLinkInfo;
     openEmulatorViewer(request: EmulatorViewerRequest): void;
     openTerminal(request: HostTerminalRequest): void;
+    request(id: string, request: HttpProxyRequest): HttpProxyResponse;
+    abort(id: string): void;
   };
   events: {
     state: HostShellState;

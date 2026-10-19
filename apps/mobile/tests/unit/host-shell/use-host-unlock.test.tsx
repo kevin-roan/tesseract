@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
-import { ApiError, HostShellClient } from "@tesseract/client";
+import { ApiError, HostShellClient, NetworkError } from "@tesseract/client";
 
 import { useHostUnlock } from "@/features/host-shell/hooks/use-host-unlock";
 import { useHostSessionStore } from "@/features/host-shell/store/host-session-store";
@@ -58,6 +58,18 @@ describe("useHostUnlock", () => {
     expect(result.current.pin).toEqual({ digits: "", error: true });
     expect(result.current.message).toBeNull();
     expect(useHostSessionStore.getState().current).toBeNull();
+  });
+
+  it("keeps the typed PIN when the host can't be reached", async () => {
+    fake.unlock.mockRejectedValue(new NetworkError("Network request failed"));
+    const { result } = await render();
+    await enter(result, "123456");
+    await act(async () => result.current.press({ kind: "submit" }));
+
+    await waitFor(() => expect(result.current.message).toMatch(/Tailscale/));
+    expect(result.current.pin).toEqual({ digits: "123456", error: false });
+    expect(result.current.rejectedMessage).toBeNull();
+    expect(result.current.canSubmit).toBe(true);
   });
 
   it("disables the pad while locked out or when no PIN is set", async () => {
