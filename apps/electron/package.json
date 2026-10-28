@@ -1,7 +1,7 @@
 {
   "name": "@tesseract/electron",
   "productName": "Tesseract",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "private": true,
   "description": "Tesseract desktop app (Electron)",
   "author": "Tesseract",
