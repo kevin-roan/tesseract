@@ -3,7 +3,7 @@ import { sampleHostAndroidStatus, sampleHostIosStatus, sampleSimDevice } from "@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EmulatorStopSignal, HostShellState } from "../../../shared/contracts/hostShell";
-import { hostFixtureState } from "../../fixtures/host/data";
+import { hostFixtureState, hostProxyFixture, resetHostFixtures } from "../../fixtures/host/data";
 import { overrideIpcFixtures } from "../../fixtures/registry";
 import { renderRoutes } from "../../test/render";
 import EmulatorPage from "./EmulatorPage";
@@ -119,6 +119,42 @@ describe("EmulatorPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Force kill" }));
     await waitFor(() => expect(stops).toEqual(["SIGKILL"]));
     expect(await screen.findByText("The simulator is off")).toBeTruthy();
+  });
+
+  it("saves the iOS stream settings on the host", async () => {
+    const puts: { path: string; body: unknown }[] = [];
+    const undo = overrideIpcFixtures({
+      hostShell: {
+        request: (_id, request) => {
+          if (request.method === "PUT") puts.push({ path: new URL(request.url).pathname, body: JSON.parse(request.body ?? "{}") });
+          return hostProxyFixture(request);
+        },
+      },
+    });
+    try {
+      renderPage();
+      fireEvent.click(await screen.findByRole("radio", { name: "iOS" }));
+      fireEvent.click(await screen.findByRole("button", { name: "Stream" }));
+      const bitRate = (await screen.findByLabelText("Bit rate (Mbit/s)")) as HTMLInputElement;
+      expect(bitRate.value).toBe("6");
+      fireEvent.change(bitRate, { target: { value: "3" } });
+      fireEvent.click(screen.getByRole("radio", { name: "JPEG" }));
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(puts).toEqual([{ path: "/v1/ios/stream", body: { encoding: "mjpeg", bitRate: 3_000_000 } }]));
+    } finally {
+      undo();
+      resetHostFixtures();
+    }
+  });
+
+  it("rejects an Android frame rate outside the host limits", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Stream" }));
+    const fps = (await screen.findByLabelText("Max frame rate")) as HTMLInputElement;
+    expect(fps.value).toBe("60");
+    fireEvent.change(fps, { target: { value: "500" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(await screen.findByText("Max frame rate must be between 1 and 120")).toBeTruthy();
   });
 
   it("explains why the iOS Simulator is unavailable", async () => {

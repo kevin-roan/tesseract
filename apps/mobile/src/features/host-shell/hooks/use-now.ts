@@ -7,9 +7,14 @@ export function useNow(active: boolean): number {
 
   useEffect(() => {
     if (!active) return;
-    setNow(Date.now());
-    const timer = setInterval(() => setNow(Date.now()), COUNTDOWN_TICK_MS);
-    return () => clearInterval(timer);
+    const tick = () => setNow(Date.now());
+    // Catch up right away after a pause instead of showing the stale time for a whole tick.
+    const first = setTimeout(tick, 0);
+    const timer = setInterval(tick, COUNTDOWN_TICK_MS);
+    return () => {
+      clearTimeout(first);
+      clearInterval(timer);
+    };
   }, [active]);
 
   return now;

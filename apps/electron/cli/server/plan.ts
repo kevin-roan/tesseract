@@ -15,6 +15,7 @@ export interface ServerOptions {
   build: boolean;
   claudeToken: string | null;
   hostShell: boolean;
+  ios: boolean;
   httpsPort: number;
   resetTailscale: boolean;
   dryRun: boolean;
@@ -36,6 +37,7 @@ export interface HostServiceInput {
   port?: number;
   tailscale: string | null;
   env: NodeJS.ProcessEnv;
+  ios?: boolean;
 }
 
 export interface HostServicePlan {
@@ -46,6 +48,8 @@ export interface HostServicePlan {
   install: ServiceCommand[];
   uninstall: ServiceCommand[];
   status: ServiceCommand;
+  /** Whether the service turns on iOS Simulator support; null where there is none (not macOS). */
+  ios: boolean | null;
 }
 
 export interface ServerState {
@@ -53,6 +57,7 @@ export interface ServerState {
   bind: string | null;
   serviceFile: string | null;
   tailscale: string | null;
+  ios: boolean | null;
 }
 
 export function resolveTailscale(
@@ -85,15 +90,22 @@ export function servicePath(tailscale: string | null): string {
   return [...new Set(dirs)].join(":");
 }
 
-export function serviceEnv(input: Pick<HostServiceInput, "env" | "home" | "tailscale">): Record<string, string> {
+export function serviceEnv(input: Pick<HostServiceInput, "env" | "home" | "tailscale" | "platform" | "ios">): Record<string, string> {
   const result: Record<string, string> = {};
-  for (const key of SERVER.serviceEnvKeys) {
+  const keys = input.platform === "darwin" ? [...SERVER.serviceEnvKeys, ...SERVER.iosEnvKeys] : SERVER.serviceEnvKeys;
+  for (const key of keys) {
     const value = input.env[key];
     if (value) result[key] = value;
   }
+  if (input.ios && input.platform === "darwin") result[SERVER.iosSwitch] = "1";
   result.HOME = input.home;
   result.PATH = servicePath(input.tailscale);
   return result;
+}
+
+export function iosEnabled(env: Record<string, string>): boolean {
+  const value = (env[SERVER.iosSwitch] ?? "").trim().toLowerCase();
+  return (SERVER.switchOn as readonly string[]).includes(value);
 }
 
 export function serveArgs(input: Pick<HostServiceInput, "command" | "bind" | "port">): string[] {
@@ -185,6 +197,7 @@ export function planHostService(input: HostServiceInput): HostServicePlan {
       ],
       uninstall: [{ file: "launchctl", args: ["bootout", `${domain}/${label}`], optional: true }],
       status: { file: "launchctl", args: ["print", `${domain}/${label}`] },
+      ios: iosEnabled(env),
     };
   }
   const unit = SERVER.systemdUnit;
@@ -203,6 +216,7 @@ export function planHostService(input: HostServiceInput): HostServicePlan {
       { file: "systemctl", args: ["--user", "daemon-reload"], optional: true },
     ],
     status: { file: "systemctl", args: ["--user", "is-active", unit] },
+    ios: null,
   };
 }
 
@@ -256,7 +270,7 @@ export function imageMode(options: Pick<ServerOptions, "build" | "image">, image
 }
 
 export function parseServerState(text: string | null): ServerState {
-  const empty: ServerState = { httpsPort: null, bind: null, serviceFile: null, tailscale: null };
+  const empty: ServerState = { httpsPort: null, bind: null, serviceFile: null, tailscale: null, ios: null };
   if (!text) return empty;
   try {
     const data = JSON.parse(text) as Partial<ServerState>;
@@ -265,6 +279,7 @@ export function parseServerState(text: string | null): ServerState {
       bind: typeof data.bind === "string" ? data.bind : null,
       serviceFile: typeof data.serviceFile === "string" ? data.serviceFile : null,
       tailscale: typeof data.tailscale === "string" ? data.tailscale : null,
+      ios: typeof data.ios === "boolean" ? data.ios : null,
     };
   } catch {
     return empty;

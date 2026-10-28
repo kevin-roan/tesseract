@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { isApiError } from "@tesseract/client";
-import { LIMITS, projectIdFromName, type AgentRun, type AgentRunMode } from "@tesseract/protocol";
+import { LIMITS, projectIdFromName, type AgentRun, type AgentRunMode, type AgentRunModel } from "@tesseract/protocol";
 
 import type { ChoiceOption } from "@/components/choice-group";
 import type { MenuOption } from "@/components/menu-sheet/types";
@@ -17,10 +17,12 @@ import { describeError } from "@/features/sandbox/utils/errors";
 import { projectLocationHint } from "@/features/sandbox/utils/new-project";
 import { useVoiceMessage, type VoiceNote } from "@/features/voice/hooks/use-voice-message";
 
+import { AGENT_MODEL_DETAILS, AGENT_MODEL_OPTIONS, AGENT_MODEL_SHEET, isAgentModel, modelId } from "../utils/models";
 import { AGENT_MODE_DETAILS, AGENT_MODE_OPTIONS, AGENT_MODE_SHEET, DEFAULT_AGENT_MODE, isAgentMode } from "../utils/modes";
 import { freeProjectName, projectNameError } from "../utils/project-name";
+import { useSlashCommands } from "./use-slash-commands";
 
-export type ComposerSheet = "mode" | "attach" | "project" | "new-project";
+export type ComposerSheet = "mode" | "model" | "attach" | "project" | "new-project";
 
 /** A new chat waiting for the user to name a project for it or go without one. */
 type PendingChat = { prompt: string; attachmentIds: string[] };
@@ -30,6 +32,7 @@ type ChatComposerOptions = {
   projectOptions?: ChoiceOption[];
   resumeSessionId?: string | null;
   defaultMode?: AgentRunMode | null;
+  defaultModel?: AgentRunModel | null;
   /** The user can draft but not send, e.g. while the run being continued is still working. */
   locked?: boolean;
   /** While locked, Send hands the message here to go out later instead of refusing it. */
@@ -44,12 +47,14 @@ export function useChatComposer({
   projectOptions,
   resumeSessionId = null,
   defaultMode = null,
+  defaultModel = null,
   locked = false,
   onQueue,
   onStarted,
 }: ChatComposerOptions) {
   const [text, setText] = useState("");
   const [chosenMode, setChosenMode] = useState<AgentRunMode | null>(null);
+  const [chosenModel, setChosenModel] = useState<AgentRunModel | null | undefined>(undefined);
   const [chosenProjectId, setChosenProjectId] = useState<string | null | undefined>(undefined);
   const [sheet, setSheet] = useState<ComposerSheet | null>(null);
   const [pendingChat, setPendingChat] = useState<PendingChat | null>(null);
@@ -69,7 +74,9 @@ export function useChatComposer({
   useDraftInjection({ setText, add: addAttachments });
 
   const mode = chosenMode ?? defaultMode ?? DEFAULT_AGENT_MODE;
+  const model = chosenModel === undefined ? defaultModel : chosenModel;
   const projectId = chosenProjectId === undefined ? defaultProjectId : chosenProjectId;
+  const slash = useSlashCommands({ text, setText, projectId });
 
   /** A new chat with no project picked asks first; one where the user cleared the project runs in the workspace root. */
   const asksForProject = projectId === null && chosenProjectId === undefined && !resumeSessionId;
@@ -83,6 +90,7 @@ export function useChatComposer({
         run = await mutateAsync({
           prompt,
           mode,
+          ...(model ? { model } : {}),
           ...(attachmentIds.length > 0 ? { attachmentIds: attachmentIds.slice(-LIMITS.maxRunAttachments) } : {}),
           ...(targetProjectId ? { projectId: targetProjectId } : {}),
           ...(resumeSessionId ? { resumeSessionId } : {}),
@@ -97,7 +105,7 @@ export function useChatComposer({
       onStarted(run);
       return run;
     },
-    [mutateAsync, mode, resumeSessionId, clearAttachments, onStarted],
+    [mutateAsync, mode, model, resumeSessionId, clearAttachments, onStarted],
   );
 
   const existingProjectIds = useMemo(() => (projectOptions ?? []).map((option) => option.id), [projectOptions]);
@@ -227,6 +235,11 @@ export function useChatComposer({
     setSheet(null);
   }, []);
 
+  const selectModel = useCallback((id: string) => {
+    setChosenModel(isAgentModel(id) ? id : null);
+    setSheet(null);
+  }, []);
+
   const selectProject = useCallback(
     (id: string) => {
       setChosenProjectId((current) => ((current === undefined ? defaultProjectId : current) === id ? null : id));
@@ -284,7 +297,15 @@ export function useChatComposer({
     text,
     setText,
     projectId,
+    slash,
     mode: { id: mode, ...AGENT_MODE_DETAILS[mode], options: AGENT_MODE_OPTIONS, sheet: AGENT_MODE_SHEET, select: selectMode },
+    model: {
+      id: modelId(model),
+      ...AGENT_MODEL_DETAILS[modelId(model)],
+      options: AGENT_MODEL_OPTIONS,
+      sheet: AGENT_MODEL_SHEET,
+      select: selectModel,
+    },
     project: projectMenu ? { id: projectId, label: projectLabel, options: projectMenu, select: selectProject } : null,
     attach: { options: attachOptions, select: selectAttachSource, enabled: attachments.canAttach },
     clipboard: {

@@ -73,12 +73,17 @@ export class ClaudeAccountService {
     return account;
   }
 
+  /** Id of the account `projectId` runs with: the project's pick, else the default. */
+  selectedId(projectId: string | null): string {
+    return (projectId === null ? null : this.repos.projectClaudeAccount(projectId)) ?? this.defaultId();
+  }
+
   /**
    * The account a new Claude process uses: the project's, else the default. A resumed session whose
    * transcript lives in another account's dir is moved there first, so switching accounts carries the chat over.
    */
   resolve(projectId: string | null, sessionId?: string): ClaudeAccountDir {
-    const id = (projectId === null ? null : this.repos.projectClaudeAccount(projectId)) ?? this.defaultId();
+    const id = this.selectedId(projectId);
     const account = this.find(id);
     if (!account) throw unavailable(`Claude account ${id} is no longer configured: pick another account for this project`);
     if (account !== this.primary && !this.present(account)) throw unavailable(`Claude account ${id} is not linked into the sandbox (${account.configDir} is missing)`);

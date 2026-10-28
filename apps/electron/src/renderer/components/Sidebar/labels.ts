@@ -11,7 +11,7 @@ export const SIDEBAR_LABELS = {
   openProject: (name: string) => `Open ${name}`,
   newInProject: (name: string) => `New conversation in ${name}`,
   openContainer: (name: string) => `Open ${name}`,
-  containerTooltip: (name: string, status: string) => `${name} · ${status}`,
+  containerTooltip: (name: string, status: string, attention?: string) => (attention ? `${name} · ${status} · ${attention}` : `${name} · ${status}`),
   startContainer: (name: string) => `Start ${name}`,
   stopContainer: (name: string) => `Stop ${name}`,
 } as const;

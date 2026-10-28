@@ -59,6 +59,75 @@ The service must listen on `0.0.0.0:3000` inside the container. Remove a URL wit
 `tesseract domains rm app.example.com`. If Cloudflare or Docker state drifted, run
 `tesseract domains sync`.
 
+## 6. Deploy from a sandbox
+
+Agents in the sandbox can deploy a directory with a compose file or a `Dockerfile` into an
+existing server container, or ask the desktop app to create a new one for it. The desktop app on the host does the work, so it must be running
+and connected to the sandbox. Design: [Sandbox deploys](../architecture/server-containers.md#sandbox-deploys),
+[ADR 0013](../adr/0013-sandbox-deploys-to-server-containers.md).
+
+### Choose the policy
+
+Each container has **Allow sandbox deploys** (detail page, or the CLI). It is off by default:
+every deploy then waits for your approval. Creating a new container for a deploy always asks,
+whatever this switch says.
+
+```sh
+tesseract containers auto-deploy api on     # deploys run without asking
+tesseract containers auto-deploy api off    # each deploy needs Approve (default)
+```
+
+Turn it on only for throwaway containers. Agents run with `bypassPermissions`, so anything in
+the sandbox can request a deploy, and a container with routes serves it on your domain.
+
+### Deploy
+
+In the sandbox (an agent does this itself, following the managed `deploy` skill):
+
+```sh
+tesseract-controller deploy targets                  # containers this host accepts deploys for
+cd /workspace/projects/myapp
+tesseract-controller deploy api --port 3000          # tailnet URL only
+tesseract-controller deploy api --port 3000 --hostname app.example.com   # plus a Cloudflare route
+tesseract-controller deploy myapp --create --port 3000                    # new container, after your approval
+tesseract-controller deploy myapp --create --cpus 2 --memory 2048 --port 3000   # with limits (MB)
+tesseract-controller deploy ls                       # recent deploys; status <id>, cancel <id>
+```
+
+- The directory (`--dir`, default the current one) needs `compose.yml`/`compose.yaml`/
+  `docker-compose.yml`/`docker-compose.yaml` or a `Dockerfile`. `.git` and `node_modules` are
+  not sent. The limit is 512 MiB.
+- The app must listen on `0.0.0.0`. Compose: publish the port (`ports: ["3000:3000"]`).
+  Dockerfile: pass `--port`, which becomes `-p <port>:<port>`.
+- The app lands in `/srv/tesseract/apps/<app>` inside the container (`<app>` = `--app`,
+  default the directory name). Deploying the same app again replaces it.
+- The command waits and exits 0 only when the deploy is `deployed`, printing the URLs.
+- `--create` lets the deploy name a container that does not exist yet. Without it, an unknown
+  name is refused with a hint to pass `--create`. Reserved names (`sandbox`, `tailscale`,
+  `docker`, `host`, `localhost`, `targets`, `ls`, `status`, `cancel`) are refused.
+
+### Approve
+
+With the policy off, the desktop app shows a notification. Open the container's detail page
+and choose **Approve** or **Reject**. Check the source path, the app name, the port and the
+hostname first. A deploy that creates a container also shows the new name and its CPU and
+memory limits: approving creates `tesseract-ct-<name>` and then deploys into it. A deploy
+nobody approves is rejected after 30 minutes.
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---|---|
+| `deploy targets` shows no host, or the targets are empty | No desktop app sent a heartbeat in the last 60 s. Start the desktop app on the host and check that it is connected to this sandbox. Only existing server containers are listed: deploy with `--create <name>`, or create one on the host (`tesseract containers create <name>`) |
+| The deploy stays `pending` | Same as above. A host that claimed it and went away releases it after 15 minutes |
+| Container not accepted | Use a name from `deploy targets`, or pass `--create` to have the host create it (you approve it on the host). Reserved names are always refused |
+| Refused: bundle too large, or no compose file or `Dockerfile` | Deploy the directory that holds the compose file or `Dockerfile`, and move large data and build outputs out of it (only `.git` and `node_modules` are skipped) |
+| Failed with a sha256 or size mismatch | The bundle changed or was cut off in transit. Deploy again. If it repeats, check the sandbox's free disk space (`df -h /workspace`) and the connection to the host |
+| Compose or build errors in the log | Read the log with `tesseract-controller deploy status <id>` (with dind, reproduce the build in the sandbox). Fix the compose file or `Dockerfile` and deploy again. To look inside the container: `tesseract containers ssh <name>`, then `cd /srv/tesseract/apps/<app> && docker compose -p <app> logs` (or `docker logs <app>`) |
+| Deployed, but the URL does not answer | The app listens on `127.0.0.1`, or the port is not published. Make it listen on `0.0.0.0` and publish the port that `--port` names |
+| Failed with a route conflict | The hostname is already routed to another container or port, or Cloudflare has a record Tesseract did not create. Pick another hostname, or remove the old route (`tesseract domains rm <hostname>`) and deploy again |
+| `rejected` without anyone rejecting it | Nobody approved it within 30 minutes. Approve faster or turn the policy on for that container |
+
 ## macOS
 
 On macOS, server containers and the sandbox run in one Colima VM that Tesseract manages
@@ -105,7 +174,7 @@ the install command.
 4. In the Tailscale admin console, delete the old sandbox node (now offline). The new
    one joins under the same hostname, with a `-1` suffix until the old one is gone.
 
-Then continue with steps 2 to 5 above.
+Then continue with steps 2 to 6 above.
 
 ### Verify
 

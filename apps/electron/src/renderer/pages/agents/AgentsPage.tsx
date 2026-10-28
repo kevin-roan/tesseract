@@ -8,8 +8,9 @@ import { useAgentsParams } from "../../features/agents/hooks/use-agents-params";
 import { useConversationList } from "../../features/agents/hooks/use-conversation-list";
 import { useSplitLayout } from "../../features/agents/hooks/use-split-layout";
 import { useStartRun } from "../../features/agents/hooks/use-start-run";
+import { useSlashCommands } from "../../features/agents/hooks/use-slash-commands";
 import { useAgentDetails } from "../../features/agents/hooks/use-agent-details";
-import { projectOptions } from "../../features/agents/model";
+import { projectOptions, runModel } from "../../features/agents/model";
 import { useAgentsUi } from "../../features/agents/store";
 import { DeleteConfirmHost } from "./DeleteConfirmHost";
 import { DetailStack } from "./detail/DetailStack";
@@ -32,8 +33,15 @@ export default function AgentsPage() {
   useAgentsParams(runner.start, runner.ready);
   usePageHeader({ actions: useMemo(() => <HeaderActions />, []) });
 
+  const slashCommands = useSlashCommands(ui.draft.projectId);
+
   const submit = async (text: string) => {
-    const run = await runner.start({ prompt: attachments.prompt(text), projectId: ui.draft.projectId, attachmentIds: attachments.uploadIds });
+    const run = await runner.start({
+      prompt: attachments.prompt(text),
+      projectId: ui.draft.projectId,
+      attachmentIds: attachments.uploadIds,
+      model: runModel(ui.draft.model),
+    });
     if (run) attachments.clear();
   };
 
@@ -46,6 +54,7 @@ export default function AgentsPage() {
       busy={runner.busy}
       error={runner.error}
       focusToken={ui.focusToken}
+      slashCommands={slashCommands}
       onDraft={ui.setDraft}
       onSubmit={(prompt) => void submit(prompt)}
       onClose={ui.closeDetail}

@@ -4,6 +4,8 @@ const PROBE_CODEC = "avc1.42E01F";
 const SPS_NAL_TYPE = 7;
 /** Frames waiting in the decoder before the rest of the group of pictures is skipped. */
 const MAX_DECODE_QUEUE = 6;
+/** Frames held while the stream's codec string is checked; more wait for the next key frame. */
+const MAX_PENDING_FRAMES = 60;
 
 const hex = (value: number) => value.toString(16).padStart(2, "0").toUpperCase();
 
@@ -12,11 +14,27 @@ export function avcCodec(config: Uint8Array): string | null {
   for (let i = 0; i + 4 < config.length; i += 1) {
     if (config[i] !== 0 || config[i + 1] !== 0 || config[i + 2] !== 1) continue;
     const header = config[i + 3] ?? 0;
-    if ((header & 0x1f) === SPS_NAL_TYPE && i + 6 < config.length) {
-      return `avc1.${hex(config[i + 4] ?? 0)}${hex(config[i + 5] ?? 0)}${hex(config[i + 6] ?? 0)}`;
-    }
+    if ((header & 0x1f) !== SPS_NAL_TYPE) continue;
+    const fields = spsFields(config, i + 4);
+    return fields ? `avc1.${fields.map(hex).join("")}` : null;
   }
   return null;
+}
+
+/** profile_idc, constraint flags and level_idc after an SPS header, without emulation-prevention bytes. */
+function spsFields(bytes: Uint8Array, start: number): number[] | null {
+  const fields: number[] = [];
+  let zeros = 0;
+  for (let i = start; i < bytes.length && fields.length < 3; i += 1) {
+    const byte = bytes[i] ?? 0;
+    if (zeros >= 2 && byte === 3) {
+      zeros = 0;
+      continue;
+    }
+    zeros = byte === 0 ? zeros + 1 : 0;
+    fields.push(byte);
+  }
+  return fields.length === 3 ? fields : null;
 }
 
 export type H264Packet = { config: boolean; keyFrame: boolean; data: Uint8Array };
@@ -30,13 +48,20 @@ export function parseH264Message(message: ArrayBuffer): H264Packet {
 /** Whether this WebView can decode the host's H.264 (WebCodecs). */
 export async function canDecodeH264(): Promise<boolean> {
   if (typeof VideoDecoder === "undefined" || typeof EncodedVideoChunk === "undefined") return false;
+  return supportsCodec(PROBE_CODEC);
+}
+
+async function supportsCodec(codec: string): Promise<boolean> {
   try {
-    const support = await VideoDecoder.isConfigSupported({ codec: PROBE_CODEC, optimizeForLatency: true });
+    const support = await VideoDecoder.isConfigSupported({ codec, optimizeForLatency: true });
     return support.supported === true;
   } catch {
     return false;
   }
 }
+
+const codecSupport = new Map<string, boolean>();
+const unsupported = (codec: string) => new Error(`This decoder cannot play the stream's H.264 (${codec})`);
 
 /**
  * Decodes the host's H.264 messages with WebCodecs. The SPS/PPS is put in front of every key frame,
@@ -48,6 +73,9 @@ export class H264Decoder {
   private config: Uint8Array | null = null;
   private waitingForKey = true;
   private timestamp = 0;
+  /** Frames that arrived while the stream's codec string was being checked. */
+  private pending: H264Packet[] | null = null;
+  private generation = 0;
 
   constructor(
     private readonly onFrame: (frame: VideoFrame) => void,
@@ -56,13 +84,25 @@ export class H264Decoder {
 
   push(message: ArrayBuffer): void {
     const packet = parseH264Message(message);
-    if (packet.config) {
-      this.configure(packet.data);
-      return;
-    }
+    if (packet.config) this.configure(packet.data);
+    else if (this.pending) this.hold(this.pending, packet);
+    else this.decode(packet);
+  }
+
+  close(): void {
+    this.generation += 1;
+    this.pending = null;
+    if (this.decoder && this.decoder.state !== "closed") this.decoder.close();
+    this.decoder = null;
+    this.codec = null;
+    this.config = null;
+  }
+
+  /** `flush` decodes frames held during the codec check: they queue up before the decoder can drain, so the queue-size skip would drop them. */
+  private decode(packet: H264Packet, flush = false): void {
     const decoder = this.decoder;
     if (!decoder || decoder.state !== "configured") return;
-    if (!packet.keyFrame && (this.waitingForKey || decoder.decodeQueueSize > MAX_DECODE_QUEUE)) {
+    if (!packet.keyFrame && (this.waitingForKey || (!flush && decoder.decodeQueueSize > MAX_DECODE_QUEUE))) {
       this.waitingForKey = true;
       return;
     }
@@ -76,11 +116,10 @@ export class H264Decoder {
     }
   }
 
-  close(): void {
-    if (this.decoder && this.decoder.state !== "closed") this.decoder.close();
-    this.decoder = null;
-    this.codec = null;
-    this.config = null;
+  private hold(pending: H264Packet[], packet: H264Packet): void {
+    if (packet.keyFrame) pending.splice(0, pending.length, packet);
+    else if (pending.length > 0 && pending.length < MAX_PENDING_FRAMES) pending.push(packet);
+    else pending.length = 0;
   }
 
   private configure(config: Uint8Array): void {
@@ -88,18 +127,47 @@ export class H264Decoder {
     if (!codec) return;
     this.config = config.slice();
     this.waitingForKey = true;
+    if (this.pending) {
+      this.generation += 1;
+      this.pending = null;
+    } else if (this.decoder && this.decoder.state !== "closed" && this.codec === codec) {
+      return;
+    }
+    const supported = codecSupport.get(codec);
+    if (supported === undefined) void this.check(codec);
+    else if (supported) this.open(codec);
+    else this.fail(unsupported(codec));
+  }
+
+  /** Checks the stream's real codec string (canDecodeH264 only probed Baseline), holding frames meanwhile. */
+  private async check(codec: string): Promise<void> {
+    const generation = (this.generation += 1);
+    this.pending = [];
+    const supported = await supportsCodec(codec);
+    codecSupport.set(codec, supported);
+    if (generation !== this.generation) return;
+    const pending = this.pending ?? [];
+    this.pending = null;
+    if (!supported) {
+      this.fail(unsupported(codec));
+      return;
+    }
+    if (this.open(codec)) for (const packet of pending) this.decode(packet, true);
+  }
+
+  private open(codec: string): boolean {
     if (!this.decoder || this.decoder.state === "closed") {
       this.decoder = new VideoDecoder({ output: (frame) => this.onFrame(frame), error: (error) => this.fail(error) });
-    } else if (this.codec === codec) {
-      return;
-    } else {
+    } else if (this.decoder.state === "configured") {
       this.decoder.reset();
     }
     this.codec = codec;
     try {
       this.decoder.configure({ codec, optimizeForLatency: true });
+      return true;
     } catch (error) {
       this.fail(error);
+      return false;
     }
   }
 

@@ -33,6 +33,13 @@ export class TicketStore {
     return expiresAt > this.now();
   }
 
+  /** Checks a ticket without using it up (the host terminal page reads its terminal's info before streaming with the same ticket). */
+  peek(ticket: string | null | undefined): boolean {
+    if (!ticket) return false;
+    const expiresAt = this.tickets.get(ticket);
+    return expiresAt !== undefined && expiresAt > this.now();
+  }
+
   get size(): number {
     return this.tickets.size;
   }

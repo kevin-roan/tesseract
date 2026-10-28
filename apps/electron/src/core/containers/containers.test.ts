@@ -1,11 +1,11 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { CommandResult } from "../process";
 import { CloudflareApi } from "./cloudflare";
 import { CATCH_ALL_SERVICE, DARWIN_DEFAULT_MEMORY_MB, MANAGED_COMMENT, SYSBOX_RUNTIME } from "./constants";
-import { containerState, createArgs, joinTailnet, parseLabels, parseTailnet, tunnelArgs, type DockerDeps } from "./docker";
+import { appSteps, containerState, createArgs, extractArgs, joinTailnet, parseLabels, parseTailnet, tunnelArgs, waitForInnerDocker, type DockerDeps } from "./docker";
 import { ContainersService } from "./service";
 import { validHostname, validName, validPort, zoneFor } from "./validate";
 
@@ -356,5 +356,174 @@ describe("waiting for systemd before joining the tailnet", () => {
     const { deps, waits } = boot(Array.from({ length: 200 }, () => BUS_DOWN));
     await joinTailnet(deps, "api", { authKey: "k", tags: "tag:x" });
     expect(waits()).toBe(60);
+  });
+});
+
+describe("deploy policy and execution", () => {
+  let dir: string;
+  beforeEach(() => {
+    dir = mkdtempSync(join(tmpdir(), "tesseract-containers-"));
+  });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  const stateFile = () => join(dir, "containers.json");
+  const stored = () => JSON.parse(readFileSync(stateFile(), "utf8")) as { autoDeploy: string[]; routes: unknown[] };
+
+  function service({ state = "exited", innerDockerAfter = 0, failStep }: { state?: string; innerDockerAfter?: number; failStep?: string } = {}) {
+    const cloudflare = fakeCloudflare();
+    const runs: (readonly string[])[] = [];
+    const streams: { args: readonly string[]; stdinFile?: string }[] = [];
+    let infoCalls = 0;
+    let current = state;
+    const ok = (stdout = ""): CommandResult => ({ code: 0, stdout, stderr: "", timedOut: false });
+    const docker: DockerDeps = {
+      run: async (_file, args) => {
+        runs.push(args);
+        if (args[0] === "start") current = "running";
+        if (args[0] === "ps") {
+          return ok(JSON.stringify({ ID: "c1", Names: "tesseract-ct-api", Image: "tesseract/server:1", State: current, Status: current, CreatedAt: "now", Labels: "dev.tesseract.container=api,dev.tesseract.role=server" }));
+        }
+        if (args[0] === "inspect") return ok(JSON.stringify([{ Id: "c1", HostConfig: {} }]));
+        if (args[0] === "container") return { code: 1, stdout: "", stderr: "no such container", timedOut: false };
+        if (args.includes("info")) return (infoCalls += 1) > innerDockerAfter ? ok("27.0.0") : { code: 1, stdout: "", stderr: "Cannot connect", timedOut: false };
+        if (args.includes("tailscale")) return ok(JSON.stringify({ BackendState: "Running", Self: { HostName: "api", DNSName: "api.tail1.ts.net.", TailscaleIPs: ["100.64.0.9"], Online: true } }));
+        return ok();
+      },
+      stream: async (_file, args, options) => {
+        streams.push({ args, stdinFile: options?.stdinFile });
+        options?.onStdout?.(`ran ${args.slice(-3).join(" ")}`);
+        if (failStep && args.includes(failStep)) {
+          options?.onStderr?.("boom happened");
+          return { code: 1, cancelled: false, error: null };
+        }
+        return { code: 0, cancelled: false, error: null };
+      },
+      log: () => undefined,
+      sleep: async () => undefined,
+    };
+    const instance = new ContainersService({
+      docker,
+      configFile: join(dir, "config.json"),
+      stateFile: stateFile(),
+      contextDir: dir,
+      env: { TESSERACT_CLOUDFLARE_TOKEN: "cf" },
+      cipher: null,
+      seal: false,
+      fetch: cloudflare.fetcher,
+    });
+    return { instance, runs, streams, cloudflare };
+  }
+
+  const request = (extra: Partial<Parameters<ContainersService["deploy"]>[0]> = {}) => ({
+    container: "api",
+    app: "web",
+    kind: "compose" as const,
+    port: null,
+    hostname: null,
+    bundle: "/tmp/bundle.tar.gz",
+    ...extra,
+  });
+
+  it("persists auto-deploy per container and keeps old files readable", async () => {
+    writeFileSync(stateFile(), JSON.stringify({ tunnels: {}, routes: [] }));
+    const { instance } = service();
+    expect((await instance.list())[0]!.autoDeploy).toBe(false);
+    expect((await instance.setAutoDeploy("api", true)).autoDeploy).toBe(true);
+    expect(stored().autoDeploy).toEqual(["api"]);
+    await instance.setAutoDeploy("api", true);
+    expect(stored().autoDeploy).toEqual(["api"]);
+    expect((await instance.setAutoDeploy("api", false)).autoDeploy).toBe(false);
+    expect(stored().autoDeploy).toEqual([]);
+  });
+
+  it("drops the policy with the container", async () => {
+    const { instance } = service();
+    await instance.setAutoDeploy("api", true);
+    await instance.remove("api");
+    expect(stored().autoDeploy).toEqual([]);
+  });
+
+  it("unpacks the bundle inside the container over stdin", () => {
+    expect(extractArgs("api", "web")).toEqual([
+      "exec",
+      "-i",
+      "tesseract-ct-api",
+      "sh",
+      "-c",
+      'set -e; d=/srv/tesseract/apps/web; rm -rf "$d.new"; mkdir -p "$d.new"; tar -xzf - --no-same-owner -C "$d.new"; rm -rf "$d"; mv "$d.new" "$d"',
+    ]);
+  });
+
+  it("runs compose apps with the inner docker", () => {
+    expect(appSteps({ name: "api", app: "web", kind: "compose", port: 3000 }).map((step) => step.args)).toEqual([
+      ["exec", "-w", "/srv/tesseract/apps/web", "tesseract-ct-api", "docker", "compose", "-p", "web", "up", "-d", "--build", "--remove-orphans"],
+    ]);
+  });
+
+  it("builds and replaces Dockerfile apps", () => {
+    expect(appSteps({ name: "api", app: "web", kind: "dockerfile", port: 3000 }).map((step) => step.args)).toEqual([
+      ["exec", "-w", "/srv/tesseract/apps/web", "tesseract-ct-api", "docker", "build", "-t", "tesseract-app/web:latest", "."],
+      ["exec", "tesseract-ct-api", "docker", "rm", "-f", "web"],
+      ["exec", "tesseract-ct-api", "docker", "run", "-d", "--name", "web", "--restart", "unless-stopped", "-p", "3000:3000", "tesseract-app/web:latest"],
+    ]);
+    expect(appSteps({ name: "api", app: "web", kind: "dockerfile", port: null }).at(-1)!.args).not.toContain("-p");
+  });
+
+  it("starts a stopped container, waits for its docker and deploys", async () => {
+    const { instance, runs, streams } = service({ innerDockerAfter: 2 });
+    const lines: string[] = [];
+    const urls = await instance.deploy(request({ kind: "dockerfile", port: 3000 }), (line) => lines.push(line));
+    expect(runs.some((args) => args[0] === "start" && args[1] === "tesseract-ct-api")).toBe(true);
+    expect(runs.filter((args) => args.includes("info")).length).toBe(3);
+    expect(streams.map((entry) => entry.args[0] === "exec" && entry.args[1])).toEqual(["-i", "-w", "tesseract-ct-api"]);
+    expect(streams[0]!.stdinFile).toBe("/tmp/bundle.tar.gz");
+    expect(runs.some((args) => args.join(" ") === "exec tesseract-ct-api docker rm -f web")).toBe(true);
+    expect(lines.length).toBe(3);
+    expect(urls).toEqual(["http://api.tail1.ts.net:3000"]);
+  });
+
+  it("gives up when the inner docker never answers", async () => {
+    const { deps } = fakeDocker();
+    const stuck: DockerDeps = { ...deps, run: async () => ({ code: 1, stdout: "", stderr: "down", timedOut: false }), sleep: async () => undefined };
+    await expect(waitForInnerDocker(stuck, "api")).rejects.toThrow(/didn't come up/);
+  });
+
+  it("rejects app names that could escape the apps dir", async () => {
+    const { instance, streams } = service();
+    await expect(instance.deploy(request({ app: "../etc" }), () => undefined)).rejects.toThrow(/Invalid app/);
+    expect(streams).toEqual([]);
+  });
+
+  it("reports the failing step with the last output line", async () => {
+    const { instance } = service({ state: "running", failStep: "compose" });
+    await expect(instance.deploy(request(), () => undefined)).rejects.toThrow(/docker compose up failed: boom happened/);
+  });
+
+  it("adds a route for a new hostname", async () => {
+    const { instance, cloudflare } = service({ state: "running" });
+    const urls = await instance.deploy(request({ port: 3000, hostname: "app.example.com" }), () => undefined);
+    expect(urls).toEqual(["https://app.example.com", "http://api.tail1.ts.net:3000"]);
+    expect(cloudflare.calls.some((call) => call.method === "POST" && call.path.endsWith("/dns_records"))).toBe(true);
+    expect((await instance.routes()).map((route) => route.hostname)).toEqual(["app.example.com"]);
+  });
+
+  function seedRoute(port: number, container = "api") {
+    const route = { id: "rt_1", hostname: "app.example.com", container, port, scheme: "http", status: "active", error: null, createdAt: "now", zoneId: "z1", recordId: "rec1" };
+    writeFileSync(stateFile(), JSON.stringify({ tunnels: {}, routes: [route], autoDeploy: [] }));
+  }
+
+  it("reuses a matching route", async () => {
+    seedRoute(3000);
+    const { instance, cloudflare } = service({ state: "running" });
+    const urls = await instance.deploy(request({ port: 3000, hostname: "app.example.com" }), () => undefined);
+    expect(urls[0]).toBe("https://app.example.com");
+    expect(cloudflare.calls).toEqual([]);
+  });
+
+  it("refuses a hostname routed elsewhere before deploying", async () => {
+    seedRoute(4000);
+    const { instance, streams } = service({ state: "running" });
+    await expect(instance.deploy(request({ port: 3000, hostname: "app.example.com" }), () => undefined)).rejects.toThrow(/already routed to api:4000/);
+    expect(streams).toEqual([]);
   });
 });

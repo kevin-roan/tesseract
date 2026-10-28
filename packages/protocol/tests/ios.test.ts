@@ -4,6 +4,10 @@ import {
   BootSimulatorSchema,
   createId,
   DecideIosInstallSchema,
+  DEFAULT_IOS_STREAM,
+  DeviceScreenServerMessageSchema,
+  IosStreamSettingsSchema,
+  UpdateIosStreamSchema,
   DeviceScreenClientMessageSchema,
   HostIosStatusSchema,
   ID_PREFIXES,
@@ -55,6 +59,10 @@ describe("ios routes", () => {
     expect(routePatterns.ws.iosLinkStream).toBe("/v1/ios/link/streams/:id");
     expect(wsPaths.iosScreen({ maxSize: 720, udid: UDID })).toBe(`/v1/ios/screen?maxSize=720&udid=${UDID}`);
     expect(uiPaths.ios({ ticket: "t", maxSize: 1280 })).toBe("/ui/ios#ticket=t&maxSize=1280");
+    expect(wsPaths.iosScreen({ maxSize: 720, codec: "h264" })).toBe("/v1/ios/screen?maxSize=720&codec=h264");
+    expect(uiPaths.ios({ ticket: "t", codec: "h264" })).toBe("/ui/ios#ticket=t&codec=h264");
+    expect(restPaths.iosStream()).toBe("/v1/ios/stream");
+    expect(routePatterns.rest.iosStream).toBe("/v1/ios/stream");
     expect(routePatterns.ui.ios).toBe("/ui/ios");
     expect(PAGE_MESSAGES.iosState).toBe("ios-state");
     expect(PAGE_MESSAGES.iosNeedTicket).toBe("ios-need-ticket");
@@ -96,6 +104,20 @@ describe("ios schemas", () => {
     expect(IosLinkStreamQuerySchema.parse({ ticket: "t", port: "8081" })).toEqual({ ticket: "t", port: 8081 });
     rejects(IosLinkStreamQuerySchema, { ticket: "t", port: "22" });
     roundTrip(DeviceScreenClientMessageSchema, { type: "key", key: "home" });
+  });
+
+  test("stream settings and screen codec", () => {
+    roundTrip(IosStreamSettingsSchema, DEFAULT_IOS_STREAM);
+    roundTrip(IosStreamSettingsSchema, { ...DEFAULT_IOS_STREAM, encoding: "mjpeg", maxSize: 1280 });
+    expect(IosStreamSettingsSchema.parse({ ...DEFAULT_IOS_STREAM, device: "emulator-5554" })).toEqual(DEFAULT_IOS_STREAM);
+    rejects(IosStreamSettingsSchema, { ...DEFAULT_IOS_STREAM, bitRate: 1 });
+    rejects(IosStreamSettingsSchema, { ...DEFAULT_IOS_STREAM, encoding: "vp8" });
+    rejects(IosStreamSettingsSchema, { ...DEFAULT_IOS_STREAM, keyFrameInterval: 0 });
+    expect(UpdateIosStreamSchema.parse({ maxFps: 30 })).toEqual({ maxFps: 30 });
+    rejects(UpdateIosStreamSchema, { jpegQuality: 0 });
+    expect(IosScreenQuerySchema.parse({ ticket: "t", udid: UDID, codec: "h264" })).toEqual({ ticket: "t", udid: UDID, codec: "h264" });
+    rejects(IosScreenQuerySchema, { ticket: "t", codec: "vp8" });
+    roundTrip(DeviceScreenServerMessageSchema, { type: "meta", deviceName: "iPhone 17 Pro", codec: "h264", width: 1320, height: 2868 });
   });
 
   test("link messages", () => {

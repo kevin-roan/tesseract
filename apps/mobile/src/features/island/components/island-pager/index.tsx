@@ -26,21 +26,21 @@ export type IslandPagerProps = {
 const IslandPager = ({ items, focusedId, width, onFocus, onOpen }: IslandPagerProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const pager = useIslandPager(items, focusedId, onFocus, width);
+  const { ref: pagerRef, index: pageIndex, offset, settle } = useIslandPager(items, focusedId, onFocus, width);
   const now = useNow(items.some((item) => item.startedAt !== null));
   const open = useHapticPress(onOpen);
 
   return (
     <View style={styles.container}>
       <ScrollView
-        ref={pager.ref}
+        ref={pagerRef}
         horizontal
         pagingEnabled
         bounces={items.length > 1}
         scrollEnabled={items.length > 1}
         showsHorizontalScrollIndicator={false}
-        contentOffset={pager.offset}
-        onMomentumScrollEnd={pager.settle}
+        contentOffset={offset}
+        onMomentumScrollEnd={settle}
         style={styles.scroller}
         testID="island-pager"
       >
@@ -82,11 +82,11 @@ const IslandPager = ({ items, focusedId, width, onFocus, onOpen }: IslandPagerPr
           style={styles.dots}
           accessible
           accessibilityRole="adjustable"
-          accessibilityLabel={`Task ${pager.index + 1} of ${items.length}`}
+          accessibilityLabel={`Task ${pageIndex + 1} of ${items.length}`}
           accessibilityHint="Swipe the task left or right to switch"
         >
           {items.map((item, position) => (
-            <View key={item.id} style={[styles.dot, position === pager.index && styles.dotActive]} />
+            <View key={item.id} style={[styles.dot, position === pageIndex && styles.dotActive]} />
           ))}
         </View>
       ) : null}

@@ -3,14 +3,14 @@ import { Text } from "../Text";
 import styles from "./Timeline.module.css";
 
 export interface AuthorLineProps {
-  avatar: ReactNode;
+  avatar?: ReactNode;
   name: string;
   time?: string;
 }
 
 export function AuthorLine({ avatar, name, time }: AuthorLineProps) {
   return (
-    <div className={styles.authorLine}>
+    <div className={styles.authorLine} data-bare={avatar ? undefined : true}>
       {avatar}
       <Text variant="label">{name}</Text>
       {time ? (

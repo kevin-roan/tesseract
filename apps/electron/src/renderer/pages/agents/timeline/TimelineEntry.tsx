@@ -3,7 +3,6 @@ import { memo } from "react";
 import { AssistantMessage, OutcomeCard, outcomeFor, SystemLine, ToolCallCard, UserBubble } from "../../../components/Timeline";
 import { formatRelativeTime } from "../../../features/agents/format";
 import { CONVERSATION_LABELS } from "../../../features/agents/labels";
-import { AgentAvatar } from "./AgentAvatar";
 import { TOOL_LABELS } from "./labels";
 import type { TimelineItem } from "./model";
 import { outcomeMeta } from "./run-info";
@@ -33,7 +32,6 @@ function TimelineEntryView({ item, run, author, working, now }: TimelineEntryPro
         <AssistantMessage
           text={item.text}
           author={author ? CONVERSATION_LABELS.claude : null}
-          avatar={author ? <AgentAvatar working={working} /> : undefined}
           working={working}
           copyLabel={CONVERSATION_LABELS.copyCode}
           copiedLabel={CONVERSATION_LABELS.codeCopied}

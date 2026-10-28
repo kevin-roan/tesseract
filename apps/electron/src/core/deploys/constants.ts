@@ -1,0 +1,11 @@
+export const HEARTBEAT_INTERVAL_MS = 20_000;
+export const LOG_FLUSH_MS = 1_000;
+export const REQUEST_TIMEOUT_MS = 20_000;
+export const DOWNLOAD_TIMEOUT_MS = 15 * 60_000;
+export const SHA256_HEADER = "x-tesseract-sha256";
+export const TEMP_PREFIX = "tesseract-deploy-";
+export const BUNDLE_FILE = "bundle.tar.gz";
+export const BUNDLE_FILE_MODE = 0o600;
+export const CONFLICT_STATUS = 409;
+export const SEEN_LIMIT = 500;
+export const ERROR_TEXT_LIMIT = 300;

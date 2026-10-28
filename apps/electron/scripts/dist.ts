@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { parseArgs } from "./lib/args.ts";
-import { builderArgs, CLI_TARGETS, DIST_VALUE_FLAGS, distPlan, requiredCliFiles } from "./lib/dist-plan.ts";
+import { builderArgs, CLI_TARGETS, DIST_VALUE_FLAGS, distPlan, missingCliMessage, requiredCliFiles } from "./lib/dist-plan.ts";
 import { APP_DIR, SANDBOX_BUNDLE_DIR } from "./lib/paths.ts";
 
 const require = createRequire(import.meta.url);
@@ -33,7 +33,7 @@ function main(): number {
   if (plan.cli) run(process.execPath, ["scripts/cli-build.ts", "--target", CLI_TARGETS[plan.platform].join(",")]);
   if (plan.sandbox) run(process.execPath, ["scripts/bundle-sandbox.ts"]);
   const missing = requiredCliFiles(plan.platform).filter((file) => !existsSync(join(APP_DIR, file)));
-  if (missing.length > 0) throw new Error(`missing CLI binaries (run cli:build): ${missing.join(", ")}`);
+  if (missing.length > 0) throw new Error(missingCliMessage(missing, process.platform));
   if (!existsSync(join(SANDBOX_BUNDLE_DIR, "manifest.json"))) throw new Error("missing build/sandbox-context (run bundle:sandbox)");
   run(process.execPath, [require.resolve("electron-builder/cli.js"), ...builderArgs(plan)]);
   if (plan.smoke) run(process.execPath, ["scripts/smoke.ts"]);

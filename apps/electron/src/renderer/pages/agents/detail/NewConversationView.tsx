@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Composer } from "../../../components/Composer";
+import { Composer, type SlashCommand } from "../../../components/Composer";
 import { Icon } from "../../../components/Icon";
 import { IconButton } from "../../../components/IconButton";
 import { Notice } from "../../../components/Notice";
@@ -9,6 +9,7 @@ import { AGENTS_LABELS, NEW_LABELS } from "../../../features/agents/labels";
 import type { ProjectOption } from "../../../features/agents/model";
 import type { NewDraft } from "../../../features/agents/store";
 import { AttachmentDrafts } from "../shared/AttachmentDrafts";
+import { ModelPicker } from "../shared/ModelPicker";
 import { GLYPH_SIZE } from "../shared/constants";
 import { ProjectPicker } from "./ProjectPicker";
 import { SuggestionChips } from "./SuggestionChips";
@@ -21,12 +22,13 @@ export interface NewConversationViewProps {
   busy: boolean;
   error: string | null;
   focusToken: number;
+  slashCommands?: readonly SlashCommand[];
   onDraft(patch: Partial<NewDraft>): void;
   onSubmit(prompt: string): void;
   onClose(): void;
 }
 
-export function NewConversationView({ draft, options, attachments, busy, error, focusToken, onDraft, onSubmit, onClose }: NewConversationViewProps) {
+export function NewConversationView({ draft, options, attachments, busy, error, focusToken, slashCommands, onDraft, onSubmit, onClose }: NewConversationViewProps) {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   useEffect(() => {
     inputRef.current?.focus();
@@ -65,7 +67,14 @@ export function NewConversationView({ draft, options, attachments, busy, error, 
             onAttach={attachments.attach}
             onDropFiles={attachments.dropFiles}
             inputRef={inputRef}
-            properties={<ProjectPicker options={options} value={draft.projectId} onChange={(projectId) => onDraft({ projectId })} />}
+            slashCommands={slashCommands}
+            slashPlacement="below"
+            properties={
+              <>
+                <ProjectPicker options={options} value={draft.projectId} onChange={(projectId) => onDraft({ projectId })} />
+                <ModelPicker value={draft.model} onChange={(model) => onDraft({ model })} />
+              </>
+            }
             tray={<AttachmentDrafts attachments={attachments} />}
           />
         </div>

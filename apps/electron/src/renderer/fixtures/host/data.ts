@@ -1,4 +1,16 @@
-import { restPaths, routePatterns, type CreateHostTerminal, type HostIosStatus, type IosLinkInfo, type SimDevice, type TerminalInfo } from "@tesseract/protocol";
+import {
+  DEFAULT_ANDROID_STREAM,
+  DEFAULT_IOS_STREAM,
+  restPaths,
+  routePatterns,
+  type AndroidStreamSettings,
+  type CreateHostTerminal,
+  type HostIosStatus,
+  type IosLinkInfo,
+  type IosStreamSettings,
+  type SimDevice,
+  type TerminalInfo,
+} from "@tesseract/protocol";
 import { sampleHostAndroidStatus, sampleHostIosStatus, sampleTicket } from "@tesseract/protocol/fixtures";
 import type { HostShellState } from "../../../shared/contracts/hostShell";
 import type { HttpProxyRequest, HttpProxyResponse } from "../../../shared/contracts/http";
@@ -71,10 +83,15 @@ export function linkHostSimulator(sandboxUrl: string): IosLinkInfo {
   return ios.link;
 }
 
+let androidStream: AndroidStreamSettings = { ...DEFAULT_ANDROID_STREAM };
+let iosStream: IosStreamSettings = { ...DEFAULT_IOS_STREAM };
+
 export function resetHostFixtures(): void {
   terminals = null;
   sequence = 0;
   ios = seedIos();
+  androidStream = { ...DEFAULT_ANDROID_STREAM };
+  iosStream = { ...DEFAULT_IOS_STREAM };
 }
 
 const TERMINAL_PATH = new RegExp(`^${routePatterns.rest.terminal.replace(":id", "([^/]+)")}$`);
@@ -102,7 +119,7 @@ export function hostProxyFixture(request: HttpProxyRequest): HttpProxyResponse {
   if (pathname === restPaths.terminals() && method === "POST") {
     const body = parse<CreateHostTerminal>(request.body);
     sequence += 1;
-    const info = terminal({ id: `trm_host_new_${sequence}`, cwd: body.cwd ?? "/home/me", cols: body.cols ?? 100, rows: body.rows ?? 30, createdAt: new Date().toISOString() });
+    const info = terminal({ id: `trm_host_new_${sequence}`, kind: body.kind ?? "shell", title: body.kind === "claude" ? "claude" : "zsh", cwd: body.cwd ?? "/home/me", cols: body.cols ?? 100, rows: body.rows ?? 30, createdAt: new Date().toISOString() });
     terminals = [info, ...hostTerminals()];
     return json(201, info);
   }
@@ -114,5 +131,15 @@ export function hostProxyFixture(request: HttpProxyRequest): HttpProxyResponse {
     return json(200, { ...info, state: "exited", exitCode: 0 });
   }
   if (pathname === restPaths.android() && method === "GET") return json(200, sampleHostAndroidStatus);
+  if (pathname === restPaths.androidStream() && method === "GET") return json(200, androidStream);
+  if (pathname === restPaths.androidStream() && method === "PUT") {
+    androidStream = { ...androidStream, ...parse<AndroidStreamSettings>(request.body) };
+    return json(200, androidStream);
+  }
+  if (pathname === restPaths.iosStream() && method === "GET") return json(200, iosStream);
+  if (pathname === restPaths.iosStream() && method === "PUT") {
+    iosStream = { ...iosStream, ...parse<IosStreamSettings>(request.body) };
+    return json(200, iosStream);
+  }
   return json(404, { error: { code: "not_found", message: `No host fixture for ${method} ${pathname}` } });
 }

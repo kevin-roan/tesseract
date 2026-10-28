@@ -1,6 +1,6 @@
-import type { ReactNode, Ref } from "react";
+import { type ReactNode, type Ref, useId } from "react";
 import { cx } from "../../lib/cx";
-import { AttachButton, type AttachKind, SendButton, useComposerInput, useFileDrop } from "../Composer";
+import { AttachButton, type AttachKind, SendButton, type SlashCommand, SlashHints, useComposerInput, useFileDrop } from "../Composer";
 import { ACTION_SIZE, SIDEBAR_COMPOSER_SIZE } from "./constants";
 import { SIDEBAR_COMPOSER_LABELS } from "./labels";
 import { canSendFromSidebar, type PickerProject } from "./model";
@@ -25,6 +25,7 @@ export interface SidebarComposerProps {
   tray?: ReactNode;
   onAttach?: (kind: AttachKind) => void;
   onDropFiles?: (files: File[]) => void;
+  slashCommands?: readonly SlashCommand[];
   inputRef?: Ref<HTMLTextAreaElement>;
   className?: string;
 }
@@ -42,6 +43,7 @@ export function SidebarComposer({
   tray,
   onAttach,
   onDropFiles,
+  slashCommands,
   inputRef,
   className,
 }: SidebarComposerProps) {
@@ -57,7 +59,9 @@ export function SidebarComposer({
     maxHeight: SIDEBAR_COMPOSER_SIZE.maxHeight,
     locked: false,
     inputRef,
+    slashCommands,
   });
+  const hintsId = useId();
   const drop = useFileDrop(onDropFiles);
   const tooltip = online ? SIDEBAR_COMPOSER_LABELS.send : SIDEBAR_COMPOSER_LABELS.offline;
 
@@ -67,6 +71,13 @@ export function SidebarComposer({
       data-drop-target={drop.dragging || undefined}
       {...(drop.handlers ? { onDragEnter: drop.handlers.onDragEnter, onDragOver: drop.handlers.onDragOver, onDragLeave: drop.handlers.onDragLeave, onDrop: drop.handlers.onDrop } : {})}
     >
+      <SlashHints
+        id={hintsId}
+        open={input.slash.open}
+        matches={input.slash.matches}
+        activeIndex={input.slash.activeIndex}
+        onPick={input.acceptSlash}
+      />
       {tray}
       <div className={styles.inputArea} onMouseDown={input.onAreaMouseDown}>
         <textarea
@@ -76,6 +87,9 @@ export function SidebarComposer({
           rows={1}
           spellCheck
           aria-label={SIDEBAR_COMPOSER_LABELS.placeholder}
+          aria-autocomplete={slashCommands ? "list" : undefined}
+          aria-controls={input.slash.open ? hintsId : undefined}
+          aria-activedescendant={input.slash.open ? `${hintsId}-${input.slash.activeIndex}` : undefined}
           onChange={(event) => onChange(event.target.value)}
           onKeyDown={input.onKeyDown}
           onPaste={drop.handlers?.onPaste}

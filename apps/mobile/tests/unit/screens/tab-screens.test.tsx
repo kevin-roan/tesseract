@@ -17,11 +17,20 @@ import { TEST_SANDBOX, TEST_SITE } from "../sandbox/helpers";
 
 const mockHub = jest.fn();
 const mockProfile = jest.fn();
+const mockPreferences = {
+  appearance: { options: [{ id: "system", label: "System" }, { id: "light", label: "Light" }, { id: "dark", label: "Dark" }], selectedId: "dark", select: jest.fn() },
+  voice: { title: "Speech to text", value: "Gemini", open: jest.fn() },
+  inputMode: { options: [{ id: "trackpad", label: "Trackpad" }, { id: "touch", label: "Touch" }], selectedId: "trackpad", select: jest.fn() },
+  islandPlacement: { options: [{ id: "topLeft", label: "Top left" }, { id: "bottomRight", label: "Bottom right" }], selectedId: "bottomRight", select: jest.fn() },
+  liveActivity: { value: true, set: jest.fn() },
+  about: { title: "About Tesseract", subtitle: "Version 1.0.0 · production", open: jest.fn() },
+};
 const mockProjects = jest.fn();
 const mockTasks = jest.fn();
 
 jest.mock("@/features/sandbox/hooks/use-sandbox-hub", () => ({ useSandboxHub: () => mockHub() }));
 jest.mock("@/features/sandbox/hooks/use-profile-screen", () => ({ useProfileScreen: () => mockProfile() }));
+jest.mock("@/features/settings/hooks/use-preferences", () => ({ usePreferences: () => mockPreferences }));
 jest.mock("@/features/sandbox/hooks/use-projects-screen", () => ({ useProjectsScreen: () => mockProjects() }));
 jest.mock("@/features/sandbox/hooks/use-tasks-screen", () => ({ useTasksScreen: () => mockTasks() }));
 jest.mock("@/features/sandbox/components/resource-history", () => () => null);
@@ -177,17 +186,6 @@ describe("AgentsScreen", () => {
 });
 
 describe("ProfileScreen", () => {
-  const activityItem = {
-    id: "build-bld_1",
-    actor: "Ada Lovelace",
-    action: "built Windows installer for",
-    target: "electron-hello",
-    timeAgo: "5m ago",
-    metrics: [{ id: "state", value: "Succeeded", label: "State" }],
-    testID: "activity-build-bld_1",
-    onPress: jest.fn(),
-  };
-
   function profile(overrides: object = {}) {
     return {
       nav,
@@ -199,7 +197,6 @@ describe("ProfileScreen", () => {
         { id: "running", value: "1", label: "Running" },
         { id: "builds", value: "1", label: "Builds" },
       ],
-      openSettings: jest.fn(),
       sandboxes: [{ id: TEST_SANDBOX.id, label: TEST_SANDBOX.name, detail: "127.0.0.1:7700", selected: true }],
       selectSandbox: jest.fn(),
       pairSandbox: jest.fn(),
@@ -214,10 +211,7 @@ describe("ProfileScreen", () => {
       claudeAccountTitle: "Claude accounts",
       claudeAccount: "dev@example.com",
       openClaudeAccount: jest.fn(),
-      activity: [],
-      activityLoading: false,
-      activityError: null,
-      retryActivity: jest.fn(),
+      activity: { title: "Activity", subtitle: "Builds, Claude runs and processes", open: jest.fn() },
       refreshing: false,
       refresh: jest.fn(),
       ...overrides,
@@ -234,8 +228,8 @@ describe("ProfileScreen", () => {
     expect(screen.getByLabelText("Loading sandboxes…")).toBeOnTheScreen();
   });
 
-  it("shows the Tailscale identity, stats and activity", async () => {
-    const state = profile({ activity: [activityItem] });
+  it("shows the Tailscale identity, stats and a link to the activity", async () => {
+    const state = profile();
     mockProfile.mockReturnValue(state);
     await render(<ProfileScreen />);
 
@@ -245,15 +239,14 @@ describe("ProfileScreen", () => {
     expect(screen.getByText("Running")).toBeOnTheScreen();
     expect(screen.getByTestId("profile-activity")).toBeOnTheScreen();
     expect(screen.queryByText("Tailscale identity not exposed")).toBeNull();
-    await fireEvent.press(screen.getByTestId("activity-build-bld_1"));
-    expect(activityItem.onPress).toHaveBeenCalled();
-    await fireEvent.press(screen.getByLabelText("Open settings"));
-    expect(state.openSettings).toHaveBeenCalled();
+    expect(screen.queryByLabelText("Open settings")).toBeNull();
+    await fireEvent.press(screen.getByTestId("profile-activity"));
+    expect(state.activity.open).toHaveBeenCalled();
     await fireEvent.press(screen.getByLabelText("Claude accounts, dev@example.com"));
     expect(state.openClaudeAccount).toHaveBeenCalled();
   });
 
-  it("explains a missing Tailscale identity, problems and an empty feed", async () => {
+  it("explains a missing Tailscale identity and problems", async () => {
     const state = profile({
       profile: { name: TEST_SANDBOX.name, tagline: TEST_SANDBOX.baseUrl },
       tailscaleMissing: true,
@@ -268,7 +261,6 @@ describe("ProfileScreen", () => {
     expect(screen.getByTestId("profile-name")).toHaveTextContent(TEST_SANDBOX.name);
     expect(screen.queryByTestId("profile-tailnet")).toBeNull();
     expect(screen.getByText("Tailscale identity not exposed")).toBeOnTheScreen();
-    expect(screen.getByText("No activity yet")).toBeOnTheScreen();
     await fireEvent.press(screen.getByLabelText("Pair"));
     expect(nav.pair).toHaveBeenCalled();
     await fireEvent.press(screen.getByLabelText("Pair again"));
@@ -277,17 +269,6 @@ describe("ProfileScreen", () => {
     for (const retry of retries) await fireEvent.press(retry);
     expect(state.retryStatus).toHaveBeenCalled();
     expect(state.retryIdentity).toHaveBeenCalled();
-  });
-
-  it("shows a failed activity feed with a retry instead of an empty feed", async () => {
-    const state = profile({ activityError: "Can't reach the sandbox." });
-    mockProfile.mockReturnValue(state);
-    await render(<ProfileScreen />);
-
-    expect(screen.queryByText("No activity yet")).toBeNull();
-    expect(screen.getByText("Can't reach the sandbox.")).toBeOnTheScreen();
-    await fireEvent.press(screen.getByLabelText("Retry"));
-    expect(state.retryActivity).toHaveBeenCalled();
   });
 
   it("lists paired sandboxes, switches the active one and pairs another", async () => {
@@ -310,17 +291,25 @@ describe("ProfileScreen", () => {
     expect(state.pairSandbox).toHaveBeenCalled();
   });
 
-  it("offers a first Claude run on an empty feed", async () => {
+  it("changes preferences in place and opens the sub-screens", async () => {
     mockProfile.mockReturnValue(profile());
     await render(<ProfileScreen />);
-    await fireEvent.press(screen.getByLabelText("Ask Claude"));
-    expect(nav.newAgentRun).toHaveBeenCalled();
-  });
 
-  it("shows a spinner while the activity loads", async () => {
-    mockProfile.mockReturnValue(profile({ activityLoading: true }));
-    await render(<ProfileScreen />);
-    expect(screen.getByLabelText("Loading activity…")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByTestId("profile-appearance"));
+    await fireEvent.press(screen.getByText("Light"));
+    expect(mockPreferences.appearance.select).toHaveBeenCalledWith("light");
+    await fireEvent.press(screen.getByTestId("profile-input-mode"));
+    await fireEvent.press(screen.getByText("Touch"));
+    expect(mockPreferences.inputMode.select).toHaveBeenCalledWith("touch");
+    await fireEvent.press(screen.getByTestId("profile-island"));
+    await fireEvent.press(screen.getByText("Top left"));
+    expect(mockPreferences.islandPlacement.select).toHaveBeenCalledWith("topLeft");
+    await fireEvent(screen.getByTestId("profile-live-activity"), "valueChange", false);
+    expect(mockPreferences.liveActivity.set).toHaveBeenCalledWith(false);
+    await fireEvent.press(screen.getByTestId("profile-voice"));
+    expect(mockPreferences.voice.open).toHaveBeenCalled();
+    await fireEvent.press(screen.getByTestId("profile-about"));
+    expect(mockPreferences.about.open).toHaveBeenCalled();
   });
 });
 

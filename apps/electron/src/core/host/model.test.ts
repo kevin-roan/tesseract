@@ -6,6 +6,7 @@ import {
   cliError,
   describeHostError,
   healthUrl,
+  hostTerminalKind,
   hostToken,
   isAuthError,
   isHostHealth,
@@ -50,6 +51,20 @@ describe("parsePairing", () => {
     expect(() => parsePairing("nothing here")).toThrow("The controller printed no pairing link");
     expect(() => parsePairing('{"url":"u"}')).toThrow("The controller printed no pairing link");
     expect(() => parsePairing("{broken")).toThrow("The controller printed no pairing link");
+  });
+});
+
+describe("hostTerminalKind", () => {
+  it("defaults to a shell and accepts Claude", () => {
+    expect(hostTerminalKind(undefined)).toBe("shell");
+    expect(hostTerminalKind(null)).toBe("shell");
+    expect(hostTerminalKind("shell")).toBe("shell");
+    expect(hostTerminalKind("claude")).toBe("claude");
+  });
+
+  it("rejects anything else", () => {
+    expect(() => hostTerminalKind("bash")).toThrow("A host terminal runs either a shell or Claude");
+    expect(() => hostTerminalKind(1)).toThrow("A host terminal runs either a shell or Claude");
   });
 });
 

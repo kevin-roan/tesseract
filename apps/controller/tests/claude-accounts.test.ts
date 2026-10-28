@@ -63,6 +63,17 @@ describe("config", () => {
     ]);
     expect(() => loadConfig({ TESSERACT_CLAUDE_ACCOUNTS: "../etc" })).toThrow("TESSERACT_CLAUDE_ACCOUNTS");
   });
+
+  test("accepts name=/abs/path like the host's TESSERACT_HOST_CLAUDE_ACCOUNTS", () => {
+    const config = loadConfig({ HOME: "/home/dev", TESSERACT_CLAUDE_ACCOUNTS: "work=/data/claude-work" });
+    expect(config.claudeAccounts[1]).toEqual({
+      id: "claude-work",
+      configDir: "/data/claude-work",
+      globalConfig: "/data/claude-work/.claude.json",
+      env: { CLAUDE_CONFIG_DIR: "/data/claude-work" },
+    });
+    expect(() => loadConfig({ HOME: "/home/dev", TESSERACT_CLAUDE_ACCOUNTS: "work=relative" })).toThrow("not an absolute path");
+  });
 });
 
 describe("claudeAccountEnv", () => {

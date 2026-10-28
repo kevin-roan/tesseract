@@ -2,12 +2,13 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import type { TerminalClientMessage, TerminalServerMessage } from "@tesseract/protocol";
-import { KeyBar, Overlay, StatusBadge, type ConnectionState } from "./lib/components";
+import { InfoStrip, KeyBar, Overlay, StatusBadge, type ConnectionState } from "./lib/components";
 import {
   API_PATHS,
   APPLICATION_CURSOR_SEQUENCES,
   FRAGMENT_KEYS,
   HOST_MESSAGES,
+  HOST_STRIP_LABELS,
   KEY_BAR,
   MESSAGES,
   TERMINAL_OPTIONS,
@@ -18,6 +19,7 @@ import {
 import { requireElement, trackVisualViewport } from "./lib/dom";
 import { takeFragment } from "./lib/fragment";
 import { exposeHostApi, hasHost, postToHost } from "./lib/host";
+import { loadHostTerminal } from "./lib/host-terminal";
 import { withCtrl } from "./lib/keys";
 import { webSocketUrl } from "./lib/socket";
 
@@ -29,6 +31,8 @@ const stage = requireElement("[data-stage]");
 const status = new StatusBadge(requireElement("[data-status]"));
 const title = requireElement("[data-title]");
 const overlay = new Overlay(requireElement("[data-overlay]"));
+const hostStrip = document.body.dataset.origin === "host" ? new InfoStrip(requireElement("[data-host-strip]")) : null;
+hostStrip?.set(HOST_STRIP_LABELS.shell);
 
 const term = new Terminal({ ...TERMINAL_OPTIONS, theme: TERMINAL_THEME });
 const fit = new FitAddon();
@@ -99,6 +103,12 @@ function connect(ticket: string): void {
   });
 }
 
+async function showHostDetails(session: string, ticket: string): Promise<void> {
+  if (!hostStrip) return;
+  const { hostId, terminal } = await loadHostTerminal(session, ticket);
+  hostStrip.set(HOST_STRIP_LABELS[terminal?.kind ?? "shell"], [hostId, terminal?.cwd]);
+}
+
 function pressKey(key: KeyId): void {
   if (key === "ctrl") return;
   const sequence = (term.modes.applicationCursorKeysMode ? APPLICATION_CURSOR_SEQUENCES[key] : undefined) ?? TERMINAL_SEQUENCES[key];
@@ -129,5 +139,5 @@ if (!sessionId) {
   setState("error", MESSAGES.missingTicket);
   overlay.show(MESSAGES.missingTicket);
 } else {
-  connect(firstTicket);
+  void showHostDetails(sessionId, firstTicket).finally(() => connect(firstTicket));
 }

@@ -21,6 +21,9 @@ import {
   ClaudeImportResultSchema,
   ClaudeSessionListSchema,
   CreateProjectResponseSchema,
+  DeployListSchema,
+  DeploySchema,
+  DeployTargetsSchema,
   DisplayStatusSchema,
   ERROR_STATUS,
   ErrorBodySchema,
@@ -28,6 +31,10 @@ import {
   HealthSchema,
   InboxCountsSchema,
   InboxSchema,
+  IssueCommentSchema,
+  IssueDetailSchema,
+  IssueListSchema,
+  IssueSchema,
   ListeningPortsSchema,
   LIMITS,
   LogLineListSchema,
@@ -478,6 +485,33 @@ describe("WebSocket frames match @tesseract/protocol", () => {
     await restError("not_found", await t.request("POST", "/v1/sync/requests/sync_missing/claim", { host: "laptop" }));
   });
 
+  test("deploys", async () => {
+    writeFiles(join(t.workspace, "projects", "shipit"), { Dockerfile: "FROM scratch\n", ".git/HEAD": "x\n" });
+    const targets = { host: "laptop", targets: [{ name: "web", running: true, autoApprove: true, urls: [] }] };
+    expect((await rest(DeployTargetsSchema, "PUT", "/v1/deploys/targets", targets)).host).toBe("laptop");
+    expect((await rest(DeployTargetsSchema, "GET", "/v1/deploys/targets")).targets).toEqual(targets.targets);
+    await restError("bad_request", await t.request("POST", "/v1/deploys", { container: "nope", path: join(t.workspace, "projects", "shipit") }));
+    const created = await rest(DeploySchema, "POST", "/v1/deploys", { container: "web", path: join(t.workspace, "projects", "shipit"), port: 8080 });
+    expect(created).toMatchObject({ kind: "dockerfile", app: "shipit", projectId: "shipit", status: "pending" });
+    await restError("conflict", await t.request("POST", "/v1/deploys", { container: "web", path: join(t.workspace, "projects", "shipit") }));
+    expect((await rest(DeployListSchema, "GET", "/v1/deploys?status=pending&container=web")).map((entry) => entry.id)).toContain(created.id);
+    await restError("conflict", await t.request("GET", `/v1/deploys/${created.id}/bundle`));
+    await rest(DeploySchema, "POST", `/v1/deploys/${created.id}/claim`, { host: "laptop" }, 200);
+    const bundle = await t.request("GET", `/v1/deploys/${created.id}/bundle`);
+    expect(bundle.status).toBe(200);
+    expect(bundle.headers.get("content-type")).toBe("application/gzip");
+    expect(bundle.headers.get("x-tesseract-sha256")).toBe(created.sha256);
+    expect((await bundle.arrayBuffer()).byteLength).toBe(created.bytes);
+    await rest(DeploySchema, "POST", `/v1/deploys/${created.id}/progress`, { status: "deploying", log: "building\n" }, 200);
+    await restError("conflict", await t.request("POST", `/v1/deploys/${created.id}/cancel`));
+    const done = await rest(DeploySchema, "POST", `/v1/deploys/${created.id}/complete`, { status: "deployed", urls: ["http://web:8080"] }, 200);
+    expect(done).toMatchObject({ status: "deployed", log: "building\n", urls: ["http://web:8080"] });
+    expect(await rest(DeploySchema, "GET", `/v1/deploys/${created.id}`)).toEqual(done);
+    const cancelled = await rest(DeploySchema, "POST", "/v1/deploys", { container: "web", path: join(t.workspace, "projects", "shipit") });
+    expect((await rest(DeploySchema, "POST", `/v1/deploys/${cancelled.id}/cancel`, undefined, 200)).status).toBe("cancelled");
+    await restError("not_found", await t.request("POST", "/v1/deploys/dep_missing/claim", { host: "laptop" }));
+  });
+
   test("push devices", async () => {
     const token = "ExponentPushToken[conformance]";
     const device = await rest(PushDeviceSchema, "POST", "/v1/push/devices", { token, platform: "android", name: "Pixel" }, 200);
@@ -487,6 +521,20 @@ describe("WebSocket frames match @tesseract/protocol", () => {
     expect((await rest(PushDeviceSchema, "DELETE", `/v1/push/devices/${encodeURIComponent(token)}`)).token).toBe(token);
     await restError("not_found", await t.request("DELETE", `/v1/push/devices/${encodeURIComponent(token)}`));
     await restError("bad_request", await t.request("POST", "/v1/push/devices", { token: "nope", platform: "android" }));
+  });
+
+  test("issues", async () => {
+    const issue = await rest(IssueSchema, "POST", "/v1/projects/site/issues", { title: "Conformance", labels: ["qa"] });
+    expect(issue).toMatchObject({ projectId: "site", number: 1, status: "backlog", priority: "none", assignee: null });
+    expect((await rest(IssueListSchema, "GET", "/v1/issues?projectId=site&status=backlog")).map((entry) => entry.id)).toContain(issue.id);
+    expect((await rest(IssueSchema, "PATCH", `/v1/issues/${issue.id}`, { priority: "high", status: "todo" })).priority).toBe("high");
+    const comment = await rest(IssueCommentSchema, "POST", `/v1/issues/${issue.id}/comments`, { body: "noted" });
+    expect((await rest(IssueDetailSchema, "GET", `/v1/issues/${issue.id}`)).comments).toEqual([comment]);
+    await restError("bad_request", await t.request("PATCH", `/v1/issues/${issue.id}`, {}));
+    await restError("not_found", await t.request("POST", "/v1/projects/missing/issues", { title: "x" }));
+    await restError("conflict", await t.request("POST", `/v1/issues/${(await rest(IssueSchema, "POST", "/v1/projects/site/issues", { title: "Closed", status: "done" })).id}/dispatch`));
+    expect((await rest(IssueSchema, "DELETE", `/v1/issues/${issue.id}`)).id).toBe(issue.id);
+    await restError("not_found", await t.request("GET", `/v1/issues/${issue.id}`));
   });
 
   test("VNC bridge is binary and echoes the subprotocol", async () => {
@@ -524,7 +572,7 @@ describe("after a restart", () => {
     const build = { projectId: "app", target: "script" as const, profile: "debug" as const, stage: null, progress: null, endedAt: null, createdAt: startedAt, error: null };
     repos.builds.save({ ...build, id: "bld_running0001", state: "running", stage: "compile", progress: 0.5, startedAt });
     repos.builds.save({ ...build, id: "bld_queued00001", state: "queued", startedAt: null });
-    repos.agentRuns.save({ id: "run_running0001", projectId: "app", prompt: "p", mode: null, attachments: [], sessionId: "s", claudeAccountId: null, state: "running", startedAt, endedAt: null, usage: null, result: null, error: null, archivedAt: null });
+    repos.agentRuns.save({ id: "run_running0001", projectId: "app", prompt: "p", mode: null, model: null, attachments: [], sessionId: "s", claudeAccountId: null, state: "running", startedAt, endedAt: null, usage: null, result: null, error: null, archivedAt: null });
     repos.appendAgentEvent("run_running0001", { kind: "text", seq: 1, ts: startedAt, text: "before the restart" });
     repos.terminals.save({ id: "trm_running0001", kind: "shell", projectId: null, title: "Shell", cwd: workspace, pid: 999_999, cols: 80, rows: 24, state: "running", exitCode: null, createdAt: startedAt });
     db.close();

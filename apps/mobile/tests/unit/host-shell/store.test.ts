@@ -1,9 +1,9 @@
-import { AppState, type AppStateStatus } from "react-native";
+import { AppState } from "react-native";
 
 import { useHostSessionStore } from "@/features/host-shell/store/host-session-store";
 import { useHostStore } from "@/features/host-shell/store/host-store";
 import { HOST_STORE_NAME, LEGACY_HOST_TOKEN_KEY } from "@/features/host-shell/utils/constants";
-import { hostTokenKey } from "@/features/host-shell/utils/pairing";
+import { hostSessionKey, hostTokenKey } from "@/features/host-shell/utils/pairing";
 import { useSandboxStore } from "@/features/sandbox/store/sandbox-store";
 
 import { __dump as dumpSecure, __reset as resetSecure, setItemAsync } from "../../mocks/expo-secure-store";
@@ -13,19 +13,13 @@ const HOST = { name: "Desk", baseUrl: "http://100.64.0.1:7701", addedAt: "2026-1
 const OTHER = { name: "Lab", baseUrl: "http://100.64.0.2:7701", addedAt: "2026-10-04T10:00:00.000Z" };
 const sandbox = (id: string) => ({ id, name: id, baseUrl: `http://${id}.ts.net`, addedAt: "2026-10-01T10:00:00.000Z" });
 
-let appStateHandler: ((state: AppStateStatus) => void) | null = null;
-const remove = jest.fn();
+const flush = () => new Promise((resolve) => setImmediate(resolve));
 
-beforeEach(() => {
+beforeEach(async () => {
+  useHostSessionStore.getState().clear();
+  await flush();
   resetSecure();
   resetKv();
-  remove.mockClear();
-  appStateHandler = null;
-  jest.spyOn(AppState, "addEventListener").mockImplementation((_type, handler) => {
-    appStateHandler = handler as (state: AppStateStatus) => void;
-    return { remove } as unknown as ReturnType<typeof AppState.addEventListener>;
-  });
-  useHostSessionStore.getState().clear();
   useSandboxStore.setState({ sandboxes: [sandbox("sbx_a"), sandbox("sbx_b")], activeId: "sbx_a", tokens: {}, hydrated: true });
   useHostStore.setState({ hosts: {}, tokens: {}, hydrated: false });
 });
@@ -45,7 +39,6 @@ describe("host session store", () => {
 
     jest.advanceTimersByTime(15 * 60_000);
     expect(useHostSessionStore.getState().current).toBeNull();
-    expect(remove).toHaveBeenCalled();
   });
 
   it("ignores an already expired session", () => {
@@ -53,12 +46,38 @@ describe("host session store", () => {
     expect(useHostSessionStore.getState().current).toBeNull();
   });
 
-  it("locks when the app goes to the background, not when it is merely inactive", () => {
-    useHostSessionStore.getState().start({ session: "hss_1", expiresAt: inMinutes(15) });
-    appStateHandler?.("inactive");
-    expect(useHostSessionStore.getState().current).not.toBeNull();
-    appStateHandler?.("background");
+  it("stays unlocked when the app goes to the background", () => {
+    const listen = jest.spyOn(AppState, "addEventListener");
+    useHostSessionStore.getState().start({ session: "hss_1", expiresAt: inMinutes(600) });
+    expect(listen).not.toHaveBeenCalled();
+    expect(useHostSessionStore.getState().current?.session).toBe("hss_1");
+  });
+
+  it("keeps the session in the secure store for the active sandbox and forgets it on clear", async () => {
+    const session = { session: "hss_1", expiresAt: inMinutes(600) };
+    useHostSessionStore.getState().start(session);
+    await flush();
+    expect(JSON.parse(dumpSecure()[hostSessionKey("sbx_a")] ?? "null")).toEqual(session);
+
+    useHostSessionStore.getState().clear();
+    await flush();
+    expect(dumpSecure()[hostSessionKey("sbx_a")]).toBeUndefined();
+  });
+
+  it("restores a kept session after a restart, but not an expired one or another sandbox's", async () => {
+    await setItemAsync(hostSessionKey("sbx_a"), JSON.stringify({ session: "hss_kept", expiresAt: inMinutes(300) }));
+    await useHostSessionStore.getState().restore("sbx_b");
     expect(useHostSessionStore.getState().current).toBeNull();
+    await useHostSessionStore.getState().restore("sbx_a");
+    expect(useHostSessionStore.getState().current?.session).toBe("hss_kept");
+
+    useHostSessionStore.getState().clear();
+    await flush();
+    await setItemAsync(hostSessionKey("sbx_a"), JSON.stringify({ session: "hss_old", expiresAt: inMinutes(-1) }));
+    await useHostSessionStore.getState().restore("sbx_a");
+    await flush();
+    expect(useHostSessionStore.getState().current).toBeNull();
+    expect(dumpSecure()[hostSessionKey("sbx_a")]).toBeUndefined();
   });
 });
 
@@ -84,6 +103,14 @@ describe("host store", () => {
       tokens: { sbx_a: "token-a", sbx_b: "token-b" },
       hydrated: true,
     });
+  });
+
+  it("takes up the active sandbox's kept host session while hydrating", async () => {
+    seedKv(HOST_STORE_NAME, JSON.stringify({ state: { hosts: { sbx_a: HOST } }, version: 2 }));
+    await setItemAsync(hostTokenKey("sbx_a"), "token-a");
+    await setItemAsync(hostSessionKey("sbx_a"), JSON.stringify({ session: "hss_kept", expiresAt: inMinutes(300) }));
+    await useHostStore.getState().hydrate();
+    expect(useHostSessionStore.getState().current?.session).toBe("hss_kept");
   });
 
   it("migrates the single host and its token to the sandbox active at migration time", async () => {

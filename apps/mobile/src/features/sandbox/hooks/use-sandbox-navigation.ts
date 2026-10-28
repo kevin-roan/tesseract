@@ -4,17 +4,21 @@ import { router, type Href } from "expo-router";
 import { FILE_DOWNLOAD_PARAM, FILES_ROUTE } from "@/features/files/utils/constants";
 
 import type { PairingPrefill, TerminalLaunch } from "../types";
+import { useSandboxScopeId } from "./sandbox-scope";
 
 export function useSandboxNavigation() {
-  return useMemo(
-    () => ({
+  const scopeId = useSandboxScopeId();
+  return useMemo(() => {
+    const on = scopeId ? { on: scopeId } : {};
+    return {
       pair: () => router.push("/pair"),
       repair: (prefill: PairingPrefill) => router.push({ pathname: "/pair", params: prefill }),
       display: () => router.push("/sandbox/display"),
       preview: (sandboxId: string, runId: string, title: string) =>
         router.push({ pathname: "/sandbox/preview", params: { sandbox: sandboxId, run: runId, title } }),
       claudeAccount: () => router.push("/sandbox/claude"),
-      settings: () => router.push("/settings"),
+      activity: () => router.push("/sandbox/activity"),
+      voice: () => router.push("/settings/voice"),
       about: () => router.push("/settings/about"),
       files: (downloadId?: string) =>
         router.push(
@@ -26,21 +30,20 @@ export function useSandboxNavigation() {
       newProject: () => router.push("/sandbox/projects/new"),
       replaceWithProject: (id: string) => router.replace({ pathname: "/sandbox/projects/[id]", params: { id } }),
       build: (id: string) => router.push({ pathname: "/sandbox/builds/[id]", params: { id } }),
-      agentRun: (id: string) => router.push({ pathname: "/sandbox/agent/[id]", params: { id } }),
+      agentRun: (id: string) => router.push({ pathname: "/sandbox/agent/[id]", params: { id, ...on } }),
       newAgentRun: (projectId?: string) =>
-        router.push({ pathname: "/sandbox/agent/[id]", params: projectId ? { id: "new", projectId } : { id: "new" } }),
-      terminal: (id: string) => router.push({ pathname: "/sandbox/terminal/[id]", params: { id } }),
+        router.push({ pathname: "/sandbox/agent/[id]", params: projectId ? { id: "new", projectId, ...on } : { id: "new", ...on } }),
+      terminal: (id: string) => router.push({ pathname: "/sandbox/terminal/[id]", params: { id, ...on } }),
       newTerminal: ({ kind, projectId }: TerminalLaunch) =>
         router.push({
           pathname: "/sandbox/terminal/[id]",
-          params: projectId ? { id: "new", kind, projectId } : { id: "new", kind },
+          params: projectId ? { id: "new", kind, projectId, ...on } : { id: "new", kind, ...on },
         }),
-      replaceWithTerminal: (id: string) => router.replace({ pathname: "/sandbox/terminal/[id]", params: { id } }),
-      replaceWithAgentRun: (id: string) => router.replace({ pathname: "/sandbox/agent/[id]", params: { id } }),
+      replaceWithTerminal: (id: string) => router.replace({ pathname: "/sandbox/terminal/[id]", params: { id, ...on } }),
+      replaceWithAgentRun: (id: string) => router.replace({ pathname: "/sandbox/agent/[id]", params: { id, ...on } }),
       back: () => (router.canGoBack() ? router.back() : router.replace("/agents")),
       sandboxHub: () => router.navigate("/agents"),
       hub: () => (router.canGoBack() ? router.dismissTo("/agents") : router.replace("/agents")),
-    }),
-    [],
-  );
+    };
+  }, [scopeId]);
 }

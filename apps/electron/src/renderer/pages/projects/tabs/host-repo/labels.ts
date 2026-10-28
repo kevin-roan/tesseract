@@ -1,7 +1,10 @@
 import type { HostGitAction } from "../../../../../shared/contracts/syncback";
 
 export const HOST_REPO_LABELS = {
-  shell: "Host shell",
+  group: "This computer",
+  notLinked: "Not linked",
+  claude: "Claude",
+  shell: "Shell",
   git: "Git",
   pull: "Pull",
   push: "Push",
@@ -11,6 +14,15 @@ export const HOST_REPO_LABELS = {
   pushing: "Pushing…",
   committing: "Committing…",
   messagePlaceholder: "Commit message",
+  claudeTooltip: (path: string) => `Chat with Claude in ${path} on this computer`,
+  chatTitle: "Claude on this computer",
+  newChat: "New chat",
+  chats: "Chats on this computer",
+  account: "Claude account for this project on this computer",
+  chatPlaceholder: "Ask Claude to change this project on this computer…",
+  chatSend: "Send",
+  chatHint: "Runs on this computer, outside the sandbox, with your user's permissions.",
+  chatFailed: (error: string) => `Couldn't start the chat: ${error}`,
   shellTooltip: (path: string) => `Open a shell in ${path} on this computer`,
   gitTooltip: (path: string) => `Commit, pull or push ${path} on this computer`,
   pullTooltip: (path: string) => `Run git pull in ${path} on this computer`,
@@ -22,6 +34,7 @@ export const HOST_REPO_LABELS = {
   hostNoPin: "Set a host shell PIN in Preferences to open a host shell.",
   preferences: "Preferences",
   shellFailed: (error: string) => `Couldn't open the host shell: ${error}`,
+  claudeFailed: (error: string) => `Couldn't start Claude on this computer: ${error}`,
   upToDate: "Already up to date",
   done: {
     pull: (summary: string) => `Pulled: ${summary}`,

@@ -62,10 +62,10 @@ const light = {
   badge: Palette.blue[150],
   badgeText: Palette.blue[650],
 
-  // Status
-  success: Palette.green[700],
-  successMuted: Palette.green[100],
-  successSolid: '#23874F',
+  // Status — success uses the accent ink; the app has no green.
+  success: Palette.ink,
+  successMuted: Palette.stone[100],
+  successSolid: Palette.ink,
   warning: Palette.amber[800],
   warningMuted: Palette.amber[100],
   warningSolid: Palette.amber[700],
@@ -128,9 +128,9 @@ const dark: Record<keyof typeof light, string> = {
   badge: Palette.blue[850],
   badgeText: Palette.blue[250],
 
-  success: Palette.green[400],
-  successMuted: Palette.green[900],
-  successSolid: Palette.green[500],
+  success: Palette.paper,
+  successMuted: Palette.stone[800],
+  successSolid: Palette.paper,
   warning: Palette.amber[300],
   warningMuted: Palette.amber[900],
   warningSolid: Palette.amber[500],
@@ -157,7 +157,7 @@ const dark: Record<keyof typeof light, string> = {
 
 /**
  * Graphite: a near-black, monochrome terminal look — true greys, hairline
- * cards, white primary pill, green/red reserved for deltas and status.
+ * cards, white primary pill, red reserved for errors.
  */
 const graphite: Record<keyof typeof light, string> = {
   ...dark,
@@ -189,6 +189,10 @@ const graphite: Record<keyof typeof light, string> = {
   accentStrong: Palette.graphite[50],
   focusRing: Palette.graphite[300],
   highlight: Palette.graphite[100],
+
+  success: Palette.graphite[100],
+  successMuted: Palette.graphite[850],
+  successSolid: Palette.graphite[100],
 
   /** Warm copper — the one accent hue, for the highlighted card or the active mode; never body text. */
   brand: Palette.clay[400],
@@ -240,6 +244,10 @@ const graphiteLight: Record<keyof typeof light, string> = {
   accentStrong: Palette.graphite[950],
   focusRing: Palette.graphite[600],
   highlight: Palette.graphite[950],
+
+  success: Palette.graphite[950],
+  successMuted: Palette.graphite[100],
+  successSolid: Palette.graphite[950],
 
   brand: Palette.clay[600],
   brandMuted: Palette.clay[50],

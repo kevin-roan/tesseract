@@ -10,6 +10,7 @@ const run = (overrides: Partial<AgentRun> = {}): AgentRun => ({
   projectId: null,
   prompt: "p",
   mode: null,
+  model: null,
   attachments: [],
   sessionId: "s",
   claudeAccountId: null,

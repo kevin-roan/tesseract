@@ -23,6 +23,21 @@ type Session = {
 const EOF_GRACE_MS = 300;
 const MAX_EXITED_SESSIONS = 20;
 const HOST_SECRET_ENV = /^TESSERACT_HOST_SHELL_/;
+const POSIX_SHELLS = new Set(["sh", "bash", "zsh", "dash", "ksh", "mksh", "ash"]);
+const FALLBACK_SHELL = "/bin/sh";
+
+export const HOST_CLAUDE = {
+  bin: "claude",
+  prompt: "You are running directly in the user's real repository on their own computer, not in a Tesseract sandbox, so every change affects their actual files.",
+  missing: "Claude Code isn't installed on this computer, or `claude` isn't on your login shell's PATH. Install it from https://claude.com/claude-code and open this terminal again.",
+  script: 'command -v "$1" >/dev/null 2>&1 || { printf \'%s\\n\' "$2"; exit 127; }; exec "$1" --append-system-prompt "$3"',
+} as const;
+
+/** Claude Code through the user's interactive login shell, so PATH (nvm, ~/.local/bin, bun) and ~/.claude match their own terminal. */
+export function hostClaudeArgv(shell: string, claudeBin: string = HOST_CLAUDE.bin): string[] {
+  const login = POSIX_SHELLS.has(basename(shell)) ? shell : FALLBACK_SHELL;
+  return [login, "-ilc", HOST_CLAUDE.script, HOST_CLAUDE.bin, claudeBin, HOST_CLAUDE.missing, HOST_CLAUDE.prompt];
+}
 
 export function hostShellEnv(source: Env = process.env): Env {
   const env: Env = {};
@@ -49,17 +64,20 @@ export class HostTerminals {
     private readonly logger: Logger,
     private readonly scrollbackLimit: number = LIMITS.terminalScrollbackBytes,
     private readonly stopGraceMs: number = LIMITS.processStopGraceMs,
+    private readonly claudeBin: string = HOST_CLAUDE.bin,
   ) {}
 
   create(input: CreateHostTerminal): TerminalInfo {
-    if (input.kind !== "shell") throw badRequest("The host shell only opens shell terminals");
     if (input.projectId !== undefined) throw badRequest("Host terminals have no project");
+    if (input.kind === "claude" && input.cwd === undefined) throw badRequest("A Claude Code terminal on the host needs the project's folder (cwd)");
     const cwd = input.cwd === undefined ? this.cwd : requireFolder(input.cwd);
+    const host = input.cwd === undefined ? `Host · ${hostname()}` : `Host · ${hostname()} · ${basename(cwd)}`;
+    const argv = input.kind === "claude" ? hostClaudeArgv(this.shell[0] ?? FALLBACK_SHELL, this.claudeBin) : this.shell;
     const info: TerminalInfo = {
       id: createId("terminal"),
-      kind: "shell",
+      kind: input.kind,
       projectId: null,
-      title: input.cwd === undefined ? `Host · ${hostname()}` : `Host · ${hostname()} · ${basename(cwd)}`,
+      title: input.kind === "claude" ? `Claude · ${host}` : host,
       cwd,
       pid: null,
       cols: input.cols,
@@ -77,7 +95,7 @@ export class HostTerminals {
     });
     let proc: Bun.Subprocess;
     try {
-      proc = Bun.spawn(this.shell, {
+      proc = Bun.spawn(argv, {
         cwd,
         env: { ...hostShellEnv(), TERM: "xterm-256color", COLORTERM: "truecolor", LANG: process.env.LANG ?? "C.UTF-8" },
         terminal: {
@@ -91,7 +109,7 @@ export class HostTerminals {
         },
       });
     } catch (error) {
-      throw unavailable(`Could not start ${this.shell[0]}: ${errorMessage(error)}`);
+      throw unavailable(`Could not start ${argv[0]}: ${errorMessage(error)}`);
     }
     const terminal = proc.terminal;
     if (!terminal) {
@@ -110,7 +128,7 @@ export class HostTerminals {
       return this.finish(live);
     });
     this.sessions.set(info.id, session);
-    this.logger.info("host terminal started", { id: info.id, pid: proc.pid });
+    this.logger.info("host terminal started", { id: info.id, kind: info.kind, pid: proc.pid });
     return { ...info };
   }
 
@@ -151,6 +169,12 @@ export class HostTerminals {
     }
     session.clients.add(client);
     return () => session.clients.delete(client);
+  }
+
+  get(id: string): TerminalInfo {
+    const session = this.sessions.get(id);
+    if (!session) throw notFound(`Terminal ${id.slice(0, 80)} not found`);
+    return { ...session.info };
   }
 
   has(id: string): boolean {

@@ -1,4 +1,6 @@
 .conversation {
+  --chat-width: 760px;
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -102,15 +104,16 @@
 
 .footer {
   display: flex;
-  justify-content: center;
   flex: none;
+  width: 100%;
+  max-width: var(--chat-width);
+  margin: 0 auto;
   padding: 8px 24px 16px 24px;
 }
 
 .composer {
   flex: 1;
   min-width: 0;
-  max-width: 760px;
 }
 
 .syncButton {
@@ -125,23 +128,83 @@
   gap: 0;
 }
 
-.running {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin: 8px 24px 0;
-  padding: 8px 4px 4px;
-  border: 1px solid var(--to-border);
-  border-radius: 10px;
+.dock {
+  flex: none;
+  width: 100%;
+  max-width: var(--chat-width);
+  margin: 0 auto;
+  padding: 0 24px;
+  overflow: hidden;
 }
 
-.running > :first-child {
-  padding: 0 8px;
+.running {
+  margin-top: 8px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-surface-elevated);
+  overflow: hidden;
+}
+
+.runningToggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 10px 0 12px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: var(--to-state-transition);
+}
+
+.runningToggle:hover {
+  background: var(--to-background-element);
+}
+
+.runningToggle:focus-visible {
+  outline: 2px solid var(--to-accent);
+  outline-offset: -2px;
+}
+
+.runningSummary {
+  flex: none;
+}
+
+.runningNames {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runningCaret {
+  flex: none;
+  margin-left: auto;
+  color: var(--to-text-tertiary);
+  transition: transform var(--to-duration-normal) var(--to-ease-standard);
+}
+
+.running[data-open] .runningCaret {
+  transform: rotate(180deg);
 }
 
 .runningRows {
   display: flex;
   flex-direction: column;
-  max-height: 168px;
+  max-height: 200px;
+  padding: 2px 0 4px;
+  border-top: 1px solid var(--to-border);
   overflow-y: auto;
+}
+
+@container (max-width: 480px) {
+  .runningNames {
+    visibility: hidden;
+  }
 }

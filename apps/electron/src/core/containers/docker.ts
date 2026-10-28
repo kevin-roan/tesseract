@@ -1,12 +1,14 @@
 import { setTimeout as delay } from "node:timers/promises";
 import type { CommandResult } from "../process";
 import type { StreamOptions, StreamResult } from "../sandbox/spawn";
+import type { DeployKind } from "@tesseract/protocol";
 import type { ContainerState, ContainerTailnet, ServerContainer } from "../../shared/contracts/containers";
 import { IpcError } from "../../shared/ipc-types";
 import {
   BOOT_WAIT,
   CLOUDFLARED_IMAGE,
   CONTAINER_PREFIX,
+  DEPLOY,
   DOCKER_LABELS,
   IN_CONTAINER,
   LIMITS,
@@ -15,13 +17,22 @@ import {
   SYSBOX_RUNTIME,
   TIMEOUTS,
 } from "./constants";
-import { CONTAINERS_MESSAGES } from "./labels";
+import { CONTAINERS_MESSAGES, DEPLOY_STEPS } from "./labels";
 
 export interface DockerDeps {
   run(file: string, args: readonly string[], options?: { timeoutMs?: number; input?: string; extraEnv?: Record<string, string> }): Promise<CommandResult>;
   stream(file: string, args: readonly string[], options?: StreamOptions): Promise<StreamResult>;
   log(line: string): void;
   sleep?(ms: number): Promise<void>;
+}
+
+export type DockerContainer = Omit<ServerContainer, "autoDeploy">;
+
+export interface AppSpec {
+  name: string;
+  app: string;
+  kind: DeployKind;
+  port: number | null;
 }
 
 export interface CreateSpec {
@@ -128,7 +139,7 @@ async function tailnetOf(deps: DockerDeps, name: string): Promise<ContainerTailn
   return result.code === 0 ? parseTailnet(name, result.stdout) : null;
 }
 
-export async function listContainers(deps: DockerDeps): Promise<ServerContainer[]> {
+export async function listContainers(deps: DockerDeps): Promise<DockerContainer[]> {
   const stdout = await docker(deps, ["ps", "-a", "--no-trunc", "--filter", `label=${DOCKER_LABELS.container}`, "--format", "{{json .}}"]);
   const rows = stdout
     .split("\n")
@@ -139,7 +150,7 @@ export async function listContainers(deps: DockerDeps): Promise<ServerContainer[
   const tunnels = new Map(rows.filter(({ labels }) => labels[DOCKER_LABELS.role] === ROLES.tunnel).map(({ row, labels }) => [labels[DOCKER_LABELS.container], row.State]));
   const limits = servers.length ? (JSON.parse(await docker(deps, ["inspect", ...servers.map(({ row }) => row.ID)])) as InspectRow[]) : [];
   const result = await Promise.all(
-    servers.map(async ({ row, labels }): Promise<ServerContainer> => {
+    servers.map(async ({ row, labels }): Promise<DockerContainer> => {
       const name = labels[DOCKER_LABELS.container] as string;
       const host = limits.find((entry) => entry.Id === row.ID)?.HostConfig;
       const state = containerState(row.State, row.Status);
@@ -161,7 +172,7 @@ export async function listContainers(deps: DockerDeps): Promise<ServerContainer[
   return result.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function findContainer(deps: DockerDeps, name: string): Promise<ServerContainer> {
+export async function findContainer(deps: DockerDeps, name: string): Promise<DockerContainer> {
   const found = (await listContainers(deps)).find((container) => container.name === name);
   if (!found) throw new IpcError("not_found", CONTAINERS_MESSAGES.notFound(name));
   return found;
@@ -310,4 +321,61 @@ export async function removeTunnel(deps: DockerDeps, name: string): Promise<void
 
 export function serviceUrl(name: string, port: number, scheme: "http" | "https"): string {
   return `${scheme}://${serverName(name)}:${port}`;
+}
+
+export const appDir = (app: string) => `${DEPLOY.appsDir}/${app}`;
+export const appImage = (app: string) => `${DEPLOY.imagePrefix}${app}:${DEPLOY.imageTag}`;
+
+export function extractArgs(name: string, app: string): string[] {
+  const script = `set -e; d=${appDir(app)}; rm -rf "$d.new"; mkdir -p "$d.new"; tar -xzf - --no-same-owner -C "$d.new"; rm -rf "$d"; mv "$d.new" "$d"`;
+  return ["exec", "-i", serverName(name), "sh", "-c", script];
+}
+
+export function appSteps(spec: AppSpec): { step: string; args: string[]; optional?: boolean }[] {
+  const target = serverName(spec.name);
+  const inDir = ["exec", "-w", appDir(spec.app), target];
+  if (spec.kind === "compose") {
+    return [{ step: DEPLOY_STEPS.compose, args: [...inDir, "docker", "compose", "-p", spec.app, "up", "-d", "--build", "--remove-orphans"] }];
+  }
+  const ports = spec.port ? ["-p", `${spec.port}:${spec.port}`] : [];
+  return [
+    { step: DEPLOY_STEPS.build, args: [...inDir, "docker", "build", "-t", appImage(spec.app), "."] },
+    { step: DEPLOY_STEPS.run, args: ["exec", target, "docker", "rm", "-f", spec.app], optional: true },
+    { step: DEPLOY_STEPS.run, args: ["exec", target, "docker", "run", "-d", "--name", spec.app, "--restart", DEPLOY.restart, ...ports, appImage(spec.app)] },
+  ];
+}
+
+export async function waitForInnerDocker(deps: DockerDeps, name: string): Promise<void> {
+  const sleep = deps.sleep ?? ((ms: number) => delay(ms));
+  const deadline = Date.now() + DEPLOY.dockerWaitMs;
+  for (let attempt = 1; ; attempt += 1) {
+    if (await succeeds(deps, ["exec", serverName(name), "docker", "info", "--format", "{{.ServerVersion}}"], TIMEOUTS.exec)) return;
+    if (attempt >= DEPLOY.dockerWaitMs / DEPLOY.dockerPollMs || Date.now() >= deadline) throw new IpcError("unavailable", CONTAINERS_MESSAGES.innerDockerDown(name));
+    await sleep(DEPLOY.dockerPollMs);
+  }
+}
+
+async function streamStep(deps: DockerDeps, step: string, args: readonly string[], onLine: (line: string) => void, stdinFile?: string): Promise<void> {
+  let last = "";
+  const collect = (line: string) => {
+    onLine(line);
+    if (line.trim()) last = line.trim();
+  };
+  const result = await deps.stream("docker", args, { stdinFile, signal: AbortSignal.timeout(DEPLOY.stepTimeoutMs), onStdout: collect, onStderr: collect });
+  if (result.code === 0) return;
+  if (result.cancelled) throw new IpcError("timeout", CONTAINERS_MESSAGES.deployStepFailed(step, CONTAINERS_MESSAGES.timedOut));
+  throw new IpcError("unavailable", CONTAINERS_MESSAGES.deployStepFailed(step, result.error ?? (last || `exit ${result.code}`)));
+}
+
+export async function deployApp(deps: DockerDeps, spec: AppSpec & { bundle: string }, onLine: (line: string) => void, signal?: AbortSignal): Promise<void> {
+  const check = () => {
+    if (signal?.aborted) throw new IpcError("cancelled", CONTAINERS_MESSAGES.deployCancelled);
+  };
+  check();
+  await streamStep(deps, DEPLOY_STEPS.extract, extractArgs(spec.name, spec.app), onLine, spec.bundle);
+  for (const { step, args, optional } of appSteps(spec)) {
+    check();
+    if (optional) await deps.run("docker", args, { timeoutMs: TIMEOUTS.docker });
+    else await streamStep(deps, step, args, onLine);
+  }
 }

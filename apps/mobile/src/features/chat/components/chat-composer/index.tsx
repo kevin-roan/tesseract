@@ -17,6 +17,7 @@ import ComposerBar from "../composer-bar";
 import ModePill from "../mode-pill";
 import NewProjectSheet from "../new-project-sheet";
 import QueuedMessages from "../queued-messages";
+import SlashCommandHints from "../slash-command-hints";
 import createStyles from "./styles";
 
 export type ChatComposerProps = {
@@ -43,7 +44,7 @@ const ChatComposer = ({
 }: ChatComposerProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { voice, attachments, mode, project, clipboard } = composer;
+  const { voice, attachments, mode, model, project, clipboard } = composer;
   const recording = voice.phase === "recording";
   const idle = voice.phase === "idle";
 
@@ -76,6 +77,7 @@ const ChatComposer = ({
         />
       ) : null}
       {queued ? <QueuedMessages messages={queued.messages} onRemove={queued.onRemove} /> : null}
+      {idle ? <SlashCommandHints items={composer.slash.items} onSelect={composer.slash.select} /> : null}
       <ComposerBar
         value={composer.text}
         onChangeText={composer.setText}
@@ -105,12 +107,15 @@ const ChatComposer = ({
         }
         chips={
           idle ? (
-            <ModePill
-              label={mode.label}
-              detail={mode.detail}
-              accessibilityHint={mode.sheet.title}
-              onPress={() => composer.openSheet("mode")}
-            />
+            <>
+              <ModePill
+                label={mode.label}
+                detail={mode.detail}
+                accessibilityHint={mode.sheet.title}
+                onPress={() => composer.openSheet("mode")}
+              />
+              <ModePill label={model.label} accessibilityHint={model.sheet.title} onPress={() => composer.openSheet("model")} />
+            </>
           ) : null
         }
         accessory={
@@ -132,6 +137,15 @@ const ChatComposer = ({
         options={mode.options}
         selectedId={mode.id}
         onSelect={mode.select}
+        onClose={composer.closeSheet}
+      />
+      <OptionSheet
+        visible={composer.sheet === "model"}
+        title={model.sheet.title}
+        footnote={model.sheet.footnote}
+        options={model.options}
+        selectedId={model.id}
+        onSelect={model.select}
         onClose={composer.closeSheet}
       />
       <MenuSheet

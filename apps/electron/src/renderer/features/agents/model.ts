@@ -1,9 +1,10 @@
-import { LIMITS, type AgentRun, type ClaudeSession, type DeleteAgentRuns, type InboxItem, type Project } from "@tesseract/protocol";
+import { AGENT_RUN_MODELS, LIMITS, type AgentRun, type AgentRunModel, type ClaudeSession, type DeleteAgentRuns, type InboxItem, type Project } from "@tesseract/protocol";
 import type { Tone } from "../../theme/colors";
 import type { IconName } from "../../theme/icons";
 import {
   ATTENTION_KINDS,
   BADGE_MAX,
+  DEFAULT_MODEL_KEY,
   FINAL_STATES,
   NO_PROJECT_KEY,
   SHORT_ID_LENGTH,
@@ -13,7 +14,7 @@ import {
   type AgentFilter,
 } from "./constants";
 import { elapsedSeconds, formatDuration, formatRelativeTime, formatTokens, joinMeta, nowSeconds, pluralize } from "./format";
-import { AGENTS_LABELS, LIST_LABELS, MANAGE_LABELS, STATE_LABELS } from "./labels";
+import { AGENTS_LABELS, LIST_LABELS, MODEL_LABELS, MANAGE_LABELS, STATE_LABELS } from "./labels";
 
 export type RunState = AgentRun["state"];
 export type ProjectNames = Readonly<Record<string, string>>;
@@ -81,6 +82,26 @@ export interface ProjectOption {
 export function projectOptions(projects: readonly Pick<Project, "id" | "name">[] | null | undefined): ProjectOption[] {
   const sorted = [...(projects ?? [])].sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
   return [{ id: NO_PROJECT_KEY, label: AGENTS_LABELS.noProjectOption }, ...sorted.map((project) => ({ id: project.id, label: project.name }))];
+}
+
+export type ModelKey = AgentRunModel | typeof DEFAULT_MODEL_KEY;
+
+export interface ModelOption {
+  id: ModelKey;
+  label: string;
+}
+
+export const MODEL_OPTIONS: readonly ModelOption[] = [
+  { id: DEFAULT_MODEL_KEY, label: MODEL_LABELS.default },
+  ...AGENT_RUN_MODELS.map((model) => ({ id: model, label: MODEL_LABELS[model] })),
+];
+
+export function modelKey(model: AgentRunModel | null | undefined): ModelKey {
+  return model ?? DEFAULT_MODEL_KEY;
+}
+
+export function runModel(key: ModelKey | null | undefined): AgentRunModel | undefined {
+  return key || undefined;
 }
 
 export function runTotalTokens(run: Pick<AgentRun, "usage">): number | null {

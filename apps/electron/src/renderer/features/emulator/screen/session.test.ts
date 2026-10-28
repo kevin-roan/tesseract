@@ -87,9 +87,38 @@ describe("ScreenSession", () => {
     expect(session.state.status).toBe("idle");
   });
 
-  it("streams the iOS screen by udid and never asks for H.264", async () => {
+  it("streams the iOS screen by udid and asks for H.264", async () => {
     const { session, queries } = setup(true, IOS_SCREEN);
     await session.connect({ device: "5A7C3E21-9B0D-4F6A-8E1C-2D3B4A5F6E7D" });
-    expect(queries).toEqual(["/v1/ios/screen?udid=5A7C3E21-9B0D-4F6A-8E1C-2D3B4A5F6E7D"]);
+    expect(queries).toEqual(["/v1/ios/screen?udid=5A7C3E21-9B0D-4F6A-8E1C-2D3B4A5F6E7D&codec=h264"]);
+  });
+
+  it("decodes iOS H.264 and falls back to JPEG after a decoder failure", async () => {
+    const queries: string[] = [];
+    const sockets: FakeSocket[] = [];
+    const pushed: ArrayBuffer[] = [];
+    let fail: ((message: string) => void) | null = null;
+    const session = new ScreenSession(IOS_SCREEN, {
+      canDecodeH264: async () => true,
+      createDecoder: (_onFrame, onError) => {
+        fail = onError;
+        return { push: (message) => pushed.push(message), close: () => undefined };
+      },
+      openSocket: async (path, query) => {
+        queries.push(`${path}?${query.toString()}`);
+        const socket = new FakeSocket();
+        sockets.push(socket);
+        return socket;
+      },
+    });
+    await session.connect({ device: "sim" });
+    sockets[0]!.receive({ type: "meta", deviceName: "iPhone", codec: "h264", width: 1320, height: 2868 });
+    sockets[0]!.onmessage?.({ data: Uint8Array.from([1, 0, 0, 1, 0x67]).buffer });
+    expect(pushed).toHaveLength(1);
+    fail!("This decoder cannot play the stream's H.264 (avc1.640033)");
+    expect(session.state).toMatchObject({ status: "error", error: "This decoder cannot play the stream's H.264 (avc1.640033)" });
+    expect(sockets[0]!.closed).toBe(true);
+    await session.connect({ device: "sim" });
+    expect(queries[1]).toBe("/v1/ios/screen?udid=sim");
   });
 });

@@ -162,6 +162,7 @@ describe("UsageService", () => {
     projectId: "site",
     prompt: "p",
     mode: null,
+    model: null,
     attachments: [],
     sessionId: null,
     claudeAccountId: null,

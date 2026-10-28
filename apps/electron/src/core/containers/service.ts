@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { join } from "node:path";
+import { DEPLOY_APP_PATTERN, type DeployKind } from "@tesseract/protocol";
 import { readConfig, updateConfig } from "../config";
 import type { TokenCipher } from "../connection/token-vault";
 import type {
@@ -23,6 +24,7 @@ import {
   buildServerImage,
   containerLogs,
   createContainer,
+  deployApp,
   ensureTunnel,
   findContainer,
   hasSysbox,
@@ -34,12 +36,22 @@ import {
   serviceUrl,
   startContainer,
   stopContainer,
+  waitForInnerDocker,
   type DockerDeps,
 } from "./docker";
 import { CHECK_LABELS, CONTAINERS_MESSAGES } from "./labels";
 import { readSecret, storeSecret, type SecretKeys } from "./secrets";
 import { publicRoute, readState, writeState, type ContainersState, type StoredRoute } from "./store";
 import { validCpus, validHostname, validMemory, validName, validPort, zoneFor } from "./validate";
+
+export interface DeployRequest {
+  container: string;
+  app: string;
+  kind: DeployKind;
+  port: number | null;
+  hostname: string | null;
+  bundle: string;
+}
 
 export interface ContainersServiceOptions {
   docker: DockerDeps;
@@ -170,9 +182,48 @@ export class ContainersService {
   }
 
   async list(): Promise<ServerContainer[]> {
-    const containers = await listContainers(this.options.docker);
+    const [found, state] = await Promise.all([listContainers(this.options.docker), readState(this.options.stateFile)]);
+    const containers = found.map((container) => ({ ...container, autoDeploy: state.autoDeploy.includes(container.name) }));
     this.options.onContainers?.(containers);
     return containers;
+  }
+
+  async setAutoDeploy(name: string, enabled: boolean): Promise<ServerContainer> {
+    const target = validName(name);
+    await findContainer(this.options.docker, target);
+    await this.serialRoutes(async () => {
+      const state = await readState(this.options.stateFile);
+      const others = state.autoDeploy.filter((entry) => entry !== target);
+      await writeState(this.options.stateFile, { ...state, autoDeploy: enabled === true ? [...others, target] : others });
+    });
+    return this.changed(target);
+  }
+
+  async deploy(request: DeployRequest, onLine: (line: string) => void, signal?: AbortSignal): Promise<string[]> {
+    const name = validName(request.container);
+    if (!DEPLOY_APP_PATTERN.test(request.app)) throw new IpcError("invalid_argument", CONTAINERS_MESSAGES.invalidApp);
+    const port = request.port === null ? null : validPort(request.port);
+    const hostname = request.hostname === null ? null : validHostname(request.hostname);
+    const reuse = hostname && port ? await this.routeFor(name, hostname, port) : false;
+    const container = await findContainer(this.options.docker, name);
+    if (container.state === "stopped" || container.state === "error") await startContainer(this.options.docker, name);
+    await waitForInnerDocker(this.options.docker, name);
+    await deployApp(this.options.docker, { name, app: request.app, kind: request.kind, port, bundle: request.bundle }, onLine, signal);
+    const urls: string[] = [];
+    if (hostname && port) {
+      if (!reuse) await this.addRoute({ container: name, hostname, port });
+      urls.push(`https://${hostname}`);
+    }
+    const tailnet = (await this.changed(name)).tailnet;
+    if (tailnet?.dnsName && port) urls.push(`http://${tailnet.dnsName}:${port}`);
+    return urls;
+  }
+
+  private async routeFor(container: string, hostname: string, port: number): Promise<boolean> {
+    const route = (await readState(this.options.stateFile)).routes.find((entry) => entry.hostname === hostname);
+    if (!route) return false;
+    if (route.container !== container || route.port !== port) throw new IpcError("invalid_argument", CONTAINERS_MESSAGES.routeConflict(hostname, route.container, route.port));
+    return true;
   }
 
   private async changed(name: string): Promise<ServerContainer> {
@@ -244,6 +295,10 @@ export class ContainersService {
     const routes = (await readState(this.options.stateFile)).routes.filter((route) => route.container === target);
     for (const route of routes) await this.removeRoute(route.id);
     await removeContainer(this.options.docker, target);
+    await this.serialRoutes(async () => {
+      const state = await readState(this.options.stateFile);
+      if (state.autoDeploy.includes(target)) await writeState(this.options.stateFile, { ...state, autoDeploy: state.autoDeploy.filter((entry) => entry !== target) });
+    });
     await this.list();
   }
 

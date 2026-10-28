@@ -4,6 +4,8 @@ import { containerDetailState, containerProperties, formatCreated, routesFor, sh
 import { useContainerActions, usePendingContainers } from "./use-container-actions";
 import { useContainerLogs } from "./use-container-logs";
 import { useContainerShell } from "./use-container-shell";
+import { useDeployActions } from "./use-deploy-actions";
+import { useDeploys } from "./use-deploys";
 import { useContainers } from "./use-containers";
 import { useDomainRoutes } from "./use-domain-routes";
 
@@ -15,6 +17,8 @@ export interface ContainerDetailHandlers {
 export function useContainerDetail(name: string, { onBack, onSettings }: ContainerDetailHandlers) {
   const { containers, error, refresh } = useContainers();
   const { routes, refresh: refreshRoutes } = useDomainRoutes();
+  const { deploys, refresh: refreshDeploys } = useDeploys(name);
+  const { setAutoDeploy, savingPolicy } = useDeployActions();
   const pending = usePendingContainers();
   const actions = useContainerActions();
   const container = containers?.find((entry) => entry.name === name) ?? null;
@@ -32,7 +36,8 @@ export function useContainerDetail(name: string, { onBack, onSettings }: Contain
     refresh();
     refreshRoutes();
     refreshLogs();
-  }, [refresh, refreshLogs, refreshRoutes]);
+    refreshDeploys();
+  }, [refresh, refreshDeploys, refreshLogs, refreshRoutes]);
 
   const onAction = useCallback(
     (action: ListStateAction) => {
@@ -50,6 +55,12 @@ export function useContainerDetail(name: string, { onBack, onSettings }: Contain
     properties,
     ssh: container ? sshCommand(container) : null,
     routes: own,
+    deploys,
+    autoDeploy: {
+      checked: container?.autoDeploy ?? false,
+      saving: savingPolicy,
+      onChange: useCallback((enabled: boolean) => setAutoDeploy(name, enabled), [name, setAutoDeploy]),
+    },
     logs,
     shell: { ...shell, view: shellView },
     actions,

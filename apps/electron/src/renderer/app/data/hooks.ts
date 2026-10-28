@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import type { ConnectionSnapshot } from "../../../shared/contracts/connection";
 import { ipc } from "../../lib/ipc";
 import { createApiClient } from "./client";
+import { useScopedClient } from "./scope";
 
 export const DATA_KEYS = {
   connection: ["connection", "snapshot"] as const,
@@ -21,7 +22,9 @@ export function useConnectionSnapshot() {
 }
 
 export function useApiClient(): TesseractClient | null {
+  const scoped = useScopedClient();
   const config = useConnectionSnapshot().data?.config;
+  if (scoped) return scoped;
   return config ? createApiClient(config) : null;
 }
 

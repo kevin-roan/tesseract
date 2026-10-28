@@ -13,7 +13,7 @@ import {
 } from "@tesseract/protocol";
 import { nowIso } from "../../core/time";
 import type { Services } from "../../services";
-import { jsonBody, optionalJsonBody, parseWith } from "../validation";
+import { jsonBody, optionalJsonBody, parseWith, projectFilter } from "../validation";
 
 function remoteAddress(c: Context): { address: string; port: number } | null {
   try {
@@ -53,6 +53,8 @@ export function registerSystemRoutes(app: Hono, services: Services): void {
   app.post(rest.claudeImport, async (c) => c.json(services.claudeAuth.import(await jsonBody(c, ClaudeImportSchema))));
 
   app.get(rest.claudeAccounts, (c) => c.json(services.claudeAccounts.list()));
+
+  app.get(rest.claudeCommands, (c) => c.json(services.claudeCommands.list(projectFilter(c))));
 
   app.put(rest.claudeDefaultAccount, async (c) =>
     c.json(services.claudeAccounts.setDefault((await jsonBody(c, SetDefaultClaudeAccountSchema)).accountId)),

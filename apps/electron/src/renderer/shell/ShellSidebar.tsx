@@ -4,7 +4,7 @@ import { ROUTE } from "../../shared/routes";
 import { useConnectionView } from "../app/connection";
 import { useNavigateTo, usePreferencesRoute } from "../app/navigation";
 import { pagesBySection } from "../app/registry/pages";
-import { ActionMenu } from "../components/ActionMenu";
+import { ActionMenu, useActionMenu } from "../components/ActionMenu";
 import { IconButton } from "../components/IconButton";
 import {
   Sidebar,
@@ -23,6 +23,7 @@ import { pageKeyOf } from "../app/feedback";
 import { AttachmentChip, AttachmentTray } from "../components/Composer";
 import { useComposerProject } from "./hooks/use-composer-project";
 import { useAccountMenu } from "./hooks/use-account-menu";
+import { useHistoryNav } from "./hooks/use-history-nav";
 import { useMainMenu } from "./hooks/use-main-menu";
 import { useSidebarComposer } from "./hooks/use-sidebar-composer";
 import { useSidebarContainers } from "./hooks/use-sidebar-containers";
@@ -30,8 +31,10 @@ import { useSidebarProjects } from "./hooks/use-sidebar-projects";
 import { openShellDialog } from "./hooks/use-shell-dialogs";
 import { SHELL_LABELS } from "./labels";
 import { MACHINE_LABELS } from "../features/machines";
+import { useSlashCommands } from "../features/agents/hooks/use-slash-commands";
 import { useProcessesCount } from "../features/processes/hooks/use-processes-count";
 import { MachineMenu } from "./machines/MachineMenu";
+import styles from "./Shell.module.css";
 
 export interface ShellSidebarProps {
   collapsed: boolean;
@@ -40,7 +43,10 @@ export interface ShellSidebarProps {
 function SidebarHeader({ collapsed }: ShellSidebarProps) {
   const navigateTo = useNavigateTo();
   const menu = useMainMenu();
+  const history = useHistoryNav();
+  const recentMenu = useActionMenu();
   const switcher = useRef<HTMLButtonElement>(null);
+  const recentButton = useRef<HTMLButtonElement>(null);
   return (
     <>
       <Titlebar
@@ -48,21 +54,41 @@ function SidebarHeader({ collapsed }: ShellSidebarProps) {
         divider={collapsed}
         controls={collapsed}
         start={
-          <WorkspaceSwitcher
-            ref={switcher}
-            name={menu.name ?? undefined}
-            tooltip={menu.tooltip}
-            open={menu.menu.open}
-            onClick={(event) => menu.toggle(event.currentTarget)}
-          />
+          <div className={styles.historyNav}>
+            <IconButton icon="back" label={SHELL_LABELS.history.back} size={24} disabled={!history.canGoBack} onClick={history.back} />
+            <IconButton icon="forward" label={SHELL_LABELS.history.forward} size={24} disabled={!history.canGoForward} onClick={history.forward} />
+            <IconButton
+              ref={recentButton}
+              icon="history"
+              label={SHELL_LABELS.history.recent}
+              size={24}
+              checked={recentMenu.open}
+              disabled={!history.hasRecent}
+              onClick={(event) => (recentMenu.open ? recentMenu.close() : recentMenu.openBelow(event.currentTarget))}
+            />
+          </div>
         }
-        end={
-          <>
-            <IconButton icon="smartphone" label={SHELL_LABELS.pairPhone} onClick={() => openShellDialog("pair")} />
-            <IconButton icon="search" label={SHELL_LABELS.search} onClick={() => navigateTo("agents", { search: true })} />
-            <IconButton icon="compose" label={SHELL_LABELS.compose} variant="filled" onClick={() => navigateTo("agents", { new: true })} />
-          </>
-        }
+      />
+      <div className={styles.workspaceRow}>
+        <WorkspaceSwitcher
+          ref={switcher}
+          name={menu.name ?? undefined}
+          tooltip={menu.tooltip}
+          open={menu.menu.open}
+          onClick={(event) => menu.toggle(event.currentTarget)}
+        />
+        <div className={styles.workspaceActions}>
+          <IconButton icon="smartphone" label={SHELL_LABELS.pairPhone} onClick={() => openShellDialog("pair")} />
+          <IconButton icon="search" label={SHELL_LABELS.search} onClick={() => navigateTo("agents", { search: true })} />
+          <IconButton icon="compose" label={SHELL_LABELS.compose} variant="filled" onClick={() => navigateTo("agents", { new: true })} />
+        </div>
+      </div>
+      <ActionMenu
+        anchor={recentMenu.anchor}
+        sections={history.sections}
+        onClose={recentMenu.close}
+        ariaLabel={SHELL_LABELS.history.recent}
+        ignoreRef={recentButton}
       />
       <MachineMenu
         anchor={menu.menu.anchor}
@@ -79,6 +105,7 @@ function SidebarHeader({ collapsed }: ShellSidebarProps) {
 
 function SidebarFooter() {
   const composer = useSidebarComposer();
+  const slashCommands = useSlashCommands(composer.projectId);
   const view = useConnectionView();
   const { projects } = useSidebarProjects();
   const account = useAccountMenu();
@@ -96,6 +123,7 @@ function SidebarFooter() {
         onAttach={composer.attachments.attach}
         hasAttachments={composer.attachments.items.length > 0}
         attachmentsBlocked={composer.attachments.blocked}
+        slashCommands={slashCommands}
         tray={
           <AttachmentTray>
             {composer.attachments.items.map((item) => (
@@ -190,6 +218,7 @@ export function ShellSidebar({ collapsed }: ShellSidebarProps) {
           selected={containers.selected}
           labels={SHELL_LABELS.containerStates}
           onOpen={(name) => navigateTo("containers", undefined, encodeURIComponent(name))}
+          onOpenRequest={() => navigateTo("containers")}
           onStart={containers.start}
           onStop={containers.stop}
           onCreate={createContainer}

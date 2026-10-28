@@ -1,10 +1,14 @@
 import { useRef } from "react";
 import { ActionButton } from "../../../../components/ActionButton";
+import { ActionGroup } from "../../../../components/ActionGroup";
 import { Floating, MenuSeparator, useActionMenu } from "../../../../components/ActionMenu";
 import { HostUnlockDialog } from "../../../../components/HostUnlockDialog";
 import { Text } from "../../../../components/Text";
 import { TextField } from "../../../../components/TextField";
+import { Tooltip } from "../../../../components/Tooltip";
 import type { NoticeAction } from "../../../../features/projects/types";
+import { HOST_GROUP_ICON } from "./constants";
+import { HostChatDialog } from "./HostChatDialog";
 import { useHostRepo } from "./hooks/use-host-repo";
 import { HOST_REPO_LABELS as L } from "./labels";
 import type { HostRepoButton } from "./model";
@@ -38,16 +42,32 @@ export function HostRepoActions({ projectId, projectName, report }: HostRepoActi
       onClick={() => repo.run(button.id)}
     />
   );
+  if (repo.folder === null) {
+    return (
+      <ActionGroup label={L.group} icon={HOST_GROUP_ICON} tone="warning" muted>
+        <Tooltip label={L.noCopy}>
+          <Text variant="caption" color="text-tertiary">
+            {L.notLinked}
+          </Text>
+        </Tooltip>
+      </ActionGroup>
+    );
+  }
+  const terminalButton = (button: HostRepoButton) => (
+    <ActionButton
+      key={button.id}
+      label={button.label}
+      icon={button.icon}
+      busy={button.busy}
+      disabled={button.disabled}
+      tooltip={button.tooltip}
+      onClick={() => repo.run(button.id)}
+    />
+  );
   return (
-    <>
-      <ActionButton
-        label={repo.shell.label}
-        icon={repo.shell.icon}
-        busy={repo.shell.busy}
-        disabled={repo.shell.disabled}
-        tooltip={repo.shell.tooltip}
-        onClick={() => repo.run("shell")}
-      />
+    <ActionGroup label={L.group} icon={HOST_GROUP_ICON} tone="warning" detail={repo.folder.name} detailTooltip={repo.folder.path}>
+      {terminalButton(repo.claude)}
+      {terminalButton(repo.shell)}
       <ActionButton
         ref={gitRef}
         label={repo.git.label}
@@ -89,7 +109,8 @@ export function HostRepoActions({ projectId, projectName, report }: HostRepoActi
         <MenuSeparator />
         <div className={styles.sync}>{repo.sync.map((button) => actionButton(button, "secondary", true))}</div>
       </Floating>
+      <HostChatDialog open={repo.chat.open} client={repo.chat.client} projectId={projectId} folder={repo.folder.name} onClose={repo.chat.close} />
       <HostUnlockDialog open={repo.unlockOpen} onUnlock={repo.unlock} onClose={repo.closeUnlock} onUnlocked={repo.onUnlocked} />
-    </>
+    </ActionGroup>
   );
 }

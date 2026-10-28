@@ -14,14 +14,19 @@ import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navig
 import { useTerminalLauncher } from "@/features/sandbox/hooks/use-terminal-launcher";
 import { useTerminalSession } from "@/features/sandbox/hooks/use-terminal-session";
 import type { TerminalLaunch } from "@/features/sandbox/types";
-import { terminalLaunchFromParams } from "@/features/sandbox/utils/routes";
+import { SandboxScope } from "@/features/sandbox/hooks/sandbox-scope";
+import { firstParam, terminalLaunchFromParams } from "@/features/sandbox/utils/routes";
 
-type Params = { id: string; kind?: string; projectId?: string };
+type Params = { id: string; kind?: string; projectId?: string; on?: string };
 
 export default function TerminalScreen() {
   const params = useLocalSearchParams<Params>();
   const launch = terminalLaunchFromParams(params);
-  return launch ? <NewTerminal launch={launch} /> : <TerminalSession id={params.id} />;
+  return (
+    <SandboxScope id={firstParam(params.on)}>
+      {launch ? <NewTerminal launch={launch} /> : <TerminalSession id={params.id} />}
+    </SandboxScope>
+  );
 }
 
 function NewTerminal({ launch }: { launch: TerminalLaunch }) {

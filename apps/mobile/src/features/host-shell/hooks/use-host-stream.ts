@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { DEFAULT_ANDROID_STREAM, type AndroidStreamSettings, type UpdateAndroidStream } from "@tesseract/protocol";
 
 import type { MenuOption } from "@/components/menu-sheet/types";
 
 import { hostKeys } from "../api/query-keys";
+import type { HostDeviceKind } from "../types";
 import { useHostSessionStore } from "../store/host-session-store";
 import { STREAM_BIT_RATE_MBIT } from "../utils/constants";
 import { HOST_LOCKED, STREAM_COPY } from "../utils/content";
@@ -17,6 +17,7 @@ import {
   maxSizeLabel,
   maxSizeOptions,
   maxSizeValue,
+  STREAM_KINDS,
   STREAM_RANGES,
   streamChanges,
   streamDeviceId,
@@ -24,27 +25,30 @@ import {
   streamDeviceOptions,
   streamDeviceValue,
   toMbit,
+  type StreamSettings,
 } from "../utils/stream";
 import { useHostClient } from "./use-host-client";
 import { useHostNavigation } from "./use-host-navigation";
 
 type StreamSheet = "device" | "encoding" | "maxSize";
 
-export function useHostStream() {
+/** The stream settings of one device kind: Android adds a default device, iOS has only the video settings. */
+export function useHostStream(kind: HostDeviceKind = "android") {
+  const spec = STREAM_KINDS[kind];
   const nav = useHostNavigation();
   const queryClient = useQueryClient();
   const { host, hydrated, session, sessionClient } = useHostClient();
   const clear = useHostSessionStore((state) => state.clear);
-  const [draft, setDraft] = useState<UpdateAndroidStream>({});
+  const [draft, setDraft] = useState<Partial<StreamSettings>>({});
   const [sheet, setSheet] = useState<StreamSheet | null>(null);
   const scope = host && session ? ([host.baseUrl, session.session] as const) : null;
-  const settingsKey = scope ? hostKeys.stream(...scope) : hostKeys.root;
+  const settingsKey = scope ? (kind === "ios" ? hostKeys.iosStream(...scope) : hostKeys.stream(...scope)) : hostKeys.root;
 
   const settings = useQuery({
     queryKey: settingsKey,
-    queryFn: ({ signal }) => {
+    queryFn: ({ signal }): Promise<StreamSettings> => {
       if (!sessionClient) throw new Error(HOST_LOCKED);
-      return sessionClient.androidStreamSettings({ signal });
+      return kind === "ios" ? sessionClient.iosStreamSettings({ signal }) : sessionClient.androidStreamSettings({ signal });
     },
     enabled: sessionClient !== null,
   });
@@ -55,18 +59,18 @@ export function useHostStream() {
       if (!sessionClient) throw new Error(HOST_LOCKED);
       return sessionClient.androidDevices({ signal });
     },
-    enabled: sessionClient !== null,
+    enabled: sessionClient !== null && spec.devices,
   });
 
   const save = useMutation({
-    mutationFn: (change: UpdateAndroidStream) => {
+    mutationFn: (change: Partial<StreamSettings>): Promise<StreamSettings> => {
       if (!sessionClient) throw new Error(HOST_LOCKED);
-      return sessionClient.updateAndroidStream(change);
+      return kind === "ios" ? sessionClient.updateIosStream(change) : sessionClient.updateAndroidStream(change);
     },
     onSuccess: (next) => {
-      queryClient.setQueryData<AndroidStreamSettings>(settingsKey, next);
+      queryClient.setQueryData<StreamSettings>(settingsKey, next);
       setDraft({});
-      if (scope) void queryClient.invalidateQueries({ queryKey: hostKeys.android(...scope) });
+      if (scope && spec.devices) void queryClient.invalidateQueries({ queryKey: hostKeys.android(...scope) });
     },
   });
 
@@ -82,12 +86,12 @@ export function useHostStream() {
   }, [hydrated, session, lockScreen]);
 
   const saved = settings.data;
-  const values: AndroidStreamSettings = { ...(saved ?? DEFAULT_ANDROID_STREAM), ...draft };
+  const values: StreamSettings = { ...(saved ?? spec.defaults), ...draft };
   const changes = saved ? streamChanges(saved, draft) : {};
   const dirty = Object.keys(changes).length > 0;
   const deviceList = useMemo(() => devices.data ?? [], [devices.data]);
 
-  const change = (fields: UpdateAndroidStream) => {
+  const change = (fields: Partial<StreamSettings>) => {
     save.reset();
     setDraft((current) => ({ ...current, ...fields }));
   };
@@ -106,14 +110,14 @@ export function useHostStream() {
   );
 
   const selectedIds: Record<StreamSheet, string> = {
-    device: streamDeviceId(values.device),
+    device: streamDeviceId(values.device ?? null),
     encoding: values.encoding,
     maxSize: maxSizeId(values.maxSize),
   };
 
   const select = (id: string) => {
     if (sheet === "device") change({ device: streamDeviceValue(id) });
-    if (sheet === "encoding") change({ encoding: id as AndroidStreamSettings["encoding"] });
+    if (sheet === "encoding") change({ encoding: id as StreamSettings["encoding"] });
     if (sheet === "maxSize") change({ maxSize: maxSizeValue(id) });
     setSheet(null);
   };
@@ -123,12 +127,14 @@ export function useHostStream() {
     loading: settings.isLoading,
     ready: saved !== undefined,
     error: failure ? describeHostError(failure) : null,
+    subtitle: spec.subtitle,
+    footnote: spec.footnote,
     refresh: () => {
       void settings.refetch();
-      void devices.refetch();
+      if (spec.devices) void devices.refetch();
     },
     refreshing: settings.isRefetching || devices.isRefetching,
-    device: { label: streamDeviceLabel(deviceList, values.device), open: () => setSheet("device") },
+    device: spec.devices ? { label: streamDeviceLabel(deviceList, values.device ?? null), open: () => setSheet("device") } : null,
     encoding: { label: encodingLabel(values.encoding), open: () => setSheet("encoding") },
     maxSize: { label: maxSizeLabel(values.maxSize), open: () => setSheet("maxSize") },
     bitRate: {
@@ -161,7 +167,7 @@ export function useHostStream() {
     save: () => {
       if (dirty) save.mutate(changes);
     },
-    reset: () => change({ ...DEFAULT_ANDROID_STREAM }),
+    reset: () => change({ ...spec.defaults }),
   };
 }
 

@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { existsSync, lstatSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
-import { HealthSchema, parsePairingLink, ProjectListSchema, ProjectSchema, SandboxStatusSchema } from "@tesseract/protocol";
+import { HealthSchema, parsePairingLink, ProjectGitResultSchema, ProjectListSchema, ProjectSchema, SandboxStatusSchema } from "@tesseract/protocol";
 import { runCli, type Output } from "../src/cli/commands";
 import { ensureDirectories } from "../src/config";
-import { hostWorkspaceDir, linkRepository, loadHostWorkspaceConfig } from "../src/host/workspace";
+import { hostWorkspaceAccess, hostWorkspaceDir, linkedRepositories, linkRepository, linkRepositoryAs, loadHostWorkspaceConfig } from "../src/host/workspace";
 import { makeTempDir, removeTempDirs, startTestController, writeFiles, type TestController } from "./helpers";
 
 function capture(): Output & { stdout: string[]; stderr: string[] } {
@@ -64,6 +64,38 @@ describe("linkRepository", () => {
   });
 });
 
+describe("linkRepositoryAs", () => {
+  test("links under the exact id and re-points a link that targets another repository", () => {
+    const home = makeTempDir("home");
+    const config = loadHostWorkspaceConfig({ HOME: home }, { bind: "127.0.0.1" });
+    ensureDirectories(config);
+    const first = join(home, "a", "streaxfit");
+    const second = join(home, "b", "other");
+    writeFiles(first, { "README.md": "a" });
+    writeFiles(second, { "README.md": "b" });
+    expect(linkRepositoryAs(config, first, "nimble-lotus")).toEqual({ id: "nimble-lotus", path: realpathSync(first), created: true });
+    expect(linkRepositoryAs(config, first, "nimble-lotus")).toMatchObject({ created: false });
+    expect(linkRepositoryAs(config, second, "nimble-lotus")).toEqual({ id: "nimble-lotus", path: realpathSync(second), created: true });
+    expect(realpathSync(join(config.projectsDir, "nimble-lotus"))).toBe(realpathSync(second));
+    expect(linkedRepositories(config)).toEqual([{ id: "nimble-lotus", path: realpathSync(second) }]);
+    expect(() => linkRepositoryAs(config, first, "Not Valid")).toThrow(/not a valid project id/);
+    writeFiles(join(config.projectsDir, "real"), { "README.md": "x" });
+    expect(() => linkRepositoryAs(config, first, "real")).toThrow(/is a directory/);
+  });
+
+  test("hostWorkspaceAccess is null until the workspace has a token", () => {
+    const home = makeTempDir("home");
+    const env = { HOME: home, TESSERACT_HOST_WORKSPACE_BIND: "127.0.0.1" };
+    expect(hostWorkspaceAccess(env)).toBeNull();
+    const config = loadHostWorkspaceConfig(env, {}, false);
+    ensureDirectories(config);
+    const repo = join(home, "repo");
+    writeFiles(repo, { "README.md": "x" });
+    linkRepositoryAs(config, repo, "proj");
+    expect(hostWorkspaceAccess(env)).toBeNull();
+  });
+});
+
 describe("host runtime controller", () => {
   test("reports the host runtime", async () => {
     expect(HealthSchema.parse((await t.json("GET", "/v1/health")).body).runtime).toBe("host");
@@ -80,6 +112,22 @@ describe("host runtime controller", () => {
     expect((await t.json("POST", "/v1/projects", { name: "fresh" })).status).toBe(400);
     const sync = await t.request("POST", "/v1/projects/my-repo/sync", new Uint8Array(), { "Content-Type": "application/x-tar" });
     expect(sync.status).toBe(400);
+  });
+
+  test("runs git commit, pull and push in the host repository", async () => {
+    const git = (...args: string[]) => Bun.spawnSync(["git", "-C", repo, ...args], { env: { ...process.env, GIT_CONFIG_GLOBAL: "/dev/null" } });
+    git("init", "-q");
+    git("config", "user.email", "me@example.invalid");
+    git("config", "user.name", "Me");
+    writeFiles(repo, { "notes.md": "hello" });
+    expect((await t.json("POST", "/v1/projects/my-repo/git", { action: "commit" })).status).toBe(400);
+    const commit = await t.json("POST", "/v1/projects/my-repo/git", { action: "commit", message: "Add notes" });
+    expect(commit.status).toBe(200);
+    expect(ProjectGitResultSchema.parse(commit.body).action).toBe("commit");
+    expect(new TextDecoder().decode(git("log", "--format=%s").stdout).trim()).toBe("Add notes");
+    const push = await t.json("POST", "/v1/projects/my-repo/git", { action: "push" });
+    expect(push.status).toBe(409);
+    expect((push.body as { error: { message: string } }).error.message.length).toBeGreaterThan(0);
   });
 
   test("deleting a host project removes the link and keeps the repository", async () => {
@@ -107,6 +155,23 @@ describe("tesseract-controller host workspace", () => {
     const pairing = JSON.parse(paired.stdout[0] ?? "") as { link: string; localUrl: string; name: string };
     expect(pairing.localUrl).toBe("http://127.0.0.1:7702");
     expect(parsePairingLink(pairing.link)).toMatchObject({ ok: true, value: { url: "http://127.0.0.1:7702", name: pairing.name } });
+
+    const exact = capture();
+    expect(await runCli(["host", "workspace", "add", "--id", "sandbox-id", "--json"], { env, output: exact, cwd: target })).toBe(0);
+    expect(JSON.parse(exact.stdout[0] ?? "")).toEqual({ id: "sandbox-id", path: realpathSync(target), created: true });
+    expect(hostWorkspaceAccess(env)).toMatchObject({
+      url: "http://127.0.0.1:7702",
+      name: pairing.name,
+      projects: [
+        { id: "repo", path: realpathSync(target) },
+        { id: "sandbox-id", path: realpathSync(target) },
+      ],
+    });
+    expect(await runCli(["host", "workspace", "add", "--id", "x", "--name", "y"], { env, output: capture(), cwd: target })).toBe(2);
+
+    const stopped = capture();
+    expect(await runCli(["host", "workspace", "stop", "--json"], { env, output: stopped })).toBe(0);
+    expect(JSON.parse(stopped.stdout[0] ?? "")).toEqual({ stopped: false });
 
     const unknown = capture();
     expect(await runCli(["host", "workspace", "nope"], { env, output: unknown })).toBe(2);

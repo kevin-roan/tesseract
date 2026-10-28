@@ -20,7 +20,8 @@ everything else as you; `sudo ./setup-mac.sh` also works and drops back to your 
 3. OrbStack (`brew install --cask orbstack`) unless Docker is already there, starts it and waits
    for the engine; the Tailscale app (`tailscale-app` cask), then waits while you sign in.
 4. `./setup-server.sh` with `--hostname`, `--with`, `--rebuild` and `--yes` passed through
-   (`--skip-server` skips it).
+   (`--skip-server` skips it). It also compiles and installs `tesseract-simcap`, the iOS Simulator
+   screen helper (below).
 5. `bun run electron:dist` (the universal `apps/electron/dist/Tesseract-<v>-universal.dmg`) and
    installs `Tesseract.app` into `/Applications`, owned by you. Without a Developer ID identity
    it builds unsigned and ad-hoc signs the installed app, which runs on this Mac only
@@ -48,7 +49,9 @@ the command and waits for you to run it in another terminal. In order, it:
    login. On Linux it prints `sudo loginctl enable-linger $USER` instead, and adds
    `usermod -aG docker` when you are not in the docker group.
 3. Runs `bun install`, builds `tesseract` and `tesseract-controller` for this machine (mac-arm64 or
-   mac-x64), copies them to `~/.tesseract/bin`, copies the sandbox build context to
+   mac-x64), copies them to `~/.tesseract/bin` (on a Mac also `tesseract-simcap`, the iOS Simulator
+   screen helper, compiled with `xcrun swiftc`; without swiftc it warns, removes an old copy and the
+   iOS screen uses idb + ffmpeg JPEGs), copies the sandbox build context to
    `~/.tesseract/sandbox`, and adds `~/.tesseract/bin` to `PATH` in `~/.zprofile`.
 4. Secrets, each read from the environment or asked for with hidden input:
    - The tailnet domain, detected from `tailscale status`.
@@ -123,6 +126,9 @@ The script:
 2. picks `mac-arm64` (Apple silicon) or `mac-x64` (Intel) from `uname -m` (`--arch arm64|x64` to force);
 3. runs `cli:build --target mac-<arch>` and `bundle:sandbox` (`--skip-build` reuses the last build);
 4. copies the binaries to `~/.tesseract/bin/` and the sandbox build context to `~/.tesseract/sandbox/`;
+   rsyncs `apps/controller/native/simcap` to `~/.tesseract/src/simcap` and compiles
+   `~/.tesseract/bin/tesseract-simcap` there with `xcrun swiftc` (only a warning without swiftc or on a
+   failed build; the iOS screen then uses idb + ffmpeg JPEGs);
 5. sends `TS_AUTHKEY`, `TS_TAILNET_DOMAIN` and `CLAUDE_CODE_OAUTH_TOKEN` over ssh stdin into a 0600
    `~/.tesseract/secrets.env`, which the remote side reads and deletes before the install runs
    (secrets never appear on a command line or in the output);
@@ -226,6 +232,15 @@ turn on automatic login and "start at login".
 **`deploy-mac: tailscale not found` / host shell won't start: no bind address**
 → The Tailscale CLI is not on `PATH` and not in `/Applications/Tailscale.app`. → Install the
 Tailscale app there, or set `TESSERACT_HOST_SHELL_BIND=<tailscale ip>` for the service.
+
+**The iOS Simulator screen is JPEG only, or transitions smear**
+→ The daemon is not using `tesseract-simcap`; the log says `ios screen streams through idb
+(tesseract-simcap unavailable)` with the reason. → Run `scripts/setup-mac-ios.sh` (it checks the
+helper and probes a booted simulator), or `~/.tesseract/bin/tesseract-simcap probe --udid <booted UDID>`
+(`xcrun simctl list devices booted`). It loads the private
+SimulatorKit API at runtime, so an Xcode update needs no rebuild; if `probe` fails after one, pull a
+newer helper and rebuild it (re-run `./setup-server.sh` or `bun run deploy:mac`). For the LaunchAgent, a custom path goes in `TESSERACT_SIMCAP` when you run
+`tesseract server install --ios`.
 
 **Agents fail with "not logged in" in the sandbox**
 → No `CLAUDE_CODE_OAUTH_TOKEN` (the keychain login is invisible to the container). → Run

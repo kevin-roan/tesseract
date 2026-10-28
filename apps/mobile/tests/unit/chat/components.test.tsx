@@ -83,6 +83,21 @@ describe("<ChatComposer />", () => {
     expect(composer.newProject.skip).toHaveBeenCalled();
   });
 
+  it("lists slash command hints above the input and picks one", async () => {
+    const composer = chatComposerState({
+      text: "/de",
+      slash: {
+        items: [{ name: "deploy", label: "/deploy", description: "Deploy the app", tag: { label: "Project", tone: "success" } }],
+        select: jest.fn(),
+      },
+    });
+    await render(<ChatComposer composer={composer} placeholder="Message" />);
+    expect(screen.getByText("Deploy the app")).toBeOnTheScreen();
+    expect(screen.getByText("Project")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByLabelText("/deploy"));
+    expect(composer.slash.select).toHaveBeenCalledWith("deploy");
+  });
+
   it("shows a dismissible transcription notice", async () => {
     const composer = chatComposerState({ notice: "Gemini unavailable — used native transcription: quota" });
     await render(<ChatComposer composer={composer} placeholder="Message" />);

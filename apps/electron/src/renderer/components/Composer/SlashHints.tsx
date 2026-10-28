@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { cx } from "../../lib/cx";
 import { popover } from "../../theme/motion";
 import { COMPOSER_LABELS } from "./labels";
-import type { SlashCommand } from "./model";
+import type { SlashCommand, SlashHintsPlacement } from "./model";
 import styles from "./SlashHints.module.css";
 
 export interface SlashHintsProps {
@@ -10,10 +10,11 @@ export interface SlashHintsProps {
   open: boolean;
   matches: readonly SlashCommand[];
   activeIndex: number;
+  placement?: SlashHintsPlacement;
   onPick(index: number): void;
 }
 
-export function SlashHints({ id, open, matches, activeIndex, onPick }: SlashHintsProps) {
+export function SlashHints({ id, open, matches, activeIndex, placement = "above", onPick }: SlashHintsProps) {
   return (
     <AnimatePresence>
       {open ? (
@@ -21,7 +22,7 @@ export function SlashHints({ id, open, matches, activeIndex, onPick }: SlashHint
           id={id}
           role="listbox"
           aria-label={COMPOSER_LABELS.slashHints}
-          className={styles.hints}
+          className={cx(styles.hints, styles[placement])}
           variants={popover}
           initial="initial"
           animate="animate"
@@ -41,6 +42,7 @@ export function SlashHints({ id, open, matches, activeIndex, onPick }: SlashHint
             >
               <span className={styles.command}>/{match.command.replace(/^\//, "")}</span>
               {match.description ? <span className={styles.description}>{match.description}</span> : null}
+              {match.tag ? <span className={styles.tag}>{match.tag}</span> : null}
             </div>
           ))}
         </motion.div>

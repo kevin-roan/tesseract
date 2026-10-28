@@ -214,6 +214,75 @@ const MIGRATIONS: readonly string[] = [
   UPDATE uploads SET path = replace(path, '/.theone/uploads/', '/.tesseract/uploads/');
   UPDATE agent_runs SET attachments = replace(attachments, '/.theone/uploads/', '/.tesseract/uploads/') WHERE attachments IS NOT NULL;
   `,
+  `
+  ALTER TABLE agent_runs ADD COLUMN model TEXT;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS deploys (
+    id TEXT PRIMARY KEY,
+    container TEXT NOT NULL,
+    app TEXT NOT NULL,
+    kind TEXT NOT NULL,
+    source_path TEXT NOT NULL,
+    project_id TEXT,
+    port INTEGER,
+    hostname TEXT,
+    status TEXT NOT NULL,
+    sha256 TEXT NOT NULL,
+    bytes INTEGER NOT NULL,
+    claimed_by TEXT,
+    log TEXT NOT NULL DEFAULT '',
+    urls TEXT NOT NULL DEFAULT '[]',
+    error TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS deploys_by_status ON deploys (status, created_at);
+  CREATE INDEX IF NOT EXISTS deploys_by_container ON deploys (container, app, created_at);
+  `,
+  `
+  ALTER TABLE deploys ADD COLUMN create_container INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE deploys ADD COLUMN cpus REAL;
+  ALTER TABLE deploys ADD COLUMN memory_mb INTEGER;
+  `,
+  `
+  CREATE TABLE IF NOT EXISTS issues (
+    id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL,
+    number INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    status TEXT NOT NULL,
+    priority TEXT NOT NULL,
+    assignee TEXT,
+    labels TEXT NOT NULL DEFAULT '[]',
+    sort_order REAL NOT NULL,
+    agent_run_id TEXT,
+    agent_state TEXT,
+    session_id TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    completed_at TEXT
+  );
+  CREATE UNIQUE INDEX IF NOT EXISTS issues_by_number ON issues (project_id, number);
+  CREATE INDEX IF NOT EXISTS issues_by_agent_run ON issues (agent_run_id);
+  CREATE INDEX IF NOT EXISTS issues_by_agent_state ON issues (agent_state);
+
+  CREATE TABLE IF NOT EXISTS issue_comments (
+    id TEXT PRIMARY KEY,
+    issue_id TEXT NOT NULL,
+    author TEXT NOT NULL,
+    body TEXT NOT NULL,
+    agent_run_id TEXT,
+    created_at TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS issue_comments_by_issue ON issue_comments (issue_id, created_at);
+
+  CREATE TABLE IF NOT EXISTS issue_counters (
+    project_id TEXT PRIMARY KEY,
+    last_number INTEGER NOT NULL
+  );
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

@@ -1,6 +1,7 @@
-import { SparkleIcon } from "phosphor-react-native";
+import { CpuIcon, SparkleIcon } from "phosphor-react-native";
 
 import type { ChatComposerState } from "@/features/chat/hooks/use-chat-composer";
+import { AGENT_MODEL_OPTIONS, AGENT_MODEL_SHEET } from "@/features/chat/utils/models";
 import { AGENT_MODE_OPTIONS, AGENT_MODE_SHEET } from "@/features/chat/utils/modes";
 import { ATTACH_OPTIONS } from "@/features/attachments/utils/sources";
 
@@ -15,6 +16,7 @@ export function chatComposerState({ voice, attachments, newProject, ...overrides
     text: "",
     setText: jest.fn(),
     projectId: null,
+    slash: { items: [], select: jest.fn() },
     mode: {
       id: "bypassPermissions",
       label: "Auto",
@@ -24,6 +26,15 @@ export function chatComposerState({ voice, attachments, newProject, ...overrides
       icon: SparkleIcon,
       options: AGENT_MODE_OPTIONS,
       sheet: AGENT_MODE_SHEET,
+      select: jest.fn(),
+    },
+    model: {
+      id: "default",
+      label: "Default",
+      description: "The model the Claude account is set to.",
+      icon: CpuIcon,
+      options: AGENT_MODEL_OPTIONS,
+      sheet: AGENT_MODEL_SHEET,
       select: jest.fn(),
     },
     project: null,

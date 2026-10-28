@@ -51,8 +51,8 @@ export async function fetchLocalApi(
   }
 }
 
-export async function callLocalApi<T>(config: Config, method: string, path: string, body?: unknown): Promise<T | null> {
-  const response = await fetchLocalApi(config, method, path, body === undefined ? undefined : JSON.stringify(body));
+export async function callLocalApi<T>(config: Config, method: string, path: string, body?: unknown, timeoutMs?: number): Promise<T | null> {
+  const response = await fetchLocalApi(config, method, path, body === undefined ? undefined : JSON.stringify(body), timeoutMs);
   const text = await response.text();
   const parsed = text ? parseJson(text) : null;
   const value = parsed?.ok ? parsed.value : null;

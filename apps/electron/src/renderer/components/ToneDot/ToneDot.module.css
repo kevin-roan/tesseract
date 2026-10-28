@@ -6,5 +6,5 @@
 }
 
 .live {
-  animation: to-pulse var(--to-pulse-duration) var(--to-ease-standard) infinite;
+  animation: global(to-pulse) var(--to-pulse-duration) var(--to-ease-standard) infinite;
 }

@@ -3,6 +3,7 @@ import { errorMessage } from "../../../components/FormDialog";
 import { containersListState, routeCounts, sortContainers, type ListStateAction } from "../model";
 import { useContainerActions, usePendingContainers } from "./use-container-actions";
 import { useContainers } from "./use-containers";
+import { useCreationRequests } from "./use-creation-requests";
 import { useDomainRoutes } from "./use-domain-routes";
 
 export interface ContainersListHandlers {
@@ -14,10 +15,11 @@ export function useContainersList({ onCreate, onSettings }: ContainersListHandle
   const { containers, error, refresh } = useContainers();
   const { routes, refresh: refreshRoutes } = useDomainRoutes();
   const pending = usePendingContainers();
+  const requests = useCreationRequests();
   const actions = useContainerActions();
   const sorted = useMemo(() => sortContainers(containers ?? []), [containers]);
   const counts = useMemo(() => routeCounts(routes), [routes]);
-  const state = containersListState(containers, error && !containers ? errorMessage(error) : null);
+  const state = containersListState(containers, error && !containers ? errorMessage(error) : null, requests.length);
   const reload = useCallback(() => {
     refresh();
     refreshRoutes();
@@ -30,5 +32,5 @@ export function useContainersList({ onCreate, onSettings }: ContainersListHandle
     },
     [onCreate, onSettings, reload],
   );
-  return { containers: sorted, counts, pending, actions, state, reload, onAction };
+  return { containers: sorted, requests, counts, pending, actions, state, reload, onAction };
 }

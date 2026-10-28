@@ -15,7 +15,7 @@ export function sttProviderRows(selected: SttProvider, status: SttStatus | undef
   return [
     {
       id: "gemini",
-      label: SETTINGS_COPY.geminiLabel,
+      label: SETTINGS_COPY.sttProviderLabels.gemini,
       detail: gemini ? SETTINGS_COPY.geminiDetail(gemini.model) : undefined,
       value: gemini && !gemini.configured ? SETTINGS_COPY.geminiNoKey : undefined,
       icon: STT_PROVIDER_ICONS.gemini,
@@ -23,7 +23,7 @@ export function sttProviderRows(selected: SttProvider, status: SttStatus | undef
     },
     {
       id: "native",
-      label: SETTINGS_COPY.nativeLabel,
+      label: SETTINGS_COPY.sttProviderLabels.native,
       detail: SETTINGS_COPY.nativeDetail,
       icon: STT_PROVIDER_ICONS.native,
       selected: selected === "native",

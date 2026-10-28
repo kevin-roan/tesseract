@@ -324,6 +324,7 @@ export const sampleAgentRun: AgentRun = {
   projectId: "electron-hello",
   prompt: "Build the Windows installer",
   mode: "bypassPermissions",
+  model: "opus",
   attachments: [sampleUpload],
   sessionId: "5f0c2d7e-9d1b-4f6a-8a3e-2b7c1d0e9f11",
   claudeAccountId: "claude",

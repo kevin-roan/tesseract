@@ -1,5 +1,4 @@
 export { RunTimeline, type RunTimelineProps } from "./RunTimeline";
-export { AgentAvatar, type AgentAvatarProps } from "./AgentAvatar";
 export { addEvents, buildTimeline, EMPTY_EVENT_LOG, firstTextKey, orderedEvents, type EventLog, type TimelineItem } from "./model";
 export {
   continuesLabel,

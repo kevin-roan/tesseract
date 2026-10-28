@@ -32,6 +32,7 @@ const OPTIONS: ServerOptions = {
   build: false,
   claudeToken: null,
   hostShell: true,
+  ios: false,
   httpsPort: 8443,
   resetTailscale: false,
   dryRun: false,
@@ -142,12 +143,48 @@ describe("planHostService", () => {
   it("escapes XML and keeps only the listed env keys", () => {
     expect(launchdPlist("a&b", ["<x>"], { K: '"v"' }, "/l")).toContain("<string>&lt;x&gt;</string>");
     expect(launchdPlist("a&b", [], {}, "/l")).toContain("<string>a&amp;b</string>");
-    expect(serviceEnv({ env: { SHELL: "/bin/zsh", TOKEN: "t" }, home: "/h", tailscale: null })).toEqual({
+    expect(serviceEnv({ platform: "darwin", env: { SHELL: "/bin/zsh", TOKEN: "t" }, home: "/h", tailscale: null })).toEqual({
       SHELL: "/bin/zsh",
       HOME: "/h",
       PATH: "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
     });
     expect(systemdUnit(["/bin/x"], { A: "b c" })).toContain('Environment="A=b c"');
+  });
+
+  it("turns on iOS Simulator support on macOS with --ios or the caller's TESSERACT_IOS", () => {
+    const off = planHostService({ ...input, platform: "darwin" });
+    expect(off.ios).toBe(false);
+    expect(off.text).not.toContain("TESSERACT_IOS");
+
+    const on = planHostService({ ...input, platform: "darwin", ios: true, env: { ...input.env, TESSERACT_IOS: "off" } });
+    expect(on.ios).toBe(true);
+    expect(on.text).toContain("<key>TESSERACT_IOS</key>\n    <string>1</string>");
+
+    const passed = planHostService({
+      ...input,
+      platform: "darwin",
+      env: {
+        ...input.env,
+        TESSERACT_IOS: "on",
+        TESSERACT_IDB: "/opt/idb",
+        TESSERACT_XCRUN: "/x/xcrun",
+        TESSERACT_ADB: "/a",
+        TESSERACT_FFMPEG: "/f/ffmpeg",
+        TESSERACT_SIMCAP: "/s/tesseract-simcap",
+      },
+    });
+    expect(passed.ios).toBe(true);
+    expect(passed.text).toContain("<key>TESSERACT_IDB</key>\n    <string>/opt/idb</string>");
+    expect(passed.text).toContain("<key>TESSERACT_XCRUN</key>");
+    expect(passed.text).toContain("<key>TESSERACT_FFMPEG</key>\n    <string>/f/ffmpeg</string>");
+    expect(passed.text).toContain("<key>TESSERACT_SIMCAP</key>\n    <string>/s/tesseract-simcap</string>");
+    expect(passed.text).not.toContain("TESSERACT_ADB");
+  });
+
+  it("leaves iOS settings out on Linux", () => {
+    const plan = planHostService({ ...input, platform: "linux", ios: true, env: { ...input.env, TESSERACT_IOS: "1" } });
+    expect(plan.ios).toBeNull();
+    expect(plan.text).not.toContain("TESSERACT_IOS");
   });
 });
 
@@ -197,13 +234,16 @@ describe("install choices", () => {
   });
 
   it("parses the saved server state", () => {
-    expect(parseServerState(null)).toEqual({ httpsPort: null, bind: null, serviceFile: null, tailscale: null });
+    const empty = { httpsPort: null, bind: null, serviceFile: null, tailscale: null, ios: null };
+    expect(parseServerState(null)).toEqual(empty);
     expect(parseServerState('{"httpsPort":8443,"bind":"100.64.0.7","serviceFile":"/f","tailscale":"/t"}')).toEqual({
       httpsPort: 8443,
       bind: "100.64.0.7",
       serviceFile: "/f",
       tailscale: "/t",
+      ios: null,
     });
-    expect(parseServerState("{")).toEqual({ httpsPort: null, bind: null, serviceFile: null, tailscale: null });
+    expect(parseServerState('{"ios":true}')).toMatchObject({ ios: true });
+    expect(parseServerState("{")).toEqual(empty);
   });
 });

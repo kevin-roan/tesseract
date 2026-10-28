@@ -1,15 +1,16 @@
-import type { ContainersReport, DomainRoute, ServerContainer } from "../../../shared/contracts/containers";
+import type { ContainersReport, CreateContainerRequest, DomainRoute, HostDeploy, ServerContainer } from "../../../shared/contracts/containers";
 import { IpcError } from "../../../shared/ipc-types";
 import { emitFixtureEvent } from "../registry";
 import { currentScenario, isScenario } from "../scenario";
 import { defineIpcFixtures } from "../types";
-import { CONTAINERS_SCENARIOS, FIXTURE_CONTAINERS, FIXTURE_LOGS, FIXTURE_ROUTES, FIXTURE_SERVER_IMAGE, fixtureReport } from "./data";
+import { CONTAINERS_SCENARIOS, FIXTURE_CONTAINERS, FIXTURE_DEPLOYS, FIXTURE_LOGS, FIXTURE_ROUTES, FIXTURE_SERVER_IMAGE, fixtureReport } from "./data";
 
 const UNAVAILABLE = "Docker isn't reachable on this computer.";
 
 let containers: ServerContainer[] | null = null;
 let routes: DomainRoute[] | null = null;
 let report: ContainersReport | null = null;
+let deploys: HostDeploy[] | null = null;
 
 function currentContainers(): ServerContainer[] {
   containers ??= isScenario(CONTAINERS_SCENARIOS.empty) || isScenario(CONTAINERS_SCENARIOS.noSysbox) || isScenario(CONTAINERS_SCENARIOS.noVm) ? [] : FIXTURE_CONTAINERS.map((entry) => ({ ...entry }));
@@ -19,6 +20,29 @@ function currentContainers(): ServerContainer[] {
 function currentRoutes(): DomainRoute[] {
   routes ??= currentContainers().length > 0 && !isScenario(CONTAINERS_SCENARIOS.noCloudflare) ? FIXTURE_ROUTES.map((entry) => ({ ...entry })) : [];
   return routes;
+}
+
+function currentDeploys(): HostDeploy[] {
+  const available = currentContainers().length > 0;
+  deploys ??= FIXTURE_DEPLOYS.filter((deploy) => (deploy.create && available) || currentContainers().some((entry) => entry.name === deploy.container)).map((entry) => ({ ...entry }));
+  return deploys;
+}
+
+function setDeploys(next: HostDeploy[]): HostDeploy[] {
+  deploys = next;
+  emitFixtureEvent("containers", "deploys", next);
+  return next;
+}
+
+function decideDeploy(id: string, status: HostDeploy["status"]): void {
+  const found = currentDeploys().find((entry) => entry.id === id);
+  if (!found) throw new IpcError("not_found", `No deploy ${id}`);
+  if (found.status !== "awaiting_approval") throw new IpcError("invalid_argument", `Deploy ${id} isn't waiting for approval`);
+  if (status === "deploying" && found.create && !currentContainers().some((entry) => entry.name === found.container)) {
+    createContainer({ name: found.container, cpus: found.cpus, memoryMb: found.memoryMb });
+  }
+  const next = { ...found, status, updatedAt: new Date().toISOString() };
+  setDeploys(currentDeploys().map((entry) => (entry.id === id ? next : entry)));
 }
 
 function currentReport(): ContainersReport {
@@ -51,6 +75,24 @@ function update(name: string, patch: Partial<ServerContainer>): ServerContainer 
   return next;
 }
 
+function createContainer(request: CreateContainerRequest): ServerContainer {
+  const container: ServerContainer = {
+    name: request.name,
+    id: Math.random().toString(16).slice(2, 14),
+    state: "running",
+    status: "Up 1 second",
+    image: FIXTURE_SERVER_IMAGE,
+    createdAt: new Date().toISOString(),
+    cpus: request.cpus ?? null,
+    memoryMb: request.memoryMb ?? null,
+    tailnet: null,
+    tunnel: "none",
+    autoDeploy: false,
+  };
+  setContainers([...currentContainers(), container]);
+  return container;
+}
+
 export default defineIpcFixtures({
   containers: {
     report: () => currentReport(),
@@ -58,26 +100,12 @@ export default defineIpcFixtures({
       if (isScenario(CONTAINERS_SCENARIOS.unavailable)) throw new IpcError("unavailable", UNAVAILABLE);
       return currentContainers();
     },
-    create: (request) => {
-      const container: ServerContainer = {
-        name: request.name,
-        id: Math.random().toString(16).slice(2, 14),
-        state: "running",
-        status: "Up 1 second",
-        image: FIXTURE_SERVER_IMAGE,
-        createdAt: new Date().toISOString(),
-        cpus: request.cpus ?? null,
-        memoryMb: request.memoryMb ?? null,
-        tailnet: null,
-        tunnel: "none",
-      };
-      setContainers([...currentContainers(), container]);
-      return container;
-    },
+    create: (request) => createContainer(request),
     start: (name) => update(name, { state: "running", status: "Up 1 second" }),
     stop: (name) => update(name, { state: "stopped", status: "Exited (0) 1 second ago" }),
     restart: (name) => update(name, { state: "running", status: "Up 1 second" }),
     remove: (name) => {
+      setDeploys(currentDeploys().filter((deploy) => deploy.container !== name));
       setRoutes(currentRoutes().filter((route) => route.container !== name));
       setContainers(currentContainers().filter((entry) => entry.name !== name));
     },
@@ -119,5 +147,9 @@ export default defineIpcFixtures({
       setRoutes(currentRoutes().filter((route) => route.id !== id));
     },
     syncRoutes: () => currentRoutes(),
+    setAutoDeploy: (name, enabled) => update(name, { autoDeploy: enabled }),
+    deploys: () => currentDeploys(),
+    approveDeploy: (id) => decideDeploy(id, "deploying"),
+    rejectDeploy: (id) => decideDeploy(id, "rejected"),
   },
 });

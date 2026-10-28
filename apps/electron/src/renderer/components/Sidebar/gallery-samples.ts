@@ -97,10 +97,11 @@ export const MOTION_SAMPLE = {
 } as const;
 
 export const CONTAINER_SAMPLES: readonly SidebarContainerItem[] = [
-  { name: "viglis-prod", activity: "running", status: "Running" },
+  { name: "viglis-prod", activity: "running", status: "Running", attention: 1, attentionLabel: "1 deploy needs approval" },
   { name: "staging-db", activity: "stopped", status: "Stopped" },
   { name: "scratch", activity: "busy", status: "Starting" },
   { name: "legacy-api", activity: "error", status: "Error" },
+  { name: "xenocrust-erp", activity: "requested", status: "New · needs approval", attention: 1, attentionLabel: "New · needs approval", request: true },
 ];
 
 export const CONTAINER_STATE_SAMPLES: readonly SidebarContainersState[] = ["loading", "unavailable", "empty"];

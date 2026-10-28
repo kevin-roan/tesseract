@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from "react";
+import type { ButtonHTMLAttributes, Ref } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cx } from "../../lib/cx";
 import type { IconName } from "../../theme/icons";
@@ -12,6 +12,7 @@ export type IconButtonSize = 22 | 24 | 28 | 32;
 export interface IconButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children"> {
   icon: IconName | LucideIcon;
   label: string;
+  ref?: Ref<HTMLButtonElement>;
   variant?: IconButtonVariant;
   size?: IconButtonSize;
   checked?: boolean;

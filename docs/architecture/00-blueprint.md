@@ -119,7 +119,7 @@ from an automated agent MUST go through `flock /tmp/tesseract-bun-install.lock b
 | Artifacts | `/workspace/artifacts/<project>-<platform>-<profile>-<version>.<ext>` for builds, `/workspace/artifacts/<file name>` for shared files (`-2`, `-3`… before the extension on collision) |
 | Uploads | `/workspace/.tesseract/uploads/<uploadId>/<sanitized name>` (dirs 0700, files 0600; `POST /v1/uploads`), rows and files older than 30 days removed at startup |
 | Agent memory | `/workspace/.agent/` (§6.4, SPEC.md) |
-| Controller data | `/workspace/.agent/controller/` (`TESSERACT_DATA_DIR`, 0700) → `state.db`, `token`, `logs/`, `sync/` (baselines, `blobs/`, `backups/`, `staging/`), `claude-import.json` |
+| Controller data | `/workspace/.agent/controller/` (`TESSERACT_DATA_DIR`, 0700) → `state.db`, `token`, `logs/`, `sync/` (baselines, `blobs/`, `backups/`, `staging/`), `deploys/` (`<deployId>.tar.gz` bundles), `claude-import.json` |
 | Claude credentials | the host's `~/.claude` bind-mounted at `/home/dev/.claude` (`CLAUDE_CONFIG_DIR`): login (`.credentials.json`), settings, CLAUDE.md; the host's Claude Max subscription login. On macOS the login lives in the keychain, not in `.credentials.json`, so a Mac host passes a long-lived `CLAUDE_CODE_OAUTH_TOKEN` (`claude setup-token` on the Mac; `tesseract server install --claude-token`, §7.2) to the sandbox instead |
 | Claude accounts | primary account `claude` = the dir above; each `TESSERACT_HOST_CLAUDE_ACCOUNTS` name `<n>` adds the host's `~/.claude-<n>` (what `CLAUDE_CONFIG_DIR=~/.claude-<n> claude` uses on the host) bind-mounted at `/home/dev/.claude-<n>`, account id `claude-<n>`, global config `<dir>/.claude.json`. Live bind mounts, never copies: token refreshes by either side stay valid for both. The controller writes into these dirs only to move a resumed session's transcript to the account it now runs on (below); the default account and per-project picks live in `state.db` |
 | Home | `/home/dev` (volume `<prefix>-home`: wine prefix, caches; `.claude` is the host bind mount above) |
@@ -138,9 +138,10 @@ from an automated agent MUST go through `flock /tmp/tesseract-bun-install.lock b
 | Host Android emulator | console `5554`, adbd `5555` (`DEFAULT_EMULATOR_PORT`, `TESSERACT_EMULATOR_PORT`); adb serial `127.0.0.1:<bridge port>` in `netns` isolation (`TESSERACT_EMULATOR_ADB_PORT`), `emulator-<port>` for a plain (`none` or adopted non-isolated) emulator |
 | Desktop renderer dev server | `http://127.0.0.1:4545` (`RENDERER_DEV_PORT`, `strictPort`, dev and preview); never the Electron/Vite defaults |
 | Desktop app id / deep link | `dev.tesseract.Desktop`; `tesseract://<page>[?…]`, `tesseract://preferences/<section>`, `tesseract://onboarding/<step>`, `tesseract://pair`, … (§12.3) |
-| Server containers | `tesseract-ct-<name>` (sysbox-runc, image `tesseract/server:1`, network `tesseract-ct-<name>`, volume `tesseract-ct-<name>-docker`), connector `tesseract-ct-<name>-tunnel`; route state `$TESSERACT_STATE_DIR/containers.json`; tailnet tag `tag:tesseract-server` ([server-containers.md](server-containers.md), ADR 0011) |
+| Server containers | `tesseract-ct-<name>` (sysbox-runc, image `tesseract/server:1`, network `tesseract-ct-<name>`, volume `tesseract-ct-<name>-docker`), connector `tesseract-ct-<name>-tunnel`; route state `$TESSERACT_STATE_DIR/containers.json`; tailnet tag `tag:tesseract-server` ([server-containers.md](server-containers.md), ADR 0011); per-container deploy policy `autoDeploy` (default off) in the same `containers.json` |
+| Sandbox deploys | queue on the sandbox controller (`dep_` ids, bundles `$TESSERACT_DATA_DIR/deploys/<id>.tar.gz`), run by the desktop host into an existing `tesseract-ct-<name>` or, with `create`, a new one the host user approves: app dir `/srv/tesseract/apps/<app>` inside the container, compose project `<app>` or image `tesseract-app/<app>:latest` + container `<app>` on the container's inner Docker daemon ([server-containers.md](server-containers.md#sandbox-deploys), ADR 0013) |
 | macOS container VM | Colima profile `tesseract`, Docker context `colima-tesseract`; config `<colima home>/tesseract/colima.yaml` (colima home = `$COLIMA_HOME`, else `~/.colima`); defaults 6 CPUs, 5 GiB memory, 120 GiB disk, `vmType: vz`, `mountType: virtiofs`, arch `aarch64` (Intel `x86_64`), Rosetta + binfmt on arm64; mounts `~` (writable) and the sandbox context read-only when outside `~`; runtime `sysbox-runc` (`/usr/bin/sysbox-runc`) declared in `colima.yaml`, Sysbox (`sysbox-ce`, pinned, sha256-checked) installed by its `provision` script (waits for guest DNS, retries apt and the download), which carries the `tesseract-managed` marker that identifies the file (Colima strips comments); `sshConfig: false`. Sysbox counts as ready only when `docker info` lists `sysbox-runc` and `colima ssh -p tesseract -- systemctl is-active sysbox-mgr sysbox-fs` reports both active; otherwise setup re-runs the provision script (`colima ssh -p tesseract -- sudo sh -s`). A `Broken` VM is shown as stopped and force-stopped (`colima stop -f tesseract`) before start. Containers action `setup-vm` (`ContainersActionKey`) when Sysbox is missing; new server containers default to `--memory 1024`. macOS only (ADR 0012) |
-| Host shell state | `$XDG_CONFIG_HOME/tesseract/host-shell/state.json` (default `~/.config/…`, `TESSERACT_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters, `androidLink` (sandbox URL + token), `androidStream` (the `AndroidStreamSettings` fields changed from the defaults; invalid fields fall back to them), `iosLink` (sandbox URL + token of the iOS link), `iosApprovedBundles` (sha256 of sandbox simulator builds the user approved, at most 100) |
+| Host shell state | `$XDG_CONFIG_HOME/tesseract/host-shell/state.json` (default `~/.config/…`, `TESSERACT_HOST_SHELL_DIR`; dir 0700, file 0600): host token, argon2id PIN hash, `pinSetAt`, failure/lockout counters, `androidLink` (sandbox URL + token), `androidStream` (the `AndroidStreamSettings` fields changed from the defaults; invalid fields fall back to them), `iosLink` (sandbox URL + token of the iOS link), `iosApprovedBundles` (sha256 of sandbox simulator builds the user approved, at most 100), `iosStream` (the `IosStreamSettings` fields changed from the defaults; invalid fields fall back to them) |
 
 `projectId` = directory name under `/workspace/projects`, must match
 `^[a-z0-9][a-z0-9._-]{0,63}$` (case-insensitive input is lower-cased). Paths are
@@ -179,7 +180,7 @@ controller are upgraded together (renamed deep-link scheme and in-page message n
 | `TESSERACT_CHROMIUM_DEBUG_PORT` | `9222` | Chromium DevTools port on `127.0.0.1` read by `GET /v1/display/browser`; `/etc/chromium.d/tesseract` starts Chromium with `--remote-debugging-address=127.0.0.1 --remote-debugging-port=$TESSERACT_CHROMIUM_DEBUG_PORT --user-data-dir=$HOME/.config/chromium-tesseract` (Chromium 136+ refuses remote debugging on the default profile) |
 | `TESSERACT_CLAUDE_BIN` | `claude` | Claude Code executable |
 | `TESSERACT_CLAUDE_PERMISSION_MODE` | `bypassPermissions` | passed to headless Claude runs (the container is the boundary) |
-| `TESSERACT_CLAUDE_ACCOUNTS` | — | extra Claude accounts, names separated by commas or spaces (`work,personal`, each `[a-z0-9][a-z0-9_-]{0,31}`): `<n>` → `$HOME/.claude-<n>`, id `claude-<n>`. Set by `infra/scripts/sandbox` from the mounted `TESSERACT_HOST_CLAUDE_ACCOUNTS` |
+| `TESSERACT_CLAUDE_ACCOUNTS` | — | extra Claude accounts, names separated by commas or spaces (`work,personal`, each `[a-z0-9][a-z0-9_-]{0,31}`): `<n>` → `$HOME/.claude-<n>`, or `<n>=/abs/path`, id `claude-<n>`. Set by `infra/scripts/sandbox` from the mounted `TESSERACT_HOST_CLAUDE_ACCOUNTS` |
 | `CLAUDE_CONFIG_DIR` | `$HOME/.claude` | Claude Code config dir of the primary account; `GET /v1/usage` and `GET /v1/sessions` read the `projects/<encoded-cwd>/<sessionId>.jsonl` transcripts and `sessions/<pid>.json` of every account's dir; a missing dir means no usage. `/v1/claude/*` read and write its `.credentials.json` and `settings.json`, and the global config `$CLAUDE_CONFIG_DIR/.claude.json` when the variable is set, else `$HOME/.claude.json` (Claude Code's rule) |
 | `CLAUDE_CODE_OAUTH_TOKEN` / `ANTHROPIC_API_KEY` | — | not configured by the stack (Claude auth is the host's Max login only); if set manually anyway, `GET /v1/claude/auth` still reports them (`sources`, `oauthTokenFromEnv`) and children inherit them as usual |
 | `TESSERACT_SANDBOX_ID` | container hostname | identity shown in the app |
@@ -214,7 +215,7 @@ claude, wine, java) is optional and reported as unavailable instead of crashing.
 
 Children (processes, build steps, terminals, agent runs, git/zip helpers) get the
 controller's environment **without** `TESSERACT_TOKEN`, `TESSERACT_VNC_PASSWORD`, and `TESSERACT_STT_API_KEY`, plus
-`TESSERACT_PROCESS_ID` / `TESSERACT_BUILD_ID` / `TESSERACT_TERMINAL_ID` / `TESSERACT_AGENT_RUN_ID`.
+`TESSERACT_PROCESS_ID` / `TESSERACT_BUILD_ID` / `TESSERACT_TERMINAL_ID` / `TESSERACT_AGENT_RUN_ID` (plus `TESSERACT_ISSUE_ID` for runs of an issue).
 Agent runs also drop `CLAUDECODE`. The controller does not store or inject Claude
 credentials: children use the host's Claude Max login in `/home/dev/.claude` (the host's
 `~/.claude`, bind-mounted), the only supported authentication. Agent runs and `claude`
@@ -277,7 +278,7 @@ knob: `TESSERACT_WAIT_X_TIMEOUT` (s, default 60).
 | `TESSERACT_ADB` | `adb` | host adb client (the user's adb server on 5037) |
 | `TESSERACT_SCRCPY_SERVER` | `/usr/share/scrcpy/scrcpy-server`, else `/usr/local/share/scrcpy/scrcpy-server`, else (Homebrew on Apple silicon) `/opt/homebrew/share/scrcpy/scrcpy-server` | scrcpy server jar |
 | `TESSERACT_SCRCPY_VERSION` | parsed from `scrcpy --version` | must equal the jar's version |
-| `TESSERACT_FFMPEG` | `ffmpeg` | H.264 → MJPEG for `/v1/android/screen` viewers that can't decode H.264 (or with `encoding: "mjpeg"`) |
+| `TESSERACT_FFMPEG` | `ffmpeg` | H.264 → MJPEG for `/v1/android/screen` viewers that can't decode H.264 (or with `encoding: "mjpeg"`), and for `/v1/ios/screen`: tesseract-simcap's H.264 → JPEG for mjpeg sessions (without ffmpeg those fall back to idb), idb's H.264 → JPEG in the idb fallback (idb's own MJPEG without it) |
 | `TESSERACT_EMULATOR_PORT` | `5554` | emulator console port; adbd = +1; serial `emulator-<port>` when not isolated |
 | `TESSERACT_EMULATOR_GPU` | macOS: `host`; Linux: `swiftshader_indirect` | emulator `-gpu` |
 | `TESSERACT_EMULATOR_ISOLATION` | Linux: `netns`; macOS: `none` (no user/network namespaces) | `netns`: emulator in its own user + network namespace, guest egress only to public addresses through a filtering proxy, adb via a host bridge (serial `127.0.0.1:<port>`); needs `unshare`, `ip` and unprivileged user namespaces, else `GET /v1/android` is `available: false`. `none`: emulator on the host network (the guest, and the linked sandbox, can reach host loopback, LAN, tailnet) |
@@ -287,6 +288,7 @@ knob: `TESSERACT_WAIT_X_TIMEOUT` (s, default 60).
 | `TESSERACT_XCRUN` | `/usr/bin/xcrun` | `xcrun` used for `simctl` and `xcodebuild -version` |
 | `TESSERACT_IDB` | `idb` on `PATH` + Homebrew + `~/Library/Python/*/bin`, `~/.local/bin` | idb CLI (`pip3 install fb-idb`) |
 | `TESSERACT_IDB_COMPANION` | `idb_companion` on the same path | `brew install facebook/fb/idb-companion` |
+| `TESSERACT_SIMCAP` | `tesseract-simcap` next to the compiled daemon (`~/.tesseract/bin`, `Tesseract.app/Contents/Resources/bin`), else on the tool path + `~/.tesseract/bin`; macOS only | iOS screen helper (§5.7, [ios-simulator-macos.md](ios-simulator-macos.md) §2.3): reads the Simulator framebuffer and encodes clean H.264. Without it, when its `probe` fails or when it exits before its first key frame, `/v1/ios/screen` falls back to idb (JPEG) and logs a warning once. idb is still needed for input and the screen geometry |
 | `TESSERACT_ANDROID_SHARE_EMULATORS` | `off` | `on`: also tunnel every other online `emulator-<port>` the host adb lists (Android Studio, `emulator -avd …`) to the linked sandbox. They run on the host network, so **the sandbox can reach host loopback (incl. the host adb server), LAN and tailnet through them** |
 
 Host terminals get the daemon's environment without `TESSERACT_HOST_SHELL_*`, plus
@@ -300,7 +302,9 @@ It runs `bun apps/controller/src/index.ts` from its checkout, or `TESSERACT_CONT
 (`apps/electron`, §12) resolves the command in this order: `TESSERACT_CONTROLLER_COMMAND`, the bundled
 `resources/bin/tesseract-controller` in a packaged build, `bun apps/controller/src/index.ts` in a checkout,
 then `apps/controller/dist/tesseract-controller`. It fills `TESSERACT_ANDROID_SDK_ROOT` (and `TESSERACT_ADB`) from the
-SDK its setup wizard installed when they are not already set.
+SDK its setup wizard installed when they are not already set, and on macOS `TESSERACT_SIMCAP` when unset and the file
+exists (packaged: `resources/bin/tesseract-simcap`; checkout: `apps/electron/dist-cli/mac-<arch>/tesseract-simcap`); after an iOS
+setting change the daemon restarts only when `TESSERACT_IOS` or `TESSERACT_SIMCAP` changed.
 
 Pair a Device also has a **Master host** tab: the host shell of the machine that runs the *active* sandbox
 when that sandbox is remote (e.g. a Mac reached over the tailnet; not shown as linkable when the connection is
@@ -309,11 +313,15 @@ discoverable, so the user pastes that machine's `tesseract://host?…` link (`te
 the app validates it, stores it in `config.json` `masterHosts` keyed by the sandbox URL (§12.4) and shows it
 online when `GET <url>/v1/health` answers as the host shell (IPC service `masterHost`: `state`, `link`, `unlink`).
 
-A project's detail page has **Host shell** and **Git** for the project's host copy (the
-`hostPath` of its sync-back link; both are disabled without one). Git opens a small popover with a
-commit message field, **Commit all**, **Pull** and **Push**. Host shell needs the daemon
+A project's detail page groups its actions into **Sandbox** (Ask Claude, Claude terminal, Shell,
+Display, Claude account) and **This computer** (**Claude**, **Host shell** and **Git**) for the
+project's host copy (the `hostPath` of its sync-back link; without one the group shows a muted
+"Not linked" hint). Git opens a small popover with a
+commit message field, **Commit all**, **Pull** and **Push**. Claude and Host shell need the daemon
 running with a PIN and an unlocked session (the same PIN prompt as the host emulator), then
-`POST /v1/terminals` with `cwd: hostPath` and opens the daemon's `/ui/terminal` page in its own window.
+`POST /v1/terminals` with `cwd: hostPath` and `kind: "claude"` or `"shell"` (IPC
+`hostShell.openTerminal({ projectId, title, kind })`) and open the daemon's `/ui/terminal` page in
+its own window. Claude runs the user's own `claude` CLI and login on the host, not the sandbox's.
 Commit runs `git add --all` then `git commit -m <message>`; Pull and Push run `git pull --ff-only` /
 `git push`. All run in `hostPath` from the main process
 (`GIT_TERMINAL_PROMPT=0`, 5 min timeout); they act on this computer's own repo like sync-back, so they
@@ -378,6 +386,7 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | GET | `/v1/status` | — | `SandboxStatus` |
 | GET | `/v1/identity` | — | `Identity`: Tailscale viewer, owner, node and tailnet (§5.4); never fails because Tailscale is unreachable, it reports `available: false` and nulls |
 | GET | `/v1/claude/accounts` | — | `ClaudeAccountList { defaultAccountId, accounts: ClaudeAccountProfile[] }`: primary first, then `TESSERACT_CLAUDE_ACCOUNTS` order; login, account, plan and expiry per dir; never contains a secret |
+| GET | `/v1/claude/commands?projectId=` | — | `ClaudeCommand[]` sorted by name: slash commands Claude Code accepts in the sandbox, for the composers' `/` hints. Built-ins (`CLAUDE_BUILTIN_COMMANDS`), managed skills (`/etc/claude-code/.claude/skills/<n>/SKILL.md`), the selected account's `skills/<n>/SKILL.md` and `commands/**/*.md` (`commands/git/commit.md` → `git:commit`), then the project's `.claude/skills` and `.claude/commands`; same name: project > user > managed > builtin. Frontmatter `name`/`description` (else dir/file name and first body line); `user-invocable: false` skills and names off `CLAUDE_COMMAND_NAME_PATTERN` are skipped; symlinks leaving the root are ignored; cached 10 s. 404 unknown project |
 | PUT | `/v1/claude/accounts/default` | `SetDefaultClaudeAccount { accountId }` | `200 ClaudeAccountList`; 404 unknown, 400 not mounted. Used by runs and terminals whose project has no account of its own |
 | GET | `/v1/claude/auth` | — | `ClaudeAuthStatus` (§5.4): which credential the sandbox's Claude Code uses (`method` = first of `oauth_token`, `credentials`, `api_key`, else `none`), account from the global config's `oauthAccount`, subscription and expiry from `.credentials.json`; never contains a secret |
 | POST | `/v1/claude/import` | `ClaudeImport { credentials?, account?, files? }` (body limit 8 MiB) | `200 ClaudeImportResult { status, written, skipped }`: `credentials` replaces `claudeAiOauth` in `.credentials.json` (other keys kept); `account` merges only `CLAUDE_IMPORT_ACCOUNT_KEYS` into the global config (`projects` etc. kept); `files` must be normalized relative paths matching `CLAUDE_IMPORT_PATHS` that stay in `$CLAUDE_CONFIG_DIR` without symlinks leading out; `settings.json` must be a JSON object and loses `CLAUDE_IMPORT_DROPPED_SETTINGS` (`settings.json#<key>` in `skipped`). Files are written atomically; `settings.json`, `.credentials.json` and the global config are first copied to `<file>.tesseract-bak`. `written`/`skipped` paths are relative to `$CLAUDE_CONFIG_DIR`; the global config is `.claude.json` (inside it) or `~/.claude.json`. Refused parts go to `skipped`; only schema errors are 400 |
@@ -390,6 +399,7 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | DELETE | `/v1/projects/:id` | `?force=1` (or `true`) | `200 DeletedProject { id, trashPath }`: moves `/workspace/projects/<id>` to `<os tmpdir>/tesseract-deleted-projects/<id>-<ts>` (the host copy is never touched), drops the sync-back baseline and blobs (the confidential mark stays), publishes `sync.changed`, `project.deleted`; without `force`, 409 when the project has changes not synced back to the host or no baseline (never pushed from a host); 409 (even with `force`) while a process, build, terminal or agent run of the project is running or a `pending`/`claimed` sync request exists; 404 unknown project |
 | POST | `/v1/projects/:id/sync` | `?confidential=1`; tar archive body, `Content-Type` `application/x-tar` or `application/gzip` (body limit 1 GiB) | `201 Project` when the directory was created, else `200 Project`: `confidential=1` (exactly `1`) first marks the project confidential (one-way; other values or none leave the mark as is); extracts with `tar --no-same-owner` over `/workspace/projects/<id>`; files missing from the archive are kept; a bad archive is 400 (a directory created for it is removed), another content type 400; publishes `project.updated`. Sent by `tesseract --sync` (desktop), which archives the cwd (in a git checkout: tracked and unignored files, plus `.git` at the top level) |
 | GET | `/v1/projects/:id/git` | — | `GitDetails { branch, ahead, behind, files: GitFileStatus[], log: GitCommit[] }`; in a confidential project every `author` is `REDACTED` |
+| POST | `/v1/projects/:id/git` | `RunProjectGit { action: "pull" \| "push" \| "commit", message? }` (`commit` needs `message`, else 400) | `ProjectGitResult { action, output }`; `pull` is `git pull --ff-only`, `commit` is `git add --all` + `git commit -m`; runs with the user's git config, `GIT_TERMINAL_PROMPT=0`, 300 s timeout; 409 with git's output when it fails |
 | GET | `/v1/projects/:id/files` | `?path=` (project-relative, default the root) | `ProjectDirectory { projectId, path, entries: ProjectFile[], truncated }`: folders first, then by name; `ProjectFile { name, path, kind: "dir" \| "file" \| "symlink" \| "other", sizeBytes (files only), modifiedAt }`; at most 2000 entries (`truncated`); 404 unless the realpath stays inside the project, 400 for a non-directory |
 | GET | `/v1/projects/:id/files/download` | `?path=`; bearer **or** `?ticket=` | file stream (`Content-Disposition: attachment`, single `Range` → 206); 404 unless the realpath stays inside the project, 400 for a non-regular file |
 | POST | `/v1/projects/:id/files/taildrop` | `SendProjectFile { path, targetId }` | `ProjectFile` once LocalAPI `file-put` accepted the file; errors as `POST /v1/artifacts/:id/taildrop` |
@@ -408,6 +418,23 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | POST | `/v1/sync/heartbeat` | `SyncHeartbeat { host, projects: ProjectId[], changes?: Record<ProjectId, number> }` | `204`; remembers the host per linked project for `SyncChanges.host` (online = seen in the last 60 s) and its host-side change count; publishes `sync.changed` when a count moves |
 | POST | `/v1/sync/requests/:id/plan` | `SyncGetPlan { hostPath, changes: { path, kind, sha256 \| null, executable }[] (≤ 5000), git: { changed, deleted } \| null }` | `200 SyncGetPlanResponse { request, upload, gitUpload }`; 409 unless a `claimed` `get`; 400 for a duplicate path, a hash on a delete (or none on an add/modify) or a path behind a sandbox symlink; conflicts without `force` complete the request `failed` (sync-back.md §6) |
 | POST | `/v1/sync/requests/:id/apply` | gzip or plain tar of exactly `upload` + `.git/<gitUpload>` (body limit 1 GiB) | `200 SyncRequest` (`applied` with the `get` stats, or `failed` on conflicts); 409 unless `claimed` with a plan; 400 for a bad archive or an unplanned hash (the request stays `claimed`); 500 when applying failed and was rolled back; publishes `sync.updated`, `sync.changed`, `project.updated` |
+| GET | `/v1/deploys` | `?status=&container=` | `Deploy[]` newest first (last `LIMITS.maxDeployList` = 50); the desktop host polls `status=pending` ([server-containers.md](server-containers.md#sandbox-deploys)) |
+| POST | `/v1/deploys` | `CreateDeploy { container, path, app?, port?, hostname?, create?, cpus?, memoryMb? }` | `201 Deploy` (`pending`): `path` is an absolute directory inside `/workspace` (realpath) holding `compose.yml`/`compose.yaml`/`docker-compose.yml`/`docker-compose.yaml` (`kind: "compose"`) or a `Dockerfile` (`kind: "dockerfile"`); the controller archives it itself (gzip tar without `.git` and `node_modules`, at most `LIMITS.maxDeployBundleBytes` = 512 MiB) into `$TESSERACT_DATA_DIR/deploys/<id>.tar.gz` and records `sha256`/`bytes`; `app` defaults to the directory name slugged (`DEPLOY_APP_PATTERN`), `projectId` from the path; `hostname` requires `port`; `cpus` (≤ `LIMITS.maxDeployCpus` = 64) and `memoryMb` (integer, `LIMITS.minDeployMemoryMb`–`LIMITS.maxDeployMemoryMb` = 256–262 144) require `create`. `create: true` lets the host create `tesseract-ct-<container>` when it does not exist (the host always asks its user to approve the creation, regardless of `autoDeploy`). 400 for a path outside the workspace, no compose file or Dockerfile, an oversized bundle, a reserved container name (`sandbox`, `tailscale`, `docker`, `host`, `localhost` and the CLI words `targets`, `ls`, `status`, `cancel`) that is not a current target, or, without `create`, a container that is not a current target (the message hints at `--create`); publishes `deploy.updated` |
+| GET | `/v1/deploys/targets` | — | `DeployTargets { host, reportedAt, targets }`: the last host heartbeat; `host: null` and no targets when none arrived within `LIMITS.deployTargetsTtlMs` (60 s) |
+| PUT | `/v1/deploys/targets` | `PutDeployTargets { host, targets: DeployTarget[] { name, running, autoApprove, urls } }` | `204`; host heartbeat (desktop `DeployService`) with the existing server containers it accepts deploys for |
+| GET | `/v1/deploys/:id` | — | `Deploy`; 404 unknown |
+| POST | `/v1/deploys/:id/claim` | `ClaimDeploy { host }` | `200 Deploy` (`claimed`, `claimedBy`); 409 unless `pending`; publishes `deploy.updated`. A claim with no progress for `LIMITS.deployClaimTimeoutMs` (15 min) goes back to `pending` |
+| GET | `/v1/deploys/:id/bundle` | — | `200 application/gzip` stream of the bundle with `x-tesseract-sha256` (hex sha256 of the bundle, also in `Deploy.sha256`); 404 unknown deploy or bundle gone |
+| POST | `/v1/deploys/:id/progress` | `DeployProgress { status: "awaiting_approval" \| "deploying", log? }` | `200 Deploy`; `log` is appended (the stored log keeps the last `LIMITS.maxDeployLogLength` = 64 KiB); 409 for a final deploy; publishes `deploy.updated`. `awaiting_approval` for longer than `LIMITS.deployApprovalTimeoutMs` (30 min) becomes `rejected` |
+| POST | `/v1/deploys/:id/complete` | `CompleteDeploy { status: "deployed" \| "failed" \| "rejected", log?, urls?, error? }` | `200 Deploy`; 409 for a deploy that is already final; publishes `deploy.updated` |
+| POST | `/v1/deploys/:id/cancel` | — | `200 Deploy` (`cancelled`); 409 for a final deploy; publishes `deploy.updated` (the host stops before its next step) |
+| GET | `/v1/issues` | `?projectId=&status=&assignee=` | `Issue[]` in board order (status column, `sortOrder`, then `number` desc), at most `LIMITS.maxIssueList` = 1 000 ([issues.md](issues.md)) |
+| POST | `/v1/projects/:id/issues` | `CreateIssue { title, description?, status?, priority?, assignee?, labels? }` | `201 Issue`; 404 unknown project. `number` is the next per-project sequence (never reused); status defaults to `todo` when assigned to `claude`, else `backlog`; priority `none`; top of its column. An open, non-backlog issue assigned to `claude` starts an agent run at once (`in_progress`); a run that cannot start leaves a `system` comment instead of failing. Publishes `issue.updated` |
+| GET | `/v1/issues/:id` | — | `IssueDetail` (the issue plus its last `LIMITS.maxIssueComments` = 500 comments, oldest first); 404 unknown |
+| PATCH | `/v1/issues/:id` | `UpdateIssue` (any of `title`, `description`, `status`, `priority`, `assignee`, `labels`, `sortOrder`; at least one) | `200 Issue`; a status change without `sortOrder` puts it at the top of the new column; entering `done`/`canceled` sets `completedAt`, leaving clears it. Becoming assigned to Claude, open and not `backlog` starts a run; unassigning Claude or closing cancels a running one. Publishes `issue.updated` |
+| DELETE | `/v1/issues/:id` | — | `200 Issue`; cancels its running agent run, deletes its comments; publishes `issue.deleted` |
+| POST | `/v1/issues/:id/comments` | `CreateIssueComment { body, author?: "me" \| "claude" }` | `201 IssueComment` (default author `me`); a `me` comment on an open Claude issue with no running run and a `sessionId` starts a follow-up run resuming that session with the comment as prompt. Publishes `issue.commented` |
+| POST | `/v1/issues/:id/dispatch` | `DispatchIssue { mode?, model?, note? }` (empty body allowed) | `200 Issue`: assigns to `claude` (`backlog` → `todo`) and starts a run now; 409 while one is running or for a closed issue; 503 without `claude` |
 | GET | `/v1/processes` | `?projectId=` | `ProcessInfo[]` |
 | POST | `/v1/processes` | `StartProcess { projectId, command, name?, env?, display?, port? }` | `201 ProcessInfo`; 409 when `port` is taken (message names the tracked process or pid) |
 | GET | `/v1/processes/:id` | — | `ProcessInfo` |
@@ -448,7 +475,7 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | POST | `/v1/display/windows/:id/activate` | — | `204`; raises and focuses the window, restoring it when minimized (`wmctrl -ia`). Id not matching `^0x[0-9a-f]+$` → 400, not in the list above → 404, no display → 503 |
 | POST | `/v1/display/windows/:id/close` | `CloseDisplayWindow { force? }` (body optional) | `204`; asks the window to close (`wmctrl -ic`, the app may still prompt or refuse); `force: true` disconnects its X client instead (`xdotool windowkill`). Errors as for `activate` |
 | GET | `/v1/agent/runs` | `?projectId=&archived=` | `AgentRun[]` newest first (max 200): without `archived` (or `0`/`false`) only runs that are not archived, with `archived=1`/`true` only archived ones; running runs are never archived |
-| POST | `/v1/agent/runs` | `StartAgentRun { projectId?, prompt, mode?, attachmentIds?, resumeSessionId? }` | `201 AgentRun`; 503 without `claude`; 404 for an unknown attachment. `mode` → `--permission-mode` (else `TESSERACT_CLAUDE_PERMISSION_MODE`; stored as `null`). Attachments are stored on the run as full `Upload`s; for non-audio ones the run gets `--add-dir <uploads dir>` and the stdin prompt gains `\n\nAttached files (read them with the Read tool):\n- <path> (<mimeType>)` lines. Audio attachments are not listed (the transcript is the prompt); they stay on the run for replay. In a confidential project (also when resuming) the run gets `--append-system-prompt <confidential prompt>` (§6.1) |
+| POST | `/v1/agent/runs` | `StartAgentRun { projectId?, prompt, mode?, model?, attachmentIds?, resumeSessionId? }` | `201 AgentRun`; 503 without `claude`; 404 for an unknown attachment. `mode` → `--permission-mode` (else `TESSERACT_CLAUDE_PERMISSION_MODE`; stored as `null`). `model` (`opus` \| `sonnet` \| `haiku`) → `--model <alias>` (else none: the account's default; stored as `null`); it may change between turns of one session. Attachments are stored on the run as full `Upload`s; for non-audio ones the run gets `--add-dir <uploads dir>` and the stdin prompt gains `\n\nAttached files (read them with the Read tool):\n- <path> (<mimeType>)` lines. Audio attachments are not listed (the transcript is the prompt); they stay on the run for replay. In a confidential project (also when resuming) the run gets `--append-system-prompt <confidential prompt>` (§6.1) |
 | POST | `/v1/uploads` | `CreateUpload { name, mimeType, data /* base64 */ }` (body limit 28 MiB) | `201 Upload`; 400 for invalid base64, an empty file or more than 20 MiB decoded. `name` → last path segment without control characters or leading dots, ≤ 200 UTF-8 bytes (extension kept), fallback `upload`; `mimeType` → lower-cased essence (`application/octet-stream` when malformed); `kind` = `image` (`image/*`), `pdf` (`application/pdf`), `audio` (`audio/*`), else `file` |
 | GET | `/v1/uploads/:id/content` | bearer **or** `?ticket=` | file stream with the stored `Content-Type`, `Content-Disposition` `inline` (image/pdf/audio) or `attachment` (file), `X-Content-Type-Options: nosniff`, `Content-Security-Policy: sandbox`; single `Range: bytes=` requests get 206 (players that issue several range requests need bearer auth, a ticket is single-use); 404 if the file is gone |
 | POST | `/v1/transcriptions` | `CreateTranscription { uploadId, language?, provider? }` | `200 Transcription { uploadId, text, language, durationMs, engine, fallbackReason }`; 404 unknown upload, 400 not audio, invalid `language` (ISO-639-1, region suffix dropped, `auto` = detect) or `No speech detected` (empty after dropping `[BLANK_AUDIO]`-style markers), 503 when the STT profile is `off` (`Speech-to-text is off (select a profile in the desktop app)`), when no engine is configured or it fails (message says which env vars to set). One transcription runs at a time; others wait in FIFO order (`busy`/`queued` in `GET /v1/stt`). whisper.cpp: `[ionice -c3] [nice -n <nice>]` prefix per profile (skipped when the binary is missing), ffmpeg → 16 kHz mono WAV in a temp dir, `whisper-cli -m <model> -t <threads> -l <lang\|auto> -oj`, 5 min timeout each, `durationMs` from the WAV. openai-compatible: multipart `file`, `model`, `response_format=verbose_json`, `language?` with `Authorization: Bearer`, 5 min timeout; a non-JSON reply is used as plain text. `provider: "gemini"` (default `native`): JSON `POST https://generativelanguage.googleapis.com/v1beta/models/<TESSERACT_GEMINI_STT_MODEL>:generateContent` with `x-goog-api-key`, the audio as `inline_data` (`audio/mp4`/`audio/x-m4a` sent as `audio/m4a`) and a verbatim-transcript instruction (language hint included), `temperature: 0`, 5 min timeout, outside the FIFO queue and regardless of the profile; empty text → 400 `No speech detected`. When no Gemini key is set (saved from an app or `tesseract --gemini-key`) or Gemini fails (network, HTTP error — 429 reported as quota/rate limit, 401/403/400 `API_KEY_INVALID` as a rejected key), the native engine (profile check included) answers and `fallbackReason` says why; if it cannot either, 503 with both reasons. `fallbackReason` is null otherwise |
@@ -559,6 +586,8 @@ type Project = { id: string; name: string; path: string; framework: Framework;
 type ClaudeAccountProfile = { id: string /* "claude" | "claude-<n>" */; primary: boolean; present: boolean /* dir mounted */;
                               loggedIn: boolean; account: ClaudeAccount | null; subscriptionType: string | null;
                               credentialsExpiresAt: string | null; settingsPresent: boolean; configDir: string };
+type ClaudeCommand = { name: string /* without "/", e.g. "deploy", "git:commit" */; description: string;
+                       kind: "skill" | "command"; source: "builtin" | "managed" | "user" | "project" };
 type GitFileStatus = { path: string; index: string; worktree: string };
 type GitCommit = { sha: string; subject: string; author: string; date: string };
 type CreateProject = { name: string;      // 1–128 chars; directory = projectIdFromName(name) ("My App" → "my-app")
@@ -594,6 +623,7 @@ type BuildJob = { id: string; projectId: string; target: BuildTarget; profile: B
 
 type AgentRunState = "running" | "succeeded" | "failed" | "cancelled";
 type AgentRunMode = "plan" | "acceptEdits" | "bypassPermissions";
+type AgentRunModel = "opus" | "sonnet" | "haiku" /* `--model` aliases */;
 type UploadKind = "image" | "pdf" | "audio" | "file";
 type Upload = { id: string /* upl_… */; name: string; mimeType: string; kind: UploadKind; sizeBytes: number;
                 path: string /* absolute, inside the sandbox */; createdAt: string };
@@ -619,7 +649,8 @@ type UpdateStt = { profile?: SttProfile; geminiApiKey?: string | null /* null fo
 type AgentRunUsage = { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number;
                        totalTokens: number /* sum of the four */ };
 type AgentRun = { id: string; projectId: string | null; prompt: string;
-                  mode: AgentRunMode | null /* null = TESSERACT_CLAUDE_PERMISSION_MODE */; attachments: Upload[];
+                  mode: AgentRunMode | null /* null = TESSERACT_CLAUDE_PERMISSION_MODE */;
+                  model: AgentRunModel | null /* null = the Claude account's default model */; attachments: Upload[];
                   sessionId: string | null; claudeAccountId: string | null /* null: before accounts (primary) */;
                   resumedSessionId?: string | null /* the `resumeSessionId` it started with; links a follow-up to its chat */;
                   state: AgentRunState;
@@ -627,7 +658,7 @@ type AgentRun = { id: string; projectId: string | null; prompt: string;
                   usage: AgentRunUsage | null /* from Claude's `result` message; null until it ends */;
                   result: string | null; error: string | null;
                   archivedAt: string | null /* set while archived; never on a running run */ };
-type StartAgentRun = { projectId?: string; prompt: string /* ≤ 200 000 */; mode?: AgentRunMode;
+type StartAgentRun = { projectId?: string; prompt: string /* ≤ 200 000 */; mode?: AgentRunMode; model?: AgentRunModel;
                        attachmentIds?: string[] /* ≤ 10 upload ids */;
                        resumeSessionId?: string /* AGENT_SESSION_ID_PATTERN */ };
 type AgentRunEvent =
@@ -663,6 +694,33 @@ type SyncRequest = { id: string /* sync_ */; projectId: string; kind: "pull" | "
                      paths: string[] | null /* null = all */; force: boolean; source: "mobile" | "desktop" | "cli";
                      claimedBy: string | null; result: SyncResult | null; error: string | null;
                      createdAt: string; updatedAt: string };
+
+// Sandbox deploys (sandbox → server container through the desktop host), see server-containers.md.
+type DeployKind = "compose" | "dockerfile";
+type DeployStatus = "pending" | "claimed" | "awaiting_approval" | "deploying"  // active (DEPLOY_ACTIVE_STATUSES)
+                  | "deployed" | "failed" | "rejected" | "cancelled";
+type DeployTarget = { name: string /* server container name */; running: boolean; autoApprove: boolean; urls: string[] };
+type DeployTargets = { host: string | null /* null: no heartbeat within 60 s */; reportedAt: string | null; targets: DeployTarget[] };
+type Deploy = { id: string /* dep_ */; container: string; app: string /* DEPLOY_APP_PATTERN */; kind: DeployKind;
+                sourcePath: string; projectId: string | null; port: number | null; hostname: string | null /* needs port */;
+                create: boolean /* host creates the container if missing, always after approval */;
+                cpus: number | null; memoryMb: number | null /* limits for a created container; null: host default */;
+                status: DeployStatus; sha256: string; bytes: number; claimedBy: string | null;
+                log: string /* tail of the host output, ≤ 64 KiB */; urls: string[]; error: string | null;
+                createdAt: string; updatedAt: string };
+
+// Project issues, see issues.md.
+type IssueStatus = "backlog" | "todo" | "in_progress" | "in_review" | "done" | "canceled";  // board order; done/canceled are closed
+type IssuePriority = "none" | "urgent" | "high" | "medium" | "low";
+type IssueAssignee = "me" | "claude";
+type Issue = { id: string /* iss_ */; projectId: string; number: number /* per project, shown as <PROJECT>-<number> */;
+               title: string; description: string /* markdown */; status: IssueStatus; priority: IssuePriority;
+               assignee: IssueAssignee | null; labels: string[]; sortOrder: number /* lower first in its column */;
+               agentRunId: string | null; agentState: AgentRunState | null; sessionId: string | null;
+               createdAt: string; updatedAt: string; completedAt: string | null };
+type IssueComment = { id: string /* isc_ */; issueId: string; author: "me" | "claude" | "system"; body: string;
+                      agentRunId: string | null; createdAt: string };
+type IssueDetail = Issue & { comments: IssueComment[] };
 
 type PushDevice = { token: string /* ExponentPushToken[…] */; platform: "ios" | "android"; name: string | null;
                     deviceId: string | null; createdAt: string; updatedAt: string };
@@ -702,6 +760,10 @@ type ServerEvent =
   | { type: "stt.updated"; stt: SttStatus }  // PUT /v1/stt changed the profile or the Gemini key
   | { type: "sync.updated"; request: SyncRequest }  // a sync request was created, claimed, completed, cancelled or timed out
   | { type: "sync.changed"; projectId: string }  // the sync-back baseline moved (push, ack or get)
+  | { type: "deploy.updated"; deploy: Deploy }  // a deploy was created, claimed, progressed, completed, cancelled or timed out
+  | { type: "issue.updated"; issue: Issue }  // created, edited, or moved by its agent run
+  | { type: "issue.deleted"; id: string; projectId: string }  // DELETE /v1/issues/:id or its project was deleted
+  | { type: "issue.commented"; comment: IssueComment; projectId: string }
   | { type: "app.updated"; run: AppRun };  // an app run changed state
 
 // App runs and the host Android emulator: full rules in app-runs-and-emulator.md
@@ -766,6 +828,8 @@ type IosLinkRequest = { id: string /* ior_… */; type: "openUrl" | "install"; u
 type SandboxIosStatus = { linked: boolean; hostId: string | null; available: boolean; booted: SimDevice | null; tunnels: IosTunnel[];
                           runs: IosRun[]; requests: IosLinkRequest[] };
 type InstallOnSimulator = { artifactId: string };
+// Defaults (DEFAULT_IOS_STREAM): h264, 6 Mbit/s, 60 fps, maxSize null, key frame every 2 s, JPEG q 7
+type IosStreamSettings = Omit<AndroidStreamSettings, "device">; // same fields and limits; UpdateIosStream = Partial<IosStreamSettings>
 // WS frames: IosLinkHostMessage / IosLinkSandboxMessage (§5.3)
 ```
 
@@ -779,7 +843,7 @@ TCP peer) → `source: "localapi"`. `owner`, `node` and `tailnet` come from
 Every LocalAPI call has a 1.5 s timeout. The identity is informational: the bearer token
 stays the only authentication.
 
-IDs: type prefix (`prc_`, `trm_`, `bld_`, `art_`, `run_`, `inb_`, `upl_`, `sync_`, `app_` app runs, `adb_` adb tunnel streams, `ios_` iOS tunnel streams, `ins_` iOS installs, `ior_` iOS link requests) + 10 random characters of
+IDs: type prefix (`prc_`, `trm_`, `bld_`, `art_`, `run_`, `inb_`, `upl_`, `sync_`, `app_` app runs, `adb_` adb tunnel streams, `ios_` iOS tunnel streams, `ins_` iOS installs, `ior_` iOS link requests, `dep_` deploys, `iss_` issues, `isc_` issue comments) + 10 random characters of
 lowercase Crockford base32 (`0-9a-z` without `i l o u`), e.g. `bld_7f3k2q9xa1`.
 Validators accept any `<prefix>[A-Za-z0-9_-]{1,64}`. Timestamps: ISO-8601 UTC strings.
 
@@ -865,14 +929,21 @@ scrolls, the bottom bar is ◁ ○ ▢ ⌨ ⟳ (back, home, recents, keyboard, r
 its top bar; `tesseract-insets` pads the screen (`top`) and the bottom bar (`bottom`). A host `error`
 message ends the socket and is reported as `disconnected` with `reason`.
 
+The iOS page (`/ui/ios`, fragment `ticket`, optional `maxSize` and `udid`) is the same script and asks for
+`codec=h264` the same way (the Electron emulator panel too). Before configuring, the decoder checks
+`VideoDecoder.isConfigSupported` for the stream's real `avc1.PPCCLL` (read from the SPS); an unsupported codec counts
+as a decoder error, so the next connect asks for JPEG.
+
 ### 5.7 Host shell API (`tesseract-controller host serve`)
 
 Same JSON error format, `/v1` prefix and terminal protocol as the controller, so
-`/ui/terminal` and `TesseractClient` work against it unchanged. Two credentials:
+`/ui/terminal` and `TesseractClient` work against it unchanged (the host serves its own variant of the page, below). Two credentials:
 the **host token** (`Authorization: Bearer`, from `host pair`, compared in constant
 time) and a **session** (`HostSession`, issued for the PIN, in memory only, valid
-`LIMITS.hostSessionTtlMs` = 15 min, dropped when the token is rotated or the PIN
-changes). Neither is accepted where the other is expected.
+`LIMITS.hostSessionTtlMs` = 10 h, dropped when the token is rotated or the PIN
+changes, or when the daemon restarts). Neither is accepted where the other is expected. The mobile app keeps
+the session in the keychain (per sandbox, this device only) until it expires, also across the app going to the
+background and app restarts; the web build keeps it in memory only.
 
 | Method | Path | Auth | Body | Response |
 |---|---|---|---|---|
@@ -881,11 +952,13 @@ changes). Neither is accepted where the other is expected.
 | POST | `/v1/host/unlock` | host token | `HostUnlock { pin }` (6–12 digits, else 400 without counting) | `200 HostSession { session, expiresAt }`; 503 `No PIN is set; run tesseract-controller host pin on the host`; 403 `Wrong PIN (<n> attempts left)`; after `hostPinMaxAttempts` (5) wrong PINs 403 `Too many wrong PINs; try again after <time>` for `hostLockoutBaseMs` (5 min) × 2^lockouts, capped at `hostLockoutMaxMs` (24 h). Attempts are serialized; counters persist in `state.json`; a correct PIN resets them |
 | POST | `/v1/host/lock` | host token | `HostLock { session }` | `204`; ends that session |
 | POST | `/v1/auth/ticket` | session | — | `Ticket` (one-time, 60 s) |
+| GET | `/v1/host/workspace` | session | — | `HostWorkspaceAccess { url, token, name, projects: { id, path }[] }`: how to reach the host workspace controller (§3), i.e. the pairing URL and token of `host workspace pair` and the repositories linked into it; 404 before it has a token, 503 when it can't be read (e.g. no Tailscale IPv4). The phone pairs it from here after a PIN unlock (stored as an extra sandbox entry linked to the active sandbox's host, not made active) and shows a sandbox project's **This computer** section when the workspace has a project with the same id |
 | GET | `/v1/terminals` | session | — | `TerminalInfo[]` (newest first) |
-| POST | `/v1/terminals` | session | `CreateHostTerminal` = `CreateTerminal` with `kind: "shell"`, no `projectId` (else 400), optional `cwd` (absolute host folder; 400 if relative, 404 if not a directory) | `201 TerminalInfo` (`projectId: null`, `title` `Host · <hostname>` or `Host · <hostname> · <folder name>`, `cwd` the given folder or `$HOME`) |
+| POST | `/v1/terminals` | session | `CreateHostTerminal` = `CreateTerminal` with no `projectId` (else 400), optional `cwd` (absolute host folder; 400 if relative, 404 if not a directory). `kind: "shell"` runs the configured login shell (`$SHELL -l`); `kind: "claude"` needs `cwd` (else 400) and runs the user's own `claude` (their PATH and `~/.claude` login, no sandbox account env) through `<$SHELL> -ilc` (`/bin/sh` when `$SHELL` is not POSIX), with `--append-system-prompt` saying it runs in the user's real repository, not a sandbox; without `claude` on that PATH the terminal prints that Claude Code isn't installed and exits 127 | `201 TerminalInfo` (`projectId: null`, `kind` as requested, `title` `Host · <hostname>`, `Host · <hostname> · <folder name>` or for claude `Claude · Host · <hostname> · <folder name>`, `cwd` the given folder or `$HOME`) |
+| GET | `/v1/terminals/:id` | session, or `?ticket=` | — | `TerminalInfo`; a ticket is only checked, not used up, so `/ui/terminal` reads its terminal and then streams with the same ticket |
 | DELETE | `/v1/terminals/:id` | session | — | `TerminalInfo` (SIGHUP to the group) |
 | WS | `/v1/terminals/:id/stream?ticket=` | ticket | §5.3 terminal frames | scrollback replay, survives disconnects; an attached stream stays open after its session expires |
-| GET | `/ui/terminal` | — | — | the controller's xterm page |
+| GET | `/ui/terminal` | — | — | the controller's xterm page (`host-terminal.html`, same `terminal.ts`) marked `data-origin="host"`: an amber strip under the bar reads `On this computer` (`Claude Code on this computer` for claude) `· <hostId> · <cwd>`, from `GET /v1/health` and `GET /v1/terminals/:id?ticket=`, so it is never mistaken for a sandbox terminal; the sandbox page has no strip |
 | GET | `/v1/android` | session | — | `HostAndroidStatus`; a missing tool gives `available: false` + `reason`, never an error; `isolation` is the daemon's mode, `emulator.isolated` whether the current emulator runs in its own netns (a non-isolated one is not linked: streams get `refuse`) |
 | POST | `/v1/android/emulator` | session | `StartEmulator { avd, coldBoot?, wipeData? }` | `202 EmulatorInfo` (`starting`); 409 unless `stopped`/`failed`; 404 unknown AVD; 503 not `available` |
 | DELETE | `/v1/android/emulator?signal=` | session | — | `EmulatorInfo` (`stopping`, then `stopped`; the isolated emulator's namespace is swept and its runtime dir removed). `signal=SIGKILL` kills the emulator processes at once (an adopted one's are found with `ps`, `adb emu kill` only when none is found); default `SIGTERM`; anything else 400 |
@@ -902,11 +975,24 @@ changes). Neither is accepted where the other is expected.
 | POST, DELETE | `/v1/ios/link` | session | `LinkSandbox` (POST) | `IosLinkInfo`; stored as `iosLink`, the daemon (re)dials `<sandboxUrl>/v1/ios/link`; POST is 503 when iOS is off or not on macOS |
 | GET | `/v1/ios/installs` | session | — | `IosInstallRequest[]` of this daemon run, newest first |
 | POST | `/v1/ios/installs/:id` | session | `DecideIosInstall { approve }` | `IosInstallRequest` (`approved` remembers the sha256 in `iosApprovedBundles`, or `rejected`); 404 unknown, 409 not `pending` |
-| WS | `/v1/ios/screen?ticket=&maxSize=&udid=` | ticket | `DeviceScreenClientMessage` up, `DeviceScreenServerMessage` (`codec: "mjpeg"`) + one JPEG per binary message down | the booted (or `udid`) device via `idb_companion` + `idb video-stream --format mjpeg`; shared per device, first viewer's `maxSize`, late viewers get `meta` + the last JPEG, > 512 KiB buffered skips frames, ends with the last viewer. Touch → whole `idb ui tap`/`swipe` gestures (one pointer per device), `scroll` → short swipe, keys `home`/`power` → `ui button HOME`/`LOCK`, `enter` `del` `tab` `escape` arrows → `ui key <HID usage>`, `text` → `ui text`; `rotate` and the other keys are ignored |
+| GET | `/v1/ios/stream` | session | — | `IosStreamSettings` |
+| PUT | `/v1/ios/stream` | session | `UpdateIosStream` (any `IosStreamSettings` fields) | `IosStreamSettings`; stored in `state.json` as `iosStream`. On a change every open iOS screen whose session would differ moves to a new session: it gets a new `meta` (maybe another `codec`) and keeps its socket (`state.json` is not watched for iOS) |
+| WS | `/v1/ios/screen?ticket=&maxSize=&udid=&codec=` | ticket | `DeviceScreenClientMessage` up, `DeviceScreenServerMessage` `meta` (with `codec`) · `size` · `error` + binary video down | the booted (or `udid`) device. With `tesseract-simcap` (`TESSERACT_SIMCAP`), settings `encoding: "h264"` and `codec=h264`, its H.264 (no B-frames) is forwarded as on Android: each binary message is a flags byte (`ANDROID_H264_FLAGS`: 1 config, 2 key frame) + an Annex B access unit; otherwise ffmpeg turns it into one JPEG per message (`codec: "mjpeg"`). simcap gets `--bitrate`, `--fps` and `--keyint-sec` from the settings and `--max-side` = the session's size. Without simcap, when its `probe` fails or when it exits before its first key frame, the session falls back to `idb_companion` + `idb video-stream` (JPEG, `codec: "mjpeg"`; a warning logged once). Viewers of the same device, codec and settings share one session, sized by the first viewer's `maxSize` (default 1280, at least 160, at most the settings' `maxSize`); `meta` goes out with the first key frame or JPEG; a late H.264 viewer gets the config and the frames since the last key frame (≤ 8 MiB), a late JPEG viewer the last JPEG; a viewer with > 512 KiB buffered skips frames until the next key frame; simcap is asked for a key frame (`k` on its stdin) when a viewer waits for one and is not congested; ends with the last viewer. Input always goes through idb_companion. Touch → whole `idb ui tap`/`swipe` gestures (one pointer per device), `scroll` → short swipe, keys `home`/`power` → `ui button HOME`/`LOCK`, `enter` `del` `tab` `escape` arrows → `ui key <HID usage>`, `text` → `ui text`; `rotate` and the other keys are ignored |
 | GET | `/ui/ios` | — | — | the iOS screen page (fragment `#ticket=…&maxSize=…&udid=…`; bottom bar ○ home, ⏻ lock, ⌨ keyboard; posts `ios-state` / `ios-need-ticket`) |
 
 Android emulator details (scrcpy session, link protocol, adb tunnel): [app-runs-and-emulator.md](app-runs-and-emulator.md) §2.
-iOS Simulator details (idb session, iOS link, reverse Metro tunnel, installs): [ios-simulator-macos.md](ios-simulator-macos.md).
+iOS Simulator details (simcap and idb sessions, iOS link, reverse Metro tunnel, installs): [ios-simulator-macos.md](ios-simulator-macos.md).
+
+`tesseract-simcap` (macOS helper, source `apps/controller/native/simcap`, `TESSERACT_SIMCAP`): `--version` prints the
+bare version (`1.0.0`); `probe --udid <UDID> [--developer-dir <dir>]` prints one JSON line
+`{"ok":true,"api":"screen"|"damage","width","height"}` and exits 0, else `{"ok":false,"message"}` and 1;
+`stream --udid <UDID> [--bitrate <bps>=6000000] [--fps <max>=60] [--keyint-sec <s>=2] [--max-side <px>=0 (native)]
+[--idle-fps <n>=1] [--screen-id <n>] [--developer-dir <dir>]` writes packets to stdout: `u32 BE length`, a flags byte
+(`0x80` size: `u32 BE width, u32 BE height` of the encoded frames; `0x01` config: Annex B SPS + PPS; `0x02` key: an
+Annex B IDR access unit without SPS/PPS; `0x00` delta: a P-frame access unit), then the payload. It starts with size,
+config, key and repeats them after a resolution change; config only when SPS/PPS change. A line `k` on stdin forces a
+key frame now; stderr is JSON log lines only. Exit codes: 0 on SIGTERM/SIGINT or stdout closed, 1 setup error (also no
+key frame within 10 s), 3 the device is no longer booted.
 
 ## 6. Supervision & persistence
 
@@ -943,6 +1029,15 @@ iOS Simulator details (idb session, iOS link, reverse Metro tunnel, installs): [
   (newest 20 per project), `get` staging in `$TESSERACT_DATA_DIR/sync/staging/` (removed after each apply); sync
   requests in the database (newest 500 kept; a request `claimed` for over 10 minutes is failed).
   See [sync-back.md](sync-back.md).
+* Deploys: rows in the database, bundles in `$TESSERACT_DATA_DIR/deploys/<id>.tar.gz`, the last
+  host heartbeat of deploy targets (dropped after 60 s). A deploy `claimed` with no progress for
+  15 minutes goes back to `pending`; one `awaiting_approval` for 30 minutes becomes `rejected`.
+  See [server-containers.md](server-containers.md#sandbox-deploys).
+* Issues: tables `issues` (unique `(project_id, number)`), `issue_comments` and `issue_counters`
+  (`project_id`, `last_number`: the per-project sequence, so numbers are never reused); deleting a
+  project deletes its issues, comments and sequence. On startup, issues whose agent run is no longer
+  `running` in `agent_runs` get its outcome (a run marked `failed` by the restart moves the issue
+  back to `todo`). See [issues.md](issues.md).
 * Logs: `$TESSERACT_DATA_DIR/logs/<id>.log` (`<ts> <stream> <seq> <text>` lines), rotated at
   5 MiB (keep 1 rotation), plus an in-memory ring buffer (2 000 lines) per live process/build.
 * On startup, rows left live are marked: processes `orphaned`, builds and agent runs
@@ -956,7 +1051,7 @@ iOS Simulator details (idb session, iOS link, reverse Metro tunnel, installs): [
 200 lines · ring 2 000 lines · rotation 5 MiB · scrollback 256 KiB · context file
 64 KiB · terminal ≤ 1000×500 · prompt 200 000 chars · command 16 384 chars · status
 message 4 000 chars · names 128 chars · request body 1 MiB · upload 20 MiB (body 28 MiB) ·
-upload name 255 chars · 10 attachments per run · language hint 16 chars · sync paths 1–5 000 per request (4 096 chars each) · sync host online 60 s · sync claim timeout 10 min.
+upload name 255 chars · 10 attachments per run · language hint 16 chars · sync paths 1–5 000 per request (4 096 chars each) · sync host online 60 s · sync claim timeout 10 min · deploy bundle 512 MiB · deploy log 64 KiB · 50 deploys listed · 100 deploy targets · deploy targets TTL 60 s · created container 64 CPUs, 256 MB–256 GiB memory · deploy claim timeout 15 min · deploy approval timeout 30 min · issue title 256 chars · issue description 100 000 chars · issue comment 50 000 chars · 20 labels per issue (48 chars each) · 1 000 issues listed · 500 comments per issue detail.
 
 ### 6.2 Process groups
 
@@ -1016,6 +1111,14 @@ tesseract-controller token [--rotate]              # print the token, or write a
 tesseract-controller api <METHOD> <PATH> [JSON|-]  # call the local API; the agent's only way to use it
 tesseract-controller share <file> [--project p] [--name n] [--note t] [--json]  # POST /v1/artifacts; prints "shared <name> (<size>, <project>) as <id>"
 tesseract-controller hook                          # Claude Code hook: stdin JSON → POST /v1/hooks/claude; silent, always exit 0
+tesseract-controller deploy targets [--json]       # GET /v1/deploys/targets: the host and the server containers it accepts deploys for
+tesseract-controller deploy <container> [--dir <path>] [--app <name>] [--port <n>] [--hostname <host>] [--create [--cpus <n>] [--memory <MB>]] [--no-wait] [--json]  # POST /v1/deploys, then wait
+tesseract-controller deploy ls | status <id> | cancel <id> [--json]   # GET /v1/deploys, GET /v1/deploys/:id, POST /v1/deploys/:id/cancel
+tesseract-controller issue list [--project <id>] [--status <s>] [--assignee me|claude] [--json]   # GET /v1/issues
+tesseract-controller issue show [<id>] [--json]   # GET /v1/issues/:id
+tesseract-controller issue create --title <t> [--project <id>] [--description <d>] [--status <s>] [--priority <p>] [--assignee me|claude] [--label <l>]... [--json]   # POST /v1/projects/:id/issues
+tesseract-controller issue update [<id>] [--title <t>] [--description <d>] [--status <s>] [--priority <p>] [--assignee me|claude|none] [--label <l>]... [--json]   # PATCH /v1/issues/:id
+tesseract-controller issue comment [<id>] <text | -> [--json]   # POST /v1/issues/:id/comments as `claude`
 tesseract-controller tesseract --get [--force] [--json]  # IN THE SANDBOX, also as `tesseract --get` (/usr/local/bin/tesseract, not the host CLI §7.1); in /workspace/projects/<id>/…: queue a `get` and print a git pull style summary (sync-back.md §6); exit 0 / 1 / 2 conflicts / 130 interrupted
 tesseract-controller host serve [--bind <ipv4>] [--port <n>]  # ON THE HOST: host shell daemon (§5.7)
 tesseract-controller host pin [--stdin]            # set the 6-12 digit PIN (prompted twice without echo); ends sessions, resets lockouts
@@ -1039,12 +1142,29 @@ printed as `***`. Exit codes (`api`, `emit`): 0 ok, 1 request failed / non-2xx
 `hook` adds `tesseract_terminal_id`/`tesseract_agent_run_id` from `TESSERACT_TERMINAL_ID`/`TESSERACT_AGENT_RUN_ID`
 (set by the controller for terminals and agent runs), gives up after 1.5 s and never prints
 or fails, so a controller outage never blocks Claude.
+`deploy <container>` sends `--dir` (default: the current directory) as an absolute path; the controller,
+not the CLI, archives it (§5.2), so the directory must be inside `/workspace` and hold a compose file
+or a `Dockerfile`. `--hostname` requires `--port` and adds a Cloudflare route to the container.
+`--create` asks the host to create the container if it does not exist (its user always approves that;
+while waiting the CLI prints "waiting for approval to create container <name> in the Tesseract desktop
+app"); `--cpus` and `--memory` (MB) need `--create` and set the new container's limits. Without
+`--create`, a name the host did not report is a 400 that suggests `--create`; `deploy targets` with no
+containers suggests it too. By
+default it waits for a final status, printing progress, and exits 0 only on `deployed` (printing the
+URLs); `failed`, `rejected` and `cancelled` exit non-zero with the error. `--no-wait` prints the queued
+deploy and returns.
+`issue …` `<id>` (`iss_…`) defaults to `TESSERACT_ISSUE_ID`, which the controller sets on agent runs it starts
+for an issue; `issue comment` always posts as `claude` (text `-` reads stdin); `issue create` defaults
+`--project` to the project of the current directory, then to the project of `TESSERACT_ISSUE_ID`;
+`--label` replaces the labels on `update`. Exit codes as for `api`.
 
 ### 7.1 Host `tesseract` CLI
 
 `apps/electron/cli`, compiled with `bun build --compile` (`bun run --cwd apps/electron cli:build`) to
 `dist-cli/<linux|mac|win>-<x64|arm64>/tesseract[.exe]` and shipped in the installers as `resources/bin/tesseract`
-next to `tesseract-controller` (§12.5). It shares `src/core` with the app, so both read the same `config.json`,
+next to `tesseract-controller` (§12.5). `dist-cli/mac-*` also holds `tesseract-simcap` (§5.7), compiled by `cli:build`
+with `xcrun swiftc` only on a macOS host (a warning and no file elsewhere, or with `--no-simcap`); a mac dist requires it
+in both arch dirs. It shares `src/core` with the app, so both read the same `config.json`,
 sandbox env file and Android SDK. Every command takes `--json`, `--verbose`, `--help`.
 
 ```
@@ -1062,6 +1182,7 @@ tesseract android avd create [name] [--image API|package] [--device pixel_5|pixe
 tesseract android avd start [name] [--detach] [--headless] [--gpu MODE] | delete <name>
 tesseract containers [ls] | create <name> [--cpus N] [--memory MB] | start|stop|restart|logs|ssh <name> | rm <name> --yes
 tesseract containers build [--verbose] | doctor | tailscale-key [--tags …] [--clear] < key   # server containers (ADR 0011)
+tesseract containers auto-deploy <name> on|off            # "Allow sandbox deploys" for one container (`autoDeploy`, default off; ADR 0013)
 tesseract vm status|setup|start|stop                    # macOS only: the `tesseract` Colima VM with Sysbox (ADR 0012); elsewhere exits 64
 tesseract domains [ls] | add <hostname> <container> <port> [--https] | rm <hostname|id> | zones | sync | login < token | logout
 tesseract pair [--no-qr]                                 # pairing link + QR for the phone
@@ -1073,6 +1194,16 @@ tesseract --gemini-key=KEY                               # save the Gemini key f
 tesseract --unsafe-repo [--name <name>] [--qr]           # add the cwd as a host project (no sandbox) and print the host workspace pairing link
 ```
 
+The desktop app links every synced project's host copy into the host workspace as the sandbox project's id
+(`host workspace add <hostPath> --id <projectId> --json`, re-pointing an existing link) whenever the host shell is
+serving and on every change of the sync-back links, and starts `host workspace serve` detached (log
+`<desktop user data>/logs/host-workspace.log`) when it does not answer. It runs with
+`TESSERACT_CLAUDE_ACCOUNTS` = the sandbox's existing `TESSERACT_HOST_CLAUDE_ACCOUNTS` dirs as `name=/abs/path`, so host
+chats can use the same Claude accounts (per project, `PUT /v1/projects/:id/claude-account` on the workspace); when the
+running controller lists other account ids, the app restarts it (`host workspace stop`, which SIGTERMs the pid in
+`<data dir>/serve.pid`). Its project page's **This computer → Claude**
+opens a Claude chat on that host project (the agent-run API of the host workspace controller), not a terminal.
+
 `--unsafe-repo` runs `tesseract-controller host workspace add <cwd> --json` (a symlink in the host workspace; the
 same repository keeps its id, another one with the same name gets `-2`, `-3`, …), reads `host workspace pair --json`,
 and starts `host workspace serve` detached when `GET /v1/health` does not answer. The controller command is resolved
@@ -1082,6 +1213,8 @@ user directly in the repository: nothing isolates them.
 
 `--get` on the host only prints that it runs inside the sandbox, where `tesseract` is the controller wrapper (`tesseract-controller tesseract --get`, §7).
 On macOS `containers create` without `--memory` uses 1024 MB (other platforms: no limit).
+`containers auto-deploy` only stores the policy in `containers.json`; the desktop app's `DeployService` runs the deploys
+(sandbox deploys, [server-containers.md](server-containers.md#sandbox-deploys)) and reads it for every claimed deploy.
 `config get` prints the token as `…` unless `--reveal`. The packaged app forwards the sync flags to the
 bundled CLI (`Tesseract --sync` = `tesseract --sync`). Exit codes: 0 ok, 1 failure, 2 sync conflict,
 64 bad arguments, 130 interrupted.
@@ -1094,7 +1227,7 @@ production sandbox host, e.g. a Mac on the tailnet). Runbook: `docs/runbooks/mac
 ```
 tesseract server install [--mode tailscale|host-tailscale|local] [--hostname <name>] [--tailnet-domain <x.ts.net>]
                          [--authkey <key>] [--with <components>] [--image <ref>] [--build] [--claude-token <tok>]
-                         [--no-host-shell] [--host-https-port 8443] [--reset-tailscale] [--dry-run]
+                         [--no-host-shell] [--ios] [--host-https-port 8443] [--reset-tailscale] [--dry-run]
 tesseract server uninstall [--volumes]
 tesseract server status
 tesseract server pair                                    # sandbox and host shell pairing links + QR codes
@@ -1103,7 +1236,9 @@ tesseract server pair                                    # sandbox and host shel
 `install` writes the sandbox env file (§12.4: macOS `~/Library/Application Support/Tesseract/sandbox/.env`,
 Linux `~/.config/Tesseract/sandbox/.env`), pulls `--image` or builds (`--build`, `--with`), runs `compose up`,
 installs the host shell service and runs `tailscale serve --bg --https=<host-https-port> http://<tailscale ip>:7701` (`http://127.0.0.1:7701` on macOS),
-then prints the pairing. `--authkey`, `--tailnet-domain` and `--claude-token` fall back to `TS_AUTHKEY`,
+then prints the pairing. On macOS, `--ios` sets `TESSERACT_IOS=1` for the service, and `TESSERACT_IOS`, `TESSERACT_XCRUN`,
+`TESSERACT_IDB`, `TESSERACT_IDB_COMPANION`, `TESSERACT_FFMPEG` and `TESSERACT_SIMCAP` from the environment are copied
+into the LaunchAgent plist. `--authkey`, `--tailnet-domain` and `--claude-token` fall back to `TS_AUTHKEY`,
 `TS_TAILNET_DOMAIN` and `CLAUDE_CODE_OAUTH_TOKEN` (passed to the sandbox, because Claude Code on macOS keeps its
 login in the keychain, which the sandbox can't read). The stack restarts with Docker (`restart: unless-stopped`).
 
@@ -1113,12 +1248,15 @@ login in the keychain, which the sandbox can't read). The stack restarts with Do
 | Command | `tesseract-controller host serve --bind <tailscale ip>` | same |
 | Logs | `~/Library/Logs/Tesseract/` | `journalctl --user -u tesseract-host-shell` |
 
-Installing on the server itself: `./setup-server.sh [--hostname NAME] [--with LIST] [--rebuild] [--yes]` from a repo checkout (builds the binaries for that machine, installs them into `~/.tesseract`, prompts for missing secrets and the host PIN, prints root-only steps such as `pmset` for the user to run, then runs `tesseract server install --mode tailscale`; see docs/runbooks/mac-server.md). On a fresh Mac, `./setup-mac.sh [--skip-server] [--skip-app] [--keep-sleep] [setup-server options]` asks for the admin password once, applies `pmset`, installs Homebrew, node, OrbStack and Tailscale, runs `./setup-server.sh`, then builds the universal dmg (`electron:dist`) and installs `/Applications/Tesseract.app`.
+Installing on the server itself: `./setup-server.sh [--hostname NAME] [--with LIST] [--rebuild] [--yes]` from a repo checkout (builds the binaries for that machine, installs them into `~/.tesseract`, prompts for missing secrets and the host PIN, prints root-only steps such as `pmset` for the user to run, then runs `tesseract server install --mode tailscale`; see docs/runbooks/mac-server.md). On a Mac it also installs `~/.tesseract/bin/tesseract-simcap` when `cli:build` compiled it (a warning otherwise; the iOS screen then uses idb). On a fresh Mac, `./setup-mac.sh [--skip-server] [--skip-app] [--keep-sleep] [setup-server options]` asks for the admin password once, applies `pmset`, installs Homebrew, node, OrbStack and Tailscale, runs `./setup-server.sh`, then builds the universal dmg (`electron:dist`) and installs `/Applications/Tesseract.app`.
 
 Deploying from the Linux dev box: `infra/scripts/deploy-mac <ssh-host> [--arch auto|arm64|x64] [--skip-build]
 [-- <install args>]` (`bun run deploy:mac`) builds `tesseract` + `tesseract-controller` for `mac-arm64`/`mac-x64`
 (`uname -m` on the Mac) and the sandbox context (`bundle:sandbox`), copies them to `~/.tesseract/bin/` and
 `~/.tesseract/sandbox/` and runs `TESSERACT_SANDBOX_CONTEXT=~/.tesseract/sandbox ~/.tesseract/bin/tesseract server install`.
+It builds the CLI with `--no-simcap` and instead rsyncs `apps/controller/native/simcap` to `~/.tesseract/src/simcap` and
+compiles `~/.tesseract/bin/tesseract-simcap` on the Mac with `xcrun swiftc` (a warning without swiftc or on a failed
+build, which also removes the old binary).
 `TS_AUTHKEY`, `TS_TAILNET_DOMAIN` and `CLAUDE_CODE_OAUTH_TOKEN` from its environment reach the Mac over ssh stdin
 (a 0600 `~/.tesseract/secrets.env` removed before the install runs), never on a command line.
 
@@ -1156,6 +1294,15 @@ for finished deliverables (APK/AAB, installers, zips, reports, exported media), 
 `/etc/claude-code/.claude/skills/send-file/` is a managed skill, `/send-file [latest|apk|aab|android|windows|linux|build|md|<path or name>] [-- note]`
 (interactive or `claude -p`, so also from a phone chat): it picks the file (the chat's last deliverable, the newest
 of a kind via its `find-files` helper, or a named file), refuses secrets, and runs `tesseract-controller share`.
+The managed memory also tells Claude how to publish an app to one of the user's server containers with
+`tesseract-controller deploy` (never Docker against the host), and `/etc/claude-code/.claude/skills/deploy/`
+is a managed skill, `/deploy [<container>] [<dir>] [--create] [--port <n>] [--hostname <host>]`: it lists the targets
+first, deploys with `--create <name>` when no container fits or the user wants a new one (telling the user the desktop
+app will ask to approve creating it), checks the directory (compose file or `Dockerfile`; multi-service apps in one
+`compose.yml` with named volumes, the web service publishing the port passed with `--port`; app listening on
+`0.0.0.0`), uses `--hostname` only for a public URL the user asked for (the desktop host handles Cloudflare; the agent
+never asks for a tunnel token or runs `cloudflared`), keeps secrets out of the bundle (a `.env` next to `compose.yml`
+is shipped but never printed), runs the deploy and reports the URLs, or that the user must approve it.
 
 Rootfs helpers (`/usr/local/bin`): `tesseract-entrypoint`, `tesseract-xvnc`, `tesseract-wait-x`,
 `tesseract-controller-run`, `tesseract-wine-init`, `tesseract-screenshot`, `tesseract-doctor`.
@@ -1357,7 +1504,7 @@ migration: the key is still the sandbox URL.
 
 `bun run electron:dist [-- --platform linux|mac|win] [--dir] [--publish never|always|onTag] [--update-url <url>]
 [--channel <name>] [--smoke]` runs `electron-vite build`, `cli:build` (`tesseract` + `tesseract-controller` per target),
-`bundle:sandbox` (git-tracked sandbox build context + `manifest.json` + `build-weights.json` into
+`bundle:sandbox` (git-tracked sandbox build context without `apps/controller/native/` + `manifest.json` + `build-weights.json` into
 `build/sandbox-context/`) and electron-builder. Artifacts go to `apps/electron/dist/`
 (`Tesseract-<version>-<arch>.<ext>`).
 
@@ -1366,8 +1513,8 @@ migration: the key is still the sandbox URL.
 | macOS | universal `dmg` + `zip` (hardened runtime; Developer ID signed when `CSC_LINK`/`CSC_NAME` is set, ad-hoc signed otherwise; notarized when the `APPLE_*` variables are set) | Settings › About "Install tesseract command": admin prompt, symlink `/usr/local/bin/tesseract` (only from `/Applications`) |
 | Windows | per-user one-click NSIS `exe` (x64) | the installer adds `$INSTDIR\resources\bin` to the user `Path` and removes it on uninstall |
 | Linux | `AppImage` and `deb` (x64) | deb: app in `/opt/Tesseract`, postinst links `/usr/bin/tesseract` (only when free or already ours); AppImage: Settings › About copies it to `~/.local/share/tesseract/bin/tesseract` and links `~/.local/bin/tesseract`; on install and every AppImage launch the app writes `~/.local/share/tesseract/app.json` `{appPath, sandboxDir}` and syncs the bundled context to `~/.local/share/tesseract/sandbox` (marker `.bundle-hash`) |
-| Headless server (macOS/Linux, no app, §7.2) | `./setup-server.sh` on the server (repo checkout), or `infra/scripts/deploy-mac` from the dev box | `~/.tesseract/bin/{tesseract,tesseract-controller}` (add `~/.tesseract/bin` to `PATH`); sandbox context in `~/.tesseract/sandbox` (found next to `bin/`; `TESSERACT_SANDBOX_CONTEXT` overrides) |
+| Headless server (macOS/Linux, no app, §7.2) | `./setup-server.sh` on the server (repo checkout), or `infra/scripts/deploy-mac` from the dev box | `~/.tesseract/bin/{tesseract,tesseract-controller}` (+ `tesseract-simcap` on macOS when built; add `~/.tesseract/bin` to `PATH`); sandbox context in `~/.tesseract/sandbox` (found next to `bin/`; `TESSERACT_SANDBOX_CONTEXT` overrides) |
 
-`extraResources`: `resources/bin/{tesseract,tesseract-controller}`, `resources/sandbox/` (the build context the
+`extraResources`: `resources/bin/{tesseract,tesseract-controller}` (+ `tesseract-simcap` on macOS), `resources/sandbox/` (the build context the
 wizard and `tesseract sandbox build` use), icons and font licenses. Updates: electron-updater against the generic
 feed in `electron-builder.yml` (first check 60 s after start, then every 6 h; `TESSERACT_DISABLE_UPDATES` turns it off).

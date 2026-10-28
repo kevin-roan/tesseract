@@ -1,4 +1,5 @@
-import type { GitCommit, GitDetails, GitFileStatus, GitSummary } from "@tesseract/protocol";
+import type { GitCommit, GitDetails, GitFileStatus, GitSummary, ProjectGitAction } from "@tesseract/protocol";
+import { conflict } from "../core/errors";
 import { childEnv, run } from "../core/exec";
 import { toUtcIso } from "../core/time";
 
@@ -63,6 +64,13 @@ export function parseStatus(output: string): StatusInfo {
   return info;
 }
 
+const GIT_ACTION_TIMEOUT_MS = 300_000;
+const GIT_ACTION_STEPS: Record<ProjectGitAction, (message: string) => string[][]> = {
+  pull: () => [["pull", "--ff-only"]],
+  push: () => [["push"]],
+  commit: (message) => [["add", "--all"], ["commit", "-m", message]],
+};
+
 export class GitService {
   constructor(
     private readonly ceilingDir: string,
@@ -80,6 +88,21 @@ export class GitService {
         LC_ALL: "C",
       },
     });
+  }
+
+  /** Runs a write action with the user's own git config (credentials, signing); throws git's output on failure. */
+  async act(dir: string, action: ProjectGitAction, message = ""): Promise<string> {
+    const outputs: string[] = [];
+    for (const args of GIT_ACTION_STEPS[action](message)) {
+      const result = await run(["git", "-C", dir, ...args], {
+        timeoutMs: GIT_ACTION_TIMEOUT_MS,
+        env: { ...childEnv(), GIT_CEILING_DIRECTORIES: this.ceilingDir, GIT_TERMINAL_PROMPT: "0", GIT_MERGE_AUTOEDIT: "no" },
+      });
+      const output = `${result.stdout}\n${result.stderr}`.trim();
+      if (!result.ok) throw conflict(result.timedOut ? `git ${args[0]} timed out` : output || result.error || `git ${args[0]} failed`);
+      outputs.push(output);
+    }
+    return outputs.filter(Boolean).join("\n");
   }
 
   private async safeConfig(dir: string): Promise<string[]> {

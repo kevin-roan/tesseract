@@ -8,6 +8,7 @@ import { useSandboxClient } from "./use-sandbox-client";
 export type SandboxQueryOptions = {
   enabled?: boolean;
   refetchInterval?: number;
+  staleTime?: number;
 };
 
 export function useSandboxQuery<T>(
@@ -29,5 +30,6 @@ export function useSandboxQuery<T>(
     initialData: sandbox && options.initialData ? () => options.initialData?.(sandbox.id) : undefined,
     subscribed: focused,
     refetchInterval: focused && options.refetchInterval ? options.refetchInterval : false,
+    ...(options.staleTime === undefined ? {} : { staleTime: options.staleTime }),
   });
 }

@@ -134,6 +134,7 @@ const iosState = (status: HostIosStatus | undefined, overrides: Partial<HostIosS
   kill: jest.fn(),
   killing: false,
   openScreen: jest.fn(),
+  openStreamSettings: jest.fn(),
   ...overrides,
 });
 
@@ -152,6 +153,8 @@ describe("HostIos", () => {
     expect(ios.shutdown).toHaveBeenCalled();
     await fireEvent.press(screen.getByText(IOS_COPY.forceKill));
     expect(ios.kill).toHaveBeenCalled();
+    await fireEvent.press(screen.getByTestId("host-ios-stream-settings"));
+    expect(ios.openStreamSettings).toHaveBeenCalled();
   });
 
   it("offers boot for a shut down device", async () => {
@@ -235,6 +238,14 @@ describe("useHostIos", () => {
 
     result.current.openScreen();
     expect(mockRouter.push).toHaveBeenLastCalledWith({ pathname: "/host/ios", params: { serial: sampleSimDevice.udid } });
+  });
+
+  it("opens the iOS stream settings", async () => {
+    session.hostIosStatus.mockResolvedValue(sampleHostIosStatus);
+    const { result } = await mount();
+
+    result.current.openStreamSettings();
+    expect(mockRouter.push).toHaveBeenLastCalledWith({ pathname: "/host/stream", params: { kind: "ios" } });
   });
 
   it("drops the session when the host rejects it", async () => {

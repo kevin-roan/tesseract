@@ -427,6 +427,20 @@ describe("HostShellService Android session", () => {
     expect(JSON.parse(create?.init.body ?? "{}")).toEqual({ kind: "shell", cwd: "/home/me/app", cols: 120, rows: 32 });
   });
 
+  it("opens Claude in a host folder", async () => {
+    const terminalRoute: Route = (url, init) => {
+      if (url.endsWith("/v1/terminals")) return { status: 201, body: { ...sampleTerminal, id: "trm_claude", kind: "claude", projectId: null, cwd: "/home/me/app" } };
+      if (url.endsWith("/v1/auth/ticket")) return { status: 200, body: { ticket: "tkt", expiresAt } };
+      return route(url, init);
+    };
+    const { service, requests } = harness({ route: terminalRoute });
+    await service.refresh();
+    await service.unlock("123456");
+    expect(await service.openTerminal("/home/me/app", "claude")).toBe(`${URL_BASE}/ui/terminal#ticket=tkt&session=trm_claude`);
+    const create = requests.find((request) => request.url.endsWith("/v1/terminals"));
+    expect(JSON.parse(create?.init.body ?? "{}")).toEqual({ kind: "claude", cwd: "/home/me/app", cols: 120, rows: 32 });
+  });
+
   it("locks the session", async () => {
     const { service, requests } = harness({ route });
     await service.refresh();

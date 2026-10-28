@@ -7,6 +7,7 @@ export interface AppSettings {
   zoom: number;
   sidebarWidth: number;
   hostShellAutostart: boolean;
+  hostShellIos: boolean;
   sandboxAutostart: boolean;
 }
 

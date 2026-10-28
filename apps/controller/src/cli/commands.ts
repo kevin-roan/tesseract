@@ -10,7 +10,9 @@ import { formatBytes } from "../services/artifacts";
 import { hostCli, HOST_USAGE } from "../host/cli";
 import { VERSION } from "../version";
 import { api, API_USAGE, redactVncPasswords } from "./api";
+import { deploy, DEPLOY_USAGE } from "./deploy";
 import { hook } from "./hook";
+import { issue, ISSUE_USAGE } from "./issue";
 import { callLocalApi, CliError, isControllerUp } from "./local-api";
 import { tesseract } from "./tesseract";
 import { consoleOutput, type Output } from "./output";
@@ -31,6 +33,8 @@ Usage:
   tesseract-controller share <file> [--project <id>] [--name <name>] [--note <text>] [--json]
                                      copy a workspace file into the artifacts, announce it in the inbox and
                                      make it downloadable on paired devices (tags the Claude run/session)
+  ${DEPLOY_USAGE}
+  ${ISSUE_USAGE}
   tesseract-controller hook             forward a Claude Code hook (JSON on stdin) to the inbox; silent, always exits 0
   tesseract-controller tesseract --get [--force] [--json]
                                      what the sandbox's /usr/local/bin/tesseract runs (only --get; --sync is the
@@ -50,6 +54,9 @@ export type CliIo = {
   signal?: AbortSignal;
   syncPollMs?: number;
   syncPendingTimeoutMs?: number;
+  /** `deploy`: how often it polls and how long it waits for the desktop app to pick a deploy up. */
+  deployPollMs?: number;
+  deployPendingTimeoutMs?: number;
 };
 
 const readProcessStdin = () => Bun.stdin.text();
@@ -220,6 +227,12 @@ export async function runCli(argv: string[], io: CliIo = {}): Promise<number | n
         return await share(config, rest, io.env ?? process.env, io.cwd ?? process.cwd(), output);
       case "api":
         return await api(config, rest, output, io.readStdin ?? readProcessStdin);
+      case "deploy":
+        return await withInterrupt(io.signal, (signal) =>
+          deploy(config, rest, output, { cwd: io.cwd ?? process.cwd(), signal, pollMs: io.deployPollMs, pendingTimeoutMs: io.deployPendingTimeoutMs }),
+        );
+      case "issue":
+        return await issue(config, rest, output, { env: io.env ?? process.env, cwd: io.cwd ?? process.cwd(), readStdin: io.readStdin ?? readProcessStdin });
       case "tesseract":
         return await withInterrupt(io.signal, (signal) =>
           tesseract(config, rest, output, {

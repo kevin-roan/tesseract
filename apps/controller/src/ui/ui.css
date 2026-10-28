@@ -92,6 +92,43 @@ body {
   font-size: 13px;
 }
 
+.host-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  min-height: 24px;
+  padding: 3px 10px;
+  background: rgb(255 203 107 / 12%);
+  border-bottom: 1px solid rgb(255 203 107 / 45%);
+  box-shadow: inset 3px 0 0 var(--warn);
+  color: var(--warn);
+  font-size: 12px;
+}
+
+.host-strip__label {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.host-strip__detail {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  opacity: 0.8;
+}
+
+.host-strip__detail[hidden] {
+  display: none;
+}
+
+[data-origin="host"] .bar {
+  box-shadow: inset 0 2px 0 var(--warn);
+}
+
 .bar__action,
 .overlay__action,
 .key {

@@ -112,6 +112,16 @@ within a moment each phone switches to a new session with the new settings witho
 reconnecting. On the phone, the corners button in the screen's bar goes full screen
 (the small button in the corner, or Android's back, leaves it).
 
+On a Mac with iOS support on (`TESSERACT_IOS=1`), the iOS Simulator screen has the same
+settings without `device` (`GET`/`PUT /v1/ios/stream`, stored as `iosStream`; defaults
+`bitRate` `6000000` and `jpegQuality` `7`, the rest as above). Change them on the phone (the
+iOS Simulator card on the Host screen → stream settings) or in the desktop app's emulator panel
+(**Stream**, also there for Android). A change moves open iOS screens to a new session without
+reconnecting (`state.json` is not watched for iOS, so edit it only with the daemon stopped).
+H.264 needs the `tesseract-simcap` helper next to the daemon, on `PATH`, in `~/.tesseract/bin` or at
+`TESSERACT_SIMCAP`; without it the screen falls back to idb + ffmpeg JPEGs and the daemon logs
+`ios screen streams through idb (tesseract-simcap unavailable)`.
+
 **Link sandbox** in the app stores the sandbox URL and token in `state.json` (`androidLink`)
 and the daemon dials the sandbox's `/v1/android/link`, so builds in the sandbox can use the
 emulator through `adb` (serial `127.0.0.1:15555` there). The host token + PIN therefore also

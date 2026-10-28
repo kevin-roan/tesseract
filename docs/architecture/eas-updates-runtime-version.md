@@ -101,6 +101,21 @@ Android had a second, separate problem: the last Android preview build had
 **errored**, so no Android device had a preview build that could receive
 updates.
 
+## `eas.json` is part of the fingerprint (2026-10-22)
+
+`bun run update:preview` published iOS `be6de644…` and Android `49618c1a…`, but
+the installed builds were `b40f5714…` and `1afaebd2…`.
+`eas fingerprint:compare` listed one difference on both platforms:
+`modified file: eas.json`. Commit `17a32a2` had added
+`"SENTRY_ALLOW_FAILURE": "true"` to the production profile's `env`. With that
+line removed, the local fingerprints were `b40f5714…` and `1afaebd2…` again.
+
+Any edit to `eas.json`, even to a profile you aren't building, cuts off every
+installed build from new updates until you make a new build. Put build-only
+settings in EAS environment variables (`eas env:create`) instead; they are not
+hashed. If you must edit `eas.json`, make new builds for both platforms before
+you publish updates.
+
 ## Checklist when an update doesn't arrive
 
 1. Did you publish with `bun run update:<channel>`?
@@ -115,6 +130,8 @@ updates.
    ```
    - Only app config identity fields differ → wrong `APP_VARIANT`; republish
      with the script.
+   - Only `eas.json` differs → undo the `eas.json` change (see above) and
+     republish.
    - Native deps/plugins differ → the native app really changed; you need a new
      build, and an update can't fix it.
 4. Make sure a **finished** build exists on that channel for that platform.

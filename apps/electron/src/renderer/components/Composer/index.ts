@@ -4,7 +4,8 @@ export { AttachButton, type AttachButtonProps, type AttachButtonSize } from "./A
 export { AttachmentChip, type AttachmentChipProps, type AttachmentKind, type AttachmentStatus } from "./AttachmentChip";
 export { AttachmentTray, type AttachmentTrayProps } from "./AttachmentTray";
 export { useFileDrop, type FileDrop } from "./use-file-drop";
+export { SlashHints, type SlashHintsProps } from "./SlashHints";
 export { useComposerInput, type ComposerInput, type ComposerInputOptions } from "./use-composer-input";
 export { COMPOSER_LABELS, formatLabel } from "./labels";
 export { COMPOSER_SIZE } from "./constants";
-export { type AttachKind, type SlashCommand, canSubmitComposer, isSubmitKey, middleEllipsis } from "./model";
+export { type AttachKind, type SlashCommand, type SlashHintsPlacement, canSubmitComposer, isSubmitKey, middleEllipsis } from "./model";

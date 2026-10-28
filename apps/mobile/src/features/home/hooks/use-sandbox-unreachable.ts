@@ -11,12 +11,13 @@ export function useSandboxUnreachable(): boolean {
   const [unreachable, setUnreachable] = useState(false);
 
   useEffect(() => {
-    if (!down) {
-      setUnreachable(false);
-      return;
-    }
+    if (!down) return;
     const timer = setTimeout(() => setUnreachable(true), UNREACHABLE_GRACE_MS);
-    return () => clearTimeout(timer);
+    // Reset when the link comes back, so the next outage waits out the grace period again.
+    return () => {
+      clearTimeout(timer);
+      setUnreachable(false);
+    };
   }, [down]);
 
   return down && unreachable;

@@ -21,12 +21,15 @@ import { BrowserService } from "./browser";
 import { BuildService } from "./builds";
 import { ClaudeAccountService } from "./claude-accounts";
 import { ClaudeAuthService } from "./claude-auth";
+import { ClaudeCommandService, type ClaudeCommandOptions } from "./claude-commands";
 import { ClaudeHookService } from "./claude-hooks";
 import { readAgentContext } from "./context";
+import { DeployService, type DeployOptions } from "./deploys";
 import { DisplayService } from "./display";
 import { GitService } from "./git";
 import { IdentityService, type IdentityOptions } from "./identity";
 import { InboxService } from "./inbox";
+import { IssueService } from "./issues";
 import { LiveActivityService, type LiveActivityOptions } from "./live-activity";
 import { PortService } from "./ports";
 import { ProcessService } from "./processes";
@@ -57,10 +60,12 @@ export type ServiceOptions = {
   push?: PushOptions;
   liveActivity?: LiveActivityOptions;
   syncBack?: SyncBackOptions;
+  deploys?: DeployOptions;
   appRuns?: AppRunOptions;
   androidLink?: AndroidLinkOptions;
   iosLink?: IosLinkOptions;
   sandboxRuntime?: SandboxRuntimeOptions;
+  claudeCommands?: ClaudeCommandOptions;
 };
 
 export type Services = {
@@ -78,6 +83,7 @@ export type Services = {
   processes: ProcessService;
   projects: ProjectService;
   syncBack: SyncBackService;
+  deploys: DeployService;
   terminals: TerminalService;
   artifacts: ArtifactService;
   buildOutputs: BuildOutputService;
@@ -86,11 +92,13 @@ export type Services = {
   display: DisplayService;
   browser: BrowserService;
   agentRuns: AgentRunService;
+  issues: IssueService;
   status: StatusService;
   identity: IdentityService;
   taildrop: TaildropService;
   claudeAuth: ClaudeAuthService;
   claudeAccounts: ClaudeAccountService;
+  claudeCommands: ClaudeCommandService;
   inbox: InboxService;
   push: PushService;
   liveActivity: LiveActivityService;
@@ -145,6 +153,9 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
     ...terminals.running().filter((terminal) => terminal.projectId === id).map((terminal) => `terminal ${terminal.title}`),
     ...agentRuns.running().filter((run) => run.projectId === id).map((run) => `agent run ${run.id}`),
   ]);
+  const claudeCommands = new ClaudeCommandService(projects, claudeAccounts, options.claudeCommands);
+  const deploys = new DeployService(config, repos, hub, projects, logger.child("deploys"), options.deploys);
+  deploys.start();
   const terminals = new TerminalService(config, repos, hub, projects, claudeAccounts, logger.child("terminals"), LIMITS.terminalScrollbackBytes, stopGraceMs);
   const inbox = new InboxService(repos, hub, logger.child("inbox"));
   inbox.follow(hub);
@@ -159,6 +170,9 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
   uploads.prune();
   const transcriptions = new TranscriptionService(config, uploads, repos, hub, logger.child("stt"), options.transcription);
   const agentRuns = new AgentRunService(config, repos, hub, uploads, projects, claudeAccounts, logger.child("agent"), stopGraceMs);
+  const issues = new IssueService(repos, hub, projects, agentRuns, logger.child("issues"));
+  issues.reconcile();
+  issues.follow();
   const status = new StatusService(config, VERSION, tools, display, () => ({
     projects: projects.count(),
     runningProcesses: processes.runningCount(),
@@ -210,6 +224,7 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
   const close = () => {
     closing ??= (async () => {
       syncBack.stop();
+      deploys.stop();
       await appRuns.shutdown();
       await Promise.allSettled([android.shutdown(), ios.shutdown(), builds.shutdown(), processes.shutdown(), terminals.shutdown(), agentRuns.shutdown()]);
       await runtime.stop();
@@ -235,6 +250,7 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
     processes,
     projects,
     syncBack,
+    deploys,
     terminals,
     artifacts,
     buildOutputs,
@@ -243,11 +259,13 @@ export function createServices(config: Config, options: ServiceOptions = {}): Se
     display,
     browser,
     agentRuns,
+    issues,
     status,
     identity,
     taildrop,
     claudeAuth,
     claudeAccounts,
+    claudeCommands,
     inbox,
     push,
     liveActivity,

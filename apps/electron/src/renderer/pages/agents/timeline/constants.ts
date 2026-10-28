@@ -2,9 +2,6 @@ import type { AgentRun } from "@tesseract/protocol";
 
 export const TIMELINE_EVENT_KINDS = ["text", "tool_use", "tool_result", "system"] as const;
 
-export const AGENT_AVATAR_SIZE = 20;
-export const AGENT_SPHERE_SIZE = 16;
-export const AGENT_SPHERE_DOTS = 20;
 export const USER_AVATAR_SIZE = 20;
 
 export const TEXT_JOINER = "\n\n";

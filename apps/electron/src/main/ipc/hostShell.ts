@@ -1,3 +1,5 @@
+import { unwatchFile, watchFile } from "node:fs";
+import { join } from "node:path";
 import { app } from "electron";
 import { ANDROID_CONFIG_KEYS } from "../../core/android";
 import { readConfig } from "../../core/config";
@@ -7,22 +9,29 @@ import {
   HostShellError,
   HostShellService,
   HOST_ANDROID_ENV_KEYS,
+  HOST_IOS_ENV_KEYS,
   hostDaemonEnv,
+  hostTerminalKind,
+  isServing,
   resolveControllerCommand,
+  simcapPath,
   type HostEnv,
 } from "../../core/host";
+import { HOST_WORKSPACE, HostWorkspaceService, workspaceAccounts } from "../../core/host-workspace";
+import { readEnvValues } from "../../core/sandbox";
 import { createLogger } from "../../core/log";
 import { HostRouter } from "../../core/master-host";
 import { defaultAndroidSdkRoot, stateDir } from "../../core/paths";
 import { requireLink, syncState } from "../../core/syncback";
-import type { EmulatorStopSignal, EmulatorViewerRequest, HostShellState, HostTerminalRequest } from "../../shared/contracts/hostShell";
+import { CONFIG_POLL_MS } from "../../core/syncback/constants";
+import type { EmulatorStopSignal, EmulatorViewerRequest, HostShellState, HostTerminalRequest, HostWorkspaceTarget } from "../../shared/contracts/hostShell";
 import type { ConnectionSnapshot } from "../../shared/contracts/connection";
 import type { HttpProxyRequest } from "../../shared/contracts/http";
 import { mainContext } from "../context";
 import { publishLocalHost } from "../services/local-host";
 import { isPlainProjectId } from "../services/project-id";
-import { repoRoot } from "../services/resources";
-import { currentSettings, updateSettings } from "../services/settings";
+import { repoRoot, sandboxContext } from "../services/resources";
+import { currentSettings, onSettingsChanged, updateSettings } from "../services/settings";
 import { createHostTerminalWindow } from "../windows/manager";
 import { onConnectionChanged } from "./connection";
 import { activeHostRoute } from "./masterHost";
@@ -36,6 +45,8 @@ const log = createLogger("host-shell");
 let service: HostShellService | null = null;
 let router: HostRouter | null = null;
 let viewer: EmulatorViewer | null = null;
+let workspace: HostWorkspaceService | null = null;
+let serving = false;
 let exiting = false;
 const inflight = new Map<string, AbortController>();
 
@@ -47,6 +58,13 @@ async function daemonEnv(): Promise<HostEnv> {
     platform: process.platform,
     sdkRoot: typeof configured === "string" && configured ? configured : null,
     defaultSdkRoot: defaultAndroidSdkRoot(context.paths),
+    ios: currentSettings().hostShellIos,
+    simcap: simcapPath({
+      packaged: app.isPackaged,
+      resourcesPath: app.isPackaged ? process.resourcesPath : null,
+      repoRoot: repoRoot(),
+      arch: process.arch,
+    }),
   });
 }
 
@@ -72,9 +90,35 @@ function host(): HostShellService {
     onChange: (state) => {
       publishLocalHost(state);
       router?.localChanged(state);
+      const wasServing = serving;
+      serving = isServing(state);
+      if (serving && !wasServing) void hostWorkspace().syncAll();
     },
   });
   return service;
+}
+
+function links() {
+  return syncState({ stateDir: stateDir(mainContext().paths) });
+}
+
+function hostWorkspace(): HostWorkspaceService {
+  workspace ??= new HostWorkspaceService({
+    runner: async () => ({ command: controllerCommand(), env: await workspaceEnv(), logFile: join(app.getPath("userData"), ...HOST_WORKSPACE.logFile) }),
+    links: async () => [...(await links().links()).values()].map(({ projectId, hostPath }) => ({ projectId, hostPath })),
+    warn: (message) => log.warn(message),
+  });
+  return workspace;
+}
+
+async function workspaceEnv(): Promise<NodeJS.ProcessEnv> {
+  const values = await readEnvValues(sandboxContext().envFile).catch(() => null);
+  const accounts = workspaceAccounts(values?.TESSERACT_HOST_CLAUDE_ACCOUNTS, process.env.HOME || app.getPath("home"));
+  return { ...process.env, [HOST_WORKSPACE.accountsEnv]: accounts };
+}
+
+function syncWorkspaceLinks(): void {
+  if (serving) void hostWorkspace().syncAll();
 }
 
 function routed(): HostRouter {
@@ -118,11 +162,15 @@ function requireViewerRequest(request: EmulatorViewerRequest): EmulatorViewerReq
   };
 }
 
-function requireTerminalRequest(request: HostTerminalRequest): HostTerminalRequest {
+function requireTerminalRequest(request: HostTerminalRequest): Required<HostTerminalRequest> {
   if (typeof request !== "object" || request === null || !isPlainProjectId(request.projectId)) {
     throw new HostShellError(HOST_LABELS.noFolder, "invalid_argument");
   }
-  return { projectId: request.projectId, title: typeof request.title === "string" && request.title ? request.title : request.projectId };
+  return {
+    projectId: request.projectId,
+    title: typeof request.title === "string" && request.title ? request.title : request.projectId,
+    kind: hostTerminalKind(request.kind),
+  };
 }
 
 function requireSignal(signal: unknown): EmulatorStopSignal | undefined {
@@ -160,20 +208,34 @@ function abortProxy(id: string): void {
   inflight.delete(id);
 }
 
-async function openTerminal(input: HostTerminalRequest): Promise<void> {
-  const request = requireTerminalRequest(input);
-  let hostPath: string;
+async function hostPathOf(projectId: string): Promise<string> {
   try {
-    hostPath = (await requireLink(syncState({ stateDir: stateDir(mainContext().paths) }), request.projectId)).hostPath;
+    return (await requireLink(links(), projectId)).hostPath;
   } catch (error) {
     throw new HostShellError(error instanceof Error ? error.message : HOST_LABELS.noFolder, "not_found");
   }
-  const url = await host().openTerminal(hostPath);
-  await createHostTerminalWindow(url, HOST_LABELS.terminalTitle(request.title));
+}
+
+async function openTerminal(input: HostTerminalRequest): Promise<void> {
+  const request = requireTerminalRequest(input);
+  const hostPath = await hostPathOf(request.projectId);
+  const url = await host().openTerminal(hostPath, request.kind);
+  await createHostTerminalWindow(url, HOST_LABELS.terminalTitle[request.kind](request.title));
+}
+
+async function openWorkspace(projectId: unknown): Promise<HostWorkspaceTarget> {
+  if (!isPlainProjectId(projectId)) throw new HostShellError(HOST_LABELS.noFolder, "invalid_argument");
+  return hostWorkspace().open({ projectId, hostPath: await hostPathOf(projectId) });
 }
 
 export function applyAndroidSdkChange(): Promise<HostShellState | null> {
   return service ? service.restartIfEnvChanged(HOST_ANDROID_ENV_KEYS) : Promise.resolve(null);
+}
+
+function applyIosChange(): void {
+  void service?.restartIfEnvChanged(HOST_IOS_ENV_KEYS).catch((error: unknown) => {
+    log.warn(`host shell restart failed: ${error instanceof Error ? error.message : String(error)}`);
+  });
 }
 
 function onWillQuit(event: Electron.Event): void {
@@ -214,6 +276,7 @@ export default defineService(
       ),
     openEmulatorViewer: (_context, request) => emulatorViewer().open(requireViewerRequest(request)),
     openTerminal: (_context, request) => openTerminal(request),
+    openWorkspace: (_context, projectId) => openWorkspace(projectId),
     request: (_context, id, request) => proxy(id, request),
     abort: (_context, id) => abortProxy(id),
   },
@@ -231,9 +294,16 @@ export default defineService(
           log.warn(`host routing failed: ${error instanceof Error ? error.message : String(error)}`);
         });
       const stopFollowing = onConnectionChanged(follow);
+      const stopSettings = onSettingsChanged((next, previous) => {
+        if (next.hostShellIos !== previous.hostShellIos) applyIosChange();
+      });
       follow();
+      const linksPath = links().linksPath;
+      watchFile(linksPath, { interval: CONFIG_POLL_MS }, syncWorkspaceLinks);
       return () => {
+        unwatchFile(linksPath, syncWorkspaceLinks);
         stopFollowing();
+        stopSettings();
         for (const controller of inflight.values()) controller.abort();
         inflight.clear();
         return current.shutdown();

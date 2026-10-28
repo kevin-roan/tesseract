@@ -21,6 +21,8 @@ export type AndroidBarKeyId = DeviceBarKeyId;
 export type DeviceKind = "android" | "ios";
 
 export const API_PATHS = {
+  health: "/v1/health",
+  terminal: (id: string) => `/v1/terminals/${encodeURIComponent(id)}`,
   terminalStream: (id: string) => `/v1/terminals/${encodeURIComponent(id)}/stream`,
   vnc: "/v1/display/vnc",
   androidScreen: "/v1/android/screen",
@@ -169,7 +171,7 @@ export const DEVICE_PROFILES: Record<DeviceKind, DeviceProfile> = {
     stateMessage: PAGE_MESSAGES.iosState,
     needTicketMessage: PAGE_MESSAGES.iosNeedTicket,
     deviceParam: FRAGMENT_KEYS.udid,
-    h264: false,
+    h264: true,
   },
 };
 
@@ -270,4 +272,10 @@ export const MESSAGES = {
   keyboard: "Keyboard",
   androidTitle: "Android emulator",
   decoderFailed: "The video decoder failed; reconnect to stream JPEG instead",
+} as const;
+
+/** The strip the host shell daemon's terminal page shows so it is never mistaken for a sandbox terminal. */
+export const HOST_STRIP_LABELS = {
+  shell: "On this computer",
+  claude: "Claude Code on this computer",
 } as const;

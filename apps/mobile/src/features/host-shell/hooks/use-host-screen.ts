@@ -23,6 +23,7 @@ import { useHostPairing } from "./use-host-pairing";
 import { useHostTerminals } from "./use-host-terminals";
 import { useHostUnlock } from "./use-host-unlock";
 import { useNow } from "./use-now";
+import { useHostWorkspaceSync } from "./use-host-workspace-sync";
 
 type LinkParams = { url?: string; token?: string; name?: string; next?: string; serial?: string };
 
@@ -33,6 +34,7 @@ function screenMode(hydrated: boolean, paired: boolean, repairing: boolean, unlo
 }
 
 export function useHostScreen() {
+  useHostWorkspaceSync();
   const nav = useHostNavigation();
   const params = useLocalSearchParams<LinkParams>();
   const [initial] = useState<PairingDraft | null>(() => draftFromSearchParams(params));

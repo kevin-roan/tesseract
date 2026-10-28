@@ -2,6 +2,7 @@ import { join } from "node:path";
 import type { WebContents } from "electron";
 import { shouldSealTokens } from "../../core/connection";
 import { ContainerShells, ContainersService, parseDockerHost, stateFileIn, type DockerEndpoint } from "../../core/containers";
+import { DEPLOY_MESSAGES } from "../../core/deploys";
 import { effectiveEnv } from "../../core/docker";
 import { LogRing } from "../../core/log";
 import { CONFIG_FILE_NAME, stateDir } from "../../core/paths";
@@ -11,6 +12,7 @@ import type { OpenShellRequest } from "../../shared/contracts/containers";
 import { eventChannel } from "../../shared/ipc";
 import { IpcError } from "../../shared/ipc-types";
 import { mainContext } from "../context";
+import { deployService, startDeploys } from "../services/deploys";
 import { sandboxContextDir } from "../services/resources";
 import { tokenCipher } from "../services/token-cipher";
 import { defineService } from "./_framework/define";
@@ -67,6 +69,18 @@ async function dockerEndpoint(): Promise<DockerEndpoint> {
 function shells(): ContainerShells {
   shellSessions ??= new ContainerShells({ endpoint: dockerEndpoint });
   return shellSessions;
+}
+
+function requireDeploys() {
+  const service = deployService();
+  if (!service) throw new IpcError("unavailable", DEPLOY_MESSAGES.notConnected);
+  return service;
+}
+
+async function setAutoDeploy(name: string, enabled: boolean) {
+  const container = await containersService().setAutoDeploy(name, enabled);
+  void deployService()?.tick();
+  return container;
 }
 
 function sendTo(sender: WebContents, event: "shellData" | "shellExit", payload: unknown): void {
@@ -130,6 +144,17 @@ export default defineService("containers", {
     const owned = ownedBy(sender, id);
     if (owned) closeShell(owned);
   },
+  setAutoDeploy: (_context, name, enabled) => setAutoDeploy(name, enabled),
+  deploys: () => deployService()?.deploys() ?? [],
+  approveDeploy: (_context, id) => requireDeploys().approve(id),
+  rejectDeploy: (_context, id) => requireDeploys().reject(id),
 }, {
-  start: () => () => shellSessions?.closeAll(),
+  start: () => {
+    const context = mainContext();
+    const stopDeploys = context.fixtures ? null : startDeploys(context.configFile, containersService(), (deploys) => events.emit("deploys", deploys));
+    return () => {
+      stopDeploys?.();
+      shellSessions?.closeAll();
+    };
+  },
 });

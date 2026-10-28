@@ -3,31 +3,37 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { createServer, type Server as TcpServer } from "node:net";
 import { join } from "node:path";
 import {
+  ANDROID_H264_FLAGS,
+  DEFAULT_IOS_STREAM,
   HostIosStatusSchema,
   HostSessionSchema,
   IOS_URL_REFUSALS,
   IosLinkHostMessageSchema,
+  IosStreamSettingsSchema,
   SimDeviceSchema,
   type DeviceScreenServerMessage,
   type IosLinkHostMessage,
   type IosLinkSandboxMessage,
+  type IosStreamSettings,
 } from "@tesseract/protocol";
 import type { ServerWebSocket } from "bun";
 import { run, type RunResult } from "../src/core/exec";
 import { silentLogger } from "../src/core/logger";
 import { parseEmulatorPids } from "../src/host/android/emulator";
+import { ffmpegMjpegArgs } from "../src/host/android/scrcpy";
 import type { ScreenClient } from "../src/host/android/screen";
 import { loadHostConfig, type HostConfig } from "../src/host/config";
 import { findApp } from "../src/host/ios/bundle";
 import { loadIosConfig, type IosConfig } from "../src/host/ios/config";
 import { expoGoUrl } from "../src/host/ios/expo-go";
-import { freePort, jpegSize, scaleFor, truncateUtf8, videoStreamArgs } from "../src/host/ios/idb";
+import { ffmpegJpegArgs, freePort, h264StreamArgs, jpegSize, scaleFor, truncateUtf8, videoStreamArgs } from "../src/host/ios/idb";
 import { IosGestures, type IosInput } from "../src/host/ios/input";
 import { INSTALL_MESSAGES, IosInstalls } from "../src/host/ios/installs";
 import { IosLink, linkSimulatorView } from "../src/host/ios/link";
 import type { CommandRunner, ProcessSpawner, SpawnedProcess } from "../src/host/ios/runner";
 import type { SandboxApi } from "../src/host/ios/sandbox-api";
-import { IdbScreenSession, IOS_SCREEN_MESSAGES, IosScreens, type IosScreenSession, type IosSessionEvents } from "../src/host/ios/screen";
+import { ENCODER_BACKLOG_BYTES, IdbScreenSession, IOS_SCREEN_MESSAGES, IosScreens, SimcapScreenSession, type IosScreenSession, type IosScreenTarget, type IosSessionEvents } from "../src/host/ios/screen";
+import { SIMCAP_FLAGS, SimcapPacketParser, simcapStreamArgs, type IosSessionStream } from "../src/host/ios/simcap";
 import { parseIdbDescribe, parseSimctlDevices, parseXcodeVersion, runtimeLabel, Simctl } from "../src/host/ios/simctl";
 import { IosSimulators, parseDevicePids, SIMULATOR_MESSAGES } from "../src/host/ios/simulator";
 import { startHostShell, type HostShell } from "../src/host/server";
@@ -46,6 +52,8 @@ const config = (overrides: Partial<IosConfig> = {}): IosConfig => ({
   xcrun: "/usr/bin/xcrun",
   idb: "/opt/bin/idb",
   idbCompanion: "/opt/bin/idb_companion",
+  ffmpeg: null,
+  simcap: null,
   env: { PATH: "/usr/bin:/bin" },
   ...overrides,
 });
@@ -197,6 +205,13 @@ describe("parsers", () => {
     expect(scaleFor({ widthPx: 1206, heightPx: 2622, widthPt: 402, heightPt: 874, scale: 3 }, 1280)).toBeCloseTo(1280 / 2622);
     expect(scaleFor(null, 1280)).toBe(1);
     expect(videoStreamArgs("/opt/bin/idb", 0.5)).toEqual(["/opt/bin/idb", "video-stream", "--format", "mjpeg", "--fps", "30", "--compression-quality", "0.6", "--scale-factor", "0.500"]);
+    expect(h264StreamArgs("/opt/bin/idb")).toEqual(["/opt/bin/idb", "video-stream", "--format", "h264", "--fps", "30"]);
+    const decode = ffmpegJpegArgs("/opt/bin/ffmpeg", 0.5);
+    expect(decode[0]).toBe("/opt/bin/ffmpeg");
+    expect(decode).toContain("fps=15,scale=trunc(iw*0.500/2)*2:-2,mpdecimate=max=15");
+    expect(decode.slice(-3)).toEqual(["-q:v", "7", "pipe:1"]);
+    expect(ffmpegJpegArgs("/opt/bin/ffmpeg", 1)).toContain("fps=15,mpdecimate=max=15");
+    expect(decode).not.toContain("low_delay");
     expect(Buffer.byteLength(truncateUtf8("é".repeat(200)))).toBe(300);
   });
 
@@ -242,6 +257,20 @@ describe("loadIosConfig", () => {
     expect(loaded.env.TESSERACT_HOST_SHELL_PORT).toBeUndefined();
     expect(loaded.env.PATH).toContain("/opt/homebrew/bin");
     expect(() => loadIosConfig({ TESSERACT_IOS: "maybe" }, "darwin")).toThrow("TESSERACT_IOS must be on or off");
+  });
+
+  test("tesseract-simcap: TESSERACT_SIMCAP, else PATH or ~/.tesseract/bin, never off macOS", () => {
+    const dir = makeTempDir("ios-simcap");
+    const simcap = join(dir, "tesseract-simcap");
+    writeFileSync(simcap, "#!/bin/sh\n", { mode: 0o755 });
+    expect(loadIosConfig({ PATH: "", TESSERACT_SIMCAP: simcap }, "darwin").simcap).toBe(simcap);
+    expect(loadIosConfig({ PATH: "", TESSERACT_SIMCAP: join(dir, "missing") }, "darwin").simcap).toBeNull();
+    expect(loadIosConfig({ PATH: dir, HOME: join(dir, "home") }, "darwin").simcap).toBe(simcap);
+    const home = makeTempDir("ios-simcap-home");
+    mkdirSync(join(home, ".tesseract", "bin"), { recursive: true });
+    writeFileSync(join(home, ".tesseract", "bin", "tesseract-simcap"), "#!/bin/sh\n", { mode: 0o755 });
+    expect(loadIosConfig({ PATH: "", HOME: home }, "darwin").simcap).toBe(join(home, ".tesseract", "bin", "tesseract-simcap"));
+    expect(loadIosConfig({ PATH: dir, TESSERACT_SIMCAP: simcap }, "linux").simcap).toBeNull();
   });
 });
 
@@ -356,18 +385,23 @@ describe("IosGestures", () => {
   });
 });
 
-type FakeSession = IosScreenSession & { events: IosSessionEvents; started: boolean; stopped: boolean; target: { udid: string; maxSize: number } };
+type FakeSession = IosScreenSession & { events: IosSessionEvents; started: boolean; stopped: boolean; keyRequests: number; target: IosScreenTarget };
 
-function screens(target: () => Promise<{ udid: string; name: string } | null>, reason: string | null = null) {
+function screens(target: () => Promise<{ udid: string; name: string } | null>, reason: string | null = null, settings?: () => IosStreamSettings) {
   const sessions: FakeSession[] = [];
   const input = recordingInput();
   const manager = new IosScreens(config(), { target, unavailableReason: async () => reason }, silentLogger, {
+    settings,
     factory: (target, events) => {
       const session: FakeSession = {
         events,
         target,
         started: false,
         stopped: false,
+        keyRequests: 0,
+        requestKeyFrame: () => {
+          session.keyRequests++;
+        },
         start: async () => {
           session.started = true;
         },
@@ -398,7 +432,7 @@ describe("IosScreens", () => {
     expect(first.frames).toHaveLength(1);
 
     const late = viewer();
-    const detachLate = manager.attach(late.client, { maxSize: 1280 });
+    const detachLate = manager.attach(late.client, { maxSize: 640 });
     await waitFor(() => late.frames.length === 1);
     expect(sessions).toHaveLength(1);
     expect(late.messages[0]).toMatchObject({ type: "meta", width: 603 });
@@ -414,6 +448,35 @@ describe("IosScreens", () => {
     detachLate();
     await waitFor(() => sessions[0]?.stopped);
     expect(manager.viewers).toBe(0);
+  });
+
+  test("a viewer of another size gets its own session; the device keeps one pointer across sessions", async () => {
+    const { manager, sessions, input } = screens(phone);
+    const phoneViewer = viewer();
+    const panel = viewer();
+    manager.attach(phoneViewer.client, { maxSize: 640 });
+    await waitFor(() => sessions.length === 1);
+    manager.attach(panel.client, { maxSize: 1600, codec: "h264" });
+    await waitFor(() => sessions.length === 2);
+    expect(sessions.map((session) => session.target.maxSize)).toEqual([640, 1600]);
+    sessions[0]?.events.frame(jpeg(294, 640));
+
+    const at = (x: number, y: number, width: number, height: number) => ({ x, y, width, height });
+    manager.handle(panel.client, { type: "touch", action: "down", pointerId: 0, ...at(368, 800, 736, 1600), pressure: 1 });
+    manager.handle(phoneViewer.client, { type: "touch", action: "down", pointerId: 0, ...at(147, 320, 294, 640), pressure: 1 });
+    manager.handle(phoneViewer.client, { type: "touch", action: "up", pointerId: 0, ...at(147, 320, 294, 640), pressure: 0 });
+    manager.handle(panel.client, { type: "touch", action: "up", pointerId: 0, ...at(368, 800, 736, 1600), pressure: 0 });
+    await waitFor(() => input.calls.length === 1);
+    await Bun.sleep(30);
+    expect(input.calls).toEqual(["tap 201 437"]);
+
+    // The panel's session ends; the pointer it held is released for the other viewer.
+    manager.handle(panel.client, { type: "touch", action: "down", pointerId: 0, ...at(368, 800, 736, 1600), pressure: 1 });
+    sessions[1]?.events.failed("tesseract-simcap exited (code 1)");
+    manager.handle(phoneViewer.client, { type: "touch", action: "down", pointerId: 0, ...at(147, 320, 294, 640), pressure: 1 });
+    manager.handle(phoneViewer.client, { type: "touch", action: "up", pointerId: 0, ...at(147, 320, 294, 640), pressure: 0 });
+    await waitFor(() => input.calls.length === 2);
+    expect(sessions[0]?.stopped).toBe(false);
   });
 
   test("touches go through the session's input in device points", async () => {
@@ -453,6 +516,178 @@ describe("IosScreens", () => {
     await manager.end(PHONE);
     expect(watching.messages).toEqual([{ type: "error", message: IOS_SCREEN_MESSAGES.shutdown }]);
     expect(sessions[1]?.stopped).toBe(true);
+  });
+});
+
+/** One `tesseract-simcap stream` packet: u32 BE length, flags, payload. */
+function simcapPacket(flags: number, payload: Buffer): Buffer {
+  const header = Buffer.alloc(5);
+  header.writeUInt32BE(payload.length, 0);
+  header[4] = flags;
+  return Buffer.concat([header, payload]);
+}
+
+function simcapSize(width: number, height: number): Buffer {
+  const payload = Buffer.alloc(8);
+  payload.writeUInt32BE(width, 0);
+  payload.writeUInt32BE(height, 4);
+  return simcapPacket(SIMCAP_FLAGS.size, payload);
+}
+
+const SPS_PPS = Buffer.from([0, 0, 0, 1, 0x67, 0x42, 0, 0x1f, 0, 0, 0, 1, 0x68, 0xce]);
+const idr = (tag: number) => Buffer.from([0, 0, 0, 1, 0x65, tag]);
+const delta = (tag: number) => Buffer.from([0, 0, 0, 1, 0x41, tag]);
+const h264 = (flags: number, data: Buffer) => Buffer.concat([Buffer.of(flags), data]);
+
+describe("SimcapPacketParser", () => {
+  test("size, config, key and delta packets, split anywhere across chunks", () => {
+    const stream = Buffer.concat([
+      simcapSize(590, 1280),
+      simcapPacket(SIMCAP_FLAGS.config, SPS_PPS),
+      simcapPacket(SIMCAP_FLAGS.keyFrame, idr(1)),
+      simcapPacket(0, delta(2)),
+    ]);
+    for (const step of [1, 3, 7, stream.length]) {
+      const parser = new SimcapPacketParser();
+      const packets = [];
+      for (let offset = 0; offset < stream.length; offset += step) packets.push(...parser.push(stream.subarray(offset, offset + step)));
+      expect(packets).toEqual([
+        { type: "size", width: 590, height: 1280 },
+        { type: "frame", data: SPS_PPS, config: true, keyFrame: false },
+        { type: "frame", data: idr(1), config: false, keyFrame: true },
+        { type: "frame", data: delta(2), config: false, keyFrame: false },
+      ]);
+    }
+    const header = Buffer.alloc(5);
+    header.writeUInt32BE(64 * 1024 * 1024, 0);
+    expect(() => new SimcapPacketParser().push(header)).toThrow("tesseract-simcap sent a");
+  });
+
+  test("stream arguments carry the session's settings", () => {
+    const stream: IosSessionStream = { codec: "h264", maxSize: 1280, bitRate: 4_000_000, maxFps: 30, keyFrameInterval: 1, jpegQuality: 7 };
+    expect(simcapStreamArgs("/opt/bin/simcap", PHONE, stream)).toEqual([
+      "/opt/bin/simcap",
+      "stream",
+      ...["--udid", PHONE, "--bitrate", "4000000", "--fps", "30", "--keyint-sec", "1", "--max-side", "1280"],
+    ]);
+  });
+});
+
+describe("IosScreens H.264", () => {
+  const phone = async () => ({ udid: PHONE, name: "iPhone 17 Pro" });
+  const SIZE = { width: 590, height: 1280 };
+  const configMessage = h264(ANDROID_H264_FLAGS.config, SPS_PPS);
+
+  test("meta with the first key frame, config + GOP for a late viewer, mjpeg viewers get their own session", async () => {
+    const { manager, sessions } = screens(phone);
+    const first = viewer();
+    manager.attach(first.client, { maxSize: 1280, codec: "h264" });
+    await waitFor(() => sessions.length === 1);
+    const session = sessions[0] as FakeSession;
+    const { bitRate, maxFps, keyFrameInterval, jpegQuality } = DEFAULT_IOS_STREAM;
+    expect(session.target.stream).toEqual({ codec: "h264", maxSize: 1280, bitRate, maxFps, keyFrameInterval, jpegQuality });
+    session.events.size?.(SIZE);
+    session.events.video?.({ data: SPS_PPS, config: true, keyFrame: false });
+    expect(first.messages).toEqual([]);
+    session.events.video?.({ data: idr(1), config: false, keyFrame: true });
+    expect(first.messages).toEqual([{ type: "meta", deviceName: "iPhone 17 Pro", codec: "h264", ...SIZE }]);
+    session.events.video?.({ data: delta(2), config: false, keyFrame: false });
+    expect(first.frames).toEqual([configMessage, h264(ANDROID_H264_FLAGS.keyFrame, idr(1)), h264(0, delta(2))]);
+
+    const late = viewer();
+    manager.attach(late.client, { maxSize: 1280, codec: "h264" });
+    await waitFor(() => late.frames.length === 3);
+    expect(sessions).toHaveLength(1);
+    expect(late.messages).toEqual([{ type: "meta", deviceName: "iPhone 17 Pro", codec: "h264", ...SIZE }]);
+    expect(late.frames).toEqual(first.frames);
+    expect(session.keyRequests).toBe(0);
+
+    const jpegViewer = viewer();
+    manager.attach(jpegViewer.client, { maxSize: 1280 });
+    await waitFor(() => sessions.length === 2);
+    expect(sessions[1]?.target.stream?.codec).toBe("mjpeg");
+
+    session.events.size?.({ width: 1280, height: 590 });
+    expect(first.messages.at(-1)).toEqual({ type: "size", width: 1280, height: 590 });
+  });
+
+  test("a congested viewer skips to the next key frame and asks for one once it drained", async () => {
+    const { manager, sessions } = screens(phone);
+    const slow = viewer();
+    const fast = viewer();
+    manager.attach(slow.client, { codec: "h264" });
+    manager.attach(fast.client, { codec: "h264" });
+    await waitFor(() => sessions.length === 1 && manager.viewers === 2);
+    const session = sessions[0] as FakeSession;
+    session.events.size?.(SIZE);
+    session.events.video?.({ data: SPS_PPS, config: true, keyFrame: false });
+    session.events.video?.({ data: idr(1), config: false, keyFrame: true });
+    expect(slow.frames).toHaveLength(2);
+
+    slow.buffered = 1024 * 1024;
+    session.events.video?.({ data: delta(2), config: false, keyFrame: false });
+    expect(slow.frames).toHaveLength(2);
+    expect(fast.frames).toHaveLength(3);
+    expect(session.keyRequests).toBe(0);
+
+    slow.buffered = 0;
+    session.events.video?.({ data: delta(3), config: false, keyFrame: false });
+    session.events.video?.({ data: delta(4), config: false, keyFrame: false });
+    expect(slow.frames).toHaveLength(2);
+    expect(session.keyRequests).toBe(1);
+
+    session.events.video?.({ data: idr(5), config: false, keyFrame: true });
+    expect(slow.frames.slice(2)).toEqual([configMessage, h264(ANDROID_H264_FLAGS.keyFrame, idr(5))]);
+    expect(fast.frames.at(-1)).toEqual(h264(ANDROID_H264_FLAGS.keyFrame, idr(5)));
+  });
+
+  test("a viewer joining after the GOP was dropped asks for a key frame", async () => {
+    const { manager, sessions } = screens(phone);
+    const first = viewer();
+    manager.attach(first.client, { codec: "h264" });
+    await waitFor(() => sessions.length === 1);
+    const session = sessions[0] as FakeSession;
+    session.events.size?.(SIZE);
+    session.events.video?.({ data: SPS_PPS, config: true, keyFrame: false });
+    session.events.video?.({ data: idr(1), config: false, keyFrame: true });
+    session.events.video?.({ data: Buffer.alloc(9 * 1024 * 1024), config: false, keyFrame: false });
+    const late = viewer();
+    manager.attach(late.client, { codec: "h264" });
+    await waitFor(() => manager.viewers === 2);
+    expect(late.messages[0]).toMatchObject({ type: "meta", codec: "h264" });
+    expect(late.frames).toEqual([]);
+    expect(session.keyRequests).toBe(1);
+  });
+
+  test("a session that falls back to JPEGs announces mjpeg", async () => {
+    const { manager, sessions } = screens(phone);
+    const one = viewer();
+    manager.attach(one.client, { codec: "h264" });
+    await waitFor(() => sessions.length === 1);
+    sessions[0]?.events.fallback?.("tesseract-simcap is not installed on the host");
+    sessions[0]?.events.frame(jpeg(603, 1311));
+    expect(one.messages).toEqual([{ type: "meta", deviceName: "iPhone 17 Pro", codec: "mjpeg", width: 603, height: 1311 }]);
+    expect(one.frames).toHaveLength(1);
+  });
+
+  test("restart moves viewers whose session the new settings change", async () => {
+    let settings: IosStreamSettings = { ...DEFAULT_IOS_STREAM };
+    const { manager, sessions } = screens(phone, null, () => settings);
+    const one = viewer();
+    manager.attach(one.client, { codec: "h264", maxSize: 900 });
+    await waitFor(() => sessions.length === 1);
+    manager.restart();
+    expect(sessions).toHaveLength(1);
+
+    settings = { ...settings, encoding: "mjpeg", jpegQuality: 4 };
+    manager.restart();
+    await waitFor(() => sessions.length === 2);
+    expect(sessions[0]?.stopped).toBe(true);
+    expect(sessions[1]?.target.stream).toMatchObject({ codec: "mjpeg", maxSize: 900, jpegQuality: 4 });
+    expect(one.closed).toBeNull();
+    sessions[1]?.events.frame(jpeg(414, 900));
+    expect(one.messages.at(-1)).toMatchObject({ type: "meta", codec: "mjpeg" });
+    expect(manager.viewers).toBe(1);
   });
 });
 
@@ -517,6 +752,39 @@ describe("IdbScreenSession", () => {
     for (const server of servers) server.close();
   });
 
+  test("with ffmpeg, pipes idb's full-size H.264 into ffmpeg and splits its JPEGs", async () => {
+    const spawned: { cmd: string[]; stdin?: ReadableStream<Uint8Array> | "pipe" }[] = [];
+    const servers: TcpServer[] = [];
+    const h264 = controllableStream();
+    const decoded = controllableStream();
+    const spawner: ProcessSpawner = (cmd, options = {}) => {
+      spawned.push({ cmd, stdin: options.stdin });
+      const empty = new ReadableStream<Uint8Array>({ start: (c) => c.close() });
+      if (cmd[0] === "/opt/bin/idb_companion") {
+        const port = Number(cmd[cmd.indexOf("--grpc-port") + 1]);
+        servers.push(createServer((socket) => socket.destroy()).listen(port, "127.0.0.1"));
+      }
+      const stdout = cmd[0] === "/opt/bin/idb" ? h264.stream : cmd[0] === "/opt/bin/ffmpeg" ? decoded.stream : empty;
+      return { pid: spawned.length, stdout, stderr: empty, exited: new Promise<number | null>(() => {}), stop: async () => {} } satisfies SpawnedProcess;
+    };
+    const { runner } = fakeRunner((cmd) =>
+      cmd[1] === "describe" ? { stdout: JSON.stringify({ screen_dimensions: { width: 1206, height: 2622, density: 3, width_points: 402, height_points: 874 } }) } : {},
+    );
+    const frames: Buffer[] = [];
+    const session = new IdbScreenSession(config({ ffmpeg: "/opt/bin/ffmpeg" }), { udid: PHONE, name: "iPhone", maxSize: 1311 }, { frame: (data) => frames.push(data), failed: () => {} }, runner, spawner);
+    await session.start();
+    expect(spawned[1]?.cmd).toEqual(h264StreamArgs("/opt/bin/idb"));
+    expect(spawned[2]?.cmd).toEqual(ffmpegJpegArgs("/opt/bin/ffmpeg", 0.5));
+    expect(spawned[2]?.stdin).toBe(h264.stream);
+
+    const frame = jpeg(603, 1311, 1);
+    decoded.push(frame);
+    await waitFor(() => frames.length === 1);
+    expect(frames[0]).toEqual(frame);
+    await session.stop(0);
+    for (const server of servers) server.close();
+  });
+
   test("a companion that never listens fails the start", async () => {
     const spawner: ProcessSpawner = () => {
       const empty = new ReadableStream<Uint8Array>({ start: (c) => c.close() });
@@ -524,6 +792,276 @@ describe("IdbScreenSession", () => {
     };
     const session = new IdbScreenSession(config(), { udid: PHONE, name: "iPhone", maxSize: 1280 }, { frame: () => {}, failed: () => {} }, fakeRunner(() => ({})).runner, spawner);
     await expect(session.start()).rejects.toThrow("idb_companion exited");
+  });
+});
+
+describe("SimcapScreenSession", () => {
+  const SIMCAP = "/opt/bin/simcap";
+  const FFMPEG = "/opt/bin/ffmpeg";
+  const H264_STREAM: IosSessionStream = { codec: "h264", maxSize: 1280, bitRate: 6_000_000, maxFps: 60, keyFrameInterval: 2, jpegQuality: 7 };
+  const describeReply = { stdout: JSON.stringify({ screen_dimensions: { width: 1206, height: 2622, density: 3, width_points: 402, height_points: 874 } }) };
+
+  /** idb_companion on a real loopback port; simcap, ffmpeg and idb with controllable output, exit and recorded stdin. */
+  function tools() {
+    const spawned: string[][] = [];
+    const servers: TcpServer[] = [];
+    const outputs = { [SIMCAP]: controllableStream(), [FFMPEG]: controllableStream(), "/opt/bin/idb": controllableStream() };
+    const writes: Record<string, Buffer[]> = {};
+    const exits: Record<string, (code: number | null) => void> = {};
+    /** Unread stdin bytes each binary reports, and every binary `stop` was called on. */
+    const backlog: Record<string, number> = {};
+    const stops: string[] = [];
+    const spawner: ProcessSpawner = (cmd) => {
+      spawned.push(cmd);
+      const bin = cmd[0] ?? "";
+      const empty = new ReadableStream<Uint8Array>({ start: (c) => c.close() });
+      if (bin === "/opt/bin/idb_companion") {
+        const port = Number(cmd[cmd.indexOf("--grpc-port") + 1]);
+        servers.push(createServer((socket) => socket.destroy()).listen(port, "127.0.0.1"));
+      }
+      const exited = new Promise<number | null>((resolve) => (exits[bin] = resolve));
+      const stdout = outputs[bin as keyof typeof outputs]?.stream ?? empty;
+      const stdin = { write: (data: string | Uint8Array) => void (writes[bin] ??= []).push(Buffer.from(data)), end: () => {}, pending: () => backlog[bin] ?? 0 };
+      const stop = async () => {
+        stops.push(bin);
+        exits[bin]?.(null);
+      };
+      return { pid: spawned.length, stdout, stderr: empty, exited, stdin, stop } satisfies SpawnedProcess;
+    };
+    const close = () => {
+      for (const server of servers) server.close();
+    };
+    return { spawner, spawned, outputs, writes, exits, backlog, stops, close };
+  }
+
+  function recorder() {
+    const events = { jpegs: [] as Buffer[], video: [] as unknown[], sizes: [] as unknown[], failures: [] as string[], fallbacks: [] as string[] };
+    const handlers: IosSessionEvents = {
+      frame: (data) => events.jpegs.push(data),
+      video: (frame) => events.video.push(frame),
+      size: (size) => events.sizes.push(size),
+      failed: (message) => events.failures.push(message),
+      fallback: (reason) => events.fallbacks.push(reason),
+    };
+    return { events, handlers };
+  }
+
+  test("h264: probes, passes packets through, asks for key frames on stdin and fails after the first frame", async () => {
+    const fake = tools();
+    const { runner, calls } = fakeRunner((cmd) => (cmd[1] === "describe" ? describeReply : {}));
+    const { events, handlers } = recorder();
+    const session = new SimcapScreenSession(config({ simcap: SIMCAP }), { udid: PHONE, name: "iPhone", maxSize: 1280, stream: H264_STREAM }, handlers, runner, fake.spawner);
+    await session.start();
+    expect(calls.map((call) => call.cmd.slice(0, 2))).toContainEqual([SIMCAP, "probe"]);
+    expect(fake.spawned.at(-1)).toEqual(simcapStreamArgs(SIMCAP, PHONE, H264_STREAM));
+
+    const stream = Buffer.concat([simcapSize(590, 1280), simcapPacket(SIMCAP_FLAGS.config, SPS_PPS), simcapPacket(SIMCAP_FLAGS.keyFrame, idr(1))]);
+    fake.outputs[SIMCAP].push(stream.subarray(0, 9));
+    fake.outputs[SIMCAP].push(stream.subarray(9));
+    await waitFor(() => events.video.length === 2);
+    expect(events.sizes).toEqual([{ width: 590, height: 1280 }]);
+    expect(events.video).toEqual([
+      { data: SPS_PPS, config: true, keyFrame: false },
+      { data: idr(1), config: false, keyFrame: true },
+    ]);
+    session.requestKeyFrame();
+    expect(fake.writes[SIMCAP]?.map(String)).toEqual(["k\n"]);
+    expect(session.points({ width: 590, height: 1280 })).toEqual({ width: 402, height: 874 });
+
+    fake.outputs[SIMCAP].end();
+    fake.exits[SIMCAP]?.(1);
+    await waitFor(() => events.failures.length === 1);
+    expect(events.failures[0]).toContain("tesseract-simcap exited (code 1)");
+    expect(events.fallbacks).toEqual([]);
+    await session.stop(0);
+    fake.close();
+  });
+
+  test("mjpeg: the Annex B payloads go into ffmpeg, its JPEGs come out", async () => {
+    const fake = tools();
+    const { runner } = fakeRunner((cmd) => (cmd[1] === "describe" ? describeReply : {}));
+    const { events, handlers } = recorder();
+    const stream: IosSessionStream = { ...H264_STREAM, codec: "mjpeg", jpegQuality: 5 };
+    const session = new SimcapScreenSession(config({ simcap: SIMCAP, ffmpeg: FFMPEG }), { udid: PHONE, name: "iPhone", maxSize: 1280, stream }, handlers, runner, fake.spawner);
+    await session.start();
+    expect(fake.spawned).toContainEqual([FFMPEG, ...ffmpegMjpegArgs(5)]);
+    fake.outputs[SIMCAP].push(Buffer.concat([simcapSize(590, 1280), simcapPacket(SIMCAP_FLAGS.config, SPS_PPS), simcapPacket(SIMCAP_FLAGS.keyFrame, idr(1))]));
+    await waitFor(() => fake.writes[FFMPEG]?.length === 2);
+    expect(fake.writes[FFMPEG]).toEqual([SPS_PPS, idr(1)]);
+    session.requestKeyFrame();
+    expect(fake.writes[SIMCAP]).toBeUndefined();
+    const frame = jpeg(590, 1280, 1);
+    fake.outputs[FFMPEG].push(frame);
+    await waitFor(() => events.jpegs.length === 1);
+    expect(events.jpegs[0]).toEqual(frame);
+    expect(events.sizes).toEqual([]);
+    await session.stop(0);
+    expect(fake.stops).toEqual(expect.arrayContaining([SIMCAP, FFMPEG, "/opt/bin/idb_companion"]));
+    expect(events.failures).toEqual([]);
+    fake.close();
+  });
+
+  test("mjpeg: while ffmpeg is behind, frames are dropped until a key frame asked for once it drained", async () => {
+    const fake = tools();
+    const { runner } = fakeRunner((cmd) => (cmd[1] === "describe" ? describeReply : {}));
+    const { handlers } = recorder();
+    const stream: IosSessionStream = { ...H264_STREAM, codec: "mjpeg" };
+    const session = new SimcapScreenSession(config({ simcap: SIMCAP, ffmpeg: FFMPEG }), { udid: PHONE, name: "iPhone", maxSize: 1280, stream }, handlers, runner, fake.spawner);
+    await session.start();
+    const push = (...packets: Buffer[]) => fake.outputs[SIMCAP].push(Buffer.concat(packets));
+    push(simcapSize(590, 1280), simcapPacket(SIMCAP_FLAGS.config, SPS_PPS), simcapPacket(SIMCAP_FLAGS.keyFrame, idr(1)), simcapPacket(0, delta(2)));
+    await waitFor(() => fake.writes[FFMPEG]?.length === 3);
+
+    fake.backlog[FFMPEG] = ENCODER_BACKLOG_BYTES + 1;
+    push(simcapPacket(0, delta(3)), simcapPacket(SIMCAP_FLAGS.keyFrame, idr(4)), simcapPacket(SIMCAP_FLAGS.config, SPS_PPS));
+    await waitFor(() => fake.writes[FFMPEG]?.length === 4);
+    expect(fake.writes[SIMCAP]).toBeUndefined();
+
+    fake.backlog[FFMPEG] = 0;
+    push(simcapPacket(0, delta(5)), simcapPacket(0, delta(6)));
+    await waitFor(() => fake.writes[SIMCAP]?.length === 1);
+    push(simcapPacket(SIMCAP_FLAGS.keyFrame, idr(7)), simcapPacket(0, delta(8)));
+    await waitFor(() => fake.writes[FFMPEG]?.length === 6);
+    expect(fake.writes[FFMPEG]).toEqual([SPS_PPS, idr(1), delta(2), SPS_PPS, idr(7), delta(8)]);
+    expect(fake.writes[SIMCAP]?.map(String)).toEqual(["k\n"]);
+    await session.stop(0);
+    fake.close();
+  });
+
+  test("exit 3 is the simulator shutting down, before or after the first key frame: no fallback", async () => {
+    for (const keyed of [false, true]) {
+      const fake = tools();
+      const { runner } = fakeRunner((cmd) => (cmd[1] === "describe" ? describeReply : {}));
+      const { events, handlers } = recorder();
+      const session = new SimcapScreenSession(config({ simcap: SIMCAP }), { udid: PHONE, name: "iPhone", maxSize: 1280, stream: H264_STREAM }, handlers, runner, fake.spawner);
+      await session.start();
+      const packets = [simcapSize(590, 1280), simcapPacket(SIMCAP_FLAGS.config, SPS_PPS)];
+      if (keyed) packets.push(simcapPacket(SIMCAP_FLAGS.keyFrame, idr(1)));
+      fake.outputs[SIMCAP].push(Buffer.concat(packets));
+      await waitFor(() => events.video.length === packets.length - 1);
+      fake.outputs[SIMCAP].end();
+      fake.exits[SIMCAP]?.(3);
+      await waitFor(() => events.failures.length === 1);
+      expect(events.failures).toEqual([IOS_SCREEN_MESSAGES.shutdown]);
+      expect(events.fallbacks).toEqual([]);
+      expect(fake.spawned.some((cmd) => cmd[0] === "/opt/bin/idb")).toBe(false);
+      await session.stop(0);
+      fake.close();
+    }
+  });
+
+  test("a corrupt stream stops simcap and falls back with the parse error", async () => {
+    const fake = tools();
+    const { runner } = fakeRunner((cmd) => (cmd[1] === "describe" ? describeReply : {}));
+    const { events, handlers } = recorder();
+    const session = new SimcapScreenSession(config({ simcap: SIMCAP }), { udid: PHONE, name: "iPhone", maxSize: 1280, stream: H264_STREAM }, handlers, runner, fake.spawner);
+    await session.start();
+    const header = Buffer.alloc(5);
+    header.writeUInt32BE(64 * 1024 * 1024, 0);
+    fake.outputs[SIMCAP].push(Buffer.concat([simcapSize(590, 1280), header]));
+    await waitFor(() => events.fallbacks.length === 1);
+    expect(fake.stops).toContain(SIMCAP);
+    expect(events.fallbacks[0]).toContain("tesseract-simcap sent a 67108864 byte packet");
+    await waitFor(() => fake.spawned.at(-1)?.[0] === "/opt/bin/idb");
+    expect(events.failures).toEqual([]);
+    await session.stop(0);
+    fake.close();
+  });
+
+  test("mjpeg: simcap exiting before the first key frame stops ffmpeg quietly and falls back", async () => {
+    const fake = tools();
+    const { runner } = fakeRunner((cmd) => (cmd[1] === "describe" ? describeReply : {}));
+    const { events, handlers } = recorder();
+    const stream: IosSessionStream = { ...H264_STREAM, codec: "mjpeg" };
+    const session = new SimcapScreenSession(config({ simcap: SIMCAP, ffmpeg: FFMPEG }), { udid: PHONE, name: "iPhone", maxSize: 1280, stream }, handlers, runner, fake.spawner);
+    await session.start();
+    fake.outputs[SIMCAP].end();
+    fake.exits[SIMCAP]?.(1);
+    await waitFor(() => events.fallbacks.length === 1);
+    expect(fake.stops).toContain(FFMPEG);
+    await waitFor(() => fake.spawned.at(-1)?.[0] === FFMPEG && fake.spawned.at(-2)?.[0] === "/opt/bin/idb");
+    await Bun.sleep(30);
+    expect(events.failures).toEqual([]);
+    await session.stop(0);
+    fake.close();
+  });
+
+  test("a stop during the probe does not wait for it", async () => {
+    const fake = tools();
+    let probing = false;
+    const { runner } = fakeRunner((cmd) => {
+      if (cmd[1] === "describe") return describeReply;
+      if (cmd[1] !== "probe") return {};
+      probing = true;
+      return new Promise<Reply>(() => {});
+    });
+    const { events, handlers } = recorder();
+    const session = new SimcapScreenSession(config({ simcap: SIMCAP }), { udid: PHONE, name: "iPhone", maxSize: 1280, stream: H264_STREAM }, handlers, runner, fake.spawner);
+    const started = session.start();
+    await waitFor(() => probing);
+    const begun = Date.now();
+    await session.stop(0);
+    expect(Date.now() - begun).toBeLessThan(1_000);
+    await expect(started).rejects.toThrow(IOS_SCREEN_MESSAGES.ended);
+    expect(fake.spawned.some((cmd) => cmd[0] === SIMCAP)).toBe(false);
+    expect(events.failures).toEqual([]);
+    fake.close();
+  });
+
+  test("falls back to idb without the helper, when its probe fails or when it exits before the first key frame", async () => {
+    const run = async (simcap: string | null, probeOk: boolean) => {
+      const fake = tools();
+      const { runner } = fakeRunner((cmd) => (cmd[1] === "describe" ? describeReply : cmd[1] === "probe" ? { ok: probeOk, stdout: '{"ok":false,"message":"no screen port"}' } : {}));
+      const { events, handlers } = recorder();
+      const session = new SimcapScreenSession(config({ simcap }), { udid: PHONE, name: "iPhone", maxSize: 1280, stream: H264_STREAM }, handlers, runner, fake.spawner);
+      await session.start();
+      return { fake, events, session };
+    };
+
+    const missing = await run(null, true);
+    expect(missing.events.fallbacks).toEqual(["tesseract-simcap is not installed on the host; set TESSERACT_SIMCAP"]);
+    expect(missing.fake.spawned.at(-1)?.slice(0, 2)).toEqual(["/opt/bin/idb", "video-stream"]);
+    await missing.session.stop(0);
+    missing.fake.close();
+
+    const refused = await run(SIMCAP, false);
+    expect(refused.events.fallbacks[0]).toContain("tesseract-simcap probe failed");
+    expect(refused.fake.spawned.some((cmd) => cmd[0] === SIMCAP)).toBe(false);
+    await refused.session.stop(0);
+    refused.fake.close();
+
+    const early = await run(SIMCAP, true);
+    expect(early.fake.spawned.map((cmd) => cmd[0])).toContain(SIMCAP);
+    early.fake.outputs[SIMCAP].push(simcapSize(590, 1280));
+    early.fake.outputs[SIMCAP].end();
+    early.fake.exits[SIMCAP]?.(1);
+    await waitFor(() => early.fake.spawned.at(-1)?.[0] === "/opt/bin/idb");
+    expect(early.events.fallbacks[0]).toContain("tesseract-simcap exited before its first frame (code 1)");
+    early.fake.outputs["/opt/bin/idb"].push(jpeg(603, 1311));
+    await waitFor(() => early.events.jpegs.length === 1);
+    expect(early.events.failures).toEqual([]);
+    await early.session.stop(0);
+    early.fake.close();
+  });
+
+  test("starts the helper before idb is up, so its first frame does not wait for idb_companion and idb describe", async () => {
+    const fake = tools();
+    let describing = false;
+    let described!: (reply: Reply) => void;
+    const { runner } = fakeRunner((cmd) => {
+      if (cmd[1] !== "describe") return {};
+      describing = true;
+      return new Promise<Reply>((resolve) => (described = resolve));
+    });
+    const { handlers } = recorder();
+    const session = new SimcapScreenSession(config({ simcap: SIMCAP }), { udid: PHONE, name: "iPhone", maxSize: 1280, stream: H264_STREAM }, handlers, runner, fake.spawner);
+    const started = session.start();
+    await waitFor(() => describing && fake.spawned.some((cmd) => cmd[0] === SIMCAP));
+    described(describeReply);
+    await started;
+    expect(fake.spawned.filter((cmd) => cmd[0] === SIMCAP)).toHaveLength(1);
+    await session.stop(0);
+    fake.close();
   });
 });
 
@@ -771,10 +1309,13 @@ describe("host iOS API", () => {
     shell = null;
   });
 
-  async function start(ios: IosConfig, mac = fakeMac(), factory?: (events: IosSessionEvents) => void): Promise<string> {
+  let stateFile = "";
+
+  async function start(ios: IosConfig, mac = fakeMac(), factory?: (events: IosSessionEvents, target: IosScreenTarget) => void): Promise<string> {
     const dir = makeTempDir("host-ios");
     const hostConfig: HostConfig = { ...loadHostConfig({ HOME: dir, TESSERACT_HOST_SHELL_DIR: join(dir, "state"), PATH: "" }, { bind: "127.0.0.1", port: "0" }), ios };
     const store = new HostStateStore(hostConfig.stateDir, hostConfig.stateFile);
+    stateFile = hostConfig.stateFile;
     await store.setPin(PIN);
     shell = startHostShell(hostConfig, {
       logger: silentLogger,
@@ -782,8 +1323,8 @@ describe("host iOS API", () => {
         runner: mac.runner,
         simulator: { watchMs: 0 },
         screen: {
-          factory: (_target, events) => {
-            factory?.(events);
+          factory: (target, events) => {
+            factory?.(events, target);
             return { start: async () => {}, stop: async () => {}, input: () => null, points: () => null };
           },
         },
@@ -815,6 +1356,8 @@ describe("host iOS API", () => {
       ["DELETE", "/v1/ios/link"],
       ["GET", "/v1/ios/installs"],
       ["POST", "/v1/ios/installs/ins_0123456789"],
+      ["GET", "/v1/ios/stream"],
+      ["PUT", "/v1/ios/stream"],
     ] as const) {
       expect((await call(method, path, null)).status).toBe(401);
       expect((await call(method, path, token)).status).toBe(401);
@@ -877,5 +1420,36 @@ describe("host iOS API", () => {
     await waitFor(() => binaries.length === 1);
     expect(JSON.parse(texts[0] ?? "{}")).toEqual({ type: "meta", deviceName: "iPhone 17 Pro", codec: "mjpeg", width: 360, height: 720 });
     ws.close();
+  });
+
+  test("stream settings: defaults, a validated PUT saved in state.json, and h264 screens on codec=h264", async () => {
+    const mac = fakeMac();
+    mac.states[PHONE] = "Booted";
+    const targets: IosScreenTarget[] = [];
+    const session = await start(config(), mac, (_events, target) => targets.push(target));
+    expect(IosStreamSettingsSchema.parse((await call("GET", "/v1/ios/stream", session)).body)).toEqual(DEFAULT_IOS_STREAM);
+    expect((await call("PUT", "/v1/ios/stream", session, { bitRate: 1 })).status).toBe(400);
+    expect((await call("PUT", "/v1/ios/stream", session, { encoding: "vp9" })).status).toBe(400);
+    const updated = await call("PUT", "/v1/ios/stream", session, { bitRate: 4_000_000, maxSize: 1024 });
+    expect(updated.body).toEqual({ ...DEFAULT_IOS_STREAM, bitRate: 4_000_000, maxSize: 1024 });
+    expect((await call("GET", "/v1/ios/stream", session)).body).toEqual(updated.body);
+    expect(JSON.parse(await Bun.file(stateFile).text()).iosStream).toEqual({ bitRate: 4_000_000, maxSize: 1024 });
+
+    const ticket = (await call("POST", "/v1/auth/ticket", session)).body.ticket as string;
+    const ws = new WebSocket(`${base.replace("http", "ws")}/v1/ios/screen?ticket=${ticket}&maxSize=1280&codec=h264`);
+    await waitFor(() => targets.length === 1);
+    expect(targets[0]?.stream).toMatchObject({ codec: "h264", maxSize: 1024, bitRate: 4_000_000 });
+    await call("PUT", "/v1/ios/stream", session, { encoding: "mjpeg" });
+    await waitFor(() => targets.length === 2);
+    expect(targets[1]?.stream?.codec).toBe("mjpeg");
+    ws.close();
+  });
+
+  test("state.json keeps the valid iOS stream fields only", () => {
+    const dir = makeTempDir("host-ios-state");
+    writeFileSync(join(dir, "state.json"), JSON.stringify({ iosStream: { bitRate: 1, maxFps: 30, encoding: "vp9", device: "emulator-5554" } }));
+    const store = new HostStateStore(dir, join(dir, "state.json"));
+    expect(store.iosStreamSettings()).toEqual({ ...DEFAULT_IOS_STREAM, maxFps: 30 });
+    expect(store.androidStreamSettings().maxFps).not.toBe(30);
   });
 });

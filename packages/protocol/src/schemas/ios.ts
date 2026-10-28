@@ -18,6 +18,8 @@ import {
   AndroidLinkInfoSchema,
   AndroidScreenClientMessageSchema,
   AndroidScreenServerMessageSchema,
+  AndroidStreamEncodingSchema,
+  AndroidStreamSettingsSchema,
   type AndroidScreenClientMessage,
   type AndroidScreenServerMessage,
 } from "./android";
@@ -29,7 +31,10 @@ import { ArtifactIdSchema, ByteCountSchema, IosInstallIdSchema, IosStreamIdSchem
  */
 export const DeviceScreenClientMessageSchema = AndroidScreenClientMessageSchema;
 export type DeviceScreenClientMessage = AndroidScreenClientMessage;
-/** Daemon → client text frames of a device screen socket; iOS always sends `codec: "mjpeg"` (one JPEG per binary message). */
+/**
+ * Daemon → client text frames of a device screen socket. iOS sends `codec: "h264"` (flags byte + Annex B, as Android) when
+ * the viewer asked `codec=h264`, the stream settings allow it and the host has `tesseract-simcap`; else `mjpeg`.
+ */
 export const DeviceScreenServerMessageSchema = AndroidScreenServerMessageSchema;
 export type DeviceScreenServerMessage = AndroidScreenServerMessage;
 
@@ -132,8 +137,21 @@ export const IosScreenQuerySchema = z.object({
   maxSize: z.coerce.number<string | number | undefined>().int().min(1).max(LIMITS.maxAndroidScreenSize).optional(),
   /** A booted device to stream; the status' `booted` device when missing. */
   udid: SimUdidSchema.optional(),
+  /** `h264` when the viewer can decode H.264; the host falls back to JPEG otherwise. */
+  codec: AndroidStreamEncodingSchema.optional(),
 });
 export type IosScreenQuery = z.infer<typeof IosScreenQuerySchema>;
+
+/**
+ * How the host streams an iOS Simulator screen (Android's settings without `device`, same limits); a new screen session uses
+ * the settings current when it starts. `maxSize` caps the viewer's own size (null: the viewer decides).
+ */
+export const IosStreamSettingsSchema = AndroidStreamSettingsSchema.omit({ device: true });
+export type IosStreamSettings = z.infer<typeof IosStreamSettingsSchema>;
+
+/** `PUT /v1/ios/stream`: the fields to change. */
+export const UpdateIosStreamSchema = IosStreamSettingsSchema.partial();
+export type UpdateIosStream = z.infer<typeof UpdateIosStreamSchema>;
 
 const RequestIdSchema = z.string().min(1).max(LIMITS.maxIosRequestIdLength).regex(/^[A-Za-z0-9._:-]+$/, "Invalid request id");
 

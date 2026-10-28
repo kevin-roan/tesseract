@@ -1,4 +1,6 @@
+import type { DeployKind, DeployStatus } from "@tesseract/protocol";
 import type { RouteScheme } from "../../../shared/contracts/containers";
+import type { IconName } from "../../theme/icons";
 
 export const CONTAINERS_KEYS = {
   list: ["ipc", "containers", "list"] as const,
@@ -6,6 +8,7 @@ export const CONTAINERS_KEYS = {
   report: ["ipc", "containers", "report"] as const,
   phase: ["ipc", "containers", "phase"] as const,
   logs: (name: string) => ["ipc", "containers", "logs", name] as const,
+  deploys: ["ipc", "containers", "deploys"] as const,
 };
 
 export const CONTAINERS_MUTATIONS = {
@@ -14,10 +17,16 @@ export const CONTAINERS_MUTATIONS = {
   remove: ["containers", "remove"] as const,
 };
 
+export const DEPLOYS_MUTATIONS = {
+  decide: ["deploys", "decide"] as const,
+  autoDeploy: ["deploys", "auto-deploy"] as const,
+};
+
 export const CONTAINERS_POLL = {
   listMs: 10_000,
   routesMs: 30_000,
   logsMs: 5_000,
+  deploysMs: 15_000,
   reportStaleMs: 60_000,
 } as const;
 
@@ -38,6 +47,10 @@ export const MB_PER_GB = 1024;
 export const ROUTE_SCHEMES: readonly RouteScheme[] = ["http", "https"];
 export const ROUTE_DEFAULTS = { port: "3000", scheme: "http" as RouteScheme } as const;
 export const PORT_RANGE = { min: 1, max: 65_535 } as const;
+
+export const ACTIVE_DEPLOY_STATUSES: readonly DeployStatus[] = ["pending", "claimed", "awaiting_approval", "deploying"];
+
+export const DEPLOY_KIND_ICONS: Record<DeployKind, IconName> = { compose: "compose", dockerfile: "docker" };
 
 export const CONTAINERS_DIALOG_WIDTH = { create: 460, route: 500 } as const;
 export const CREATE_DIALOG_PARAM = "new-container";

@@ -1,20 +1,21 @@
 import { useCallback, useMemo } from "react";
 import { usePathname } from "expo-router";
 
-import { useBuilds } from "@/features/sandbox/hooks/use-sandbox-queries";
+import { useBuilds, useProcesses } from "@/features/sandbox/hooks/use-sandbox-queries";
 import { useCancelAgentRun, useCancelBuild, useStopProcess } from "@/features/sandbox/hooks/use-sandbox-mutations";
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
 import { useSettingsStore } from "@/features/settings/store/settings-store";
 
 import { useIslandStore } from "../store/island-store";
 import { capsuleTitle, focusedItem, islandItems, islandPanelHeight } from "../utils/format";
-import { hasLiveWork, isBuildCommand } from "../utils/state";
+import { commandTarget, hasLiveWork, isBuildCommand } from "../utils/state";
 import { useIslandActions } from "./use-island-actions";
 import { useIslandDispatch } from "./use-island-dispatch";
 import { useIslandState } from "./use-island-state";
 import { useLiveActivity } from "./use-live-activity";
 
 export type IslandHostState = ReturnType<typeof useIslandHost>;
+export type IslandOpenTarget = "chat" | "terminal" | null;
 
 export function useIslandHost() {
   const state = useIslandState();
@@ -28,6 +29,7 @@ export function useIslandHost() {
   const nav = useSandboxNavigation();
   const pathname = usePathname();
   const builds = useBuilds();
+  const processes = useProcesses();
   const cancelRun = useCancelAgentRun();
   const cancelBuild = useCancelBuild();
   const stopProcess = useStopProcess();
@@ -59,13 +61,20 @@ export function useIslandHost() {
     },
     [pathname, nav, setExpanded],
   );
-  const openChat = useCallback(() => {
-    if (runId) openRun(runId);
-    else {
-      setExpanded(false);
-      nav.newAgentRun();
-    }
-  }, [runId, openRun, nav, setExpanded]);
+  const target = useMemo(
+    () => (commandId ? commandTarget(commandId, builds.data, processes.data) : null),
+    [commandId, builds.data, processes.data],
+  );
+  const openTarget: IslandOpenTarget = commandId ? (target ? "terminal" : null) : "chat";
+  /** A run opens its chat, a command the screen showing its output; with nothing live it starts a new chat. */
+  const open = useCallback(() => {
+    if (runId) return openRun(runId);
+    if (commandId && !target) return;
+    setExpanded(false);
+    if (target?.kind === "build") nav.build(target.id);
+    else if (target?.kind === "process") nav.project(target.projectId, target.id);
+    else nav.newAgentRun();
+  }, [runId, commandId, target, openRun, nav, setExpanded]);
   const panelHeight = islandPanelHeight(items.length);
   const capture = useCallback(() => openCapture(), [openCapture]);
 
@@ -101,7 +110,8 @@ export function useIslandHost() {
     stopping,
     toggle: toggleExpanded,
     collapse,
-    openChat,
+    open,
+    openTarget,
     panelHeight,
     stop,
     capture,

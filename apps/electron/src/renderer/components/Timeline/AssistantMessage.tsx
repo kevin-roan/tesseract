@@ -26,9 +26,7 @@ export function AssistantMessage({
 }: AssistantMessageProps) {
   return (
     <div className={cx(styles.assistantMessage, className)} data-working={working || undefined}>
-      {author ? (
-        <AuthorLine avatar={avatar ?? <span className={styles.agentAvatar} aria-hidden />} name={author} />
-      ) : null}
+      {author ? <AuthorLine avatar={avatar} name={author} /> : null}
       <MarkdownView text={text} copyLabel={copyLabel} copiedLabel={copiedLabel} className={styles.messageBody} />
     </div>
   );

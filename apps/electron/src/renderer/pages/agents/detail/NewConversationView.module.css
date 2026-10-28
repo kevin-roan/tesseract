@@ -47,39 +47,6 @@
   background: var(--to-background-selected);
 }
 
-.picker {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 0 2px 0 10px;
-  border: 1px solid var(--to-border);
-  border-radius: var(--to-radius-pill);
-  transition: var(--to-state-transition);
-}
-
-.picker:hover {
-  background: var(--to-background-element);
-}
-
-.pickerDropdown.pickerDropdown {
-  height: 28px;
-  padding: 0 14px 0 3px;
-  border: none;
-  background: transparent;
-  color: var(--to-text-secondary);
-  font-weight: 500;
-}
-
-.pickerDropdown.pickerDropdown:hover,
-.pickerDropdown.pickerDropdown[data-open] {
-  background: transparent;
-  color: var(--to-text);
-}
-
-.pickerDropdown > svg {
-  display: none;
-}
-
 .suggestions {
   display: flex;
   flex-wrap: wrap;

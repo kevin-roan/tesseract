@@ -11,6 +11,7 @@ import {
   type RuntimeList,
   EmulatorInfoSchema,
   HostAndroidStatusSchema,
+  HostWorkspaceAccessSchema,
   RunTargetListSchema,
   SandboxAndroidStatusSchema,
   type AndroidDevice,
@@ -21,6 +22,7 @@ import {
   type AppRunFilter,
   type EmulatorInfo,
   type HostAndroidStatus,
+  type HostWorkspaceAccess,
   type LinkSandbox,
   type UpdateAndroidStream,
   type RunTargetInfo,
@@ -35,6 +37,9 @@ import {
   SandboxIosStatusSchema,
   IosLinkRequestSchema,
   SimDeviceSchema,
+  IosStreamSettingsSchema,
+  type IosStreamSettings,
+  type UpdateIosStream,
   type HostIosStatus,
   type IosInstallRequest,
   type IosLinkInfo,
@@ -59,13 +64,22 @@ import {
   BuildJobSchema,
   BuildListSchema,
   ClaudeAccountListSchema,
+  ClaudeCommandListSchema,
   ClaudeAuthStatusSchema,
   ClaudeImportResultSchema,
   ClaudeSessionListSchema,
   CreateProjectResponseSchema,
+  DeployListSchema,
+  DeploySchema,
+  DeployTargetsSchema,
+  IssueCommentSchema,
+  IssueDetailSchema,
+  IssueListSchema,
+  IssueSchema,
   DisplayStatusSchema,
   errorCodeForStatus,
   GitDetailsSchema,
+  ProjectGitResultSchema,
   HealthSchema,
   HostHealthSchema,
   HostLockStatusSchema,
@@ -144,14 +158,33 @@ import {
   type CreateProject,
   type CreateProjectResponse,
   type CreateTerminal,
+  type ClaimDeploy,
+  type CompleteDeploy,
+  type CreateDeploy,
+  type Deploy,
+  type DeployFilter,
+  type DeployProgress,
+  type DeployTargets,
+  type PutDeployTargets,
+  type CreateIssue,
+  type CreateIssueComment,
+  type DispatchIssue,
+  type Issue,
+  type IssueComment,
+  type IssueDetail,
+  type IssueFilter,
+  type UpdateIssue,
   type DisplayStatus,
   type EventsClientMessage,
   type GitDetails,
+  type ProjectGitResult,
+  type RunProjectGit,
   type Health,
   type HostHealth,
   type HostLockStatus,
   type HostSession,
   type ClaudeAccountList,
+  type ClaudeCommand,
   type ClaudeAuthStatus,
   type SetDefaultClaudeAccount,
   type SetProjectClaudeAccount,
@@ -283,6 +316,13 @@ export interface TerminalConnection extends StreamConnection {
 }
 
 export const DEFAULT_TIMEOUT_MS = 15_000;
+export const PROJECT_GIT_TIMEOUT_MS = 310_000;
+export const DEPLOY_CREATE_TIMEOUT_MS = 10 * 60_000;
+export const DEPLOY_BUNDLE_TIMEOUT_MS = 30 * 60_000;
+export const DEPLOY_SHA256_HEADER = "x-tesseract-sha256";
+
+/** A deploy archive (`application/gzip`) and the sha256 the controller announced for it. */
+export type DeployBundle = { sha256: string | null; data: ArrayBuffer };
 export const DEFAULT_EVENTS_IDLE_TIMEOUT_MS = LIMITS.eventsPingIntervalMs * 2 + 10_000;
 
 type ResponseReader<T> = (response: HttpResponse, path: string) => Promise<T>;
@@ -318,6 +358,11 @@ const ignoreBody: ResponseReader<void> = async (response) => {
 };
 
 const binary: ResponseReader<ArrayBuffer> = (response) => response.arrayBuffer();
+
+const deployBundle: ResponseReader<DeployBundle> = async (response) => ({
+  sha256: response.headers.get(DEPLOY_SHA256_HEADER),
+  data: await response.arrayBuffer(),
+});
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -393,6 +438,10 @@ export class TesseractClient {
     return this.request("GET", restPaths.claudeAccounts(), { read: json(ClaudeAccountListSchema), options });
   }
 
+  claudeCommands(query?: ProjectFilter, options?: RequestOptions): Promise<ClaudeCommand[]> {
+    return this.request("GET", restPaths.claudeCommands(query), { read: json(ClaudeCommandListSchema), options });
+  }
+
   setDefaultClaudeAccount(body: SetDefaultClaudeAccount, options?: RequestOptions): Promise<ClaudeAccountList> {
     return this.request("PUT", restPaths.claudeDefaultAccount(), { read: json(ClaudeAccountListSchema), body, options });
   }
@@ -466,6 +515,11 @@ export class TesseractClient {
     return this.request("GET", restPaths.projectGit(id), { read: json(GitDetailsSchema), options });
   }
 
+  /** 409 with git's output when the command fails (e.g. a pull that is not a fast-forward). */
+  runProjectGit(id: string, body: RunProjectGit, options?: RequestOptions): Promise<ProjectGitResult> {
+    return this.request("POST", restPaths.projectGit(id), { read: json(ProjectGitResultSchema), body, options: { timeoutMs: PROJECT_GIT_TIMEOUT_MS, ...options } });
+  }
+
   /** One directory of the project; `path` is relative to the project root ("" for the root). */
   listProjectFiles(id: string, path = "", options?: RequestOptions): Promise<ProjectDirectory> {
     return this.request("GET", restPaths.projectFiles(id, path ? { path } : undefined), { read: json(ProjectDirectorySchema), options });
@@ -528,6 +582,77 @@ export class TesseractClient {
 
   syncHeartbeat(body: SyncHeartbeat, options?: RequestOptions): Promise<void> {
     return this.request("POST", restPaths.syncHeartbeat(), { read: ignoreBody, body, options });
+  }
+
+  listDeploys(filter?: DeployFilter, options?: RequestOptions): Promise<Deploy[]> {
+    return this.request("GET", restPaths.deploys(filter), { read: json(DeployListSchema), options });
+  }
+
+  /** The controller archives `body.path` before answering, so this waits up to `DEPLOY_CREATE_TIMEOUT_MS`. */
+  createDeploy(body: CreateDeploy, options?: RequestOptions): Promise<Deploy> {
+    return this.request("POST", restPaths.deploys(), { read: json(DeploySchema), body, options: { timeoutMs: DEPLOY_CREATE_TIMEOUT_MS, ...options } });
+  }
+
+  getDeploy(id: string, options?: RequestOptions): Promise<Deploy> {
+    return this.request("GET", restPaths.deploy(id), { read: json(DeploySchema), options });
+  }
+
+  deployTargets(options?: RequestOptions): Promise<DeployTargets> {
+    return this.request("GET", restPaths.deployTargets(), { read: json(DeployTargetsSchema), options });
+  }
+
+  putDeployTargets(body: PutDeployTargets, options?: RequestOptions): Promise<DeployTargets> {
+    return this.request("PUT", restPaths.deployTargets(), { read: json(DeployTargetsSchema), body, options });
+  }
+
+  claimDeploy(id: string, body: ClaimDeploy, options?: RequestOptions): Promise<Deploy> {
+    return this.request("POST", restPaths.deployClaim(id), { read: json(DeploySchema), body, options });
+  }
+
+  /** Only while the deploy is claimed, awaiting approval or deploying; compare `sha256` with `Deploy.sha256`. */
+  deployBundle(id: string, options?: RequestOptions): Promise<DeployBundle> {
+    return this.request("GET", restPaths.deployBundle(id), { read: deployBundle, options: { timeoutMs: DEPLOY_BUNDLE_TIMEOUT_MS, ...options } });
+  }
+
+  deployProgress(id: string, body: DeployProgress, options?: RequestOptions): Promise<Deploy> {
+    return this.request("POST", restPaths.deployProgress(id), { read: json(DeploySchema), body, options });
+  }
+
+  completeDeploy(id: string, body: CompleteDeploy, options?: RequestOptions): Promise<Deploy> {
+    return this.request("POST", restPaths.deployComplete(id), { read: json(DeploySchema), body, options });
+  }
+
+  cancelDeploy(id: string, options?: RequestOptions): Promise<Deploy> {
+    return this.request("POST", restPaths.deployCancel(id), { read: json(DeploySchema), options });
+  }
+
+  listIssues(filter?: IssueFilter, options?: RequestOptions): Promise<Issue[]> {
+    return this.request("GET", restPaths.issues(filter), { read: json(IssueListSchema), options });
+  }
+
+  createIssue(projectId: string, body: CreateIssue, options?: RequestOptions): Promise<Issue> {
+    return this.request("POST", restPaths.projectIssues(projectId), { read: json(IssueSchema), body, options });
+  }
+
+  getIssue(id: string, options?: RequestOptions): Promise<IssueDetail> {
+    return this.request("GET", restPaths.issue(id), { read: json(IssueDetailSchema), options });
+  }
+
+  updateIssue(id: string, body: UpdateIssue, options?: RequestOptions): Promise<Issue> {
+    return this.request("PATCH", restPaths.issue(id), { read: json(IssueSchema), body, options });
+  }
+
+  deleteIssue(id: string, options?: RequestOptions): Promise<Issue> {
+    return this.request("DELETE", restPaths.issue(id), { read: json(IssueSchema), options });
+  }
+
+  commentOnIssue(id: string, body: CreateIssueComment, options?: RequestOptions): Promise<IssueComment> {
+    return this.request("POST", restPaths.issueComments(id), { read: json(IssueCommentSchema), body, options });
+  }
+
+  /** Starts Claude on the issue (assigning it to `claude`); 409 while a run for it is still running. */
+  dispatchIssue(id: string, body: DispatchIssue = {}, options?: RequestOptions): Promise<Issue> {
+    return this.request("POST", restPaths.issueDispatch(id), { read: json(IssueSchema), body, options });
   }
 
   listProcesses(filter?: ProjectFilter, options?: RequestOptions): Promise<ProcessInfo[]> {
@@ -732,6 +857,11 @@ export class TesseractClient {
     return this.request("GET", restPaths.android(), { read: json(SandboxAndroidStatusSchema), options });
   }
 
+  /** Host daemon (session client): the host workspace controller (URL + token) and its linked repositories; 404 before it was set up. */
+  hostWorkspace(options?: RequestOptions): Promise<HostWorkspaceAccess> {
+    return this.request("GET", restPaths.hostWorkspace(), { read: json(HostWorkspaceAccessSchema), options });
+  }
+
   /** Host daemon (session client): emulator, AVDs and the sandbox link. */
   hostAndroidStatus(options?: RequestOptions): Promise<HostAndroidStatus> {
     return this.request("GET", restPaths.android(), { read: json(HostAndroidStatusSchema), options });
@@ -812,6 +942,15 @@ export class TesseractClient {
   /** Approves (and remembers the bundle hash) or rejects a pending install; 409 when it is no longer pending. */
   decideIosInstall(id: string, approve: boolean, options?: RequestOptions): Promise<IosInstallRequest> {
     return this.request("POST", restPaths.iosInstall(id), { read: json(IosInstallRequestSchema), body: { approve }, options });
+  }
+
+  /** Host daemon iOS screen stream settings; changing them restarts the running screen sessions. */
+  iosStreamSettings(options?: RequestOptions): Promise<IosStreamSettings> {
+    return this.request("GET", restPaths.iosStream(), { read: json(IosStreamSettingsSchema), options });
+  }
+
+  updateIosStream(body: UpdateIosStream, options?: RequestOptions): Promise<IosStreamSettings> {
+    return this.request("PUT", restPaths.iosStream(), { read: json(IosStreamSettingsSchema), body, options });
   }
 
   /** Headers for requests made outside this client (e.g. an <Image> source for the screenshot endpoint). */

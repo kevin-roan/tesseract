@@ -5,8 +5,6 @@ import {
   ArrowDownRightIcon,
   ArrowUpLeftIcon,
   ArrowUpRightIcon,
-  BellRingingIcon,
-  BellSlashIcon,
   CloudIcon,
   CpuIcon,
   CursorClickIcon,
@@ -59,21 +57,15 @@ export const ISLAND_PLACEMENT_OPTIONS: ChoiceOption[] = [
   { id: "hidden", label: `${Platform.OS === "ios" ? "Dynamic Island" : "Notification"} only`, icon: EyeSlashIcon },
 ] satisfies (ChoiceOption & { id: IslandPlacement })[];
 
-export const LIVE_ACTIVITY_OPTIONS: ChoiceOption[] = [
-  { id: "on", label: "On", icon: BellRingingIcon },
-  { id: "off", label: "Off", icon: BellSlashIcon },
-];
-
 export const SETTINGS_COPY = {
-  title: "Settings",
-  subtitle: "Preferences for this device and sandbox",
   sttTitle: "Speech to text",
+  sttSubtitle: "Engine for voice messages",
+  sttEngineTitle: "Engine",
+  sttProviderLabels: { gemini: "Gemini", native: "Native" } satisfies Record<SttProvider, string>,
   providerFootnote: "Saved on this device. Every voice message you record uses this engine.",
-  geminiLabel: "Gemini",
   geminiDetail: (model: string) =>
     `Cloud transcription via ${model}. Falls back to the sandbox's whisper.cpp if the key is missing, expired or out of quota.`,
   geminiNoKey: "No key",
-  nativeLabel: "Native",
   nativeDetail: "whisper.cpp on the sandbox. Private, runs on the sandbox CPU.",
   geminiMissingTitle: "Gemini isn't set up",
   geminiMissing: "Add a Gemini API key below, otherwise voice messages use Native transcription.",
@@ -96,14 +88,9 @@ export const SETTINGS_COPY = {
   appearanceTitle: "Appearance",
   appearanceLabel: "Theme",
   appearanceFootnote: "System follows the light or dark setting of this device.",
-  sandboxTitle: "Sandbox",
-  hubTitle: "Sandbox hub",
-  hubSubtitle: "Projects, runs and builds",
-  displayTitle: "Remote display",
-  inputModeLabel: "Input mode",
+  inputModeLabel: "Display input",
   inputModeFootnote: "How touches drive the sandbox desktop.",
-  islandTitle: "Live work indicator",
-  islandPlacementLabel: "In-app position",
+  islandPlacementLabel: "Work indicator",
   islandPlacementFootnote: "Where the running-work orb starts in the app. Drag it anywhere and it docks to the nearest edge.",
   liveActivityLabel: Platform.OS === "ios" ? "Live Activity" : "Ongoing notification",
   liveActivityFootnote: `Shows runs and commands in the ${SYSTEM_ACTIVITY} and on the lock screen.`,

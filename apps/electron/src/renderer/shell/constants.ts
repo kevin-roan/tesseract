@@ -2,6 +2,7 @@ export const SHELL = {
   collapseBreakpointPx: 720,
   aboutDialogWidth: 360,
   aboutIconSize: 64,
+  recentPlaces: 10,
 } as const;
 
 export const SIDEBAR_MODEL = {

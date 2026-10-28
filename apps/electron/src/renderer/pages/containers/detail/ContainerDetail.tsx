@@ -6,15 +6,17 @@ import { KeyValueList } from "../../../components/KeyValueList";
 import { LogPanel } from "../../../components/LogPanel";
 import { Notice } from "../../../components/Notice";
 import { PageBody } from "../../../components/PageBody";
+import { SettingsGroup, SwitchRow } from "../../../components/PreferenceRows";
 import { Crossfade } from "../../../components/Presence";
 import { Section } from "../../../components/Section";
 import { TerminalPanel } from "../../../components/TerminalPanel";
 import { CONTAINER_LOGS_MIN_HEIGHT } from "../../../features/containers/constants";
 import { useContainerDetail } from "../../../features/containers/hooks/use-container-detail";
-import { CONTAINERS_LABELS as L } from "../../../features/containers/labels";
+import { CONTAINERS_LABELS as L, DEPLOYS_LABELS } from "../../../features/containers/labels";
 import { usePageHeader } from "../../../shell/header-store";
 import { HeaderActions } from "../../projects/HeaderActions";
 import { AddRouteDialog } from "../shared/AddRouteDialog";
+import { DeployList } from "../shared/DeployList";
 import { RouteList } from "../shared/RouteList";
 import { StateView } from "../shared/StateView";
 import { ContainerHeader } from "./ContainerHeader";
@@ -76,6 +78,25 @@ export function ContainerDetail({ name, onBack, onSettings }: ContainerDetailPro
             emptyLabel={L.detail.noUrls}
           >
             <RouteList routes={detail.routes} label={L.detail.urls} />
+          </ListGroup>
+          <SettingsGroup>
+            <SwitchRow
+              title={DEPLOYS_LABELS.autoDeploy}
+              subtitle={DEPLOYS_LABELS.autoDeployHint}
+              checked={detail.autoDeploy.checked}
+              disabled={detail.autoDeploy.saving}
+              onChange={detail.autoDeploy.onChange}
+            />
+          </SettingsGroup>
+          <ListGroup
+            icon="cloud"
+            title={DEPLOYS_LABELS.title}
+            subtitle={DEPLOYS_LABELS.subtitle}
+            count={detail.deploys.length}
+            empty={detail.deploys.length === 0}
+            emptyLabel={DEPLOYS_LABELS.empty}
+          >
+            <DeployList deploys={detail.deploys} label={DEPLOYS_LABELS.list} />
           </ListGroup>
           <LogPanel
             title={L.detail.logs}

@@ -23,6 +23,7 @@ export function describeContainers(containers: readonly ServerContainer[]): stri
       container.state,
       container.tailnet?.dnsName ?? container.tailnet?.hostname ?? "-",
       container.tunnel,
+      container.autoDeploy ? LABELS.on : LABELS.off,
       [container.cpus ? `${container.cpus} cpu` : "", container.memoryMb ? `${container.memoryMb} MB` : ""].filter(Boolean).join(", ") || "-",
     ]),
   ]);
@@ -39,6 +40,7 @@ function describeOne(container: ServerContainer): string[] {
     [LABELS.fields.tailnet, container.tailnet?.dnsName ?? LABELS.notJoined],
     [LABELS.fields.ssh, container.tailnet ? `ssh ${container.tailnet.sshTarget}` : "-"],
     [LABELS.fields.tunnel, container.tunnel],
+    [LABELS.fields.autoDeploy, container.autoDeploy ? LABELS.on : LABELS.off],
   ]);
 }
 
@@ -106,6 +108,11 @@ export const CONTAINERS_ACTIONS: Record<string, Action> = {
     emit(context, { target: container.tailnet.sshTarget }, (value) => [`ssh ${value.target}`]);
     return EXIT.ok;
   },
+  "auto-deploy": single((context, name) => {
+    const value = context.args[2];
+    if (value !== "on" && value !== "off") usageError(LABELS.autoDeployUsage);
+    return containersService(context).setAutoDeploy(name, value === "on");
+  }),
   "tailscale-key": async (context) => {
     const authKey = context.flags.has("clear") ? null : await readStdinSecret();
     if (authKey === "") usageError(LABELS.keyFromStdin);

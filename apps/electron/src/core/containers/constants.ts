@@ -65,6 +65,16 @@ export const BOOT_WAIT = {
   busDown: /Failed to connect to (?:system scope )?bus|^offline$/m,
 } as const;
 
+export const DEPLOY = {
+  appsDir: "/srv/tesseract/apps",
+  imagePrefix: "tesseract-app/",
+  imageTag: "latest",
+  restart: "unless-stopped",
+  dockerWaitMs: 120_000,
+  dockerPollMs: 2_000,
+  stepTimeoutMs: 30 * 60_000,
+} as const;
+
 export const SHELL = {
   unixSocket: "/var/run/docker.sock",
   windowsPipe: "\\\\.\\pipe\\docker_engine",

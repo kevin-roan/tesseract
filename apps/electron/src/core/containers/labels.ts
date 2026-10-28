@@ -29,7 +29,20 @@ export const CONTAINERS_MESSAGES = {
   invalidShell: "Invalid shell session.",
   dockerUnreachable: "Docker didn't answer.",
   unsupportedDockerHost: (host: string) => `The shell can't reach Docker at ${host}. Use a unix socket, named pipe or plain tcp:// endpoint.`,
+  invalidApp: "Invalid app name.",
+  innerDockerDown: (name: string) => `Docker inside ${name} didn't come up.`,
+  deployStepFailed: (step: string, detail: string) => `${step} failed: ${detail}`,
+  deployCancelled: "The deploy was cancelled.",
+  timedOut: "timed out",
+  routeConflict: (hostname: string, container: string, port: number) => `${hostname} is already routed to ${container}:${port}.`,
   tailnetFailed: (name: string, detail: string) => `${name} is running but couldn't join the tailnet (${detail}). Run "tailscale up --ssh" inside it.`,
+} as const;
+
+export const DEPLOY_STEPS = {
+  extract: "Unpacking the bundle",
+  compose: "docker compose up",
+  build: "docker build",
+  run: "docker run",
 } as const;
 
 export const CHECK_LABELS = {

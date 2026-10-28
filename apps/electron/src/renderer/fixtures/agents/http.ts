@@ -10,6 +10,7 @@ import {
   fixtureAgentRuns,
   fixtureArchivedRuns,
   fixtureAttentionItems,
+  fixtureClaudeCommands,
   fixtureRunningRun,
   fixtureTerminalSession,
   minutesAgo,
@@ -21,6 +22,7 @@ export const SCENARIOS = {
   empty: "agents-empty",
   archiveEmpty: "agents-archive-empty",
   error: "agents-error",
+  commandsMissing: "agents-commands-missing",
 } as const;
 
 const rest = routePatterns.rest;
@@ -144,5 +146,11 @@ export default defineHttpFixtures([
       if (scenario === SCENARIOS.attention) return [fixtureTerminalSession];
       return OWN_SCENARIOS.includes(scenario ?? "") ? [] : [sampleClaudeSession];
     },
+  },
+  {
+    method: "GET",
+    path: rest.claudeCommands,
+    respond: () =>
+      currentScenario() === SCENARIOS.commandsMissing ? reply(404, { error: { code: "not_found", message: "Not found" } }) : fixtureClaudeCommands,
   },
 ]);

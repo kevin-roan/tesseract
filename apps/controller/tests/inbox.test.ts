@@ -38,6 +38,7 @@ function endedRun(overrides: Partial<AgentRun> = {}): AgentRun {
     projectId: "app",
     prompt: "fix the tests",
     mode: null,
+    model: null,
     attachments: [],
     sessionId: "sess-1",
     claudeAccountId: null,

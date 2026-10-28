@@ -1,0 +1,15 @@
+.mark {
+  --claude-mark: #d97757;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--claude-mark);
+}
+
+.badge {
+  padding: 2px;
+  box-sizing: border-box;
+  border-radius: var(--to-radius-pill);
+  background: color-mix(in srgb, var(--claude-mark) 16%, transparent);
+}

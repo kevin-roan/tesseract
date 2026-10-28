@@ -1,5 +1,5 @@
 import type { PageState } from "@tesseract/protocol/bridge";
-import { keepFocus } from "./dom";
+import { keepFocus, requireElement } from "./dom";
 import type { KeyDefinition, KeyId } from "./config";
 
 export type ConnectionState = PageState;
@@ -10,6 +10,24 @@ export class StatusBadge {
   set(state: ConnectionState, text: string): void {
     this.element.dataset.state = state;
     this.element.textContent = text;
+  }
+}
+
+export class InfoStrip {
+  private readonly label: HTMLElement;
+  private readonly detail: HTMLElement;
+
+  constructor(element: HTMLElement) {
+    this.label = requireElement("[data-strip-label]", element);
+    this.detail = requireElement("[data-strip-detail]", element);
+  }
+
+  set(label: string, details: readonly (string | null | undefined)[] = []): void {
+    this.label.textContent = label;
+    const text = details.filter(Boolean).join(" · ");
+    this.detail.textContent = text;
+    this.detail.title = text;
+    this.detail.hidden = !text;
   }
 }
 

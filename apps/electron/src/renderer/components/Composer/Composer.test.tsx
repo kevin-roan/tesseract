@@ -102,6 +102,13 @@ describe("Composer", () => {
     await waitFor(() => expect(screen.queryByRole("option")).toBeNull());
   });
 
+  it("shows a slash command's tag and opens below when asked", () => {
+    render(<Harness slashPlacement="below" slashCommands={[{ command: "/deploy", description: "Deploy", tag: "skill" }]} />);
+    fireEvent.change(textbox(), { target: { value: "/d" } });
+    expect(screen.getByRole("option").textContent).toBe("/deployDeployskill");
+    expect(screen.getByRole("listbox").className).toContain("below");
+  });
+
   it("dismisses slash hints with Escape and does not submit while open", async () => {
     const onSubmit = vi.fn();
     render(<Harness onSubmit={onSubmit} slashCommands={[{ command: "review" }]} />);

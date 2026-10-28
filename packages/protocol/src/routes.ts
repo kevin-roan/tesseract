@@ -1,4 +1,4 @@
-import { API_PREFIX, UI_PREFIX, type StopSignal, type SYNC_REQUEST_STATUSES } from "./constants";
+import { API_PREFIX, UI_PREFIX, type DEPLOY_STATUSES, type ISSUE_ASSIGNEES, type ISSUE_STATUSES, type StopSignal, type SYNC_REQUEST_STATUSES } from "./constants";
 import type { RuntimeKind } from "./schemas/runtime";
 import { buildFragment, buildQuery } from "./url";
 
@@ -12,6 +12,8 @@ export type UsageFilter = { days?: number };
 export type SessionsFilter = { limit?: number; projectId?: string };
 export type InboxFilter = { limit?: number; unread?: boolean };
 export type SyncRequestFilter = { status?: (typeof SYNC_REQUEST_STATUSES)[number] };
+export type DeployFilter = { status?: (typeof DEPLOY_STATUSES)[number]; container?: string };
+export type IssueFilter = { projectId?: string; status?: (typeof ISSUE_STATUSES)[number]; assignee?: (typeof ISSUE_ASSIGNEES)[number] };
 export type ForceParam = { force?: boolean };
 export type AgentRunFilter = { projectId?: string; archived?: boolean };
 export type TerminalPageParams = { ticket: string; session: string };
@@ -20,8 +22,8 @@ export type AppRunFilter = { projectId?: string };
 export type StopSignalParam = { signal?: StopSignal };
 export type AndroidScreenFilter = { maxSize?: number; serial?: string; codec?: string };
 export type AndroidScreenParams = { ticket: string; maxSize?: number; serial?: string };
-export type IosScreenFilter = { maxSize?: number; udid?: string };
-export type IosScreenParams = { ticket: string; maxSize?: number; udid?: string };
+export type IosScreenFilter = { maxSize?: number; udid?: string; codec?: string };
+export type IosScreenParams = { ticket: string; maxSize?: number; udid?: string; codec?: string };
 export type IosLinkStreamParams = { port: number };
 
 const segment = (value: string) => encodeURIComponent(value);
@@ -36,6 +38,7 @@ export const restPaths = {
   claudeAuth: () => api("/claude/auth"),
   claudeImport: () => api("/claude/import"),
   claudeAccounts: () => api("/claude/accounts"),
+  claudeCommands: (query?: ProjectFilter) => api(`/claude/commands${buildQuery(query)}`),
   claudeDefaultAccount: () => api("/claude/accounts/default"),
   projects: () => api("/projects"),
   project: (id: string, query?: ForceParam) => api(`/projects/${segment(id)}${buildQuery(query)}`),
@@ -55,6 +58,19 @@ export const restPaths = {
   syncRequestPlan: (id: string) => api(`/sync/requests/${segment(id)}/plan`),
   syncRequestApply: (id: string) => api(`/sync/requests/${segment(id)}/apply`),
   syncHeartbeat: () => api("/sync/heartbeat"),
+  deploys: (query?: DeployFilter) => api(`/deploys${buildQuery(query)}`),
+  deploy: (id: string) => api(`/deploys/${segment(id)}`),
+  deployTargets: () => api("/deploys/targets"),
+  deployClaim: (id: string) => api(`/deploys/${segment(id)}/claim`),
+  deployBundle: (id: string) => api(`/deploys/${segment(id)}/bundle`),
+  deployProgress: (id: string) => api(`/deploys/${segment(id)}/progress`),
+  deployComplete: (id: string) => api(`/deploys/${segment(id)}/complete`),
+  deployCancel: (id: string) => api(`/deploys/${segment(id)}/cancel`),
+  issues: (query?: IssueFilter) => api(`/issues${buildQuery(query)}`),
+  projectIssues: (projectId: string) => api(`/projects/${segment(projectId)}/issues`),
+  issue: (id: string) => api(`/issues/${segment(id)}`),
+  issueComments: (id: string) => api(`/issues/${segment(id)}/comments`),
+  issueDispatch: (id: string) => api(`/issues/${segment(id)}/dispatch`),
   processes: (query?: ProjectFilter) => api(`/processes${buildQuery(query)}`),
   process: (id: string, query?: StopSignalParam) => api(`/processes/${segment(id)}${buildQuery(query)}`),
   processLogs: (id: string, query?: LogTail) => api(`/processes/${segment(id)}/logs${buildQuery(query)}`),
@@ -103,6 +119,7 @@ export const restPaths = {
   events: () => api("/events"),
   hostLock: () => api("/host/lock"),
   hostUnlock: () => api("/host/unlock"),
+  hostWorkspace: () => api("/host/workspace"),
   projectRunTargets: (id: string) => api(`/projects/${segment(id)}/run-targets`),
   projectAppRuns: (id: string) => api(`/projects/${segment(id)}/app-runs`),
   appRuns: (query?: AppRunFilter) => api(`/app-runs${buildQuery(query)}`),
@@ -120,6 +137,7 @@ export const restPaths = {
   iosLink: () => api("/ios/link"),
   iosInstalls: () => api("/ios/installs"),
   iosInstall: (id: string) => api(`/ios/installs/${segment(id)}`),
+  iosStream: () => api("/ios/stream"),
 } as const;
 
 export const wsPaths = {
@@ -155,6 +173,7 @@ export const routePatterns = {
     claudeAuth: api("/claude/auth"),
     claudeImport: api("/claude/import"),
     claudeAccounts: api("/claude/accounts"),
+    claudeCommands: api("/claude/commands"),
     claudeDefaultAccount: api("/claude/accounts/default"),
     projects: api("/projects"),
     project: api("/projects/:id"),
@@ -174,6 +193,19 @@ export const routePatterns = {
     syncRequestPlan: api("/sync/requests/:id/plan"),
     syncRequestApply: api("/sync/requests/:id/apply"),
     syncHeartbeat: api("/sync/heartbeat"),
+    deploys: api("/deploys"),
+    deployTargets: api("/deploys/targets"),
+    deploy: api("/deploys/:id"),
+    deployClaim: api("/deploys/:id/claim"),
+    deployBundle: api("/deploys/:id/bundle"),
+    deployProgress: api("/deploys/:id/progress"),
+    deployComplete: api("/deploys/:id/complete"),
+    deployCancel: api("/deploys/:id/cancel"),
+    issues: api("/issues"),
+    projectIssues: api("/projects/:id/issues"),
+    issue: api("/issues/:id"),
+    issueComments: api("/issues/:id/comments"),
+    issueDispatch: api("/issues/:id/dispatch"),
     processes: api("/processes"),
     process: api("/processes/:id"),
     processLogs: api("/processes/:id/logs"),
@@ -221,6 +253,7 @@ export const routePatterns = {
     events: api("/events"),
     hostLock: api("/host/lock"),
     hostUnlock: api("/host/unlock"),
+    hostWorkspace: api("/host/workspace"),
     projectRunTargets: api("/projects/:id/run-targets"),
     projectAppRuns: api("/projects/:id/app-runs"),
     appRuns: api("/app-runs"),
@@ -238,6 +271,7 @@ export const routePatterns = {
     iosLink: api("/ios/link"),
     iosInstalls: api("/ios/installs"),
     iosInstall: api("/ios/installs/:id"),
+    iosStream: api("/ios/stream"),
   },
   ws: {
     events: api("/events"),

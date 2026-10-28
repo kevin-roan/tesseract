@@ -2,7 +2,6 @@ import { spawn, type ChildProcessByStdio } from "node:child_process";
 import { connect, type Socket } from "node:net";
 import type { Readable, Writable } from "node:stream";
 import {
-  ANDROID_H264_FLAGS,
   DEFAULT_ANDROID_STREAM,
   LIMITS,
   type AndroidScreenClientMessage,
@@ -14,6 +13,7 @@ import { errorMessage } from "../../core/errors";
 import { run } from "../../core/exec";
 import type { Logger } from "../../core/logger";
 import { signalGroup, terminateGroup } from "../../core/process-group";
+import { fanOutFrame, resyncViewer, type ScreenFrame } from "../screen-sync";
 import { sdkEnv, type AndroidConfig } from "./config";
 import type { EmulatorManager } from "./emulator";
 import {
@@ -53,8 +53,6 @@ export type ScreenRequest = { maxSize?: number; serial?: string; codec?: Android
 type Size = { width: number; height: number };
 type Meta = Size & { deviceName: string };
 type SessionStream = EncoderOptions & { codec: AndroidStreamEncoding; jpegQuality: number };
-/** A JPEG (always a key frame) or an H.264 access unit. */
-type ScreenFrame = { data: Buffer; config: boolean; keyFrame: boolean };
 
 type SessionEvents = {
   meta: (meta: Meta) => void;
@@ -64,8 +62,6 @@ type SessionEvents = {
 };
 
 export const DEFAULT_SCREEN_MAX_SIZE = 1280;
-/** H.264 frames kept since the last key frame for viewers that join late; past this they wait for the next key frame. */
-const MAX_GOP_BYTES = 8 * 1024 * 1024;
 /** Android pointer ids per viewer: viewer n uses `n * POINTER_SLOTS + pointerId`. */
 const POINTER_SLOTS = LIMITS.maxAndroidPointerId + 1;
 const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
@@ -374,11 +370,7 @@ type Group = {
   gopBytes: number;
 };
 
-/** The H.264 screen message: a flags byte, then the access unit. */
-export function h264Message(frame: ScreenFrame): Buffer {
-  const flags = (frame.config ? ANDROID_H264_FLAGS.config : 0) | (frame.keyFrame ? ANDROID_H264_FLAGS.keyFrame : 0);
-  return Buffer.concat([Buffer.of(flags), frame.data]);
-}
+export { h264Message } from "../screen-sync";
 
 /**
  * Fans scrcpy sessions out to the open screen sockets: viewers of the same device that decode the same
@@ -538,39 +530,12 @@ export class AndroidScreens {
   }
 
   private frame(group: Group, frame: ScreenFrame): void {
-    const message = group.stream.codec === "h264" ? h264Message(frame) : frame.data;
-    if (frame.config) {
-      group.config = message;
-      group.gop = [];
-      group.gopBytes = 0;
-      for (const viewer of group.viewers.values()) viewer.synced = false;
-      return;
-    }
-    if (frame.keyFrame) {
-      group.gop = [message];
-      group.gopBytes = message.length;
-    } else if (group.gop.length > 0) {
-      group.gopBytes += message.length;
-      if (group.gopBytes > MAX_GOP_BYTES) {
-        group.gop = [];
-        group.gopBytes = 0;
-      } else group.gop.push(message);
-    }
-    for (const [client, viewer] of group.viewers) {
-      if (client.bufferedAmount() > LIMITS.androidScreenBackpressureBytes) viewer.synced = false;
-      else if (viewer.synced) client.sendFrame(message);
-      else if (frame.keyFrame) this.resync(client, viewer);
-    }
+    fanOutFrame(group, group.stream.codec === "h264", group.viewers, frame);
   }
 
   /** Sends a viewer what its decoder needs to show the current frame, if the group still has it. */
   private resync(client: ScreenClient, viewer: Viewer): void {
-    const group = viewer.group;
-    const h264 = group.stream.codec === "h264";
-    if (group.gop.length === 0 || (h264 && !group.config)) return;
-    if (h264 && group.config) client.sendFrame(group.config);
-    for (const message of group.gop) client.sendFrame(message);
-    viewer.synced = true;
+    resyncViewer(viewer.group, viewer.group.stream.codec === "h264", client, viewer);
   }
 
   /** Lifts the pointers a leaving viewer still holds down; its group's session ends with its last viewer. */

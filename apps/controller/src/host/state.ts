@@ -1,5 +1,16 @@
 import { chmodSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { DEFAULT_ANDROID_STREAM, LIMITS, SHA256_PATTERN, UpdateAndroidStreamSchema, type AndroidStreamSettings, type UpdateAndroidStream } from "@tesseract/protocol";
+import {
+  DEFAULT_ANDROID_STREAM,
+  DEFAULT_IOS_STREAM,
+  LIMITS,
+  SHA256_PATTERN,
+  UpdateAndroidStreamSchema,
+  UpdateIosStreamSchema,
+  type AndroidStreamSettings,
+  type IosStreamSettings,
+  type UpdateAndroidStream,
+  type UpdateIosStream,
+} from "@tesseract/protocol";
 import { generateToken } from "../auth/token";
 
 export type AndroidLinkConfig = { sandboxUrl: string; token: string };
@@ -17,12 +28,14 @@ export type HostState = {
   iosLink: AndroidLinkConfig | null;
   /** sha256 of sandbox simulator builds the user approved for install (newest last). */
   iosApprovedBundles: string[];
+  /** Only the iOS screen stream settings changed from `DEFAULT_IOS_STREAM`. */
+  iosStream: UpdateIosStream;
 };
 
 const DIR_MODE = 0o700;
 const FILE_MODE = 0o600;
 
-const EMPTY: HostState = { token: null, pinHash: null, pinSetAt: null, failures: 0, lockedUntil: null, lockouts: 0, androidLink: null, androidStream: {}, iosLink: null, iosApprovedBundles: [] };
+const EMPTY: HostState = { token: null, pinHash: null, pinSetAt: null, failures: 0, lockedUntil: null, lockouts: 0, androidLink: null, androidStream: {}, iosLink: null, iosApprovedBundles: [], iosStream: {} };
 
 const text = (value: unknown) => (typeof value === "string" && value ? value : null);
 function androidLink(value: unknown): AndroidLinkConfig | null {
@@ -32,15 +45,17 @@ function androidLink(value: unknown): AndroidLinkConfig | null {
   return sandboxUrl && token ? { sandboxUrl, token } : null;
 }
 /** Keeps each valid field; an invalid one falls back to its default. */
-function androidStream(value: unknown): UpdateAndroidStream {
-  if (typeof value !== "object" || value === null) return {};
+function streamFields<T>(schema: typeof UpdateAndroidStreamSchema | typeof UpdateIosStreamSchema, value: unknown): T {
+  if (typeof value !== "object" || value === null) return {} as T;
   const kept: Record<string, unknown> = {};
   for (const [key, field] of Object.entries(value)) {
-    const parsed = UpdateAndroidStreamSchema.safeParse({ [key]: field });
+    const parsed = schema.safeParse({ [key]: field });
     if (parsed.success && key in parsed.data) kept[key] = field;
   }
-  return kept as UpdateAndroidStream;
+  return kept as T;
 }
+const androidStream = (value: unknown) => streamFields<UpdateAndroidStream>(UpdateAndroidStreamSchema, value);
+const iosStream = (value: unknown) => streamFields<UpdateIosStream>(UpdateIosStreamSchema, value);
 const hashes = (value: unknown) => (Array.isArray(value) ? value.filter((entry): entry is string => typeof entry === "string" && SHA256_PATTERN.test(entry)) : []);
 const count = (value: unknown) => (typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : 0);
 
@@ -71,6 +86,7 @@ export class HostStateStore {
       androidStream: androidStream(parsed.androidStream),
       iosLink: androidLink(parsed.iosLink),
       iosApprovedBundles: hashes(parsed.iosApprovedBundles),
+      iosStream: iosStream(parsed.iosStream),
     };
   }
 
@@ -121,6 +137,15 @@ export class HostStateStore {
   updateAndroidStream(change: UpdateAndroidStream): AndroidStreamSettings {
     const next = this.update((current) => ({ ...current, androidStream: { ...current.androidStream, ...change } }));
     return { ...DEFAULT_ANDROID_STREAM, ...next.androidStream };
+  }
+
+  iosStreamSettings(): IosStreamSettings {
+    return { ...DEFAULT_IOS_STREAM, ...this.read().iosStream };
+  }
+
+  updateIosStream(change: UpdateIosStream): IosStreamSettings {
+    const next = this.update((current) => ({ ...current, iosStream: { ...current.iosStream, ...change } }));
+    return { ...DEFAULT_IOS_STREAM, ...next.iosStream };
   }
 
   async setPin(pin: string, now: Date = new Date()): Promise<void> {

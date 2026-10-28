@@ -1,5 +1,5 @@
 import { ApiError, NetworkError, TimeoutError } from "@tesseract/client";
-import type { HostPairing, HostShellState } from "../../shared/contracts/hostShell";
+import { HOST_TERMINAL_KINDS, type HostPairing, type HostShellState, type HostTerminalKind } from "../../shared/contracts/hostShell";
 import { IpcError, type IpcErrorCode } from "../../shared/ipc-types";
 import { ERROR_PREFIX, HEALTH_PATH, HOST_SERVICE_NAME, HOST_SHELL, SESSION_REQUIRED, VIEWER } from "./constants";
 import { HOST_LABELS } from "./labels";
@@ -17,6 +17,13 @@ export function sessionRequiredError(message: string = HOST_LABELS.locked): Host
 
 export function isSessionRequired(error: unknown): boolean {
   return error instanceof IpcError && error.code === "forbidden" && error.detail === SESSION_REQUIRED;
+}
+
+export function hostTerminalKind(kind: unknown): HostTerminalKind {
+  if (kind === undefined || kind === null) return "shell";
+  const known = HOST_TERMINAL_KINDS.find((candidate) => candidate === kind);
+  if (!known) throw new HostShellError(HOST_LABELS.invalidTerminalKind, "invalid_argument");
+  return known;
 }
 
 export function isServing(state: HostShellState): boolean {

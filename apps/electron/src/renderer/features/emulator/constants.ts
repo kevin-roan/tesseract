@@ -3,7 +3,7 @@ import type { Tone } from "../../theme/colors";
 import { ANDROID_KEY_LABELS, IOS_KEY_LABELS } from "./labels";
 import type { ScreenKey, ScreenSpec, ScreenState, ScreenStatus } from "./types";
 
-export const H264 = { probeCodec: "avc1.42E01F", spsNalType: 7, maxDecodeQueue: 6 } as const;
+export const H264 = { probeCodec: "avc1.42E01F", spsNalType: 7, maxDecodeQueue: 6, maxPendingFrames: 60 } as const;
 
 export const SCREEN_MIME = "image/jpeg";
 export const SCREEN_CODEC_H264 = "h264";
@@ -93,7 +93,19 @@ export const IOS_SCREEN: ScreenSpec = {
   ...ANDROID_SCREEN,
   path: wsPaths.iosScreen(),
   deviceParam: "udid",
-  h264: false,
+  h264: true,
   keys: IOS_SCREEN_KEYS,
   maxPointers: 1,
 };
+
+export const STREAM_SETTINGS_KEY = ["hostShell", "stream"] as const;
+export const STREAM_AUTO_SIZE = "auto";
+export const STREAM_MAX_SIZES = [720, 1080, 1280, 1600, 1920, 2560] as const;
+export const STREAM_BITS_PER_MBIT = 1_000_000;
+export const STREAM_DIALOG_WIDTH = 440;
+export const STREAM_RANGES = {
+  bitRate: { min: LIMITS.minAndroidBitRate / STREAM_BITS_PER_MBIT, max: LIMITS.maxAndroidBitRate / STREAM_BITS_PER_MBIT },
+  maxFps: { min: 1, max: LIMITS.maxAndroidFps },
+  keyFrameInterval: { min: 1, max: LIMITS.maxAndroidKeyFrameInterval },
+  jpegQuality: { min: LIMITS.minAndroidJpegQuality, max: LIMITS.maxAndroidJpegQuality },
+} as const;

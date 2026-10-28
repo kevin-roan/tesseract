@@ -534,6 +534,7 @@ describe("useAgentRunScreen", () => {
       {
         prompt: "and now the mac build",
         mode: sampleAgentRun.mode,
+        model: sampleAgentRun.model,
         projectId: sampleAgentRun.projectId,
         resumeSessionId: sampleAgentRun.sessionId,
       }
@@ -553,6 +554,7 @@ describe("useAgentRunScreen", () => {
       expect(fake.startAgentRun).toHaveBeenCalledWith({
         prompt: sampleAgentRun.prompt,
         mode: sampleAgentRun.mode,
+        model: sampleAgentRun.model,
         projectId: sampleAgentRun.projectId,
         attachmentIds: sampleAgentRun.attachments.map((upload) => upload.id),
         resumeSessionId: sampleAgentRun.sessionId,
@@ -587,6 +589,7 @@ describe("useAgentRunScreen", () => {
       expect(fake.startAgentRun).toHaveBeenCalledWith({
         prompt: "also fix the header\n\none more",
         mode: sampleAgentRun.mode,
+        model: sampleAgentRun.model,
         projectId: sampleAgentRun.projectId,
         resumeSessionId: sampleAgentRun.sessionId,
       }),

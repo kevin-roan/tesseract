@@ -73,6 +73,19 @@ export const GitDetailsSchema = z.object({
 });
 export type GitDetails = z.infer<typeof GitDetailsSchema>;
 
+export const PROJECT_GIT_ACTIONS = ["pull", "push", "commit"] as const;
+export const ProjectGitActionSchema = z.enum(PROJECT_GIT_ACTIONS);
+export type ProjectGitAction = z.infer<typeof ProjectGitActionSchema>;
+
+/** `POST /v1/projects/:id/git`: `pull` is `--ff-only`; `commit` stages every change and needs `message`. */
+export const RunProjectGitSchema = z
+  .object({ action: ProjectGitActionSchema, message: z.string().trim().max(2000).optional() })
+  .refine((body) => body.action !== "commit" || Boolean(body.message), { message: "A commit needs a message", path: ["message"] });
+export type RunProjectGit = z.infer<typeof RunProjectGitSchema>;
+
+export const ProjectGitResultSchema = z.object({ action: ProjectGitActionSchema, output: z.string() });
+export type ProjectGitResult = z.infer<typeof ProjectGitResultSchema>;
+
 /** `name` becomes the project directory via `projectIdFromName`; the schema rejects names that yield no valid id. */
 export const CreateProjectSchema = z.object({
   name: NameSchema.refine((name) => projectIdFromName(name) !== null, "Name must contain letters or digits"),

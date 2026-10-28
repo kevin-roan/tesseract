@@ -118,7 +118,17 @@ Decisions that need the owner's call come first.
 ### Per-project containers
 - **Why:** isolation between projects (separate filesystem, resources and
   secrets) and per-project images.
-- **How:** the sandbox becomes a "hub" whose controller starts one
+- **Done (running apps):** agents can deploy a project's compose file or
+  `Dockerfile` into an existing server container with
+  `tesseract-controller deploy`. The desktop host runs it, with per-container
+  approval ([ADR 0013](adr/0013-sandbox-deploys-to-server-containers.md),
+  [server-containers.md](architecture/server-containers.md#sandbox-deploys)).
+  This covers running and publishing what a project builds. It does not
+  isolate development between projects.
+- **Next:** create a server container per project from the desktop app (still
+  on the host, never from the sandbox), approval scoped per hostname or app,
+  and deploy history and rollback per app.
+- **How (development isolation):** the sandbox becomes a "hub" whose controller starts one
   container per project through a rootless or Sysbox-backed runtime. The
   display stays shared, or each project gets its own Xvnc. Needs a container
   runtime that does not require a privileged dind (see

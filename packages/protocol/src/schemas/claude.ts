@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CLAUDE_ACCOUNT_ID_PATTERN, CLAUDE_AUTH_METHODS, LIMITS } from "../constants";
+import { CLAUDE_ACCOUNT_ID_PATTERN, CLAUDE_AUTH_METHODS, CLAUDE_COMMAND_NAME_PATTERN, LIMITS } from "../constants";
 
 export const ClaudeAuthMethodSchema = z.enum(CLAUDE_AUTH_METHODS);
 export type ClaudeAuthMethod = z.infer<typeof ClaudeAuthMethodSchema>;
@@ -108,3 +108,17 @@ export type SetDefaultClaudeAccount = z.infer<typeof SetDefaultClaudeAccountSche
 /** `PUT /v1/projects/:id/claude-account`: null follows the default account. */
 export const SetProjectClaudeAccountSchema = z.object({ accountId: ClaudeAccountIdSchema.nullable() });
 export type SetProjectClaudeAccount = z.infer<typeof SetProjectClaudeAccountSchema>;
+
+export const CLAUDE_COMMAND_SOURCES = ["builtin", "managed", "user", "project"] as const;
+
+/** A slash command Claude Code accepts in the sandbox: a skill or a custom command. */
+export const ClaudeCommandSchema = z.object({
+  /** Without the leading `/`, e.g. `deploy` or `frontend:review`. */
+  name: z.string().min(1).max(LIMITS.maxNameLength).regex(CLAUDE_COMMAND_NAME_PATTERN, "Invalid command name"),
+  description: z.string().max(LIMITS.maxStatusMessageLength),
+  kind: z.enum(["skill", "command"]),
+  source: z.enum(CLAUDE_COMMAND_SOURCES),
+});
+export type ClaudeCommand = z.infer<typeof ClaudeCommandSchema>;
+
+export const ClaudeCommandListSchema = z.array(ClaudeCommandSchema);

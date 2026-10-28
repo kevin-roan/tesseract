@@ -219,13 +219,19 @@ function apnsConfig(env: Env): ApnsConfig {
 }
 
 function claudeAccountDirs(env: Env, home: string, primary: ClaudeAccountDir): ClaudeAccountDir[] {
-  const names = (read(env, "TESSERACT_CLAUDE_ACCOUNTS") ?? "")
+  const entries = (read(env, "TESSERACT_CLAUDE_ACCOUNTS") ?? "")
     .split(/[\s,]+/)
     .filter(Boolean);
   const accounts = [primary];
-  for (const name of new Set(names)) {
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    const separator = entry.indexOf("=");
+    const name = separator === -1 ? entry : entry.slice(0, separator);
     if (!CLAUDE_ACCOUNT_NAME_PATTERN.test(name)) throw new ConfigError(`TESSERACT_CLAUDE_ACCOUNTS has an invalid account name (got "${name}")`);
-    const configDir = join(home, `.claude-${name}`);
+    if (seen.has(name)) continue;
+    seen.add(name);
+    const configDir = separator === -1 ? join(home, `.claude-${name}`) : entry.slice(separator + 1);
+    if (!isAbsolute(configDir)) throw new ConfigError(`TESSERACT_CLAUDE_ACCOUNTS: ${name}=${configDir} is not an absolute path`);
     accounts.push({ id: `${CLAUDE_PRIMARY_ACCOUNT_ID}-${name}`, configDir, globalConfig: join(configDir, ".claude.json"), env: { CLAUDE_CONFIG_DIR: configDir } });
   }
   return accounts;

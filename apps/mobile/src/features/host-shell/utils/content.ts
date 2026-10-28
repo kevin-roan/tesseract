@@ -4,7 +4,9 @@ import {
   AndroidLogoIcon,
   AppleLogoIcon,
   ArrowSquareOutIcon,
+  CheckIcon,
   DeviceMobileIcon,
+  GitBranchIcon,
   LinkBreakIcon,
   LinkIcon,
   LockSimpleIcon,
@@ -13,7 +15,9 @@ import {
   PowerIcon,
   SkullIcon,
   SlidersHorizontalIcon,
+  SparkleIcon,
   StopIcon,
+  TerminalWindowIcon,
   TrashIcon,
 } from "phosphor-react-native";
 
@@ -214,6 +218,7 @@ export const IOS_COPY = {
 export const STREAM_COPY = {
   title: "Stream settings",
   subtitle: "How the host streams the Android screen",
+  iosSubtitle: "How the host streams the iOS Simulator screen",
   open: "Stream settings",
   deviceGroup: "Device",
   device: "Default device",
@@ -224,6 +229,8 @@ export const STREAM_COPY = {
   deviceMissing: "Not connected",
   videoGroup: "Video",
   videoFootnote: "Saved settings switch every open screen over within a moment.",
+  iosVideoFootnote:
+    "Saved settings switch every open screen over within a moment. H.264 needs tesseract-simcap on the Mac; without it the host sends JPEG.",
   encoding: "Encoding",
   encodingDetail: "H.264 is decoded on the phone; JPEG is the fallback",
   encodingSheetTitle: "Encoding",
@@ -270,4 +277,41 @@ export const IOS_ICONS = {
   forceKill: SkullIcon,
   open: ArrowSquareOutIcon,
   device: DeviceMobileIcon,
+  settings: SlidersHorizontalIcon,
 } as const;
+
+export const HOST_PROJECT_COPY = {
+  title: "This computer",
+  accountTitle: "Claude on this computer",
+  claude: "Claude",
+  shell: "Shell",
+  git: "Git",
+  gitTitle: "Git on this computer",
+  pull: "Pull",
+  push: "Push",
+  commit: "Commit all…",
+  pullHint: "git pull --ff-only",
+  pushHint: "git push",
+  commitHint: "Stage every change and commit it",
+  commitTitle: "Commit all changes",
+  commitLabel: "Commit message",
+  commitSave: "Commit",
+  connect: "Unlock the host shell once to reach this project's copy on your computer.",
+  connectAction: "Unlock",
+  missing: "No copy on this computer yet. Sync the project from a folder there in the desktop app.",
+  warning: "Claude and the shell run on your computer, outside the sandbox.",
+  done: {
+    pull: (summary: string) => `Pulled: ${summary}`,
+    push: (summary: string) => `Pushed: ${summary}`,
+    commit: (summary: string) => `Committed: ${summary}`,
+  },
+  failed: {
+    pull: (error: string) => `git pull failed on this computer: ${error}`,
+    push: (error: string) => `git push failed on this computer: ${error}`,
+    commit: (error: string) => `git commit failed on this computer: ${error}`,
+  },
+  upToDate: "Already up to date",
+  dismiss: "Dismiss",
+} as const;
+
+export const HOST_PROJECT_ICONS = { claude: SparkleIcon, shell: TerminalWindowIcon, git: GitBranchIcon, commit: CheckIcon };

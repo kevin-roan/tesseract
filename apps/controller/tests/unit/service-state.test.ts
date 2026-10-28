@@ -81,6 +81,7 @@ function agentRun(overrides: Partial<AgentRun> = {}): AgentRun {
     projectId: null,
     prompt: "p",
     mode: null,
+    model: null,
     attachments: [],
     sessionId: null,
     claudeAccountId: null,
@@ -168,7 +169,9 @@ describe("database and repositories", () => {
     const upload = { id: "upl_a", name: "a.png", mimeType: "image/png", kind: "image" as const, sizeBytes: 3, path: oldPath, createdAt: TS };
     new Repositories(legacy).uploads.save(upload);
     new Repositories(legacy).agentRuns.save(agentRun({ id: "run_a", attachments: [upload] }));
-    legacy.run(`PRAGMA user_version = ${SCHEMA_VERSION - 1}`);
+    legacy.run("ALTER TABLE agent_runs DROP COLUMN model");
+    legacy.run("DROP TABLE deploys");
+    legacy.run(`PRAGMA user_version = ${SCHEMA_VERSION - 5}`);
     legacy.close();
     const repos = new Repositories(openDatabase(path));
     const moved = join(config.uploadsDir, "upl_a", "a.png");

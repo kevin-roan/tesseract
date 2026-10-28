@@ -1,4 +1,4 @@
-import type { AgentRun, StartAgentRun } from "@tesseract/protocol";
+import type { AgentRun, AgentRunModel, StartAgentRun } from "@tesseract/protocol";
 import { useCallback, useState } from "react";
 import { describeError } from "../../../app/connection";
 import { useApiClient } from "../../../app/data";
@@ -19,14 +19,16 @@ export interface StartRunInput {
   projectId?: string | null;
   attachmentIds?: readonly string[];
   resumeSessionId?: string | null;
+  model?: AgentRunModel;
 }
 
-export function startRunBody({ prompt, projectId, attachmentIds, resumeSessionId }: StartRunInput): StartAgentRun {
+export function startRunBody({ prompt, projectId, attachmentIds, resumeSessionId, model }: StartRunInput): StartAgentRun {
   return {
     prompt,
     ...(projectId ? { projectId } : {}),
     ...(attachmentIds && attachmentIds.length ? { attachmentIds: [...attachmentIds] } : {}),
     ...(resumeSessionId ? { resumeSessionId } : {}),
+    ...(model ? { model } : {}),
   };
 }
 

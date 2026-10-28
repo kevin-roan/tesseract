@@ -26,7 +26,8 @@ usage() {
 Usage: ./setup-server.sh [--hostname NAME] [--with COMPONENTS] [--rebuild] [--yes]
 
 Sets up this machine as the Tesseract server: builds the `tesseract` and
-`tesseract-controller` binaries into ~/.tesseract/bin, builds the sandbox image,
+`tesseract-controller` binaries into ~/.tesseract/bin (plus the `tesseract-simcap`
+iOS Simulator screen helper on macOS, built with swiftc), builds the sandbox image,
 starts the sandbox on your tailnet and installs the host shell as a login service
 (launchd on macOS, systemd --user on Linux). Safe to re-run; re-run after
 `git pull` to update.
@@ -231,6 +232,17 @@ for binary in tesseract tesseract-controller; do
   [[ -x "${built}" ]] || die "build produced no ${built}"
   install -m 0755 "${built}" "${BIN_DIR}/${binary}"
 done
+# Optional: without it the iOS screen falls back to idb + ffmpeg JPEGs.
+if [[ "${os_name}" == mac ]]; then
+  simcap="${ELECTRON_DIR}/dist-cli/${target}/tesseract-simcap"
+  if [[ -x "${simcap}" ]]; then
+    install -m 0755 "${simcap}" "${BIN_DIR}/tesseract-simcap"
+  else
+    # Drop a helper from an earlier run so the controller never runs one older than its source.
+    rm -f "${BIN_DIR}/tesseract-simcap"
+    warn "no ${simcap} (swiftc missing or failed?); the iOS screen will use idb + ffmpeg JPEGs"
+  fi
+fi
 rsync -a --delete "${BUNDLE_DIR}/" "${SANDBOX_DIR}/"
 [[ "${os_name}" != mac ]] || xattr -dr com.apple.quarantine "${BIN_DIR}" 2> /dev/null || true
 export TESSERACT_SANDBOX_CONTEXT="${SANDBOX_DIR}"

@@ -8,6 +8,7 @@ import { showToast } from "../../../components/Toast";
 import { AGENTS_QUERY_KEYS } from "../../../features/agents/constants";
 import { useAgentAttachments } from "../../../features/agents/hooks/use-attachments";
 import { useNow } from "../../../features/agents/hooks/use-now";
+import { modelKey, runModel, type ModelKey } from "../../../features/agents/model";
 import { ATTENTION_LABELS, CONVERSATION_LABELS, formatLabel, NEW_LABELS } from "../../../features/agents/labels";
 import { isRunning, projectName, runTitle, type NameLookup } from "../timeline/run-info";
 import { HEADER_TICK_MS, IDLE_TICK_MS } from "./constants";
@@ -72,6 +73,8 @@ export function useConversation(props: ConversationViewProps) {
   const [sending, setSending] = useState(false);
   const [confirmStop, setConfirmStop] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [chosenModel, setChosenModel] = useState<ModelKey | null>(null);
+  const model = chosenModel ?? modelKey(run?.model);
   const followUp = followUpState(run);
   const attachments = useAgentAttachments(followUp === "ready");
   const { clear: clearAttachments } = attachments;
@@ -81,6 +84,7 @@ export function useConversation(props: ConversationViewProps) {
     setDraft("");
     setSending(false);
     setConfirmStop(false);
+    setChosenModel(null);
     clearAttachments();
   }, [runId, clearAttachments]);
 
@@ -175,6 +179,7 @@ export function useConversation(props: ConversationViewProps) {
           prompt: attachments.prompt(text),
           projectId: run.projectId ?? undefined,
           resumeSessionId: run.sessionId,
+          model: runModel(model),
           attachmentIds: attachments.uploadIds.length > 0 ? attachments.uploadIds : undefined,
         })
         .then(
@@ -197,7 +202,7 @@ export function useConversation(props: ConversationViewProps) {
           },
         );
     },
-    [attachments, client, onFollowUpStarted, onRunChanged, onSelectRun, run, sending],
+    [attachments, client, model, onFollowUpStarted, onRunChanged, onSelectRun, run, sending],
   );
 
   const body: ConversationBodyState = run ? "timeline" : feed.error ? "error" : "loading";
@@ -231,6 +236,8 @@ export function useConversation(props: ConversationViewProps) {
       busy: sending,
       locked: lockedReason(followUp),
       attachments,
+      model,
+      onModelChange: setChosenModel,
     },
   };
 }

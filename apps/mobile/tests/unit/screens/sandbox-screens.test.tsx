@@ -53,6 +53,7 @@ const mockHooks: Record<string, jest.Mock> = {
   terminal: jest.fn(),
   browser: jest.fn(),
   windows: jest.fn(),
+  hostProject: jest.fn(),
 };
 
 jest.mock("expo-router", () => ({
@@ -87,6 +88,18 @@ jest.mock("@/features/sandbox/hooks/use-display-session", () => ({ useDisplaySes
 jest.mock("@/features/sandbox/hooks/use-project-detail", () => ({
   useProjectDetail: (id: string, processId: string | null) => mockHooks.project(id, processId),
 }));
+jest.mock("@/features/host-shell/components/host-project-account", () => ({
+  __esModule: true,
+  default: ({ workspaceId, projectId }: { workspaceId: string; projectId: string }) => {
+    const { Text } = require("react-native");
+    return <Text>{`account ${workspaceId} ${projectId}`}</Text>;
+  },
+}));
+const mockIssuesEntry = { openCount: 3, open: jest.fn() };
+jest.mock("@/features/issues/hooks/use-issues-entry", () => ({ useIssuesEntry: () => mockIssuesEntry }));
+jest.mock("@/features/host-shell/hooks/use-host-project", () => ({
+  useHostProject: (id: string, enabled: boolean) => mockHooks.hostProject(id, enabled),
+}));
 jest.mock("@/features/sandbox/hooks/use-new-project", () => ({ useNewProject: () => mockHooks.newProject() }));
 jest.mock("@/features/sandbox/hooks/use-terminal-launcher", () => ({
   useTerminalLauncher: (launch: unknown, onCreated: unknown) => mockHooks.launcher(launch, onCreated),
@@ -117,6 +130,7 @@ beforeEach(() => {
   mockParams = {};
   Object.values(mockNav).forEach((fn) => fn.mockClear());
   Object.values(mockHooks).forEach((fn) => fn.mockReset());
+  mockHooks.hostProject.mockReturnValue({ kind: "hidden" });
 });
 
 describe("PairScreen", () => {
@@ -814,6 +828,16 @@ describe("ProjectScreen", () => {
     expect(state.storage.clearAll).toHaveBeenCalled();
   });
 
+  it("opens the project's issues with the open count", async () => {
+    mockParams = { id: sampleProject.id };
+    mockHooks.project.mockReturnValue(detail());
+    await render(<ProjectScreen />);
+
+    expect(screen.getByTestId("project-issues")).toHaveTextContent(/Issues.*3/);
+    await fireEvent.press(screen.getByTestId("project-issues"));
+    expect(mockIssuesEntry.open).toHaveBeenCalled();
+  });
+
   it("lists the project's chats and starts a new one", async () => {
     mockParams = { id: sampleProject.id };
     const chats = chatsState({ items: [sampleClaudeSession], viewAll: jest.fn() });
@@ -832,6 +856,43 @@ describe("ProjectScreen", () => {
     expect(screen.queryByLabelText("View all, Chats")).toBeNull();
     await fireEvent.press(screen.getByLabelText("New chat"));
     expect(empty.newChat).toHaveBeenCalled();
+  });
+
+  it("offers Claude chat, a shell and git on the project's copy on this computer", async () => {
+    mockParams = { id: sampleProject.id };
+    mockHooks.project.mockReturnValue(detail());
+    const git = {
+      menuVisible: false,
+      options: [],
+      openMenu: jest.fn(),
+      closeMenu: jest.fn(),
+      select: jest.fn(),
+      commitVisible: false,
+      closeCommit: jest.fn(),
+      message: "",
+      setMessage: jest.fn(),
+      commit: jest.fn(),
+      pending: null,
+    };
+    const ready = { kind: "ready", workspaceId: "sbx_ws", folder: "app", path: "/home/me/app", claude: jest.fn(), shell: jest.fn(), git, notice: null, dismissNotice: jest.fn() };
+    mockHooks.hostProject.mockReturnValue(ready);
+    await render(<ProjectScreen />);
+    expect(mockHooks.hostProject).toHaveBeenCalledWith(sampleProject.id, true);
+    expect(screen.getByText("This computer")).toBeOnTheScreen();
+    expect(screen.getByText("/home/me/app")).toBeOnTheScreen();
+    expect(screen.getByText(`account sbx_ws ${sampleProject.id}`)).toBeOnTheScreen();
+    await fireEvent.press(screen.getByLabelText("Claude"));
+    expect(ready.claude).toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText("Shell"));
+    expect(ready.shell).toHaveBeenCalled();
+    await fireEvent.press(screen.getByLabelText("Git"));
+    expect(git.openMenu).toHaveBeenCalled();
+
+    const connect = jest.fn();
+    mockHooks.hostProject.mockReturnValue({ kind: "connect", connect });
+    await render(<ProjectScreen />);
+    await fireEvent.press(screen.getByLabelText("Unlock"));
+    expect(connect).toHaveBeenCalled();
   });
 
   it("shows the project's Claude account and opens the picker", async () => {

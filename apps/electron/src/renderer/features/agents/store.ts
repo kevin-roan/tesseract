@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import type { DeleteAgentRuns } from "@tesseract/protocol";
-import { NO_PROJECT_KEY, type AgentFilter, type DetailView } from "./constants";
+import { DEFAULT_MODEL_KEY, NO_PROJECT_KEY, type AgentFilter, type DetailView } from "./constants";
+import type { ModelKey } from "./model";
 
 export interface NewDraft {
   prompt: string;
   projectId: string;
+  model: ModelKey;
 }
 
 export interface PendingDelete {
@@ -42,7 +44,7 @@ export interface AgentsUiActions {
   setPendingDelete(pending: PendingDelete | null): void;
 }
 
-export const EMPTY_DRAFT: NewDraft = { prompt: "", projectId: NO_PROJECT_KEY };
+export const EMPTY_DRAFT: NewDraft = { prompt: "", projectId: NO_PROJECT_KEY, model: DEFAULT_MODEL_KEY };
 
 export const INITIAL_AGENTS_UI: AgentsUiState = {
   filter: "all",
@@ -81,7 +83,7 @@ export const useAgentsUi = create<AgentsUiState & AgentsUiActions>((set) => ({
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   revealList: () => set((state) => ({ sidebarOpen: true, revealToken: state.revealToken + 1 })),
   setDraft: (patch) => set((state) => ({ draft: { ...state.draft, ...patch } })),
-  resetDraft: () => set({ draft: EMPTY_DRAFT }),
+  resetDraft: () => set((state) => ({ draft: { ...EMPTY_DRAFT, model: state.draft.model } })),
   setPendingDelete: (pendingDelete) => set({ pendingDelete }),
 }));
 

@@ -17,17 +17,25 @@ jest.mock("expo-router/ui", () => {
   };
 });
 
+jest.mock("@/features/inbox/hooks/use-inbox", () => ({
+  useInbox: () => ({ data: { unreadCount: 2 } }),
+}));
+
 const metrics = { frame: { x: 0, y: 0, width: 390, height: 844 }, insets: { top: 47, left: 0, right: 0, bottom: 34 } };
 
 describe("AppTabs", () => {
-  it("renders the floating tab bar with the focused tab selected", async () => {
+  it("renders the icon-only tab bar with the focused tab selected", async () => {
     await render(
       <SafeAreaProvider initialMetrics={metrics}>
         <AppTabs />
       </SafeAreaProvider>,
     );
     expect(screen.getByTestId("tab-slot")).toBeOnTheScreen();
-    for (const label of ["Home", "Agents", "Tasks", "Projects", "Profile"]) expect(screen.getByText(label)).toBeOnTheScreen();
-    expect(screen.getByRole("tab", { selected: true })).toHaveTextContent("Agents");
+    for (const label of ["Home", "Agents", "Tasks", "Projects", "Profile"]) {
+      expect(screen.getByRole("tab", { name: label })).toBeOnTheScreen();
+      expect(screen.queryByText(label)).toBeNull();
+    }
+    expect(screen.getByRole("tab", { selected: true })).toHaveAccessibleName("Agents");
+    expect(screen.getByRole("button", { name: "Inbox, unread" })).toBeOnTheScreen();
   });
 });

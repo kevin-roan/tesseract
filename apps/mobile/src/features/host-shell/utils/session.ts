@@ -12,11 +12,13 @@ export function isSessionLive(session: HostSessionState | null, now: number = Da
   return sessionRemainingMs(session, now) > 0;
 }
 
+/** `m:ss`, or `h:mm:ss` from an hour up (a host session lasts hours). */
 export function formatCountdown(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
-  const minutes = Math.floor(total / 60);
-  const seconds = total % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  const hours = Math.floor(total / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = (total % 60).toString().padStart(2, "0");
+  return hours > 0 ? `${hours}:${minutes.toString().padStart(2, "0")}:${seconds}` : `${minutes}:${seconds}`;
 }
 
 export function lockedOutFor(status: HostLockStatus | undefined, now: number = Date.now()): number {

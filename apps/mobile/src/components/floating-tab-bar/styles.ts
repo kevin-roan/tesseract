@@ -1,9 +1,18 @@
 import { StyleSheet } from "react-native";
 
-import { BorderWidth, ControlHeight, Shadows, type Theme } from "@/theme";
+import { BorderWidth, ControlHeight, DotSize, Shadows, type Theme } from "@/theme";
+
+/** Height of the pill and the diameter of the round accessory beside it. */
+export const TAB_BAR_HEIGHT = ControlHeight.lg;
 
 export default function createStyles(theme: Theme, bottom: number) {
   const graphite = theme.look === "graphite";
+  const lift = graphite ? Shadows.none : Shadows.float;
+  const rim = {
+    borderRadius: theme.radius.full,
+    borderWidth: BorderWidth.thin,
+    borderColor: theme.colors.borderStrong,
+  };
 
   return StyleSheet.create({
     routes: {
@@ -23,21 +32,27 @@ export default function createStyles(theme: Theme, bottom: number) {
       alignItems: "center",
       paddingHorizontal: theme.gutter,
     },
-    float: {
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
       width: "100%",
       maxWidth: theme.maxContentWidth,
+    },
+    float: {
+      flex: 1,
       borderRadius: theme.radius.full,
-      ...(graphite ? Shadows.none : Shadows.float),
+      ...lift,
     },
     glass: {
-      borderRadius: theme.radius.full,
-      borderWidth: BorderWidth.thin,
-      borderColor: theme.colors.borderStrong,
+      ...rim,
+      height: TAB_BAR_HEIGHT,
+      justifyContent: "center",
     },
     bar: {
       flexDirection: "row",
       alignItems: "center",
-      padding: theme.spacing.xs,
+      paddingHorizontal: theme.spacing.xs,
     },
     indicator: {
       position: "absolute",
@@ -54,11 +69,35 @@ export default function createStyles(theme: Theme, bottom: number) {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      gap: theme.spacing.xxs,
-      minHeight: ControlHeight.xl,
-      paddingHorizontal: theme.spacing.xs,
+      height: TAB_BAR_HEIGHT - theme.spacing.xs * 2,
       borderRadius: theme.radius.full,
       borderCurve: "continuous",
+    },
+    accessoryFloat: {
+      width: TAB_BAR_HEIGHT,
+      height: TAB_BAR_HEIGHT,
+      borderRadius: theme.radius.full,
+      ...lift,
+    },
+    accessoryGlass: {
+      ...rim,
+      flex: 1,
+    },
+    accessoryButton: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    badge: {
+      position: "absolute",
+      top: theme.spacing.md,
+      right: theme.spacing.md,
+      width: DotSize.md,
+      height: DotSize.md,
+      borderRadius: theme.radius.full,
+      backgroundColor: theme.colors.danger,
+      borderWidth: BorderWidth.thin,
+      borderColor: theme.colors.background,
     },
   });
 }

@@ -19,13 +19,14 @@ export interface SidebarContainersProps {
   labels: SidebarContainersLabels;
   selected?: string | null;
   onOpen?: (name: string) => void;
+  onOpenRequest?: (name: string) => void;
   onStart?: (name: string) => void;
   onStop?: (name: string) => void;
   onCreate?: () => void;
   onSetUp?: () => void;
 }
 
-export function SidebarContainers({ state, items, labels, selected = null, onOpen, onStart, onStop, onCreate, onSetUp }: SidebarContainersProps) {
+export function SidebarContainers({ state, items, labels, selected = null, onOpen, onOpenRequest, onStart, onStop, onCreate, onSetUp }: SidebarContainersProps) {
   return (
     <Crossfade id={state} speed="fast">
       {state === "loading" ? <SidebarStatus loading message={labels.loading} /> : null}
@@ -33,19 +34,24 @@ export function SidebarContainers({ state, items, labels, selected = null, onOpe
       {state === "empty" ? <SidebarStatus message={labels.empty} actionLabel={labels.create} onAction={onCreate} /> : null}
       {state === "ready" ? (
         <AnimatedList gap={1} className={styles.projectList}>
-          {items.map((item) => (
-            <AnimatedListItem key={item.name}>
-              <SidebarContainerRow
-                name={item.name}
-                activity={item.activity}
-                status={item.status}
-                selected={item.name === selected}
-                onOpen={onOpen ? () => onOpen(item.name) : undefined}
-                onStart={onStart ? () => onStart(item.name) : undefined}
-                onStop={onStop ? () => onStop(item.name) : undefined}
-              />
-            </AnimatedListItem>
-          ))}
+          {items.map((item) => {
+            const open = item.request ? onOpenRequest : onOpen;
+            return (
+              <AnimatedListItem key={item.name}>
+                <SidebarContainerRow
+                  name={item.name}
+                  activity={item.activity}
+                  status={item.status}
+                  attention={item.attention}
+                  attentionLabel={item.attentionLabel}
+                  selected={!item.request && item.name === selected}
+                  onOpen={open ? () => open(item.name) : undefined}
+                  onStart={onStart ? () => onStart(item.name) : undefined}
+                  onStop={onStop ? () => onStop(item.name) : undefined}
+                />
+              </AnimatedListItem>
+            );
+          })}
         </AnimatedList>
       ) : null}
     </Crossfade>

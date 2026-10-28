@@ -1,13 +1,16 @@
 import { useMemo } from "react";
 import { Switch, View } from "react-native";
+import type { Icon } from "phosphor-react-native";
 
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 
+import RowIcon from "./row-icon";
 import createStyles from "./styles";
 
 export type ListSwitchRowProps = {
   label: string;
+  icon?: Icon;
   detail?: string;
   value: boolean;
   onValueChange: (value: boolean) => void;
@@ -15,12 +18,13 @@ export type ListSwitchRowProps = {
   testID?: string;
 };
 
-const ListSwitchRow = ({ label, detail, value, onValueChange, disabled = false, testID }: ListSwitchRowProps) => {
+const ListSwitchRow = ({ label, icon, detail, value, onValueChange, disabled = false, testID }: ListSwitchRowProps) => {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   return (
     <View style={[styles.row, disabled && styles.rowDisabled]}>
+      {icon ? <RowIcon icon={icon} /> : null}
       <View style={styles.body}>
         <ThemedText variant="body" numberOfLines={1}>
           {label}

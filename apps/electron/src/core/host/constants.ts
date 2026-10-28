@@ -32,6 +32,9 @@ export const CONTROLLER_ENTRY = ["apps", "controller", "src", "index.ts"] as con
 export const CONTROLLER_PREBUILT = ["apps", "controller", "dist", "tesseract-controller"] as const;
 export const CONTROLLER_BINARY = "tesseract-controller";
 export const BUNDLED_BIN_DIR = "bin";
+export const SIMCAP_BINARY = "tesseract-simcap";
+// A checkout has no resources/bin; cli-build writes the Mac helper to apps/electron/dist-cli/mac-<arch>.
+export const CLI_DIST_DIR = ["apps", "electron", "dist-cli"] as const;
 
 export const HOST_ARGS = {
   host: "host",
@@ -55,9 +58,17 @@ export const HOST_ENV = {
   ffmpeg: "TESSERACT_FFMPEG",
   bunInstall: "BUN_INSTALL",
   adbForScrcpy: "ADB",
+  ios: "TESSERACT_IOS",
+  simcap: "TESSERACT_SIMCAP",
 } as const;
 
 export const HOST_ANDROID_ENV_KEYS = [HOST_ENV.sdkRoot, HOST_ENV.adb] as const;
+
+export const HOST_IOS_ENV_KEYS = [HOST_ENV.ios, HOST_ENV.simcap] as const;
+
+export const HOST_IOS_ON = "1";
+
+export const HOST_IOS_PLATFORM: NodeJS.Platform = "darwin";
 
 export const SDK_LAYOUT = {
   emulator: ["emulator", "emulator"],

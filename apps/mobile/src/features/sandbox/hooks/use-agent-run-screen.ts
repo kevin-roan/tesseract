@@ -54,6 +54,7 @@ export function useAgentRunScreen(runId: string) {
     defaultProjectId: run?.projectId ?? null,
     resumeSessionId: run?.sessionId ?? null,
     defaultMode: run?.mode ?? null,
+    defaultModel: run?.model ?? null,
     locked: running || !run?.sessionId,
     onQueue: running ? queue : undefined,
     onStarted,

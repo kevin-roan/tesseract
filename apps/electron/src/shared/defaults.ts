@@ -14,5 +14,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   zoom: 1,
   sidebarWidth: SIDEBAR_WIDTH_DEFAULT,
   hostShellAutostart: false,
+  hostShellIos: false,
   sandboxAutostart: true,
 };

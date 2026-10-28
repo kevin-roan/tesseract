@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Text, View, type ViewStyle } from "react-native";
 import Animated, { type AnimatedStyle } from "react-native-reanimated";
-import { CaretUpIcon, ChatCircleIcon, CropIcon, PaperclipIcon, StopIcon } from "phosphor-react-native";
+import { CaretUpIcon, ChatCircleIcon, CropIcon, PaperclipIcon, StopIcon, TerminalWindowIcon } from "phosphor-react-native";
 
 import DotShape from "@/components/dot-shape";
 import { useAppTheme } from "@/hooks/use-app-theme";
@@ -10,6 +10,7 @@ import { MaxFontSizeMultiplier } from "@/theme";
 
 import type { IslandState } from "@/modules/tesseract-island";
 
+import type { IslandOpenTarget } from "../../hooks/use-island-host";
 import { useIslandSummary } from "../../hooks/use-island-summary";
 import { HEADLINE_MIN_FONT_SCALE, ISLAND_PANEL_GLYPH_SIZE } from "../../utils/constants";
 import { tokensTodayLabel, type IslandItem } from "../../utils/format";
@@ -27,6 +28,8 @@ export type IslandPanelProps = {
   /** Live tasks to swipe through, and the one the buttons act on. */
   items: IslandItem[];
   focused: IslandItem | null;
+  /** What the primary button opens for the focused task; null hides it. */
+  openTarget: IslandOpenTarget;
   onFocus: (id: string) => void;
   onOpen: () => void;
   onStop: () => void;
@@ -47,6 +50,7 @@ const IslandPanel = ({
   height,
   items,
   focused,
+  openTarget,
   onFocus,
   onOpen,
   onStop,
@@ -118,7 +122,10 @@ const IslandPanel = ({
             onPress={onAttach}
           />
         ) : null}
-        <IslandButton icon={ChatCircleIcon} label="Open chat" variant="primary" onPress={onOpen} />
+        {openTarget === "chat" ? <IslandButton icon={ChatCircleIcon} label="Open chat" variant="primary" onPress={onOpen} /> : null}
+        {openTarget === "terminal" ? (
+          <IslandButton icon={TerminalWindowIcon} label="Open terminal" variant="primary" onPress={onOpen} />
+        ) : null}
         {focused ? (
           <IslandButton icon={StopIcon} label={`Stop ${focused.title}`} loading={stopping} onPress={onStop} />
         ) : (

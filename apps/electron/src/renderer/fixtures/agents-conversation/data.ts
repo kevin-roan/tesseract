@@ -36,6 +36,7 @@ const upload = (id: string, name: string, sizeBytes: number, createdAt: string):
 
 const base = {
   mode: null,
+  model: null,
   attachments: [] as Upload[],
   claudeAccountId: "claude-work",
   usage: null,

@@ -77,6 +77,8 @@ export function serverOptions(context: CliContext): ServerOptions {
   const withValue = context.values.get("with");
   const selection = withValue === undefined ? null : parseComponents(withValue);
   selection?.notes.forEach((note) => log(context, note));
+  const ios = context.flags.has("ios");
+  if (ios && context.runtime.platform !== "darwin") usageError(LABELS.iosOnlyMac);
   return {
     mode,
     hostname: optionValue(context, "hostname"),
@@ -87,6 +89,7 @@ export function serverOptions(context: CliContext): ServerOptions {
     build: context.flags.has("build"),
     claudeToken: optionValue(context, "claude-token", SERVER_ENV.claudeToken),
     hostShell: !context.flags.has("no-host-shell"),
+    ios,
     httpsPort,
     resetTailscale: context.flags.has("reset-tailscale"),
     dryRun: context.flags.has("dry-run"),
@@ -130,7 +133,7 @@ function currentUid(): number {
   return process.getuid?.() ?? 0;
 }
 
-function servicePlan(context: CliContext, command: readonly string[], bind: string, tailscale: string | null): HostServicePlan {
+function servicePlan(context: CliContext, command: readonly string[], bind: string, tailscale: string | null, ios = false): HostServicePlan {
   return planHostService({
     platform: context.runtime.platform,
     home: context.runtime.paths.home,
@@ -139,6 +142,7 @@ function servicePlan(context: CliContext, command: readonly string[], bind: stri
     bind,
     tailscale,
     env: context.env,
+    ios,
   });
 }
 
@@ -254,7 +258,7 @@ async function install(context: CliContext): Promise<number> {
 
   const command = options.hostShell ? controllerCommand(context.runtime.execPath, context.env, platform) : null;
   const bind = hostShellBind(platform, ip ?? "<tailscale-ip>");
-  const plan = options.hostShell ? servicePlan(context, command ?? [join(dirname(context.runtime.execPath), CONTROLLER_BINARY)], bind, tailscale) : null;
+  const plan = options.hostShell ? servicePlan(context, command ?? [join(dirname(context.runtime.execPath), CONTROLLER_BINARY)], bind, tailscale, options.ios) : null;
   const present = await imagePresent(context, choices.image);
   const mode = imageMode(options, present);
 
@@ -301,12 +305,12 @@ async function install(context: CliContext): Promise<number> {
   if (built !== EXIT.ok) return built;
 
   if (!plan || !tailscale || !ip) {
-    await writeState(context, { httpsPort: null, bind: null, serviceFile: null, tailscale });
+    await writeState(context, { httpsPort: null, bind: null, serviceFile: null, tailscale, ios: null });
     return printPairing(context, null, null);
   }
   const controller = command ?? requireController(context);
   const hostBind = hostShellBind(platform, ip);
-  const finalPlan = servicePlan(context, controller, hostBind, tailscale);
+  const finalPlan = servicePlan(context, controller, hostBind, tailscale, options.ios);
   log(context, LABELS.writing(finalPlan.file));
   await mkdir(dirname(finalPlan.file), { recursive: true });
   if (finalPlan.logDir) await mkdir(finalPlan.logDir, { recursive: true });
@@ -315,7 +319,7 @@ async function install(context: CliContext): Promise<number> {
   log(context, LABELS.serviceStarted(finalPlan.kind));
   await runRequired(context, { file: tailscale, args: tailscaleServeArgs(options.httpsPort, hostBind) });
   log(context, LABELS.serveAdded(options.httpsPort));
-  await writeState(context, { httpsPort: options.httpsPort, bind: hostBind, serviceFile: finalPlan.file, tailscale });
+  await writeState(context, { httpsPort: options.httpsPort, bind: hostBind, serviceFile: finalPlan.file, tailscale, ios: finalPlan.ios });
 
   const hostUrl = `http://${hostBind}:${HOST_SHELL_PORT}`;
   if (await waitHostShell(context, hostUrl)) log(context, LABELS.hostShellReady(hostUrl));
@@ -382,7 +386,7 @@ async function status(context: CliContext): Promise<number> {
   const hostHealthy = hostUrl ? await probeUrl(hostUrl, context.signal) : null;
   const value = {
     stack,
-    service: { kind: plan.kind, file: state.serviceFile, running: service },
+    service: { kind: plan.kind, file: state.serviceFile, running: service, ios: state.ios },
     serve,
     sandbox: { url: sandboxUrl ?? endpoint?.candidates[0] ?? null, healthy: sandboxUrl !== null },
     host: { url: hostUrl, healthy: hostHealthy },
@@ -392,6 +396,7 @@ async function status(context: CliContext): Promise<number> {
     ...table([
       [`${rows.stack}:`, stack ? `${stack.project} · ${stack.services.length} container(s)` : LABELS.notInstalled],
       [`${rows.service}:`, service === null ? LABELS.notInstalled : service ? LABELS.running : LABELS.stopped],
+      ...(state.ios === null ? [] : [[`${rows.ios}:`, state.ios ? LABELS.iosOn : LABELS.iosOff]]),
       [`${rows.serve}:`, serve ?? LABELS.notInstalled],
       [`${rows.sandboxHealth}:`, value.sandbox.url ? (value.sandbox.healthy ? LABELS.healthy(value.sandbox.url) : LABELS.unhealthy(value.sandbox.url)) : LABELS.notInstalled],
       [`${rows.hostHealth}:`, hostUrl ? (hostHealthy ? LABELS.healthy(hostUrl) : LABELS.unhealthy(hostUrl)) : LABELS.notInstalled],
@@ -433,7 +438,7 @@ export default defineCommand({
   trigger: { subcommand: "server" },
   summary: CLI_LABELS.summary.server,
   usage: CLI_LABELS.usageLines.server,
-  flags: ["build", "no-host-shell", "dry-run", "volumes", "no-qr", "reset-tailscale"],
+  flags: ["build", "no-host-shell", "ios", "dry-run", "volumes", "no-qr", "reset-tailscale"],
   valueFlags: ["mode", "hostname", "tailnet-domain", "authkey", "with", "image", "claude-token", "host-https-port"],
   run: (context) =>
     guarded(context, async () => {

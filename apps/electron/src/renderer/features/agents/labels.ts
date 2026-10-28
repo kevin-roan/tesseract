@@ -103,6 +103,14 @@ export const NEW_LABELS = {
   failed: "Couldn't start Claude: {error}",
 } as const;
 
+export const MODEL_LABELS = {
+  model: "Model",
+  default: "Default model",
+  opus: "Opus",
+  sonnet: "Sonnet",
+  haiku: "Haiku",
+} as const;
+
 export const SUGGESTIONS: readonly { label: string; prompt: string }[] = [
   { label: "Explain this project", prompt: "Explain how this project is structured and how to run it." },
   { label: "Fix failing tests", prompt: "Run the test suite, find the failing tests and fix them." },
@@ -168,11 +176,20 @@ export function formatLabel(template: string, values: Record<string, string | nu
 
 export const RUNNING_WORK_LABELS = {
   title: "Running",
-  subtitle: (count: number) => (count === 1 ? "1 task still running in this project" : `${count} tasks still running in this project`),
+  summary: (count: number) => (count === 1 ? "1 task running" : `${count} tasks running`),
+  show: "Show running tasks",
+  hide: "Hide running tasks",
   openLogs: "Open logs",
   stopTitle: (name: string) => `Stop ${name}?`,
   stopBody: "It keeps running after Claude finishes until you stop it.",
   stopConfirm: "Stop",
   cancel: "Cancel",
   stopped: (name: string) => `Stopped ${name}`,
+} as const;
+
+export const SLASH_TAG_LABELS = {
+  skill: "skill",
+  command: "command",
+  user: "user",
+  project: "project",
 } as const;

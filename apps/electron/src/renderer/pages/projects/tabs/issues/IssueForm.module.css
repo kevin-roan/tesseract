@@ -1,0 +1,98 @@
+.description {
+  width: 100%;
+  min-height: 96px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--to-text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 20px;
+  resize: vertical;
+  user-select: text;
+}
+
+.description:focus,
+.description:focus-visible {
+  outline: none;
+}
+
+.description::placeholder,
+.labelInput::placeholder {
+  color: var(--to-text-tertiary);
+}
+
+.callout {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-md);
+  background: var(--to-surface);
+  transition: var(--to-state-transition);
+}
+
+.callout[data-active] {
+  border-color: color-mix(in srgb, #d97757 55%, var(--to-border));
+  background: color-mix(in srgb, #d97757 8%, var(--to-surface));
+}
+
+.calloutText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.properties {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.labelsEditor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 4px;
+  border: 1px dashed var(--to-border);
+  border-radius: var(--to-radius-sm);
+}
+
+.labelsEditor:focus-within {
+  border-style: solid;
+  border-color: var(--to-accent);
+}
+
+.labelChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 22px;
+  padding-left: 8px;
+  border-radius: var(--to-radius-pill);
+  background: var(--to-background-element);
+  color: var(--to-text-secondary);
+  font-size: 12px;
+}
+
+.labelInput {
+  flex: 1;
+  min-width: 80px;
+  height: 26px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--to-text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.labelInput:focus {
+  outline: none;
+}

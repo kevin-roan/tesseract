@@ -21,7 +21,8 @@ export const HOST_USAGE = `  tesseract-controller host serve [--bind <ipv4>] [--
                                      TESSERACT_EMULATOR_ALLOW_NETS, TESSERACT_EMULATOR_ADB_PORT,
                                      TESSERACT_ANDROID_SHARE_EMULATORS=on to tunnel the host's other emulators too)
                                      and, on macOS with TESSERACT_IOS=1, the iOS Simulator (TESSERACT_XCRUN,
-                                     TESSERACT_IDB, TESSERACT_IDB_COMPANION; needs Xcode, idb and idb_companion)
+                                     TESSERACT_IDB, TESSERACT_IDB_COMPANION, TESSERACT_SIMCAP; needs Xcode, idb and
+                                     idb_companion; tesseract-simcap gives a clean H.264 screen, else idb's is used)
   tesseract-controller host pin [--stdin]
                                      set the host shell PIN (6-12 digits); ends every open session
   tesseract-controller host pair [--json]

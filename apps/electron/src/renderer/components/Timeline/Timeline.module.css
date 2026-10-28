@@ -54,6 +54,10 @@
   min-height: 20px;
 }
 
+.authorLine[data-bare] {
+  padding-left: 28px;
+}
+
 .initials {
   display: inline-flex;
   align-items: center;
@@ -77,14 +81,6 @@
   object-fit: cover;
 }
 
-.agentAvatar {
-  display: inline-block;
-  flex: none;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--to-radius-pill);
-  background: var(--to-accent);
-}
 
 .activity {
   display: flex;

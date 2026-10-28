@@ -27,6 +27,7 @@ Sets up everything Tesseract needs on this Mac, then builds and installs the app
   2. Homebrew (with the Xcode Command Line Tools), node, git, rsync
   3. OrbStack (Docker) and the Tailscale app, unless Docker/Tailscale are already installed
   4. ./setup-server.sh: tesseract CLI in ~/.tesseract/bin, sandbox image, host shell service
+     (plus tesseract-simcap, the iOS Simulator screen helper, compiled with swiftc)
   5. the macOS build: apps/electron/dist/Tesseract-<version>-universal.dmg,
      installed as /Applications/Tesseract.app
 

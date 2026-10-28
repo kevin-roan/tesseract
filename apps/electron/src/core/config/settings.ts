@@ -28,6 +28,7 @@ export const SETTINGS_KEYS = {
   zoom: "zoom",
   sidebarWidth: "sidebarWidth",
   hostShellAutostart: "host_shell_autostart",
+  hostShellIos: "host_shell_ios",
   sandboxAutostart: "sandboxAutostart",
 } as const satisfies Record<keyof AppSettings, string>;
 
@@ -59,6 +60,7 @@ export function settingsFromConfig(data: ConfigData): AppSettings {
     zoom: isNumber(zoom) ? clampZoom(zoom) : DEFAULT_SETTINGS.zoom,
     sidebarWidth: clampSidebarWidth(data[SETTINGS_KEYS.sidebarWidth]),
     hostShellAutostart: data[SETTINGS_KEYS.hostShellAutostart] === true,
+    hostShellIos: data[SETTINGS_KEYS.hostShellIos] === true,
     sandboxAutostart: typeof sandboxAutostart === "boolean" ? sandboxAutostart : DEFAULT_SETTINGS.sandboxAutostart,
   };
 }

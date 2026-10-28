@@ -5,9 +5,11 @@ import {
   type HostIosStatus,
   type IosInstallRequest,
   type IosLinkInfo,
+  type IosStreamSettings,
   type LinkSandbox,
   type SimDevice,
   type StopSignal,
+  type UpdateIosStream,
 } from "@tesseract/protocol";
 import { conflict, unavailable } from "../../core/errors";
 import type { Logger } from "../../core/logger";
@@ -56,7 +58,7 @@ export class HostIos {
       config,
       { target: (udid) => this.simulators.target(udid), unavailableReason: () => this.simulators.unavailableReason() },
       logger,
-      { runner, spawner: options.spawner, ...options.screen },
+      { runner, spawner: options.spawner, settings: () => store.iosStreamSettings(), ...options.screen },
     );
     const simctl = this.simulators.simctl;
     this.installs = new IosInstalls(
@@ -153,6 +155,17 @@ export class HostIos {
     this.store.setIosLink(null);
     this.link.configure(null);
     return this.link.info();
+  }
+
+  streamSettings(): IosStreamSettings {
+    return this.store.iosStreamSettings();
+  }
+
+  /** Open screens whose session the change affects move to a session with the new settings. */
+  updateStream(change: UpdateIosStream): IosStreamSettings {
+    const settings = this.store.updateIosStream(change);
+    this.screens.restart();
+    return settings;
   }
 
   listInstalls(): IosInstallRequest[] {

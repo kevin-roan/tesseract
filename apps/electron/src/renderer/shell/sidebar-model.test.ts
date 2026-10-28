@@ -25,6 +25,7 @@ function run(id: string, projectId: string | null, state: AgentRun["state"], sta
     projectId,
     prompt: `\n  ${id} prompt\nsecond line`,
     mode: null,
+    model: null,
     attachments: [],
     sessionId: null,
     claudeAccountId: null,

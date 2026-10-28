@@ -1,10 +1,12 @@
 import { execFile, spawn } from "node:child_process";
+import { createReadStream } from "node:fs";
 import { CANCEL_GRACE_MS } from "./constants";
 
 export interface StreamOptions {
   env?: NodeJS.ProcessEnv;
   cwd?: string;
   signal?: AbortSignal;
+  stdinFile?: string;
   onStdout?(line: string): void;
   onStderr?(line: string): void;
 }
@@ -51,7 +53,7 @@ export function streamCommand(file: string, args: readonly string[], options: St
     const child = spawn(file, [...args], {
       env: options.env ?? process.env,
       cwd: options.cwd,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: [options.stdinFile ? "pipe" : "ignore", "pipe", "pipe"],
       windowsHide: true,
     });
     const stdout = lineSplitter(options.onStdout);
@@ -69,6 +71,15 @@ export function streamCommand(file: string, args: readonly string[], options: St
     child.on("error", (error) => {
       spawnError = error.message;
     });
+    if (options.stdinFile && child.stdin) {
+      const input = createReadStream(options.stdinFile);
+      input.on("error", (error) => {
+        spawnError = error.message;
+        child.stdin?.destroy();
+      });
+      child.stdin.on("error", () => undefined);
+      input.pipe(child.stdin);
+    }
     child.on("close", (code) => {
       stdout.flush();
       stderr.flush();

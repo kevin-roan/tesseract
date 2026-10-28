@@ -1,17 +1,20 @@
 import {
+  ArrowsOutCardinalIcon,
+  BellRingingIcon,
   ClockCounterClockwiseIcon,
-  GearSixIcon,
+  CursorClickIcon,
   HardDrivesIcon,
   InfoIcon,
+  PaletteIcon,
+  RocketLaunchIcon,
   SparkleIcon,
+  WaveformIcon,
 } from "phosphor-react-native";
-import Animated from "react-native-reanimated";
 
-import { ActivityList } from "@/components/activity-item";
 import ChoiceList from "@/components/choice-list";
 import ContentSheet from "@/components/content-sheet";
-import EmptyState from "@/components/empty-state";
-import ListCard from "@/components/list-card";
+import { ListGroup, ListPickerRow, ListRow, ListSwitchRow } from "@/components/list-group";
+import MotionItem from "@/components/motion-item";
 import Notice from "@/components/notice";
 import ProfileHero from "@/components/profile-hero";
 import ScreenScaffold from "@/components/screen-scaffold";
@@ -20,14 +23,14 @@ import { useHostEntry } from "@/features/host-shell/hooks/use-host-entry";
 import SandboxGate from "@/features/sandbox/components/sandbox-gate";
 import SandboxNotices from "@/features/sandbox/components/sandbox-notices";
 import { useProfileScreen } from "@/features/sandbox/hooks/use-profile-screen";
-import { useEntrance } from "@/hooks/use-entrance";
+import { PROFILE_COPY } from "@/features/sandbox/utils/profile-content";
+import { usePreferences } from "@/features/settings/hooks/use-preferences";
+import { SETTINGS_COPY } from "@/features/settings/utils/constants";
 
 export default function ProfileScreen() {
   const screen = useProfileScreen();
+  const prefs = usePreferences();
   const hostEntry = useHostEntry();
-  const sandboxEntering = useEntrance(0);
-  const configureEntering = useEntrance(1);
-  const activityEntering = useEntrance(2);
 
   if (!screen.sandbox || !screen.profile) {
     return <SandboxGate />;
@@ -47,9 +50,6 @@ export default function ProfileScreen() {
         stats={screen.stats}
         nameTestID="profile-name"
         teamTestID="profile-tailnet"
-        menuLabel="Open settings"
-        menuIcon={GearSixIcon}
-        onPressMenu={screen.openSettings}
       />
 
       <ContentSheet>
@@ -65,23 +65,23 @@ export default function ProfileScreen() {
           <Notice
             tone="info"
             icon={InfoIcon}
-            title="Tailscale identity not exposed"
-            message="This sandbox doesn't share who you are on the tailnet. Start it with --tailscale-api (TESSERACT_TAILSCALE_LOCALAPI=1) to show your Tailscale profile."
+            title={PROFILE_COPY.tailscaleMissingTitle}
+            message={PROFILE_COPY.tailscaleMissing}
           />
         ) : null}
         {screen.identityError ? (
           <Notice
             tone="danger"
             message={screen.identityError}
-            actionLabel="Retry"
+            actionLabel={PROFILE_COPY.retry}
             onAction={screen.retryIdentity}
           />
         ) : null}
 
-        <Animated.View entering={sandboxEntering}>
+        <MotionItem index={0}>
           <Section
-            title="Sandbox"
-            actionLabel="Pair another"
+            title={PROFILE_COPY.sandboxTitle}
+            actionLabel={PROFILE_COPY.pairAnother}
             onPressAction={screen.pairSandbox}
             testID="profile-sandbox"
           >
@@ -91,59 +91,102 @@ export default function ProfileScreen() {
               testID="profile-sandbox-choice"
             />
           </Section>
-        </Animated.View>
+        </MotionItem>
 
-        <Animated.View entering={configureEntering}>
-          <Section title="Configure" testID="profile-configure">
-            <ListCard
-              icon={SparkleIcon}
-              title={screen.claudeAccountTitle}
-              subtitle={screen.claudeAccount}
-              onPress={screen.openClaudeAccount}
-            />
-            <ListCard
-              icon={HardDrivesIcon}
-              title={hostEntry.title}
-              subtitle={hostEntry.subtitle}
-              onPress={hostEntry.open}
-            />
-          </Section>
-        </Animated.View>
-
-        <Animated.View entering={activityEntering}>
-          <Section title="Activity" testID="profile-activity">
-            {screen.activityError ? (
-              <Notice
-                tone="danger"
-                message={screen.activityError}
-                actionLabel="Retry"
-                onAction={screen.retryActivity}
+        <MotionItem index={1}>
+          <Section title={PROFILE_COPY.accountTitle} testID="profile-account">
+            <ListGroup>
+              <ListRow
+                icon={SparkleIcon}
+                label={screen.claudeAccountTitle}
+                detail={screen.claudeAccount}
+                chevron
+                onPress={screen.openClaudeAccount}
+                testID="profile-claude"
               />
-            ) : null}
-            {screen.activity.length > 0 ? (
-              <ActivityList items={screen.activity} />
-            ) : screen.activityError ? null : (
-              <EmptyState
-                loading={screen.activityLoading}
+              <ListRow
+                icon={HardDrivesIcon}
+                label={hostEntry.title}
+                detail={hostEntry.subtitle}
+                chevron
+                onPress={hostEntry.open}
+                testID="profile-host"
+              />
+            </ListGroup>
+          </Section>
+        </MotionItem>
+
+        <MotionItem index={2}>
+          <Section title={PROFILE_COPY.preferencesTitle} testID="profile-preferences">
+            <ListGroup footnote={SETTINGS_COPY.liveActivityFootnote}>
+              <ListPickerRow
+                icon={PaletteIcon}
+                label={SETTINGS_COPY.appearanceLabel}
+                options={prefs.appearance.options}
+                selectedId={prefs.appearance.selectedId}
+                onSelect={prefs.appearance.select}
+                footnote={SETTINGS_COPY.appearanceFootnote}
+                testID="profile-appearance"
+              />
+              <ListRow
+                icon={WaveformIcon}
+                label={prefs.voice.title}
+                value={prefs.voice.value}
+                chevron
+                onPress={prefs.voice.open}
+                testID="profile-voice"
+              />
+              <ListPickerRow
+                icon={CursorClickIcon}
+                label={SETTINGS_COPY.inputModeLabel}
+                options={prefs.inputMode.options}
+                selectedId={prefs.inputMode.selectedId}
+                onSelect={prefs.inputMode.select}
+                footnote={SETTINGS_COPY.inputModeFootnote}
+                testID="profile-input-mode"
+              />
+              <ListPickerRow
+                icon={ArrowsOutCardinalIcon}
+                label={SETTINGS_COPY.islandPlacementLabel}
+                options={prefs.islandPlacement.options}
+                selectedId={prefs.islandPlacement.selectedId}
+                onSelect={prefs.islandPlacement.select}
+                footnote={SETTINGS_COPY.islandPlacementFootnote}
+                testID="profile-island"
+              />
+              <ListSwitchRow
+                icon={BellRingingIcon}
+                label={SETTINGS_COPY.liveActivityLabel}
+                value={prefs.liveActivity.value}
+                onValueChange={prefs.liveActivity.set}
+                testID="profile-live-activity"
+              />
+            </ListGroup>
+          </Section>
+        </MotionItem>
+
+        <MotionItem index={3}>
+          <Section title={PROFILE_COPY.moreTitle} testID="profile-more">
+            <ListGroup>
+              <ListRow
                 icon={ClockCounterClockwiseIcon}
-                title={
-                  screen.activityLoading ? "Loading activity…" : "No activity yet"
-                }
-                message={
-                  screen.activityLoading
-                    ? undefined
-                    : "Builds, Claude runs and processes on this sandbox show up here."
-                }
-                actionLabel={screen.activityLoading ? undefined : "Ask Claude"}
-                onAction={
-                  screen.activityLoading
-                    ? undefined
-                    : () => screen.nav.newAgentRun()
-                }
+                label={screen.activity.title}
+                detail={screen.activity.subtitle}
+                chevron
+                onPress={screen.activity.open}
+                testID="profile-activity"
               />
-            )}
+              <ListRow
+                icon={RocketLaunchIcon}
+                label={prefs.about.title}
+                detail={prefs.about.subtitle}
+                chevron
+                onPress={prefs.about.open}
+                testID="profile-about"
+              />
+            </ListGroup>
           </Section>
-        </Animated.View>
+        </MotionItem>
       </ContentSheet>
     </ScreenScaffold>
   );

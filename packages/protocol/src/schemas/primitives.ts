@@ -20,6 +20,9 @@ export const AppRunIdSchema = z.string().regex(idPattern("appRun"), "Invalid app
 export const AdbStreamIdSchema = z.string().regex(idPattern("adbStream"), "Invalid adb stream id");
 export const IosStreamIdSchema = z.string().regex(idPattern("iosStream"), "Invalid iOS stream id");
 export const IosInstallIdSchema = z.string().regex(idPattern("iosInstall"), "Invalid iOS install id");
+export const DeployIdSchema = z.string().regex(idPattern("deploy"), "Invalid deploy id");
+export const IssueIdSchema = z.string().regex(idPattern("issue"), "Invalid issue id");
+export const IssueCommentIdSchema = z.string().regex(idPattern("issueComment"), "Invalid issue comment id");
 
 export const PortSchema = z.int().min(1).max(65535);
 export const ByteCountSchema = z.int().nonnegative();

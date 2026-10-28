@@ -35,6 +35,37 @@ export function videoStreamArgs(idb: string, scaleFactor: number): string[] {
   return [idb, "video-stream", "--format", "mjpeg", "--fps", String(VIDEO_FPS), "--compression-quality", String(VIDEO_QUALITY), "--scale-factor", scaleFactor.toFixed(3)];
 }
 
+/**
+ * `idb video-stream` writing H.264 to stdout at full size: with idb_companion 1.1.8 on macOS 26 the mjpeg format
+ * writes nothing, and neither does h264 with `--scale-factor`.
+ */
+export function h264StreamArgs(idb: string): string[] {
+  return [idb, "video-stream", "--format", "h264", "--fps", String(VIDEO_FPS)];
+}
+
+/** JPEGs per second at most: every frame is a whole JPEG, and a relayed tailnet carries about 1 MB/s. */
+export const JPEG_FPS = 15;
+/** ffmpeg `-q:v` for those JPEGs (2 best, 31 worst). */
+export const JPEG_QUALITY = 7;
+/** Unchanged frames are dropped, but at least one in this many is still sent, so a skipped frame can't stay stale. */
+export const JPEG_MAX_DROPPED = 15;
+
+/**
+ * ffmpeg turning that H.264 into JPEGs: at most `JPEG_FPS`, scaled down by `scaleFactor` to even sizes, unchanged
+ * frames dropped (`mpdecimate`; idb repeats frames of a still screen). Unlike scrcpy's stream for Android, idb's has
+ * B-frames (VideoToolbox reorders), so no `-flags low_delay`: with it the decoder shows frames before their references
+ * and screen changes smear into each other.
+ */
+export function ffmpegJpegArgs(ffmpeg: string, scaleFactor: number): string[] {
+  const scale = scaleFactor < 1 ? [`scale=trunc(iw*${scaleFactor.toFixed(3)}/2)*2:-2`] : [];
+  const filters = [`fps=${JPEG_FPS}`, ...scale, `mpdecimate=max=${JPEG_MAX_DROPPED}`].join(",");
+  return [
+    ffmpeg,
+    ...["-loglevel", "error", "-threads", "1", "-probesize", "32", "-analyzeduration", "0", "-f", "h264", "-i", "pipe:0"],
+    ...["-fps_mode", "passthrough", "-vf", filters, "-f", "image2pipe", "-pix_fmt", "yuvj420p", "-c:v", "mjpeg", "-q:v", String(JPEG_QUALITY), "pipe:1"],
+  ];
+}
+
 /** Scale so the long side of the frames is at most `maxSize` (never upscaled). */
 export function scaleFor(geometry: ScreenGeometry | null, maxSize: number): number {
   if (!geometry) return 1;

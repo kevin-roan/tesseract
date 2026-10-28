@@ -5,6 +5,7 @@ import {
   HostHealthSchema,
   HostLockStatusSchema,
   HostSessionSchema,
+  HostWorkspaceAccessSchema,
   LIMITS,
   parsePairingLink,
   TerminalInfoSchema,
@@ -12,6 +13,7 @@ import {
   TerminalServerMessageSchema,
   TicketSchema,
   type HostSession,
+  type HostWorkspaceAccess,
   type TerminalInfo,
 } from "@tesseract/protocol";
 import { runCli, type Output } from "../src/cli/commands";
@@ -19,7 +21,7 @@ import { silentLogger } from "../src/core/logger";
 import { HostConfigError, hostToolPath, loadHostConfig, servedUrl, tailscaleBin, validateBind, type HostConfig } from "../src/host/config";
 import { startHostShell, type HostShell } from "../src/host/server";
 import { HostStateStore } from "../src/host/state";
-import { hostShellEnv } from "../src/host/terminals";
+import { HOST_CLAUDE, hostClaudeArgv, hostShellEnv } from "../src/host/terminals";
 import { makeTempDir, removeTempDirs, WsClient } from "./helpers";
 
 const PIN = "482913";
@@ -39,11 +41,11 @@ function hostConfig(): HostConfig {
   };
 }
 
-async function start(options: { pin?: boolean } = {}): Promise<void> {
+async function start(options: { pin?: boolean; claudeBin?: string; workspace?: () => HostWorkspaceAccess | null } = {}): Promise<void> {
   config = hostConfig();
   store = new HostStateStore(config.stateDir, config.stateFile);
   if (options.pin !== false) await store.setPin(PIN);
-  shell = startHostShell(config, { logger: silentLogger, now: () => clock, stopGraceMs: 500 });
+  shell = startHostShell(config, { logger: silentLogger, now: () => clock, stopGraceMs: 500, claudeBin: options.claudeBin, workspace: options.workspace ?? (() => null) });
   base = shell.url.href.replace(/\/$/, "");
   token = store.ensureToken();
 }
@@ -278,7 +280,7 @@ describe("terminals", () => {
     await socket.closed;
   });
 
-  test("refuses claude terminals, projects, reused tickets and unknown ids", async () => {
+  test("refuses claude terminals without a folder, projects, reused tickets and unknown ids", async () => {
     await start();
     const { session } = await unlock();
     expect((await call("POST", "/v1/terminals", session, { kind: "claude", cols: 80, rows: 24 })).status).toBe(400);
@@ -308,11 +310,79 @@ describe("terminals", () => {
     await call("DELETE", `/v1/terminals/${info.id}`, session);
   });
 
-  test("serves the terminal page", async () => {
+  test("serves the host terminal page, marked as running on this computer", async () => {
     await start();
     const response = await fetch(`${base}/ui/terminal`);
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain("<html");
+    const html = await response.text();
+    expect(html).toContain("<html");
+    expect(html).toContain('data-origin="host"');
+    expect(html).toContain("data-host-strip");
+  });
+
+  test("the page reads its terminal with an unused ticket, which still opens the stream", async () => {
+    await start();
+    const { session } = await unlock();
+    const info = TerminalInfoSchema.parse((await call("POST", "/v1/terminals", session, { kind: "shell", cols: 80, rows: 24 })).body);
+    expect((await call("GET", `/v1/terminals/${info.id}`, session)).body).toMatchObject({ id: info.id, kind: "shell" });
+    expect((await call("GET", `/v1/terminals/${info.id}?ticket=forged`, null)).status).toBe(401);
+    const { ticket } = TicketSchema.parse((await call("POST", "/v1/auth/ticket", session)).body);
+    const read = await call("GET", `/v1/terminals/${info.id}?ticket=${ticket}`, null);
+    expect(read.status).toBe(200);
+    expect(TerminalInfoSchema.parse(read.body)).toMatchObject({ id: info.id, cwd: config.home });
+    expect((await call("GET", `/v1/terminals/trm_missing?ticket=${ticket}`, null)).status).toBe(404);
+    const socket = await WsClient.connect(`${base.replace(/^http/, "ws")}/v1/terminals/${info.id}/stream?ticket=${ticket}`);
+    socket.close();
+    expect((await call("GET", `/v1/terminals/${info.id}?ticket=${ticket}`, null)).status).toBe(401);
+    await call("DELETE", `/v1/terminals/${info.id}`, session);
+  });
+});
+
+describe("claude terminals", () => {
+  const output = (socket: WsClient) =>
+    socket.messages
+      .map((message) => TerminalServerMessageSchema.parse(message))
+      .map((message) => (message.type === "output" ? message.data : ""))
+      .join("");
+
+  async function stream(session: string, id: string): Promise<WsClient> {
+    const { ticket } = TicketSchema.parse((await call("POST", "/v1/auth/ticket", session)).body);
+    return WsClient.connect(`${base.replace(/^http/, "ws")}/v1/terminals/${id}/stream?ticket=${ticket}`);
+  }
+
+  test("run through the user's login shell, falling back to sh for non-POSIX shells", () => {
+    expect(hostClaudeArgv("/usr/bin/zsh")).toEqual(["/usr/bin/zsh", "-ilc", HOST_CLAUDE.script, "claude", "claude", HOST_CLAUDE.missing, HOST_CLAUDE.prompt]);
+    expect(hostClaudeArgv("/opt/homebrew/bin/fish", "/x/claude").slice(0, 2)).toEqual(["/bin/sh", "-ilc"]);
+    expect(hostClaudeArgv("bash", "/x/claude")[4]).toBe("/x/claude");
+  });
+
+  test("start the user's claude in the project folder with the host prompt", async () => {
+    const bin = join(makeTempDir("claude-bin"), "claude");
+    writeFileSync(bin, '#!/bin/sh\necho "fake-claude in $(pwd): $*"\n', { mode: 0o755 });
+    await start({ claudeBin: bin });
+    const { session } = await unlock();
+    const folder = join(config.home, "repo");
+    mkdirSync(folder, { recursive: true });
+    const created = await call("POST", "/v1/terminals", session, { kind: "claude", cwd: folder, cols: 80, rows: 24 });
+    expect(created.status).toBe(201);
+    const info = TerminalInfoSchema.parse(created.body);
+    expect(info).toMatchObject({ kind: "claude", projectId: null, cwd: folder });
+    expect(info.title).toStartWith("Claude · Host · ");
+    expect(info.title).toEndWith("· repo");
+    const socket = await stream(session, info.id);
+    await socket.waitFor(() => output(socket).replace(/\r?\n/g, "").includes(`fake-claude in ${folder}: --append-system-prompt ${HOST_CLAUDE.prompt}`), 8_000);
+    await socket.closed;
+  });
+
+  test("tell the user when claude is not installed", async () => {
+    await start({ claudeBin: "tesseract-no-such-claude" });
+    const { session } = await unlock();
+    const info = TerminalInfoSchema.parse((await call("POST", "/v1/terminals", session, { kind: "claude", cwd: config.home, cols: 200, rows: 24 })).body);
+    const socket = await stream(session, info.id);
+    await socket.waitFor(() => output(socket).includes("Claude Code isn't installed on this computer"), 8_000);
+    await socket.waitFor(() => socket.messages.some((message) => TerminalServerMessageSchema.parse(message).type === "exit"), 8_000);
+    const exit = socket.messages.map((message) => TerminalServerMessageSchema.parse(message)).find((message) => message.type === "exit");
+    expect(exit).toEqual({ type: "exit", code: 127 });
   });
 });
 
@@ -363,5 +433,36 @@ describe("host CLI", () => {
     const unknown = capture();
     expect(await runCli(["host", "nope"], { env, output: unknown.output })).toBe(2);
     expect(await runCli(["host", "serve", "--bind", "0.0.0.0"], { env, output: unknown.output })).toBe(2);
+  });
+});
+
+describe("host workspace access", () => {
+  test("needs a session and answers 404 until the workspace is set up", async () => {
+    await start();
+    expect((await call("GET", "/v1/host/workspace", token)).status).toBe(401);
+    const { session } = await unlock();
+    const missing = await call("GET", "/v1/host/workspace", session);
+    expect(missing.status).toBe(404);
+  });
+
+  test("returns the workspace URL, token and linked repositories", async () => {
+    const access: HostWorkspaceAccess = { url: "http://100.64.0.5:7702", token: "ws-token", name: "pc (host)", projects: [{ id: "app", path: "/home/me/app" }] };
+    await start({ workspace: () => access });
+    const { session } = await unlock();
+    const result = await call("GET", "/v1/host/workspace", session);
+    expect(result.status).toBe(200);
+    expect(HostWorkspaceAccessSchema.parse(result.body)).toEqual(access);
+  });
+
+  test("reports a broken workspace as unavailable", async () => {
+    await start({
+      workspace: () => {
+        throw new Error("no tailscale");
+      },
+    });
+    const { session } = await unlock();
+    const result = await call("GET", "/v1/host/workspace", session);
+    expect(result.status).toBe(503);
+    expect(result.body.error.message).toContain("no tailscale");
   });
 });

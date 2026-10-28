@@ -4,10 +4,12 @@ import { AgentRunEventSchema, AgentRunSchema, StatusEventSchema } from "./agent"
 import { AppRunSchema } from "./apps";
 import { ArtifactSchema, BuildJobSchema } from "./builds";
 import { LogLineSchema, ProcessInfoSchema, TerminalColsSchema, TerminalInfoSchema, TerminalRowsSchema } from "./processes";
-import { AgentRunIdSchema, ArtifactIdSchema, ExitCodeSchema, ProjectIdSchema } from "./primitives";
+import { AgentRunIdSchema, ArtifactIdSchema, ExitCodeSchema, IssueIdSchema, ProjectIdSchema } from "./primitives";
 import { InboxCountsSchema, InboxItemSchema } from "./inbox";
 import { ProjectSchema } from "./projects";
 import { SttStatusSchema } from "./stt";
+import { DeploySchema } from "./deploys";
+import { IssueCommentSchema, IssueSchema } from "./issues";
 import { SyncRequestSchema } from "./sync";
 
 export const TerminalInputMessageSchema = z.object({ type: z.literal("input"), data: z.string() });
@@ -74,6 +76,11 @@ export const ServerEventSchema = z.discriminatedUnion("type", [
   /** The project's sync-back baseline moved (after a push or an ack). */
   z.object({ type: z.literal("sync.changed"), projectId: ProjectIdSchema }),
   z.object({ type: z.literal("app.updated"), run: AppRunSchema }),
+  z.object({ type: z.literal("deploy.updated"), deploy: DeploySchema }),
+  /** Created or changed, including its agent state. */
+  z.object({ type: z.literal("issue.updated"), issue: IssueSchema }),
+  z.object({ type: z.literal("issue.deleted"), id: IssueIdSchema, projectId: ProjectIdSchema }),
+  z.object({ type: z.literal("issue.commented"), comment: IssueCommentSchema, projectId: ProjectIdSchema }),
 ]);
 export type ServerEvent = z.infer<typeof ServerEventSchema>;
 export type ServerEventType = ServerEvent["type"];

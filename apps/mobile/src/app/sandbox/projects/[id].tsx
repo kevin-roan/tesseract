@@ -17,6 +17,11 @@ import ArtifactCard from "@/features/sandbox/components/artifact-card";
 import BuildCard from "@/features/sandbox/components/build-card";
 import BuildTargetCard from "@/features/sandbox/components/build-target-card";
 import GitCard from "@/features/sandbox/components/git-card";
+import HostProjectAccount from "@/features/host-shell/components/host-project-account";
+import IssuesEntry from "@/features/issues/components/issues-entry";
+import HostProjectSection from "@/features/host-shell/components/host-project-section";
+import { useHostProject } from "@/features/host-shell/hooks/use-host-project";
+import { isHostRuntime } from "@/features/sandbox/utils/runtime";
 import MotionItem from "@/components/motion-item";
 import ProcessCard from "@/features/sandbox/components/process-card";
 import RenameProjectSheet from "@/features/sandbox/components/rename-project-sheet";
@@ -33,6 +38,7 @@ export default function ProjectScreen() {
   const params = useLocalSearchParams<{ id: string; process?: string }>();
   const detail = useProjectDetail(firstParam(params.id) ?? "", firstParam(params.process) ?? null);
   const { project } = detail;
+  const hostProject = useHostProject(firstParam(params.id) ?? "", project !== undefined && project !== null && !isHostRuntime(project.runtime));
 
   if (!project) {
     return (
@@ -81,6 +87,20 @@ export default function ProjectScreen() {
       {detail.actionError ? (
         <MotionItem>
           <Notice tone="danger" message={detail.actionError} />
+        </MotionItem>
+      ) : null}
+
+      <MotionItem index={0}>
+        <IssuesEntry projectId={project.id} />
+      </MotionItem>
+
+      <MotionItem index={0}>
+        <HostProjectSection state={hostProject} />
+      </MotionItem>
+
+      {hostProject.kind === "ready" ? (
+        <MotionItem index={0}>
+          <HostProjectAccount workspaceId={hostProject.workspaceId} projectId={project.id} />
         </MotionItem>
       ) : null}
 

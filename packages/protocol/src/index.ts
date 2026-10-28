@@ -15,6 +15,8 @@ export * from "./schemas/ports";
 export * from "./schemas/usage";
 export * from "./schemas/inbox";
 export * from "./schemas/sync";
+export * from "./schemas/deploys";
+export * from "./schemas/issues";
 export * from "./schemas/push";
 export * from "./schemas/island";
 export * from "./schemas/builds";

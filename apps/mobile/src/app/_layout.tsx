@@ -44,8 +44,11 @@ function RootNavigator() {
               <Stack.Screen name="sandbox/files/[id]" options={{ title: 'Files' }} />
               <Stack.Screen name="sandbox/builds/[id]" options={{ title: 'Build' }} />
               <Stack.Screen name="sandbox/agent/[id]" options={{ title: 'Claude run' }} />
+              <Stack.Screen name="sandbox/issues/index" options={{ title: 'Issues' }} />
+              <Stack.Screen name="sandbox/issues/[id]" options={{ title: 'Issue' }} />
               <Stack.Screen name="sandbox/claude" options={{ title: 'Claude accounts' }} />
-              <Stack.Screen name="settings/index" options={{ title: 'Settings' }} />
+              <Stack.Screen name="sandbox/activity" options={{ title: 'Activity' }} />
+              <Stack.Screen name="settings/voice" options={{ title: 'Speech to text' }} />
               <Stack.Screen name="settings/about" options={{ title: 'About' }} />
               <Stack.Screen name="inbox" options={{ title: 'Inbox' }} />
               <Stack.Screen name="files" options={{ title: 'Files' }} />

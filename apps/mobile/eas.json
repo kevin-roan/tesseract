@@ -32,8 +32,7 @@
       "bun": "1.4.2",
       "channel": "production",
       "env": {
-        "APP_VARIANT": "production",
-        "SENTRY_ALLOW_FAILURE": "true"
+        "APP_VARIANT": "production"
       }
     }
   },

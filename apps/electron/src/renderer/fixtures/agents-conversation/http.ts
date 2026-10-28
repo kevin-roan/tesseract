@@ -47,6 +47,7 @@ export default defineHttpFixtures([
         projectId: request.projectId ?? null,
         prompt: request.prompt,
         mode: null,
+        model: null,
         attachments: [],
         sessionId: request.resumeSessionId ?? null,
         claudeAccountId: "claude-work",

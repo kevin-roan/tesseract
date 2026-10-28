@@ -59,7 +59,8 @@ const IslandHost = () => {
                   items={island.items}
                   focused={island.focused}
                   onFocus={island.focus}
-                  onOpen={island.openChat}
+                  openTarget={island.openTarget}
+                  onOpen={island.open}
                   onStop={island.stop}
                   onCapture={island.capture}
                   onAttach={island.attachShared}

@@ -44,6 +44,7 @@ apps/controller/src/
 | `display`, `vnc-bridge` | `xdpyinfo` probe, RFB banner probe of 5901, screenshots, WS↔TCP bridge |
 | `agent-runs`, `agent-stream` | headless `claude -p` runs (with `--append-system-prompt <confidentialPrompt(id)>` in a confidential project), stream-json parsing into `AgentRunEvent`s |
 | `uploads`, `transcriptions` | phone attachments in `/workspace/.tesseract/uploads`, speech-to-text of voice notes ([below](#uploads-and-speech-to-text)) |
+| `issues` | project issues (per-project numbers, board ordering, comments, `issue.*` events) and Claude automation: agent runs for issues assigned to Claude, run lifecycle → issue status, follow-up comments resuming the session, reconcile after a restart ([issues.md](issues.md)) |
 | `inbox`, `claude-hooks` | the notification inbox (dedupe, read state, pruning, `inbox.updated`) and the mapping of Claude Code hook calls onto it ([below](#inbox-and-claude-hooks)) |
 | `push` | registered Expo push tokens and pushes of inbox items through `TESSERACT_PUSH_URL` ([below](#inbox-and-claude-hooks)) |
 | `live-activity`, `apns` | `IslandState` of the sandbox and its mirror into the iOS Live Activity through ActivityKit pushes over HTTP/2 to APNs ([below](#live-activities)) |
@@ -254,11 +255,13 @@ intermediate files.
 
 ```text
 claude -p --output-format stream-json --verbose --permission-mode <mode | $TESSERACT_CLAUDE_PERMISSION_MODE> \
-  [--add-dir /workspace/.tesseract/uploads] [--resume <sessionId>]   # prompt on stdin
+  [--model <model>] [--add-dir /workspace/.tesseract/uploads] [--resume <sessionId>]   # prompt on stdin
 ```
 
 - `mode` (`plan`, `acceptEdits`, `bypassPermissions`) overrides the configured permission
   mode for one run; the run stores `null` when it was not given.
+- `model` (`opus`, `sonnet`, `haiku`) is passed as `--model`; without it Claude Code uses the
+  account's default, and the run stores `null`. The apps default a follow-up to the run's model.
 - `attachmentIds` are resolved before Claude starts (404 for an unknown id) and stored on the
   run as full `Upload` objects. Non-audio attachments add `--add-dir` for the uploads directory
   and a block to the stdin prompt:
@@ -269,7 +272,8 @@ claude -p --output-format stream-json --verbose --permission-mode <mode | $TESSE
 - Runs in the project directory (or `/workspace`) as `dev`. The prompt always
   goes through stdin, never argv, so it cannot inject options. `CLAUDECODE` is
   removed from the environment (a run started from inside Claude would
-  otherwise refuse to start) and `TESSERACT_AGENT_RUN_ID` is added.
+  otherwise refuse to start) and `TESSERACT_AGENT_RUN_ID` is added (and `TESSERACT_ISSUE_ID`
+  for a run the `issues` service starts for an issue).
 - `agent-stream` parses the NDJSON stream. Assistant text becomes `text`
   events, tool calls become `tool_use` (tool name plus a one-line summary),
   tool results become `tool_result` (with `isError`), and init and

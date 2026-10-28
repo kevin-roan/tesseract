@@ -8,6 +8,8 @@ import {
   type DeletedProject,
   type GitDetails,
   type Project,
+  type ProjectGitResult,
+  type RunProjectGit,
 } from "@tesseract/protocol";
 import { mapLimit } from "../core/concurrency";
 import { badRequest, conflict, HttpError, notFound } from "../core/errors";
@@ -125,6 +127,11 @@ export class ProjectService {
     if (!details) throw notFound(`Project ${location.id} is not a git repository`);
     if (!this.isConfidential(location.id)) return details;
     return { ...details, log: details.log.map((commit) => ({ ...commit, author: REDACTED })) };
+  }
+
+  async runGit(id: string, input: RunProjectGit): Promise<ProjectGitResult> {
+    const location = this.require(id);
+    return { action: input.action, output: await this.git.act(location.path, input.action, input.message) };
   }
 
   /** Host projects are links to host repositories, registered with `tesseract --unsafe-repo`. */

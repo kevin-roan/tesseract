@@ -1,3 +1,4 @@
+import type { DeployKind, DeployStatus } from "@tesseract/protocol";
 import type { ContainerState, RouteScheme, RouteStatus, ServerContainer } from "../../../shared/contracts/containers";
 import type { MemoryUnit } from "./constants";
 import type { ContainerAction } from "./types";
@@ -121,6 +122,63 @@ export const CONTAINERS_LABELS = {
     buildFailed: (error: string) => `Couldn't build the image: ${error}`,
     cancelBuild: "Cancel build",
     noTailscale: "No Tailscale auth key is set, so the container won't join your tailnet.",
+  },
+} as const;
+
+export const DEPLOYS_LABELS = {
+  title: "Deploys",
+  subtitle: "Apps that agents in your sandboxes deployed to this container.",
+  empty: "No deploys yet.",
+  list: "Deploys",
+  autoDeploy: "Allow sandbox deploys",
+  autoDeployHint: "When off, each deploy from a sandbox waits for your approval.",
+  autoDeployOn: (name: string) => `Sandbox deploys to ${name} run automatically`,
+  autoDeployOff: (name: string) => `Sandbox deploys to ${name} wait for your approval`,
+  autoDeployFailed: (error: string) => `Couldn't change the deploy policy: ${error}`,
+  status: {
+    pending: "Queued",
+    claimed: "Starting",
+    awaiting_approval: "Needs approval",
+    deploying: "Deploying",
+    deployed: "Deployed",
+    failed: "Failed",
+    rejected: "Rejected",
+    cancelled: "Cancelled",
+  } satisfies Record<DeployStatus, string>,
+  kinds: { compose: "Compose", dockerfile: "Dockerfile" } satisfies Record<DeployKind, string>,
+  from: (sandbox: string) => `from ${sandbox}`,
+  into: (container: string) => `to ${container}`,
+  request: {
+    title: "Waiting for your approval",
+    createTitle: (container: string) => `Waiting for your approval to create ${container}`,
+    container: "Container",
+    newContainer: (resources: string) => `New container · ${resources}`,
+    source: "Source",
+    size: "Bundle size",
+    hostname: "Public URL",
+    port: "Port",
+    noHostname: "None",
+    hostTarget: (hostname: string, port: number | null) => (port === null ? hostname : `${hostname} → port ${port}`),
+  },
+  approve: "Approve",
+  createAndDeploy: "Create and deploy",
+  reject: "Reject",
+  approved: (app: string) => `Deploying ${app}`,
+  approvedCreate: (container: string, app: string) => `Creating ${container} for ${app}`,
+  rejected: (app: string) => `${app} rejected`,
+  approveFailed: (app: string, error: string) => `Couldn't approve ${app}: ${error}`,
+  rejectFailed: (app: string, error: string) => `Couldn't reject ${app}: ${error}`,
+  showLog: "Show log",
+  hideLog: "Hide log",
+  logEmpty: "No output yet.",
+  openUrl: (url: string) => `Open ${url}`,
+  awaiting: (count: number) => `${count} ${count === 1 ? "deploy needs" : "deploys need"} approval`,
+  requests: {
+    title: "Requests from sandboxes",
+    subtitle: "Sandboxes asked this computer to create these containers and deploy to them.",
+    list: "Container requests",
+    needsApproval: "New · needs approval",
+    creating: "New · creating",
   },
 } as const;
 

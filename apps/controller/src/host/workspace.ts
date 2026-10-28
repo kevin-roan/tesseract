@@ -1,9 +1,9 @@
-import { lstatSync, mkdirSync, readlinkSync, realpathSync, statSync, symlinkSync } from "node:fs";
+import { lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, hostname } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { renderANSI } from "uqr";
-import { buildPairingLink, HOST_WORKSPACE_PORT, projectIdFromName } from "@tesseract/protocol";
+import { buildPairingLink, HOST_WORKSPACE_PORT, isValidProjectId, projectIdFromName, type HostWorkspaceAccess } from "@tesseract/protocol";
 import { resolveToken } from "../auth/token";
 import { CliError } from "../cli/local-api";
 import { ConfigError, ensureDirectories, loadConfig, localApiUrl, type Config } from "../config";
@@ -18,9 +18,14 @@ export const HOST_WORKSPACE_USAGE = `  tesseract-controller host workspace serve
                                      Tailscale IPv4 (or loopback), port ${HOST_WORKSPACE_PORT}; its projects are links to host
                                      repositories and Claude edits them in place (TESSERACT_HOST_WORKSPACE,
                                      TESSERACT_HOST_WORKSPACE_BIND, TESSERACT_HOST_WORKSPACE_PORT, TESSERACT_HOST_WORKSPACE_PUBLIC_URL)
-  tesseract-controller host workspace add [<path>] [--name <name>] [--json]
+  tesseract-controller host workspace add [<path>] [--name <name> | --id <id>] [--json]
                                      link a host repository (default: the current directory) into the host workspace;
+                                     --id links it as exactly <id>, replacing a link with that id (the desktop app links
+                                     each synced project's host copy under the sandbox project's id);
                                      --json prints { id, path, created }
+  tesseract-controller host workspace stop [--json]
+                                     stop the running host workspace controller (pid file in its data dir);
+                                     --json prints { stopped }
   tesseract-controller host workspace pair [--json]
                                      print the pairing link (tesseract://pair) of the host workspace controller;
                                      --json prints { link, url, localUrl, name }`;
@@ -74,8 +79,7 @@ function linkTarget(path: string): string | null {
   }
 }
 
-/** Links `repo` as `<projectsDir>/<id>`; the same repository keeps its id, another one with the same name gets `-2`, `-3`, … */
-export function linkRepository(config: Config, repo: string, name?: string): { id: string; path: string; created: boolean } {
+function resolveRepository(config: Config, repo: string): string {
   let path: string;
   try {
     path = realpathSync(repo);
@@ -84,6 +88,12 @@ export function linkRepository(config: Config, repo: string, name?: string): { i
   }
   if (!statSync(path).isDirectory()) throw new CliError(`${path} is not a directory`, 2);
   if (isInside(realpathSync(config.workspace), path)) throw new CliError(`${path} is inside the host workspace ${config.workspace}`, 2);
+  return path;
+}
+
+/** Links `repo` as `<projectsDir>/<id>`; the same repository keeps its id, another one with the same name gets `-2`, `-3`, … */
+export function linkRepository(config: Config, repo: string, name?: string): { id: string; path: string; created: boolean } {
+  const path = resolveRepository(config, repo);
   const base = projectIdFromName(name ?? basename(path));
   if (!base) throw new CliError(`Cannot derive a project id from "${name ?? basename(path)}"; pass --name`, 2);
   mkdirSync(config.projectsDir, { recursive: true });
@@ -102,26 +112,135 @@ export function linkRepository(config: Config, repo: string, name?: string): { i
   throw new CliError(`Too many host projects named ${base}`, 2);
 }
 
+/** Links `repo` as exactly `<projectsDir>/<id>`, re-pointing an existing link; a real directory with that id is left alone. */
+export function linkRepositoryAs(config: Config, repo: string, id: string): { id: string; path: string; created: boolean } {
+  if (!isValidProjectId(id)) throw new CliError(`"${id}" is not a valid project id`, 2);
+  const path = resolveRepository(config, repo);
+  mkdirSync(config.projectsDir, { recursive: true });
+  const entry = join(config.projectsDir, id);
+  if (linkTarget(entry) === path) return { id, path, created: false };
+  const existing = entryKind(entry);
+  if (existing === "directory") throw new CliError(`${entry} is a directory, not a link to a host repository`, 2);
+  if (existing === "missing") {
+    symlinkSync(path, entry, "dir");
+  } else {
+    const temp = `${entry}.${process.pid}.tmp`;
+    symlinkSync(path, temp, "dir");
+    renameSync(temp, entry);
+  }
+  return { id, path, created: true };
+}
+
+function entryKind(path: string): "missing" | "link" | "directory" {
+  try {
+    return lstatSync(path).isSymbolicLink() ? "link" : "directory";
+  } catch {
+    return "missing";
+  }
+}
+
+/** The repositories linked into the host workspace, as `{ id, path }` (dangling links are skipped). */
+export function linkedRepositories(config: Config): { id: string; path: string }[] {
+  let names: string[];
+  try {
+    names = readdirSync(config.projectsDir);
+  } catch {
+    return [];
+  }
+  return names
+    .filter(isValidProjectId)
+    .flatMap((id) => {
+      const path = linkTarget(join(config.projectsDir, id));
+      return path ? [{ id, path }] : [];
+    })
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+export interface WorkspacePairing {
+  link: string;
+  url: string;
+  localUrl: string;
+  name: string;
+  token: string;
+}
+
+/** Pairing details of the host workspace controller; `null` when it has no token yet and `create` is false. */
+export function workspacePairing(env: Env, create: boolean): WorkspacePairing | null {
+  const config = loadHostWorkspaceConfig(env, {}, !env.TESSERACT_HOST_WORKSPACE_BIND);
+  if (create) ensureDirectories(config);
+  const resolved = resolveToken(config, { create });
+  if (!resolved) {
+    if (create) throw new CliError("Could not load or create the host workspace token");
+    return null;
+  }
+  const url = env.TESSERACT_HOST_WORKSPACE_PUBLIC_URL ? config.publicUrl : (tailscaleServeUrl(config.host, config.port, env) ?? config.publicUrl);
+  const name = `${config.sandboxId} (host)`;
+  return { link: buildPairingLink({ url, token: resolved.token, name }), url, localUrl: localApiUrl(config), name, token: resolved.token };
+}
+
+/** `GET /v1/host/workspace` of the host shell daemon: how a PIN-unlocked device reaches the host workspace controller. */
+export function hostWorkspaceAccess(env: Env): HostWorkspaceAccess | null {
+  const pairing = workspacePairing(env, false);
+  if (!pairing) return null;
+  const config = loadHostWorkspaceConfig(env, {}, false);
+  return { url: pairing.url, token: pairing.token, name: pairing.name, projects: linkedRepositories(config) };
+}
+
+const pidFile = (config: Config) => join(config.dataDir, "serve.pid");
+
 function serve(args: string[], io: HostCliIo): null {
   const { values } = parseArgs({ args, options: { bind: { type: "string" }, port: { type: "string" } }, strict: true });
-  const controller = startController(loadHostWorkspaceConfig(io.env, values));
-  const shutdown = () => void controller.stop().finally(() => process.exit(0));
+  const config = loadHostWorkspaceConfig(io.env, values);
+  const controller = startController(config);
+  writeFileSync(pidFile(config), `${process.pid}\n`, { mode: 0o600 });
+  const shutdown = () =>
+    void controller.stop().finally(() => {
+      rmSync(pidFile(config), { force: true });
+      process.exit(0);
+    });
   process.once("SIGTERM", shutdown);
   process.once("SIGINT", shutdown);
   return null;
 }
 
+/** SIGTERMs the `serve` recorded in the pid file; `false` when none is running. */
+export function stopWorkspace(config: Config): boolean {
+  let pid: number;
+  try {
+    pid = Number.parseInt(readFileSync(pidFile(config), "utf8").trim(), 10);
+  } catch {
+    return false;
+  }
+  rmSync(pidFile(config), { force: true });
+  if (!Number.isInteger(pid) || pid <= 1) return false;
+  try {
+    process.kill(pid, "SIGTERM");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function stop(args: string[], io: HostCliIo): number {
+  const { values } = parseArgs({ args, options: { json: { type: "boolean", default: false } }, strict: true });
+  const stopped = stopWorkspace(loadHostWorkspaceConfig(io.env, {}, false));
+  io.output.out(values.json ? JSON.stringify({ stopped }) : stopped ? "Stopped the host workspace" : "The host workspace is not running");
+  return 0;
+}
+
 function add(args: string[], io: HostCliIo): number {
   const { values, positionals } = parseArgs({
     args,
-    options: { name: { type: "string" }, json: { type: "boolean", default: false } },
+    options: { name: { type: "string" }, id: { type: "string" }, json: { type: "boolean", default: false } },
     allowPositionals: true,
     strict: true,
   });
   if (positionals.length > 1) throw new CliError("host workspace add takes at most one path", 2);
+  if (values.name !== undefined && values.id !== undefined) throw new CliError("Pass either --name or --id, not both", 2);
   const config = loadHostWorkspaceConfig(io.env, {}, false);
   ensureDirectories(config);
-  const linked = linkRepository(config, resolve(io.cwd ?? process.cwd(), positionals[0] ?? "."), values.name);
+  const repo = resolve(io.cwd ?? process.cwd(), positionals[0] ?? ".");
+  const linked = values.id !== undefined ? linkRepositoryAs(config, repo, values.id) : linkRepository(config, repo, values.name);
   if (values.json) io.output.out(JSON.stringify(linked));
   else io.output.out(`${linked.created ? "Linked" : "Already linked"} ${linked.path} as host project ${linked.id}`);
   return 0;
@@ -129,14 +248,9 @@ function add(args: string[], io: HostCliIo): number {
 
 function pair(args: string[], io: HostCliIo): number {
   const { values } = parseArgs({ args, options: { json: { type: "boolean", default: false } }, strict: true });
-  const config = loadHostWorkspaceConfig(io.env, {}, !io.env.TESSERACT_HOST_WORKSPACE_BIND);
-  ensureDirectories(config);
-  const resolved = resolveToken(config, { create: true });
-  if (!resolved) throw new CliError("Could not load or create the host workspace token");
-  const url = io.env.TESSERACT_HOST_WORKSPACE_PUBLIC_URL ? config.publicUrl : (tailscaleServeUrl(config.host, config.port, io.env) ?? config.publicUrl);
-  const name = `${config.sandboxId} (host)`;
-  const link = buildPairingLink({ url, token: resolved.token, name });
-  const localUrl = localApiUrl(config);
+  const pairing = workspacePairing(io.env, true);
+  if (!pairing) throw new CliError("Could not load or create the host workspace token");
+  const { link, url, localUrl, name } = pairing;
   if (values.json) {
     io.output.out(JSON.stringify({ link, url, localUrl, name }));
     return 0;
@@ -157,7 +271,9 @@ export function hostWorkspaceCli(args: string[], io: HostCliIo): number | null {
       return add(rest, io);
     case "pair":
       return pair(rest, io);
+    case "stop":
+      return stop(rest, io);
     default:
-      throw new CliError(`Unknown host workspace command "${command ?? ""}"; expected serve, add or pair`, 2);
+      throw new CliError(`Unknown host workspace command "${command ?? ""}"; expected serve, add, stop or pair`, 2);
   }
 }

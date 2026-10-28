@@ -19,7 +19,11 @@ export const HOST_LABELS = {
   invalidSandbox: "The sandbox URL and token are required",
   scrcpyMissing: "The app runs on the emulator; install scrcpy to see its screen here",
   noFolder: "This project has no copy on this computer",
-  terminalTitle: (name: string) => `Host shell · ${name}`,
+  terminalTitle: {
+    shell: (name: string) => `Host shell · ${name}`,
+    claude: (name: string) => `Claude · ${name} · on this computer`,
+  },
+  invalidTerminalKind: "A host terminal runs either a shell or Claude",
   noSerial: "The emulator is not reachable from this machine",
   proxyForbidden: (path: string) => `The host shell does not serve ${path} to the app`,
   proxyCancelled: "The host shell request was cancelled",

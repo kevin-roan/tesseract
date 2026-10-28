@@ -21,4 +21,11 @@ describe("settings", () => {
     expect(data).toEqual({ url: "x", host_shell_autostart: true, appearance: "light" });
     expect(settingsFromConfig(data)).toMatchObject({ appearance: "light", hostShellAutostart: true, zoom: 1 });
   });
+
+  it("stores the iOS Simulator switch under host_shell_ios", () => {
+    const data = applySettingsPatch({}, { hostShellIos: true });
+    expect(data).toEqual({ host_shell_ios: true });
+    expect(settingsFromConfig(data).hostShellIos).toBe(true);
+    expect(settingsFromConfig({ host_shell_ios: "1" }).hostShellIos).toBe(false);
+  });
 });

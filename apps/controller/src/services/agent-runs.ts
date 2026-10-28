@@ -48,6 +48,7 @@ const READER_GRACE_MS = 1_000;
 
 export type ClaudeArgsOptions = {
   resumeSessionId?: string;
+  model?: string;
   attachments?: readonly Upload[];
   uploadsDir?: string;
   appendSystemPrompt?: string;
@@ -77,12 +78,16 @@ export function claudeArgs(prompt: string, permissionMode: string, options: Clau
     "--verbose",
     "--permission-mode",
     permissionMode,
+    ...(options.model ? ["--model", options.model] : []),
     ...(readable.length > 0 && options.uploadsDir ? ["--add-dir", options.uploadsDir] : []),
     ...(options.appendSystemPrompt ? ["--append-system-prompt", options.appendSystemPrompt] : []),
     ...(options.resumeSessionId ? ["--resume", options.resumeSessionId] : []),
   ];
   return { argv, stdin: `${prompt}${attachmentBlock(readable)}` };
 }
+
+/** Internal start options, not part of the HTTP `StartAgentRun` body. */
+export type AgentRunStartOptions = { env?: Record<string, string> };
 
 export class AgentRunService {
   private readonly live = new Map<string, LiveRun>();
@@ -98,7 +103,7 @@ export class AgentRunService {
     private readonly stopGraceMs: number = LIMITS.processStopGraceMs,
   ) {}
 
-  start(input: StartAgentRun): AgentRun {
+  start(input: StartAgentRun, options: AgentRunStartOptions = {}): AgentRun {
     if (input.resumeSessionId !== undefined && !AGENT_SESSION_ID_PATTERN.test(input.resumeSessionId)) {
       throw badRequest("resumeSessionId must be a Claude session id (letters, digits, '.', '_' or '-')");
     }
@@ -120,6 +125,7 @@ export class AgentRunService {
       projectId,
       prompt: input.prompt,
       mode: input.mode ?? null,
+      model: input.model ?? null,
       attachments,
       sessionId: input.resumeSessionId ?? null,
       resumedSessionId: input.resumeSessionId ?? null,
@@ -134,6 +140,7 @@ export class AgentRunService {
     };
     const { argv, stdin } = claudeArgs(input.prompt, input.mode ?? this.config.claudePermissionMode, {
       resumeSessionId: input.resumeSessionId,
+      model: input.model,
       attachments,
       uploadsDir: this.uploads.root,
       appendSystemPrompt: projectId !== null && this.projects.isConfidential(projectId) ? confidentialPrompt(projectId) : undefined,
@@ -143,7 +150,7 @@ export class AgentRunService {
     try {
       proc = Bun.spawn([claude, ...argv], {
         cwd,
-        env: { ...claudeAccountEnv(account, env), TESSERACT_AGENT_RUN_ID: run.id },
+        env: { ...claudeAccountEnv(account, env), ...options.env, TESSERACT_AGENT_RUN_ID: run.id },
         stdin: "pipe",
         stdout: "pipe",
         stderr: "pipe",

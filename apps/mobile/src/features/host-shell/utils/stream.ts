@@ -1,16 +1,20 @@
 import {
   ANDROID_STREAM_ENCODINGS,
+  DEFAULT_ANDROID_STREAM,
+  DEFAULT_IOS_STREAM,
   LIMITS,
   type AndroidDevice,
   type AndroidStreamEncoding,
   type AndroidStreamSettings,
-  type UpdateAndroidStream,
+  type IosStreamSettings,
 } from "@tesseract/protocol";
 
 import type { MenuOption } from "@/components/menu-sheet/types";
 
+import type { HostDeviceKind } from "../types";
 import { STREAM_BITS_PER_MBIT, STREAM_HOST_EMULATOR, STREAM_MAX_SIZES, STREAM_VIEWER_SIZE } from "./constants";
 import { ANDROID_COPY, STREAM_COPY } from "./content";
+import { isHostDeviceKind } from "./devices";
 
 export const STREAM_RANGES = {
   maxFps: { min: 1, max: LIMITS.maxAndroidFps },
@@ -18,11 +22,21 @@ export const STREAM_RANGES = {
   jpegQuality: { min: LIMITS.minAndroidJpegQuality, max: LIMITS.maxAndroidJpegQuality },
 } as const;
 
+/** Android and iOS share the video settings; only Android picks a default device. */
+export type StreamSettings = IosStreamSettings & Partial<Pick<AndroidStreamSettings, "device">>;
+
+/** What differs between the Android (`/v1/android/stream`) and iOS (`/v1/ios/stream`) settings screens. */
+export const STREAM_KINDS: Record<HostDeviceKind, { subtitle: string; footnote: string; defaults: StreamSettings; devices: boolean }> = {
+  android: { subtitle: STREAM_COPY.subtitle, footnote: STREAM_COPY.videoFootnote, defaults: DEFAULT_ANDROID_STREAM, devices: true },
+  ios: { subtitle: STREAM_COPY.iosSubtitle, footnote: STREAM_COPY.iosVideoFootnote, defaults: DEFAULT_IOS_STREAM, devices: false },
+};
+
+/** The `kind` route param of the settings screen; Android when missing (links from before iOS). */
+export const streamKindFrom = (value: unknown): HostDeviceKind => (isHostDeviceKind(value) ? value : "android");
+
 /** The draft fields that differ from the saved settings. */
-export function streamChanges(saved: AndroidStreamSettings, draft: UpdateAndroidStream): UpdateAndroidStream {
-  return Object.fromEntries(
-    Object.entries(draft).filter(([key, value]) => saved[key as keyof AndroidStreamSettings] !== value),
-  ) as UpdateAndroidStream;
+export function streamChanges<T extends StreamSettings>(saved: T, draft: Partial<T>): Partial<T> {
+  return Object.fromEntries(Object.entries(draft).filter(([key, value]) => saved[key as keyof T] !== value)) as Partial<T>;
 }
 
 export const toMbit = (bitRate: number): number => bitRate / STREAM_BITS_PER_MBIT;

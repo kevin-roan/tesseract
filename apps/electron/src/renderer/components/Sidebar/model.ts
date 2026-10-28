@@ -84,10 +84,13 @@ export function toggleExpansion(state: ExpansionState, id: string | null): Expan
 
 export type SidebarContainersState = "loading" | "unavailable" | "empty" | "ready";
 
-export type SidebarContainerActivity = "running" | "busy" | "stopped" | "error";
+export type SidebarContainerActivity = "running" | "busy" | "stopped" | "error" | "requested";
 
 export interface SidebarContainerItem {
   name: string;
   activity: SidebarContainerActivity;
   status: string;
+  attention?: number;
+  attentionLabel?: string;
+  request?: boolean;
 }

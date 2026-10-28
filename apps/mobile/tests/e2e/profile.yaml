@@ -36,12 +36,14 @@ tags:
       id: "profile-tailnet"
     above:
       id: "profile-activity"
-- assertVisible: "Open settings"
+- assertNotVisible: "Open settings"
 - assertNotVisible: "Tailscale identity not exposed"
 - scrollUntilVisible:
     element:
       id: "profile-activity"
     direction: DOWN
+- tapOn:
+    id: "profile-activity"
 - scrollUntilVisible:
     element:
       id: "activity-process-.*"

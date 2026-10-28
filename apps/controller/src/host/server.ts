@@ -22,20 +22,22 @@ import {
   TerminalClientMessageSchema,
   TICKET_PARAM,
   UpdateAndroidStreamSchema,
+  UpdateIosStreamSchema,
   validate,
   wsPaths,
   type DeviceScreenServerMessage,
   type StopSignal,
   type HostHealth,
+  type HostWorkspaceAccess,
   type Schema,
   type TerminalServerMessage,
 } from "@tesseract/protocol";
 import { TicketStore } from "../auth/tickets";
-import { badRequest, errorMessage, HttpError, notFound } from "../core/errors";
+import { badRequest, errorMessage, HttpError, notFound, unavailable } from "../core/errors";
 import { createLogger, type Logger } from "../core/logger";
 import androidPage from "../ui/android.html";
 import iosPage from "../ui/ios.html";
-import terminalPage from "../ui/terminal.html";
+import hostTerminalPage from "../ui/host-terminal.html";
 import { VERSION } from "../version";
 import { HostAndroid, type HostAndroidOptions } from "./android";
 import type { ScreenClient, ScreenRequest } from "./android/screen";
@@ -45,6 +47,7 @@ import { HostIos, type HostIosOptions } from "./ios";
 import type { IosScreenRequest } from "./ios/screen";
 import { HostStateStore } from "./state";
 import { HostTerminals } from "./terminals";
+import { hostWorkspaceAccess } from "./workspace";
 
 type WsData = {
   kind: "terminal" | "screen" | "iosScreen";
@@ -55,7 +58,16 @@ type WsData = {
   cleanup: (() => void) | null;
 };
 
-export type HostShellOptions = HostAuthOptions & { logger?: Logger; stopGraceMs?: number; android?: HostAndroidOptions; ios?: HostIosOptions };
+export type HostShellOptions = HostAuthOptions & {
+  logger?: Logger;
+  stopGraceMs?: number;
+  /** Program the `claude` terminals run through the login shell (tests point it elsewhere). */
+  claudeBin?: string;
+  android?: HostAndroidOptions;
+  ios?: HostIosOptions;
+  /** The host workspace controller a session may reach (tests replace it); `null` before it was set up. */
+  workspace?: () => HostWorkspaceAccess | null;
+};
 
 export type HostShell = {
   server: Server<WsData>;
@@ -127,7 +139,8 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
   store.ensureToken();
   const auth = new HostAuth(store, logger, options);
   const tickets = new TicketStore();
-  const terminals = new HostTerminals(config.shell, config.home, logger, undefined, options.stopGraceMs);
+  const workspace = options.workspace ?? (() => hostWorkspaceAccess(process.env));
+  const terminals = new HostTerminals(config.shell, config.home, logger, undefined, options.stopGraceMs, options.claudeBin);
   const android = new HostAndroid(config.android, store, { hostId: config.hostId, version: VERSION }, logger, options.android);
   const ios = new HostIos(config.ios, store, { hostId: config.hostId, version: VERSION }, logger, options.ios);
   const ready = Promise.all([
@@ -175,6 +188,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
         ticket: url.searchParams.get(TICKET_PARAM),
         maxSize: url.searchParams.get("maxSize") ?? undefined,
         udid: url.searchParams.get("udid") ?? undefined,
+        codec: url.searchParams.get("codec") ?? undefined,
       });
       if (!query.ok) throw badRequest(`Invalid query: ${query.error.message}`);
       if (!tickets.consume(query.value.ticket)) throw new HttpError("unauthorized", "Missing, expired or already used ticket");
@@ -197,18 +211,33 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     }
 
     const terminalId = decodeId(TERMINAL_PATH.exec(path));
+    if (terminalId !== null && method === "GET" && url.searchParams.has(TICKET_PARAM)) {
+      if (!tickets.peek(url.searchParams.get(TICKET_PARAM))) throw new HttpError("unauthorized", "Missing, expired or already used ticket");
+      return respond(terminals.get(terminalId));
+    }
     const androidPaths: string[] = [restPaths.android(), restPaths.androidEmulator(), restPaths.androidLink(), restPaths.androidDevices(), restPaths.androidStream()];
     const androidPath = androidPaths.includes(path);
     const installId = decodeId(IOS_INSTALL_PATH.exec(path));
-    const iosPaths: string[] = [restPaths.ios(), restPaths.iosSimulator(), restPaths.iosLink(), restPaths.iosInstalls()];
+    const iosPaths: string[] = [restPaths.ios(), restPaths.iosSimulator(), restPaths.iosLink(), restPaths.iosInstalls(), restPaths.iosStream()];
     const iosPath = iosPaths.includes(path) || installId !== null;
-    const known = path === restPaths.authTicket() || path === restPaths.terminals() || terminalId !== null || androidPath || iosPath;
+    const known = path === restPaths.authTicket() || path === restPaths.hostWorkspace() || path === restPaths.terminals() || terminalId !== null || androidPath || iosPath;
     if (!known) throw notFound(`No route for ${method} ${path}`);
     auth.requireSession(authorization);
 
     if (path === restPaths.authTicket() && method === "POST") return respond(tickets.issue());
+    if (path === restPaths.hostWorkspace() && method === "GET") {
+      let access: HostWorkspaceAccess | null;
+      try {
+        access = workspace();
+      } catch (error) {
+        throw unavailable(`Could not read the host workspace: ${errorMessage(error)}`);
+      }
+      if (!access) throw notFound("The host workspace is not set up on this computer yet");
+      return respond(access);
+    }
     if (path === restPaths.terminals() && method === "GET") return respond(terminals.list());
     if (path === restPaths.terminals() && method === "POST") return respond(terminals.create(await readBody(request, CreateHostTerminalSchema)), 201);
+    if (terminalId !== null && method === "GET") return respond(terminals.get(terminalId));
     if (terminalId !== null && method === "DELETE") {
       if (!isIdOfKind("terminal", terminalId)) throw notFound(`Terminal ${terminalId.slice(0, 80)} not found`);
       return respond(await terminals.close(terminalId));
@@ -227,6 +256,8 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     if (path === restPaths.iosLink() && method === "POST") return respond(await ios.linkSandbox(await readBody(request, LinkSandboxSchema)));
     if (path === restPaths.iosLink() && method === "DELETE") return respond(ios.unlinkSandbox());
     if (path === restPaths.iosInstalls() && method === "GET") return respond(ios.listInstalls());
+    if (path === restPaths.iosStream() && method === "GET") return respond(ios.streamSettings());
+    if (path === restPaths.iosStream() && method === "PUT") return respond(ios.updateStream(await readBody(request, UpdateIosStreamSchema)));
     if (installId !== null && method === "POST") {
       if (!isIdOfKind("iosInstall", installId)) throw notFound(`Install ${installId.slice(0, 80)} not found`);
       return respond(ios.decideInstall(installId, (await readBody(request, DecideIosInstallSchema)).approve));
@@ -252,7 +283,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     port: config.port,
     development: false,
     idleTimeout: HTTP_IDLE_TIMEOUT_SEC,
-    routes: { [routePatterns.ui.terminal]: terminalPage, [routePatterns.ui.android]: androidPage, [routePatterns.ui.ios]: iosPage },
+    routes: { [routePatterns.ui.terminal]: hostTerminalPage, [routePatterns.ui.android]: androidPage, [routePatterns.ui.ios]: iosPage },
     async fetch(request, bunServer) {
       try {
         return await route(request, bunServer);

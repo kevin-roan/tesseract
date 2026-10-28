@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { HostShellState } from "../../../../../shared/contracts/hostShell";
 import { HOST_REPO_LABELS as L } from "./labels";
-import { gitSummary, gitTrigger, hostPathFor, hostRepoButton, hostShellBlocker } from "./model";
+import { gitSummary, gitTrigger, hostFolder, hostPathFor, hostRepoButton, hostShellBlocker, isTerminalAction, terminalFailure } from "./model";
 
 const state = (patch: Partial<HostShellState> = {}): HostShellState => ({
   status: "running",
@@ -22,9 +22,37 @@ describe("host repo model", () => {
   });
 
   it("disables every action without a host copy", () => {
-    const buttons = (["shell", "pull", "push", "commit"] as const).map((id) => hostRepoButton(id, null, null));
+    const buttons = (["claude", "shell", "pull", "push", "commit"] as const).map((id) => hostRepoButton(id, null, null));
     expect(buttons.every((button) => button.disabled && button.tooltip === L.noCopy)).toBe(true);
     expect(gitTrigger(null, null)).toMatchObject({ disabled: true, tooltip: L.noCopy });
+  });
+
+  it("names the host folder by its last segment", () => {
+    expect(hostFolder("/home/me/code/app")).toEqual({ name: "app", path: "/home/me/code/app" });
+    expect(hostFolder("/home/me/code/app/")).toEqual({ name: "app", path: "/home/me/code/app/" });
+    expect(hostFolder("C:\\Users\\me\\app")).toEqual({ name: "app", path: "C:\\Users\\me\\app" });
+    expect(hostFolder("/")).toEqual({ name: "/", path: "/" });
+    expect(hostFolder(null)).toBeNull();
+  });
+
+  it("offers Claude on the host copy", () => {
+    expect(hostRepoButton("claude", "/home/me/app", null)).toMatchObject({
+      label: L.claude,
+      icon: "agents",
+      disabled: false,
+      busy: false,
+      tooltip: "Chat with Claude in /home/me/app on this computer",
+    });
+    expect(hostRepoButton("claude", "/home/me/app", "claude")).toMatchObject({ label: L.opening, busy: true, disabled: true });
+    expect(hostRepoButton("shell", "/home/me/app", "claude")).toMatchObject({ busy: false, disabled: true });
+  });
+
+  it("tells terminal actions from git actions", () => {
+    expect(isTerminalAction("claude")).toBe(true);
+    expect(isTerminalAction("shell")).toBe(true);
+    expect(isTerminalAction("pull")).toBe(false);
+    expect(terminalFailure("claude", "boom")).toBe(L.claudeFailed("boom"));
+    expect(terminalFailure("shell", "boom")).toBe(L.shellFailed("boom"));
   });
 
   it("marks the running action busy and blocks the others", () => {
@@ -37,6 +65,7 @@ describe("host repo model", () => {
     expect(gitTrigger("/home/me/app", null)).toMatchObject({ label: L.git, busy: false, disabled: false, tooltip: L.gitTooltip("/home/me/app") });
     expect(gitTrigger("/home/me/app", "commit")).toMatchObject({ label: L.committing, busy: true, disabled: false });
     expect(gitTrigger("/home/me/app", "shell")).toMatchObject({ label: L.git, busy: false });
+    expect(gitTrigger("/home/me/app", "claude")).toMatchObject({ label: L.git, busy: false });
   });
 
   it("explains why the host shell can't open", () => {

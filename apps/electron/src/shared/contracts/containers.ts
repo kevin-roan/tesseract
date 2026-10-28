@@ -1,3 +1,4 @@
+import type { Deploy } from "@tesseract/protocol";
 import type { DefineContract } from "../ipc-types";
 import type { CheckItem } from "./common";
 
@@ -22,6 +23,8 @@ export interface ServerContainer {
   memoryMb: number | null;
   tailnet: ContainerTailnet | null;
   tunnel: "none" | "running" | "stopped";
+  /** Sandbox deploys run without asking; otherwise each one waits for approval. */
+  autoDeploy: boolean;
 }
 
 export type RouteScheme = "http" | "https";
@@ -81,6 +84,12 @@ export type ContainersPhase =
   | { kind: "creating"; name: string }
   | { kind: "routing"; hostname: string };
 
+/** A deploy request from a sandbox, as seen by this host. */
+export interface HostDeploy extends Deploy {
+  /** Label of the sandbox connection it came from. */
+  sandbox: string;
+}
+
 export interface OpenShellRequest {
   id: string;
   name: string;
@@ -122,6 +131,10 @@ export type ContainersContract = DefineContract<{
     writeShell(id: string, data: string): void;
     resizeShell(id: string, cols: number, rows: number): void;
     closeShell(id: string): void;
+    setAutoDeploy(name: string, enabled: boolean): ServerContainer;
+    deploys(): HostDeploy[];
+    approveDeploy(id: string): void;
+    rejectDeploy(id: string): void;
   };
   events: {
     containers: ServerContainer[];
@@ -130,5 +143,6 @@ export type ContainersContract = DefineContract<{
     log: string;
     shellData: ShellOutput;
     shellExit: ShellExit;
+    deploys: HostDeploy[];
   };
 }>;

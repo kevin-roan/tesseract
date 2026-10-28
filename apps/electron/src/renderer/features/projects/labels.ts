@@ -106,6 +106,7 @@ export const DETAIL_LABELS = {
   loadFailed: "Couldn't load this project",
   tryAgain: "Try again",
   refresh: "Refresh",
+  sandboxGroup: "Sandbox",
   askClaude: "Ask Claude",
   claudeTerminal: "Claude terminal",
   shell: "Shell",
@@ -127,6 +128,7 @@ export const TAB_LABELS: Record<ProjectTabId, string> = {
   git: "Git",
   sync: "Sync back",
   conversations: "Chats",
+  issues: "Issues",
 };
 
 export const STORAGE_LABELS = {

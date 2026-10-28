@@ -1,32 +1,24 @@
 import { useCallback } from "react";
 import { INPUT_MODES, type InputMode } from "@tesseract/protocol";
 
-import { useClaudeAccountEntry } from "@/features/claude-account/hooks/use-claude-account-entry";
-import { useHostEntry } from "@/features/host-shell/hooks/use-host-entry";
-import { useSandboxClient } from "@/features/sandbox/hooks/use-sandbox-client";
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
-import { useSandboxRefresh } from "@/features/sandbox/hooks/use-sandbox-refresh";
 import { useDisplayStore } from "@/features/sandbox/store/display-store";
 import { dockCorner, isIslandPlacement } from "@/features/island/utils/placement";
 
 import { useSettingsStore } from "../store/settings-store";
 import { isAppearancePreference } from "../utils/appearance";
-import { APPEARANCE_OPTIONS, INPUT_MODE_OPTIONS, ISLAND_PLACEMENT_OPTIONS, LIVE_ACTIVITY_OPTIONS, SETTINGS_COPY } from "../utils/constants";
+import { APPEARANCE_OPTIONS, INPUT_MODE_OPTIONS, ISLAND_PLACEMENT_OPTIONS, SETTINGS_COPY } from "../utils/constants";
 import { useAboutEntry } from "./use-about-entry";
-import { useSttSettings } from "./use-stt-settings";
+import { useSttProvider } from "./use-stt-provider";
 
 const isInputMode = (value: string): value is InputMode => (INPUT_MODES as readonly string[]).includes(value);
 
-export function useSettingsScreen() {
+export function usePreferences() {
   const nav = useSandboxNavigation();
-  const { sandbox } = useSandboxClient();
-  const stt = useSttSettings();
-  const claude = useClaudeAccountEntry();
-  const host = useHostEntry();
   const about = useAboutEntry();
+  const sttProvider = useSttProvider();
   const inputMode = useDisplayStore((state) => state.inputMode);
   const setInputMode = useDisplayStore((state) => state.setInputMode);
-  const { refreshing, refresh } = useSandboxRefresh();
   const islandPlacement = useSettingsStore((state) => state.islandPlacement);
   const setIslandPlacement = useSettingsStore((state) => state.setIslandPlacement);
   const islandDock = useSettingsStore((state) => state.islandDock);
@@ -48,7 +40,6 @@ export function useSettingsScreen() {
     },
     [setIslandPlacement],
   );
-  const selectLiveActivity = useCallback((id: string) => setLiveActivity(id === "on"), [setLiveActivity]);
 
   const selectInputMode = useCallback(
     (id: string) => {
@@ -58,21 +49,15 @@ export function useSettingsScreen() {
   );
 
   return {
-    back: nav.back,
-    stt,
-    hub: {
-      title: SETTINGS_COPY.hubTitle,
-      subtitle: sandbox?.name ?? SETTINGS_COPY.hubSubtitle,
-      open: nav.sandboxHub,
-    },
-    claude,
-    host,
-    about,
     appearance: { options: APPEARANCE_OPTIONS, selectedId: appearance, select: selectAppearance },
+    voice: { title: SETTINGS_COPY.sttTitle, value: SETTINGS_COPY.sttProviderLabels[sttProvider], open: nav.voice },
     inputMode: { options: INPUT_MODE_OPTIONS, selectedId: inputMode, select: selectInputMode },
-    islandPlacement: { options: ISLAND_PLACEMENT_OPTIONS, selectedId: islandPlacement === "hidden" ? islandPlacement : dockCorner(islandDock), select: selectIslandPlacement },
-    liveActivity: { options: LIVE_ACTIVITY_OPTIONS, selectedId: liveActivity ? "on" : "off", select: selectLiveActivity },
-    refreshing,
-    refresh,
+    islandPlacement: {
+      options: ISLAND_PLACEMENT_OPTIONS,
+      selectedId: islandPlacement === "hidden" ? islandPlacement : dockCorner(islandDock),
+      select: selectIslandPlacement,
+    },
+    liveActivity: { value: liveActivity, set: setLiveActivity },
+    about,
   };
 }

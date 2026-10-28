@@ -3,7 +3,10 @@ export type AttachKind = "files" | "images" | "paste";
 export interface SlashCommand {
   command: string;
   description?: string;
+  tag?: string;
 }
+
+export type SlashHintsPlacement = "above" | "below";
 
 export interface SubmitState {
   text: string;

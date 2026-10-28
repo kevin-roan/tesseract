@@ -6,7 +6,7 @@ import { useHostSimulator } from "../host-shell/hooks/use-host-simulator";
 import { ANDROID_SCREEN, IOS_SCREEN } from "./constants";
 import { ANDROID_LABELS, DEVICE_KIND_LABELS, IOS_LABELS } from "./labels";
 import { androidSnapshot, iosSnapshot } from "./model";
-import type { DeviceControls, DeviceKind, DeviceKindId, DeviceSnapshot } from "./types";
+import type { DeviceControls, DeviceKind, DeviceKindId, DeviceSnapshot, StreamApi } from "./types";
 
 function useControls<Status extends { link: AndroidLinkInfo }>(host: HostDevice<Status>, toSnapshot: (status: Status) => DeviceSnapshot): DeviceControls {
   const { status } = host;
@@ -30,12 +30,23 @@ function useControls<Status extends { link: AndroidLinkInfo }>(host: HostDevice<
 const useAndroidControls = () => useControls(useHostEmulator(), androidSnapshot);
 const useIosControls = () => useControls(useHostSimulator(), iosSnapshot);
 
+const ANDROID_STREAM: StreamApi = {
+  get: (client) => client.androidStreamSettings(),
+  update: (client, body) => client.updateAndroidStream(body),
+};
+
+const IOS_STREAM: StreamApi = {
+  get: (client) => client.iosStreamSettings(),
+  update: (client, body) => client.updateIosStream(body),
+};
+
 export const ANDROID_DEVICE: DeviceKind = {
   id: "android",
   label: DEVICE_KIND_LABELS.android,
   icon: "smartphone",
   screen: ANDROID_SCREEN,
   labels: ANDROID_LABELS,
+  stream: ANDROID_STREAM,
   useControls: useAndroidControls,
 };
 
@@ -45,6 +56,7 @@ export const IOS_DEVICE: DeviceKind = {
   icon: "smartphone",
   screen: IOS_SCREEN,
   labels: IOS_LABELS,
+  stream: IOS_STREAM,
   useControls: useIosControls,
 };
 

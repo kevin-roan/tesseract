@@ -3,7 +3,7 @@ import { createInterface } from "node:readline";
 import type { Readable } from "node:stream";
 import { HostShellClient, TesseractClient, type FetchLike } from "@tesseract/client";
 import type { AndroidLinkInfo, CreateHostTerminal, HostAndroidStatus, HostIosStatus, IosLinkInfo } from "@tesseract/protocol";
-import type { EmulatorStopSignal, HostPairing, HostShellState } from "../../shared/contracts/hostShell";
+import type { EmulatorStopSignal, HostPairing, HostShellState, HostTerminalKind } from "../../shared/contracts/hostShell";
 import type { HttpProxyRequest, HttpProxyResponse } from "../../shared/contracts/http";
 import { redact } from "../log";
 import { runCommand, type CommandOptions, type CommandResult } from "../process";
@@ -283,10 +283,10 @@ export class HostShellService {
     return this.hostCall((client) => client.linkSandbox(body));
   }
 
-  openTerminal(cwd: string): Promise<string> {
+  openTerminal(cwd: string, kind: HostTerminalKind = "shell"): Promise<string> {
     if (typeof cwd !== "string" || !cwd) throw new HostShellError(HOST_LABELS.noFolder, "invalid_argument");
     return this.hostCall(async (client) => {
-      const request: CreateHostTerminal = { kind: "shell", cwd, ...HOST_TERMINAL_GRID };
+      const request: CreateHostTerminal = { kind, cwd, ...HOST_TERMINAL_GRID };
       const terminal = await client.createTerminal(request);
       return client.terminalPageUrl(terminal.id);
     });

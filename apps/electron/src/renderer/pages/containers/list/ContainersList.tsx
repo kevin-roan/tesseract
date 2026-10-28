@@ -5,9 +5,10 @@ import { PageBody } from "../../../components/PageBody";
 import { Crossfade } from "../../../components/Presence";
 import { RecordRow } from "../../../components/RecordRow";
 import { useContainersList } from "../../../features/containers/hooks/use-containers-list";
-import { CONTAINERS_LABELS as L } from "../../../features/containers/labels";
+import { CONTAINERS_LABELS as L, DEPLOYS_LABELS } from "../../../features/containers/labels";
 import { usePageHeader } from "../../../shell/header-store";
 import { HeaderActions } from "../../projects/HeaderActions";
+import { DeployList } from "../shared/DeployList";
 import { containerRow } from "../shared/rows";
 import { StateView } from "../shared/StateView";
 import styles from "../ContainersPage.module.css";
@@ -40,17 +41,24 @@ export function ContainersList({ onOpen, onCreate, onSettings }: ContainersListP
         <StateView state={list.state} onAction={list.onAction} />
       ) : (
         <PageBody label={L.title}>
-          <ListGroup icon="server" title={L.list.group} count={list.containers.length} actionLabel={L.newContainer} onAction={onCreate}>
-            <KeyedList
-              divided
-              label={L.list.group}
-              items={list.containers}
-              getKey={(container) => container.name}
-              renderItem={(container) => (
-                <RecordRow {...containerRow(container, list.counts.get(container.name) ?? 0, list.pending.has(container.name), handlers)} />
-              )}
-            />
-          </ListGroup>
+          {list.requests.length > 0 ? (
+            <ListGroup icon="cloud" title={DEPLOYS_LABELS.requests.title} subtitle={DEPLOYS_LABELS.requests.subtitle} count={list.requests.length}>
+              <DeployList deploys={list.requests} label={DEPLOYS_LABELS.requests.list} />
+            </ListGroup>
+          ) : null}
+          {list.containers.length > 0 ? (
+            <ListGroup icon="server" title={L.list.group} count={list.containers.length} actionLabel={L.newContainer} onAction={onCreate}>
+              <KeyedList
+                divided
+                label={L.list.group}
+                items={list.containers}
+                getKey={(container) => container.name}
+                renderItem={(container) => (
+                  <RecordRow {...containerRow(container, list.counts.get(container.name) ?? 0, list.pending.has(container.name), handlers)} />
+                )}
+              />
+            </ListGroup>
+          ) : null}
         </PageBody>
       )}
     </Crossfade>

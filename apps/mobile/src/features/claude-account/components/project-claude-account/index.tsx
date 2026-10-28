@@ -11,10 +11,12 @@ import { CLAUDE_ACCOUNTS_COPY } from "../../utils/accounts";
 
 export type ProjectClaudeAccountProps = {
   state: ProjectClaudeAccountState;
+  title?: string;
+  testID?: string;
 };
 
-const ProjectClaudeAccount = ({ state }: ProjectClaudeAccountProps) => (
-  <Section title={CLAUDE_ACCOUNTS_COPY.projectSection} testID="project-claude-account">
+const ProjectClaudeAccount = ({ state, title = CLAUDE_ACCOUNTS_COPY.projectSection, testID = "project-claude-account" }: ProjectClaudeAccountProps) => (
+  <Section title={title} testID={testID}>
     {state.error ? (
       <MotionItem>
         <Notice tone="danger" message={state.error} />
@@ -28,7 +30,7 @@ const ProjectClaudeAccount = ({ state }: ProjectClaudeAccountProps) => (
         value={state.saving ? CLAUDE_ACCOUNTS_COPY.saving : undefined}
         chevron={state.canChoose}
         onPress={state.canChoose ? state.open : undefined}
-        testID="project-claude-account-row"
+        testID={`${testID}-row`}
       />
     </ListGroup>
     <OptionSheet

@@ -1,6 +1,8 @@
+import { useScopedClient } from "../../../app/data";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
 import { EmptyState } from "../../../components/EmptyState";
 import { Crossfade } from "../../../components/Presence";
+import { useSlashCommands } from "../../../features/agents/hooks/use-slash-commands";
 import { CONVERSATION_LABELS } from "../../../features/agents/labels";
 import { cx } from "../../../lib/cx";
 import { RunTimeline } from "../timeline";
@@ -15,7 +17,9 @@ import styles from "./Conversation.module.css";
 export function ConversationView(props: ConversationViewProps) {
   const { runs, compact = false, renderSync, onSelectRun, className } = props;
   const model = useConversation(props);
+  const scoped = useScopedClient() !== null;
   const { run, header, composer, stopDialog } = model;
+  const slashCommands = useSlashCommands(run?.projectId);
   const sync =
     run?.projectId && renderSync
       ? renderSync({ projectId: run.projectId, compact, running: model.running, report: model.syncReport })
@@ -51,7 +55,7 @@ export function ConversationView(props: ConversationViewProps) {
           <EmptyState title={CONVERSATION_LABELS.loading} loading />
         )}
       </Crossfade>
-      <RunningWork projectId={run?.projectId} />
+      {scoped ? null : <RunningWork projectId={run?.projectId} />}
       <FollowUpComposer
         value={composer.value}
         onChange={composer.onChange}
@@ -59,6 +63,9 @@ export function ConversationView(props: ConversationViewProps) {
         busy={composer.busy}
         locked={composer.locked}
         attachments={composer.attachments}
+        model={composer.model}
+        onModelChange={composer.onModelChange}
+        slashCommands={slashCommands}
       />
       <ConfirmDialog
         open={stopDialog.open}

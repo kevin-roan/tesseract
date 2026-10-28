@@ -391,6 +391,7 @@ tesseract server uninstall --volumes        # also delete the workspace and home
 | `--image <ref>` / `--build [--with ...]` | pull a prebuilt image, or build one here with the given components |
 | `--claude-token <tok>` | long-lived Claude token for the sandbox (`claude setup-token`); env `CLAUDE_CODE_OAUTH_TOKEN` |
 | `--no-host-shell` | skip the host shell service |
+| `--ios` | macOS: turn on iOS Simulator support in the host shell service (`TESSERACT_IOS=1`). `TESSERACT_IOS`, `TESSERACT_XCRUN`, `TESSERACT_IDB`, `TESSERACT_IDB_COMPANION`, `TESSERACT_FFMPEG` and `TESSERACT_SIMCAP` from your environment are copied into the service too; re-run install to change them |
 | `--host-https-port` | HTTPS port `tailscale serve` uses for the host shell (default `8443`) |
 | `--reset-tailscale` | switch the sandbox to the new `--authkey`/`TS_AUTHKEY` (another key or tailnet): stops the stack and deletes only `<prefix>-tailscale`, so the sidecar logs in again; workspace and home stay. Without it, a key given while that volume exists is ignored (with a warning) |
 

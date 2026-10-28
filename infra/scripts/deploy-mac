@@ -12,6 +12,9 @@ SANDBOX_BUNDLE_DIR="${ELECTRON_DIR}/build/sandbox-context"
 readonly SCRIPT_DIR REPO_ROOT ELECTRON_DIR CLI_DIST_DIR SANDBOX_BUNDLE_DIR
 readonly CLI_BIN=tesseract
 readonly CONTROLLER_BIN=tesseract-controller
+# iOS Simulator screen helper: Swift, so it is compiled on the Mac (Linux has no macOS swiftc).
+readonly SIMCAP_BIN=tesseract-simcap
+readonly SIMCAP_SOURCE_DIR="${REPO_ROOT}/apps/controller/native/simcap"
 readonly REMOTE_ROOT='.tesseract'
 readonly SECRET_KEYS=(TS_AUTHKEY TS_TAILNET_DOMAIN CLAUDE_CODE_OAUTH_TOKEN)
 # Non-interactive ssh on macOS starts with PATH=/usr/bin:/bin:/usr/sbin:/sbin.
@@ -22,7 +25,9 @@ usage() {
 Usage: deploy-mac <ssh-host> [--arch auto|arm64|x64] [--skip-build] [-- <tesseract server install args>]
 
 Builds the macOS `tesseract` and `tesseract-controller` binaries and the sandbox build
-context, copies them to the Mac, and runs `tesseract server install` there.
+context, copies them to the Mac, compiles `tesseract-simcap` (iOS Simulator screen
+helper) there with swiftc when Xcode or the Command Line Tools are installed, and runs
+`tesseract server install` there.
 
   <ssh-host>      anything `ssh` accepts (user@mac, a ~/.ssh/config alias, a tailnet name)
   --arch ARCH     mac-arm64 (Apple silicon) or mac-x64 (Intel); default: auto (`uname -m` on the Mac)
@@ -31,6 +36,7 @@ context, copies them to the Mac, and runs `tesseract server install` there.
 
 On the Mac:
   ~/.tesseract/bin/{tesseract,tesseract-controller}   the binaries
+  ~/.tesseract/bin/tesseract-simcap                the iOS screen helper (optional; source in ~/.tesseract/src/simcap)
   ~/.tesseract/sandbox/                            the sandbox build context (compose files, Dockerfile)
 
 Secrets are read from this shell's environment and never put on a command line:
@@ -149,7 +155,7 @@ remote 'tailscale ip -4 > /dev/null 2>&1' || die "tailscale is not connected on 
 bin_dir="${CLI_DIST_DIR}/${target}"
 if [[ -z "${skip_build}" ]]; then
   info "building ${CLI_BIN} and ${CONTROLLER_BIN} for ${target}"
-  (cd "${REPO_ROOT}" && bun run --cwd apps/electron cli:build --target "${target}")
+  (cd "${REPO_ROOT}" && bun run --cwd apps/electron cli:build --target "${target}" --no-simcap)
   info "bundling the sandbox build context"
   (cd "${REPO_ROOT}" && bun run --cwd apps/electron bundle:sandbox)
 fi
@@ -164,6 +170,33 @@ rsync -az -e "ssh ${ssh_opts[*]}" "${bin_dir}/${CLI_BIN}" "${bin_dir}/${CONTROLL
 rsync -az --delete -e "ssh ${ssh_opts[*]}" "${SANDBOX_BUNDLE_DIR}/" "${host}:${REMOTE_ROOT}/sandbox/"
 # Downloaded binaries are quarantined; rsync'd ones normally are not, but clear it anyway.
 remote 'xattr -dr com.apple.quarantine "$HOME/$1/bin" 2> /dev/null || true' "${REMOTE_ROOT}"
+
+# Optional: without the helper the iOS screen falls back to idb + ffmpeg JPEGs, so failures only warn.
+# A failed build removes the old binary so the controller never runs a helper older than its source.
+simcap_script='
+src="$HOME/$1/src/simcap"
+out="$HOME/$1/bin/tesseract-simcap"
+xcrun --sdk macosx --find swiftc > /dev/null 2>&1 || exit 2
+rm -f "${out}"
+xcrun --sdk macosx swiftc -O -swift-version 5 -target "$2" \
+  -framework VideoToolbox -framework CoreMedia -framework CoreVideo -framework IOSurface \
+  -o "${out}" "${src}"/*.swift
+'
+if compgen -G "${SIMCAP_SOURCE_DIR}/*.swift" > /dev/null; then
+  if [[ "${arch}" == arm64 ]]; then simcap_triple=arm64-apple-macos12; else simcap_triple=x86_64-apple-macos12; fi
+  info "compiling ${SIMCAP_BIN} on ${host}"
+  remote 'mkdir -p "$HOME/$1/src/simcap"' "${REMOTE_ROOT}"
+  rsync -az --delete -e "ssh ${ssh_opts[*]}" "${SIMCAP_SOURCE_DIR}/" "${host}:${REMOTE_ROOT}/src/simcap/"
+  simcap_status=0
+  remote "${simcap_script}" "${REMOTE_ROOT}" "${simcap_triple}" || simcap_status=$?
+  case "${simcap_status}" in
+    0) ;;
+    2) info "warning: swiftc not found on ${host} (xcode-select --install); skipping ${SIMCAP_BIN}, iOS uses idb + ffmpeg JPEGs" ;;
+    *) info "warning: compiling ${SIMCAP_BIN} on ${host} failed (exit ${simcap_status}); iOS uses idb + ffmpeg JPEGs" ;;
+  esac
+else
+  info "warning: no Swift sources in ${SIMCAP_SOURCE_DIR}; skipping ${SIMCAP_BIN}"
+fi
 
 secrets=""
 for key in "${SECRET_KEYS[@]}"; do

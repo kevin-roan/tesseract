@@ -78,6 +78,7 @@ export function detailTabs(input: TabCountInput): { id: ProjectTabId; label: str
     git: null,
     sync: input.syncCount,
     conversations: input.sessions?.length ?? null,
+    issues: null,
   };
   return PROJECT_TABS.map((id) => ({ id, label: TAB_LABELS[id], count: counts[id] }));
 }

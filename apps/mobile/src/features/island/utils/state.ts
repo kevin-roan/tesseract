@@ -110,6 +110,19 @@ export function stateSignature(state: IslandState): string {
   return JSON.stringify(rest);
 }
 
+export type CommandTarget = { kind: "build"; id: string } | { kind: "process"; id: string; projectId: string };
+
+/** Where a command's output lives: a build's own screen, or a process's log in its project. */
+export function commandTarget(
+  id: string,
+  builds: readonly BuildJob[] = [],
+  processes: readonly ProcessInfo[] = [],
+): CommandTarget | null {
+  if (isBuildCommand(id, builds)) return { kind: "build", id };
+  const projectId = processes.find((process) => process.id === id)?.projectId;
+  return projectId ? { kind: "process", id, projectId } : null;
+}
+
 export function isBuildCommand(id: string, builds: readonly BuildJob[] = []): boolean {
   return builds.some((build) => build.id === id);
 }

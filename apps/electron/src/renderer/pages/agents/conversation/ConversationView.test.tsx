@@ -57,6 +57,19 @@ describe("ConversationView", () => {
     await waitFor(() => expect(onSelectRun).toHaveBeenCalledWith(expect.stringMatching(/^run_/)));
   });
 
+  it("hints the sandbox's slash commands in the follow-up composer", async () => {
+    renderView({ runId: conversationDoneRun.id });
+    await screen.findByText("Finished");
+    const input = screen.getByRole("textbox", { name: "Reply to Claude…" });
+    fireEvent.change(input, { target: { value: "/de" } });
+    const option = await screen.findByRole("option", { name: /\/deploy/ });
+    expect(option.textContent).toContain("Deploy an app from this sandbox to a Tesseract server container");
+    expect(option.textContent).toContain("skill");
+    expect(screen.queryByRole("option", { name: /\/send-file/ })).toBeNull();
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect((input as HTMLTextAreaElement).value).toBe("/deploy ");
+  });
+
   it("stops a running run after confirmation", async () => {
     const onRunChanged = vi.fn();
     renderView({ runId: conversationRunningRun.id, run: conversationRunningRun, onRunChanged });

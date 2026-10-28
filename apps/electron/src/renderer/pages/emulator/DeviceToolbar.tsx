@@ -1,10 +1,12 @@
+import { useState } from "react";
 import { ActionButton } from "../../components/ActionButton";
 import { ChoiceDropdown } from "../../components/ChoiceDropdown";
 import { IconButton } from "../../components/IconButton";
 import { StatusBadge } from "../../components/StatusBadge";
 import { Text } from "../../components/Text";
 import type { DeviceView } from "../../features/emulator/hooks/use-device-view";
-import { CONTROL_LABELS, LINK_LABELS } from "../../features/emulator/labels";
+import { CONTROL_LABELS, LINK_LABELS, STREAM_LABELS } from "../../features/emulator/labels";
+import { StreamDialog } from "./StreamDialog";
 import styles from "./DeviceToolbar.module.css";
 
 export interface DeviceToolbarProps {
@@ -14,6 +16,7 @@ export interface DeviceToolbarProps {
 export function DeviceToolbar({ view }: DeviceToolbarProps) {
   const { controls, link } = view;
   const labels = view.kind.labels;
+  const [streamOpen, setStreamOpen] = useState(false);
   return (
     <div className={styles.toolbar}>
       <div className={styles.group}>
@@ -64,6 +67,15 @@ export function DeviceToolbar({ view }: DeviceToolbarProps) {
         </div>
       ) : null}
       <span className={styles.spacer} />
+      <ActionButton
+        label={STREAM_LABELS.open}
+        icon="settings"
+        size="sm"
+        tooltip={STREAM_LABELS.tooltip}
+        disabled={controls.access !== "ready"}
+        onClick={() => setStreamOpen(true)}
+      />
+      <StreamDialog kind={view.kind} open={streamOpen} onClose={() => setStreamOpen(false)} />
       <IconButton icon="refresh" label={CONTROL_LABELS.refresh} onClick={controls.refresh} />
     </div>
   );

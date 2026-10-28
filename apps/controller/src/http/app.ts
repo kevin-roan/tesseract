@@ -13,7 +13,9 @@ import { registerAppRoutes } from "./routes/apps";
 import { registerArtifactRoutes } from "./routes/artifacts";
 import { registerFileRoutes } from "./routes/files";
 import { registerBuildRoutes } from "./routes/builds";
+import { registerDeployRoutes } from "./routes/deploys";
 import { registerInboxRoutes } from "./routes/inbox";
+import { registerIssueRoutes } from "./routes/issues";
 import { registerProcessRoutes } from "./routes/processes";
 import { registerProjectRoutes } from "./routes/projects";
 import { registerPushRoutes } from "./routes/push";
@@ -37,9 +39,9 @@ export function createApp(services: Services): Hono {
     api,
     cors({
       origin: anyOrigin ? "*" : config.corsOrigins,
-      allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowHeaders: ["Authorization", "Content-Type"],
-      exposeHeaders: ["Content-Disposition", "X-Content-SHA256"],
+      exposeHeaders: ["Content-Disposition", "X-Content-SHA256", "X-Tesseract-SHA256"],
       maxAge: 600,
     }),
   );
@@ -79,6 +81,7 @@ export function createApp(services: Services): Hono {
   registerSystemRoutes(app, services);
   registerProjectRoutes(app, services);
   registerSyncRoutes(app, services);
+  registerDeployRoutes(app, services);
   registerProcessRoutes(app, services);
   registerTerminalRoutes(app, services);
   registerBuildRoutes(app, services);
@@ -86,6 +89,7 @@ export function createApp(services: Services): Hono {
   registerFileRoutes(app, services);
   registerAgentRoutes(app, services);
   registerInboxRoutes(app, services);
+  registerIssueRoutes(app, services);
   registerPushRoutes(app, services);
   registerUploadRoutes(app, services);
   registerAppRoutes(app, services);

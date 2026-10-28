@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AGENT_RUN_MODES, AGENT_RUN_STATES, AGENT_SESSION_ID_PATTERN, LIMITS } from "../constants";
+import { AGENT_RUN_MODELS, AGENT_RUN_MODES, AGENT_RUN_STATES, AGENT_SESSION_ID_PATTERN, LIMITS } from "../constants";
 import { AgentRunIdSchema, ProjectIdSchema, SequenceSchema, TimestampSchema, UploadIdSchema } from "./primitives";
 import { UploadSchema } from "./uploads";
 
@@ -8,6 +8,9 @@ export type AgentRunState = z.infer<typeof AgentRunStateSchema>;
 
 export const AgentRunModeSchema = z.enum(AGENT_RUN_MODES);
 export type AgentRunMode = z.infer<typeof AgentRunModeSchema>;
+
+export const AgentRunModelSchema = z.enum(AGENT_RUN_MODELS);
+export type AgentRunModel = z.infer<typeof AgentRunModelSchema>;
 
 const TokenCountSchema = z.number().int().nonnegative();
 
@@ -28,6 +31,8 @@ export const AgentRunSchema = z.object({
   prompt: z.string(),
   /** Permission mode the run was started with; null means the controller default (`TESSERACT_CLAUDE_PERMISSION_MODE`). */
   mode: AgentRunModeSchema.nullable().default(null),
+  /** Model alias the run was started with; null means Claude Code's default for the account. */
+  model: AgentRunModelSchema.nullable().default(null),
   attachments: z.array(UploadSchema).default([]),
   sessionId: z.string().nullable(),
   /** Session this run resumed (`resumeSessionId`); links a follow-up to its chat even when Claude reports a new session id. */
@@ -82,6 +87,7 @@ export const StartAgentRunSchema = z.object({
   projectId: ProjectIdSchema.optional(),
   prompt: z.string().trim().min(1).max(LIMITS.maxPromptLength),
   mode: AgentRunModeSchema.optional(),
+  model: AgentRunModelSchema.optional(),
   /** Uploads (see `POST /v1/uploads`) Claude should read; their sandbox paths are appended to the prompt. */
   attachmentIds: z.array(UploadIdSchema).max(LIMITS.maxRunAttachments).optional(),
   resumeSessionId: z

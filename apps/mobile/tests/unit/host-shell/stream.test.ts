@@ -1,4 +1,4 @@
-import { DEFAULT_ANDROID_STREAM, type AndroidDevice, type AndroidStreamSettings } from "@tesseract/protocol";
+import { DEFAULT_ANDROID_STREAM, DEFAULT_IOS_STREAM, type AndroidDevice, type AndroidStreamSettings, type IosStreamSettings } from "@tesseract/protocol";
 
 import { stepValue } from "@/components/list-group";
 import { STREAM_HOST_EMULATOR, STREAM_VIEWER_SIZE } from "@/features/host-shell/utils/constants";
@@ -9,15 +9,18 @@ import {
   maxSizeLabel,
   maxSizeOptions,
   maxSizeValue,
+  STREAM_KINDS,
   streamChanges,
   streamDeviceId,
   streamDeviceLabel,
   streamDeviceOptions,
   streamDeviceValue,
+  streamKindFrom,
   toMbit,
 } from "@/features/host-shell/utils/stream";
 
 const saved: AndroidStreamSettings = { ...DEFAULT_ANDROID_STREAM };
+const savedIos: IosStreamSettings = { ...DEFAULT_IOS_STREAM };
 
 const device = (overrides: Partial<AndroidDevice> = {}): AndroidDevice => ({
   serial: "R58M123",
@@ -32,6 +35,20 @@ describe("stream settings helpers", () => {
   it("keeps only the draft fields that differ from the saved settings", () => {
     expect(streamChanges(saved, { maxFps: 60, bitRate: 4_000_000 })).toEqual({ bitRate: 4_000_000 });
     expect(streamChanges(saved, { ...DEFAULT_ANDROID_STREAM })).toEqual({});
+  });
+
+  it("diffs iOS settings, which have no device", () => {
+    expect(streamChanges(savedIos, { encoding: "mjpeg", maxFps: 60 })).toEqual({ encoding: "mjpeg" });
+    expect(streamChanges(savedIos, { ...STREAM_KINDS.ios.defaults })).toEqual({});
+  });
+
+  it("picks the settings screen per device kind, Android by default", () => {
+    expect(streamKindFrom("ios")).toBe("ios");
+    expect(streamKindFrom(undefined)).toBe("android");
+    expect(streamKindFrom("windows")).toBe("android");
+    expect(STREAM_KINDS.android).toMatchObject({ devices: true, subtitle: STREAM_COPY.subtitle, defaults: DEFAULT_ANDROID_STREAM });
+    expect(STREAM_KINDS.ios).toMatchObject({ devices: false, subtitle: STREAM_COPY.iosSubtitle, defaults: DEFAULT_IOS_STREAM });
+    expect(STREAM_KINDS.ios.defaults).not.toHaveProperty("device");
   });
 
   it("converts the bitrate between bits and Mbit/s", () => {

@@ -5,7 +5,7 @@ import { parse } from "yaml";
 import { describe, expect, it } from "vitest";
 import { APP_ID, APP_NAME, DEEP_LINK_SCHEME } from "../src/shared/runtime.ts";
 import { ICO_SIZES, LINUX_SIZES } from "./lib/icons.ts";
-import { APP_DIR } from "./lib/paths.ts";
+import { APP_DIR, REPO_ROOT } from "./lib/paths.ts";
 import { pngSize } from "./lib/smoke.ts";
 
 interface Target {
@@ -139,5 +139,16 @@ describe("build resources", () => {
       expect(spawnSync("sh", ["-n", file(script)]).status, script).toBe(0);
       expect(statSync(file(script)).mode & 0o111, script).not.toBe(0);
     }
+  });
+});
+
+describe("setup-server.sh", () => {
+  const script = join(REPO_ROOT, "setup-server.sh");
+
+  it("removes a stale tesseract-simcap when the build produced none, so the daemon really falls back to idb", () => {
+    const source = readFileSync(script, "utf8");
+    const fallback = /else\n([\s\S]*?)warn "no \$\{simcap\}/.exec(source)?.[1] ?? "";
+    expect(fallback).toContain('rm -f "${BIN_DIR}/tesseract-simcap"');
+    expect(spawnSync("bash", ["-n", script]).status).toBe(0);
   });
 });

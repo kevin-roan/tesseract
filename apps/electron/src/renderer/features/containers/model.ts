@@ -1,8 +1,10 @@
+import type { DeployStatus } from "@tesseract/protocol";
 import type {
   ContainersPhase,
   ContainersReport,
   ContainerState,
   DomainRoute,
+  HostDeploy,
   RouteScheme,
   RouteStatus,
   ServerContainer,
@@ -13,8 +15,9 @@ import type { KeyValueEntry } from "../../components/KeyValueList";
 import type { SidebarContainerActivity, SidebarContainerItem, SidebarContainersState } from "../../components/Sidebar";
 import type { Tone } from "../../theme/colors";
 import type { IconName } from "../../theme/icons";
-import { MB_PER_GB, MEMORY_UNITS, PORT_RANGE, ROUTE_SCHEMES, type MemoryUnit } from "./constants";
-import { CONTAINERS_LABELS as L, DOMAINS_LABELS } from "./labels";
+import { ACTIVE_DEPLOY_STATUSES, MB_PER_GB, MEMORY_UNITS, PORT_RANGE, ROUTE_SCHEMES, type MemoryUnit } from "./constants";
+import { formatBytes, formatRelativeTime } from "../overview/format";
+import { CONTAINERS_LABELS as L, DEPLOYS_LABELS, DOMAINS_LABELS } from "./labels";
 import type { ContainersTaskPhase, ContainerShellStatus, CreateBlocker } from "./types";
 
 export function containerTone(state: ContainerState): Tone {
@@ -39,22 +42,54 @@ export function sortContainers(containers: readonly ServerContainer[]): ServerCo
   return [...containers].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function sidebarContainerItems(containers: readonly ServerContainer[], pending: ReadonlySet<string>): SidebarContainerItem[] {
-  return sortContainers(containers).map((container) => ({
-    name: container.name,
-    activity: sidebarActivity(container.state, pending.has(container.name)),
-    status: L.states[container.state],
-  }));
+export function sidebarContainerItems(
+  containers: readonly ServerContainer[],
+  pending: ReadonlySet<string>,
+  awaiting: ReadonlyMap<string, number> = new Map(),
+  requests: readonly HostDeploy[] = [],
+): SidebarContainerItem[] {
+  const items = sortContainers(containers).map((container): SidebarContainerItem => {
+    const attention = awaiting.get(container.name) ?? 0;
+    return {
+      name: container.name,
+      activity: sidebarActivity(container.state, pending.has(container.name)),
+      status: L.states[container.state],
+      attention,
+      attentionLabel: attention > 0 ? DEPLOYS_LABELS.awaiting(attention) : undefined,
+    };
+  });
+  return [...items, ...requestSidebarItems(requests)];
+}
+
+export function requestSidebarItems(requests: readonly HostDeploy[]): SidebarContainerItem[] {
+  const groups = new Map<string, HostDeploy[]>();
+  for (const request of requests) groups.set(request.container, [...(groups.get(request.container) ?? []), request]);
+  return [...groups.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, entries]) => {
+      const attention = entries.filter(isAwaitingApproval).length;
+      const creating = attention < entries.length;
+      const status = creating ? DEPLOYS_LABELS.requests.creating : DEPLOYS_LABELS.requests.needsApproval;
+      return {
+        name,
+        activity: creating ? "busy" : "requested",
+        status,
+        attention,
+        attentionLabel: attention > 0 ? DEPLOYS_LABELS.requests.needsApproval : undefined,
+        request: true,
+      };
+    });
 }
 
 export interface SidebarStateInput {
   containers: readonly ServerContainer[] | null;
   failed: boolean;
   sysbox: boolean | null;
+  requests?: number;
 }
 
-export function containersSidebarState({ containers, failed, sysbox }: SidebarStateInput): SidebarContainersState {
-  if (containers && containers.length > 0) return "ready";
+export function containersSidebarState({ containers, failed, sysbox, requests = 0 }: SidebarStateInput): SidebarContainersState {
+  if ((containers && containers.length > 0) || requests > 0) return "ready";
   if (failed || sysbox === false) return "unavailable";
   return containers ? "empty" : "loading";
 }
@@ -240,8 +275,8 @@ export interface ListStateView {
   secondary?: { id: ListStateAction; label: string };
 }
 
-export function containersListState(containers: readonly ServerContainer[] | null, error: string | null): ListStateView | null {
-  if (containers && containers.length > 0) return null;
+export function containersListState(containers: readonly ServerContainer[] | null, error: string | null, requests = 0): ListStateView | null {
+  if (containers && (containers.length > 0 || requests > 0)) return null;
   if (error) {
     return {
       title: L.list.unavailable,
@@ -293,4 +328,97 @@ export function shellPanelView(status: ContainerShellStatus, running: boolean): 
     case "error":
       return { status: { label: L.detail.shellStatus.error, tone: "danger", live: false }, action, placeholder: status.message };
   }
+}
+
+export function deployTone(status: DeployStatus): Tone {
+  switch (status) {
+    case "deployed":
+      return "success";
+    case "awaiting_approval":
+      return "warning";
+    case "pending":
+    case "claimed":
+    case "deploying":
+      return "info";
+    case "failed":
+      return "danger";
+    default:
+      return "neutral";
+  }
+}
+
+export function deployBadge(status: DeployStatus): BadgeView & { live: boolean } {
+  return { label: DEPLOYS_LABELS.status[status], tone: deployTone(status), live: status === "deploying" || status === "claimed" };
+}
+
+export function isAwaitingApproval(deploy: Pick<HostDeploy, "status">): boolean {
+  return deploy.status === "awaiting_approval";
+}
+
+export function isActiveDeploy(deploy: Pick<HostDeploy, "status">): boolean {
+  return ACTIVE_DEPLOY_STATUSES.includes(deploy.status);
+}
+
+export function creationRequests(deploys: readonly HostDeploy[], containers: readonly ServerContainer[] | null): HostDeploy[] {
+  const existing = new Set((containers ?? []).map((container) => container.name));
+  return sortDeploys(deploys.filter((deploy) => deploy.create && isActiveDeploy(deploy) && !existing.has(deploy.container)));
+}
+
+export function sortDeploys(deploys: readonly HostDeploy[]): HostDeploy[] {
+  return [...deploys].sort((a, b) => b.createdAt.localeCompare(a.createdAt) || b.id.localeCompare(a.id));
+}
+
+export function deploysFor(deploys: readonly HostDeploy[], container: string | null | undefined): HostDeploy[] {
+  return container ? deploys.filter((deploy) => deploy.container === container) : [...deploys];
+}
+
+export function awaitingApprovalCounts(deploys: readonly HostDeploy[] | null): ReadonlyMap<string, number> {
+  const counts = new Map<string, number>();
+  for (const deploy of deploys ?? []) {
+    if (isAwaitingApproval(deploy)) counts.set(deploy.container, (counts.get(deploy.container) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export function deploySubtitle(deploy: HostDeploy, nowSeconds: number): string {
+  const parts = [
+    DEPLOYS_LABELS.kinds[deploy.kind],
+    deploy.create ? DEPLOYS_LABELS.into(deploy.container) : null,
+    DEPLOYS_LABELS.from(deploy.sandbox),
+    formatRelativeTime(deploy.createdAt, nowSeconds),
+  ];
+  return parts.filter(Boolean).join(L.separator);
+}
+
+export function newContainerSummary(deploy: Pick<HostDeploy, "cpus" | "memoryMb">): string {
+  return DEPLOYS_LABELS.request.newContainer(formatResources(deploy));
+}
+
+export function deployRequestEntries(deploy: HostDeploy): KeyValueEntry[] {
+  const R = DEPLOYS_LABELS.request;
+  const target: KeyValueEntry = deploy.hostname
+    ? [R.hostname, R.hostTarget(deploy.hostname, deploy.port)]
+    : deploy.port !== null
+      ? [R.port, String(deploy.port)]
+      : [R.hostname, R.noHostname];
+  const entries: KeyValueEntry[] = [[R.source, deploy.sourcePath], [R.size, formatBytes(deploy.bytes)], target];
+  return deploy.create ? [[R.container, newContainerSummary(deploy)], ...entries] : entries;
+}
+
+export interface DeployRequestView {
+  title: string;
+  approveLabel: string;
+  entries: KeyValueEntry[];
+}
+
+export function deployRequestView(deploy: HostDeploy): DeployRequestView {
+  return {
+    title: deploy.create ? DEPLOYS_LABELS.request.createTitle(deploy.container) : DEPLOYS_LABELS.request.title,
+    approveLabel: deploy.create ? DEPLOYS_LABELS.createAndDeploy : DEPLOYS_LABELS.approve,
+    entries: deployRequestEntries(deploy),
+  };
+}
+
+export function approvedMessage(deploy: Pick<HostDeploy, "app" | "container" | "create">): string {
+  return deploy.create ? DEPLOYS_LABELS.approvedCreate(deploy.container, deploy.app) : DEPLOYS_LABELS.approved(deploy.app);
 }

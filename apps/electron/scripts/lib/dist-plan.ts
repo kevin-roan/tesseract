@@ -1,4 +1,5 @@
 import type { ParsedArgs } from "./args.ts";
+import { SIMCAP_BINARY } from "./simcap.ts";
 import { findTarget, hostTargetId } from "./targets.ts";
 
 export type DistPlatform = "linux" | "mac" | "win";
@@ -93,9 +94,19 @@ export function builderArgs(plan: DistPlan, config = "electron-builder.yml"): st
 
 export const CLI_BINARIES = ["tesseract", "tesseract-controller"] as const;
 
+/** The universal merge needs tesseract-simcap in every mac arch dir, so a mac dist fails early when swiftc skipped one. */
 export function requiredCliFiles(platform: DistPlatform): string[] {
   return CLI_TARGETS[platform].flatMap((id) => {
     const target = findTarget(id);
-    return CLI_BINARIES.map((name) => `dist-cli/${target.builderOs}-${target.arch}/${name}${target.exe}`);
+    const names: readonly string[] = target.builderOs === "mac" ? [...CLI_BINARIES, SIMCAP_BINARY] : CLI_BINARIES;
+    return names.map((name) => `dist-cli/${target.builderOs}-${target.arch}/${name}${target.exe}`);
   });
+}
+
+/** Error for missing dist-cli files; a missing tesseract-simcap means swiftc was skipped, which cli:build cannot fix off a Mac. */
+export function missingCliMessage(missing: readonly string[], hostPlatform: NodeJS.Platform): string {
+  const message = `missing CLI binaries: ${missing.join(", ")}`;
+  if (!missing.some((file) => file.endsWith(`/${SIMCAP_BINARY}`))) return `${message} (run cli:build)`;
+  if (hostPlatform !== "darwin") return `${message} (mac dists must be built on a Mac: ${SIMCAP_BINARY} needs swiftc, and the universal merge and signing need lipo and codesign)`;
+  return `${message} (swiftc failed or was skipped in cli:build; check its output, install Xcode or the Command Line Tools and accept the license, then rerun)`;
 }

@@ -21,14 +21,11 @@ if (Platform.OS === 'ios') {
  * inside nested navigators where KeyboardAvoidingView over-pads.
  */
 export function useKeyboardHeight(enabled = true): number {
-  const [height, setHeight] = useState(0);
   const active = enabled && Platform.OS === 'ios';
+  const [height, setHeight] = useState(() => (active ? currentCover : 0));
 
   useEffect(() => {
-    if (!active) {
-      setHeight(0);
-      return;
-    }
+    if (!active) return;
 
     const apply = (next: number, event: KeyboardEvent) => {
       if (event.duration) {
@@ -44,13 +41,17 @@ export function useKeyboardHeight(enabled = true): number {
     );
     const hide = Keyboard.addListener('keyboardWillHide', (event) => apply(0, event));
     // An autofocused field can raise the keyboard before these listeners exist (a sheet opening), so start from its current frame.
-    setHeight(currentCover);
+    let live = true;
+    queueMicrotask(() => {
+      if (live) setHeight(currentCover);
+    });
 
     return () => {
+      live = false;
       change.remove();
       hide.remove();
     };
   }, [active]);
 
-  return height;
+  return active ? height : 0;
 }

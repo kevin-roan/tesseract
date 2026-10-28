@@ -57,6 +57,13 @@ describe("serverOptions", () => {
     expect(() => serverOptions(testContext(sandbox, { values: new Map([["mode", "public"]]) }))).toThrow(/unknown mode public/);
     expect(() => serverOptions(testContext(sandbox, { values: new Map([["host-https-port", "70000"]]) }))).toThrow(/--host-https-port/);
   });
+
+  it("accepts --ios only on macOS", () => {
+    expect(() => serverOptions(testContext(sandbox, { flags: new Set(["ios"]) }))).toThrow(/--ios needs macOS/);
+    const runtime = { ...sandbox.runtime, platform: "darwin" as const };
+    expect(serverOptions(testContext(sandbox, { flags: new Set(["ios"]), runtime })).ios).toBe(true);
+    expect(serverOptions(testContext(sandbox)).ios).toBe(false);
+  });
 });
 
 describe("tesseract server", () => {

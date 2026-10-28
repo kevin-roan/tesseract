@@ -66,6 +66,8 @@ describe("session timing", () => {
     expect(formatCountdown(15 * 60_000)).toBe("15:00");
     expect(formatCountdown(61_500)).toBe("1:02");
     expect(formatCountdown(-5)).toBe("0:00");
+    expect(formatCountdown(10 * 3_600_000)).toBe("10:00:00");
+    expect(formatCountdown(3_600_000 + 65_000)).toBe("1:01:05");
   });
 
   it("describes the lock state", () => {

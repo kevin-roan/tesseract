@@ -10,25 +10,69 @@ export type SpawnedProcess = {
   readonly stdout: ReadableStream<Uint8Array>;
   readonly stderr: ReadableStream<Uint8Array>;
   readonly exited: Promise<number | null>;
+  /** The child's stdin when it was spawned with `stdin: "pipe"`; writes after it exited are dropped. */
+  readonly stdin?: ProcessInput | null;
   /** SIGTERM to the group, SIGKILL after `graceMs` (0: SIGKILL at once). */
   stop: (graceMs: number) => Promise<void>;
 };
 
-export type ProcessSpawner = (cmd: string[], options?: { env?: Env }) => SpawnedProcess;
+/** `pending`: bytes written that the child has not read yet (still in the pipe buffer), for backpressure. */
+export type ProcessInput = { write: (data: string | Uint8Array) => void; end: () => void; pending: () => number };
+
+/** `stdin`: another child's stdout to read from (a pipeline), or `"pipe"` to write to it; none by default. */
+export type ProcessSpawner = (cmd: string[], options?: { env?: Env; stdin?: ReadableStream<Uint8Array> | "pipe" }) => SpawnedProcess;
+
+/** A FileSink that never throws: the child may exit (EPIPE) while frames are still written to it. */
+function processInput(sink: Bun.FileSink): ProcessInput {
+  let open = true;
+  let written = 0;
+  let flushed = 0;
+  return {
+    write: (data) => {
+      if (!open) return;
+      try {
+        sink.write(data);
+        written += typeof data === "string" ? Buffer.byteLength(data) : data.byteLength;
+        const result = sink.flush();
+        if (typeof result === "number") {
+          flushed = written;
+          return;
+        }
+        const mark = written;
+        result.then(
+          () => void (flushed = Math.max(flushed, mark)),
+          () => void (open = false),
+        );
+      } catch {
+        open = false;
+      }
+    },
+    pending: () => (open ? written - flushed : 0),
+    end: () => {
+      if (!open) return;
+      open = false;
+      try {
+        void Promise.resolve(sink.end()).catch(() => {});
+      } catch {}
+    },
+  };
+}
 
 export const defaultRunner: CommandRunner = run;
 
 export const defaultSpawner: ProcessSpawner = (cmd, options = {}) => {
   const proc = Bun.spawn(cmd, {
     env: options.env as Record<string, string> | undefined,
-    stdin: "ignore",
+    stdin: options.stdin ?? "ignore",
     stdout: "pipe",
     stderr: "pipe",
     detached: true,
   });
   const exited = proc.exited.then(() => proc.exitCode);
+  const stdin = proc.stdin && typeof proc.stdin === "object" && "write" in proc.stdin ? processInput(proc.stdin as Bun.FileSink) : null;
   return {
     pid: proc.pid,
+    stdin,
     stdout: proc.stdout,
     stderr: proc.stderr,
     exited,

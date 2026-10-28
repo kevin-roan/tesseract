@@ -68,8 +68,8 @@ describe("useProfileScreen", () => {
     expect(result.current.profile).toMatchObject({ team: "example.com", photo: "https://example.com/ada.png" });
     expect(result.current.tailscaleMissing).toBe(false);
     expect(result.current.identityError).toBeNull();
-    await act(async () => result.current.openSettings());
-    expect(mockRouter.push).toHaveBeenCalledWith("/settings");
+    await act(async () => result.current.activity.open());
+    expect(mockRouter.push).toHaveBeenCalledWith("/sandbox/activity");
   });
 
   it("lists paired sandboxes, switches the active one and pairs another", async () => {
@@ -101,31 +101,6 @@ describe("useProfileScreen", () => {
     await waitFor(() => expect(result.current.claudeAccount).toBe("Not found"));
   });
 
-  it("lists activity that opens the matching screen", async () => {
-    const { result } = await renderScreen();
-    await waitFor(() => expect(result.current.activity).toHaveLength(3));
-    expect(result.current.activityLoading).toBe(false);
-
-    const byId = (id: string) => result.current.activity.find((item) => item.id === id);
-    expect(byId(`build-${sampleBuild.id}`)).toMatchObject({ actor: "Ada Lovelace", testID: `activity-build-${sampleBuild.id}` });
-    await act(async () => byId(`build-${sampleBuild.id}`)?.onPress?.());
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/sandbox/builds/[id]", params: { id: sampleBuild.id } });
-    await act(async () => byId(`run-${sampleAgentRun.id}`)?.onPress?.());
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: "/sandbox/agent/[id]", params: { id: sampleAgentRun.id } });
-    expect(byId(`process-${sampleProcess.id}`)?.onPress).toBeUndefined();
-  });
-
-  it("opens a project process from the feed", async () => {
-    fake.listProcesses.mockResolvedValue([sampleProcess]);
-    const { result } = await renderScreen();
-    await waitFor(() => expect(result.current.activity).toHaveLength(3));
-    await act(async () => result.current.activity.find((item) => item.id.startsWith("process-"))?.onPress?.());
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: "/sandbox/projects/[id]",
-      params: { id: sampleProject.id, process: sampleProcess.id },
-    });
-  });
-
   it("falls back to the sandbox when Tailscale identity is unavailable", async () => {
     fake.identity.mockResolvedValue(NO_TAILSCALE);
     const { result } = await renderScreen();
@@ -149,22 +124,10 @@ describe("useProfileScreen", () => {
     await waitFor(() => expect(result.current.identityError).toBeNull());
   });
 
-  it("reports a failed activity feed and retries it", async () => {
-    fake.listBuilds.mockRejectedValue(new ApiError(500, "internal", "Boom"));
-    const { result } = await renderScreen();
-    await waitFor(() => expect(result.current.activityError).toBe("Boom"));
-
-    fake.listBuilds.mockResolvedValue([sampleBuild]);
-    await act(async () => result.current.retryActivity());
-    await waitFor(() => expect(result.current.activityError).toBeNull());
-    await waitFor(() => expect(result.current.activity.some((item) => item.id === `build-${sampleBuild.id}`)).toBe(true));
-  });
-
   it("has nothing to show without a paired sandbox", async () => {
     resetSandboxState();
     const { result } = await renderScreen();
     expect(result.current.sandbox).toBeNull();
     expect(result.current.profile).toBeNull();
-    expect(result.current.activity).toEqual([]);
   });
 });

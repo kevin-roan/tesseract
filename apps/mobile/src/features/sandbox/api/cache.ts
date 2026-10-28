@@ -15,6 +15,7 @@ import type {
 
 import { storeAppRun } from "@/features/app-runs/api/cache";
 import { storeInboxEvent } from "@/features/inbox/api/cache";
+import { applyIssueEvent } from "@/features/issues/api/cache";
 
 import { ACTIVITY_LIMIT } from "../utils/constants";
 import { prependCapped, removeByIds, upsertById, type UpsertPlacement } from "../utils/collections";
@@ -159,6 +160,10 @@ export function applyServerEvent(queryClient: QueryClient, sandboxId: string, ev
       return storeInboxEvent(queryClient, sandboxId, event);
     case "app.updated":
       return storeAppRun(queryClient, sandboxId, event.run);
+    case "issue.updated":
+    case "issue.deleted":
+    case "issue.commented":
+      return applyIssueEvent(queryClient, sandboxId, event);
     case "hello":
     case "ping":
       return;

@@ -146,21 +146,21 @@ describe("headless runs", () => {
     const image = await upload("shot.png", "image/png");
     const voice = await upload("note.m4a", "audio/mp4");
     const prompt = "what is on the screen?";
-    const run = await startRun({ prompt, mode: "plan", attachmentIds: [image.id, voice.id] });
-    expect(run).toMatchObject({ mode: "plan", attachments: [image, voice] });
+    const run = await startRun({ prompt, mode: "plan", model: "sonnet", attachmentIds: [image.id, voice.id] });
+    expect(run).toMatchObject({ mode: "plan", model: "sonnet", attachments: [image, voice] });
     const done = await waitFor(async () => {
       const detail = AgentRunDetailSchema.parse((await t.json("GET", `/v1/agent/runs/${run.id}`)).body);
       return detail.state === "running" ? null : detail;
     }, 10_000);
-    expect(done).toMatchObject({ state: "succeeded", mode: "plan", attachments: [image, voice] });
+    expect(done).toMatchObject({ state: "succeeded", mode: "plan", model: "sonnet", attachments: [image, voice] });
     const texts = done.events.flatMap((event) => (event.kind === "text" ? [event.text] : []));
     const uploadsDir = join(t.workspace, ".tesseract", "uploads");
-    expect(texts.find((text) => text.startsWith("args:"))).toBe(`args: -p --output-format stream-json --verbose --permission-mode plan --add-dir ${uploadsDir}`);
+    expect(texts.find((text) => text.startsWith("args:"))).toBe(`args: -p --output-format stream-json --verbose --permission-mode plan --model sonnet --add-dir ${uploadsDir}`);
     const stdin = `${prompt}\n\nAttached files (read them with the Read tool):\n- ${image.path} (image/png)`;
     expect(texts).toContain(`prompt length ${stdin.length}`);
 
     const voiceOnly = await startRun({ prompt, attachmentIds: [voice.id] });
-    expect(voiceOnly).toMatchObject({ mode: null, attachments: [voice] });
+    expect(voiceOnly).toMatchObject({ mode: null, model: null, attachments: [voice] });
     const voiceDone = await waitFor(async () => {
       const detail = AgentRunDetailSchema.parse((await t.json("GET", `/v1/agent/runs/${voiceOnly.id}`)).body);
       return detail.state === "running" ? null : detail;
@@ -170,11 +170,13 @@ describe("headless runs", () => {
     expect(voiceTexts).toContain(`prompt length ${prompt.length}`);
   });
 
-  test("unknown attachments and modes are refused before Claude starts", async () => {
+  test("unknown attachments, modes and models are refused before Claude starts", async () => {
     const missing = await t.json<{ error: { code: string } }>("POST", "/v1/agent/runs", { prompt: "hi", attachmentIds: ["upl_missing0000"] });
     expect(missing.status).toBe(404);
     const badMode = await t.json<{ error: { code: string } }>("POST", "/v1/agent/runs", { prompt: "hi", mode: "default" });
     expect(badMode.status).toBe(400);
+    const badModel = await t.json<{ error: { code: string } }>("POST", "/v1/agent/runs", { prompt: "hi", model: "--dangerously-skip-permissions" });
+    expect(badModel.status).toBe(400);
   });
 
   test("lists runs and filters by project", async () => {
@@ -226,5 +228,8 @@ describe("stream-json parser", () => {
     const long = claudeArgs("z".repeat(200_000), "plan", { resumeSessionId: "abc" });
     expect(long.argv).toEqual(["-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan", "--resume", "abc"]);
     expect(long.stdin.length).toBe(200_000);
+    expect(claudeArgs("hi", "plan", { model: "opus", resumeSessionId: "abc" }).argv).toEqual([
+      "-p", "--output-format", "stream-json", "--verbose", "--permission-mode", "plan", "--model", "opus", "--resume", "abc",
+    ]);
   });
 });

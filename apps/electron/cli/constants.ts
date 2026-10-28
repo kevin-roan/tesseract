@@ -73,6 +73,9 @@ export const SERVER = {
   defaultHttpsPort: 8443,
   servicePath: ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"],
   serviceEnvKeys: ["HOME", "SHELL", "LANG", "USER"],
+  iosSwitch: "TESSERACT_IOS",
+  iosEnvKeys: ["TESSERACT_IOS", "TESSERACT_XCRUN", "TESSERACT_IDB", "TESSERACT_IDB_COMPANION", "TESSERACT_FFMPEG", "TESSERACT_SIMCAP"],
+  switchOn: ["1", "on", "true", "yes"],
   tailscaleBinary: "tailscale",
   tailscaleApp: "/Applications/Tailscale.app/Contents/MacOS/Tailscale",
   loopbackBind: "127.0.0.1",
@@ -93,13 +96,3 @@ export const SERVER_ENV = {
   claudeToken: "CLAUDE_CODE_OAUTH_TOKEN",
 } as const;
 
-export const UNSAFE_REPO = {
-  workspaceArgs: ["host", "workspace"],
-  serveArgs: ["serve"],
-  healthPath: "/v1/health",
-  logFile: ["logs", "host-workspace.log"],
-  cliTimeoutMs: 30_000,
-  healthTimeoutMs: 1_500,
-  startTimeoutMs: 20_000,
-  pollMs: 400,
-} as const;

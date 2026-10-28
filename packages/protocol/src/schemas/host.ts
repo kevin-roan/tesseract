@@ -41,3 +41,12 @@ export const CreateHostTerminalSchema = CreateTerminalSchema.extend({
   cwd: z.string().min(1).max(4096).optional(),
 });
 export type CreateHostTerminal = z.infer<typeof CreateHostTerminalSchema>;
+
+/** `GET /v1/host/workspace` on the host shell (needs a session): the host workspace controller and the repositories linked into it. */
+export const HostWorkspaceAccessSchema = z.object({
+  url: z.string().min(1),
+  token: z.string().min(1),
+  name: z.string().min(1),
+  projects: z.array(z.object({ id: z.string().min(1), path: z.string().min(1) })),
+});
+export type HostWorkspaceAccess = z.infer<typeof HostWorkspaceAccessSchema>;

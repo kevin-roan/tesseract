@@ -1,8 +1,10 @@
 import type { Database, SQLQueryBindings } from "bun:sqlite";
+import { ISSUE_STATUSES } from "@tesseract/protocol";
 import type {
   AgentRun,
   AgentRunEvent,
   AgentRunMode,
+  AgentRunModel,
   AgentRunState,
   AgentRunUsage,
   Artifact,
@@ -11,9 +13,19 @@ import type {
   BuildProfile,
   BuildState,
   BuildTarget,
+  Deploy,
+  DeployKind,
+  DeployStatus,
   InboxCounts,
   InboxItem,
   InboxKind,
+  Issue,
+  IssueAssignee,
+  IssueComment,
+  IssueCommentAuthor,
+  IssuePriority,
+  IssueQuery,
+  IssueStatus,
   LiveActivityToken,
   LiveActivityTokenKind,
   ProcessCommand,
@@ -157,6 +169,36 @@ const liveActivityTokenFromRow = (row: Row): LiveActivityToken => ({
   updatedAt: text(row, "updated_at"),
 });
 
+const issueFromRow = (row: Row): Issue => ({
+  id: text(row, "id"),
+  projectId: text(row, "project_id"),
+  number: num(row, "number"),
+  title: text(row, "title"),
+  description: text(row, "description"),
+  status: text(row, "status") as IssueStatus,
+  priority: text(row, "priority") as IssuePriority,
+  assignee: textOrNull(row, "assignee") as IssueAssignee | null,
+  labels: jsonList<string>(row, "labels"),
+  sortOrder: num(row, "sort_order"),
+  agentRunId: textOrNull(row, "agent_run_id"),
+  agentState: textOrNull(row, "agent_state") as AgentRunState | null,
+  sessionId: textOrNull(row, "session_id"),
+  createdAt: text(row, "created_at"),
+  updatedAt: text(row, "updated_at"),
+  completedAt: textOrNull(row, "completed_at"),
+});
+
+const issueCommentFromRow = (row: Row): IssueComment => ({
+  id: text(row, "id"),
+  issueId: text(row, "issue_id"),
+  author: text(row, "author") as IssueCommentAuthor,
+  body: text(row, "body"),
+  agentRunId: textOrNull(row, "agent_run_id"),
+  createdAt: text(row, "created_at"),
+});
+
+const ISSUE_BOARD_ORDER = `CASE status ${ISSUE_STATUSES.map((status, index) => `WHEN '${status}' THEN ${index}`).join(" ")} ELSE ${ISSUE_STATUSES.length} END`;
+
 export class Repositories {
   readonly processes: Table<ProcessInfo>;
   readonly terminals: Table<TerminalInfo>;
@@ -166,6 +208,9 @@ export class Repositories {
   readonly inbox: Table<InboxItem>;
   readonly uploads: Table<Upload>;
   readonly syncRequests: Table<SyncRequest>;
+  readonly deploys: Table<Deploy>;
+  readonly issues: Table<Issue>;
+  readonly issueComments: Table<IssueComment>;
 
   constructor(private readonly db: Database) {
     this.processes = new Table<ProcessInfo>(
@@ -308,6 +353,7 @@ export class Repositories {
         project_id: (r) => r.projectId,
         prompt: (r) => r.prompt,
         mode: (r) => r.mode,
+        model: (r) => r.model,
         attachments: (r) => (r.attachments.length > 0 ? JSON.stringify(r.attachments) : null),
         session_id: (r) => r.sessionId,
         resumed_session_id: (r) => r.resumedSessionId ?? null,
@@ -328,6 +374,7 @@ export class Repositories {
         projectId: textOrNull(row, "project_id"),
         prompt: text(row, "prompt"),
         mode: textOrNull(row, "mode") as AgentRunMode | null,
+        model: textOrNull(row, "model") as AgentRunModel | null,
         attachments: jsonList<Upload>(row, "attachments"),
         sessionId: textOrNull(row, "session_id"),
         resumedSessionId: textOrNull(row, "resumed_session_id"),
@@ -434,12 +481,179 @@ export class Repositories {
       }),
       "created_at",
     );
+
+    this.deploys = new Table<Deploy>(
+      db,
+      "deploys",
+      {
+        id: (d) => d.id,
+        container: (d) => d.container,
+        app: (d) => d.app,
+        kind: (d) => d.kind,
+        source_path: (d) => d.sourcePath,
+        project_id: (d) => d.projectId,
+        port: (d) => d.port,
+        hostname: (d) => d.hostname,
+        create_container: (d) => (d.create ? 1 : 0),
+        cpus: (d) => d.cpus,
+        memory_mb: (d) => d.memoryMb,
+        status: (d) => d.status,
+        sha256: (d) => d.sha256,
+        bytes: (d) => d.bytes,
+        claimed_by: (d) => d.claimedBy,
+        log: (d) => d.log,
+        urls: (d) => JSON.stringify(d.urls),
+        error: (d) => d.error,
+        created_at: (d) => d.createdAt,
+        updated_at: (d) => d.updatedAt,
+      },
+      (row) => ({
+        id: text(row, "id"),
+        container: text(row, "container"),
+        app: text(row, "app"),
+        kind: text(row, "kind") as DeployKind,
+        sourcePath: text(row, "source_path"),
+        projectId: textOrNull(row, "project_id"),
+        port: numOrNull(row, "port"),
+        hostname: textOrNull(row, "hostname"),
+        create: num(row, "create_container") === 1,
+        cpus: numOrNull(row, "cpus"),
+        memoryMb: numOrNull(row, "memory_mb"),
+        status: text(row, "status") as DeployStatus,
+        sha256: text(row, "sha256"),
+        bytes: num(row, "bytes"),
+        claimedBy: textOrNull(row, "claimed_by"),
+        log: text(row, "log"),
+        urls: jsonList<string>(row, "urls"),
+        error: textOrNull(row, "error"),
+        createdAt: text(row, "created_at"),
+        updatedAt: text(row, "updated_at"),
+      }),
+      "created_at",
+    );
+
+    this.issues = new Table<Issue>(
+      db,
+      "issues",
+      {
+        id: (i) => i.id,
+        project_id: (i) => i.projectId,
+        number: (i) => i.number,
+        title: (i) => i.title,
+        description: (i) => i.description,
+        status: (i) => i.status,
+        priority: (i) => i.priority,
+        assignee: (i) => i.assignee,
+        labels: (i) => JSON.stringify(i.labels),
+        sort_order: (i) => i.sortOrder,
+        agent_run_id: (i) => i.agentRunId,
+        agent_state: (i) => i.agentState,
+        session_id: (i) => i.sessionId,
+        created_at: (i) => i.createdAt,
+        updated_at: (i) => i.updatedAt,
+        completed_at: (i) => i.completedAt,
+      },
+      issueFromRow,
+      "created_at",
+    );
+
+    this.issueComments = new Table<IssueComment>(
+      db,
+      "issue_comments",
+      {
+        id: (c) => c.id,
+        issue_id: (c) => c.issueId,
+        author: (c) => c.author,
+        body: (c) => c.body,
+        agent_run_id: (c) => c.agentRunId,
+        created_at: (c) => c.createdAt,
+      },
+      issueCommentFromRow,
+      "created_at",
+    );
+  }
+
+  /** Next per-project issue number; numbers of deleted issues are never handed out again. */
+  nextIssueNumber(projectId: string): number {
+    const row = this.db
+      .query<{ last_number: number }, [string]>(
+        "INSERT INTO issue_counters (project_id, last_number) VALUES (?, 1) ON CONFLICT(project_id) DO UPDATE SET last_number = last_number + 1 RETURNING last_number",
+      )
+      .get(projectId);
+    return row?.last_number ?? 1;
+  }
+
+  /** Board order: status column, `sort_order`, then newest number first. */
+  issueList(query: IssueQuery, limit: number): Issue[] {
+    const clauses: string[] = [];
+    const params: Binding[] = [];
+    if (query.projectId !== undefined) {
+      clauses.push("project_id = ?");
+      params.push(query.projectId);
+    }
+    if (query.status !== undefined) {
+      clauses.push("status = ?");
+      params.push(query.status);
+    }
+    if (query.assignee !== undefined) {
+      clauses.push("assignee = ?");
+      params.push(query.assignee);
+    }
+    const where = clauses.length > 0 ? `WHERE ${clauses.join(" AND ")} ` : "";
+    return this.db
+      .query<Row, Binding[]>(`SELECT * FROM issues ${where}ORDER BY ${ISSUE_BOARD_ORDER}, sort_order, number DESC LIMIT ?`)
+      .all(...params, limit)
+      .map(issueFromRow);
+  }
+
+  minIssueSortOrder(projectId: string, status: IssueStatus): number | null {
+    const row = this.db.query<{ low: number | null }, [string, string]>("SELECT MIN(sort_order) AS low FROM issues WHERE project_id = ? AND status = ?").get(projectId, status);
+    return row?.low ?? null;
+  }
+
+  issueForAgentRun(runId: string): Issue | null {
+    return this.issues.where("agent_run_id = ?", runId)[0] ?? null;
+  }
+
+  /** The last `limit` comments of an issue, oldest first. */
+  issueCommentList(issueId: string, limit: number): IssueComment[] {
+    return this.db
+      .query<Row, [string, number]>(
+        "SELECT * FROM (SELECT *, rowid AS seq FROM issue_comments WHERE issue_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?) ORDER BY created_at, seq",
+      )
+      .all(issueId, limit)
+      .map(issueCommentFromRow);
+  }
+
+  deleteIssue(id: string): Issue | null {
+    return this.db.transaction(() => {
+      this.db.query("DELETE FROM issue_comments WHERE issue_id = ?").run(id);
+      return this.issues.delete("id = ?", id)[0] ?? null;
+    })();
+  }
+
+  /** Drops every issue of a project with their comments and its number sequence; returns the deleted issues. */
+  deleteProjectIssues(projectId: string): Issue[] {
+    return this.db.transaction(() => {
+      this.db.query("DELETE FROM issue_comments WHERE issue_id IN (SELECT id FROM issues WHERE project_id = ?)").run(projectId);
+      this.db.query("DELETE FROM issue_counters WHERE project_id = ?").run(projectId);
+      return this.issues.delete("project_id = ?", projectId);
+    })();
   }
 
   pruneSyncRequests(keep: number): number {
     return this.db
       .query("DELETE FROM sync_requests WHERE id NOT IN (SELECT id FROM sync_requests ORDER BY created_at DESC, rowid DESC LIMIT ?)")
       .run(keep).changes;
+  }
+
+  /** Drops finished deploys beyond the newest `keep` rows; active ones are never pruned. */
+  pruneDeploys(keep: number, finished: readonly string[]): number {
+    return this.db
+      .query(
+        `DELETE FROM deploys WHERE status IN (${placeholders(finished)}) AND id NOT IN (SELECT id FROM deploys ORDER BY created_at DESC, rowid DESC LIMIT ?)`,
+      )
+      .run(...finished, keep).changes;
   }
 
   /** Removes upload rows created before `before`; returns them so their files can be deleted. */

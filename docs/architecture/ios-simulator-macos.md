@@ -1,18 +1,20 @@
 # iOS Simulator and Android emulator on a macOS host
 
 > **Status (2026-10-19): host daemon and sandbox controller sides implemented, unverified on a real Mac.**
-> `apps/controller/src/host/ios/` implements §2 (status, boot / shutdown, the idb screen session, input) and the host
+> `apps/controller/src/host/ios/` implements §2 (status, boot / shutdown, the screen session through `tesseract-simcap`
+> with idb as the fallback, input) and the host
 > side of §3 (iOS link, reverse Metro tunnel, `openUrl`, `install` with confirmation, Expo Go provisioning).
 > `apps/controller/src/services/ios-link.ts` is the sandbox side (`GET /v1/ios`, `POST /v1/ios/installs`,
 > `WS /v1/ios/link`, `WS /v1/ios/link/streams/:id`) and `services/app-runs.ts` runs `expo-ios` (§3.3). Routes, types and
 > env vars are in the [blueprint](00-blueprint.md) (§4.3, §5.3, §5.4, §5.7); the Android-on-Mac defaults (§5) are in
 > [app-runs-and-emulator.md](app-runs-and-emulator.md) §2.1. **Not implemented yet:** `expo-ios-dev-client` (phase 2)
 > and the sandbox opt-in for unisolated Android (§5); the app UI is in progress. Everything was tested on Linux with
-> fake `simctl` / `idb` / `idb_companion` and a fake host link; the items in §8 must be checked on a Mac.
+> fake `simctl` / `idb` / `idb_companion` / `tesseract-simcap` and a fake host link; the items in §8 must be checked on a
+> Mac. The `tesseract-simcap` encoder itself was checked on a Mac (macOS 26.2, Xcode 26.2).
 
 Goal: when the Docker host is a Mac, the phone can see and drive an **iOS Simulator**
-(and the Android emulator) the same way it drives the host Android emulator: a
-JPEG frame stream down, touch / keys / text up, and the sandbox can run the project's
+(and the Android emulator) the same way it drives the host Android emulator: an
+H.264 (or JPEG) frame stream down, touch / keys / text up, and the sandbox can run the project's
 app on it.
 
 ```mermaid
@@ -23,7 +25,8 @@ flowchart LR
   end
   subgraph mac["macOS host"]
     hd["host daemon<br/>/v1/ios/*"]
-    idb["idb_companion<br/>framebuffer · HID"]
+    simcap["tesseract-simcap<br/>framebuffer → H.264"]
+    idb["idb_companion<br/>HID · fallback frames"]
     sim["iOS Simulator<br/>(CoreSimulator, no window)"]
     fwd["127.0.0.1:&lt;metro&gt;<br/>forward listener"]
     subgraph dd["Docker Desktop Linux VM"]
@@ -34,8 +37,9 @@ flowchart LR
     end
   end
   app -->|REST| hd
-  wv -->|"WS /v1/ios/screen: JPEG ↓ touch/keys ↑"| hd
+  wv -->|"WS /v1/ios/screen: H.264 or JPEG ↓ touch/keys ↑"| hd
   hd -->|"WS link (host dials out)"| ctl
+  hd --> simcap --> sim
   hd --> idb --> sim
   sim -->|"exp://127.0.0.1:&lt;metro&gt;"| fwd
   fwd -.->|"WS /v1/ios/link/streams/:id"| ctl --> metro
@@ -74,6 +78,13 @@ flowchart LR
 A maps almost one to one onto the Android protocol, needs no Simulator window and no
 macOS privacy permissions. C and D are not pursued.
 
+**Update: B is adopted for frames, A stays for input and as the frame fallback.** idb_companion 1.1.8 on macOS 26.2 /
+Xcode 26.2 encodes one IDR and then only B-slices, so every screen transition smears (verified visually, and Apple's
+own decoder shows the same smear). `tesseract-simcap` (`apps/controller/native/simcap`, Swift) reads the framebuffer
+through the private SimulatorKit API and encodes with VideoToolbox (I and P frames only, an IDR every few seconds): clean
+at native 1320x2868 and at long side 1280, ~200 ms from launch to the first frame, ~7 % CPU. It sends H.264, not
+JPEG as the table says for B, and B's input part is not built.
+
 ### 2.2 Status, boot and shutdown
 
 - Off unless the daemon runs with `TESSERACT_IOS=1`. `GET /v1/ios` is then `available: false` with
@@ -91,21 +102,73 @@ macOS privacy permissions. C and D are not pursued.
 
 ### 2.3 Frame stream
 
-One session per booted device while at least one `/v1/ios/screen` viewer is open, fanned out like the Android session:
+Sessions are opened per viewer group while at least one `/v1/ios/screen` viewer is open, fanned out like the Android
+session. A group is the device, the codec, the effective `maxSize` and the `IosStreamSettings` (`GET/PUT /v1/ios/stream`,
+`iosStream` in `state.json`, defaults h264, 6 Mbit/s, 60 fps, key frame every 2 s, JPEG q 7). The codec is `h264` when
+the settings say `encoding: "h264"` and the viewer asked for `codec=h264`, else `mjpeg`. Every session also runs
+`idb_companion` + `idb describe` for input and the geometry (below). A `PUT` moves the viewers whose group changes to a
+new session (new `meta`, socket kept).
+
+```
+tesseract-simcap probe --udid <udid>                                   # 10 s; exit 0 + {"ok":true,…} when the API is there
+tesseract-simcap stream --udid <udid> --bitrate <bitRate> --fps <maxFps> \
+  --keyint-sec <keyFrameInterval> --max-side <maxSize>                 # own process group; packets on stdout
+  [ | ffmpeg -flags low_delay -f h264 -i pipe:0 … -c:v mjpeg -q:v <jpegQuality> pipe:1 ]   # mjpeg groups only
+```
+
+- `tesseract-simcap` is `TESSERACT_SIMCAP`, else next to the compiled daemon (`~/.tesseract/bin`,
+  `Tesseract.app/Contents/Resources/bin`), else on the tool path or in `~/.tesseract/bin`; macOS only. It loads
+  CoreSimulator / SimulatorKit with `dlopen` from the selected Xcode (`--developer-dir`, else `xcode-select -p`) and
+  needs no Screen Recording permission. On Xcode 26 it registers a per-frame callback on the device's screen
+  (`api: "screen"`); older Xcodes only have IOSurface-change + damage-rectangle callbacks (`api: "damage"`). The
+  framebuffer is copied when the callback fires (encoding the live IOSurface later smears transitions), the callbacks
+  are unregistered before exit, and the device state is polled once a second. CoreSimulator setup times out after
+  20 s; no key frame within 10 s exits 1.
+- stdout framing (not raw Annex B): `u32 BE length`, a flags byte, then the payload. `0x80` size = `u32 BE width,
+  u32 BE height` of the encoded frames; `0x01` config = Annex B SPS + PPS (4-byte start codes); `0x02` key = an Annex B
+  IDR access unit without SPS/PPS; `0x00` delta = a P-frame access unit. The stream starts with size, config, key and
+  repeats all three after a resolution change (rotation); config is only sent when SPS/PPS change. One packet is one
+  access unit, written as soon as VideoToolbox returns it; no B-frames, so decode order is display order. While the
+  screen is still the last frame is re-encoded once a second. A line `k` on stdin forces a key frame now. stderr is
+  JSON log lines only. Exit 0 on SIGTERM / SIGINT or a closed stdout, 1 setup error, 3 device no longer booted (the
+  viewers get `The simulator was shut down`).
+- **h264 groups:** each packet goes out as Android's `[ANDROID_H264_FLAGS byte][Annex B]` binary message; size packets
+  become `meta` / `size`. `meta {deviceName, codec: "h264", width, height}` goes out with the first key frame; a late
+  viewer gets `meta`, the config and the frames since the last key frame (≤ 8 MiB); a viewer with more than 512 KiB
+  buffered skips frames until the next key frame. simcap is asked for a key frame (`k`) when a viewer joins or waits to
+  resync and is not congested, so nobody waits for the next periodic IDR.
+- **mjpeg groups:** the Annex B payloads go into ffmpeg (the Android MJPEG arguments, `-flags low_delay` is safe without
+  B-frames) and each JPEG is one binary message; when ffmpeg falls more than 512 KiB behind, frames are dropped until a
+  key frame (simcap is asked for one once the pipe drains).
+- **Fallback to idb:** when simcap is not installed, `probe` fails, an mjpeg group has no ffmpeg, or simcap exits before
+  its first key frame, the session streams through idb as below (always `codec: "mjpeg"`) and the daemon logs a
+  warning once (later fallbacks at info level). A simcap exit after the first key frame ends the session (`error`).
+
+idb fallback:
 
 ```
 idb_companion --udid <udid> --grpc-port <free loopback port>         # own process group; ready when the port accepts
 IDB_COMPANION=127.0.0.1:<port> idb describe --json                     # screen_dimensions
+IDB_COMPANION=127.0.0.1:<port> idb video-stream --format h264 --fps 30 \
+  | ffmpeg … -f h264 -i pipe:0 … -vf fps=15,scale=<s>,mpdecimate=max=15 \
+    -c:v mjpeg -q:v 7 pipe:1                                           # JPEG frames on stdout (ffmpeg installed)
 IDB_COMPANION=127.0.0.1:<port> idb video-stream --format mjpeg --fps 30 \
-  --compression-quality 0.6 --scale-factor <s>                         # JPEG frames on stdout
+  --compression-quality 0.6 --scale-factor <s>                         # without ffmpeg
 ```
 
 - `<s>` = min(1, maxSize / long side in pixels), `maxSize` of the first viewer (default 1280, 160..4096); 1 when
-  `describe` fails.
+  `describe` fails. ffmpeg (`TESSERACT_FFMPEG`, else `ffmpeg` on the tool path) scales to even sizes, sends at most
+  15 JPEGs/s and drops unchanged frames (idb repeats a still screen; one in 16 is still sent). Each frame is a
+  whole JPEG, so this keeps the stream under what a DERP-relayed tailnet carries (~1 MB/s); otherwise frames queue
+  in `tailscale serve`, out of reach of the 512 KiB skip below. idb's H.264 is one IDR followed by B-slices only
+  (VideoToolbox), so unlike Android this decode runs without `-flags low_delay`, which would smear screen changes
+  together even more; transitions still smear, which is why simcap replaced it.
+- With idb_companion 1.1.8 on macOS 26, `--format mjpeg` writes nothing, and neither does `--format h264` with
+  `--scale-factor`; hence the full-size H.264 through ffmpeg (`brew install ffmpeg`).
 - stdout is split on SOI / EOI; each JPEG is one binary message. `meta {deviceName, codec: "mjpeg", width, height}` is
   sent with the first frame (size read from the JPEG's SOF segment, in pixels), `size` when it changes (rotation).
-- Shared per device; a late viewer gets `meta` and the last JPEG at once; a viewer with more than 512 KiB buffered
-  skips frames; the session (video stream and companion) ends with its last viewer, when either process exits
+- Shared per group; a late viewer gets `meta` and the last JPEG at once; a viewer with more than 512 KiB buffered
+  skips frames; the session (video stream, ffmpeg and companion) ends with its last viewer, when any process exits
   (`error` to every viewer) or when the device is shut down.
 
 ### 2.4 Input
@@ -128,7 +191,8 @@ the first version sends **whole gestures** through the idb CLI, one command at a
 
 `/ui/ios` and `/ui/android` are the same script (`src/ui/device.ts`) selected by `<body data-device="ios|android">`
 (profiles in `src/ui/lib/config.ts`). The iOS page connects to `/v1/ios/screen` (fragment `ticket`, `maxSize`,
-`udid`), never asks for H.264, has the bottom bar ○ home, ⏻ lock, ⌨ keyboard and posts `ios-state` /
+`udid`), asks for `codec=h264` when WebCodecs can decode the stream's profile (`VideoDecoder.isConfigSupported` with
+the `avc1.PPCCLL` from the SPS; a failure makes the next connect ask for JPEG), has the bottom bar ○ home, ⏻ lock, ⌨ keyboard and posts `ios-state` /
 `ios-need-ticket` (same payloads as `android-state` / `android-need-ticket`).
 
 ## 3. Running the project's app
@@ -251,14 +315,14 @@ that should become an explicit opt-in (`TESSERACT_EMULATOR_ALLOW_UNISOLATED=1`),
 
 Authoritative names are in `@tesseract/protocol` (`schemas/ios.ts`) and blueprint §5.4 / §5.7: `SIM_STATES`,
 `SimDevice`, `HostIosStatus`, `BootSimulator`, `IosLinkInfo`, `IosTunnel`, `IosInstallRequest`, `DecideIosInstall`,
-`IosScreenQuery`, `IosRun`, `IosLinkHostMessage`, `IosLinkSandboxMessage`, `IosLinkStreamQuery`, `SandboxIosStatus`,
+`IosScreenQuery` (with `codec`), `IosStreamSettings` / `UpdateIosStream` / `DEFAULT_IOS_STREAM`, `IosRun`, `IosLinkHostMessage`, `IosLinkSandboxMessage`, `IosLinkStreamQuery`, `SandboxIosStatus`,
 `IosLinkRequest`, `InstallOnSimulator`, `IOS_LINK_REQUEST_STATES` / `IOS_LINK_REQUEST_TYPES`, the `expo-ios` run target
 and the `ios` `AppViewer`,
 `iosOpenUrlRefusal`, `DeviceScreenClientMessage` / `DeviceScreenServerMessage`, `STOP_SIGNALS` / `StopSignalQuerySchema`;
-routes `restPaths.ios|iosSimulator|iosLink|iosInstalls|iosInstall`, `wsPaths.iosLink|iosLinkStream|iosScreen`,
+routes `restPaths.ios|iosSimulator|iosLink|iosInstalls|iosInstall|iosStream`, `wsPaths.iosLink|iosLinkStream|iosScreen`,
 `uiPaths.ios`. Client (`TesseractClient`, the host session client): `hostIosStatus`, `bootSimulator`,
 `shutdownSimulator({ signal? })`, `linkIosSandbox`, `unlinkIosSandbox`, `iosInstalls`, `decideIosInstall`,
-`iosScreenPageUrl`, `iosScreenSocketUrl`, and `getIosStatus` / `installOnSimulator(artifactId)` for the sandbox side.
+`iosScreenPageUrl`, `iosScreenSocketUrl`, `iosStreamSettings`, `updateIosStream`, and `getIosStatus` / `installOnSimulator(artifactId)` for the sandbox side.
 
 ## 7. Plan
 
@@ -269,8 +333,10 @@ routes `restPaths.ios|iosSimulator|iosLink|iosInstalls|iosInstall`, `wsPaths.ios
 4. ~~Android on macOS (§5), host daemon part.~~ Done; the sandbox opt-in remains.
 5. Phase 2: `expo-ios-dev-client` with EAS simulator builds (install confirmation is done on the host).
 6. Live touch through idb's gRPC HID stream (or option B) instead of whole gestures.
+7. ~~Clean H.264 frames through an own helper (option B for frames, `tesseract-simcap`), idb as the fallback; stream
+   settings (`/v1/ios/stream`) in the desktop and mobile apps.~~ Done.
 
-If the spike shows idb is unreliable, switch to option B (own helper) for frames and input, or ship option E only.
+idb's frames were not good enough (§2.1), so frames moved to option B; input stays on idb unless it proves unreliable too.
 
 ## 8. Unverified on a real Mac
 
@@ -288,7 +354,11 @@ Written against idb / Xcode documentation and tested with fakes only:
 - `launchd_sim` command lines containing the device UDID (SIGKILL shutdown).
 - Expo's version index shape (`data.sdkVersions[…].iosClientUrl`, `data.iosUrl`) and the Expo Go archive holding the
   bundle's contents at its root; `plutil -extract CFBundleIdentifier raw`; `ditto -x -k` for `.zip` builds.
-- Behaviour across an Xcode update (idb uses private CoreSimulator APIs).
+- Behaviour across an Xcode update (idb and `tesseract-simcap` use private CoreSimulator / SimulatorKit APIs; run
+  `tesseract-simcap probe --udid <booted UDID>` after an update).
+- The daemon side of `tesseract-simcap` (probe, packet pass-through, late joiners, the `k` key frame requests, the
+  fallback to idb) end to end on a Mac; it was tested with a fake spawner only. The encoder itself was checked on
+  macOS 26.2 / Xcode 26.2.
 - End to end through Docker Desktop: Expo Go loading `exp://127.0.0.1:<port>` through the Mac listener and the
   stream WebSocket (manifest, bundle, Metro's `/message` and HMR sockets over the raw TCP tunnel), and Metro's
   manifest using `127.0.0.1:<port>` with `REACT_NATIVE_PACKAGER_HOSTNAME=127.0.0.1`.

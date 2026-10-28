@@ -1,0 +1,128 @@
+.board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(240px, 1fr);
+  gap: 10px;
+  min-height: 360px;
+  padding-bottom: 8px;
+  overflow-x: auto;
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid transparent;
+  border-radius: var(--to-radius-md);
+  background: var(--to-surface-sunken);
+  transition: var(--to-state-transition);
+}
+
+.columnTarget {
+  border-color: var(--to-accent);
+  background: var(--to-accent-muted);
+}
+
+.columnHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 6px 4px 10px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.cards {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 64px;
+  margin: 0;
+  padding: 2px 6px 10px;
+  list-style: none;
+}
+
+.cards[data-drop-end]::after {
+  content: "";
+  height: 2px;
+  border-radius: 1px;
+  background: var(--to-accent);
+}
+
+.cardSlot {
+  position: relative;
+  display: flex;
+}
+
+.cardSlot[data-drop-before]::before {
+  content: "";
+  position: absolute;
+  top: -4px;
+  right: 0;
+  left: 0;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--to-accent);
+}
+
+.card {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 9px 10px 10px;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-sm);
+  background: var(--to-surface-elevated);
+  box-shadow: var(--to-shadow-level1);
+  color: var(--to-text);
+  text-align: left;
+  cursor: pointer;
+  transition: var(--to-state-transition);
+}
+
+.card:hover {
+  border-color: var(--to-border-strong);
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--to-focus-ring);
+  outline-offset: 1px;
+}
+
+.dragging {
+  opacity: 0.45;
+}
+
+.cardTop,
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.cardTrailing {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.cardTitle {
+  font-weight: 500;
+}
+
+.emptyColumn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  border: 1px dashed var(--to-border);
+  border-radius: var(--to-radius-sm);
+}

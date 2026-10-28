@@ -12,7 +12,7 @@ import { __emitAction, __reset as resetIsland, currentActivityId, endActivity, s
 import { TEST_SANDBOX, createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../sandbox/helpers";
 
 let mockPathname = "/";
-const mockNav = { agentRun: jest.fn(), sandboxHub: jest.fn(), newAgentRun: jest.fn() };
+const mockNav = { agentRun: jest.fn(), sandboxHub: jest.fn(), newAgentRun: jest.fn(), project: jest.fn(), build: jest.fn() };
 
 jest.mock("expo-router", () => ({ useIsFocused: () => true, usePathname: () => mockPathname, router: { push: jest.fn(), navigate: jest.fn(), replace: jest.fn(), canGoBack: () => false, back: jest.fn() } }));
 jest.mock("react-native-safe-area-context", () => require("react-native-safe-area-context/jest/mock").default);
@@ -150,13 +150,16 @@ describe("<IslandHost />", () => {
     expect(useIslandStore.getState().expanded).toBe(false);
   });
 
-  it("opens a new chat when only commands are running", async () => {
+  it("opens the running command's output instead of a chat when only commands are running", async () => {
     fake.listAgentRuns.mockResolvedValue([]);
     await renderHost();
     await fireEvent.press(await screen.findByTestId("island-capsule"));
     expect(screen.getAllByText("dev").length).toBeGreaterThan(0);
-    await fireEvent.press(screen.getByLabelText("Open chat"));
-    expect(mockNav.newAgentRun).toHaveBeenCalled();
+    expect(screen.queryByLabelText("Open chat")).toBeNull();
+    await fireEvent.press(screen.getByLabelText("Open terminal"));
+    expect(mockNav.project).toHaveBeenCalledWith(sampleProcess.projectId, sampleProcess.id);
+    expect(mockNav.newAgentRun).not.toHaveBeenCalled();
+    expect(useIslandStore.getState().expanded).toBe(false);
   });
 
   it("stops a command or a run from the Live Activity stop button", async () => {

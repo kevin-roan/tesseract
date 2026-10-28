@@ -1,0 +1,42 @@
+.deploy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.titles {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.request {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--to-warning) 30%, transparent);
+  border-radius: var(--to-radius-sm);
+  background: var(--to-warning-muted);
+}
+
+.decision {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.urls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}

@@ -110,6 +110,7 @@ export function useHostIos(enabled: boolean) {
     openScreen: () => {
       if (device) nav.screen({ kind: "ios", serial: device.udid });
     },
+    openStreamSettings: () => nav.stream("ios"),
   };
 }
 

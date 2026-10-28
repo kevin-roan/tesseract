@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ActionButton } from "../../../components/ActionButton";
+import { ActionGroup } from "../../../components/ActionGroup";
 import { ChoiceDropdown, type ChoiceOption } from "../../../components/ChoiceDropdown";
 import { PROJECTS_ICONS } from "../../../features/projects/constants";
 import { CLAUDE_ACCOUNT_LABELS, DETAIL_LABELS } from "../../../features/projects/labels";
@@ -35,28 +36,30 @@ export function DetailActions({
 }: DetailActionsProps) {
   return (
     <div className={styles.actions}>
-      <ActionButton variant="primary" icon={PROJECTS_ICONS.agents} label={DETAIL_LABELS.askClaude} onClick={onAsk} />
-      <ActionButton icon={PROJECTS_ICONS.terminal} label={DETAIL_LABELS.claudeTerminal} onClick={onClaudeTerminal} />
-      <ActionButton icon={PROJECTS_ICONS.terminal} label={DETAIL_LABELS.shell} onClick={onShell} />
+      <ActionGroup label={DETAIL_LABELS.sandboxGroup} icon={PROJECTS_ICONS.sandbox}>
+        <ActionButton variant="primary" icon={PROJECTS_ICONS.agents} label={DETAIL_LABELS.askClaude} onClick={onAsk} />
+        <ActionButton icon={PROJECTS_ICONS.terminal} label={DETAIL_LABELS.claudeTerminal} onClick={onClaudeTerminal} />
+        <ActionButton icon={PROJECTS_ICONS.terminal} label={DETAIL_LABELS.shell} onClick={onShell} />
+        {displaySlot ?? (
+          <ActionButton
+            icon={display.icon}
+            label={display.label}
+            disabled={display.disabled}
+            tooltip={display.tooltip ?? undefined}
+            onClick={onDisplay}
+          />
+        )}
+        {accountOptions ? (
+          <ChoiceDropdown
+            options={accountOptions}
+            value={accountValue}
+            onChange={onAccount}
+            tooltip={CLAUDE_ACCOUNT_LABELS.tooltip}
+            disabled={accountBusy}
+          />
+        ) : null}
+      </ActionGroup>
       {hostSlot}
-      {displaySlot ?? (
-        <ActionButton
-          icon={display.icon}
-          label={display.label}
-          disabled={display.disabled}
-          tooltip={display.tooltip ?? undefined}
-          onClick={onDisplay}
-        />
-      )}
-      {accountOptions ? (
-        <ChoiceDropdown
-          options={accountOptions}
-          value={accountValue}
-          onChange={onAccount}
-          tooltip={CLAUDE_ACCOUNT_LABELS.tooltip}
-          disabled={accountBusy}
-        />
-      ) : null}
     </div>
   );
 }

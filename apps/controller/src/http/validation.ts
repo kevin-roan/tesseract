@@ -23,11 +23,14 @@ const ID_LABELS: Record<IdKind, string> = {
   inbox: "Inbox item",
   upload: "Upload",
   sync: "Sync request",
+  deploy: "Deploy",
   appRun: "App run",
   adbStream: "ADB stream",
   iosStream: "iOS stream",
   iosInstall: "iOS install",
   iosRequest: "iOS request",
+  issue: "Issue",
+  issueComment: "Issue comment",
 };
 
 export function parseWith<T>(schema: Schema<T>, data: unknown, what: string): T {

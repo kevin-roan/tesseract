@@ -1,34 +1,17 @@
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 import { isApiError } from "@tesseract/client";
 
-import type { ActivityItemProps } from "@/components/activity-item";
 import { useClaudeAccountEntry } from "@/features/claude-account/hooks/use-claude-account-entry";
 
 import { useSandboxStore } from "../store/sandbox-store";
-import type { ActivityRef } from "../types";
 import { describeError } from "../utils/errors";
-import {
-  activityActor,
-  activityFeed,
-  isTailscaleIdentityMissing,
-  profileStats,
-  profileView,
-  sandboxChoices,
-} from "../utils/profile";
+import { ACTIVITY_COPY } from "../utils/profile-content";
+import { isTailscaleIdentityMissing, profileStats, profileView, sandboxChoices } from "../utils/profile";
 import { useSandboxClient } from "./use-sandbox-client";
 import { useSandboxNavigation } from "./use-sandbox-navigation";
 import { useSandboxProblems } from "./use-sandbox-problems";
-import {
-  useAgentRuns,
-  useBuilds,
-  useProcesses,
-  useProjects,
-  useSandboxIdentity,
-  useSandboxStatus,
-} from "./use-sandbox-queries";
+import { useSandboxIdentity, useSandboxStatus } from "./use-sandbox-queries";
 import { useSandboxRefresh } from "./use-sandbox-refresh";
-
-export type ProfileActivityItem = ActivityItemProps & { id: string };
 
 export function useProfileScreen() {
   const nav = useSandboxNavigation();
@@ -38,49 +21,13 @@ export function useProfileScreen() {
   const selectSandbox = useSandboxStore((state) => state.setActive);
   const identity = useSandboxIdentity();
   const status = useSandboxStatus();
-  const projects = useProjects();
-  const processes = useProcesses();
-  const builds = useBuilds();
-  const runs = useAgentRuns();
   const claude = useClaudeAccountEntry();
   const problems = useSandboxProblems(status.error);
   const { refreshing, refresh } = useSandboxRefresh();
 
-  const open = useCallback(
-    (ref: ActivityRef): (() => void) | undefined => {
-      switch (ref.kind) {
-        case "build":
-          return () => nav.build(ref.id);
-        case "run":
-          return () => nav.agentRun(ref.id);
-        case "process": {
-          const { projectId } = ref;
-          return projectId ? () => nav.project(projectId, ref.id) : undefined;
-        }
-      }
-    },
-    [nav],
-  );
-
-  const activity = useMemo<ProfileActivityItem[]>(() => {
-    if (!sandbox) return [];
-    const actor = activityActor(identity.data, sandbox);
-    return activityFeed(
-      { builds: builds.data, runs: runs.data, processes: processes.data, projects: projects.data },
-      actor,
-    ).map(({ id, ref, item }) => ({ ...item, id, testID: `activity-${id}`, onPress: open(ref) }));
-  }, [sandbox, identity.data, builds.data, runs.data, processes.data, projects.data, open]);
-
   const sandboxRows = useMemo(() => sandboxChoices(sandboxes, activeId), [sandboxes, activeId]);
 
   const identityNotFound = isApiError(identity.error, "not_found");
-  const feedError = builds.error ?? runs.error ?? processes.error;
-
-  const retryActivity = useCallback(() => {
-    void builds.refetch();
-    void runs.refetch();
-    void processes.refetch();
-  }, [builds, runs, processes]);
 
   return {
     nav,
@@ -88,7 +35,6 @@ export function useProfileScreen() {
     sandbox,
     profile: sandbox ? profileView(identity.data, sandbox, status.data) : null,
     stats: profileStats(status.data),
-    openSettings: nav.settings,
     sandboxes: sandboxRows,
     selectSandbox,
     pairSandbox: nav.pair,
@@ -103,10 +49,7 @@ export function useProfileScreen() {
     claudeAccountTitle: claude.title,
     claudeAccount: claude.subtitle,
     openClaudeAccount: claude.open,
-    activity,
-    activityLoading: builds.isLoading || runs.isLoading || processes.isLoading,
-    activityError: feedError && !problems.issue && !problems.error ? describeError(feedError) : null,
-    retryActivity,
+    activity: { title: ACTIVITY_COPY.title, subtitle: ACTIVITY_COPY.subtitle, open: nav.activity },
     refreshing,
     refresh,
   };

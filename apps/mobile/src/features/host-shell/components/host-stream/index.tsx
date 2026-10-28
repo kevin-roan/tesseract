@@ -26,17 +26,19 @@ const HostStream = ({ stream }: HostStreamProps) => {
       {stream.saved ? <Notice tone="success" message={STREAM_COPY.saved} /> : null}
       {stream.ready ? (
         <>
-          <ListGroup title={STREAM_COPY.deviceGroup} dividerInset="text">
-            <ListRow
-              label={STREAM_COPY.device}
-              detail={STREAM_COPY.deviceDetail}
-              value={stream.device.label}
-              chevron
-              onPress={stream.device.open}
-              testID="stream-device"
-            />
-          </ListGroup>
-          <ListGroup title={STREAM_COPY.videoGroup} footnote={STREAM_COPY.videoFootnote} dividerInset="text">
+          {stream.device ? (
+            <ListGroup title={STREAM_COPY.deviceGroup} dividerInset="text">
+              <ListRow
+                label={STREAM_COPY.device}
+                detail={STREAM_COPY.deviceDetail}
+                value={stream.device.label}
+                chevron
+                onPress={stream.device.open}
+                testID="stream-device"
+              />
+            </ListGroup>
+          ) : null}
+          <ListGroup title={STREAM_COPY.videoGroup} footnote={stream.footnote} dividerInset="text">
             <ListRow
               label={STREAM_COPY.encoding}
               detail={STREAM_COPY.encodingDetail}

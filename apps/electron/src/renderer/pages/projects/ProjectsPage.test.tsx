@@ -68,8 +68,40 @@ describe("ProjectsPage", () => {
       "Git",
       "Sync back",
       "Chats",
+      "Issues",
     ]);
     expect(await screen.findByText("Node · bun")).toBeTruthy();
+  });
+
+  it("splits the detail actions into sandbox and host groups", async () => {
+    renderRoutes(routes, "/projects/tesseract");
+    const sandbox = await screen.findByRole("group", { name: "Sandbox" });
+    expect(within(sandbox).getByRole("button", { name: "Ask Claude" })).toBeTruthy();
+    expect(within(sandbox).getByRole("button", { name: "Claude terminal" })).toBeTruthy();
+    expect(within(sandbox).getByRole("button", { name: "Shell" })).toBeTruthy();
+    const host = await screen.findByRole("group", { name: "This computer" });
+    expect(await within(host).findByRole("button", { name: "Claude" })).toBeTruthy();
+    expect(within(host).getByRole("button", { name: "Shell" })).toBeTruthy();
+    expect(within(host).getByRole("button", { name: "Git" })).toBeTruthy();
+    expect(within(host).getByText("tesseract")).toBeTruthy();
+    expect(within(sandbox).queryByRole("button", { name: "Git" })).toBeNull();
+  });
+
+  it("opens a Claude chat on this computer instead of a terminal", async () => {
+    renderRoutes(routes, "/projects/tesseract");
+    const host = await screen.findByRole("group", { name: "This computer" });
+    fireEvent.click(await within(host).findByRole("button", { name: "Claude" }));
+    const dialog = await screen.findByRole("dialog", { name: /Claude on this computer/ });
+    expect(within(dialog).getByRole("textbox", { name: "Ask Claude to change this project on this computer…" })).toBeTruthy();
+    expect(within(dialog).getByText("Runs on this computer, outside the sandbox, with your user's permissions.")).toBeTruthy();
+    expect(await within(dialog).findByRole("button", { name: "Claude account for this project on this computer" })).toBeTruthy();
+  });
+
+  it("keeps the host group compact when the project has no copy here", async () => {
+    renderRoutes(routes, "/projects/streaxfit");
+    const host = await screen.findByRole("group", { name: "This computer" });
+    expect(within(host).getByText("Not linked")).toBeTruthy();
+    expect(within(host).queryByRole("button")).toBeNull();
   });
 
   it("shows the error state for a missing project", async () => {

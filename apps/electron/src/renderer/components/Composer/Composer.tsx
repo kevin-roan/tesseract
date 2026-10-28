@@ -2,7 +2,7 @@ import { type ReactNode, type Ref, useId } from "react";
 import { cx } from "../../lib/cx";
 import { AttachButton } from "./AttachButton";
 import { ATTACH_BUTTON_SIZE, COMPOSER_SIZE } from "./constants";
-import { type AttachKind, canSubmitComposer, type SlashCommand } from "./model";
+import { type AttachKind, canSubmitComposer, type SlashCommand, type SlashHintsPlacement } from "./model";
 import { SendButton } from "./SendButton";
 import { SlashHints } from "./SlashHints";
 import { useComposerInput } from "./use-composer-input";
@@ -31,6 +31,7 @@ export interface ComposerProps {
   onAttach?: (kind: AttachKind) => void;
   onDropFiles?: (files: File[]) => void;
   slashCommands?: readonly SlashCommand[];
+  slashPlacement?: SlashHintsPlacement;
   inputRef?: Ref<HTMLTextAreaElement>;
   autoFocus?: boolean;
   className?: string;
@@ -58,6 +59,7 @@ export function Composer({
   onAttach,
   onDropFiles,
   slashCommands,
+  slashPlacement,
   inputRef,
   autoFocus,
   className,
@@ -78,7 +80,14 @@ export function Composer({
       data-drop-target={drop.dragging || undefined}
       {...(drop.handlers ? { onDragEnter: drop.handlers.onDragEnter, onDragOver: drop.handlers.onDragOver, onDragLeave: drop.handlers.onDragLeave, onDrop: drop.handlers.onDrop } : {})}
     >
-      <SlashHints id={hintsId} open={input.slash.open} matches={input.slash.matches} activeIndex={input.slash.activeIndex} onPick={input.acceptSlash} />
+      <SlashHints
+        id={hintsId}
+        open={input.slash.open}
+        matches={input.slash.matches}
+        activeIndex={input.slash.activeIndex}
+        placement={slashPlacement}
+        onPick={input.acceptSlash}
+      />
       {tray}
       <div className={styles.inputArea} onMouseDown={input.onAreaMouseDown}>
         <textarea

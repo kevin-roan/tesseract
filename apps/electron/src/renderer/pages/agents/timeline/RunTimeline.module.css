@@ -49,14 +49,3 @@
   background: var(--to-background-selected);
   transform: scale(var(--to-press-scale-card));
 }
-
-.agentAvatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: none;
-  width: 20px;
-  height: 20px;
-  border-radius: var(--to-radius-pill);
-  background: var(--to-accent);
-}

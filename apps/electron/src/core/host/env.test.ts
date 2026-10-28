@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { FileProbe } from "./command";
-import { hostDaemonEnv, resolveHostSdkRoot, viewerEnv } from "./env";
+import { hostDaemonEnv, resolveHostSdkRoot, simcapPath, viewerEnv } from "./env";
 
 function probe(files: string[]): FileProbe {
   return { isFile: (path) => files.includes(path), isExecutable: (path) => files.includes(path) };
@@ -62,6 +62,36 @@ describe("hostDaemonEnv", () => {
     const files = probe([join(root, "emulator", "emulator.exe"), join(root, "platform-tools", "adb.exe")]);
     const env = hostDaemonEnv({}, { platform: "win32", sdkRoot: root, defaultSdkRoot: null, files });
     expect(env.TESSERACT_ADB).toBe(join(root, "platform-tools", "adb.exe"));
+  });
+
+  it("turns the iOS Simulator on only on macOS", () => {
+    const options = { sdkRoot: null, defaultSdkRoot: null, files: probe([]), ios: true };
+    expect(hostDaemonEnv({}, { ...options, platform: "darwin" }).TESSERACT_IOS).toBe("1");
+    expect(hostDaemonEnv({ TESSERACT_IOS: "0" }, { ...options, platform: "darwin" }).TESSERACT_IOS).toBe("1");
+    expect(hostDaemonEnv({}, { ...options, platform: "linux" }).TESSERACT_IOS).toBeUndefined();
+    expect(hostDaemonEnv({}, { ...options, platform: "darwin", ios: false }).TESSERACT_IOS).toBeUndefined();
+    expect(hostDaemonEnv({ TESSERACT_IOS: "1" }, { ...options, platform: "darwin", ios: false }).TESSERACT_IOS).toBe("1");
+  });
+
+  it("points the daemon at an existing tesseract-simcap only on macOS", () => {
+    const options = { sdkRoot: null, defaultSdkRoot: null, simcap: "/r/bin/tesseract-simcap", files: probe(["/r/bin/tesseract-simcap"]) };
+    expect(hostDaemonEnv({}, { ...options, platform: "darwin" }).TESSERACT_SIMCAP).toBe("/r/bin/tesseract-simcap");
+    expect(hostDaemonEnv({ TESSERACT_SIMCAP: "/mine" }, { ...options, platform: "darwin" }).TESSERACT_SIMCAP).toBe("/mine");
+    expect(hostDaemonEnv({}, { ...options, platform: "linux" }).TESSERACT_SIMCAP).toBeUndefined();
+    expect(hostDaemonEnv({}, { ...options, platform: "darwin", files: probe([]) }).TESSERACT_SIMCAP).toBeUndefined();
+  });
+});
+
+describe("simcapPath", () => {
+  it("uses resources/bin when packaged and dist-cli in a checkout", () => {
+    expect(simcapPath({ packaged: true, resourcesPath: "/App/Resources", repoRoot: "/repo", arch: "arm64" })).toBe(
+      join("/App/Resources", "bin", "tesseract-simcap"),
+    );
+    expect(simcapPath({ packaged: false, resourcesPath: null, repoRoot: "/repo", arch: "arm64" })).toBe(
+      join("/repo", "apps", "electron", "dist-cli", "mac-arm64", "tesseract-simcap"),
+    );
+    expect(simcapPath({ packaged: false, resourcesPath: null, repoRoot: "/repo", arch: "x64" })).toMatch(/mac-x64[\\/]tesseract-simcap$/);
+    expect(simcapPath({ packaged: false, resourcesPath: null, repoRoot: null, arch: "x64" })).toBeNull();
   });
 });
 

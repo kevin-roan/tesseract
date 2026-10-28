@@ -255,6 +255,28 @@ SEND_FILE="${ROOTFS}/etc/claude-code/.claude/skills/send-file"
   assert_failure 2
 }
 
+# --- /etc/claude-code/.claude/skills/deploy (managed /deploy skill) ---
+
+DEPLOY_SKILL="${ROOTFS}/etc/claude-code/.claude/skills/deploy"
+
+@test "deploy: SKILL.md is named deploy, lists targets first and can create containers" {
+  run sed -n '2p' "${DEPLOY_SKILL}/SKILL.md"
+  assert_output "name: deploy"
+  grep -q 'tesseract-controller deploy targets' "${DEPLOY_SKILL}/SKILL.md"
+  grep -q 'tesseract-controller deploy <name> --create' "${DEPLOY_SKILL}/SKILL.md"
+  grep -q 'approve' "${DEPLOY_SKILL}/SKILL.md"
+  grep -q 'compose.yml' "${DEPLOY_SKILL}/SKILL.md"
+  grep -q -- '--hostname <host>' "${DEPLOY_SKILL}/SKILL.md"
+}
+
+@test "deploy: the skill and CLAUDE.md never ask for a Cloudflare token or run cloudflared" {
+  for file in "${DEPLOY_SKILL}/SKILL.md" "${ROOTFS}/etc/claude-code/CLAUDE.md"; do
+    grep -qi 'never ask the user for a Cloudflare tunnel token' "${file}"
+    grep -q 'never install or run `cloudflared`' "${file}"
+    grep -q -- '--create' "${file}"
+  done
+}
+
 @test "claude memory: the image prepends SPEC.md to the managed CLAUDE.md, never ~/.claude" {
   local dockerfile="${REPO}/infra/docker/sandbox/Dockerfile"
   grep -qx 'COPY SPEC.md /etc/tesseract/SPEC.md' "${dockerfile}"

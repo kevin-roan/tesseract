@@ -1,0 +1,49 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+}
+
+.noMatches {
+  padding: 4px 2px;
+}
+
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.row {
+  gap: 10px;
+}
+
+.rowId {
+  flex: none;
+  min-width: 72px;
+}
+
+.rowTitle {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowLabels {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+}

@@ -1,4 +1,4 @@
-import type { AgentRun, ClaudeSession, InboxItem } from "@tesseract/protocol";
+import type { AgentRun, ClaudeCommand, ClaudeSession, InboxItem } from "@tesseract/protocol";
 import { sampleAgentRun, sampleClaudeSession, sampleInboxItem } from "@tesseract/protocol/fixtures";
 
 const MINUTE_MS = 60_000;
@@ -139,3 +139,10 @@ export const fixtureTerminalSession: ClaudeSession = {
   active: true,
   lastActiveAt: minutesAgo(1),
 };
+
+export const fixtureClaudeCommands: ClaudeCommand[] = [
+  { name: "deploy", description: "Deploy an app from this sandbox to a Tesseract server container", kind: "skill", source: "managed" },
+  { name: "send-file", description: "Send a file from this chat to the Tesseract app's Files (inbox)", kind: "skill", source: "managed" },
+  { name: "review", description: "Review the current changes for bugs", kind: "command", source: "user" },
+  { name: "release-notes", description: "Draft release notes from recent commits", kind: "command", source: "project" },
+];

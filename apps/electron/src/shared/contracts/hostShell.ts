@@ -25,9 +25,21 @@ export interface EmulatorViewerRequest {
   title: string;
 }
 
+export const HOST_TERMINAL_KINDS = ["shell", "claude"] as const;
+export type HostTerminalKind = (typeof HOST_TERMINAL_KINDS)[number];
+
 export interface HostTerminalRequest {
   projectId: string;
   title: string;
+  kind?: HostTerminalKind;
+}
+
+/** A sandbox project's host copy in the host workspace controller (`tesseract-controller host workspace serve`). */
+export interface HostWorkspaceTarget {
+  projectId: string;
+  apiUrl: string;
+  token: string;
+  name: string;
 }
 
 export const EMULATOR_STOP_SIGNALS = ["SIGTERM", "SIGKILL"] as const;
@@ -54,6 +66,7 @@ export type HostShellContract = DefineContract<{
     linkIosSandbox(sandboxUrl: string, token: string): IosLinkInfo;
     openEmulatorViewer(request: EmulatorViewerRequest): void;
     openTerminal(request: HostTerminalRequest): void;
+    openWorkspace(projectId: string): HostWorkspaceTarget;
     request(id: string, request: HttpProxyRequest): HttpProxyResponse;
     abort(id: string): void;
   };

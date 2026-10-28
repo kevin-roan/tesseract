@@ -17,6 +17,7 @@ export const CONTINUES_TITLE_LIMIT = 60;
 export const SHORT_ID_LENGTH = 8;
 export const META_SEPARATOR = " · ";
 export const NO_PROJECT_KEY = "";
+export const DEFAULT_MODEL_KEY = "";
 export const BADGE_MAX = 99;
 
 export const RUNS_INTERVAL_MS = 10_000;
@@ -25,6 +26,8 @@ export const DETAILS_INTERVAL_MS = 30_000;
 export const TIME_TICK_MS = 30_000;
 export const INBOX_LIMIT = 100;
 export const SESSIONS_LIMIT = 50;
+export const SLASH_COMMANDS_STALE_MS = 30_000;
+export const SLASH_PREFIX = "/";
 
 export const LIST_WIDTH = { min: 350, fraction: 0.36, max: 400 } as const;
 export const BREAKPOINTS = { compact: 1180, collapsed: 640 } as const;
@@ -34,6 +37,7 @@ export const AGENTS_QUERY_KEYS = {
   archived: ["agents", "runs", "archived"] as const,
   inbox: ["agents", "inbox"] as const,
   sessions: ["agents", "sessions"] as const,
+  slashCommands: ["agents", "slash-commands"] as const,
   projects: ["projects"] as const,
 };
 

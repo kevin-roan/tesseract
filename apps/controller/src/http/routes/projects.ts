@@ -1,5 +1,5 @@
 import type { Hono } from "hono";
-import { CreateProjectSchema, RenameProjectSchema, routePatterns, SetProjectClaudeAccountSchema } from "@tesseract/protocol";
+import { CreateProjectSchema, RenameProjectSchema, routePatterns, RunProjectGitSchema, SetProjectClaudeAccountSchema } from "@tesseract/protocol";
 import type { Services } from "../../services";
 import { badRequest } from "../../core/errors";
 import { isSyncFormat } from "../../services/projects";
@@ -47,4 +47,10 @@ export function registerProjectRoutes(app: Hono, services: Services): void {
   });
 
   app.get(rest.projectGit, async (c) => c.json(await services.projects.gitDetails(c.req.param("id") ?? "")));
+
+  app.post(rest.projectGit, async (c) => {
+    const input = await jsonBody(c, RunProjectGitSchema);
+    disableIdleTimeout(c);
+    return c.json(await services.projects.runGit(c.req.param("id") ?? "", input));
+  });
 }

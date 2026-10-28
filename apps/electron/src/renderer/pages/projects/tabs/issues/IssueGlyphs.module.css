@@ -1,0 +1,62 @@
+.priority {
+  flex: none;
+  color: var(--to-text-secondary);
+}
+
+.urgent {
+  color: var(--to-warning);
+}
+
+.urgentMark {
+  fill: var(--to-surface-elevated);
+}
+
+.dim {
+  opacity: 0.28;
+}
+
+.unassigned {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.agent {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  color: var(--to-accent);
+}
+
+.labels {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 160px;
+  height: 20px;
+  padding: 0 7px;
+  overflow: hidden;
+  border: 1px solid var(--to-border);
+  border-radius: var(--to-radius-pill);
+  color: var(--to-text-secondary);
+  font-size: 11px;
+  line-height: 18px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.labelDot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--to-accent);
+}

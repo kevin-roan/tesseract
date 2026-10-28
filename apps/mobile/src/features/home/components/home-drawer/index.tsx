@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { ScrollView, View } from "react-native";
 import Animated from "react-native-reanimated";
-import { CaretRightIcon, ChatCircleIcon, GearSixIcon } from "phosphor-react-native";
+import { CaretRightIcon, ChatCircleIcon } from "phosphor-react-native";
 
 import Avatar from "@/components/avatar";
 import PressableScale from "@/components/pressable-scale";
@@ -9,14 +9,13 @@ import SideDrawer from "@/components/side-drawer";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 import { useEntrance } from "@/hooks/use-entrance";
-import { AvatarSize, HitSlop, IconSize } from "@/theme";
+import { AvatarSize, IconSize } from "@/theme";
 
 import DrawerRow from "../drawer-row";
 import {
   DRAWER_ALL_CHATS_LABEL,
   DRAWER_PROFILE_LABEL,
   DRAWER_RECENTS_TITLE,
-  DRAWER_SETTINGS_LABEL,
   DRAWER_TITLE,
 } from "./constants";
 import createStyles from "./styles";
@@ -100,18 +99,6 @@ const HomeDrawer = ({ visible, onClose }: HomeDrawerProps) => {
           <ThemedText variant="bodyStrong" numberOfLines={1} style={styles.userName}>
             {drawer.user.name}
           </ThemedText>
-        </PressableScale>
-
-        <PressableScale
-          depth="control"
-          accessibilityRole="button"
-          accessibilityLabel={DRAWER_SETTINGS_LABEL}
-          hitSlop={HitSlop.sm}
-          onPress={drawer.openSettings}
-          style={styles.settings}
-          testID="drawer-settings"
-        >
-          <GearSixIcon size={IconSize.md} color={theme.colors.textSecondary} weight="regular" />
         </PressableScale>
       </View>
     </SideDrawer>

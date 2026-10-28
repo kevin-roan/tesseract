@@ -1,4 +1,5 @@
-import type { AndroidLinkInfo, EmulatorState } from "@tesseract/protocol";
+import type { TesseractClient } from "@tesseract/client";
+import type { AndroidLinkInfo, EmulatorState, IosStreamSettings, UpdateIosStream } from "@tesseract/protocol";
 import type { Tone } from "../../theme/colors";
 import type { IconName } from "../../theme/icons";
 import type { HostAccess } from "../host-shell/types";
@@ -98,12 +99,22 @@ export interface DeviceLabels {
   overlay: Record<"stopped" | "starting" | "stopping" | "failed" | "unavailable", OverlayCopy>;
 }
 
+export type StreamSettings = IosStreamSettings;
+
+export interface StreamApi {
+  get(client: TesseractClient): Promise<StreamSettings>;
+  update(client: TesseractClient, body: UpdateIosStream): Promise<StreamSettings>;
+}
+
+export type StreamField = "bitRate" | "maxFps" | "keyFrameInterval" | "jpegQuality";
+
 export interface DeviceKind {
   id: DeviceKindId;
   label: string;
   icon: IconName;
   screen: ScreenSpec;
   labels: DeviceLabels;
+  stream: StreamApi;
   useControls(): DeviceControls;
 }
 

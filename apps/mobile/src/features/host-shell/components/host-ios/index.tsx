@@ -7,7 +7,7 @@ import Section from "@/components/section";
 import { ThemedText } from "@/components/themed-text";
 
 import type { HostIosState } from "../../hooks/use-host-ios";
-import { IOS_COPY, IOS_ICONS } from "../../utils/content";
+import { IOS_COPY, IOS_ICONS, STREAM_COPY } from "../../utils/content";
 import { simMeta, simStateLabel, simTone } from "../../utils/ios";
 
 export type HostIosProps = {
@@ -71,6 +71,14 @@ const HostIos = ({ ios }: HostIosProps) => {
                   testID="host-ios-kill"
                 />
               ) : null}
+              <ActionButton
+                label={STREAM_COPY.open}
+                icon={IOS_ICONS.settings}
+                variant="secondary"
+                size="sm"
+                onPress={ios.openStreamSettings}
+                testID="host-ios-stream-settings"
+              />
               {ios.canOpen ? (
                 <ActionButton
                   label={IOS_COPY.openScreen}

@@ -16,7 +16,7 @@ export type SandboxStore = PersistedSandboxState & {
   tokens: Record<string, string>;
   hydrated: boolean;
   hydrate: () => Promise<void>;
-  addSandbox: (input: NewSandbox) => Promise<PairedSandbox>;
+  addSandbox: (input: NewSandbox, options?: { activate?: boolean }) => Promise<PairedSandbox>;
   removeSandbox: (id: string) => Promise<void>;
   renameSandbox: (id: string, name: string) => void;
   setActive: (id: string) => void;
@@ -57,7 +57,7 @@ export const useSandboxStore = create<SandboxStore>()(
         return hydration;
       },
 
-      addSandbox: async ({ name, baseUrl, token }) => {
+      addSandbox: async ({ name, baseUrl, token }, { activate = true } = {}) => {
         // persist writes on every set, so saving before hydration would overwrite the stored list.
         await get().hydrate();
         const existing = get().sandboxes.find((sandbox) => sandbox.baseUrl === baseUrl);
@@ -70,7 +70,7 @@ export const useSandboxStore = create<SandboxStore>()(
             ? state.sandboxes.map((entry) => (entry.id === sandbox.id ? sandbox : entry))
             : [...state.sandboxes, sandbox],
           tokens: { ...state.tokens, [sandbox.id]: token },
-          activeId: sandbox.id,
+          activeId: activate ? sandbox.id : state.activeId,
         }));
         return sandbox;
       },

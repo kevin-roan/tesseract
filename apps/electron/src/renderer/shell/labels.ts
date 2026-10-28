@@ -12,6 +12,11 @@ export const SHELL_LABELS = {
   noProject: "No project",
   untitledRun: "Untitled conversation",
   back: "Back",
+  history: {
+    back: "Go back",
+    forward: "Go forward",
+    recent: "Recently visited",
+  },
   sections: { sandbox: "Sandbox", host: "Host", app: "App" } satisfies Record<PageSection, string>,
   projectStates: {
     loading: "Loading projects…",

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseArgs } from "./args.ts";
-import { builderArgs, DIST_VALUE_FLAGS, distPlan, requiredCliFiles } from "./dist-plan.ts";
+import { builderArgs, DIST_VALUE_FLAGS, distPlan, missingCliMessage, requiredCliFiles } from "./dist-plan.ts";
 
 function plan(argv: string[], env: Record<string, string | undefined> = {}, host: "linux" | "mac" | "win" = "linux", keychainIdentity = false) {
   return distPlan(parseArgs(argv, DIST_VALUE_FLAGS), env, host, keychainIdentity);
@@ -75,6 +75,27 @@ describe("builderArgs", () => {
 describe("requiredCliFiles", () => {
   it("lists the binaries electron-builder copies into resources/bin", () => {
     expect(requiredCliFiles("win")).toEqual(["dist-cli/win-x64/tesseract.exe", "dist-cli/win-x64/tesseract-controller.exe"]);
-    expect(requiredCliFiles("mac")).toHaveLength(4);
+    expect(requiredCliFiles("mac")).toHaveLength(6);
+    expect(requiredCliFiles("mac")).toContain("dist-cli/mac-arm64/tesseract-simcap");
+    expect(requiredCliFiles("mac")).toContain("dist-cli/mac-x64/tesseract-simcap");
+    expect(requiredCliFiles("linux")).toEqual(["dist-cli/linux-x64/tesseract", "dist-cli/linux-x64/tesseract-controller"]);
+  });
+});
+
+describe("missingCliMessage", () => {
+  it("points at cli:build for missing Bun binaries", () => {
+    expect(missingCliMessage(["dist-cli/linux-x64/tesseract"], "linux")).toBe("missing CLI binaries: dist-cli/linux-x64/tesseract (run cli:build)");
+  });
+
+  it("says a mac dist needs a Mac when tesseract-simcap is missing on another host", () => {
+    const message = missingCliMessage(["dist-cli/mac-x64/tesseract-simcap"], "linux");
+    expect(message).toContain("must be built on a Mac");
+    expect(message).not.toContain("run cli:build");
+  });
+
+  it("points at the swiftc failure when tesseract-simcap is missing on a Mac", () => {
+    const message = missingCliMessage(["dist-cli/mac-arm64/tesseract", "dist-cli/mac-arm64/tesseract-simcap"], "darwin");
+    expect(message).toContain("swiftc failed");
+    expect(message).toContain("Command Line Tools");
   });
 });

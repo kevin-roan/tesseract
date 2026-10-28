@@ -1,9 +1,9 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { chmodSync, copyFileSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { REPO_ROOT, SANDBOX_BUNDLE_DIR } from "./lib/paths.ts";
-import { hasCrlf, needsLf } from "./lib/sandbox-bundle.ts";
+import { BUNDLE_LS_FILES_ARGS, hasCrlf, listedBundleFiles, needsLf } from "./lib/sandbox-bundle.ts";
 
 const INCLUDED = [
   ".dockerignore",
@@ -22,7 +22,8 @@ const INCLUDED = [
   "infra/compose/tailscale/serve.json",
 ] as const;
 const COMPOSE_FILE = /^infra\/compose\/compose[^/]*\.yml$/;
-const EXCLUDED = [/(^|\/)node_modules\//, /(^|\/)dist\//, /(^|\/)coverage\//, /\.tsbuildinfo$/];
+// apps/controller/native holds the macOS-only Swift helper; it would only churn the image context hash.
+const EXCLUDED = [/(^|\/)node_modules\//, /(^|\/)dist\//, /(^|\/)coverage\//, /\.tsbuildinfo$/, /^apps\/controller\/native\//];
 const DOCKERFILE = "infra/docker/sandbox/Dockerfile";
 const IMAGE_VERSION = /^ARG TESSERACT_IMAGE_VERSION=(\S+)/m;
 const STEP_INSTRUCTION = /^(FROM|RUN|COPY|ADD|ENV|ARG|WORKDIR|USER|LABEL|SHELL|HEALTHCHECK|EXPOSE|VOLUME|ENTRYPOINT|CMD|STOPSIGNAL|ONBUILD)\b/i;
@@ -34,7 +35,8 @@ function git(args: string[]): string {
 }
 
 function trackedFiles(): string[] {
-  const files = git(["ls-files", "-z", "--", ...INCLUDED, "infra/compose"]).split("\0").filter(Boolean);
+  const output = git([...BUNDLE_LS_FILES_ARGS, "--", ...INCLUDED, "infra/compose"]);
+  const files = listedBundleFiles(output, (file) => existsSync(join(REPO_ROOT, file)));
   return files
     .filter((file) => !file.startsWith("infra/compose/") || COMPOSE_FILE.test(file) || INCLUDED.includes(file as never))
     .filter((file) => !EXCLUDED.some((pattern) => pattern.test(file)))

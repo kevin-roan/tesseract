@@ -13,13 +13,13 @@ export function useTabIndicator() {
   const moveTo = useCallback(
     (layout: LayoutRectangle) => {
       if (!placed.value) {
-        x.value = layout.x;
-        width.value = layout.width;
-        placed.value = true;
+        x.set(layout.x);
+        width.set(layout.width);
+        placed.set(true);
         return;
       }
-      x.value = withTiming(layout.x, linearTiming());
-      width.value = withTiming(layout.width, linearTiming());
+      x.set(withTiming(layout.x, linearTiming()));
+      width.set(withTiming(layout.width, linearTiming()));
     },
     [x, width, placed],
   );

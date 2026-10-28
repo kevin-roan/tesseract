@@ -15,16 +15,21 @@ export interface StoredRoute extends DomainRoute {
 export interface ContainersState {
   tunnels: Record<string, TunnelRecord>;
   routes: StoredRoute[];
+  autoDeploy: string[];
 }
 
-export const EMPTY_STATE: ContainersState = { tunnels: {}, routes: [] };
+export const EMPTY_STATE: ContainersState = { tunnels: {}, routes: [], autoDeploy: [] };
 
 export async function readState(file: string): Promise<ContainersState> {
   try {
     const parsed = JSON.parse(await readFile(file, "utf8")) as Partial<ContainersState>;
-    return { tunnels: parsed.tunnels ?? {}, routes: Array.isArray(parsed.routes) ? parsed.routes : [] };
+    return {
+      tunnels: parsed.tunnels ?? {},
+      routes: Array.isArray(parsed.routes) ? parsed.routes : [],
+      autoDeploy: Array.isArray(parsed.autoDeploy) ? parsed.autoDeploy.filter((name): name is string => typeof name === "string") : [],
+    };
   } catch {
-    return { tunnels: {}, routes: [] };
+    return { tunnels: {}, routes: [], autoDeploy: [] };
   }
 }
 

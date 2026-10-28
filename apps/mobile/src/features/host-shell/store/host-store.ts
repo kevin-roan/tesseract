@@ -11,7 +11,8 @@ import { HOST_NO_SANDBOX } from "../utils/content";
 import { useHostSessionStore } from "./host-session-store";
 import { hostTokenStorage } from "./host-token-storage";
 
-type PersistedHostState = { hosts: Record<string, PairedHost> };
+/** `workspaces[sandboxId]`: the paired sandbox entry of that host's workspace controller (projects on the host, without a sandbox). */
+type PersistedHostState = { hosts: Record<string, PairedHost>; workspaces?: Record<string, string> };
 
 type LegacyHostState = { host?: PairedHost | null };
 
@@ -22,6 +23,7 @@ export type HostStore = PersistedHostState & {
   pair: (input: { name: string; baseUrl: string; token: string }) => Promise<PairedHost>;
   unpair: () => Promise<void>;
   forget: (sandboxId: string) => Promise<void>;
+  linkWorkspace: (sandboxId: string, workspaceId: string) => void;
 };
 
 let hydration: Promise<void> | null = null;
@@ -53,6 +55,7 @@ export const useHostStore = create<HostStore>()(
   persist(
     (set, get, api) => ({
       hosts: {},
+      workspaces: {},
       tokens: {},
       hydrated: false,
 
@@ -62,6 +65,8 @@ export const useHostStore = create<HostStore>()(
           await useSandboxStore.getState().hydrate();
           await api.persist.rehydrate();
           const tokens = await readTokens(Object.keys(get().hosts));
+          const { activeId } = useSandboxStore.getState();
+          if (activeId && tokens[activeId]) await useHostSessionStore.getState().restore(activeId);
           set({ tokens, hydrated: true });
         })().finally(() => {
           hydration = null;
@@ -88,14 +93,23 @@ export const useHostStore = create<HostStore>()(
       forget: async (sandboxId) => {
         await get().hydrate();
         await hostTokenStorage.remove(sandboxId);
-        set((state) => ({ hosts: without(state.hosts, sandboxId), tokens: without(state.tokens, sandboxId) }));
+        set((state) => ({
+          hosts: without(state.hosts, sandboxId),
+          tokens: without(state.tokens, sandboxId),
+          workspaces: without(state.workspaces ?? {}, sandboxId),
+        }));
+      },
+
+      linkWorkspace: (sandboxId, workspaceId) => {
+        if (get().workspaces?.[sandboxId] === workspaceId) return;
+        set((state) => ({ workspaces: { ...state.workspaces, [sandboxId]: workspaceId } }));
       },
     }),
     {
       name: HOST_STORE_NAME,
       version: HOST_STORE_VERSION,
       storage: createJSONStorage(() => listStorage),
-      partialize: ({ hosts }): PersistedHostState => ({ hosts }),
+      partialize: ({ hosts, workspaces }): PersistedHostState => ({ hosts, workspaces }),
       migrate: (persisted, version) =>
         version < 2 ? adoptLegacyHost(persisted as LegacyHostState) : (persisted as PersistedHostState),
       skipHydration: true,
@@ -105,6 +119,9 @@ export const useHostStore = create<HostStore>()(
 
 export const selectHost = (state: HostStore, sandboxId: string | null): PairedHost | null =>
   (sandboxId ? state.hosts[sandboxId] : undefined) ?? null;
+
+export const selectWorkspaceId = (state: HostStore, sandboxId: string | null): string | null =>
+  (sandboxId ? state.workspaces?.[sandboxId] : undefined) ?? null;
 
 export const selectHostToken = (state: HostStore, sandboxId: string | null): string | null =>
   (sandboxId ? state.tokens[sandboxId] : undefined) ?? null;

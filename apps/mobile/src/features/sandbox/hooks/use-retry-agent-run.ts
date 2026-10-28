@@ -15,6 +15,7 @@ export function useRetryAgentRun(run: AgentRun | undefined, onStarted: (run: Age
       {
         prompt: run.prompt,
         ...(run.mode ? { mode: run.mode } : {}),
+        ...(run.model ? { model: run.model } : {}),
         ...(run.projectId ? { projectId: run.projectId } : {}),
         ...(run.attachments.length > 0 ? { attachmentIds: run.attachments.map((upload) => upload.id) } : {}),
         ...(run.sessionId ? { resumeSessionId: run.sessionId } : {}),

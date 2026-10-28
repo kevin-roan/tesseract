@@ -2,7 +2,7 @@ import { HOST_PAIRING_ACTION, PAIRING_SCHEME, parsePairingLink } from "@tesserac
 
 import type { LinkParseResult } from "@/features/sandbox/utils/pairing";
 
-import { HOST_FALLBACK_NAME, HOST_TOKEN_KEY_PREFIX, HOST_TOKEN_KEY_SUFFIX } from "./constants";
+import { HOST_FALLBACK_NAME, HOST_SESSION_KEY_SUFFIX, HOST_TOKEN_KEY_PREFIX, HOST_TOKEN_KEY_SUFFIX } from "./constants";
 
 export function parseHostPairingText(text: string): LinkParseResult {
   const parsed = parsePairingLink(text, HOST_PAIRING_ACTION);
@@ -20,6 +20,12 @@ export function hostName(draftName: string, hostId: string): string {
   return draftName.trim() || hostId.trim() || HOST_FALLBACK_NAME;
 }
 
+const keySafe = (sandboxId: string): string => sandboxId.replace(/[^A-Za-z0-9._-]/g, "_");
+
 export function hostTokenKey(sandboxId: string): string {
-  return `${HOST_TOKEN_KEY_PREFIX}${sandboxId.replace(/[^A-Za-z0-9._-]/g, "_")}${HOST_TOKEN_KEY_SUFFIX}`;
+  return `${HOST_TOKEN_KEY_PREFIX}${keySafe(sandboxId)}${HOST_TOKEN_KEY_SUFFIX}`;
+}
+
+export function hostSessionKey(sandboxId: string): string {
+  return `${HOST_TOKEN_KEY_PREFIX}${keySafe(sandboxId)}${HOST_SESSION_KEY_SUFFIX}`;
 }

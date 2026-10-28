@@ -119,6 +119,7 @@ describe("detail view", () => {
       ["Git", null],
       ["Sync back", 11],
       ["Chats", 23],
+      ["Issues", null],
     ]);
   });
 });

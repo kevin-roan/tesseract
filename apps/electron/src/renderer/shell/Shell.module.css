@@ -20,3 +20,25 @@
 .aboutComments {
   margin-top: 6px;
 }
+
+.historyNav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.workspaceRow {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 2px 7px 8px;
+}
+
+.workspaceActions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}

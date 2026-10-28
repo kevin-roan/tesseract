@@ -55,13 +55,5 @@ export default function createStyles(theme: Theme) {
     userName: {
       flexShrink: 1,
     },
-    settings: {
-      alignItems: "center",
-      justifyContent: "center",
-      width: ControlHeight.lg,
-      height: ControlHeight.lg,
-      borderRadius: theme.radius.pill,
-      borderCurve: "continuous",
-    },
   });
 }

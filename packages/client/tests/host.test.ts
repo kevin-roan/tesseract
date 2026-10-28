@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { PROTOCOL_VERSION } from "@tesseract/protocol";
+import { DEFAULT_IOS_STREAM, PROTOCOL_VERSION } from "@tesseract/protocol";
 import { sampleAndroidLink, sampleEmulator, sampleHostAndroidStatus, sampleHostIosStatus, sampleIosInstall, sampleSandboxIosStatus, sampleSimDevice, sampleTerminal, sampleTicket } from "@tesseract/protocol/fixtures";
 import { ApiError, HostShellClient, ProtocolVersionError, type FetchLike, type HttpRequestInit, type HttpResponse } from "../src/index";
 
@@ -130,6 +130,8 @@ describe("HostShellClient", () => {
       "DELETE /v1/ios/link": respond(200, { configured: false, sandboxUrl: null, connected: false, lastError: null }),
       "GET /v1/ios/installs": respond(200, [sampleIosInstall]),
       [`POST /v1/ios/installs/${sampleIosInstall.id}`]: respond(200, { ...sampleIosInstall, state: "approved" }),
+      "GET /v1/ios/stream": respond(200, DEFAULT_IOS_STREAM),
+      "PUT /v1/ios/stream": respond(200, { ...DEFAULT_IOS_STREAM, encoding: "mjpeg" }),
       "POST /v1/auth/ticket": respond(200, sampleTicket),
     };
     const { client, calls } = hostClient((call) => replies[`${call.init.method} ${new URL(call.url).pathname}`] ?? respond(404, {}));
@@ -146,6 +148,9 @@ describe("HostShellClient", () => {
     expect(await session.iosScreenSocketUrl(720, sampleSimDevice.udid)).toBe(
       `ws://100.101.102.103:7701/v1/ios/screen?maxSize=720&udid=${sampleSimDevice.udid}&ticket=${sampleTicket.ticket}`,
     );
+    expect(await session.iosStreamSettings()).toEqual(DEFAULT_IOS_STREAM);
+    expect((await session.updateIosStream({ encoding: "mjpeg" })).encoding).toBe("mjpeg");
+    expect(JSON.parse(calls.find((call) => call.init.method === "PUT")?.init.body ?? "{}")).toEqual({ encoding: "mjpeg" });
     expect(calls.map((call) => call.url)).toContain(`${BASE}/v1/ios/simulator?signal=SIGKILL`);
     expect(JSON.parse(calls[1]?.init.body ?? "{}")).toEqual({ udid: sampleSimDevice.udid });
     expect(calls.every((call) => call.init.headers.Authorization === `Bearer ${SESSION}`)).toBe(true);

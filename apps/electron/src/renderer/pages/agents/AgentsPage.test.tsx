@@ -119,7 +119,7 @@ describe("AgentsPage", () => {
     await waitFor(() => expect(starts).toHaveLength(1), SLOW);
     expect(starts[0]).toMatchObject({ prompt: "Ship it", projectId: "tesseract" });
     await waitFor(() => expect(useAgentsUi.getState().view).toBe("conversation"));
-    expect(useAgentsUi.getState().draft).toEqual({ prompt: "", projectId: "" });
+    expect(useAgentsUi.getState().draft).toEqual({ prompt: "", projectId: "", model: "" });
     await waitFor(() => expect(router.state.location.state).toBeNull());
     await router.navigate("/agents/new");
     await screen.findByRole("textbox", { name: "What should Claude do?" });

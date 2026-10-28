@@ -28,6 +28,7 @@ Related: [overview → trust boundaries](overview.md#trust-boundaries),
 | Host shell token and PIN hash (opt-in) | `~/.config/tesseract/host-shell/state.json` on the host (0600 in a 0700 dir), host token also in the phone's secure store | together they are a shell on the host as the user running `host serve` |
 | Android link (opt-in) | `androidLink` in the host's `state.json` (0600): the sandbox URL and the **sandbox controller token** | host token + PIN therefore also means full control of the linked sandbox; anyone with the sandbox's adb access is root in the host emulator's guest |
 | Phone uploads (attachments, voice notes) | `/workspace/.tesseract/uploads` (0700 dirs, 0600 files), pruned after 30 days | the user's photos, documents and recordings |
+| Server containers and their public hostnames | `tesseract-ct-<name>` on the host, routes and the per-container deploy policy (`autoDeploy`) in the host's `containers.json` (0600) | what they serve is internet-facing on the user's domain; sandbox deploys write into them ([below](#sandbox-deploys-to-server-containers)) |
 
 ## Adversaries and scenarios
 
@@ -274,6 +275,26 @@ privileged container on that daemon and escape to the host kernel. Enable
 dind only for projects you trust about as much as host root. Disable it when
 you no longer need it. See [ADR 0006](../adr/0006-optional-docker-in-docker.md).
 
+### Sandbox deploys to server containers (A3, A4)
+
+Sandbox code can ask the desktop host to deploy a directory into an existing server container,
+or into a new one the host creates after its user approves
+([server-containers.md](server-containers.md#sandbox-deploys), [ADR 0013](../adr/0013-sandbox-deploys-to-server-containers.md)).
+The channel is a queue on the sandbox controller that the host claims, like sync-back
+requests and iOS installs. The sandbox gets no Docker socket, no dind and no route to the
+containers.
+
+| Threat | Control |
+|---|---|
+| Any sandbox code (a prompt-injected run, a dependency script) requests a deploy: agents run with `bypassPermissions` | the policy lives only on the host (`autoDeploy` in `containers.json`, off by default). Off: the deploy waits in `awaiting_approval` with a desktop notification until the user approves or rejects it on the container page (30 min → `rejected`). `autoApprove` in the targets is informational |
+| A malicious agent with auto-approve publishes content on the user's domain, or replaces an app already served there | accepted risk of the opt-in: enable auto-approve only for throwaway containers, and avoid it on containers with routes on a domain that matters. A new hostname must not conflict with an existing route or a DNS record Tesseract did not create |
+| The bundle is attacker-controlled (symlinks, `..` entries, setuid files, tar bombs) | the controller builds the archive itself from a realpath inside `/workspace`, capped at 512 MiB. The host checks size and sha256 and never extracts it: it streams it into `docker exec -i tesseract-ct-<name> tar -xzf - --no-same-owner`, so extraction happens inside the Sysbox container |
+| Deployed code attacks the host | it runs on the container's inner Docker daemon, inside the Sysbox user namespace with no bind mounts and no host socket: the same boundary as anything the user installs there ([ADR 0011](../adr/0011-server-containers-and-cloudflare-tunnel.md) consequences, including the bridge gateway note) |
+| The sandbox targets another host, container or path | the controller refuses names missing from the host's last heartbeat (when there is one) unless the deploy has `create`, and refuses reserved names (`sandbox`, `tailscale`, `docker`, `host`, `localhost`, plus the CLI words). The host is the real check: it deploys only into existing containers or ones it created after approval, under `/srv/tesseract/apps/<app>` (`app` matches `^[a-z0-9][a-z0-9_-]{0,62}$`) |
+| Any sandbox code requests new containers (`create`) to use host CPU, memory and disk, or to get a container with its own tailnet node | a sandbox can only request a container; each creation needs explicit approval on the host, regardless of `autoDeploy`, and shows the name and the requested limits (bounded by `LIMITS.maxDeployCpus` and `LIMITS.maxDeployMemoryMb`). Unanswered requests are rejected after 30 minutes. Nothing is created without the user saying yes |
+| Shell or argument injection through names | container, app and hostname are validated against fixed patterns by the protocol schemas (`DEPLOY_CONTAINER_PATTERN`, `DEPLOY_APP_PATTERN`, `DEPLOY_HOSTNAME_PATTERN`) before the host uses them in Docker commands |
+| Secrets leak into a container | everything in the directory except `.git` and `node_modules` is sent, including `.env*` files. The managed `deploy` skill tells agents to keep secrets out of the bundle when they can; a `.env` the app needs (next to `compose.yml`) is shipped only to the user's own container and never printed |
+
 ### Claude with `bypassPermissions` (A3, A4)
 
 Headless runs use `--permission-mode bypassPermissions`
@@ -382,7 +403,8 @@ Regression tests: `apps/controller/tests/hardening.test.ts` and
   served by an outbound tunnel. Each URL goes to one `container:port`, everything else returns 404,
   and the sandbox, host and tailnet names are never published ([server-containers.md](server-containers.md)).
 - The host Docker socket and host filesystem (the host's tailscale socket directory only
-  with the opt-in `--tailscale-api`).
+  with the opt-in `--tailscale-api`). Sandbox deploys go through the host's `DeployService`,
+  never through Docker access from the sandbox.
 - The controller token, in any API response. The only exceptions are the
   CLI `pair`/`token` output (run by the operator through `bun run sandbox pair`).
 - `/workspace/.agent/controller/` contents through `/v1/context`, which
@@ -397,6 +419,8 @@ Regression tests: `apps/controller/tests/hardening.test.ts` and
 - No egress filtering: the sandbox reaches the internet, the host's published
   ports, the LAN and metadata endpoints. Use `DOCKER-USER` iptables rules on the
   host or an egress proxy for sensitive work.
+- With auto-approve on, a compromised sandbox can publish to the container's public
+  hostnames without asking. Approval is per container, not per hostname or app.
 - No isolation between projects inside the sandbox (shared user and filesystem),
   and none between the controller and the workload ([same-user limit](#same-user-limit)).
 - Plain `VncAuth` on the direct 5901 path (8-character password limit); ACLs are the real control there.

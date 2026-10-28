@@ -65,6 +65,9 @@ export const ID_PREFIXES = {
   iosStream: "ios_",
   iosInstall: "ins_",
   iosRequest: "ior_",
+  deploy: "dep_",
+  issue: "iss_",
+  issueComment: "isc_",
 } as const;
 export type IdKind = keyof typeof ID_PREFIXES;
 
@@ -108,6 +111,8 @@ export const AGENT_RUN_STATES = ["running", "succeeded", "failed", "cancelled"] 
 export const FINAL_AGENT_RUN_STATES = ["succeeded", "failed", "cancelled"] as const;
 /** `--permission-mode` values a run may ask for: plan (read-only), acceptEdits (edits, no shell prompts), bypassPermissions (everything). */
 export const AGENT_RUN_MODES = ["plan", "acceptEdits", "bypassPermissions"] as const;
+/** `--model` aliases a run may ask for; Claude Code maps each to the latest model of that family. No model = the account's default. */
+export const AGENT_RUN_MODELS = ["opus", "sonnet", "haiku"] as const;
 export const UPLOAD_KINDS = ["image", "pdf", "audio", "file"] as const;
 export const STT_PROFILES = ["off", "eco", "balanced", "performance"] as const;
 export const STT_ENGINE_NAMES = ["whisper.cpp", "openai-compatible", "gemini"] as const;
@@ -126,6 +131,17 @@ export const SYNC_CHANGE_KINDS = ["added", "modified", "deleted"] as const;
 export const SYNC_REQUEST_KINDS = ["pull", "revert", "get"] as const;
 export const SYNC_REQUEST_STATUSES = ["pending", "claimed", "applied", "failed", "cancelled"] as const;
 export const SYNC_REQUEST_SOURCES = ["mobile", "desktop", "cli"] as const;
+export const DEPLOY_KINDS = ["compose", "dockerfile"] as const;
+export const DEPLOY_STATUSES = ["pending", "claimed", "awaiting_approval", "deploying", "deployed", "failed", "rejected", "cancelled"] as const;
+export const DEPLOY_ACTIVE_STATUSES = ["pending", "claimed", "awaiting_approval", "deploying"] as const;
+/** Workflow columns of a project issue, in board order. */
+export const ISSUE_STATUSES = ["backlog", "todo", "in_progress", "in_review", "done", "canceled"] as const;
+/** `done` and `canceled` close an issue; Claude never works on a closed issue. */
+export const ISSUE_CLOSED_STATUSES = ["done", "canceled"] as const;
+export const ISSUE_PRIORITIES = ["none", "urgent", "high", "medium", "low"] as const;
+/** `claude`: the controller dispatches an agent run for the issue; `me`: the sandbox owner. */
+export const ISSUE_ASSIGNEES = ["me", "claude"] as const;
+export const ISSUE_COMMENT_AUTHORS = ["me", "claude", "system"] as const;
 export const IDENTITY_SOURCES = ["serve", "localapi", "none"] as const;
 
 export const RUN_TARGETS = [
@@ -227,6 +243,15 @@ export const DEFAULT_ANDROID_STREAM = {
   jpegQuality: 5,
   device: null,
 } as const;
+/** Host iOS screen stream settings when `state.json` sets none (`GET/PUT /v1/ios/stream`); same limits as Android. */
+export const DEFAULT_IOS_STREAM = {
+  encoding: "h264",
+  bitRate: 6_000_000,
+  maxFps: 60,
+  maxSize: null,
+  keyFrameInterval: 2,
+  jpegQuality: 7,
+} as const;
 
 /** `?signal=` of stop routes: `SIGTERM` (default) stops gracefully, `SIGKILL` kills the process group at once. */
 export const STOP_SIGNALS = ["SIGTERM", "SIGKILL"] as const;
@@ -321,6 +346,20 @@ export const CLAUDE_IMPORT_PATHS = ["settings.json", "CLAUDE.md", "skills/", "ag
 
 /** Top-level `settings.json` keys dropped on import: they run host commands or point at host paths. */
 export const CLAUDE_IMPORT_DROPPED_SETTINGS = ["hooks", "apiKeyHelper", "awsCredentialExport", "awsAuthRefresh", "statusLine", "otelHeadersHelper"] as const;
+
+/** Slash command name without the `/`: lowercase segments joined by `:` (`frontend:review` for `commands/frontend/review.md`). */
+export const CLAUDE_COMMAND_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]*(:[a-z0-9][a-z0-9_-]*)*$/;
+
+/** Claude Code built-ins that work in headless `claude -p` runs, listed by `GET /v1/claude/commands`. */
+export const CLAUDE_BUILTIN_COMMANDS = [
+  { name: "compact", description: "Summarize the conversation to free up context" },
+  { name: "context", description: "Show how the context window is used" },
+  { name: "cost", description: "Show the token usage and cost of this session" },
+  { name: "init", description: "Create a CLAUDE.md with notes about this codebase" },
+  { name: "review", description: "Review a pull request" },
+  { name: "security-review", description: "Review the pending changes for security issues" },
+  { name: "pr-comments", description: "Show the comments of a GitHub pull request" },
+] as const;
 export const SERVER_EVENT_TYPES = [
   "hello",
   "ping",
@@ -339,6 +378,10 @@ export const SERVER_EVENT_TYPES = [
   "sync.updated",
   "sync.changed",
   "app.updated",
+  "deploy.updated",
+  "issue.updated",
+  "issue.deleted",
+  "issue.commented",
 ] as const;
 
 export const LIMITS = {
@@ -388,9 +431,30 @@ export const LIMITS = {
   maxSyncRequestList: 50,
   syncHostOnlineMs: 60_000,
   syncClaimTimeoutMs: 10 * 60_000,
+  /** Archive limit of a deploy bundle (the source directory as tar.gz). */
+  maxDeployBundleBytes: 512 * 1024 * 1024,
+  maxDeployLogLength: 64 * 1024,
+  maxDeployList: 50,
+  maxDeployTargets: 100,
+  maxIssueTitleLength: 256,
+  maxIssueDescriptionLength: 100_000,
+  maxIssueCommentLength: 50_000,
+  maxIssueLabels: 20,
+  maxIssueLabelLength: 48,
+  maxIssueList: 1_000,
+  maxIssueComments: 500,
+  maxDeployCpus: 64,
+  minDeployMemoryMb: 256,
+  maxDeployMemoryMb: 262_144,
+  /** Deploy targets reported by a host heartbeat older than this are dropped. */
+  deployTargetsTtlMs: 60_000,
+  /** A claimed deploy with no progress for this long goes back to `pending`. */
+  deployClaimTimeoutMs: 15 * 60_000,
+  /** A deploy awaiting approval longer than this is `rejected`. */
+  deployApprovalTimeoutMs: 30 * 60_000,
   maxTranscriptionLanguageLength: 16,
   /** A host shell session (from `POST /v1/host/unlock`) expires this long after the PIN was entered. */
-  hostSessionTtlMs: 15 * 60_000,
+  hostSessionTtlMs: 10 * 60 * 60_000,
   /** Wrong PINs allowed before the host shell locks; each further lockout doubles, capped at `hostLockoutMaxMs`. */
   hostPinMaxAttempts: 5,
   hostLockoutBaseMs: 5 * 60_000,
