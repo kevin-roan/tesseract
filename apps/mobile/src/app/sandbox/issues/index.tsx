@@ -48,11 +48,13 @@ export default function ProjectIssuesScreen() {
           actionLabel={ISSUES_COPY.retry}
           onAction={screen.retry}
         />
+      ) : screen.noProjects ? (
+        <EmptyState icon={KanbanIcon} title={ISSUES_COPY.noProjectsTitle} message={ISSUES_COPY.noProjectsMessage} />
       ) : screen.total === 0 ? (
         <EmptyState
           icon={KanbanIcon}
           title={ISSUES_COPY.emptyTitle}
-          message={ISSUES_COPY.emptyMessage}
+          message={screen.everyProject ? ISSUES_COPY.emptyAllMessage : ISSUES_COPY.emptyMessage}
           actionLabel={ISSUES_COPY.newIssue}
           onAction={screen.newIssue}
         />

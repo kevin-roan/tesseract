@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { CheckCircleIcon, WrenchIcon, XCircleIcon } from "phosphor-react-native";
 import type { AgentRunEvent } from "@tesseract/protocol";
 
+import Markdown from "@/components/markdown";
 import { ThemedText } from "@/components/themed-text";
 import { useAppTheme } from "@/hooks/use-app-theme";
 
@@ -19,11 +20,7 @@ const AgentEvent = ({ event }: AgentEventProps) => {
 
   switch (event.kind) {
     case "text":
-      return (
-        <ThemedText variant="body" color="bubbleAssistantText" selectable>
-          {event.text}
-        </ThemedText>
-      );
+      return <Markdown color="bubbleAssistantText">{event.text}</Markdown>;
     case "tool_use":
       return <ToolRow icon={WrenchIcon} iconColor="text" tool={event.tool} summary={event.summary} lines={3} />;
     case "tool_result":

@@ -1,0 +1,43 @@
+export const REMOTE_ANDROID_LABELS = {
+  intro: {
+    title: (host: string) => `Android settings of ${host}`,
+    message:
+      "This machine's sandbox runs on another computer. These settings are saved there: its Shell terminals and Claude Code get ANDROID_HOME, JAVA_HOME and PATH from them, so npm run android finds the SDK. Open a new terminal after saving.",
+  },
+  fallbackHost: "the host",
+  refresh: "Refresh",
+  loading: "Reading the host's Android settings…",
+  loadFailed: (error: string) => `Couldn't read the host's Android settings: ${error}`,
+  retry: "Retry",
+  outdated: "the host runs an older Tesseract. Update Tesseract on that computer and restart its host shell.",
+  automatic: "Automatic",
+  automaticFound: (path: string, source: string) => `${source} · ${path}`,
+  automaticNone: "Nothing found on the host",
+  custom: "Another folder",
+  customSubtitle: "An absolute path on the host",
+  customField: "Folder",
+  save: "Save",
+  saved: (what: string) => `${what} saved on the host`,
+  saveFailed: (error: string) => `Couldn't save: ${error}`,
+  sources: { settings: "Chosen here", env: "From the host's environment", detected: "Found on the host" },
+  android: {
+    title: "Android SDK",
+    description: "The SDK on the host that Gradle, adb and the host emulator use.",
+    usable: "Has platform-tools",
+    unusable: "No platform-tools (adb) yet",
+    adb: "adb",
+    emulator: "Emulator",
+    notFound: "Not found",
+    missingTitle: "No Android SDK on the host",
+    missing:
+      "Install Android Studio on the host (it puts the SDK in ~/Library/Android/sdk on a Mac), or open Tesseract on that computer and install the Android packages from its Preferences → Android.",
+  },
+  java: {
+    title: "Java (JDK)",
+    description: "The JDK Gradle builds with. Android Studio's bundled JDK works for Expo and React Native.",
+    usable: "Has bin/java",
+    unusable: "No bin/java",
+    missingTitle: "No JDK on the host",
+    missing: "Install Android Studio (it bundles a JDK) or a JDK 17 on the host, then pick it here.",
+  },
+} as const;

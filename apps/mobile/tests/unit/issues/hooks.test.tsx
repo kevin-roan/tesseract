@@ -8,7 +8,7 @@ import { useIssueDetailScreen } from "@/features/issues/hooks/use-issue-detail-s
 import { useIssueForm } from "@/features/issues/hooks/use-issue-form";
 import { useIssuesEntry } from "@/features/issues/hooks/use-issues-entry";
 import { useProjectIssuesScreen } from "@/features/issues/hooks/use-project-issues-screen";
-import { ISSUE_FORM_COPY } from "@/features/issues/utils/content";
+import { ISSUE_FORM_COPY, ISSUES_COPY } from "@/features/issues/utils/content";
 import { confirm } from "@/lib/confirm";
 
 import { TEST_SANDBOX, createTestQueryClient, createWrapper, resetSandboxState, seedActiveSandbox } from "../sandbox/helpers";
@@ -29,6 +29,7 @@ const MockClient = TesseractClient as unknown as jest.Mock;
 const mockConfirm = confirm as jest.Mock;
 const fake = {
   getProject: jest.fn(),
+  listProjects: jest.fn(),
   listIssues: jest.fn(),
   getIssue: jest.fn(),
   createIssue: jest.fn(),
@@ -51,6 +52,10 @@ beforeEach(() => {
   mockConfirm.mockReset().mockResolvedValue(true);
   Object.values(fake).forEach((fn) => fn.mockReset());
   fake.getProject.mockResolvedValue({ ...sampleProject, id: PROJECT_ID, name: "Mobile" });
+  fake.listProjects.mockResolvedValue([
+    { ...sampleProject, id: PROJECT_ID, name: "Mobile" },
+    { ...sampleProject, id: "web", name: "Web" },
+  ]);
   fake.listIssues.mockResolvedValue(issues);
   fake.getIssue.mockResolvedValue(sampleIssueDetail);
   MockClient.mockReset().mockImplementation(() => fake);
@@ -97,6 +102,29 @@ describe("useProjectIssuesScreen", () => {
     await act(async () => reject(new ApiError(409, "conflict", "Nope")));
     await waitFor(() => expect(result.current.actionError).toBe("Nope"));
     expect(queryClient.getQueryData<Issue[]>(listKey)?.find((issue) => issue.id === sampleIssue.id)?.status).toBe("todo");
+  });
+});
+
+describe("useProjectIssuesScreen without a project", () => {
+  it("lists every project's issues and asks which project a new issue belongs to", async () => {
+    fake.createIssue.mockResolvedValue(sampleIssue);
+    const { result } = await renderHook(() => useProjectIssuesScreen(""), { wrapper: createWrapper(createTestQueryClient()) });
+    await waitFor(() => expect(result.current.total).toBe(3));
+    expect(fake.listIssues).toHaveBeenCalledWith(undefined, expect.anything());
+    expect(fake.listIssues).not.toHaveBeenCalledWith({ projectId: "" }, expect.anything());
+    expect(result.current.everyProject).toBe(true);
+    expect(result.current.projectName).toBe(ISSUES_COPY.allProjects);
+    await waitFor(() => expect(result.current.form.projects).toHaveLength(2));
+
+    await act(async () => result.current.newIssue());
+    await act(async () => result.current.form.setTitle("Cross-project"));
+    await act(async () => result.current.form.submit());
+    expect(result.current.form.error).toBe(ISSUE_FORM_COPY.projectRequired);
+    expect(fake.createIssue).not.toHaveBeenCalled();
+
+    await act(async () => result.current.form.setProject("web"));
+    await act(async () => result.current.form.submit());
+    await waitFor(() => expect(fake.createIssue).toHaveBeenCalledWith("web", expect.objectContaining({ title: "Cross-project" })));
   });
 });
 

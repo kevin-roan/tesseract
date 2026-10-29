@@ -22,6 +22,7 @@ import {
   TerminalClientMessageSchema,
   TICKET_PARAM,
   UpdateAndroidStreamSchema,
+  UpdateHostToolchainSchema,
   UpdateIosStreamSchema,
   validate,
   wsPaths,
@@ -47,6 +48,7 @@ import { HostIos, type HostIosOptions } from "./ios";
 import type { IosScreenRequest } from "./ios/screen";
 import { HostStateStore } from "./state";
 import { HostTerminals } from "./terminals";
+import { HostToolchainSettings, type HostToolchainOptions } from "./toolchain";
 import { hostWorkspaceAccess } from "./workspace";
 
 type WsData = {
@@ -65,6 +67,7 @@ export type HostShellOptions = HostAuthOptions & {
   claudeBin?: string;
   android?: HostAndroidOptions;
   ios?: HostIosOptions;
+  toolchain?: Omit<HostToolchainOptions, "emulatorActive">;
   /** The host workspace controller a session may reach (tests replace it); `null` before it was set up. */
   workspace?: () => HostWorkspaceAccess | null;
 };
@@ -76,6 +79,7 @@ export type HostShell = {
   terminals: HostTerminals;
   android: HostAndroid;
   ios: HostIos;
+  toolchain: HostToolchainSettings;
   /** Settles once a running emulator was adopted and the stored sandbox link dialled. */
   ready: Promise<void>;
   stop: () => Promise<void>;
@@ -87,6 +91,7 @@ const BACKPRESSURE_LIMIT_BYTES = 16 * 1024 * 1024;
 const NORMAL_CLOSURE = 1000;
 const INTERNAL_ERROR = 1011;
 const HTTP_IDLE_TIMEOUT_SEC = 60;
+const ACTIVE_EMULATOR_STATES = new Set<string>(["starting", "running", "stopping"]);
 
 const TERMINAL_PATH = new RegExp(`^${routePatterns.rest.terminal.replace(":id", "([^/]+)")}$`);
 const STREAM_PATH = new RegExp(`^${routePatterns.ws.terminalStream.replace(":id", "([^/]+)")}$`);
@@ -140,7 +145,12 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
   const auth = new HostAuth(store, logger, options);
   const tickets = new TicketStore();
   const workspace = options.workspace ?? (() => hostWorkspaceAccess(process.env));
-  const terminals = new HostTerminals(config.shell, config.home, logger, undefined, options.stopGraceMs, options.claudeBin);
+  const toolchain = new HostToolchainSettings(config.android, store, logger, {
+    ...options.toolchain,
+    emulatorActive: () => ACTIVE_EMULATOR_STATES.has(android.emulator.current().state),
+  });
+  toolchain.init();
+  const terminals = new HostTerminals(config.shell, config.home, logger, undefined, options.stopGraceMs, options.claudeBin, () => toolchain.terminalEnv());
   const android = new HostAndroid(config.android, store, { hostId: config.hostId, version: VERSION }, logger, options.android);
   const ios = new HostIos(config.ios, store, { hostId: config.hostId, version: VERSION }, logger, options.ios);
   const ready = Promise.all([
@@ -215,7 +225,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       if (!tickets.peek(url.searchParams.get(TICKET_PARAM))) throw new HttpError("unauthorized", "Missing, expired or already used ticket");
       return respond(terminals.get(terminalId));
     }
-    const androidPaths: string[] = [restPaths.android(), restPaths.androidEmulator(), restPaths.androidLink(), restPaths.androidDevices(), restPaths.androidStream()];
+    const androidPaths: string[] = [restPaths.android(), restPaths.androidEmulator(), restPaths.androidLink(), restPaths.androidDevices(), restPaths.androidStream(), restPaths.androidToolchain()];
     const androidPath = androidPaths.includes(path);
     const installId = decodeId(IOS_INSTALL_PATH.exec(path));
     const iosPaths: string[] = [restPaths.ios(), restPaths.iosSimulator(), restPaths.iosLink(), restPaths.iosInstalls(), restPaths.iosStream()];
@@ -250,6 +260,8 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     if (path === restPaths.androidDevices() && method === "GET") return respond(await android.devices());
     if (path === restPaths.androidStream() && method === "GET") return respond(android.streamSettings());
     if (path === restPaths.androidStream() && method === "PUT") return respond(android.updateStream(await readBody(request, UpdateAndroidStreamSchema)));
+    if (path === restPaths.androidToolchain() && method === "GET") return respond(toolchain.status());
+    if (path === restPaths.androidToolchain() && method === "PUT") return respond(toolchain.update(await readBody(request, UpdateHostToolchainSchema)));
     if (path === restPaths.ios() && method === "GET") return respond(await ios.status());
     if (path === restPaths.iosSimulator() && method === "POST") return respond(await ios.boot(await readBody(request, BootSimulatorSchema)), 202);
     if (path === restPaths.iosSimulator() && method === "DELETE") return respond(await ios.shutdownSimulator(stopSignal(url)));
@@ -346,5 +358,5 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
 
   const url = new URL(server.url.href);
   logger.info("host shell listening", { url: url.href, host: config.hostId, state: config.stateFile });
-  return { server, url, auth, terminals, android, ios, ready, stop };
+  return { server, url, auth, terminals, android, ios, toolchain, ready, stop };
 }

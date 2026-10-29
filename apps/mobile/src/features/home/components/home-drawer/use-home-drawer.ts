@@ -5,6 +5,7 @@ import { useChatNavigation } from "@/features/chats/hooks/use-chat-navigation";
 import { useSessions } from "@/features/chats/hooks/use-sessions";
 import { sessionTitle } from "@/features/chats/utils/sessions";
 import { useInbox } from "@/features/inbox/hooks/use-inbox";
+import { allIssuesRoute } from "@/features/issues/utils/routes";
 import { INBOX_ROUTE } from "@/features/inbox/utils/constants";
 import { useSandboxClient } from "@/features/sandbox/hooks/use-sandbox-client";
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
@@ -45,6 +46,7 @@ export function useHomeDrawer(onClose: () => void) {
     const handlers: Record<DrawerNavId, () => void> = {
       chats: push(DRAWER_ROUTES.chats),
       projects: navigate(DRAWER_ROUTES.projects),
+      issues: () => router.push(allIssuesRoute),
       agents: navigate(DRAWER_ROUTES.agents),
       tasks: navigate(DRAWER_ROUTES.tasks),
       analytics: push(DRAWER_ROUTES.analytics),

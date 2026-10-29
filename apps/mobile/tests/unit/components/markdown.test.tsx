@@ -20,14 +20,15 @@ describe("<Markdown />", () => {
     expect(styleOf("bold").fontFamily).toBe("NotoSans_600SemiBold");
     expect(styleOf("soft").fontFamily).toBe("NotoSans_400Regular_Italic");
     expect(styleOf("code")).toMatchObject({ fontFamily: "GeistMono_400Regular", backgroundColor: Colors.light.codeBackground });
-    expect(styleOf("docs")).toMatchObject({ color: Colors.light.accentStrong, textDecorationLine: "underline" });
+    expect(styleOf("docs")).toMatchObject({ color: Colors.light.accentStrong, textDecorationLine: "none" });
     expect(screen.getByText("one")).toBeOnTheScreen();
     expect(screen.getByText("two")).toBeOnTheScreen();
   });
 
-  it("renders a fenced code block in the code face", async () => {
+  it("renders a fenced code block in the code face, labelled with its language", async () => {
     await render(<Markdown>{"```ts\nconst a = 1;\n```"}</Markdown>);
     expect(styleOf("const a = 1;").fontFamily).toBe("GeistMono_400Regular");
+    expect(screen.getByText("ts")).toBeOnTheScreen();
   });
 });
 

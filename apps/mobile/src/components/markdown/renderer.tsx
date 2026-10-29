@@ -1,18 +1,20 @@
 import type { ReactNode } from "react";
-import { ScrollView, Text, View, type TextStyle } from "react-native";
+import { View, type TextStyle } from "react-native";
 import { Renderer } from "react-native-marked";
 
+import CodeBlock from "./code-block";
 import { resolveFace } from "./faces";
 import type { MarkdownStyles } from "./styles";
 
 /**
  * Draws markdown with the app's styles: block layout comes from `MarkdownStyles`
  * instead of the library defaults, and every run of text is set in a registered
- * face so bold and italic match the rest of the app.
+ * face so bold and italic match the rest of the app. Text is not selectable:
+ * selectable runs grab drags meant for the list the markdown sits in.
  */
 export default class ThemedRenderer extends Renderer {
   constructor(private readonly styles: MarkdownStyles) {
-    super({ selectable: true });
+    super({ selectable: false });
   }
 
   paragraph(children: ReactNode[]): ReactNode {
@@ -27,16 +29,8 @@ export default class ThemedRenderer extends Renderer {
     return super.heading(text, resolveFace(style));
   }
 
-  code(text: string): ReactNode {
-    return (
-      <View key={this.getKey()} style={this.styles.code}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <Text selectable style={this.styles.codeText}>
-            {text.replace(/\n$/, "")}
-          </Text>
-        </ScrollView>
-      </View>
-    );
+  code(text: string, language?: string): ReactNode {
+    return <CodeBlock key={this.getKey()} code={text.replace(/\n$/, "")} language={language} styles={this.styles} />;
   }
 
   hr(): ReactNode {
@@ -47,10 +41,10 @@ export default class ThemedRenderer extends Renderer {
     return super.listItem(children, this.styles.listItem);
   }
 
-  list(ordered: boolean, li: ReactNode[], _listStyle?: unknown, textStyle?: TextStyle, startIndex?: number): ReactNode {
+  list(ordered: boolean, li: ReactNode[], _listStyle?: unknown, _textStyle?: TextStyle, startIndex?: number): ReactNode {
     return (
       <View key={this.getKey()} style={this.styles.list}>
-        {super.list(ordered, li, this.styles.listMarker, resolveFace(textStyle), startIndex)}
+        {super.list(ordered, li, this.styles.listMarker, this.styles.listMarkerText, startIndex)}
       </View>
     );
   }

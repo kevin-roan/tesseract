@@ -2,6 +2,7 @@ import {
   AndroidDeviceSchema,
   AndroidLinkInfoSchema,
   AndroidStreamSettingsSchema,
+  HostToolchainSchema,
   AppRunListSchema,
   AppRunSchema,
   RuntimeEntrySchema,
@@ -17,6 +18,7 @@ import {
   type AndroidDevice,
   type AndroidLinkInfo,
   type AndroidStreamSettings,
+  type HostToolchain,
   type AppRun,
   type AppRunAction,
   type AppRunFilter,
@@ -25,6 +27,7 @@ import {
   type HostWorkspaceAccess,
   type LinkSandbox,
   type UpdateAndroidStream,
+  type UpdateHostToolchain,
   type RunTargetInfo,
   type SandboxAndroidStatus,
   type StartAppRun,
@@ -891,6 +894,15 @@ export class TesseractClient {
 
   updateAndroidStream(body: UpdateAndroidStream, options?: RequestOptions): Promise<AndroidStreamSettings> {
     return this.request("PUT", restPaths.androidStream(), { read: json(AndroidStreamSettingsSchema), body, options });
+  }
+
+  /** The host's Android SDK and JDK (host daemon only). */
+  hostToolchain(options?: RequestOptions): Promise<HostToolchain> {
+    return this.request("GET", restPaths.androidToolchain(), { read: json(HostToolchainSchema), options });
+  }
+
+  updateHostToolchain(body: UpdateHostToolchain, options?: RequestOptions): Promise<HostToolchain> {
+    return this.request("PUT", restPaths.androidToolchain(), { read: json(HostToolchainSchema), body, options });
   }
 
   unlinkSandbox(options?: RequestOptions): Promise<AndroidLinkInfo> {

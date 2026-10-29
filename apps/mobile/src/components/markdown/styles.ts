@@ -8,7 +8,8 @@ export default function createStyles(theme: Theme, color: ThemeColor) {
   const heading = (name: TextVariant): TextStyle => ({
     ...variant(name),
     fontWeight: undefined,
-    marginVertical: 0,
+    marginTop: theme.spacing.xs,
+    marginBottom: 0,
     paddingBottom: 0,
     borderBottomWidth: 0,
   });
@@ -26,9 +27,9 @@ export default function createStyles(theme: Theme, color: ThemeColor) {
       ...variant("body"),
       color: theme.colors.accentStrong,
       fontStyle: "normal",
-      textDecorationLine: "underline",
+      textDecorationLine: "none",
     },
-    h1: heading("h3"),
+    h1: heading("h4"),
     h2: heading("h4"),
     h3: heading("bodyStrong"),
     h4: heading("bodyStrong"),
@@ -41,13 +42,28 @@ export default function createStyles(theme: Theme, color: ThemeColor) {
       backgroundColor: theme.colors.codeBackground,
     },
     code: {
-      paddingHorizontal: theme.spacing.md,
-      paddingVertical: theme.spacing.md,
-      borderRadius: theme.radius.md,
+      overflow: "hidden",
+      borderRadius: theme.radius.sm,
       borderCurve: "continuous",
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
       backgroundColor: theme.colors.codeBackground,
+    },
+    codeHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: theme.spacing.sm,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: theme.colors.divider,
+    },
+    codeLanguage: {
+      flex: 1,
+    },
+    codeBody: {
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
     },
     codeText: { ...theme.text.code, color: ink },
     blockquote: {
@@ -62,10 +78,12 @@ export default function createStyles(theme: Theme, color: ThemeColor) {
     },
     list: {
       gap: theme.spacing.xs,
+      paddingLeft: theme.spacing.xxs,
     },
     listMarker: {
       paddingRight: theme.spacing.sm,
     },
+    listMarkerText: { ...variant("body"), color: theme.colors.textTertiary },
     listItem: {
       flexShrink: 1,
       gap: theme.spacing.xs,
@@ -74,6 +92,7 @@ export default function createStyles(theme: Theme, color: ThemeColor) {
     table: {
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: theme.colors.border,
+      borderRadius: theme.radius.sm,
     },
     tableRow: {
       flexDirection: "row",

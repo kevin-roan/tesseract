@@ -89,4 +89,6 @@ controller. `issue comment <id> <text>` posts as `claude`; `<id>` defaults to
 - **Mobile** (`apps/mobile`): an "Issues" entry on the project screen: list grouped by
   status with filters (all / Claude / mine), create sheet, issue detail with property
   pickers, assign-to-Claude toggle, activity and comment composer, link to the run.
+  The home drawer has an "Issues" entry too: the same screen without `projectId` lists every
+  project's issues (`GET /v1/issues`), and its create sheet asks for the project.
   Live updates come from the `issue.*` events.

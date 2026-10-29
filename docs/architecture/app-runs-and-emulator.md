@@ -298,6 +298,7 @@ LinkSandbox { sandboxUrl: string (http/https URL, no user:password@, no #fragmen
 | DELETE | `/v1/android/link` | — | `AndroidLinkInfo` (cleared, link closed) |
 | GET | `/v1/android/devices` | — | `AndroidDevice[]` (`adb devices -l`) |
 | GET, PUT | `/v1/android/stream` | §2.4 | `AndroidStreamSettings` |
+| GET, PUT | `/v1/android/toolchain` | `UpdateHostToolchain` | `HostToolchain`: the host's Android SDK and JDK, saved in `state.json` `toolchain`; a saved SDK overrides `TESSERACT_ANDROID_SDK_ROOT` for the emulator, and host terminals get `ANDROID_HOME`/`ANDROID_SDK_ROOT`/`JAVA_HOME`/`PATH` from it (blueprint §5.7) |
 | WS | `/v1/android/screen?ticket=&maxSize=&serial=&codec=` | §2.4 | an adb device's screen (default: the emulator) |
 | GET | `/ui/android` | — | the screen page (no secrets; fragment `#ticket=…&maxSize=…&serial=…`) |
 

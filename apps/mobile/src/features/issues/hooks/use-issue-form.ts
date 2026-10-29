@@ -7,6 +7,8 @@ import { ISSUE_FORM_COPY } from "../utils/content";
 import { claudeWillStart, defaultStatusFor, type IssueAssigneeChoice, assigneeFromChoice } from "../utils/issues";
 import { useCreateIssue } from "./use-issue-mutations";
 
+export type IssueProjectOption = { value: string; label: string };
+
 type HumanAssignee = Exclude<IssueAssigneeChoice, "claude">;
 
 type Draft = {
@@ -21,10 +23,13 @@ type Draft = {
 const EMPTY_DRAFT: Draft = { title: "", description: "", status: null, priority: "none", claude: false, human: "me" };
 
 /** The create sheet. Until the user picks a status it follows the controller's default for the assignee. */
-export function useIssueForm(projectId: string, onCreated?: (issue: Issue) => void) {
+/** `projectId` null: the sheet asks for one of `projects` (the all-projects Issues screen). */
+export function useIssueForm(projectId: string | null, onCreated?: (issue: Issue) => void, projects: readonly IssueProjectOption[] = []) {
   const create = useCreateIssue();
   const { mutate, reset } = create;
   const [visible, setVisible] = useState(false);
+  const [picked, setPicked] = useState<string | null>(null);
+  const target = projectId ?? picked ?? (projects.length === 1 ? (projects[0]?.value ?? null) : null);
   const [draft, setDraft] = useState<Draft>(EMPTY_DRAFT);
   const [invalid, setInvalid] = useState<string | null>(null);
 
@@ -56,9 +61,13 @@ export function useIssueForm(projectId: string, onCreated?: (issue: Issue) => vo
       setInvalid(ISSUE_FORM_COPY.titleRequired);
       return;
     }
+    if (!target) {
+      setInvalid(ISSUE_FORM_COPY.projectRequired);
+      return;
+    }
     const description = draft.description.trim();
     mutate(
-      { projectId, title, status, priority: draft.priority, assignee, ...(description ? { description } : {}) },
+      { projectId: target, title, status, priority: draft.priority, assignee, ...(description ? { description } : {}) },
       {
         onSuccess: (issue) => {
           setVisible(false);
@@ -66,13 +75,19 @@ export function useIssueForm(projectId: string, onCreated?: (issue: Issue) => vo
         },
       },
     );
-  }, [create.isPending, draft, projectId, status, assignee, mutate, onCreated]);
+  }, [create.isPending, draft, target, status, assignee, mutate, onCreated]);
 
   return {
     open,
     sheet: {
       visible,
       close,
+      projects: projectId === null ? projects : [],
+      project: target,
+      setProject: (next: string) => {
+        setPicked(next);
+        setInvalid(null);
+      },
       title: draft.title,
       setTitle: (title: string) => patch({ title }),
       description: draft.description,

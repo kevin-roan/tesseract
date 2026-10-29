@@ -12,6 +12,7 @@ import { isInside } from "../core/paths";
 import { startController } from "../server";
 import { HostConfigError, tailscaleIpv4, tailscaleServeUrl, validateBind, validatePort } from "./config";
 import type { HostCliIo } from "./cli";
+import { savedToolchainEnv } from "./toolchain";
 
 export const HOST_WORKSPACE_USAGE = `  tesseract-controller host workspace serve [--bind <ipv4>] [--port <n>]
                                      run the host workspace controller (on the host, no sandbox) on the host's
@@ -191,6 +192,8 @@ const pidFile = (config: Config) => join(config.dataDir, "serve.pid");
 function serve(args: string[], io: HostCliIo): null {
   const { values } = parseArgs({ args, options: { bind: { type: "string" }, port: { type: "string" } }, strict: true });
   const config = loadHostWorkspaceConfig(io.env, values);
+  // Claude Code and its commands inherit this process's env: give them the SDK and JDK chosen for the host shell.
+  Object.assign(process.env, savedToolchainEnv(io.env));
   const controller = startController(config);
   writeFileSync(pidFile(config), `${process.pid}\n`, { mode: 0o600 });
   const shutdown = () =>

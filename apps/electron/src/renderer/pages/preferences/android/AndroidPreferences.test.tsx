@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetSettingsFixture, settingsFixtures } from "../../../fixtures/app-settings/ipc";
+import { hostFixtureState, hostProxyFixture, resetHostToolchainFixture } from "../../../fixtures/host/data";
 import { overrideIpcFixtures } from "../../../fixtures/registry";
 import { skipMotionDuringTests } from "../../../onboarding/shell/test-motion";
 import { renderRoutes } from "../../../test/render";
@@ -12,7 +13,9 @@ skipMotionDuringTests();
 
 beforeEach(() => {
   resetSettingsFixture();
+  resetHostToolchainFixture();
   restores.push(overrideIpcFixtures(settingsFixtures));
+  restores.push(overrideIpcFixtures({ masterHost: { state: () => ({ kind: "local" }) } }));
 });
 
 afterEach(() => {
@@ -52,5 +55,28 @@ describe("AndroidPreferences", () => {
     restores.push(overrideIpcFixtures({ android: { support: () => ({ supported: false, reason: "No emulator for this CPU" }) } }));
     render();
     expect(await screen.findByText("No emulator for this CPU")).toBeTruthy();
+  });
+
+  it("edits the connected host's SDK and JDK when the sandbox runs on another computer", async () => {
+    const request = vi.fn((_id: string, req: Parameters<typeof hostProxyFixture>[0]) => hostProxyFixture(req));
+    const startEmulator = vi.fn();
+    restores.push(
+      overrideIpcFixtures({
+        masterHost: { state: () => ({ kind: "linked", sandboxUrl: "http://100.64.0.9:7700", host: { link: "tesseract://host", url: "http://100.64.0.9:7701", name: "macbook", online: true } }) },
+        hostShell: { state: () => hostFixtureState({ status: "external", pairing: { link: "tesseract://host", url: "http://127.0.0.1:7701", name: "macbook", pinSet: true } }), request },
+        android: { startEmulator },
+      }),
+    );
+    render();
+    expect(await screen.findByText("Android settings of macbook")).toBeTruthy();
+    expect(await screen.findByText("Found on the host · /Users/me/Library/Android/sdk")).toBeTruthy();
+
+    const sdkGroup = screen.getByRole("radiogroup", { name: "Android SDK" });
+    fireEvent.click(within(sdkGroup).getByText("Another folder"));
+    fireEvent.change(screen.getByLabelText("Folder"), { target: { value: "/opt/android" } });
+    fireEvent.click(within(sdkGroup.closest("section") ?? document.body).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(request.mock.calls.some(([, req]) => req.method === "PUT" && req.body === JSON.stringify({ androidSdkRoot: "/opt/android" }))).toBe(true));
+    expect(startEmulator).not.toHaveBeenCalled();
   });
 });

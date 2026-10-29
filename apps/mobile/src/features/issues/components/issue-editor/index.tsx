@@ -87,7 +87,7 @@ const IssueEditor = ({ issue, identifier, title, description }: IssueEditorProps
           testID="issue-description"
         >
           {issue.description.trim() ? (
-            <Markdown>{issue.description}</Markdown>
+            <Markdown copyable={false}>{issue.description}</Markdown>
           ) : (
             <ThemedText variant="body" color="textTertiary">
               {ISSUE_DETAIL_COPY.descriptionPlaceholder}

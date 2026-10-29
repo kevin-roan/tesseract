@@ -14,6 +14,14 @@ export const useProjectIssues = (projectId: string) =>
     { enabled: projectId.length > 0 },
   );
 
+/** Every project's issues (the drawer's Issues screen). */
+export const useAllIssues = (enabled = true) =>
+  useSandboxQuery(
+    (sandboxId) => issueKeys.list(sandboxId),
+    (client, signal) => client.listIssues(undefined, { signal }),
+    { enabled },
+  );
+
 export const useIssueDetail = (issueId: string) =>
   useSandboxQuery(
     (sandboxId) => issueKeys.detail(sandboxId, issueId),

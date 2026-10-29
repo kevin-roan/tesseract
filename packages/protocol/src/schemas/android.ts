@@ -230,3 +230,52 @@ export const AndroidScreenQuerySchema = z.object({
   codec: AndroidStreamEncodingSchema.optional(),
 });
 export type AndroidScreenQuery = z.infer<typeof AndroidScreenQuerySchema>;
+
+export const HOST_TOOLCHAIN_SOURCES = ["settings", "env", "detected"] as const;
+export const HostToolchainSourceSchema = z.enum(HOST_TOOLCHAIN_SOURCES);
+export type HostToolchainSource = z.infer<typeof HostToolchainSourceSchema>;
+
+/** A folder the host found that could be the Android SDK or the JDK; `label` says where it came from. */
+export const HostToolchainCandidateSchema = z.object({
+  path: z.string(),
+  label: z.string(),
+  usable: z.boolean(),
+});
+export type HostToolchainCandidate = z.infer<typeof HostToolchainCandidateSchema>;
+
+/**
+ * `GET /v1/android/toolchain`: the Android SDK and JDK the host's terminals, Claude Code on the host and the
+ * emulator use. `configured` is what was saved through `PUT` (null: automatic); `path` is the one in effect.
+ */
+export const HostToolchainSchema = z.object({
+  platform: z.string(),
+  android: z.object({
+    configured: z.string().nullable(),
+    path: z.string().nullable(),
+    source: HostToolchainSourceSchema.nullable(),
+    adb: z.string().nullable(),
+    emulator: z.string().nullable(),
+    candidates: z.array(HostToolchainCandidateSchema),
+  }),
+  java: z.object({
+    configured: z.string().nullable(),
+    path: z.string().nullable(),
+    source: HostToolchainSourceSchema.nullable(),
+    candidates: z.array(HostToolchainCandidateSchema),
+  }),
+});
+export type HostToolchain = z.infer<typeof HostToolchainSchema>;
+
+const ToolchainPathSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .max(1024)
+  .refine((value) => value.startsWith("/") || /^[A-Za-z]:[\\/]/.test(value), "The folder must be an absolute path");
+
+/** `PUT /v1/android/toolchain`: an absolute folder, or null to go back to automatic. Omitted fields stay. */
+export const UpdateHostToolchainSchema = z.object({
+  androidSdkRoot: ToolchainPathSchema.nullable().optional(),
+  javaHome: ToolchainPathSchema.nullable().optional(),
+});
+export type UpdateHostToolchain = z.infer<typeof UpdateHostToolchainSchema>;

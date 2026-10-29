@@ -8,6 +8,7 @@ import { LicenseDialog } from "../../../onboarding/android/components/LicenseDia
 import { PackageTable } from "../../../onboarding/android/components/PackageTable";
 import { SdkLocationGroup } from "../../../onboarding/android/components/SdkLocationGroup";
 import { SummaryGroup } from "../../../onboarding/android/components/SummaryGroup";
+import { useMasterHost } from "../../../features/master-host/hooks/use-master-host";
 import { ANDROID_LABELS } from "../../../onboarding/android/labels";
 import { PreferencesPage } from "../shared/PreferencesPage";
 import { DevicesGroup } from "./DevicesGroup";
@@ -16,9 +17,17 @@ import { useDeviceActions } from "./hooks/use-device-actions";
 import { InstallActions } from "./InstallActions";
 import { ANDROID_SETTINGS_LABELS as L } from "./labels";
 import { NewDeviceGroup } from "./NewDeviceGroup";
+import RemoteAndroidPreferences from "./remote/RemoteAndroidPreferences";
 import styles from "./AndroidPreferences.module.css";
 
+/** The sandbox of a remote machine builds on that machine's host, so its Android settings are the ones to edit. */
 export default function AndroidPreferences() {
+  const state = useMasterHost().state;
+  if (!state) return null;
+  return state.kind === "linked" || state.kind === "unlinked" ? <RemoteAndroidPreferences /> : <LocalAndroidPreferences />;
+}
+
+function LocalAndroidPreferences() {
   const model = useAndroidSettings();
   const devices = useDeviceActions(model.sdkRoot);
   const { support, sources, details, flow } = model;

@@ -11,7 +11,9 @@ import createStyles from "./styles";
 export function useMarkdownElements(value: string, color: ThemeColor) {
   const theme = useAppTheme();
   const styles = useMemo(() => createStyles(theme, color), [theme, color]);
-  const options = useMemo(() => ({ styles, renderer: new ThemedRenderer(styles) }), [styles]);
+  // A fresh renderer per value restarts its key counter, so a streaming reply keeps its blocks mounted instead of remounting them on every chunk.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const options = useMemo(() => ({ styles, renderer: new ThemedRenderer(styles) }), [styles, value]);
   const elements = useMarkdown(value, options);
 
   return { elements, styles };

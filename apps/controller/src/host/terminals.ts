@@ -65,6 +65,8 @@ export class HostTerminals {
     private readonly scrollbackLimit: number = LIMITS.terminalScrollbackBytes,
     private readonly stopGraceMs: number = LIMITS.processStopGraceMs,
     private readonly claudeBin: string = HOST_CLAUDE.bin,
+    /** Android SDK and JDK variables (`HostToolchainSettings.terminalEnv`), read for each new terminal. */
+    private readonly toolEnv: () => Env = () => ({}),
   ) {}
 
   create(input: CreateHostTerminal): TerminalInfo {
@@ -97,7 +99,7 @@ export class HostTerminals {
     try {
       proc = Bun.spawn(argv, {
         cwd,
-        env: { ...hostShellEnv(), TERM: "xterm-256color", COLORTERM: "truecolor", LANG: process.env.LANG ?? "C.UTF-8" },
+        env: { ...hostShellEnv(), ...this.toolEnv(), TERM: "xterm-256color", COLORTERM: "truecolor", LANG: process.env.LANG ?? "C.UTF-8" },
         terminal: {
           cols: input.cols,
           rows: input.rows,

@@ -5,11 +5,13 @@ import {
   routePatterns,
   type AndroidStreamSettings,
   type CreateHostTerminal,
+  type HostToolchain,
   type HostIosStatus,
   type IosLinkInfo,
   type IosStreamSettings,
   type SimDevice,
   type TerminalInfo,
+  type UpdateHostToolchain,
 } from "@tesseract/protocol";
 import { sampleHostAndroidStatus, sampleHostIosStatus, sampleTicket } from "@tesseract/protocol/fixtures";
 import type { HostShellState } from "../../../shared/contracts/hostShell";
@@ -111,6 +113,40 @@ function parse<T>(body: string | undefined): Partial<T> {
   }
 }
 
+const MAC_SDK = "/Users/me/Library/Android/sdk";
+const STUDIO_JDK = "/Applications/Android Studio.app/Contents/jbr/Contents/Home";
+
+export function hostToolchainFixture(): HostToolchain {
+  return {
+    platform: "darwin",
+    android: {
+      configured: null,
+      path: MAC_SDK,
+      source: "detected",
+      adb: `${MAC_SDK}/platform-tools/adb`,
+      emulator: `${MAC_SDK}/emulator/emulator`,
+      candidates: [{ path: MAC_SDK, label: "Android Studio", usable: true }],
+    },
+    java: { configured: null, path: STUDIO_JDK, source: "detected", candidates: [{ path: STUDIO_JDK, label: "Android Studio", usable: true }] },
+  };
+}
+
+let toolchain = hostToolchainFixture();
+
+function updateToolchain(change: Partial<UpdateHostToolchain>): HostToolchain {
+  const section = <T extends HostToolchain["android"] | HostToolchain["java"]>(current: T, value: string | null | undefined): T => {
+    if (value === undefined) return current;
+    const fallback = current.candidates.find((candidate) => candidate.usable)?.path ?? null;
+    return { ...current, configured: value, path: value ?? fallback, source: value ? "settings" : fallback ? "detected" : null };
+  };
+  toolchain = { ...toolchain, android: section(toolchain.android, change.androidSdkRoot), java: section(toolchain.java, change.javaHome) };
+  return toolchain;
+}
+
+export function resetHostToolchainFixture(): void {
+  toolchain = hostToolchainFixture();
+}
+
 export function hostProxyFixture(request: HttpProxyRequest): HttpProxyResponse {
   const { pathname } = new URL(request.url);
   const method = request.method.toUpperCase();
@@ -136,6 +172,8 @@ export function hostProxyFixture(request: HttpProxyRequest): HttpProxyResponse {
     androidStream = { ...androidStream, ...parse<AndroidStreamSettings>(request.body) };
     return json(200, androidStream);
   }
+  if (pathname === restPaths.androidToolchain() && method === "GET") return json(200, toolchain);
+  if (pathname === restPaths.androidToolchain() && method === "PUT") return json(200, updateToolchain(parse<UpdateHostToolchain>(request.body)));
   if (pathname === restPaths.iosStream() && method === "GET") return json(200, iosStream);
   if (pathname === restPaths.iosStream() && method === "PUT") {
     iosStream = { ...iosStream, ...parse<IosStreamSettings>(request.body) };

@@ -29,6 +29,20 @@ const CreateIssueSheet = ({ state, testID = "create-issue" }: CreateIssueSheetPr
   return (
     <BottomSheet visible={state.visible} onClose={state.close} title={ISSUE_FORM_COPY.title} avoidKeyboard testID={`${testID}-sheet`}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {state.projects.length > 0 ? (
+          <View style={styles.field} testID={`${testID}-project`}>
+            <ThemedText variant="caption" color="textSecondary">
+              {ISSUE_FORM_COPY.project}
+            </ThemedText>
+            <SegmentedPills
+              options={state.projects}
+              value={state.project ?? ""}
+              onChange={state.setProject}
+              scrollable
+              label={ISSUE_FORM_COPY.project}
+            />
+          </View>
+        ) : null}
         <TextField
           label={ISSUE_FORM_COPY.titleLabel}
           placeholder={ISSUE_FORM_COPY.titlePlaceholder}

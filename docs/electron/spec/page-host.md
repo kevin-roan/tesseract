@@ -167,3 +167,24 @@ through the same hooks. Running host devices count toward the sidebar's Processe
 `fixtures/host` provides the host proxy (tickets, terminals, `/v1/android`) and an iOS Simulator whose devices
 start shut down (`bootHostSimulator`, `shutdownHostSimulator` and `linkHostSimulator` change it;
 `resetHostFixtures` restores it). `fixtures/projects-emulator` provides the Android emulator.
+
+## 9. Preferences → Android on a remote machine
+
+While the active machine's sandbox runs on another computer (`masterHost.state()` is `linked` or `unlinked`),
+Preferences → Android shows that host's toolchain instead of the local SDK installer
+(`pages/preferences/android/remote/`). It goes through the same host access as the host pages: anything but
+`ready` shows the gate (§3). When ready it reads `GET /v1/android/toolchain` through `hostShell.request` (query key
+`["hostShell", "toolchain", <host url>]`) and shows:
+
+- A notice "Android settings of {host name}" explaining that the host's terminals and Claude Code get
+  `ANDROID_HOME`, `JAVA_HOME` and `PATH` from these settings, with **Refresh**.
+- **Android SDK** and **Java (JDK)** radio groups: `Automatic` (subtitle: where the effective folder came from and
+  its path), one row per candidate (`label`, `path · Has platform-tools` / `No platform-tools (adb) yet`), and
+  `Another folder` with a monospace `Folder` entry. **Save** is enabled only for a real change and sends
+  `PUT /v1/android/toolchain` with just that field (null for Automatic); toast `{group} saved on the host`.
+  The SDK group also lists the daemon's `adb` and `Emulator` paths (`Not found`).
+- A warning notice above a group when nothing usable is in effect, with install hints for that host.
+
+Installing SDK packages or creating AVDs on a remote host is not offered; that stays in the Tesseract app on that
+computer.
+

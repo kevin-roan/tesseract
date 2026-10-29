@@ -4,6 +4,7 @@ import {
   CheckSquareIcon,
   FolderIcon,
   FoldersIcon,
+  KanbanIcon,
   SparkleIcon,
   TrayIcon,
   type Icon,
@@ -24,13 +25,14 @@ export const DRAWER_ROUTES = {
   profile: "/profile",
 } as const;
 
-export type DrawerNavId = "chats" | "projects" | "agents" | "tasks" | "analytics" | "files" | "inbox";
+export type DrawerNavId = "chats" | "projects" | "issues" | "agents" | "tasks" | "analytics" | "files" | "inbox";
 
 export type DrawerNavItem = { id: DrawerNavId; label: string; icon: Icon };
 
 export const DRAWER_NAV: readonly DrawerNavItem[] = [
   { id: "chats", label: "Chats", icon: ChatsCircleIcon },
   { id: "projects", label: "Projects", icon: FoldersIcon },
+  { id: "issues", label: "Issues", icon: KanbanIcon },
   { id: "agents", label: "Agents", icon: SparkleIcon },
   { id: "tasks", label: "Tasks", icon: CheckSquareIcon },
   { id: "analytics", label: "Analytics", icon: ChartBarIcon },

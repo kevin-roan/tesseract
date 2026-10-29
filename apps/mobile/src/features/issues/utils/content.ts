@@ -126,6 +126,10 @@ export const ISSUES_COPY = {
   expand: (label: string) => `Expand ${label}`,
   running: "Claude is working",
   rowHint: "Long press to change the status",
+  allProjects: "All projects",
+  emptyAllMessage: "Write down what needs doing in any project. Assign it to Claude and it starts working right away.",
+  noProjectsTitle: "No projects yet",
+  noProjectsMessage: "Create a project first, then plan its work here.",
 } as const;
 
 export const ISSUE_FORM_COPY = {
@@ -143,6 +147,8 @@ export const ISSUE_FORM_COPY = {
   claudeOff: "Claude works on the issue in this project and reports back in the activity.",
   create: "Create issue",
   titleRequired: "Give the issue a title.",
+  project: "Project",
+  projectRequired: "Pick a project for the issue.",
 } as const;
 
 export const ISSUE_DETAIL_COPY = {

@@ -30,12 +30,16 @@ export type HostState = {
   iosApprovedBundles: string[];
   /** Only the iOS screen stream settings changed from `DEFAULT_IOS_STREAM`. */
   iosStream: UpdateIosStream;
+  /** Android SDK and JDK folders chosen in the desktop app's settings; absent fields are detected. */
+  toolchain: ToolchainSettings;
 };
+
+export type ToolchainSettings = { androidSdkRoot?: string; javaHome?: string };
 
 const DIR_MODE = 0o700;
 const FILE_MODE = 0o600;
 
-const EMPTY: HostState = { token: null, pinHash: null, pinSetAt: null, failures: 0, lockedUntil: null, lockouts: 0, androidLink: null, androidStream: {}, iosLink: null, iosApprovedBundles: [], iosStream: {} };
+const EMPTY: HostState = { token: null, pinHash: null, pinSetAt: null, failures: 0, lockedUntil: null, lockouts: 0, androidLink: null, androidStream: {}, iosLink: null, iosApprovedBundles: [], iosStream: {}, toolchain: {} };
 
 const text = (value: unknown) => (typeof value === "string" && value ? value : null);
 function androidLink(value: unknown): AndroidLinkConfig | null {
@@ -53,6 +57,16 @@ function streamFields<T>(schema: typeof UpdateAndroidStreamSchema | typeof Updat
     if (parsed.success && key in parsed.data) kept[key] = field;
   }
   return kept as T;
+}
+function toolchain(value: unknown): ToolchainSettings {
+  if (typeof value !== "object" || value === null) return {};
+  const record = value as Record<string, unknown>;
+  const settings: ToolchainSettings = {};
+  const sdk = text(record.androidSdkRoot);
+  const java = text(record.javaHome);
+  if (sdk) settings.androidSdkRoot = sdk;
+  if (java) settings.javaHome = java;
+  return settings;
 }
 const androidStream = (value: unknown) => streamFields<UpdateAndroidStream>(UpdateAndroidStreamSchema, value);
 const iosStream = (value: unknown) => streamFields<UpdateIosStream>(UpdateIosStreamSchema, value);
@@ -87,6 +101,7 @@ export class HostStateStore {
       iosLink: androidLink(parsed.iosLink),
       iosApprovedBundles: hashes(parsed.iosApprovedBundles),
       iosStream: iosStream(parsed.iosStream),
+      toolchain: toolchain(parsed.toolchain),
     };
   }
 
@@ -146,6 +161,23 @@ export class HostStateStore {
   updateIosStream(change: UpdateIosStream): IosStreamSettings {
     const next = this.update((current) => ({ ...current, iosStream: { ...current.iosStream, ...change } }));
     return { ...DEFAULT_IOS_STREAM, ...next.iosStream };
+  }
+
+  toolchain(): ToolchainSettings {
+    return this.read().toolchain;
+  }
+
+  /** null clears a field (back to detection); undefined leaves it. */
+  updateToolchain(change: { androidSdkRoot?: string | null; javaHome?: string | null }): ToolchainSettings {
+    return this.update((current) => {
+      const next: ToolchainSettings = { ...current.toolchain };
+      for (const key of ["androidSdkRoot", "javaHome"] as const) {
+        const value = change[key];
+        if (value === null) delete next[key];
+        else if (value !== undefined) next[key] = value;
+      }
+      return { ...current, toolchain: next };
+    }).toolchain;
   }
 
   async setPin(pin: string, now: Date = new Date()): Promise<void> {

@@ -2,10 +2,9 @@ import { StyleSheet } from "react-native";
 
 import { BorderWidth, ControlHeight, DotSize, Shadows, type Theme } from "@/theme";
 
-/** Height of the pill and the diameter of the round accessory beside it. */
-export const TAB_BAR_HEIGHT = ControlHeight.lg;
-
 export default function createStyles(theme: Theme, bottom: number) {
+  /** Height of the pill and the diameter of the round accessory beside it. */
+  const barHeight = ControlHeight.xl + theme.spacing.sm;
   const graphite = theme.look === "graphite";
   const lift = graphite ? Shadows.none : Shadows.float;
   const rim = {
@@ -46,7 +45,7 @@ export default function createStyles(theme: Theme, bottom: number) {
     },
     glass: {
       ...rim,
-      height: TAB_BAR_HEIGHT,
+      height: barHeight,
       justifyContent: "center",
     },
     bar: {
@@ -69,13 +68,17 @@ export default function createStyles(theme: Theme, bottom: number) {
       flex: 1,
       alignItems: "center",
       justifyContent: "center",
-      height: TAB_BAR_HEIGHT - theme.spacing.xs * 2,
+      gap: theme.spacing.xxs,
+      height: barHeight - theme.spacing.xs * 2,
       borderRadius: theme.radius.full,
       borderCurve: "continuous",
     },
+    label: {
+      maxWidth: "100%",
+    },
     accessoryFloat: {
-      width: TAB_BAR_HEIGHT,
-      height: TAB_BAR_HEIGHT,
+      width: barHeight,
+      height: barHeight,
       borderRadius: theme.radius.full,
       ...lift,
     },

@@ -39,8 +39,8 @@ export type FloatingTabBarProps = {
 };
 
 /**
- * Tab navigator with a compact, icon-only glass pill docked above the home
- * indicator, plus an optional round accessory beside it (Linear style).
+ * Tab navigator with a labelled glass pill docked above the home indicator,
+ * plus an optional round accessory beside it (Linear style).
  * Screens scroll underneath it; `useTabBarInset` tells them how much room to leave.
  */
 const FloatingTabBar = ({ tabs, accessory }: FloatingTabBarProps) => {
@@ -106,7 +106,7 @@ const AccessoryButton = ({
           }}
           style={styles.accessoryButton}
         >
-          <AccessoryIcon color={theme.colors.text} size={IconSize.md} />
+          <AccessoryIcon color={theme.colors.text} size={IconSize.lg} />
           {badge ? <View style={styles.badge} pointerEvents="none" /> : null}
         </PressableScale>
       </Glass>

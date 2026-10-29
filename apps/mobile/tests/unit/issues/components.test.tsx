@@ -14,6 +14,9 @@ jest.mock("expo-router", () => ({ useIsFocused: () => true }));
 const formState = (overrides: Partial<IssueFormState> = {}): IssueFormState => ({
   visible: true,
   close: jest.fn(),
+  projects: [],
+  project: "tesseract",
+  setProject: jest.fn(),
   title: "",
   setTitle: jest.fn(),
   description: "",
