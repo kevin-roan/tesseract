@@ -45,14 +45,14 @@ export function planEmulator(status: HostAndroidStatus, sandboxUrl: string): Emu
   if (!status.available || status.emulator.state === "unavailable") {
     return { ...PLAN, blocked: status.reason || EMULATOR_LABELS.hostUnavailable };
   }
-  if (status.isolation === "none") return { ...PLAN, blocked: EMULATOR_LABELS.isolationOff };
   const { emulator, link } = status;
   if (emulator.state === "stopping") return { ...PLAN, blocked: EMULATOR_LABELS.stopping };
   const linked = isLinkedTo(link, sandboxUrl);
   const relink = !(linked && link.connected);
   const replaces = link.configured && link.connected && !linked ? link.sandboxUrl : null;
   const active = emulator.state === "starting" || emulator.state === "running";
-  if (active && emulator.isolated) return { ...PLAN, link: relink, replaces };
+  // Without isolation (a Mac host: TESSERACT_EMULATOR_ISOLATION=none) any running emulator is the one to link.
+  if (active && usable(status)) return { ...PLAN, link: relink, replaces };
   const avd = pickAvd(status);
   if (avd === null) return { ...PLAN, blocked: EMULATOR_LABELS.noAvd };
   return { ...PLAN, stop: active, avd, link: relink, replaces };
@@ -60,7 +60,12 @@ export function planEmulator(status: HostAndroidStatus, sandboxUrl: string): Emu
 
 export function emulatorReady(status: HostAndroidStatus, sandboxUrl: string): boolean {
   const { emulator, link } = status;
-  return emulator.state === "running" && emulator.isolated && isLinkedTo(link, sandboxUrl) && link.connected;
+  return emulator.state === "running" && usable(status) && isLinkedTo(link, sandboxUrl) && link.connected;
+}
+
+/** The emulator may be linked to the sandbox: isolated, or the host does not isolate at all. */
+function usable(status: HostAndroidStatus): boolean {
+  return status.emulator.isolated || status.isolation === "none";
 }
 
 export type ConfirmStep = { kind: "restart"; avd: string } | { kind: "relink"; url: string };

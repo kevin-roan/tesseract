@@ -7,6 +7,8 @@ import {
   type AgentRunBatchResult,
   type AgentRunDetail,
   type AgentRunEvent,
+  type AgentShell,
+  type AgentShellLog,
   type ArchiveAgentRuns,
   type DeleteAgentRuns,
   type StartAgentRun,
@@ -26,14 +28,18 @@ import type { Repositories } from "../db/repositories";
 import type { Config } from "../config";
 import { claudeAccountEnv, type ClaudeAccountResolver } from "./claude-accounts";
 import { confidentialPrompt, type ConfidentialProjects } from "./confidential";
+import { discoverShells, readShellLog } from "./agent-shells";
 import { AgentStreamParser, toEvent, type AgentEventBody, type AgentStreamResult } from "./agent-stream";
 import type { UploadService } from "./uploads";
 
 export type AgentEventListener = (event: AgentRunEvent) => void;
 
+type TrackedShell = AgentShell & { logPath: string };
+
 type LiveRun = {
   run: AgentRun;
   events: AgentRunEvent[];
+  shells: Map<string, TrackedShell>;
   proc: Bun.Subprocess<"pipe", "pipe", "pipe">;
   listeners: Set<AgentEventListener>;
   stderr: RingBuffer<string>;
@@ -45,6 +51,7 @@ type LiveRun = {
 const MAX_NDJSON_LINE_CHARS = 32 * 1024 * 1024;
 const STDERR_LINES = 20;
 const READER_GRACE_MS = 1_000;
+const MAX_TRACKED_SHELLS = 32;
 
 export type ClaudeArgsOptions = {
   resumeSessionId?: string;
@@ -165,6 +172,7 @@ export class AgentRunService {
     const entry: LiveRun = {
       run,
       events: [],
+      shells: new Map(),
       proc,
       listeners: new Set(),
       stderr: new RingBuffer<string>(STDERR_LINES),
@@ -277,6 +285,27 @@ export class AgentRunService {
     if (!entry) return { run, unsubscribe: () => {} };
     entry.listeners.add(onEvent);
     return { run, unsubscribe: () => entry.listeners.delete(onEvent) };
+  }
+
+  /** Shells Claude has started in a live run, including ones that ended since first seen; empty once the run is over. */
+  shells(id: string): AgentShell[] {
+    const entry = this.live.get(id);
+    if (!entry) return [];
+    const found = discoverShells(entry.proc.pid);
+    const runningIds = new Set(found.map((shell) => shell.id));
+    for (const shell of entry.shells.values()) shell.running = runningIds.has(shell.id);
+    for (const { id: shellId, command, logPath } of found) entry.shells.set(shellId, { id: shellId, command, logPath, running: true });
+    for (const shell of entry.shells.values()) {
+      if (entry.shells.size <= MAX_TRACKED_SHELLS) break;
+      if (!shell.running) entry.shells.delete(shell.id);
+    }
+    return [...entry.shells.values()].map(({ logPath: _logPath, ...shell }) => shell);
+  }
+
+  async shellLog(id: string, shellId: string): Promise<AgentShellLog> {
+    const shell = this.live.get(id)?.shells.get(shellId);
+    if (!shell) throw notFound(`Shell ${shellId} not found in agent run ${id}`);
+    return readShellLog(shell.logPath);
   }
 
   /** SIGTERM to the run's process group (SIGKILL after the grace period); `SIGKILL` kills it at once, also mid-cancel. */

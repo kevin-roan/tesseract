@@ -18,7 +18,9 @@ export const EXEC_USER = "dev";
 export const COMPONENTS: readonly SandboxComponent[] = ["android", "flutter", "mono", "whisper"];
 export const WHISPER_MODELS: readonly WhisperModel[] = ["base", "small", "medium", "large-v3-turbo"];
 export const DEFAULT_WHISPER_MODELS: readonly WhisperModel[] = ["base", "small"];
-export const MODES: readonly ReachabilityMode[] = ["local", "tailscale", "host-tailscale"];
+export const MODES: readonly ReachabilityMode[] = ["local", "tailscale", "host-tailscale", "tesseract-net"];
+/** Modes whose tailscale sidecar keeps its node state in the `<prefix>-tailscale` volume and needs TS_AUTHKEY once. */
+export const SIDECAR_MODES: readonly ReachabilityMode[] = ["tailscale", "tesseract-net"];
 
 export const DEFAULT_CPUS = 4;
 export const DEFAULT_MEMORY_GB = 8;
@@ -51,6 +53,7 @@ export const COMPOSE_FILES = {
   base: "compose.yml",
   local: "compose.local.yml",
   tailscale: "compose.tailscale.yml",
+  tesseractNet: "compose.tesseract-net.yml",
   dind: "compose.dind.yml",
   tailscaleApiSidecar: "compose.tailscale-api-sidecar.yml",
   tailscaleApi: "compose.tailscale-api.yml",

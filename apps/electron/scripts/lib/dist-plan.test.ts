@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseArgs } from "./args.ts";
-import { builderArgs, DIST_VALUE_FLAGS, distPlan, missingCliMessage, requiredCliFiles } from "./dist-plan.ts";
+import { builderArgs, DIST_VALUE_FLAGS, distPlan, missingCliMessage, requiredCliFiles, requiredTailnetFiles, tailnetGoTargets } from "./dist-plan.ts";
 
 function plan(argv: string[], env: Record<string, string | undefined> = {}, host: "linux" | "mac" | "win" = "linux", keychainIdentity = false) {
   return distPlan(parseArgs(argv, DIST_VALUE_FLAGS), env, host, keychainIdentity);
@@ -17,6 +17,7 @@ describe("distPlan", () => {
       build: true,
       cli: true,
       sandbox: true,
+      tailnet: true,
       smoke: false,
       adHocSign: true,
     });
@@ -79,6 +80,20 @@ describe("requiredCliFiles", () => {
     expect(requiredCliFiles("mac")).toContain("dist-cli/mac-arm64/tesseract-simcap");
     expect(requiredCliFiles("mac")).toContain("dist-cli/mac-x64/tesseract-simcap");
     expect(requiredCliFiles("linux")).toEqual(["dist-cli/linux-x64/tesseract", "dist-cli/linux-x64/tesseract-controller"]);
+  });
+});
+
+describe("tesseract-tailnet", () => {
+  it("builds one Go target per CLI target and expects it in resources/bin", () => {
+    expect(tailnetGoTargets("linux")).toEqual(["linux/amd64"]);
+    expect(tailnetGoTargets("mac")).toEqual(["darwin/amd64", "darwin/arm64"]);
+    expect(tailnetGoTargets("win")).toEqual(["windows/amd64"]);
+    expect(requiredTailnetFiles("mac")).toEqual(["resources/bin/mac-x64/tesseract-tailnet", "resources/bin/mac-arm64/tesseract-tailnet"]);
+    expect(requiredTailnetFiles("win")).toEqual(["resources/bin/win-x64/tesseract-tailnet.exe"]);
+  });
+
+  it("can be skipped", () => {
+    expect(plan(["--skip-tailnet"]).tailnet).toBe(false);
   });
 });
 

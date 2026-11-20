@@ -40,3 +40,27 @@ tesseract-controller deploy <name> --create --dir <path> [--port <n>]   # new co
 - The user may have to approve it in the desktop app. The command waits and prints the URLs.
 - Never use Docker against the host or try to reach server containers directly. Deploy is the
   only path. `/deploy` is the user's shortcut: follow the `deploy` skill.
+
+## Running apps on the simulator, emulator or phone
+
+The user's host machine may have an iOS Simulator and an Android emulator linked to this
+sandbox, and the Tesseract app shows their screens. When the user asks you to run, open or test
+the app (on iOS, Android, "the simulator", "the emulator", "my phone"), start an app run.
+Do not build natively, open tunnels or ask for Expo/EAS accounts:
+
+```bash
+tesseract-controller run targets            # in the project folder: what can run now, and why not
+tesseract-controller run expo-ios           # Expo app in Expo Go on the host iOS Simulator
+tesseract-controller run expo-android       # Expo app on the host Android emulator (starts it if needed)
+tesseract-controller run expo-device        # Expo Go on the user's phone (prints the link)
+tesseract-controller run list               # runs of this project; run stop <app_…> ends one
+```
+
+- It waits until the app is up and prints where it shows. Tell the user it is open there.
+- Android runs start the host emulator themselves when it is off (booting takes a minute or two).
+- Also: `rn-android`, `flutter-android`, `web-dev`, `expo-web`, `flutter-web`, `electron-dev`.
+- A target can be unavailable or fail. Pass its reason on to the user and offer the targets that are ready.
+- `npm run android` in a shell also reaches the host emulator, but only with
+  `REACT_NATIVE_PACKAGER_HOSTNAME=127.0.0.1` (the emulator cannot reach the sandbox's IP); prefer `run`.
+- This sandbox is Linux. `npm run ios` / `expo start --ios`, `xcodebuild` and `pod install` cannot
+  work here; the host simulator is reached only through `run expo-ios`.

@@ -9,6 +9,8 @@ export interface SidebarContainersLabels {
   loading: string;
   unavailable: string;
   setUp: string;
+  locked: string;
+  unlock: string;
   empty: string;
   create: string;
 }
@@ -24,13 +26,15 @@ export interface SidebarContainersProps {
   onStop?: (name: string) => void;
   onCreate?: () => void;
   onSetUp?: () => void;
+  onUnlock?: () => void;
 }
 
-export function SidebarContainers({ state, items, labels, selected = null, onOpen, onOpenRequest, onStart, onStop, onCreate, onSetUp }: SidebarContainersProps) {
+export function SidebarContainers({ state, items, labels, selected = null, onOpen, onOpenRequest, onStart, onStop, onCreate, onSetUp, onUnlock }: SidebarContainersProps) {
   return (
     <Crossfade id={state} speed="fast">
       {state === "loading" ? <SidebarStatus loading message={labels.loading} /> : null}
       {state === "unavailable" ? <SidebarStatus message={labels.unavailable} actionLabel={labels.setUp} onAction={onSetUp} /> : null}
+      {state === "locked" ? <SidebarStatus message={labels.locked} actionLabel={labels.unlock} onAction={onUnlock} /> : null}
       {state === "empty" ? <SidebarStatus message={labels.empty} actionLabel={labels.create} onAction={onCreate} /> : null}
       {state === "ready" ? (
         <AnimatedList gap={1} className={styles.projectList}>

@@ -34,6 +34,7 @@
     "@tesseract/protocol": "workspace:*",
     "axios": "^1.20.0",
     "expo": "^56",
+    "expo-apple-authentication": "~56.0.4",
     "expo-audio": "~56.0.13",
     "expo-blur": "~56.0.4",
     "expo-calendar": "~56.0.10",

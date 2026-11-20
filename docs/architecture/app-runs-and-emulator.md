@@ -51,7 +51,7 @@ flowchart LR
 | `web-dev` | framework `vite`, `next` or `node` with a `dev` (preferred) or `start` script | `<pm> run dev\|start` + vite: `-- --host 0.0.0.0 --port $P --strictPort`, next: `-- -H 0.0.0.0 -p $P`, else env `PORT=$P HOST=0.0.0.0` | `url` |
 | `expo-device` | framework `expo` | `npx expo start --port $P` (`--dev-client` when `expo-dev-client` is a dependency, else `--go`) with `CI=1`, `EXPO_NO_TELEMETRY=1`, `REACT_NATIVE_PACKAGER_HOSTNAME=<phone host>` | `deeplink` |
 | `expo-web` | framework `expo` and `react-native-web` is a dependency | `npx expo start --web --port $P`, `CI=1` | `url` |
-| `expo-android` | framework `expo` | `npx expo run:android --port $P --device $ANDROID_SERIAL` | `android` |
+| `expo-android` | framework `expo` | Expo Go when the project has no `expo-dev-client` and no `android/`: `npx expo start --go --android --port $P` with `REACT_NATIVE_PACKAGER_HOSTNAME=127.0.0.1` (ready at `Android Bundled`); else `npx expo run:android --port $P --device $ANDROID_SERIAL` (ready at `BUILD SUCCESSFUL` + Metro) | `android` |
 | `expo-ios` | framework `expo` | `npx expo start --go --port $P` with `CI=1`, `EXPO_NO_TELEMETRY=1`, `REACT_NATIVE_PACKAGER_HOSTNAME=127.0.0.1`; opened in Expo Go on the Simulator of the linked Mac host daemon through the iOS link ([ios-simulator-macos.md](ios-simulator-macos.md) §3) | `ios` |
 | `rn-android` | framework `react-native` with `android/gradlew` | `npx react-native start --port $P` + `npx react-native run-android --port $P --deviceId $ANDROID_SERIAL` (two processes; the run ends with Metro) | `android` |
 | `flutter-web` | framework `flutter` | `flutter run --machine -d web-server --web-hostname 0.0.0.0 --web-port $P` | `url` |
@@ -313,9 +313,24 @@ Messages (text JSON, zod-validated, discriminated on `type`):
 
 - host → sandbox: `{type:"hello", hostId, version}`, `{type:"emulator", emulator: EmulatorInfo}`
   (on connect and on every change), `{type:"devices", devices: SharedEmulator[]}` (on connect and on
-  every change; `[]` unless sharing is on), `{type:"refuse", streamId, message}`, `{type:"pong"}`.
+  every change; `[]` unless sharing is on), `{type:"refuse", streamId, message}`, `{type:"pong"}`,
+  `{type:"started", requestId, ok, error}` (answer to `start`).
 - sandbox → host: `{type:"open", streamId, device?}` (`device`: a shared emulator's host serial),
-  `{type:"ping"}` (every 20 s).
+  `{type:"ping"}` (every 20 s), `{type:"start", requestId}`.
+
+**Starting the emulator from the sandbox.** A `*-android` run while the linked host emulator is `stopped`/`failed`
+(no shared emulator) is not refused: the run is answered `starting` with no process, the controller sends `start`,
+and the host starts the last used AVD (else the first of `emulator -list-avds`) unless one already runs, then answers
+`started` (`ok: false` with the reason, e.g. no AVD). The controller then waits (up to `LIMITS.emulatorBootTimeoutMs`)
+for `emulator.state: "running"` and the tunnel serial in `adb devices`, and only then plans and spawns the run. A
+refused start, a `failed` emulator, a closed link or the timeout fail the run with that error. So an agent's
+`tesseract-controller run expo-android` works without the user starting the emulator.
+
+**Unisolated emulators.** `TESSERACT_EMULATOR_ALLOW_UNISOLATED` (sandbox, default on) lets `*-android` runs use a
+running emulator with `isolated: false` (always so on macOS, `TESSERACT_EMULATOR_ISOLATION=none`). Set it to `0` to
+restore the refusal (`The host emulator is not isolated; start it from the app`). A host that isolates (`netns`) still
+refuses to link an emulator started outside its namespace (`linkRefusal`). The desktop app's emulator planner and the
+phone's Link button likewise accept a non-isolated emulator when the host reports `isolation: "none"`.
 
 A newer link replaces an older one (old closed with 4000 `replaced`). While linked and the
 emulator is `running`, the controller listens on `127.0.0.1:$TESSERACT_ADB_TUNNEL_PORT`

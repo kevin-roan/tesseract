@@ -23,7 +23,7 @@ export const SNAPSHOT_ARG = "--tesseract-snapshot=";
 export type Platform = "linux" | "darwin" | "win32";
 export type Appearance = "system" | "light" | "dark";
 export type Scheme = "graphite" | "graphiteLight";
-export type WindowKind = "main" | "onboarding" | "snapshot";
+export type WindowKind = "main" | "onboarding" | "snapshot" | "device";
 
 export interface RuntimeInfo {
   platform: Platform;

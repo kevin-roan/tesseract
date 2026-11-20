@@ -28,4 +28,11 @@ describe("settings", () => {
     expect(settingsFromConfig(data).hostShellIos).toBe(true);
     expect(settingsFromConfig({ host_shell_ios: "1" }).hostShellIos).toBe(false);
   });
+
+  it("stores the Tesseract Network mode of the host shell under host_tailnet", () => {
+    expect(settingsFromConfig({}).hostTailnet).toBe("auto");
+    expect(applySettingsPatch({}, { hostTailnet: "off" })).toEqual({ host_tailnet: "off" });
+    expect(settingsFromConfig({ host_tailnet: "on" }).hostTailnet).toBe("on");
+    expect(settingsFromConfig({ host_tailnet: "maybe" }).hostTailnet).toBe("auto");
+  });
 });

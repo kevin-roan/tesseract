@@ -59,7 +59,7 @@ export function AddRouteDialog({ open, container = null, onClose }: AddRouteDial
               <FormEntry inputMode="numeric" monospace {...form.fields.field("port")} />
             </FormField>
             <FormField label={L.scheme}>
-              <SegmentedControl options={schemes} value={form.scheme} onChange={form.setScheme} ariaLabel={L.scheme} />
+              <SegmentedControl options={schemes} value={form.scheme} onChange={form.setScheme} ariaLabel={L.scheme} className={styles.hug} />
             </FormField>
           </div>
         </FieldGroup>

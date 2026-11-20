@@ -9,6 +9,8 @@ import { CLI_SYNC_LABELS } from "./labels";
 export interface CliIo {
   stdout(line: string): void;
   stderr(line: string): void;
+  /** A line rewritten in place on a terminal (null clears it); absent when stderr is not a TTY. */
+  progress?(line: string | null): void;
 }
 
 export interface SyncConnection {

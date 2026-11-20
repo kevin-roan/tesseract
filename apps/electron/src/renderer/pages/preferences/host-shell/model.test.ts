@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import type { HostShellState } from "../../../../shared/contracts/hostShell";
 import { LOG_TAIL_LINES } from "./constants";
 import { HOST_SHELL_LABELS } from "./labels";
-import { logText, pinButtonLabel, pinSubtitle, serveChecked, serveLocked, serveSubtitle } from "./model";
+import { TAILNET_RUNNING, TAILNET_SIGNED_OUT } from "../../../fixtures/account/data";
+import { logText, pinButtonLabel, pinSubtitle, serveChecked, serveLocked, serveSubtitle, tailnetStatusText } from "./model";
 
 const pairing = { link: "tesseract://host?x", url: "https://host.ts.net:8443", name: "host", pinSet: true };
 
@@ -43,5 +44,19 @@ describe("host shell model", () => {
     expect(text).toHaveLength(LOG_TAIL_LINES);
     expect(text[0]).toBe("line 10");
     expect(text.at(-1)).toBe("line 49");
+  });
+});
+
+describe("host tailnet status", () => {
+  it("describes the node", () => {
+    expect(tailnetStatusText(TAILNET_RUNNING)).toBe("Connected · http://devbox-host.tesseract.internal:7701");
+    expect(tailnetStatusText(TAILNET_SIGNED_OUT)).toBe("Sign in under Settings › Account to use it");
+    expect(tailnetStatusText({ ...TAILNET_RUNNING, status: "missing", error: "no binary" })).toBe("Not bundled with this build · no binary");
+    expect(tailnetStatusText({ ...TAILNET_RUNNING, status: "off", enabled: false, tailscaleDetected: true })).toBe("Off · Tailscale is running on this computer");
+  });
+
+  it("shows the Tesseract Network URL as the serve address", () => {
+    const pairing = { link: "l", url: "http://127.0.0.1:7701", publicUrl: "http://pc-host.tesseract.internal:7701", name: "pc", pinSet: true };
+    expect(serveSubtitle({ status: "running", pairing, error: null })).toBe("Running · http://pc-host.tesseract.internal:7701");
   });
 });

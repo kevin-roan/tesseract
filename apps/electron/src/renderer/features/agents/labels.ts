@@ -24,6 +24,8 @@ export const LIST_LABELS = {
   searchToggle: "Search",
   filter: "Filter",
   clearFilter: "Clear filter",
+  projectFilter: "Filter by project",
+  allProjects: "All",
   new: "New conversation",
   loading: "Loading conversations…",
   emptyTitle: "No conversations yet",
@@ -129,6 +131,10 @@ export const CONVERSATION_LABELS = {
   cancel: "Stop",
   cancelTooltip: "Stop this run",
   openTerminal: "Open terminal",
+  switchToCli: "Switch to Claude CLI",
+  switchToCliFork: "Continue a copy of this session in the Claude CLI; the running agent keeps its own",
+  switchToCliResume: "Continue this conversation in the Claude CLI",
+  switchToCliFailed: "Couldn't open the Claude CLI: {error}",
   download: "Download",
   reload: "Reload",
   loading: "Loading conversation…",
@@ -160,6 +166,7 @@ export const CONVERSATION_LABELS = {
 
 export const TIME_LABELS = {
   justNow: "just now",
+  now: "now",
   minutesAgo: "{n}m ago",
   hoursAgo: "{n}h ago",
   daysAgo: "{n}d ago",
@@ -173,6 +180,19 @@ export const TOKEN_LABELS = {
 export function formatLabel(template: string, values: Record<string, string | number>): string {
   return template.replace(/\{(\w+)\}/g, (match, key: string) => (key in values ? String(values[key]) : match));
 }
+
+export const AGENT_SHELLS_LABELS = {
+  title: "Shells",
+  summary: (count: number) => (count === 1 ? "1 shell running" : `${count} shells running`),
+  show: "Show running shells",
+  hide: "Hide running shells",
+  viewLog: "View log",
+  hideLog: "Hide log",
+  logEmpty: "No output yet",
+  logTruncated: "Showing the end of the output",
+  running: "Running",
+  ended: "Ended",
+} as const;
 
 export const RUNNING_WORK_LABELS = {
   title: "Running",

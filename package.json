@@ -17,7 +17,7 @@
     "electron:smoke": "bun run --cwd apps/electron smoke",
     "electron:release": "bun run --cwd apps/electron release",
     "typecheck": "bun run --filter '*' typecheck",
-    "test": "bun run --filter '*' test",
+    "test": "bun run --workspaces --sequential --no-exit-on-error test",
     "lint": "bun run --filter '*' lint",
     "sandbox": "infra/scripts/sandbox",
     "deploy:mac": "infra/scripts/deploy-mac",

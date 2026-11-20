@@ -88,6 +88,19 @@ export const CONFIRM_LABELS = {
   confirm: "Terminate & Delete",
 } as const;
 
+export const PANEL_LABELS = {
+  region: "Project terminals",
+  tabs: "Terminal sessions",
+  resize: "Resize terminal panel",
+  newShell: "New shell",
+  closeTab: (label: string) => `Close ${label}`,
+  dockRight: "Move panel to the right",
+  dockBottom: "Move panel to the bottom",
+  hide: "Hide panel",
+  emptyTitle: "No terminals in this project",
+  emptyMessage: "Start a shell or a Claude Code session in this project.",
+} as const;
+
 export const PLACEHOLDER_LABELS = {
   title: "No session selected",
   message: "Start a shell or a Claude Code session in the sandbox, or pick one from the list.",

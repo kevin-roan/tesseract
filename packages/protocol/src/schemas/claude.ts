@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CLAUDE_ACCOUNT_ID_PATTERN, CLAUDE_AUTH_METHODS, CLAUDE_COMMAND_NAME_PATTERN, LIMITS } from "../constants";
+import { CLAUDE_ACCOUNT_ID_PATTERN, CLAUDE_ACCOUNT_KINDS, CLAUDE_AUTH_METHODS, CLAUDE_COMMAND_NAME_PATTERN, CLAUDE_OAUTH_TOKEN_PATTERN, LIMITS } from "../constants";
 
 export const ClaudeAuthMethodSchema = z.enum(CLAUDE_AUTH_METHODS);
 export type ClaudeAuthMethod = z.infer<typeof ClaudeAuthMethodSchema>;
@@ -78,10 +78,18 @@ export type ClaudeImportResult = z.infer<typeof ClaudeImportResultSchema>;
 export const ClaudeAccountIdSchema = z.string().regex(CLAUDE_ACCOUNT_ID_PATTERN, "Invalid Claude account id");
 export type ClaudeAccountId = z.infer<typeof ClaudeAccountIdSchema>;
 
-/** One Claude Code config dir linked from the host (`~/.claude` or `~/.claude-<name>`). Never contains a secret. */
+export const ClaudeAccountKindSchema = z.enum(CLAUDE_ACCOUNT_KINDS);
+export type ClaudeAccountKind = z.infer<typeof ClaudeAccountKindSchema>;
+
+/**
+ * One Claude Code config dir linked from the host (`~/.claude` or `~/.claude-<name>`), or the long-lived token
+ * account (`claude-token`, kind `token`, which uses the primary's dir). Never contains a secret.
+ */
 export const ClaudeAccountProfileSchema = z.object({
-  /** `claude` for the host's `~/.claude`, `claude-<name>` for `~/.claude-<name>` (the host alias name). */
+  /** `claude` for the host's `~/.claude`, `claude-<name>` for `~/.claude-<name>` (the host alias name), `claude-token` for the token. */
   id: ClaudeAccountIdSchema,
+  /** Absent from controllers older than the token account. */
+  kind: ClaudeAccountKindSchema.default("config_dir"),
   primary: z.boolean(),
   /** The config dir is mounted in the sandbox. */
   present: z.boolean(),
@@ -104,6 +112,12 @@ export type ClaudeAccountList = z.infer<typeof ClaudeAccountListSchema>;
 /** `PUT /v1/claude/accounts/default`. */
 export const SetDefaultClaudeAccountSchema = z.object({ accountId: ClaudeAccountIdSchema });
 export type SetDefaultClaudeAccount = z.infer<typeof SetDefaultClaudeAccountSchema>;
+
+/** `PUT /v1/claude/token`: the long-lived token (`claude setup-token`) the `claude-token` account signs in with. */
+export const SetClaudeTokenSchema = z.object({
+  token: z.string().trim().regex(CLAUDE_OAUTH_TOKEN_PATTERN, "The token must be printable ASCII without spaces (from `claude setup-token`)"),
+});
+export type SetClaudeToken = z.infer<typeof SetClaudeTokenSchema>;
 
 /** `PUT /v1/projects/:id/claude-account`: null follows the default account. */
 export const SetProjectClaudeAccountSchema = z.object({ accountId: ClaudeAccountIdSchema.nullable() });

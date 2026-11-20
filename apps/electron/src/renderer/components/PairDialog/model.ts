@@ -139,7 +139,7 @@ export function hostPanel(state: HostPairingState | null, actions: PairActions):
   const down = state.status === "stopped" || state.status === "failed";
   return panel(
     pairing?.link ?? null,
-    pairing ? fill(PAIR_LABELS.hostCaption, { name: pairing.name, url: pairing.url }) : "",
+    pairing ? fill(PAIR_LABELS.hostCaption, { name: pairing.name, url: pairing.publicUrl ?? pairing.url }) : "",
     notices,
     down ? HOST_STEPS : NO_STEPS,
   );

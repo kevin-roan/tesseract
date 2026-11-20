@@ -1,3 +1,4 @@
+import type { AccountContract } from "./contracts/account";
 import type { AndroidContract } from "./contracts/android";
 import type { AppContract } from "./contracts/app";
 import type { AttachmentsContract } from "./contracts/attachments";
@@ -14,6 +15,7 @@ import type { OnboardingContract } from "./contracts/onboarding";
 import type { SandboxContract } from "./contracts/sandbox";
 import type { SttContract } from "./contracts/stt";
 import type { SyncBackContract } from "./contracts/syncback";
+import type { TailnetContract } from "./contracts/tailnet";
 import type { TrayContract } from "./contracts/tray";
 import type { UpdatesContract } from "./contracts/updates";
 import type { WindowContract } from "./contracts/window";
@@ -40,6 +42,8 @@ export type IpcContract = {
   claude: ClaudeContract;
   stt: SttContract;
   metrics: MetricsContract;
+  account: AccountContract;
+  tailnet: TailnetContract;
 };
 
 export const SERVICE_NAMES = [
@@ -62,6 +66,8 @@ export const SERVICE_NAMES = [
   "claude",
   "stt",
   "metrics",
+  "account",
+  "tailnet",
 ] as const satisfies readonly (keyof IpcContract)[];
 
 export type ServiceName = (typeof SERVICE_NAMES)[number];

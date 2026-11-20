@@ -13,6 +13,16 @@ describe("SegmentedControl", () => {
     expect(onChange).toHaveBeenCalledWith("desktop");
   });
 
+  it("keeps selection working when scrollable and maps vertical wheel to horizontal", () => {
+    const onChange = vi.fn();
+    render(<SegmentedControl scrollable options={DEVICE_SEGMENTS} value="phone" onChange={onChange} ariaLabel="Device" />);
+    const track = screen.getByRole("radiogroup", { name: "Device" });
+    fireEvent.wheel(track, { deltaY: 40 });
+    expect(track.scrollLeft).toBe(40);
+    fireEvent.click(screen.getByRole("radio", { name: "Desktop" }));
+    expect(onChange).toHaveBeenCalledWith("desktop");
+  });
+
   it("moves the selection with arrow keys", () => {
     const onChange = vi.fn();
     render(<SegmentedControl options={DEVICE_SEGMENTS} value="desktop" onChange={onChange} ariaLabel="Device" />);

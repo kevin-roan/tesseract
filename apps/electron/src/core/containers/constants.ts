@@ -87,3 +87,11 @@ export const SHELL = {
   maxCols: 1000,
   maxRows: 500,
 } as const;
+
+/** `docker` on the active Tesseract server's host (`POST /v1/host/docker`). */
+export const REMOTE = {
+  defaultTimeoutMs: 120_000,
+  streamTimeoutMs: 30 * 60_000,
+  graceMs: 30_000,
+  tarTimeoutMs: 120_000,
+} as const;

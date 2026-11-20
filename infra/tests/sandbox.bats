@@ -50,7 +50,7 @@ last_env() {
   for args in help -h --help ""; do
     run env PATH="$(minimal_path)" "${SANDBOX}" ${args}
     assert_success
-    assert_output --partial "Usage: sandbox [--mode tailscale|host-tailscale|local]"
+    assert_output --partial "Usage: sandbox [--mode tailscale|tesseract-net|host-tailscale|local]"
   done
   assert_equal "$(calls)" ""
 }
@@ -112,7 +112,7 @@ last_env() {
 @test "an unknown mode fails" {
   run "${SANDBOX}" --mode lan ps
   assert_failure 1
-  assert_output "sandbox: unknown mode 'lan' (tailscale, host-tailscale or local)"
+  assert_output "sandbox: unknown mode 'lan' (tailscale, tesseract-net, host-tailscale or local)"
   assert_equal "$(calls)" ""
 }
 
@@ -466,6 +466,56 @@ $(compose_prefix tesseract tailscale) up --detach"
   assert_success
   assert_equal "$(calls_of docker)" "$(compose_prefix tesseract tailscale dind) up --detach --build"
   assert_output --partial "controller: https://box.tail1234.ts.net  VNC: box:5901"
+}
+
+@test "tesseract-net mode uses compose.tesseract-net.yml, the sidecar LocalAPI overlay and dind" {
+  run "${SANDBOX}" --mode tesseract-net ps
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix tesseract tesseract-net) ps"
+  : > "${STUB_LOG}"
+  write_env TESSERACT_MODE=tesseract-net TESSERACT_TAILSCALE_LOCALAPI=1 TESSERACT_DIND=1
+  run "${SANDBOX}" logs
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix tesseract tesseract-net dind tailscale-api-sidecar) logs --tail=200"
+}
+
+@test "tesseract-net up requires TESSERACT_LOGIN_SERVER" {
+  TS_AUTHKEY=tskey run "${SANDBOX}" --mode tesseract-net up
+  assert_failure 1
+  assert_output --partial "TESSERACT_LOGIN_SERVER is required in tesseract-net mode"
+  assert_equal "$(calls)" ""
+}
+
+@test "tesseract-net up requires TS_AUTHKEY while the state volume does not exist" {
+  write_env TESSERACT_MODE=tesseract-net TESSERACT_LOGIN_SERVER=https://net.example TESSERACT_VOLUME_PREFIX=pfx
+  run "${SANDBOX}" up
+  assert_failure 1
+  assert_output --partial "TS_AUTHKEY is required for the first start in tesseract-net mode"
+  assert_equal "$(calls_of docker)" "volume inspect pfx-tailscale"
+}
+
+@test "tesseract-net up without TS_AUTHKEY works once the state volume exists, and prints the http URL" {
+  write_env TESSERACT_MODE=tesseract-net TESSERACT_LOGIN_SERVER=https://net.example
+  STUB_VOLUME_EXISTS=1 run "${SANDBOX}" up
+  assert_success
+  assert_equal "$(calls_of docker)" "volume inspect tesseract-tailscale
+$(compose_prefix tesseract tesseract-net) up --detach"
+  assert_output --partial "controller: http://tesseract-sandbox.tesseract.internal:7700"
+  : > "${STUB_LOG}"
+  write_env TESSERACT_MODE=tesseract-net TESSERACT_LOGIN_SERVER=https://net.example TS_AUTHKEY=k \
+    TESSERACT_HOSTNAME=box TESSERACT_NET_DOMAIN=net.test
+  run "${SANDBOX}" up
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix tesseract tesseract-net) up --detach"
+  assert_output --partial "controller: http://box.net.test:7700"
+}
+
+@test "tesseract-net --tailscale-api up needs no host socket" {
+  write_env TESSERACT_MODE=tesseract-net TESSERACT_LOGIN_SERVER=https://net.example TS_AUTHKEY=k \
+    TESSERACT_TAILSCALE_HOST_SOCKET_DIR=/nonexistent
+  run "${SANDBOX}" --tailscale-api up
+  assert_success
+  assert_equal "$(calls_of docker)" "$(compose_prefix tesseract tesseract-net tailscale-api-sidecar) up --detach"
 }
 
 @test "tailscale mode commands other than up need no tailnet configuration" {

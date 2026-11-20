@@ -32,4 +32,5 @@ export * from "./schemas/apps";
 export * from "./schemas/android";
 export * from "./schemas/runtime";
 export * from "./schemas/ios";
+export * from "./schemas/account";
 export * from "./validate";

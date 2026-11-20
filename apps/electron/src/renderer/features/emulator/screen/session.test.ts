@@ -68,6 +68,15 @@ describe("ScreenSession", () => {
     expect(sockets[0]!.sent).toEqual([{ type: "key", key: "enter" }, { type: "text", text: "ok" }, { type: "rotate" }]);
   });
 
+  it("captures the canvas only while connected", async () => {
+    const { session, sockets } = setup();
+    session.attach({ toDataURL: () => "data:image/png;base64,AA==" } as unknown as HTMLCanvasElement);
+    await session.connect({ device: null });
+    expect(session.capture()).toBeNull();
+    sockets[0]!.receive({ type: "meta", deviceName: "Pixel", codec: "mjpeg", width: 1080, height: 2400 });
+    expect(session.capture()).toBe("data:image/png;base64,AA==");
+  });
+
   it("reports a server error when the stream closes", async () => {
     const { session, sockets } = setup();
     await session.connect({ device: null });

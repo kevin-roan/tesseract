@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import type { DeleteAgentRuns } from "@tesseract/protocol";
-import { DEFAULT_MODEL_KEY, NO_PROJECT_KEY, type AgentFilter, type DetailView } from "./constants";
+import { ALL_PROJECTS_KEY, DEFAULT_MODEL_KEY, NO_PROJECT_KEY, type AgentFilter, type DetailView } from "./constants";
 import type { ModelKey } from "./model";
 
 export interface NewDraft {
@@ -17,6 +17,7 @@ export interface PendingDelete {
 
 export interface AgentsUiState {
   filter: AgentFilter;
+  projectFilter: string;
   query: string;
   searchOpen: boolean;
   view: DetailView;
@@ -32,6 +33,7 @@ export interface AgentsUiState {
 
 export interface AgentsUiActions {
   setFilter(filter: AgentFilter): void;
+  setProjectFilter(projectFilter: string): void;
   setQuery(query: string): void;
   setSearchOpen(open: boolean): void;
   select(runId: string): void;
@@ -48,6 +50,7 @@ export const EMPTY_DRAFT: NewDraft = { prompt: "", projectId: NO_PROJECT_KEY, mo
 
 export const INITIAL_AGENTS_UI: AgentsUiState = {
   filter: "all",
+  projectFilter: ALL_PROJECTS_KEY,
   query: "",
   searchOpen: false,
   view: "empty",
@@ -64,6 +67,7 @@ export const INITIAL_AGENTS_UI: AgentsUiState = {
 export const useAgentsUi = create<AgentsUiState & AgentsUiActions>((set) => ({
   ...INITIAL_AGENTS_UI,
   setFilter: (filter) => set({ filter }),
+  setProjectFilter: (projectFilter) => set({ projectFilter }),
   setQuery: (query) => set({ query }),
   setSearchOpen: (open) =>
     set((state) => ({

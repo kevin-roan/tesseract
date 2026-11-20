@@ -9,11 +9,13 @@ export interface HostUnlockDialogProps {
   onClose(): void;
   onUnlocked?: () => void;
   open?: boolean;
+  /** The machine whose PIN is asked for; defaults to this computer, and retitles the prompt for any other. */
+  machine?: string;
   presentation?: DialogPresentation;
   onExitComplete?: () => void;
 }
 
-export function HostUnlockDialog({ onUnlock, onClose, onUnlocked, open = true, presentation, onExitComplete }: HostUnlockDialogProps) {
+export function HostUnlockDialog({ onUnlock, onClose, onUnlocked, open = true, machine, presentation, onExitComplete }: HostUnlockDialogProps) {
   const { form, busy, error, submit } = useHostUnlockForm({ open, onUnlock, onClose, onUnlocked });
   return (
     <FormDialog
@@ -22,9 +24,9 @@ export function HostUnlockDialog({ onUnlock, onClose, onUnlocked, open = true, p
       presentation={presentation}
       onExitComplete={onExitComplete}
       title={HOST_UNLOCK_LABELS.title}
-      context={{ label: HOST_UNLOCK_LABELS.context, icon: "host" }}
+      context={{ label: machine ?? HOST_UNLOCK_LABELS.context, icon: "host" }}
       width={HOST_UNLOCK_WIDTH}
-      subtitle={HOST_UNLOCK_LABELS.subtitle}
+      subtitle={machine ? HOST_UNLOCK_LABELS.machineSubtitle(machine) : HOST_UNLOCK_LABELS.subtitle}
       submitLabel={HOST_UNLOCK_LABELS.unlock}
       cancelLabel={HOST_UNLOCK_LABELS.cancel}
       onSubmit={() => void submit()}

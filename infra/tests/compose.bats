@@ -4,6 +4,8 @@
 
 load lib/common
 
+VARIANTS="local host-tailscale tailscale tesseract-net local-dind tailscale-dind tesseract-net-dind host-tailscale-tsapi tailscale-tsapi tesseract-net-tsapi"
+
 setup() {
   RENDERED="${TESSERACT_TEST_COMPOSE_DIR:-}"
   [[ -n "${RENDERED}" && -d "${RENDERED}" ]] || skip "no rendered configs (run through infra/tests/run on a host with docker)"
@@ -41,14 +43,34 @@ q() {
   assert_equal "$(q tailscale '.services.sandbox.environment | has("ANTHROPIC_API_KEY") or has("CLAUDE_CODE_OAUTH_TOKEN")')" "false"
 }
 
+@test "tesseract-net: the sidecar logs in to Headscale, no serve, plain HTTP public URL" {
+  assert_equal "$(q tesseract-net '[.services.tailscale.ports[] | "\(.host_ip):\(.published)->\(.target)"] | join(",")')" "127.0.0.1:17710->7700"
+  assert_equal "$(q tesseract-net '.services.sandbox.ports // [] | length')" "0"
+  assert_equal "$(q tesseract-net '.services.sandbox.network_mode')" "service:tailscale"
+  assert_equal "$(q tesseract-net '.services.sandbox.hostname // "none"')" "none"
+  assert_equal "$(q tesseract-net '.services.sandbox.environment.TESSERACT_PUBLIC_URL')" "http://tesseract-test.tn.example:7700"
+  assert_equal "$(q tesseract-net '.services.sandbox.environment.TESSERACT_NET_DOMAIN')" "tn.example"
+  assert_equal "$(q tesseract-net '.services.tailscale.environment.TS_EXTRA_ARGS')" "--login-server=https://net.test.example "
+  assert_equal "$(q tesseract-net '.services.tailscale.environment.TS_HOSTNAME')" "tesseract-test"
+  assert_equal "$(q tesseract-net '.services.tailscale.environment.TS_AUTH_ONCE')" "true"
+  assert_equal "$(q tesseract-net '.services.tailscale.environment | has("TS_SERVE_CONFIG")')" "false"
+  assert_equal "$(q tesseract-net '[.services.tailscale.volumes[] | select(.target == "/config")] | length')" "0"
+  assert_equal "$(q tesseract-net '.services.tailscale.security_opt | join(",")')" "no-new-privileges:true"
+  assert_equal "$(q tesseract-net '.services.tailscale.environment.TS_AUTHKEY')" "tskey-auth-test"
+  assert_equal "$(q tesseract-net '.services.sandbox.environment | has("TS_AUTHKEY")')" "false"
+  assert_equal "$(q tesseract-net '.services.tailscale.environment | has("TESSERACT_TOKEN")')" "false"
+  assert_equal "$(q tesseract-net-tsapi '.services.tailscale.environment.TS_SOCKET')" "/var/run/tailscale/tailscaled.sock"
+  assert_equal "$(q tesseract-net-tsapi '.services.sandbox.environment.TESSERACT_TAILSCALE_SOCKET')" "/run/tailscale/tailscaled.sock"
+}
+
 @test "volumes follow TESSERACT_VOLUME_PREFIX in every mode" {
   local variant
-  for variant in local host-tailscale tailscale local-dind tailscale-dind host-tailscale-tsapi tailscale-tsapi; do
+  for variant in ${VARIANTS}; do
     run q "${variant}" '[.volumes[].name] | sort | join(",")'
     case "${variant}" in
-      tailscale-tsapi) assert_output "vt-home,vt-tailscale,vt-tailscale-run,vt-workspace" ;;
-      tailscale-dind) assert_output "vt-dind-certs,vt-dind-data,vt-home,vt-tailscale,vt-workspace" ;;
-      tailscale) assert_output "vt-home,vt-tailscale,vt-workspace" ;;
+      tailscale-tsapi | tesseract-net-tsapi) assert_output "vt-home,vt-tailscale,vt-tailscale-run,vt-workspace" ;;
+      tailscale-dind | tesseract-net-dind) assert_output "vt-dind-certs,vt-dind-data,vt-home,vt-tailscale,vt-workspace" ;;
+      tailscale | tesseract-net) assert_output "vt-home,vt-tailscale,vt-workspace" ;;
       local-dind) assert_output "vt-dind-certs,vt-dind-data,vt-home,vt-workspace" ;;
       *) assert_output "vt-home,vt-workspace" ;;
     esac
@@ -58,7 +80,7 @@ q() {
 
 @test "the sandbox is never privileged and drops every capability it does not need" {
   local variant
-  for variant in local host-tailscale tailscale local-dind tailscale-dind host-tailscale-tsapi tailscale-tsapi; do
+  for variant in ${VARIANTS}; do
     assert_equal "$(q "${variant}" '.services.sandbox.privileged // false')" "false"
     assert_equal "$(q "${variant}" '.services.sandbox.cap_drop | join(",")')" "ALL"
     assert_equal "$(q "${variant}" '.services.sandbox.cap_add | map(select(. == "SYS_ADMIN" or . == "NET_ADMIN" or . == "SYS_PTRACE")) | length')" "0"
@@ -67,14 +89,14 @@ q() {
 
 @test "no service publishes a port on every interface" {
   local variant
-  for variant in local host-tailscale tailscale local-dind tailscale-dind host-tailscale-tsapi tailscale-tsapi; do
+  for variant in ${VARIANTS}; do
     assert_equal "$(q "${variant}" '[.services[].ports // [] | .[] | select((.host_ip // "") == "" or .host_ip == "0.0.0.0" or .host_ip == "::")] | length')" "0"
   done
 }
 
 @test "dind: only the docker sidecar is privileged, the sandbox talks TLS with read-only certs" {
   local variant
-  for variant in local-dind tailscale-dind; do
+  for variant in local-dind tailscale-dind tesseract-net-dind; do
     assert_equal "$(q "${variant}" '.services.docker.privileged')" "true"
     assert_equal "$(q "${variant}" '.services.sandbox.environment.DOCKER_HOST')" "tcp://docker:2376"
     assert_equal "$(q "${variant}" '.services.sandbox.environment.DOCKER_TLS_VERIFY')" "1"
@@ -103,7 +125,7 @@ q() {
 
 @test "claude: the host's Claude dir overlays /home/dev/.claude in every mode; no token passthrough" {
   local variant
-  for variant in local host-tailscale tailscale local-dind tailscale-dind host-tailscale-tsapi tailscale-tsapi; do
+  for variant in ${VARIANTS}; do
     assert_equal "$(q "${variant}" '[.services.sandbox.volumes[] | .target] | (index("/home/dev") < index("/home/dev/.claude"))')" "true"
     assert_equal "$(q "${variant}" '.services.sandbox.volumes[] | select(.target == "/home/dev/.claude") | "\(.type) \(.source) ro=\(.read_only // false) create=\(.bind.create_host_path)"')" "bind /srv/claude ro=false create=false"
     assert_equal "$(q "${variant}" '.services.sandbox.environment | has("CLAUDE_CODE_OAUTH_TOKEN")')" "false"

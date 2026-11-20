@@ -33,7 +33,9 @@ export default function EmulatorPage() {
               <SegmentedControl options={kinds.options} value={kinds.kind.id} onChange={kinds.select} ariaLabel={EMULATOR_PAGE_LABELS.kinds} />
             </div>
           ) : null}
-          <DevicePanel key={kinds.kind.id} kind={kinds.kind} />
+          {kinds.panels.map((kind) => (
+            <DevicePanel key={kind.id} kind={kind} active={kind.id === kinds.kind.id} />
+          ))}
         </>
       )}
       <HostUnlock dialog={host.unlockDialog} />

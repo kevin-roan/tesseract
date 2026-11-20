@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { LIMITS, LOG_STREAMS, PROCESS_STATES, TERMINAL_KINDS, TERMINAL_STATES } from "../constants";
+import { AGENT_SESSION_ID_PATTERN, LIMITS, LOG_STREAMS, PROCESS_STATES, TERMINAL_KINDS, TERMINAL_STATES } from "../constants";
 import {
   EnvSchema,
   ExitCodeSchema,
@@ -93,5 +93,9 @@ export const CreateTerminalSchema = z.object({
   projectId: ProjectIdSchema.optional(),
   cols: TerminalColsSchema,
   rows: TerminalRowsSchema,
+  /** `claude` terminals only: opens this session instead of a new one. */
+  resumeSessionId: z.string().trim().regex(AGENT_SESSION_ID_PATTERN, "Must be a Claude session id").optional(),
+  /** Continues in a copy of the session, for one a running agent is still writing to. */
+  forkSession: z.boolean().optional(),
 });
 export type CreateTerminal = z.infer<typeof CreateTerminalSchema>;

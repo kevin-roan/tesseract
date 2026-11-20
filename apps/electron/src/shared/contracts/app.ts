@@ -1,4 +1,5 @@
 import type { DefineContract } from "../ipc-types";
+import type { HostTailnetMode } from "./tailnet";
 import type { PageId, PreferencesSectionId } from "../routes";
 import type { Appearance, RuntimeInfo } from "../runtime";
 
@@ -6,8 +7,11 @@ export interface AppSettings {
   appearance: Appearance;
   zoom: number;
   sidebarWidth: number;
+  sidebarHidden: boolean;
   hostShellAutostart: boolean;
   hostShellIos: boolean;
+  /** Host shell and host workspace on the Tesseract Network (docs/adr/0014-embedded-tailnet-and-tesseract-accounts.md). */
+  hostTailnet: HostTailnetMode;
   sandboxAutostart: boolean;
 }
 

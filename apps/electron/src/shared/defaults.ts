@@ -13,7 +13,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   appearance: "dark",
   zoom: 1,
   sidebarWidth: SIDEBAR_WIDTH_DEFAULT,
+  sidebarHidden: false,
   hostShellAutostart: false,
   hostShellIos: false,
+  hostTailnet: "auto",
   sandboxAutostart: true,
 };

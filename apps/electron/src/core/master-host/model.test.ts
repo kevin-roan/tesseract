@@ -11,9 +11,12 @@ import {
   masterHostLink,
   masterHostState,
   masterHostSummary,
+  parseMasterHostFolder,
   parseMasterHostLink,
   readMasterHost,
+  readMasterHostFolder,
   rememberMasterHost,
+  rememberMasterHostFolder,
 } from "./model";
 import { probeMasterHost, resolveMasterHostState } from "./service";
 
@@ -155,5 +158,27 @@ describe("master host state", () => {
       kind: "linked",
       host: { online: false, name: null },
     });
+  });
+});
+
+describe("master host folders", () => {
+  const sandbox = "https://sandbox";
+  const host = { url: "https://mac:8443", name: "mac", token: "t" };
+
+  it("accepts only absolute paths and trims them", () => {
+    expect(parseMasterHostFolder(" /Users/me/app/ ")).toBe("/Users/me/app");
+    expect(parseMasterHostFolder("/")).toBe("/");
+    expect(parseMasterHostFolder("C:\\work\\app\\")).toBe("C:\\work\\app");
+    expect(parseMasterHostFolder("~/app")).toBeNull();
+    expect(parseMasterHostFolder("app")).toBeNull();
+  });
+
+  it("stores folders per project, keeps them across a re-link, and needs a linked host", () => {
+    const linked = rememberMasterHost({}, sandbox, host, null);
+    const data = rememberMasterHostFolder(linked, sandbox, "demo", "/Users/me/demo");
+    expect(readMasterHostFolder(data, sandbox, "demo")).toBe("/Users/me/demo");
+    expect(readMasterHostFolder(data, sandbox, "__proto__")).toBeNull();
+    expect(readMasterHostFolder(rememberMasterHost(data, sandbox, { ...host, token: "new" }, null), sandbox, "demo")).toBe("/Users/me/demo");
+    expect(rememberMasterHostFolder({}, sandbox, "demo", "/x")).toEqual({});
   });
 });

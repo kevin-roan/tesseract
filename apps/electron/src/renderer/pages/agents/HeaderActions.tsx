@@ -1,7 +1,7 @@
 import { useMemo, useRef } from "react";
 import { ActionMenu, Floating, MenuItem, useActionMenu, type MenuSections } from "../../components/ActionMenu";
 import { IconButton } from "../../components/IconButton";
-import { AGENT_FILTERS } from "../../features/agents/constants";
+import { AGENT_FILTERS, ALL_PROJECTS_KEY } from "../../features/agents/constants";
 import { useAgentRuns, useArchivedRuns } from "../../features/agents/hooks/use-agent-runs";
 import { useRunActions } from "../../features/agents/hooks/use-run-actions";
 import { FILTER_LABELS, LIST_LABELS, MANAGE_LABELS } from "../../features/agents/labels";
@@ -21,6 +21,7 @@ export function HeaderActions() {
   const manageRef = useRef<HTMLSpanElement | null>(null);
 
   const sections = useMemo<MenuSections>(() => {
+    if (ui.projectFilter !== ALL_PROJECTS_KEY) return [];
     const available = bulkActions(runs, archived.runs, archivedView);
     if (available.includes("empty_archive"))
       return [[{ id: "empty", label: MANAGE_LABELS.emptyArchive, danger: true, onSelect: () => actions.requestEmptyArchive(archived.runs) }]];
@@ -29,7 +30,7 @@ export function HeaderActions() {
       [{ id: "archive-all", label: MANAGE_LABELS.archiveAll, onSelect: () => void actions.archiveAllFinished(runs) }],
       [{ id: "delete-all", label: MANAGE_LABELS.deleteAll, danger: true, onSelect: () => actions.requestDeleteAllFinished(runs) }],
     ];
-  }, [runs, archived.runs, archivedView, actions]);
+  }, [runs, archived.runs, archivedView, actions, ui.projectFilter]);
 
   return (
     <div className={styles.headerActions}>

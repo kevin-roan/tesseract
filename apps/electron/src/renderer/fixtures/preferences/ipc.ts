@@ -75,6 +75,8 @@ const fixtures = defineIpcFixtures({
       masterLinked = false;
       return masterState();
     },
+    folder: () => null,
+    setFolder: (_projectId, path) => path,
   },
 });
 

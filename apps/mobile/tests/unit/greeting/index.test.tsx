@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react-native";
 
-import Greeting from "@/components/greeting";
+import { Greeting } from "@/components/greeting";
 
 describe("<Greeting />", () => {
   afterEach(() => {

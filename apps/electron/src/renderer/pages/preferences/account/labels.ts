@@ -1,0 +1,47 @@
+import type { AccountDeviceKind } from "@tesseract/protocol";
+
+export const ACCOUNT_LABELS = {
+  title: "Account",
+  account: {
+    title: "Tesseract account",
+    description:
+      "Your account runs the Tesseract Network: the phone app reaches your sandbox and this computer through it, with no VPN app. Tailscale keeps working next to it.",
+    signedOutDescription: "Sign in to use the Tesseract Network for the sandbox, the host shell and the host workspace.",
+    email: "Email",
+    name: "Name",
+    server: "Server",
+    expires: "Session expires",
+    signOut: "Sign out",
+    notPersisted: "No keychain on this computer: you stay signed in until Tesseract quits",
+  },
+  devices: {
+    title: "Devices",
+    description: "Phones, sandboxes and computers on your Tesseract Network",
+    empty: "No devices yet",
+    remove: "Remove",
+    online: "Online",
+    offline: "Offline",
+    lastSeen: (when: string) => `last seen ${when}`,
+    kinds: { mobile: "Phone", desktop: "Computer", sandbox: "Sandbox", server: "Server" } satisfies Record<AccountDeviceKind, string>,
+    unknownKind: "Device",
+    confirmHeading: (name: string) => `Remove ${name}?`,
+    confirmBody: "It leaves the Tesseract Network and has to sign in again to come back.",
+    removed: (name: string) => `Removed ${name}`,
+    removeFailed: (error: string) => `Couldn't remove the device: ${error}`,
+    loadFailed: (error: string) => `Couldn't load devices: ${error}`,
+  },
+  danger: {
+    title: "Delete account",
+    subtitle: "Deletes the account, its sessions and every device on its network",
+    action: "Delete…",
+    heading: "Delete your Tesseract account?",
+    body: "Every device leaves the Tesseract Network and phones, sandboxes and computers have to join a new account. This can't be undone.",
+    confirm: "Delete account",
+    failed: (error: string) => `Couldn't delete the account: ${error}`,
+    done: "Account deleted",
+  },
+  cancel: "Cancel",
+  refresh: "Refresh",
+  signedOut: "Signed out",
+  signOutFailed: (error: string) => `Couldn't sign out: ${error}`,
+} as const;

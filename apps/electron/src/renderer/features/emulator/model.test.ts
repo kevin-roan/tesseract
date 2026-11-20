@@ -1,8 +1,9 @@
-import { sampleHostAndroidStatus, sampleHostIosStatus, sampleSimDevice } from "@tesseract/protocol/fixtures";
+import type { AppRun } from "@tesseract/protocol";
+import { sampleAppRun, sampleHostAndroidStatus, sampleHostIosStatus, sampleSimDevice } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import { INITIAL_SCREEN } from "./constants";
 import { ANDROID_LABELS, IOS_LABELS } from "./labels";
-import { androidSnapshot, canStart, canStop, iosSnapshot, isLinkedTo, linkBadge, pickTarget, screenLive, screenOverlay } from "./model";
+import { androidSnapshot, canStart, canStop, iosSnapshot, isLinkedTo, linkBadge, liveDeviceKinds, pickTarget, screenLive, screenOverlay } from "./model";
 
 const running = androidSnapshot({
   ...sampleHostAndroidStatus,
@@ -68,5 +69,25 @@ describe("emulator model", () => {
     expect(screenOverlay(linux, INITIAL_SCREEN, IOS_LABELS)).toMatchObject({ title: "No iOS Simulator on this host", message: expect.stringContaining("needs a Mac") });
     expect(iosSnapshot({ ...sampleHostIosStatus, available: false, reasonCode: "no_idb", reason: null }).reason).toContain("idb");
     expect(iosSnapshot({ ...sampleHostIosStatus, available: false, reasonCode: null, reason: "custom" }).reason).toBe("custom");
+  });
+});
+
+describe("liveDeviceKinds", () => {
+  const run = (target: AppRun["target"], state: AppRun["state"]) => ({ ...sampleAppRun, target, state });
+  const off = { android: false, ios: false };
+
+  it("offers nothing without a running device or a live run", () => {
+    expect(liveDeviceKinds([run("expo-ios", "stopped"), run("web-dev", "ready")], off)).toEqual([]);
+    expect(liveDeviceKinds(null, off)).toEqual([]);
+  });
+
+  it("offers the device of a live run of the project", () => {
+    expect(liveDeviceKinds([run("expo-ios", "ready")], off)).toEqual(["ios"]);
+    expect(liveDeviceKinds([run("rn-android", "starting")], off)).toEqual(["android"]);
+  });
+
+  it("offers a device that is already running, with or without a run", () => {
+    expect(liveDeviceKinds([], { android: true, ios: false })).toEqual(["android"]);
+    expect(liveDeviceKinds([run("expo-ios", "ready")], { android: true, ios: false })).toEqual(["android", "ios"]);
   });
 });

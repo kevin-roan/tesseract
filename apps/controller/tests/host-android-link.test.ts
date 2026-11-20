@@ -119,7 +119,14 @@ afterEach(async () => {
 
 type Shared = { devices: SharedEmulator[]; adbd: Record<string, Endpoint> };
 
-function setup(emulator: { current: EmulatorInfo }, adbdPort = 1, options: LinkOptions = {}, refusal: string | null = null, shared: Shared = { devices: [], adbd: {} }) {
+function setup(
+  emulator: { current: EmulatorInfo },
+  adbdPort = 1,
+  options: LinkOptions = {},
+  refusal: string | null = null,
+  shared: Shared = { devices: [], adbd: {} },
+  start: () => Promise<void> = async () => {},
+) {
   const sandbox = fakeSandbox();
   const link = new AndroidLink(
     {
@@ -130,6 +137,7 @@ function setup(emulator: { current: EmulatorInfo }, adbdPort = 1, options: LinkO
       refusal: () => refusal,
       shared: () => shared.devices,
       sharedAdbd: (serial) => shared.adbd[serial] ?? null,
+      start,
     },
     silentLogger,
     { reconnectMinMs: 20, reconnectMaxMs: 80, ...options },
@@ -164,6 +172,26 @@ describe("android link client", () => {
     sandbox.lastLink()?.send("not json");
     sandbox.lastLink()?.send(JSON.stringify({ type: "open", streamId: "bogus" }));
     await waitFor(() => ofType(sandbox.received, "pong").length === 1);
+  });
+
+  test("starts the emulator when the sandbox asks and answers with the outcome", async () => {
+    const emulator = { current: stopped };
+    let starts = 0;
+    let failure: string | null = null;
+    const { sandbox, link } = setup(emulator, 1, {}, null, { devices: [], adbd: {} }, async () => {
+      starts += 1;
+      if (failure) throw new Error(failure);
+    });
+    link.configure({ sandboxUrl: sandbox.url, token: TOKEN });
+    await waitFor(() => link.info().connected);
+    sandbox.lastLink()?.send(JSON.stringify({ type: "start", requestId: "r1" }));
+    await waitFor(() => ofType(sandbox.received, "started").length === 1);
+    expect(ofType(sandbox.received, "started")[0]).toEqual({ type: "started", requestId: "r1", ok: true, error: null });
+    failure = "The host has no Android Virtual Device";
+    sandbox.lastLink()?.send(JSON.stringify({ type: "start", requestId: "r2" }));
+    await waitFor(() => ofType(sandbox.received, "started").length === 2);
+    expect(ofType(sandbox.received, "started")[1]).toEqual({ type: "started", requestId: "r2", ok: false, error: "The host has no Android Virtual Device" });
+    expect(starts).toBe(2);
   });
 
   test("pipes an adb stream to adbd both ways and closes them together", async () => {

@@ -5,3 +5,4 @@ build/sandbox-context/
 test-results/
 playwright-report/
 .snapshots/
+resources/bin/

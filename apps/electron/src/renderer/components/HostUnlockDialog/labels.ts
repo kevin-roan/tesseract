@@ -2,6 +2,7 @@ export const HOST_UNLOCK_LABELS = {
   title: "Unlock the host shell",
   context: "This computer",
   subtitle: "Enter the host shell PIN to start the Android emulator",
+  machineSubtitle: (machine: string) => `Enter the host shell PIN of ${machine}`,
   pin: "PIN",
   unlock: "Unlock",
   cancel: "Cancel",

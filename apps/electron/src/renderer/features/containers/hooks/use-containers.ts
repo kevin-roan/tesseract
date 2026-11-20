@@ -10,7 +10,7 @@ export function useContainers() {
   const query = useQuery({
     queryKey: CONTAINERS_KEYS.list,
     queryFn: () => ipc.containers.list(),
-    refetchInterval: (current) => (current.state.status === "error" ? false : CONTAINERS_POLL.listMs),
+    refetchInterval: (current) => (current.state.status === "error" ? CONTAINERS_POLL.listErrorMs : CONTAINERS_POLL.listMs),
   });
   const { refetch } = query;
   const refresh = useCallback(() => void refetch(), [refetch]);

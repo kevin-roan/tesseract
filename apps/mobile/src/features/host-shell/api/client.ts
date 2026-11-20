@@ -1,5 +1,7 @@
 import { HostShellClient, type TesseractClient } from "@tesseract/client";
 
+import { tailnetTransport } from "@/features/tailnet";
+
 import { HOST_PROBE_TIMEOUT_MS } from "../utils/constants";
 
 let cached: { baseUrl: string; token: string; client: HostShellClient } | null = null;
@@ -7,7 +9,7 @@ let cachedSession: { client: HostShellClient; session: string; sessionClient: Te
 
 export function getHostClient(baseUrl: string, token: string): HostShellClient {
   if (cached && cached.baseUrl === baseUrl && cached.token === token) return cached.client;
-  cached = { baseUrl, token, client: new HostShellClient({ baseUrl, token }) };
+  cached = { baseUrl, token, client: new HostShellClient({ baseUrl, token, ...tailnetTransport }) };
   return cached.client;
 }
 
@@ -18,5 +20,5 @@ export function getHostSessionClient(client: HostShellClient, session: string): 
 }
 
 export function createHostProbeClient(baseUrl: string, token: string): HostShellClient {
-  return new HostShellClient({ baseUrl, token, timeoutMs: HOST_PROBE_TIMEOUT_MS });
+  return new HostShellClient({ baseUrl, token, timeoutMs: HOST_PROBE_TIMEOUT_MS, ...tailnetTransport });
 }

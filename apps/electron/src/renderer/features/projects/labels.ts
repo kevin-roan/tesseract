@@ -106,6 +106,7 @@ export const DETAIL_LABELS = {
   loadFailed: "Couldn't load this project",
   tryAgain: "Try again",
   refresh: "Refresh",
+  propertiesGroup: "Properties",
   sandboxGroup: "Sandbox",
   askClaude: "Ask Claude",
   claudeTerminal: "Claude terminal",

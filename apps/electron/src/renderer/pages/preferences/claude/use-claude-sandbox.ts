@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ClaudeAccountList } from "@tesseract/protocol";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { describeError } from "../../../app/connection";
 import { useWorkspaceActions } from "../../../features/projects/hooks/use-workspace";
 import { sandboxErrorMessage } from "../shared/format";
@@ -8,6 +8,7 @@ import { usePreferencesToast } from "../shared/use-preferences-toast";
 import { useSandboxLink } from "../shared/use-sandbox-link";
 import { CLAUDE_KEYS } from "./constants";
 import { CLAUDE_TOASTS, SECTION_LABELS } from "./labels";
+import { hasTokenAccount } from "./model";
 
 export function useClaudeSandbox() {
   const link = useSandboxLink();
@@ -43,6 +44,25 @@ export function useClaudeSandbox() {
     onError: (error) => toast(CLAUDE_TOASTS.defaultFailed(describeError(error)), true),
   });
 
+  const [tokenInput, setTokenInput] = useState("");
+  const saveToken = useMutation({
+    mutationFn: (token: string | null) => (token === null ? client!.clearClaudeToken() : client!.setClaudeToken({ token })),
+    onSuccess: (list: ClaudeAccountList, token) => {
+      queryClient.setQueryData(CLAUDE_KEYS.accounts(baseUrl), list);
+      setTokenInput("");
+      toast(token === null ? CLAUDE_TOASTS.tokenCleared : CLAUDE_TOASTS.tokenSaved);
+      void auth.refetch();
+      workspace.refresh();
+    },
+    onError: (error, token) => toast((token === null ? CLAUDE_TOASTS.tokenClearFailed : CLAUDE_TOASTS.tokenFailed)(describeError(error)), true),
+  });
+  const trimmedToken = tokenInput.trim();
+  const { mutate: mutateToken } = saveToken;
+  const submitToken = useCallback(() => {
+    if (trimmedToken) mutateToken(trimmedToken);
+  }, [mutateToken, trimmedToken]);
+  const clearToken = useCallback(() => mutateToken(null), [mutateToken]);
+
   const refresh = useCallback(() => {
     if (!online) return;
     void auth.refetch();
@@ -70,6 +90,16 @@ export function useClaudeSandbox() {
     accountsMessage,
     pendingAccount: setDefault.isPending ? setDefault.variables : null,
     selectDefault: (id: string) => setDefault.mutate(id),
+    token: {
+      configured: hasTokenAccount(online && !accounts.error ? accounts.data : undefined),
+      value: tokenInput,
+      setValue: setTokenInput,
+      canSave: online && trimmedToken.length > 0 && !saveToken.isPending,
+      saving: saveToken.isPending && saveToken.variables !== null,
+      clearing: saveToken.isPending && saveToken.variables === null,
+      submit: submitToken,
+      clear: clearToken,
+    },
     refresh,
   };
 }

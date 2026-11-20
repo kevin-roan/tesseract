@@ -23,3 +23,5 @@ Bun.serve({
   },
 });
 console.log(`Metro listening on ${port}`);
+// `expo start --android` (Expo Go on the emulator): the app fetches its bundle once Metro is up.
+if (args.includes("--android")) setTimeout(() => console.log("Android Bundled 12ms index.js (1 modules)"), 100);

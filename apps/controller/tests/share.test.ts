@@ -221,6 +221,27 @@ describe("Taildrop", () => {
     }
   });
 
+  test("on the Tesseract Network targets are unavailable and sends fail with 503 without asking tailscaled", async () => {
+    const calls: string[] = [];
+    const net = await startTestController({
+      env: { TESSERACT_NET_DOMAIN: "tesseract.internal" },
+      controller: { taildrop: { fetch: async (path) => (calls.push(path), Response.json(FILE_TARGETS)) } },
+    });
+    try {
+      writeFiles(net.workspace, { "projects/app/out.zip": "zip" });
+      expect((await net.json("GET", "/v1/taildrop/targets")).body).toEqual({ available: false, targets: [] });
+      const artifact = (await net.json<Artifact>("POST", "/v1/artifacts", { path: join(net.workspace, "projects/app/out.zip") })).body;
+      const response = await net.json<{ error: { code: string; message: string } }>("POST", `/v1/artifacts/${artifact.id}/taildrop`, {
+        targetId: "nPixel123CNTRL",
+      });
+      expect(response.status).toBe(503);
+      expect(response.body.error.message).toContain("Tesseract Network");
+      expect(calls).toEqual([]);
+    } finally {
+      await net.stop();
+    }
+  });
+
   test("an injected fetch replaces the socket", async () => {
     const calls: string[] = [];
     const injected = await startTestController({

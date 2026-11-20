@@ -25,5 +25,9 @@ export function registerAgentRoutes(app: Hono, services: Services): void {
 
   app.get(rest.agentRun, (c) => c.json(agentRuns.get(idParam(c, "agentRun"))));
 
+  app.get(rest.agentRunShells, (c) => c.json(agentRuns.shells(idParam(c, "agentRun"))));
+
+  app.get(rest.agentRunShellLog, async (c) => c.json(await agentRuns.shellLog(idParam(c, "agentRun"), c.req.param("shellId") ?? "")));
+
   app.delete(rest.agentRun, async (c) => c.json(await agentRuns.cancel(idParam(c, "agentRun"))));
 }

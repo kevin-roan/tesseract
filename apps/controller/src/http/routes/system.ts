@@ -3,6 +3,7 @@ import { getConnInfo } from "hono/bun";
 import {
   ClaudeImportSchema,
   CloseDisplayWindowSchema,
+  SetClaudeTokenSchema,
   SetDefaultClaudeAccountSchema,
   PROTOCOL_VERSION,
   routePatterns,
@@ -59,6 +60,10 @@ export function registerSystemRoutes(app: Hono, services: Services): void {
   app.put(rest.claudeDefaultAccount, async (c) =>
     c.json(services.claudeAccounts.setDefault((await jsonBody(c, SetDefaultClaudeAccountSchema)).accountId)),
   );
+
+  app.put(rest.claudeToken, async (c) => c.json(services.claudeAccounts.setToken((await jsonBody(c, SetClaudeTokenSchema)).token)));
+
+  app.delete(rest.claudeToken, (c) => c.json(services.claudeAccounts.clearToken()));
 
   app.get(rest.ports, async (c) => c.json(await services.ports.list()));
 

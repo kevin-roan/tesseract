@@ -1,4 +1,5 @@
 import type { DefineContract } from "../ipc-types";
+import type { DeviceWindowKind, DeviceWindowSize } from "../device-window";
 import type { OnboardingStepId } from "../routes";
 
 export interface WindowState {
@@ -22,6 +23,9 @@ export type WindowContract = DefineContract<{
     zoom(direction: ZoomDirection): number;
     openOnboarding(step?: OnboardingStepId): void;
     openMain(): void;
+    openDevice(kind: DeviceWindowKind): void;
+    fitDevice(size: DeviceWindowSize): void;
+    saveDeviceScreenshot(png: string): string;
     setAccelGuard(active: boolean): void;
   };
   events: {

@@ -175,6 +175,7 @@ export function validateFixtureChoices(choices: SetupChoices): ValidationIssue[]
     if (!HOSTNAME.test(choices.hostname)) add("hostname", MESSAGES.hostname);
     if (!choices.tsAuthKey) add("tsAuthKey", MESSAGES.authKey);
   }
+  if (choices.mode === "tesseract-net" && !HOSTNAME.test(choices.hostname)) add("hostname", MESSAGES.hostname);
   if (choices.mode === "host-tailscale") {
     const value = choices.bindAddr;
     if (WILDCARDS.includes(value)) add("bindAddr", MESSAGES.bindAddrWildcard(value));

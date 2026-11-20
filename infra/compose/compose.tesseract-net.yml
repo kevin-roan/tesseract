@@ -1,0 +1,51 @@
+# Mode "tesseract-net" (docs/adr/0014-embedded-tailnet-and-tesseract-accounts.md): the same
+# userspace tailscale sidecar as compose.tailscale.yml, logged in to the Tesseract Network's
+# Headscale (TESSERACT_LOGIN_SERVER) instead of Tailscale's control plane. Headscale cannot
+# issue HTTPS certificates, so there is no `tailscale serve`: the controller is plain HTTP on
+# http://<TESSERACT_HOSTNAME>.<TESSERACT_NET_DOMAIN>:7700 over WireGuard (inbound tailnet TCP
+# reaches the namespace's loopback ports, as in the userspace tailscale mode). TS_AUTHKEY is a
+# `sandbox` device key from the account service. Only the controller port is published, on
+# 127.0.0.1, so the desktop app on the same host (which has no system tailnet, and under
+# Docker Desktop cannot reach the container's IP) can reach it.
+services:
+  tailscale:
+    image: tailscale/tailscale:stable
+    hostname: ${TESSERACT_HOSTNAME:-tesseract-sandbox}
+    restart: unless-stopped
+    # Public resolvers: the host's MagicDNS resolver (100.100.100.100) is unreachable from
+    # here (see compose.tailscale.yml).
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    environment:
+      TS_AUTHKEY: ${TS_AUTHKEY:-}
+      TS_HOSTNAME: ${TESSERACT_HOSTNAME:-tesseract-sandbox}
+      TS_STATE_DIR: /var/lib/tailscale
+      TS_USERSPACE: "true"
+      TS_EXTRA_ARGS: --login-server=${TESSERACT_LOGIN_SERVER:-} ${TS_EXTRA_ARGS:-}
+      TS_AUTH_ONCE: "true"
+    ports:
+      - "127.0.0.1:${TESSERACT_CONTROLLER_HOST_PORT:-7700}:7700"
+    volumes:
+      - tesseract-tailscale:/var/lib/tailscale
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  sandbox:
+    network_mode: service:tailscale
+    # Docker rejects a hostname on containers that join another container's network.
+    hostname: !reset null
+    depends_on:
+      - tailscale
+    environment:
+      TESSERACT_PUBLIC_URL: http://${TESSERACT_HOSTNAME:-tesseract-sandbox}.${TESSERACT_NET_DOMAIN:-tesseract.internal}:7700
+      TESSERACT_NET_DOMAIN: ${TESSERACT_NET_DOMAIN:-tesseract.internal}
+
+volumes:
+  tesseract-tailscale:
+    name: ${TESSERACT_VOLUME_PREFIX:-${TESSERACT_COMPOSE_PROJECT:-tesseract}}-tailscale

@@ -20,13 +20,14 @@ export const CLAUDE_ACCOUNTS_COPY = {
   unsupported: "This sandbox can't switch Claude accounts yet. Update the sandbox to pick an account.",
   hostTitle: "Credentials come from the host",
   hostMessage:
-    "Each account is a Claude Code config folder on the host machine (~/.claude, ~/.claude-<name>) linked into the sandbox. Log in on the host with claude, claude-work and so on, then pull to refresh. Switching here never changes the host's login.",
+    "Each account is a Claude Code config folder on the host machine (~/.claude, ~/.claude-<name>) linked into the sandbox. Log in on the host with claude, claude-work and so on, then pull to refresh. A long-lived token saved in the desktop app's Claude settings shows up as claude-token. Switching here never changes the host's login.",
   defaultValue: "Default",
   switching: "Switching…",
   saving: "Saving…",
   notLinked: "Not linked into the sandbox",
   notSignedIn: "Not signed in",
   signedIn: "Signed in",
+  tokenAccount: "Long-lived token",
   projectSection: "Claude",
   projectRow: "Claude account",
   projectSheetFootnote: "Claude runs and sessions in this project sign in with this account.",
@@ -51,6 +52,7 @@ export const findClaudeAccount = (list: ClaudeAccountList, id: string): ClaudeAc
   list.accounts.find((account) => account.id === id);
 
 export function claudeAccountDetail(profile: ClaudeAccountProfile): string {
+  if (profile.kind === "token") return CLAUDE_ACCOUNTS_COPY.tokenAccount;
   if (!profile.present) return CLAUDE_ACCOUNTS_COPY.notLinked;
   if (!profile.loggedIn) return CLAUDE_ACCOUNTS_COPY.notSignedIn;
   const { account, subscriptionType } = profile;
@@ -68,7 +70,7 @@ export function claudeAccountRows(list: ClaudeAccountList, pendingId: string | n
   return list.accounts.map((profile) => ({
     id: profile.id,
     label: profile.id,
-    detail: join([claudeAccountDetail(profile), profile.configDir]),
+    detail: profile.kind === "token" ? claudeAccountDetail(profile) : join([claudeAccountDetail(profile), profile.configDir]),
     value:
       profile.id === pendingId
         ? CLAUDE_ACCOUNTS_COPY.switching

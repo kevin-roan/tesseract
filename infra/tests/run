@@ -97,6 +97,8 @@ TESSERACT_VOLUME_PREFIX=vt
 TESSERACT_HOSTNAME=tesseract-test
 TS_TAILNET_DOMAIN=tail.ts.net
 TS_AUTHKEY=tskey-auth-test
+TESSERACT_LOGIN_SERVER=https://net.test.example
+TESSERACT_NET_DOMAIN=tn.example
 TESSERACT_BIND_ADDR=100.64.0.1
 TESSERACT_CONTROLLER_HOST_PORT=17710
 TESSERACT_VNC_HOST_PORT=15910
@@ -106,7 +108,8 @@ TESSERACT_IMAGE=tesseract/sandbox:test-config
 TESSERACT_TAILSCALE_HOST_SOCKET_DIR=/srv/tailscale
 TESSERACT_HOST_CLAUDE_DIR=/srv/claude
 EOF
-  for variant in local host-tailscale tailscale local-dind tailscale-dind host-tailscale-tsapi tailscale-tsapi; do
+  for variant in local host-tailscale tailscale tesseract-net local-dind tailscale-dind tesseract-net-dind \
+    host-tailscale-tsapi tailscale-tsapi tesseract-net-tsapi; do
     mode="${variant%-dind}"
     mode="${mode%-tsapi}"
     flags=()

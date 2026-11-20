@@ -78,6 +78,18 @@ describe("resolveStack", () => {
     await expect(resolveStack(wildcard, "up")).rejects.toThrow(/every host interface/);
   });
 
+  it("tesseract-net adds its overlay, publishes nothing and shares the sidecar's LocalAPI overlay", async () => {
+    const resolved = await resolveStack(withEnv("TESSERACT_MODE=tesseract-net\nTESSERACT_TAILSCALE_LOCALAPI=1\n")(), "up");
+    expect(resolved.mode).toBe("tesseract-net");
+    expect(resolved.files.map((file) => file.split(/[\\/]/).at(-1))).toEqual([
+      "compose.yml",
+      "compose.tesseract-net.yml",
+      "compose.tailscale-api-sidecar.yml",
+    ]);
+    expect(resolved.bindAddr).toBeNull();
+    expect(resolved.env.TESSERACT_BIND_ADDR).toBeUndefined();
+  });
+
   it("validates project, prefix and ports with the script's messages", async () => {
     await expect(resolveStack(withEnv("TESSERACT_COMPOSE_PROJECT=Bad\n")(), "up")).rejects.toThrow(
       "TESSERACT_COMPOSE_PROJECT=Bad is not a valid compose project name (lowercase letters, digits, '-' and '_')",

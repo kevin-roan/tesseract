@@ -93,6 +93,8 @@ beforeAll(async () => {
       TESSERACT_ADB: installFixture(adbDir, "fake-adb.sh", "adb"),
       TESSERACT_ADB_TUNNEL_PORT: String(tunnelPort),
       TESSERACT_FLUTTER: installFixture(bin, "fake-flutter.sh", "flutter"),
+      // The opt-out: these tests keep the refusal of an emulator that is not isolated.
+      TESSERACT_EMULATOR_ALLOW_UNISOLATED: "0",
     },
     controller: { androidLink: { pingIntervalMs: 100, streamOpenTimeoutMs: 300, reconnectIntervalMs: 300 } },
   });
@@ -121,7 +123,8 @@ describe("android link", () => {
     const socket = await link(STOPPED);
     await waitFor(async () => (await status()).hostId === "host-1");
     expect(await status()).toMatchObject({ linked: true, emulator: STOPPED, adbSerial: null, adbConnected: false });
-    expect(await targetReason()).toBe("Start the emulator on the host");
+    // A stopped emulator is no blocker: a run asks the host to start it (see android-start.test.ts).
+    expect(await targetReason()).toBeNull();
 
     socket.send({ type: "emulator", emulator: { ...RUNNING, serial: "emulator-5554", managed: false, isolated: false } });
     await waitFor(async () => (await status()).emulator?.state === "running");
@@ -301,10 +304,11 @@ describe("android link", () => {
     const host = links.at(-1)!;
     host.send({ type: "emulator", emulator: STOPPED });
     await waitFor(async () => (await status()).adbSerial === null);
-    expect(await targetReason()).toBe("Start the emulator on the host");
+    expect(t.controller.services.android.needsEmulatorStart()).toBe(true);
     host.send({ type: "devices", devices: [{ serial: "emulator-5560", model: null }] });
     await waitFor(async () => (await status()).shared.length === 1);
     expect(await targetReason()).toBeNull();
+    expect(t.controller.services.android.needsEmulatorStart()).toBe(false);
     expect(t.controller.services.android.runSerial).toBe(`127.0.0.1:${tunnelPort + 4}`);
 
     host.send({ type: "devices", devices: [] });

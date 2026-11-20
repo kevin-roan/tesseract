@@ -13,6 +13,7 @@ import { api, API_USAGE, redactVncPasswords } from "./api";
 import { deploy, DEPLOY_USAGE } from "./deploy";
 import { hook } from "./hook";
 import { issue, ISSUE_USAGE } from "./issue";
+import { RUN_USAGE, runCommand } from "./run";
 import { callLocalApi, CliError, isControllerUp } from "./local-api";
 import { tesseract } from "./tesseract";
 import { consoleOutput, type Output } from "./output";
@@ -35,6 +36,7 @@ Usage:
                                      make it downloadable on paired devices (tags the Claude run/session)
   ${DEPLOY_USAGE}
   ${ISSUE_USAGE}
+  ${RUN_USAGE}
   tesseract-controller hook             forward a Claude Code hook (JSON on stdin) to the inbox; silent, always exits 0
   tesseract-controller tesseract --get [--force] [--json]
                                      what the sandbox's /usr/local/bin/tesseract runs (only --get; --sync is the
@@ -57,6 +59,8 @@ export type CliIo = {
   /** `deploy`: how often it polls and how long it waits for the desktop app to pick a deploy up. */
   deployPollMs?: number;
   deployPendingTimeoutMs?: number;
+  /** `run`: how often it polls a starting app run. */
+  runPollMs?: number;
 };
 
 const readProcessStdin = () => Bun.stdin.text();
@@ -231,6 +235,8 @@ export async function runCli(argv: string[], io: CliIo = {}): Promise<number | n
         return await withInterrupt(io.signal, (signal) =>
           deploy(config, rest, output, { cwd: io.cwd ?? process.cwd(), signal, pollMs: io.deployPollMs, pendingTimeoutMs: io.deployPendingTimeoutMs }),
         );
+      case "run":
+        return await withInterrupt(io.signal, (signal) => runCommand(config, rest, output, { cwd: io.cwd ?? process.cwd(), signal, pollMs: io.runPollMs }));
       case "issue":
         return await issue(config, rest, output, { env: io.env ?? process.env, cwd: io.cwd ?? process.cwd(), readStdin: io.readStdin ?? readProcessStdin });
       case "tesseract":

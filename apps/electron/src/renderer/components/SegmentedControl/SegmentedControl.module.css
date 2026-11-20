@@ -16,6 +16,37 @@
   background: var(--to-surface);
 }
 
+.scrollable {
+  --fade-start: 0px;
+  --fade-end: 0px;
+  display: flex;
+  width: 100%;
+  padding: 0;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  overflow-x: auto;
+  scrollbar-width: none;
+  mask-image: linear-gradient(to right, transparent, #000 var(--fade-start), #000 calc(100% - var(--fade-end)), transparent);
+}
+
+.scrollable::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollable[data-fade-start] {
+  --fade-start: 24px;
+}
+
+.scrollable[data-fade-end] {
+  --fade-end: 24px;
+}
+
+.scrollable .segment {
+  flex: none;
+  outline-offset: -2px;
+}
+
 .track[aria-disabled] {
   opacity: 0.5;
 }

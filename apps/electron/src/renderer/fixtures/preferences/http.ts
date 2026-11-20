@@ -57,4 +57,23 @@ export default defineHttpFixtures([
       return accounts;
     },
   },
+  {
+    method: "PUT",
+    path: rest.claudeToken,
+    respond: () => {
+      const primary = accounts.accounts.find((profile) => profile.primary);
+      const token = { ...primary!, id: "claude-token", kind: "token" as const, primary: false, present: true, loggedIn: true, account: null, subscriptionType: null, credentialsExpiresAt: null };
+      accounts = { ...accounts, accounts: [...accounts.accounts.filter((profile) => profile.kind !== "token"), token] };
+      return accounts;
+    },
+  },
+  {
+    method: "DELETE",
+    path: rest.claudeToken,
+    respond: () => {
+      const defaultAccountId = accounts.defaultAccountId === "claude-token" ? "claude" : accounts.defaultAccountId;
+      accounts = { defaultAccountId, accounts: accounts.accounts.filter((profile) => profile.kind !== "token") };
+      return accounts;
+    },
+  },
 ]);

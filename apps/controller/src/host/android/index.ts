@@ -64,6 +64,7 @@ export class HostAndroid {
         refusal: () => this.emulator.linkRefusal(),
         shared: () => this.shared.list(),
         sharedAdbd: (serial) => this.shared.endpoint(serial),
+        start: () => this.startDefault(),
       },
       logger,
       options.link,
@@ -143,6 +144,16 @@ export class HostAndroid {
 
   start(input: StartEmulator): Promise<EmulatorInfo> {
     return this.emulator.start(input);
+  }
+
+  /** A sandbox asked over the link: start the last used AVD (else the first) unless an emulator already runs. */
+  private async startDefault(): Promise<void> {
+    const current = this.emulator.current();
+    if (current.state === "running" || current.state === "starting") return;
+    const avds = await this.emulator.listAvds();
+    const avd = current.avd && avds.includes(current.avd) ? current.avd : avds[0];
+    if (!avd) throw new Error("The host has no Android Virtual Device; create one in Android Studio's Device Manager");
+    await this.emulator.start({ avd });
   }
 
   stop(signal?: StopSignal): EmulatorInfo {

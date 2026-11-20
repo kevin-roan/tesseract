@@ -144,6 +144,23 @@ export const ISSUE_ASSIGNEES = ["me", "claude"] as const;
 export const ISSUE_COMMENT_AUTHORS = ["me", "claude", "system"] as const;
 export const IDENTITY_SOURCES = ["serve", "localapi", "none"] as const;
 
+export const ACCOUNT_PROVIDERS = ["password", "apple"] as const;
+export const ACCOUNT_DEVICE_KINDS = ["mobile", "desktop", "sandbox", "server"] as const;
+export const TAILNET_STATES = ["stopped", "starting", "needs_login", "running", "error"] as const;
+export const ACCOUNT_DEFAULT_PORT = 7800;
+export const TESSERACT_NET_DEFAULT_DOMAIN = "tesseract.internal";
+export const TESSERACT_NET_TAG_PREFIX = "tag:tesseract-";
+export const ACCOUNT_ROUTES = {
+  health: "/v1/health",
+  accounts: "/v1/accounts",
+  sessions: "/v1/sessions",
+  appleSessions: "/v1/sessions/apple",
+  currentSession: "/v1/sessions/current",
+  me: "/v1/me",
+  deviceKeys: "/v1/devices/keys",
+  devices: "/v1/devices",
+} as const;
+
 export const RUN_TARGETS = [
   "web-dev",
   "expo-device",
@@ -329,6 +346,12 @@ export const CLAUDE_AUTH_METHODS = ["oauth_token", "credentials", "api_key", "no
 export const CLAUDE_PRIMARY_ACCOUNT_ID = "claude";
 export const CLAUDE_ACCOUNT_ID_PATTERN = /^claude(-[a-z0-9][a-z0-9_-]{0,31})?$/;
 export const CLAUDE_ACCOUNT_NAME_PATTERN = /^[a-z0-9][a-z0-9_-]{0,31}$/;
+/** Id of the account that signs in with the long-lived token set through `PUT /v1/claude/token` (`claude setup-token`). */
+export const CLAUDE_TOKEN_ACCOUNT_ID = "claude-token";
+/** `config_dir`: a Claude Code config dir linked from the host; `token`: the primary's dir signed in with the stored long-lived token. */
+export const CLAUDE_ACCOUNT_KINDS = ["config_dir", "token"] as const;
+/** A `claude setup-token` token: printable ASCII without spaces. */
+export const CLAUDE_OAUTH_TOKEN_PATTERN = /^[\x21-\x7e]{1,1024}$/;
 
 /** `~/.claude.json` keys a Claude import may set; everything else (projects, caches) stays sandbox-local. */
 export const CLAUDE_IMPORT_ACCOUNT_KEYS = [
@@ -401,6 +424,9 @@ export const LIMITS = {
   maxCommandLength: 16_384,
   maxStatusMessageLength: 4_000,
   maxNameLength: 128,
+  maxAccountEmailLength: 254,
+  minAccountPasswordLength: 10,
+  maxAccountPasswordLength: 256,
   maxPairingNameLength: 64,
   defaultUsageDays: 30,
   maxUsageDays: 90,

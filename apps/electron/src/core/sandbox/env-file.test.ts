@@ -33,6 +33,11 @@ describe("env file", () => {
     }
   });
 
+  it("orders the Tesseract Network keys after the tailscale ones", () => {
+    const text = serializeEnv({ TESSERACT_NET_DOMAIN: "tesseract.internal", TS_AUTHKEY: "k", TESSERACT_LOGIN_SERVER: "https://net.example", TESSERACT_HOSTNAME: "box" });
+    expect(text).toBe("TS_AUTHKEY=k\nTESSERACT_LOGIN_SERVER=https://net.example\nTESSERACT_NET_DOMAIN=tesseract.internal\nTESSERACT_HOSTNAME=box\n");
+  });
+
   it("serializes in .env.example order with a trailing newline", () => {
     const text = serializeEnv({ TZ: "UTC", TESSERACT_MODE: "local", TESSERACT_IMAGE: "x/y:z" });
     expect(text).toBe("TESSERACT_MODE=local\nTESSERACT_IMAGE=x/y:z\nTZ=UTC\n");

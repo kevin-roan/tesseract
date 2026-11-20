@@ -29,6 +29,7 @@ export interface DistPlan {
   build: boolean;
   cli: boolean;
   sandbox: boolean;
+  tailnet: boolean;
   smoke: boolean;
   /** Unsigned arm64 code is killed at launch on Apple Silicon, so mac builds without a certificate get an ad-hoc signature. */
   adHocSign: boolean;
@@ -78,6 +79,7 @@ export function distPlan(
     build: !args.flags.has("skip-build"),
     cli: !args.flags.has("skip-cli"),
     sandbox: !args.flags.has("skip-sandbox"),
+    tailnet: !args.flags.has("skip-tailnet"),
     smoke,
     adHocSign: platform === "mac" && !keychainIdentity && MAC_SIGNING_ENV.every((name) => !env[name]?.trim()),
   };
@@ -109,4 +111,24 @@ export function missingCliMessage(missing: readonly string[], hostPlatform: Node
   if (!missing.some((file) => file.endsWith(`/${SIMCAP_BINARY}`))) return `${message} (run cli:build)`;
   if (hostPlatform !== "darwin") return `${message} (mac dists must be built on a Mac: ${SIMCAP_BINARY} needs swiftc, and the universal merge and signing need lipo and codesign)`;
   return `${message} (swiftc failed or was skipped in cli:build; check its output, install Xcode or the Command Line Tools and accept the license, then rerun)`;
+}
+
+export const TAILNET_BINARY = "tesseract-tailnet";
+const GO_OS: Record<string, string> = { linux: "linux", mac: "darwin", win: "windows" };
+const GO_ARCH: Record<string, string> = { x64: "amd64", arm64: "arm64" };
+
+/** GOOS/GOARCH pairs for native/tailnet/scripts/build-desktop.sh, one per CLI target (both arches for the mac universal merge). */
+export function tailnetGoTargets(platform: DistPlatform): string[] {
+  return CLI_TARGETS[platform].map((id) => {
+    const target = findTarget(id);
+    return `${GO_OS[target.builderOs]}/${GO_ARCH[target.arch]}`;
+  });
+}
+
+/** tesseract-tailnet is gitignored and only exists once build-desktop.sh ran, so a dist fails instead of shipping without it. */
+export function requiredTailnetFiles(platform: DistPlatform): string[] {
+  return CLI_TARGETS[platform].map((id) => {
+    const target = findTarget(id);
+    return `resources/bin/${target.builderOs}-${target.arch}/${TAILNET_BINARY}${target.exe}`;
+  });
 }

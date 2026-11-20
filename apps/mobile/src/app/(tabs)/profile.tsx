@@ -3,6 +3,7 @@ import {
   BellRingingIcon,
   ClockCounterClockwiseIcon,
   CursorClickIcon,
+  GlobeHemisphereWestIcon,
   HardDrivesIcon,
   InfoIcon,
   PaletteIcon,
@@ -19,6 +20,7 @@ import Notice from "@/components/notice";
 import ProfileHero from "@/components/profile-hero";
 import ScreenScaffold from "@/components/screen-scaffold";
 import Section from "@/components/section";
+import { useAccountEntry } from "@/features/account/hooks/use-account-entry";
 import { useHostEntry } from "@/features/host-shell/hooks/use-host-entry";
 import SandboxGate from "@/features/sandbox/components/sandbox-gate";
 import SandboxNotices from "@/features/sandbox/components/sandbox-notices";
@@ -31,6 +33,7 @@ export default function ProfileScreen() {
   const screen = useProfileScreen();
   const prefs = usePreferences();
   const hostEntry = useHostEntry();
+  const accountEntry = useAccountEntry();
 
   if (!screen.sandbox || !screen.profile) {
     return <SandboxGate />;
@@ -96,6 +99,14 @@ export default function ProfileScreen() {
         <MotionItem index={1}>
           <Section title={PROFILE_COPY.accountTitle} testID="profile-account">
             <ListGroup>
+              <ListRow
+                icon={GlobeHemisphereWestIcon}
+                label={accountEntry.title}
+                detail={accountEntry.subtitle}
+                chevron
+                onPress={accountEntry.open}
+                testID="profile-tesseract-account"
+              />
               <ListRow
                 icon={SparkleIcon}
                 label={screen.claudeAccountTitle}

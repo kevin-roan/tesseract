@@ -157,6 +157,19 @@ describe("EmulatorPage", () => {
     expect(await screen.findByText("Max frame rate must be between 1 and 120")).toBeTruthy();
   });
 
+  it("keeps a device's screen mounted while switching kinds", async () => {
+    const { container } = renderPage();
+    await screen.findByText("Running");
+    const canvas = container.querySelector("canvas");
+    fireEvent.click(screen.getByRole("radio", { name: "iOS" }));
+    await screen.findByText("The simulator is off");
+    expect(canvas?.isConnected).toBe(true);
+    expect(canvas?.closest("[hidden]")).toBeTruthy();
+    fireEvent.click(screen.getByRole("radio", { name: "Android" }));
+    expect(container.querySelectorAll("canvas")).toHaveLength(2);
+    expect(canvas?.closest("[hidden]")).toBeNull();
+  });
+
   it("explains why the iOS Simulator is unavailable", async () => {
     ios = { ...sampleHostIosStatus, available: false, reason: "not a Mac", reasonCode: "not_macos", devices: [], booted: null };
     renderPage();

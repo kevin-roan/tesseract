@@ -41,6 +41,7 @@
   overflow: hidden;
 }
 
-.collapsed .panel {
+.collapsed .panel,
+.sidebarHidden .panel {
   margin-left: 8px;
 }

@@ -26,6 +26,11 @@ export class HostRouter {
     return this.remote === null;
   }
 
+  /** The active server's host shell (its `target` is `null` while unlinked), or `null` on this computer. */
+  remoteShell(): RemoteHostShell | null {
+    return this.remote;
+  }
+
   follow(route: HostRoute): boolean {
     const key = hostRouteKey(route);
     if (key === this.key) return false;

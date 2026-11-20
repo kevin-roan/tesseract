@@ -1,4 +1,5 @@
 import { isAbsolute, join, win32 } from "node:path";
+import { TESSERACT_NET_DEFAULT_DOMAIN } from "@tesseract/protocol";
 import type { DockerReport } from "../../shared/contracts/docker";
 import type {
   ReachabilityMode,
@@ -28,6 +29,7 @@ import {
   MIN_MEMORY_GB,
   MODES,
   PATTERNS,
+  SIDECAR_MODES,
   WHISPER_MODELS,
 } from "./constants";
 import { isTruthyFlag, type EnvKey, type EnvValues } from "./env-file";
@@ -46,12 +48,17 @@ export interface ValidationContext {
   memBytes?: number;
   tailscaleVolumeExists?: boolean;
   savedAuthKey?: boolean;
+  /** tesseract-net needs a signed-in Tesseract account (the app fetches the sandbox key with it). */
+  accountSignedIn?: boolean;
 }
 
 export interface EnvSecrets {
   token: string;
   tsAuthKey?: string;
   claudeOAuthToken?: string;
+  /** tesseract-net: what the last sandbox key said (DeviceKey.loginServer / magicDnsSuffix), kept across saves. */
+  loginServer?: string;
+  netDomain?: string;
 }
 
 function limits(host: HostResources, docker: DockerReport | null) {
@@ -112,6 +119,10 @@ export function validateChoices(choices: SetupChoices, context: ValidationContex
       add("tsAuthKey", labels.authKeyRequired);
     }
   }
+  if (choices.mode === "tesseract-net") {
+    if (!PATTERNS.hostname.test(choices.hostname)) add("hostname", labels.hostname);
+    if (context.accountSignedIn === false) add("mode", labels.signInRequired);
+  }
   if (choices.mode === "host-tailscale") {
     if (!choices.bindAddr.trim()) add("bindAddr", labels.bindAddrRequired);
     else {
@@ -153,14 +164,18 @@ export function choicesToEnv(
   const has = (component: SandboxComponent) => choices.components.includes(component);
   const bindAddr = choices.mode === "local" ? LOCAL_BIND_ADDR : choices.mode === "host-tailscale" ? choices.bindAddr.trim() : "";
   const tailscale = choices.mode === "tailscale";
+  const sidecar = SIDECAR_MODES.includes(choices.mode);
+  const tesseractNet = choices.mode === "tesseract-net";
   const values: Partial<Record<EnvKey, string>> = {
     TESSERACT_MODE: choices.mode,
     TESSERACT_DIND: choices.dind ? "1" : "",
     TESSERACT_COMPOSE_PROJECT: choices.project,
     TESSERACT_VOLUME_PREFIX: "",
     TESSERACT_IMAGE: choices.image,
-    TS_AUTHKEY: tailscale ? (choices.tsAuthKey.trim() || secrets.tsAuthKey || "") : "",
+    TS_AUTHKEY: sidecar ? ((tailscale ? choices.tsAuthKey.trim() : "") || secrets.tsAuthKey || "") : "",
     TS_TAILNET_DOMAIN: tailscale ? choices.tailnetDomain.trim() : "",
+    TESSERACT_LOGIN_SERVER: tesseractNet ? (secrets.loginServer ?? "") : undefined,
+    TESSERACT_NET_DOMAIN: tesseractNet ? secrets.netDomain || TESSERACT_NET_DEFAULT_DOMAIN : undefined,
     TESSERACT_HOSTNAME: choices.hostname || DEFAULT_HOSTNAME,
     TESSERACT_BIND_ADDR: bindAddr,
     TESSERACT_CONTROLLER_HOST_PORT: String(choices.controllerPort),

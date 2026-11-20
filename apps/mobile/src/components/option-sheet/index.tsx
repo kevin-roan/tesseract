@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { View } from "react-native";
+import { ScrollView, View } from "react-native";
 
 import BottomSheet from "@/components/bottom-sheet";
 import type { MenuOption } from "@/components/menu-sheet/types";
@@ -39,17 +39,19 @@ const OptionSheet = ({
 
   return (
     <BottomSheet visible={visible} title={title} onClose={onClose} onDismissed={onDismissed} closeLabel={closeLabel} testID={testID}>
-      <View accessibilityRole="menu" style={styles.group}>
-        {options.map((option, index) => (
-          <OptionRow
-            key={option.id}
-            option={option}
-            index={index}
-            selected={option.id === selectedId}
-            onSelect={onSelect}
-          />
-        ))}
-      </View>
+      <ScrollView style={styles.scroll} bounces={false} showsVerticalScrollIndicator={false}>
+        <View accessibilityRole="menu" style={styles.group}>
+          {options.map((option, index) => (
+            <OptionRow
+              key={option.id}
+              option={option}
+              index={index}
+              selected={option.id === selectedId}
+              onSelect={onSelect}
+            />
+          ))}
+        </View>
+      </ScrollView>
       {footnote ? (
         <ThemedText variant="caption" color="textSecondary" style={styles.footnote}>
           {footnote}

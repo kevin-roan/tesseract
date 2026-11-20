@@ -19,6 +19,7 @@ export const HOST_LABELS = {
   invalidSandbox: "The sandbox URL and token are required",
   scrcpyMissing: "The app runs on the emulator; install scrcpy to see its screen here",
   noFolder: "This project has no copy on this computer",
+  noMasterFolder: "Choose this project's folder on the sandbox's host machine first",
   terminalTitle: {
     shell: (name: string) => `Host shell · ${name}`,
     claude: (name: string) => `Claude · ${name} · on this computer`,

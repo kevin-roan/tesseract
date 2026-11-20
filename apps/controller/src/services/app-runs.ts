@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { join } from "node:path";
 import {
   createId,
@@ -64,6 +65,8 @@ const COMMAND_TIMEOUT_MS = 10_000;
 const EXPO_CONFIG_TIMEOUT_MS = 60_000;
 const ERROR_TAIL_LINES = 50;
 const BUILD_SUCCESSFUL = "BUILD SUCCESSFUL";
+/** `expo start --android` in Expo Go: the app on the emulator fetched its bundle, so it is open. */
+const EXPO_ANDROID_BUNDLED = "Android Bundled";
 const READY_TIMEOUT_MESSAGE = "Did not become ready within 15 minutes";
 const DAEMON_LINE = /^\[\{.*\}\]$/;
 const EXPO_SLUG = /^[a-z0-9][a-z0-9-]*$/i;
@@ -305,11 +308,13 @@ export class AppRunService {
       markEnded,
     };
     this.runs.set(live.run.id, live);
-    let plans: SpawnPlan[];
+    // An `*-android` run may first have to start the host emulator (minutes): answer `starting` now, spawn after it booted.
+    const deferred = ANDROID_TARGETS.has(target) && this.android.needsEmulatorStart();
+    let plans: SpawnPlan[] = [];
     try {
       live.run.port = await this.choosePort(target, input.port, live.run.id);
       if (isFinalAppRunState(live.run.state)) return this.snapshot(live);
-      plans = await this.plan(live);
+      if (!deferred) plans = await this.plan(live);
     } catch (error) {
       this.runs.delete(live.run.id);
       throw error;
@@ -317,7 +322,33 @@ export class AppRunService {
     if (isFinalAppRunState(live.run.state)) return this.snapshot(live);
     this.publish(live);
     this.logger.info("app run started", { id: live.run.id, project: location.id, target, dir: dir ?? undefined, port: live.run.port ?? undefined });
+    if (deferred) {
+      void this.startAfterEmulator(live, location.id);
+      return this.snapshot(live);
+    }
+    this.spawnPlans(live, location.id, plans);
+    return this.snapshot(live);
+  }
 
+  private async startAfterEmulator(live: LiveRun, projectId: string): Promise<void> {
+    try {
+      await this.android.ensureEmulator();
+      if (isFinalAppRunState(live.run.state)) return;
+      this.spawnPlans(live, projectId, await this.plan(live));
+    } catch (error) {
+      if (isFinalAppRunState(live.run.state)) return;
+      this.clearTimers(live);
+      live.run.state = "failed";
+      live.run.error = error instanceof Error ? error.message : String(error);
+      live.run.endedAt = nowIso();
+      this.logger.info("app run ended", { id: live.run.id, state: live.run.state, error: live.run.error });
+      this.publish(live);
+      live.markEnded();
+    }
+  }
+
+  private spawnPlans(live: LiveRun, projectId: string, plans: SpawnPlan[]): void {
+    const location = { id: projectId };
     plans.forEach((plan, index) => {
       if (isFinalAppRunState(live.run.state)) return;
       const info = this.processes.spawn({
@@ -341,7 +372,6 @@ export class AppRunService {
     });
     this.publish(live);
     if (!isFinalAppRunState(live.run.state)) this.watchReadiness(live);
-    return this.snapshot(live);
   }
 
   /** `SIGKILL` kills every process group of the run at once, also those of a run that already ended but still exits. */
@@ -492,6 +522,15 @@ export class AppRunService {
       case "expo-web":
         return single(packageExecCommand(pm, ["expo", "start", "--web", "--port", port]), { CI: "1", EXPO_NO_TELEMETRY: "1" });
       case "expo-android":
+        // Expo Go when the project needs no native build: no Android SDK or Gradle needed (none on arm64 sandboxes),
+        // and Metro is reached through `adb reverse` on 127.0.0.1 (the host emulator cannot reach the sandbox's IP).
+        if (expoGoCompatible(facts, live.cwd)) {
+          return single(packageExecCommand(pm, ["expo", "start", "--go", "--android", "--port", port]), {
+            CI: "1",
+            EXPO_NO_TELEMETRY: "1",
+            REACT_NATIVE_PACKAGER_HOSTNAME: "127.0.0.1",
+          });
+        }
         return single(packageExecCommand(pm, ["expo", "run:android", "--port", port, "--device", serial]), { CI: "1", EXPO_NO_TELEMETRY: "1" });
       case "expo-ios":
         return single(packageExecCommand(pm, ["expo", "start", "--go", "--port", port]), {
@@ -536,7 +575,9 @@ export class AppRunService {
     }
     if (!watchBuild) return undefined;
     return (_stream, line) => {
-      if (!live.buildSucceeded && line.includes(BUILD_SUCCESSFUL)) live.buildSucceeded = true;
+      if (!live.buildSucceeded && (line.includes(BUILD_SUCCESSFUL) || (live.run.target === "expo-android" && line.includes(EXPO_ANDROID_BUNDLED)))) {
+        live.buildSucceeded = true;
+      }
       return line;
     };
   }
@@ -830,4 +871,9 @@ export class AppRunService {
       await run(["wmctrl", "-r", ":ACTIVE:", "-b", "add,maximized_vert,maximized_horz"], { env, timeoutMs: COMMAND_TIMEOUT_MS });
     }
   }
+}
+
+/** An Expo project Expo Go can run: no `expo-dev-client` and no checked-in `android/` native project. */
+export function expoGoCompatible(facts: Pick<ProjectFacts, "deps">, cwd: string): boolean {
+  return !facts.deps.has("expo-dev-client") && !existsSync(join(cwd, "android"));
 }

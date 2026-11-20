@@ -58,6 +58,26 @@ export class HostWorkspaceService {
     });
   }
 
+  /** The daemon env changed (bind, public URL): stop the running controller and start it again with the new env. */
+  restart(): Promise<void> {
+    return this.serialized(async () => {
+      try {
+        const previous = this.pairing;
+        this.pairing = null;
+        const links = await this.deps.links();
+        if (links.length === 0) return;
+        const runner = await this.deps.runner();
+        // `host workspace stop` finds the controller by its pid file, whatever address it listens on.
+        await stopWorkspace(runner, (previous ?? (await this.readPairing(runner))).localUrl);
+        this.pairing = null;
+        for (const link of links) await this.link(runner, link);
+        await this.ensureCurrent(runner, await this.readPairing(runner));
+      } catch (error) {
+        this.deps.warn?.(`host workspace restart failed: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    });
+  }
+
   private async link(runner: WorkspaceRunner, { projectId, hostPath }: WorkspaceLink): Promise<void> {
     if (this.linked.get(projectId) === hostPath) return;
     await linkRepo(runner, hostPath, { id: projectId });

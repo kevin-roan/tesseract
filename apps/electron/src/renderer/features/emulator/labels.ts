@@ -9,6 +9,16 @@ export const EMULATOR_PAGE_LABELS = {
   screenHint: "Click the screen to type into the device",
 } as const;
 
+export const DEVICE_WINDOW_LABELS = {
+  button: "Emulator",
+  tooltip: "Open the running device in its own window",
+  screenshot: "Save a screenshot",
+  saved: (path: string) => `Screenshot saved to ${path}`,
+  reveal: "Show in folder",
+  saveFailed: (reason: string) => `Could not save the screenshot: ${reason}`,
+  openFailed: (reason: string) => `Could not open the device window: ${reason}`,
+} as const;
+
 export const DEVICE_KIND_LABELS: Record<DeviceKindId, string> = {
   android: "Android",
   ios: "iOS",

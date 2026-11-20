@@ -4,6 +4,7 @@ import { NOW_TICK_MS } from "../shared/constants";
 import { AccountsGroup } from "./AccountsGroup";
 import { HostAccountsGroup } from "./HostAccountsGroup";
 import { SandboxAuthGroup } from "./SandboxAuthGroup";
+import { TokenGroup } from "./TokenGroup";
 import { useClaudeHost } from "./use-claude-host";
 import { useClaudeSandbox } from "./use-claude-sandbox";
 
@@ -25,6 +26,17 @@ export default function ClaudePreferences() {
         pending={sandbox.pendingAccount}
         now={now}
         onSelect={sandbox.selectDefault}
+      />
+      <TokenGroup
+        configured={sandbox.token.configured}
+        value={sandbox.token.value}
+        online={sandbox.online}
+        canSave={sandbox.token.canSave}
+        saving={sandbox.token.saving}
+        clearing={sandbox.token.clearing}
+        onChange={sandbox.token.setValue}
+        onSubmit={sandbox.token.submit}
+        onClear={sandbox.token.clear}
       />
     </PreferencesPage>
   );

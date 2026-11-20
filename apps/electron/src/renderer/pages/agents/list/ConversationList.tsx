@@ -12,6 +12,7 @@ import { Placeholder } from "../shared/Placeholder";
 import { AttentionCard } from "./AttentionCard";
 import { ConversationRow } from "./ConversationRow";
 import { FilterChip } from "./FilterChip";
+import { ProjectFilterBar } from "./ProjectFilterBar";
 import { SearchRow } from "./SearchRow";
 import { TerminalSessionRow } from "./TerminalSessionRow";
 import styles from "./ConversationList.module.css";
@@ -33,6 +34,7 @@ export function ConversationList({ model, attention, onSelect }: ConversationLis
       <Reveal open={ui.searchOpen} className={styles.searchReveal}>
         <SearchRow value={ui.query} focusToken={ui.searchFocusToken} onChange={ui.setQuery} onStop={() => ui.setSearchOpen(false)} />
       </Reveal>
+      <ProjectFilterBar options={model.projectOptions} badges={badges} value={model.projectFilter} onChange={ui.setProjectFilter} />
       <div className={styles.content}>
         <AnimatePresence initial={false}>
           {filter !== "all" ? <FilterChip key="chip" label={FILTER_LABELS[filter]} tooltip={LIST_LABELS.clearFilter} onClear={() => ui.setFilter("all")} /> : null}

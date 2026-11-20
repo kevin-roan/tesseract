@@ -19,7 +19,9 @@ import {
   previousRun,
   projectOptions,
   rowActions,
-  rowMeta,
+  matchesProjectFilter,
+  projectFilterOptions,
+  rowDetail,
   runTitle,
   stateGlyph,
   terminalForRun,
@@ -32,6 +34,8 @@ import { crc32, projectBadge, projectBadges, projectTint } from "./tints";
 const run = (patch: Partial<AgentRun>): AgentRun => ({ ...sampleAgentRun, state: "succeeded", archivedAt: null, ...patch });
 const item = (patch: Partial<InboxItem>): InboxItem => ({ ...sampleInboxItem, ...patch });
 const names = { tesseract: "tesseract" };
+
+import { ALL_PROJECTS_KEY, NO_PROJECT_KEY } from "./constants";
 
 describe("runTitle", () => {
   it("takes the first non-empty line and strips markdown noise", () => {
@@ -55,9 +59,18 @@ describe("runTitle", () => {
 describe("row meta", () => {
   it("joins project, tokens and follow-up", () => {
     const usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, totalTokens: 396_000 };
-    expect(rowMeta(run({ projectId: "tesseract", usage }), names, true)).toBe("tesseract · 396k tokens · follow-up");
-    expect(rowMeta(run({ projectId: null, usage: { ...usage, totalTokens: 1 } }), names)).toBe("Sandbox root · 1 token");
-    expect(rowMeta(run({ projectId: "other", usage: null }), names)).toBe("other");
+    expect(rowDetail(run({ projectId: "tesseract", usage }), true)).toBe("396k tokens · follow-up");
+    expect(rowDetail(run({ projectId: null, usage: { ...usage, totalTokens: 1 } }))).toBe("1 token");
+    expect(rowDetail(run({ projectId: "other", usage: null }))).toBe("");
+  });
+
+  it("filters by project and lists the projects that have runs", () => {
+    const runs = [{ projectId: "zeta" }, { projectId: null }, { projectId: "alpha" }, { projectId: "zeta" }];
+    expect(projectFilterOptions(runs, ALL_PROJECTS_KEY, {}).map((o) => o.id)).toEqual(["alpha", "zeta", NO_PROJECT_KEY]);
+    expect(projectFilterOptions([], "gone", {}).map((o) => o.id)).toEqual(["gone"]);
+    expect(matchesProjectFilter("alpha", ALL_PROJECTS_KEY)).toBe(true);
+    expect(matchesProjectFilter("alpha", "zeta")).toBe(false);
+    expect(matchesProjectFilter(null, NO_PROJECT_KEY)).toBe(true);
   });
 
   it("builds the header meta with duration and account", () => {

@@ -1,7 +1,7 @@
 import { sampleClaudeAccountList, sampleClaudeAuthStatus } from "@tesseract/protocol/fixtures";
 import { describe, expect, it } from "vitest";
 import type { HostClaudeState } from "../../../../shared/contracts/claude";
-import { accountChoices, formatExpiry, hostAccountRows, hostAccountSubtitle, methodLabel, sandboxAuthRows, sandboxDescription, settingsSummary } from "./model";
+import { accountChoices, formatExpiry, hasTokenAccount, hostAccountRows, hostAccountSubtitle, methodLabel, sandboxAuthRows, sandboxDescription, settingsSummary } from "./model";
 
 const NOW = Date.parse("2026-01-01T06:00:00.000Z");
 const HOUR = 3_600_000;
@@ -70,5 +70,15 @@ describe("claude preferences model", () => {
     });
     expect(choices[1]!.subtitle).toBe("dev@work.example · Work\n— · Not linked into the sandbox\n/home/dev/.claude-work");
     expect(choices[1]!.available).toBe(false);
+  });
+
+  it("labels the long-lived token account", () => {
+    const primary = sampleClaudeAccountList.accounts[0]!;
+    const token = { ...primary, id: "claude-token", kind: "token" as const, primary: false, account: null, subscriptionType: null, credentialsExpiresAt: null };
+    const list = { ...sampleClaudeAccountList, accounts: [primary, token] };
+    expect(hasTokenAccount(list)).toBe(true);
+    expect(hasTokenAccount(sampleClaudeAccountList)).toBe(false);
+    expect(accountChoices(list, NOW)[1]).toMatchObject({ title: "claude-token · Long-lived token", available: true });
+    expect(accountChoices(list, NOW)[1]!.subtitle).toContain("Signed in · Long-lived token");
   });
 });

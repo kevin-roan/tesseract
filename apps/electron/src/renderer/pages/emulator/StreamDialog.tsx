@@ -38,7 +38,7 @@ export function StreamDialog({ kind, open, onClose }: StreamDialogProps) {
         <div className={styles.stack}>
           <FieldGroup description={L.encodingHint}>
             <FormField label={L.encoding}>
-              <SegmentedControl tone="dialog" options={encodings} value={form.encoding} onChange={form.setEncoding} ariaLabel={L.encoding} />
+              <SegmentedControl tone="dialog" options={encodings} value={form.encoding} onChange={form.setEncoding} ariaLabel={L.encoding} className={styles.hug} />
             </FormField>
           </FieldGroup>
           <FieldGroup errors={form.errorsFor("bitRate", "maxFps")}>
@@ -54,7 +54,7 @@ export function StreamDialog({ kind, open, onClose }: StreamDialogProps) {
           <FieldGroup errors={form.errorsFor("keyFrameInterval")}>
             <div className={styles.row}>
               <FormField label={L.maxSize}>
-                <ChoiceDropdown options={form.maxSizes} value={form.maxSize} onChange={form.setMaxSize} ariaLabel={L.maxSize} />
+                <ChoiceDropdown options={form.maxSizes} value={form.maxSize} onChange={form.setMaxSize} ariaLabel={L.maxSize} className={styles.select} />
               </FormField>
               <FormField label={L.keyFrameInterval}>
                 <FormEntry inputMode="numeric" {...form.field("keyFrameInterval")} />

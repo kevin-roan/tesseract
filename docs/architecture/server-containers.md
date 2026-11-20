@@ -24,6 +24,24 @@ still get no bind mounts and run under `sysbox-runc`, so they cannot see it. Whe
 missing, the containers check offers `setup-vm` instead of `install-sysbox`. New server
 containers default to 1024 MB of memory, since the VM has 5 GiB in total.
 
+## On a Tesseract server
+
+Server containers live on the machine of the **active Tesseract**. With a sandbox on this
+computer, the app runs `docker` locally as described below. With a remote Tesseract server
+active, every container command goes to that server's linked host shell instead
+(`POST /v1/host/docker`, blueprint §7.2), and container shells are host terminals with
+`container` set. The app needs an unlocked host session (the Containers page asks for the
+host PIN), and refuses with "isn't linked yet" while the server's host shell isn't linked.
+
+- Image builds pack `infra/docker/server` into a gzip tar here and send it as the build
+  context (`docker build -`); deploy bundles are streamed to `docker exec -i` the same way.
+- Route state and `autoDeploy` for a server live in `containers-<sha256(host url)[:12]>.json`
+  next to `containers.json`, so each machine keeps its own routes. Cloudflare and Tailscale
+  secrets stay in this computer's `config.json` and are passed per command.
+- The Tesseract VM (`setup-vm`) is never offered for a server: its Docker and Sysbox are set
+  up on the server itself.
+- Switching the active machine closes remote container shells and reloads the page.
+
 ## Names
 
 | Thing | Value |

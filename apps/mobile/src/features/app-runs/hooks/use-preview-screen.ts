@@ -4,6 +4,7 @@ import { Linking } from "react-native";
 import type { HeaderAction } from "@/components/screen-header";
 import type { WebSurfaceHandle } from "@/components/web-surface/types";
 import { useActiveSandbox } from "@/features/sandbox/hooks/use-sandbox-client";
+import { useResolvedUrl } from "@/features/tailnet";
 import { useSandboxNavigation } from "@/features/sandbox/hooks/use-sandbox-navigation";
 import { originOf } from "@/lib/url";
 
@@ -17,7 +18,7 @@ export function usePreviewScreen(runId: string | undefined, sandboxId: string | 
   const surfaceRef = useRef<WebSurfaceHandle>(null);
   const matches = runId !== undefined && (sandboxId === undefined || sandbox?.id === sandboxId);
   const run = useAppRun(matches ? runId : "");
-  const url = run.data ? previewUrlOf(run.data) : null;
+  const url = useResolvedUrl(run.data ? previewUrlOf(run.data) : null);
   const origin = url ? originOf(url) : null;
   const [error, setError] = useState<string | null>(null);
   const [generation, setGeneration] = useState(0);

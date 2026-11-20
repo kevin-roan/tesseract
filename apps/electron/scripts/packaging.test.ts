@@ -39,9 +39,10 @@ describe("electron-builder.yml", () => {
     expect(config.protocols[0]?.schemes).toEqual([DEEP_LINK_SCHEME]);
   });
 
-  it("ships the CLI binaries, sandbox build context, icons and font licenses", () => {
+  it("ships the CLI binaries, tesseract-tailnet, sandbox build context, icons and font licenses", () => {
     expect(config.extraResources.map(({ from, to }) => `${from} -> ${to}`)).toEqual([
       "dist-cli/${os}-${arch} -> bin",
+      "resources/bin/${os}-${arch} -> bin",
       "build/sandbox-context -> sandbox",
       "build/icons -> icons",
       "src/renderer/theme/fonts -> licenses",

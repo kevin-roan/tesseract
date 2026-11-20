@@ -423,6 +423,16 @@ describe("host CLI", () => {
     expect(await runCli(["host", "pair", "--json"], { env, output: repaired.output })).toBe(0);
     expect((JSON.parse(repaired.out[0] ?? "{}") as { pinSet: boolean }).pinSet).toBe(true);
 
+    const publicEnv = { ...env, TESSERACT_HOST_SHELL_BIND: "127.0.0.1", TESSERACT_HOST_SHELL_PUBLIC_URL: "http://pc-host.tesseract.internal:7701" };
+    const served = capture();
+    expect(await runCli(["host", "pair", "--json"], { env: publicEnv, output: served.output })).toBe(0);
+    const servedJson = JSON.parse(served.out[0] ?? "{}") as { link: string; url: string; localUrl?: string };
+    expect(servedJson.url).toBe("http://pc-host.tesseract.internal:7701");
+    expect(servedJson.localUrl).toBe("http://127.0.0.1:7701");
+    const servedLink = parsePairingLink(servedJson.link, "host");
+    expect(servedLink.ok && servedLink.value.url).toBe("http://pc-host.tesseract.internal:7701");
+    expect((JSON.parse(repaired.out[0] ?? "{}") as { localUrl?: string }).localUrl).toBeUndefined();
+
     const before = cli.read().token;
     const printed = capture();
     expect(await runCli(["host", "token"], { env, output: printed.output })).toBe(0);

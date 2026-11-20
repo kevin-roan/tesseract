@@ -1,3 +1,4 @@
+import { TESSERACT_NET_DEFAULT_DOMAIN } from "@tesseract/protocol";
 import { containerName } from "../connection";
 import { scrubEnv } from "../process";
 import {
@@ -10,6 +11,7 @@ import {
   PROTOCOL_VERSION,
   SCRUBBED_ENV_NAMES,
   SCRUBBED_ENV_PREFIXES,
+  CONTAINER_CONTROLLER_PORT,
   DEFAULT_CONTROLLER_PORT,
   DEFAULT_HOSTNAME,
   DEFAULT_PROJECT,
@@ -37,11 +39,24 @@ export function stackEndpoint(values: EnvValues, env: NodeJS.ProcessEnv): StackE
   const port = values.TESSERACT_CONTROLLER_HOST_PORT || String(DEFAULT_CONTROLLER_PORT);
   const hostname = values.TESSERACT_HOSTNAME || DEFAULT_HOSTNAME;
   const mode = values.TESSERACT_MODE;
-  const tailnet = mode === "tailscale" && values.TS_TAILNET_DOMAIN ? `https://${hostname}.${values.TS_TAILNET_DOMAIN}` : null;
+  const sidecar = mode === "tailscale" || mode === "tesseract-net";
+  const tailnet =
+    mode === "tailscale" && values.TS_TAILNET_DOMAIN
+      ? `https://${hostname}.${values.TS_TAILNET_DOMAIN}`
+      : mode === "tesseract-net"
+        ? `http://${hostname}.${values.TESSERACT_NET_DOMAIN || TESSERACT_NET_DEFAULT_DOMAIN}:${CONTAINER_CONTROLLER_PORT}`
+        : null;
   const bind = mode === "host-tailscale" && values.TESSERACT_BIND_ADDR ? values.TESSERACT_BIND_ADDR : LOCAL_BIND_ADDR;
-  const candidates = mode === "tailscale" ? (tailnet ? [tailnet] : []) : [`http://${bind}:${port}`];
+  const candidates =
+    mode === "tesseract-net"
+      ? [`http://${LOCAL_BIND_ADDR}:${port}`]
+      : sidecar
+        ? tailnet
+          ? [tailnet]
+          : []
+        : [`http://${bind}:${port}`];
   const exported: NodeJS.ProcessEnv = { TESSERACT_COMPOSE_PROJECT: project, TESSERACT_CONTROLLER_HOST_PORT: port };
-  if (mode !== "tailscale") exported.TESSERACT_BIND_ADDR = bind;
+  if (!sidecar) exported.TESSERACT_BIND_ADDR = bind;
   return {
     project,
     container: containerName(project),

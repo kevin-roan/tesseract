@@ -17,6 +17,7 @@ import {
   simcapPath,
   type HostEnv,
 } from "../../core/host";
+import { HOST_TAILNET_ENV_KEYS } from "../../core/host-tailnet";
 import { HOST_WORKSPACE, HostWorkspaceService, workspaceAccounts } from "../../core/host-workspace";
 import { readEnvValues } from "../../core/sandbox";
 import { createLogger } from "../../core/log";
@@ -31,10 +32,11 @@ import { mainContext } from "../context";
 import { publishLocalHost } from "../services/local-host";
 import { isPlainProjectId } from "../services/project-id";
 import { repoRoot, sandboxContext } from "../services/resources";
+import { hostTailnetDaemonEnv, onHostTailnetUrlsChanged } from "../services/host-tailnet";
 import { currentSettings, onSettingsChanged, updateSettings } from "../services/settings";
 import { createHostTerminalWindow } from "../windows/manager";
 import { onConnectionChanged } from "./connection";
-import { activeHostRoute } from "./masterHost";
+import { activeHostRoute, masterHostFolder } from "./masterHost";
 import { defineService } from "./_framework/define";
 import { serviceEmitter } from "./_framework/events";
 
@@ -54,7 +56,9 @@ async function daemonEnv(): Promise<HostEnv> {
   const context = mainContext();
   const config = await readConfig(context.configFile).catch(() => ({}) as Record<string, unknown>);
   const configured = config[ANDROID_CONFIG_KEYS.sdkRoot];
-  return hostDaemonEnv(process.env, {
+  // On the Tesseract Network both daemons bind loopback behind tesseract-tailnet's --serve (the host shell
+  // answers GET /v1/host/workspace, so it needs the workspace's URL too).
+  return hostDaemonEnv({ ...process.env, ...hostTailnetDaemonEnv() }, {
     platform: process.platform,
     sdkRoot: typeof configured === "string" && configured ? configured : null,
     defaultSdkRoot: defaultAndroidSdkRoot(context.paths),
@@ -114,7 +118,7 @@ function hostWorkspace(): HostWorkspaceService {
 async function workspaceEnv(): Promise<NodeJS.ProcessEnv> {
   const values = await readEnvValues(sandboxContext().envFile).catch(() => null);
   const accounts = workspaceAccounts(values?.TESSERACT_HOST_CLAUDE_ACCOUNTS, process.env.HOME || app.getPath("home"));
-  return { ...process.env, [HOST_WORKSPACE.accountsEnv]: accounts };
+  return { ...process.env, ...hostTailnetDaemonEnv(), [HOST_WORKSPACE.accountsEnv]: accounts };
 }
 
 function syncWorkspaceLinks(): void {
@@ -134,8 +138,41 @@ function target(): HostShellService {
   return routed().current();
 }
 
+const routeListeners = new Set<() => void>();
+
 async function followActiveMachine(snapshot?: ConnectionSnapshot): Promise<void> {
-  routed().follow(await activeHostRoute(snapshot));
+  if (!routed().follow(await activeHostRoute(snapshot))) return;
+  for (const listener of routeListeners) listener();
+}
+
+/** Where host work (server containers) runs: this computer, or the active Tesseract server's host shell. */
+export type ActiveHost = { kind: "local" } | { kind: "unlinked" } | { kind: "remote"; label: string; shell: HostShellService };
+
+/** Re-reads the active machine first, so a call right after switching machines already uses the new host. */
+export async function activeHost(): Promise<ActiveHost> {
+  await followActiveMachine();
+  return currentHost();
+}
+
+/** The current route without re-reading the active machine (for synchronous callers). */
+export function currentHost(): ActiveHost {
+  const remote = routed().remoteShell();
+  if (!remote) return { kind: "local" };
+  if (!remote.target) return { kind: "unlinked" };
+  return { kind: "remote", label: remote.target.name ?? hostLabel(remote.target.url), shell: remote };
+}
+
+export function onActiveHostChanged(listener: () => void): () => void {
+  routeListeners.add(listener);
+  return () => routeListeners.delete(listener);
+}
+
+function hostLabel(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
 }
 
 async function setAutostart(enabled: boolean): Promise<HostShellState> {
@@ -170,6 +207,7 @@ function requireTerminalRequest(request: HostTerminalRequest): Required<HostTerm
     projectId: request.projectId,
     title: typeof request.title === "string" && request.title ? request.title : request.projectId,
     kind: hostTerminalKind(request.kind),
+    host: request.host === "master" ? "master" : "local",
   };
 }
 
@@ -216,10 +254,17 @@ async function hostPathOf(projectId: string): Promise<string> {
   }
 }
 
+async function masterTerminalPlace(projectId: string): Promise<{ shell: HostShellService; hostPath: string }> {
+  const active = await activeHost();
+  const hostPath = active.kind === "remote" ? await masterHostFolder(projectId) : null;
+  if (active.kind !== "remote" || hostPath === null) throw new HostShellError(HOST_LABELS.noMasterFolder, "not_found");
+  return { shell: active.shell, hostPath };
+}
+
 async function openTerminal(input: HostTerminalRequest): Promise<void> {
   const request = requireTerminalRequest(input);
-  const hostPath = await hostPathOf(request.projectId);
-  const url = await host().openTerminal(hostPath, request.kind);
+  const place = request.host === "master" ? await masterTerminalPlace(request.projectId) : { shell: host(), hostPath: await hostPathOf(request.projectId) };
+  const url = await place.shell.openTerminal(place.hostPath, request.kind);
   await createHostTerminalWindow(url, HOST_LABELS.terminalTitle[request.kind](request.title));
 }
 
@@ -230,6 +275,23 @@ async function openWorkspace(projectId: unknown): Promise<HostWorkspaceTarget> {
 
 export function applyAndroidSdkChange(): Promise<HostShellState | null> {
   return service ? service.restartIfEnvChanged(HOST_ANDROID_ENV_KEYS) : Promise.resolve(null);
+}
+
+/** The Tesseract Network URLs appeared or changed: restart the daemons, or start one that failed without Tailscale. */
+function applyTailnetChange(): void {
+  const current = service;
+  if (current) {
+    const state = current.state();
+    const task = current.hasChild()
+      ? current.restartIfEnvChanged(HOST_TAILNET_ENV_KEYS)
+      : state.autostart || state.status === "failed"
+        ? current.start()
+        : current.refresh();
+    void task.catch((error: unknown) => {
+      log.warn(`host shell restart failed: ${error instanceof Error ? error.message : String(error)}`);
+    });
+  }
+  if (workspace) void workspace.restart();
 }
 
 function applyIosChange(): void {
@@ -258,6 +320,8 @@ export default defineService(
     setAutostart: (_context, enabled) => setAutostart(enabled === true),
     unlock: (_context, pin) => target().unlock(requireString(pin, HOST_LABELS.invalidPin)),
     lock: () => target().lock(),
+    localState: () => host().state(),
+    localUnlock: (_context, pin) => host().unlock(requireString(pin, HOST_LABELS.invalidPin)),
     androidStatus: () => target().androidStatus(),
     startEmulator: (_context, avd) => target().startEmulator(requireString(avd, HOST_LABELS.invalidAvd)),
     stopEmulator: (_context, signal) => target().stopEmulator(requireSignal(signal)),
@@ -297,6 +361,7 @@ export default defineService(
       const stopSettings = onSettingsChanged((next, previous) => {
         if (next.hostShellIos !== previous.hostShellIos) applyIosChange();
       });
+      const stopTailnet = onHostTailnetUrlsChanged(applyTailnetChange);
       follow();
       const linksPath = links().linksPath;
       watchFile(linksPath, { interval: CONFIG_POLL_MS }, syncWorkspaceLinks);
@@ -304,6 +369,7 @@ export default defineService(
         unwatchFile(linksPath, syncWorkspaceLinks);
         stopFollowing();
         stopSettings();
+        stopTailnet();
         for (const controller of inflight.values()) controller.abort();
         inflight.clear();
         return current.shutdown();

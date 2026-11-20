@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetSettingsFixture, settingsFixtures } from "../../../fixtures/app-settings/ipc";
+import { TAILNET_RUNNING } from "../../../fixtures/account/data";
 import { overrideIpcFixtures } from "../../../fixtures/registry";
 import { skipMotionDuringTests } from "../../../onboarding/shell/test-motion";
 import { renderRoutes } from "../../../test/render";
@@ -47,6 +48,16 @@ describe("HostShellPreferences", () => {
     await screen.findByText(EXTERNAL);
     fireEvent.click(switchFor("Start with Tesseract"));
     await waitFor(() => expect(setAutostart).toHaveBeenCalledWith(true));
+  });
+
+  it("shows the Tesseract Network node and saves its mode", async () => {
+    const setMode = vi.fn((mode: "auto" | "on" | "off") => ({ ...TAILNET_RUNNING, mode }));
+    restores.push(overrideIpcFixtures({ tailnet: { state: () => TAILNET_RUNNING, setMode } }));
+    render();
+    expect(await screen.findByText("Connected · http://devbox-host.tesseract.internal:7701")).toBeTruthy();
+    expect(screen.getByRole("radio", { name: /Automatic/ }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(screen.getByRole("radio", { name: /^Off/ }));
+    await waitFor(() => expect(setMode).toHaveBeenCalledWith("off"));
   });
 
   it("rotates the token after confirming", async () => {

@@ -3,7 +3,7 @@ import type { BuildMode, ReachabilityMode, SandboxComponent, WhisperModel } from
 
 export const SANDBOX_COMPONENTS: readonly SandboxComponent[] = ["android", "flutter", "mono", "whisper"];
 export const WHISPER_MODEL_ORDER: readonly WhisperModel[] = ["base", "small", "medium", "large-v3-turbo"];
-export const REACHABILITY_ORDER: readonly ReachabilityMode[] = ["local", "tailscale", "host-tailscale"];
+export const REACHABILITY_ORDER: readonly ReachabilityMode[] = ["local", "tesseract-net", "tailscale", "host-tailscale"];
 export const SOURCE_ORDER: readonly BuildMode[] = ["build", "pull", "existing"];
 
 export const BASE_IMAGE_GB = 4.7;

@@ -57,6 +57,10 @@ export const UPDATE_LABELS = {
 
 export const IPC_LABELS = {
   invalidUrl: "That link is not a valid URL",
+  invalidDeviceKind: "That is not a device kind",
+  invalidDeviceSize: "A device window needs a screen size",
+  invalidScreenshot: "A screenshot must be a PNG data URL",
+  notDeviceWindow: "Only a device window can do this",
   refusedProtocol: (protocol: string) => `Refusing to open ${protocol} links`,
   invalidPath: "That path is not an absolute file path",
   invalidSettings: "Settings must be an object",
@@ -70,6 +74,7 @@ export const IPC_LABELS = {
 export const WINDOW_LABELS = {
   main: APP_NAME,
   onboarding: `Set up ${APP_NAME}`,
+  device: { android: "Android Emulator", ios: "iOS Simulator" },
 } as const;
 
 export const LOCAL_COMMAND_LABELS = {

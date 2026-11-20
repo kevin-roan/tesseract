@@ -20,3 +20,35 @@
   outline: none;
   box-shadow: inset -1px 0 var(--to-focus-ring);
 }
+
+.handle[data-reverse] {
+  right: auto;
+  left: 0;
+}
+
+.handle[data-reverse]:hover,
+.handle[data-reverse][data-dragging] {
+  box-shadow: inset 1px 0 var(--to-border-strong);
+}
+
+.handle[data-reverse]:focus-visible {
+  box-shadow: inset 1px 0 var(--to-focus-ring);
+}
+
+.handle[data-axis="y"] {
+  right: 0;
+  bottom: auto;
+  left: 0;
+  width: auto;
+  height: 6px;
+  cursor: row-resize;
+}
+
+.handle[data-axis="y"]:hover,
+.handle[data-axis="y"][data-dragging] {
+  box-shadow: inset 0 1px var(--to-border-strong);
+}
+
+.handle[data-axis="y"]:focus-visible {
+  box-shadow: inset 0 1px var(--to-focus-ring);
+}

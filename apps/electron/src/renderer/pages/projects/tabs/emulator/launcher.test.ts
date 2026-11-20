@@ -1,5 +1,5 @@
 import type { AppRun, HostAndroidStatus, RunTargetInfo } from "@tesseract/protocol";
-import { sampleAppRun, sampleHostAndroidStatus, sampleSandboxAndroidStatus } from "@tesseract/protocol/fixtures";
+import { sampleAppRun, sampleHostAndroidStatus } from "@tesseract/protocol/fixtures";
 import { describe, expect, it, vi } from "vitest";
 import { IpcError } from "../../../../../shared/ipc-types";
 import { hostAndroid, HostRequestError, prepareEmulator, runOnEmulator, type HostAndroid, type SandboxApi, type Timing } from "./launcher";
@@ -23,7 +23,6 @@ function sandbox(runs: AppRun[] = [], targets: RunTargetInfo[] = [target]): Sand
       started.push(body.target);
       return { ...sampleAppRun, target: body.target, state: "starting" };
     },
-    getAndroidStatus: async () => sampleSandboxAndroidStatus,
   };
 }
 
@@ -49,7 +48,6 @@ describe("runOnEmulator", () => {
     const result = await runOnEmulator(api, "p", "expo-android");
     expect(result.started).toBe(false);
     expect(api.started).toEqual([]);
-    expect(result.serial).toBe(sampleSandboxAndroidStatus.emulator?.serial);
   });
 
   it("starts a run when none is live", async () => {

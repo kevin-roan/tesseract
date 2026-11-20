@@ -10,6 +10,7 @@ import { useAgentAttachments } from "../../../features/agents/hooks/use-attachme
 import { useNow } from "../../../features/agents/hooks/use-now";
 import { modelKey, runModel, type ModelKey } from "../../../features/agents/model";
 import { ATTENTION_LABELS, CONVERSATION_LABELS, formatLabel, NEW_LABELS } from "../../../features/agents/labels";
+import { estimateGrid } from "../../../features/terminals/model";
 import { isRunning, projectName, runTitle, type NameLookup } from "../timeline/run-info";
 import { HEADER_TICK_MS, IDLE_TICK_MS } from "./constants";
 import {
@@ -73,6 +74,7 @@ export function useConversation(props: ConversationViewProps) {
   const [sending, setSending] = useState(false);
   const [confirmStop, setConfirmStop] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [openingCli, setOpeningCli] = useState(false);
   const [chosenModel, setChosenModel] = useState<ModelKey | null>(null);
   const model = chosenModel ?? modelKey(run?.model);
   const followUp = followUpState(run);
@@ -125,6 +127,24 @@ export function useConversation(props: ConversationViewProps) {
     (terminalId: string) => (onOpenTerminal ? onOpenTerminal(terminalId) : navigate("terminals", { terminalId })),
     [navigate, onOpenTerminal],
   );
+
+  const switchToCli = useCallback(() => {
+    if (!client || !run?.sessionId) return;
+    setOpeningCli(true);
+    client
+      .createTerminal({
+        kind: "claude",
+        ...estimateGrid(0, 0),
+        projectId: run.projectId ?? undefined,
+        resumeSessionId: run.sessionId,
+        forkSession: run.state === "running" || undefined,
+      })
+      .then(
+        (terminal) => openTerminal(terminal.id),
+        (error: unknown) => setErrorNotice(formatLabel(CONVERSATION_LABELS.switchToCliFailed, { error: describeError(error) })),
+      )
+      .finally(() => setOpeningCli(false));
+  }, [client, openTerminal, run?.projectId, run?.sessionId, run?.state]);
 
   const manage = useCallback(
     (action: ManageAction) => {
@@ -223,6 +243,9 @@ export function useConversation(props: ConversationViewProps) {
       sections,
       stopping,
       openTerminal,
+      cli: run?.sessionId
+        ? { tooltip: running ? CONVERSATION_LABELS.switchToCliFork : CONVERSATION_LABELS.switchToCliResume, busy: openingCli, open: switchToCli }
+        : null,
       manage,
       requestStop: () => setConfirmStop(true),
     },

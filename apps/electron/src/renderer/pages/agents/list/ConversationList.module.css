@@ -13,6 +13,22 @@
   padding: 8px 12px 0 12px;
 }
 
+.projectFilter {
+  flex: none;
+  padding: 8px 10px 4px 10px;
+}
+
+.projectDot {
+  width: 7px;
+  height: 7px;
+  border-radius: var(--to-radius-pill);
+  background: var(--to-text-tertiary);
+}
+
+.projectDotTinted {
+  background: rgb(var(--project-tint));
+}
+
 .content {
   composes: to-overlay-scrollbar from global;
   display: flex;
@@ -20,7 +36,7 @@
   flex-direction: column;
   gap: 8px;
   min-height: 0;
-  padding: 4px 0 24px 8px;
+  padding: 2px 0 24px 8px;
   overflow-x: hidden;
   overflow-y: auto;
   scrollbar-gutter: stable;
@@ -72,15 +88,16 @@
 .rows {
   display: flex;
   flex-direction: column;
+  gap: 1px;
 }
 
 .row {
   display: flex;
   gap: 10px;
-  align-items: flex-start;
-  margin: 4px 0;
-  padding: 10px 12px;
-  border-radius: var(--to-radius-md);
+  align-items: center;
+  margin-right: 2px;
+  padding: 7px 8px;
+  border-radius: var(--to-radius-sm);
   background: transparent;
   cursor: default;
   outline-offset: -1px;
@@ -95,27 +112,37 @@
   background: var(--to-background-selected);
 }
 
-.row.tinted {
-  background: rgba(var(--row-tint), var(--to-tint-rest));
+.tile {
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--to-radius-sm);
+  background: var(--to-background-element);
+  color: var(--to-text-tertiary);
 }
 
-.row.tinted:hover {
-  background: rgba(var(--row-tint), var(--to-tint-hover));
+.tileTinted {
+  background: rgba(var(--project-tint), 0.16);
+  color: color-mix(in srgb, rgb(var(--project-tint)) 80%, var(--to-text));
 }
 
-.row.tinted.selected {
-  background: rgba(var(--row-tint), var(--to-tint-selected));
-}
-
-.rowGlyph {
-  margin-top: 1px;
+.tileStatus {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  border-radius: var(--to-radius-pill);
+  background: var(--to-background);
 }
 
 .rowText {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   min-width: 0;
   text-align: left;
 }
@@ -130,7 +157,7 @@
 .rowBottom {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
 }
 
@@ -139,13 +166,25 @@
   min-width: 0;
 }
 
-.time {
-  flex: none;
-  text-align: right;
+.projectName {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-weight: 500;
 }
 
-.rowLogo {
-  color: var(--to-text-tertiary);
+.rowDetail {
+  flex: 0 100 auto;
+  min-width: 0;
+}
+
+.rowDetail::before {
+  content: "· ";
+}
+
+.time {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
 }
 
 .unreadDot,

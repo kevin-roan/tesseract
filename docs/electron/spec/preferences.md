@@ -29,6 +29,7 @@ Page registry (sorted by `order`, then id). Pages are discovered dynamically in 
 | order | id | Title (nav + breadcrumb) | Icon key | Lucide icon |
 |---|---|---|---|---|
 | 0 | `connection` | "Connection" | `connection` | `plug` |
+| 2 | `account` | "Account" | `assignee` | — |
 | 5 | `appearance` | "Appearance" | `appearance` | `sun-moon` |
 | 10 | `claude` | "Claude" | `agents` | `mouse-pointer-2` |
 | 15 | `host-shell` | "Host shell" | `host` | `monitor` |
@@ -247,6 +248,12 @@ doesn't exist ([rebrand-migration.md](../../runbooks/rebrand-migration.md)). Wri
 | `appearance` | `"system" \| "light" \| "dark"` | Appearance | `"dark"` |
 | `zoom` | number | app zoom actions (not in Preferences) | 1.0 |
 | `host_shell_autostart` | boolean (`true` only counts if exactly `true`) | Host shell › Start with Tesseract | false |
+| `host_tailnet` | `"auto" \| "on" \| "off"` | Host shell › Tesseract Network | `"auto"` |
+
+The Tesseract account is not in `config.json`: `<userData>/account-session.json` (0600) holds the account server URL
+and the session, its token sealed with Electron `safeStorage` (never written in clear; without a keychain the session
+lives only until the app quits). The host's Tesseract Network node keeps its state in `<userData>/tailnet/` and what it
+joined with in `<userData>/tailnet.json`.
 
 Also readable (`load_file_config`): `apiUrl` as an alias of `url`. Env config (source `env`): `TESSERACT_DESKTOP_URL` +
 `TESSERACT_TOKEN` (+ `TESSERACT_DESKTOP_NAME`, `TESSERACT_DESKTOP_PAIRING_URL`).
@@ -344,6 +351,35 @@ trim; must match `scheme://authority path`; scheme http/https only ("URL must st
 no `@` in authority; host = hostname or bracketed IPv6, lowercased; port 1–65535; default ports dropped; path must not
 contain whitespace/control chars/backslash; a trailing `/v<digits>…` or `/ui…` suffix is stripped; trailing slashes
 stripped; trailing dot in host removed. Result `scheme://host[:port][path]`.
+
+---
+
+## 5a. Page: Account (`account`)
+
+The desktop's Tesseract account (ADR 0014 §2, §6), against the account service at the saved server URL or
+`TESSERACT_ACCOUNT_URL`. Password only (no Sign in with Apple on desktop). Main process: `src/core/account/`
+(client parses every response with the `@tesseract/protocol` account schemas), IPC service `account`.
+
+Signed out — Group "Tesseract account", description "Sign in to use the Tesseract Network for the sandbox, the host
+shell and the host workspace." (or the last error, e.g. "Your Tesseract session expired; sign in again"):
+EntryRows "Account server" (url, saved on blur; another server drops the session), "Email", "Password", "Name"
+(placeholder "Optional", sign-up only), then a row with "Create account" (secondary) and "Sign in" (primary); errors
+show in that row ("Couldn't sign in: …", "Couldn't create the account: …").
+
+Signed in:
+- Group "Tesseract account" (description about the Tesseract Network; header suffix refresh → `GET /v1/me` and devices):
+  PropertyRows "Email", "Name" (when set), "Server", "Session expires" (or "No keychain on this computer: you stay signed
+  in until Tesseract quits"); action "Sign out" (`DELETE /v1/sessions/current`, then forget the session locally).
+- Group "Devices", description "Phones, sandboxes and computers on your Tesseract Network": one row per
+  `GET /v1/devices` entry, title = MagicDNS name (trailing dot removed) or hostname, subtitle
+  `{Phone|Computer|Sandbox|Server|Device} · {Online | Offline · last seen …} · {first IP}`, destructive "Remove" →
+  confirm "Remove {name}?" / "It leaves the Tesseract Network and has to sign in again to come back." →
+  `DELETE /v1/devices/:id`. Empty: "No devices yet".
+- Group "Delete account": destructive ButtonRow "Delete…" → confirm "Delete your Tesseract account?" (destructive
+  "Delete account") → `DELETE /v1/me`, then signed out.
+
+A 401 from any authenticated call signs out locally. Signing out, deleting the account or switching server also stops
+the host's Tesseract Network node and wipes its state (§8, "Tesseract Network").
 
 ---
 
@@ -447,8 +483,8 @@ app, so status is "Running outside Tesseract · https://archlinux.tail511d9d.ts.
 disabled, PIN set, autostart off, Log collapsed.
 
 ### Group 1 — "Server" (header suffix: refresh icon button "Refresh" → probe)
-Description: "Lets paired phones open a terminal on this computer over Tailscale. Tesseract runs it in the background and
-stops it when you quit."
+Description: "Lets paired phones open a terminal on this computer over Tailscale or the Tesseract Network. Tesseract runs
+it in the background and stops it when you quit."
 - SwitchRow "Serve host shell": on = `status ∈ {running, external, starting}`; disabled when `status ∈ {stopping,
   external}`; subtitle by status:
   `stopped` "Stopped" · `starting` "Starting…" · `running` "Running · <url>" (or "Running" without pairing url) ·
@@ -457,6 +493,30 @@ stops it when you quit."
   (SIGTERM, SIGKILL after 5s). Programmatic state updates must not trigger start/stop.
 - SwitchRow "Start with Tesseract", subtitle "Start serving whenever Tesseract opens": writes `host_shell_autostart`
   to config.json immediately. At app start, if true → start, else probe.
+
+### Group 1a — "Tesseract Network"
+Description: "Puts the host shell and the host workspace on your Tesseract account's network, so phones reach them
+without Tailscale. They then listen on 127.0.0.1 only." RadioRows (`host_tailnet`): "Automatic" ("When you're signed in
+and Tailscale isn't running on this computer", default), "On" ("Whenever you're signed in, also next to Tailscale"),
+"Off" ("Only Tailscale"). Below, an untitled group with a "Status" row: "Off", "Sign in under Settings › Account to use
+it" (button "Account…"), "Not bundled with this build · …", "Connecting…", "Connected · http://<host>-host.<suffix>:7701"
+(button "Reconnect"), "Needs a new key; sign in again", "Failed · <error>". Tailscale counts as running when
+`tailscale ip -4` prints an address (checked at start and on Reconnect).
+
+Supervisor (main process, `src/core/host-tailnet/`, IPC service `tailnet`): while enabled it runs the bundled
+`tesseract-tailnet up --state-dir <userData>/tailnet --login-server <url> [--auth-key <key>] --hostname <computer>-host
+--serve 7701=127.0.0.1:7701 --serve 7702=127.0.0.1:7702` (packaged: `<resources>/bin/tesseract-tailnet`; checkout:
+`apps/electron/resources/bin/<os>-<arch>/tesseract-tailnet` from `native/tailnet/scripts/build-desktop.sh`). The first
+run (empty state dir, or another hostname) fetches a `desktop` device key; `loginServer`/`magicDnsSuffix` are kept in
+`<userData>/tailnet.json`, so restarts need no key. A `needs_login` status from a keyless run fetches a fresh key once.
+Stdout lines are `TailnetStatus` JSON; other lines go to a 200-line log. A crash restarts it after 1, 2, 5, 10, then
+30 s (reset after a run of 60 s or a `running` status); quitting sends SIGTERM (SIGKILL after 3 s).
+While enabled, both daemons get `TESSERACT_HOST_SHELL_BIND=127.0.0.1`,
+`TESSERACT_HOST_SHELL_PUBLIC_URL=http://<dns name>:7701`, `TESSERACT_HOST_WORKSPACE_BIND=127.0.0.1` and
+`TESSERACT_HOST_WORKSPACE_PUBLIC_URL=http://<dns name>:7702` (the reported MagicDNS name, else
+`<hostname>.<suffix>`), so pairing links carry the Tesseract Network name; when these change the host shell restarts
+(or starts, when it failed for lack of Tailscale or autostart is on) and the host workspace restarts. `host pair --json`
+then also prints `localUrl` (`http://127.0.0.1:7701`): the app talks to the daemon there and shows the link's URL.
 
 ### Group 2 — "Security"
 - "PIN" row: subtitle "Set · phones unlock with it" / "Not set · phones can't unlock the shell"; suffix secondary
@@ -472,7 +532,8 @@ stops it when you quit."
   "No output yet". (Service keeps 200 lines.) Auto-update while open; in Electron keep scroll pinned to bottom.
 
 ### Service semantics (main process)
-- Probe = run `<controller> host pair --json` (30s timeout), parse the last `{…}` line `{link,url,name,pinSet}`, then if
+- Probe = run `<controller> host pair --json` (30s timeout), parse the last `{…}` line `{link,url,name,pinSet,localUrl?}`
+  (with `localUrl` the app uses it and keeps `url` as the displayed public URL), then if
   not owned: `GET <url>/v1/health` (1.5s) and treat `{ok:true, service:"host-shell"}` as `external`.
 - `<controller>` = `TESSERACT_CONTROLLER_COMMAND` (shell-split) or `bun apps/controller/src/index.ts` from the checkout;
   in the packaged app use the bundled `tesseract` CLI. Errors: "Bun is not installed or not on PATH; install it from

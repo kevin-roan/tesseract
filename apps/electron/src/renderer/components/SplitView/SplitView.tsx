@@ -9,6 +9,7 @@ export interface SplitViewProps {
   children: ReactNode;
   sidebarWidth: number;
   collapsed?: boolean;
+  sidebarHidden?: boolean;
   showContent?: boolean;
   resizeHandle?: ReactNode;
   overlay?: ReactNode;
@@ -21,16 +22,20 @@ export function SplitView({
   children,
   sidebarWidth,
   collapsed = false,
+  sidebarHidden = false,
   showContent = true,
   resizeHandle,
   overlay,
   className,
   panelClassName,
 }: SplitViewProps) {
-  const sidebarVisible = !collapsed || !showContent;
+  const sidebarVisible = collapsed ? !showContent : !sidebarHidden;
   const contentVisible = !collapsed || showContent;
   return (
-    <div className={cx(styles.window, collapsed && styles.collapsed, className)} data-collapsed={collapsed || undefined}>
+    <div
+      className={cx(styles.window, collapsed && styles.collapsed, !collapsed && sidebarHidden && styles.sidebarHidden, className)}
+      data-collapsed={collapsed || undefined}
+    >
       <motion.div
         className={styles.sidebarPane}
         style={collapsed ? undefined : { width: sidebarWidth }}

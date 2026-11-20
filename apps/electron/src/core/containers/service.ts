@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { DEPLOY_APP_PATTERN, type DeployKind } from "@tesseract/protocol";
 import { readConfig, updateConfig } from "../config";
@@ -53,10 +53,22 @@ export interface DeployRequest {
   bundle: string;
 }
 
+/** Where server containers live: this computer's Docker, or the active Tesseract server's host. */
+export interface ContainersTarget {
+  docker: DockerDeps;
+  stateFile: string;
+  /** The machine running Docker; `null` when it's another machine (no VM setup, Linux defaults). */
+  platform: NodeJS.Platform | null;
+  /** Packs a folder into a gzip tar this computer can stream to a remote daemon; returns the file and its cleanup. */
+  packContext?(dir: string): Promise<{ file: string; cleanup(): Promise<void> }>;
+}
+
 export interface ContainersServiceOptions {
   docker: DockerDeps;
   configFile: string;
   stateFile: string;
+  /** Overrides `docker`, `stateFile` and `platform` for each call (the containers follow the active machine). */
+  target?(): ContainersTarget;
   contextDir: string;
   env: Record<string, string | undefined>;
   cipher: TokenCipher | null;
@@ -80,6 +92,12 @@ export function stateFileIn(stateDir: string): string {
   return join(stateDir, STATE_FILE);
 }
 
+/** Route state of a Tesseract server's containers, kept apart from this computer's (`containers-<hash>.json`). */
+export function remoteStateFileIn(stateDir: string, hostUrl: string): string {
+  const hash = createHash("sha256").update(hostUrl).digest("hex").slice(0, 12);
+  return join(stateDir, STATE_FILE.replace(/\.json$/, `-${hash}.json`));
+}
+
 export function serverImageDir(contextDir: string): string {
   return join(contextDir, ...SERVER_IMAGE_DIR);
 }
@@ -91,8 +109,20 @@ export class ContainersService {
 
   constructor(private readonly options: ContainersServiceOptions) {}
 
+  private get current(): ContainersTarget {
+    return this.options.target?.() ?? { docker: this.options.docker, stateFile: this.options.stateFile, platform: this.options.platform ?? process.platform };
+  }
+
+  private get docker(): DockerDeps {
+    return this.current.docker;
+  }
+
+  private get stateFile(): string {
+    return this.current.stateFile;
+  }
+
   private get darwin(): boolean {
-    return (this.options.platform ?? process.platform) === "darwin";
+    return this.current.platform === "darwin";
   }
 
   phase(): ContainersPhase {
@@ -149,8 +179,8 @@ export class ContainersService {
 
   async report(): Promise<ContainersReport> {
     const [sysbox, image, tailscaleKey, tags, cloudflare] = await Promise.all([
-      hasSysbox(this.options.docker),
-      imagePresent(this.options.docker),
+      hasSysbox(this.docker),
+      imagePresent(this.docker),
       this.secret(TAILSCALE_KEYS),
       this.tailnetTags(),
       this.cloudflareStatus(),
@@ -167,7 +197,7 @@ export class ContainersService {
   }
 
   private async vmDetail(): Promise<string> {
-    const context = await activeContext(this.options.docker);
+    const context = await activeContext(this.docker);
     return context && context !== VM_CONTEXT ? CHECK_LABELS.vm.otherContext(context, VM_CONTEXT) : CHECK_LABELS.vm.missing;
   }
 
@@ -182,19 +212,20 @@ export class ContainersService {
   }
 
   async list(): Promise<ServerContainer[]> {
-    const [found, state] = await Promise.all([listContainers(this.options.docker), readState(this.options.stateFile)]);
+    const { docker, stateFile } = this.current;
+    const [found, state] = await Promise.all([listContainers(docker), readState(stateFile)]);
     const containers = found.map((container) => ({ ...container, autoDeploy: state.autoDeploy.includes(container.name) }));
-    this.options.onContainers?.(containers);
+    if (this.current.docker === docker) this.options.onContainers?.(containers);
     return containers;
   }
 
   async setAutoDeploy(name: string, enabled: boolean): Promise<ServerContainer> {
     const target = validName(name);
-    await findContainer(this.options.docker, target);
+    await findContainer(this.docker, target);
     await this.serialRoutes(async () => {
-      const state = await readState(this.options.stateFile);
+      const state = await readState(this.stateFile);
       const others = state.autoDeploy.filter((entry) => entry !== target);
-      await writeState(this.options.stateFile, { ...state, autoDeploy: enabled === true ? [...others, target] : others });
+      await writeState(this.stateFile, { ...state, autoDeploy: enabled === true ? [...others, target] : others });
     });
     return this.changed(target);
   }
@@ -205,10 +236,10 @@ export class ContainersService {
     const port = request.port === null ? null : validPort(request.port);
     const hostname = request.hostname === null ? null : validHostname(request.hostname);
     const reuse = hostname && port ? await this.routeFor(name, hostname, port) : false;
-    const container = await findContainer(this.options.docker, name);
-    if (container.state === "stopped" || container.state === "error") await startContainer(this.options.docker, name);
-    await waitForInnerDocker(this.options.docker, name);
-    await deployApp(this.options.docker, { name, app: request.app, kind: request.kind, port, bundle: request.bundle }, onLine, signal);
+    const container = await findContainer(this.docker, name);
+    if (container.state === "stopped" || container.state === "error") await startContainer(this.docker, name);
+    await waitForInnerDocker(this.docker, name);
+    await deployApp(this.docker, { name, app: request.app, kind: request.kind, port, bundle: request.bundle }, onLine, signal);
     const urls: string[] = [];
     if (hostname && port) {
       if (!reuse) await this.addRoute({ container: name, hostname, port });
@@ -220,7 +251,7 @@ export class ContainersService {
   }
 
   private async routeFor(container: string, hostname: string, port: number): Promise<boolean> {
-    const route = (await readState(this.options.stateFile)).routes.find((entry) => entry.hostname === hostname);
+    const route = (await readState(this.stateFile)).routes.find((entry) => entry.hostname === hostname);
     if (!route) return false;
     if (route.container !== container || route.port !== port) throw new IpcError("invalid_argument", CONTAINERS_MESSAGES.routeConflict(hostname, route.container, route.port));
     return true;
@@ -234,13 +265,23 @@ export class ContainersService {
   }
 
   async buildImage(): Promise<ContainersReport> {
-    await this.exclusive({ kind: "building", step: "" }, (signal) =>
-      buildServerImage(this.options.docker, serverImageDir(this.options.contextDir), signal, (step) => this.setPhase({ kind: "building", step })),
-    );
+    const target = this.current;
+    await this.exclusive({ kind: "building", step: "" }, async (signal) => {
+      const onStep = (step: string) => this.setPhase({ kind: "building", step });
+      const dir = serverImageDir(this.options.contextDir);
+      if (!target.packContext) return buildServerImage(target.docker, dir, signal, onStep);
+      const packed = await target.packContext(dir);
+      try {
+        await buildServerImage(target.docker, { tarball: packed.file }, signal, onStep);
+      } finally {
+        await packed.cleanup();
+      }
+    });
     return this.report();
   }
 
   async setupVm(): Promise<ContainersReport> {
+    if (this.current.platform === null) throw new IpcError("unavailable", CONTAINERS_MESSAGES.remoteNoVm);
     if (!this.darwin) throw new IpcError("unavailable", CONTAINERS_MESSAGES.vmOnlyMac);
     const phase = await this.exclusive({ kind: "setting-up-vm", step: "" }, (signal) =>
       setupVm({
@@ -248,7 +289,7 @@ export class ContainersService {
         env: this.options.env,
         signal,
         onLog: (line) => {
-          this.options.docker.log(line);
+          this.docker.log(line);
           if (line.trim()) this.setPhase({ kind: "setting-up-vm", step: line.trim() });
         },
       }),
@@ -261,49 +302,49 @@ export class ContainersService {
     const name = validName(request?.name);
     const cpus = validCpus(request.cpus);
     const memoryMb = validMemory(request.memoryMb) ?? (this.darwin ? DARWIN_DEFAULT_MEMORY_MB : null);
-    if (!(await hasSysbox(this.options.docker))) throw new IpcError("unavailable", this.darwin ? CONTAINERS_MESSAGES.noVmSysbox : CONTAINERS_MESSAGES.noSysbox);
-    if (!(await imagePresent(this.options.docker))) throw new IpcError("unavailable", CONTAINERS_MESSAGES.noImage);
+    if (!(await hasSysbox(this.docker))) throw new IpcError("unavailable", this.darwin ? CONTAINERS_MESSAGES.noVmSysbox : CONTAINERS_MESSAGES.noSysbox);
+    if (!(await imagePresent(this.docker))) throw new IpcError("unavailable", CONTAINERS_MESSAGES.noImage);
     const authKey = await this.secret(TAILSCALE_KEYS);
     const tags = await this.tailnetTags();
     await this.exclusive({ kind: "creating", name }, () =>
-      createContainer(this.options.docker, { name, cpus, memoryMb, tailnet: authKey ? { authKey, tags } : null }),
+      createContainer(this.docker, { name, cpus, memoryMb, tailnet: authKey ? { authKey, tags } : null }),
     );
     return this.changed(name);
   }
 
   async start(name: string): Promise<ServerContainer> {
     const target = validName(name);
-    await startContainer(this.options.docker, target);
+    await startContainer(this.docker, target);
     return this.changed(target);
   }
 
   async stop(name: string): Promise<ServerContainer> {
     const target = validName(name);
-    await stopContainer(this.options.docker, target);
+    await stopContainer(this.docker, target);
     return this.changed(target);
   }
 
   async restart(name: string): Promise<ServerContainer> {
     const target = validName(name);
-    await restartContainer(this.options.docker, target);
+    await restartContainer(this.docker, target);
     return this.changed(target);
   }
 
   async remove(name: string): Promise<void> {
     const target = validName(name);
-    await findContainer(this.options.docker, target);
-    const routes = (await readState(this.options.stateFile)).routes.filter((route) => route.container === target);
+    await findContainer(this.docker, target);
+    const routes = (await readState(this.stateFile)).routes.filter((route) => route.container === target);
     for (const route of routes) await this.removeRoute(route.id);
-    await removeContainer(this.options.docker, target);
+    await removeContainer(this.docker, target);
     await this.serialRoutes(async () => {
-      const state = await readState(this.options.stateFile);
-      if (state.autoDeploy.includes(target)) await writeState(this.options.stateFile, { ...state, autoDeploy: state.autoDeploy.filter((entry) => entry !== target) });
+      const state = await readState(this.stateFile);
+      if (state.autoDeploy.includes(target)) await writeState(this.stateFile, { ...state, autoDeploy: state.autoDeploy.filter((entry) => entry !== target) });
     });
     await this.list();
   }
 
   logs(name: string): Promise<string[]> {
-    return containerLogs(this.options.docker, validName(name));
+    return containerLogs(this.docker, validName(name));
   }
 
   async setTailscaleKey(request: TailscaleKeyRequest): Promise<ContainersReport> {
@@ -330,11 +371,11 @@ export class ContainersService {
   }
 
   async routes(): Promise<DomainRoute[]> {
-    return (await readState(this.options.stateFile)).routes.map(publicRoute);
+    return (await readState(this.stateFile)).routes.map(publicRoute);
   }
 
   private async saveState(state: ContainersState): Promise<void> {
-    await writeState(this.options.stateFile, state);
+    await writeState(this.stateFile, state);
     this.options.onRoutes?.(state.routes.map(publicRoute));
   }
 
@@ -361,9 +402,9 @@ export class ContainersService {
       const hostname = validHostname(request.hostname);
       const port = validPort(request.port);
       const scheme = request.scheme === "https" ? "https" : "http";
-      await findContainer(this.options.docker, container);
+      await findContainer(this.docker, container);
       const api = await this.cloudflare();
-      const state = await readState(this.options.stateFile);
+      const state = await readState(this.stateFile);
       if (state.routes.some((route) => route.hostname === hostname)) throw new IpcError("invalid_argument", CONTAINERS_MESSAGES.routeExists(hostname));
       const zone = zoneFor(hostname, await api.zones());
       const records = await api.records(zone.id, hostname);
@@ -388,7 +429,7 @@ export class ContainersService {
         await api.putIngress(tunnel.accountId, tunnel.tunnelId, this.ingressFor(state, container));
         for (const stale of records) await api.deleteRecord(zone.id, stale.id);
         route.recordId = await api.createTunnelRecord(zone.id, hostname, tunnel.tunnelId, container);
-        await ensureTunnel(this.options.docker, container, await api.tunnelToken(tunnel.accountId, tunnel.tunnelId));
+        await ensureTunnel(this.docker, container, await api.tunnelToken(tunnel.accountId, tunnel.tunnelId));
         route.status = "active";
         await this.saveState(state);
         await this.list();
@@ -407,7 +448,7 @@ export class ContainersService {
 
   removeRoute(id: string): Promise<void> {
     return this.serialRoutes(async () => {
-      const state = await readState(this.options.stateFile);
+      const state = await readState(this.stateFile);
       const route = state.routes.find((entry) => entry.id === id);
       if (!route) throw new IpcError("not_found", CONTAINERS_MESSAGES.routeNotFound);
       const api = await this.cloudflare();
@@ -421,7 +462,7 @@ export class ContainersService {
         const remaining = this.ingressFor(state, route.container);
         if (remaining.length) await api.putIngress(tunnel.accountId, tunnel.tunnelId, remaining);
         else {
-          await removeTunnel(this.options.docker, route.container);
+          await removeTunnel(this.docker, route.container);
           await api.deleteTunnel(tunnel.accountId, tunnel.tunnelId).catch(() => undefined);
           delete state.tunnels[route.container];
         }
@@ -433,7 +474,7 @@ export class ContainersService {
 
   syncRoutes(): Promise<DomainRoute[]> {
     return this.serialRoutes(async () => {
-      const state = await readState(this.options.stateFile);
+      const state = await readState(this.stateFile);
       if (!state.routes.length) return [];
       const api = await this.cloudflare();
       for (const [container, tunnel] of Object.entries(state.tunnels)) {
@@ -448,7 +489,7 @@ export class ContainersService {
             else if (records.some((record) => !isManaged(record))) throw new IpcError("unavailable", CONTAINERS_MESSAGES.dnsTaken(route.hostname));
             else route.recordId = await api.createTunnelRecord(route.zoneId, route.hostname, tunnel.tunnelId, container);
           }
-          await ensureTunnel(this.options.docker, container, await api.tunnelToken(tunnel.accountId, tunnel.tunnelId));
+          await ensureTunnel(this.docker, container, await api.tunnelToken(tunnel.accountId, tunnel.tunnelId));
           routes.forEach((route) => Object.assign(route, { status: "active", error: null }));
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);

@@ -16,6 +16,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.kevinroan.tesseract",
+      "usesAppleSignIn": true,
       "appleTeamId": "K26L46GQQ8",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -119,6 +120,8 @@
         }
       ],
       "./plugins/with-island",
+      "./plugins/with-tailnet",
+      "expo-apple-authentication",
       "@bacons/apple-targets"
     ],
     "experiments": {

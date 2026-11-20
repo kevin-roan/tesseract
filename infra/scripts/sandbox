@@ -20,12 +20,14 @@ readonly LEGACY_VOLUME_SUFFIXES="workspace home tailscale dind-certs dind-data"
 
 usage() {
   cat << 'EOF'
-Usage: sandbox [--mode tailscale|host-tailscale|local] [--dind] [--tailscale-api]
+Usage: sandbox [--mode tailscale|tesseract-net|host-tailscale|local] [--dind] [--tailscale-api]
                [--env-file <path>] <command> [args]
        (the options may also follow the command)
 
 Modes (default: $TESSERACT_MODE, then TESSERACT_MODE in the env file, then tailscale):
   tailscale        tailscale sidecar joins the tailnet; https://<TESSERACT_HOSTNAME>.<TS_TAILNET_DOMAIN>
+  tesseract-net    the same sidecar joins the Tesseract Network (Headscale at TESSERACT_LOGIN_SERVER);
+                   http://<TESSERACT_HOSTNAME>.<TESSERACT_NET_DOMAIN>:7700, no HTTPS
   host-tailscale   ports 7700/5901 bound on the host's tailscale IPv4 (`tailscale ip -4`
                    unless TESSERACT_BIND_ADDR is set)
   local            ports 7700/5901 bound on 127.0.0.1 only
@@ -33,7 +35,7 @@ Modes (default: $TESSERACT_MODE, then TESSERACT_MODE in the env file, then tails
   --dind           add the privileged docker:dind sidecar (also: TESSERACT_DIND=1)
   --tailscale-api  share the tailscaled LocalAPI socket with the sandbox so GET /v1/identity
                    can name the tailnet user (also: TESSERACT_TAILSCALE_LOCALAPI=1): the
-                   sidecar's socket in tailscale mode, the host's
+                   sidecar's socket in tailscale/tesseract-net mode, the host's
                    (TESSERACT_TAILSCALE_HOST_SOCKET_DIR, default /var/run/tailscale) otherwise.
                    Sandbox root can then control that tailscaled (docs/architecture/security-model.md)
   --env-file PATH  read the configuration from PATH instead of infra/compose/.env
@@ -241,6 +243,11 @@ resolve_stack() {
     TESSERACT_CONTROLLER_HOST_PORT="${controller_port}" TESSERACT_VNC_HOST_PORT="${vnc_port}"
 }
 
+# Modes whose tailscale sidecar owns the sandbox's network namespace and <prefix>-tailscale.
+has_sidecar() {
+  [[ "${mode}" == tailscale || "${mode}" == tesseract-net ]]
+}
+
 resolve_mode() {
   local command=$1
   mode="${mode:-$(config_value TESSERACT_MODE)}"
@@ -260,6 +267,9 @@ resolve_mode() {
   case "${mode}" in
     tailscale)
       compose_files+=(-f "${COMPOSE_DIR}/compose.tailscale.yml")
+      ;;
+    tesseract-net)
+      compose_files+=(-f "${COMPOSE_DIR}/compose.tesseract-net.yml")
       ;;
     host-tailscale)
       local bind_addr
@@ -285,14 +295,14 @@ resolve_mode() {
       compose_files+=(-f "${COMPOSE_DIR}/compose.local.yml")
       ;;
     *)
-      die "unknown mode '${mode}' (tailscale, host-tailscale or local)"
+      die "unknown mode '${mode}' (tailscale, tesseract-net, host-tailscale or local)"
       ;;
   esac
   if [[ -n "${dind}" ]]; then
     compose_files+=(-f "${COMPOSE_DIR}/compose.dind.yml")
   fi
   if [[ -n "${tailscale_api}" ]]; then
-    if [[ "${mode}" == tailscale ]]; then
+    if has_sidecar; then
       compose_files+=(-f "${COMPOSE_DIR}/compose.tailscale-api-sidecar.yml")
     else
       host_socket_dir="$(config_value TESSERACT_TAILSCALE_HOST_SOCKET_DIR)"
@@ -547,22 +557,30 @@ require_running() {
 }
 
 check_tailscale_config() {
-  [[ "${mode}" == tailscale ]] || return 0
-  [[ -n "$(config_value TS_TAILNET_DOMAIN)" ]] \
-    || die "TS_TAILNET_DOMAIN is required in tailscale mode (e.g. tail1234.ts.net, see infra/compose/.env.example)"
+  case "${mode}" in
+    tailscale)
+      [[ -n "$(config_value TS_TAILNET_DOMAIN)" ]] \
+        || die "TS_TAILNET_DOMAIN is required in tailscale mode (e.g. tail1234.ts.net, see infra/compose/.env.example)"
+      ;;
+    tesseract-net)
+      [[ -n "$(config_value TESSERACT_LOGIN_SERVER)" ]] \
+        || die "TESSERACT_LOGIN_SERVER is required in tesseract-net mode (the Headscale URL, see infra/compose/.env.example)"
+      ;;
+  esac
 }
 
 # After migrate_legacy_stack: a copied tailscale volume already holds the node state.
 check_tailscale_authkey() {
-  [[ "${mode}" == tailscale ]] || return 0
+  has_sidecar || return 0
   if [[ -z "$(config_value TS_AUTHKEY)" ]] \
     && ! docker volume inspect "${volume_prefix}-tailscale" > /dev/null 2>&1; then
-    die "TS_AUTHKEY is required for the first start in tailscale mode (see infra/compose/.env.example)"
+    die "TS_AUTHKEY is required for the first start in ${mode} mode (see infra/compose/.env.example)"
   fi
 }
 
 check_tailscale_api() {
-  [[ -n "${tailscale_api}" && "${mode}" != tailscale ]] || return 0
+  [[ -n "${tailscale_api}" ]] || return 0
+  if has_sidecar; then return 0; fi
   [[ -S "${host_socket_dir}/tailscaled.sock" ]] \
     || die "--tailscale-api: no tailscaled socket at ${host_socket_dir}/tailscaled.sock (set TESSERACT_TAILSCALE_HOST_SOCKET_DIR)"
 }
@@ -583,7 +601,7 @@ check_host_android() {
 }
 
 cmd_up() {
-  local hostname
+  local hostname net_domain
   check_tailscale_config
   check_tailscale_api
   check_host_android
@@ -597,6 +615,11 @@ cmd_up() {
     tailscale)
       hostname="$(config_value TESSERACT_HOSTNAME)"
       info "controller: https://${hostname:-tesseract-sandbox}.$(config_value TS_TAILNET_DOMAIN)  VNC: ${hostname:-tesseract-sandbox}:5901"
+      ;;
+    tesseract-net)
+      hostname="$(config_value TESSERACT_HOSTNAME)"
+      net_domain="$(config_value TESSERACT_NET_DOMAIN)"
+      info "controller: http://${hostname:-tesseract-sandbox}.${net_domain:-tesseract.internal}:7700  VNC: ${hostname:-tesseract-sandbox}:5901 (Tesseract Network)"
       ;;
     *) info "controller: http://${TESSERACT_BIND_ADDR}:${controller_port}  VNC: ${TESSERACT_BIND_ADDR}:${vnc_port}" ;;
   esac

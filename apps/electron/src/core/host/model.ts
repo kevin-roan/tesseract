@@ -69,9 +69,12 @@ export function parsePairing(stdout: string): HostPairing {
   if (typeof record.link !== "string" || typeof record.url !== "string") {
     throw new HostShellError(HOST_LABELS.noPairing, "internal");
   }
+  // `localUrl`: the daemon binds loopback behind tesseract-tailnet and the link's URL only resolves on the tailnet.
+  const localUrl = typeof record.localUrl === "string" && record.localUrl && record.localUrl !== record.url ? record.localUrl : null;
   return {
     link: record.link,
-    url: record.url,
+    url: localUrl ?? record.url,
+    ...(localUrl ? { publicUrl: record.url } : {}),
     name: typeof record.name === "string" ? record.name : "",
     pinSet: record.pinSet === true,
   };

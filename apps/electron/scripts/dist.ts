@@ -3,12 +3,12 @@ import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join } from "node:path";
 import { parseArgs } from "./lib/args.ts";
-import { builderArgs, CLI_TARGETS, DIST_VALUE_FLAGS, distPlan, missingCliMessage, requiredCliFiles } from "./lib/dist-plan.ts";
-import { APP_DIR, SANDBOX_BUNDLE_DIR } from "./lib/paths.ts";
+import { builderArgs, CLI_TARGETS, DIST_VALUE_FLAGS, distPlan, missingCliMessage, requiredCliFiles, requiredTailnetFiles, tailnetGoTargets } from "./lib/dist-plan.ts";
+import { APP_DIR, REPO_ROOT, SANDBOX_BUNDLE_DIR } from "./lib/paths.ts";
 
 const require = createRequire(import.meta.url);
 const USAGE =
-  "usage: node scripts/dist.ts [--platform linux|mac|win] [--dir] [--publish never|always|onTag] [--update-url <url>] [--channel <name>] [--skip-build] [--skip-cli] [--skip-sandbox] [--smoke]";
+  "usage: node scripts/dist.ts [--platform linux|mac|win] [--dir] [--publish never|always|onTag] [--update-url <url>] [--channel <name>] [--skip-build] [--skip-cli] [--skip-sandbox] [--skip-tailnet] [--smoke]";
 
 function run(command: string, args: string[]): void {
   const result = spawnSync(command, args, { cwd: APP_DIR, stdio: "inherit" });
@@ -32,6 +32,9 @@ function main(): number {
   if (plan.build) run("bun", ["run", "build"]);
   if (plan.cli) run(process.execPath, ["scripts/cli-build.ts", "--target", CLI_TARGETS[plan.platform].join(",")]);
   if (plan.sandbox) run(process.execPath, ["scripts/bundle-sandbox.ts"]);
+  if (plan.tailnet) run("bash", [join(REPO_ROOT, "native/tailnet/scripts/build-desktop.sh"), ...tailnetGoTargets(plan.platform)]);
+  const missingTailnet = requiredTailnetFiles(plan.platform).filter((file) => !existsSync(join(APP_DIR, file)));
+  if (missingTailnet.length > 0) throw new Error(`missing ${missingTailnet.join(", ")} (needs Go; run native/tailnet/scripts/build-desktop.sh)`);
   const missing = requiredCliFiles(plan.platform).filter((file) => !existsSync(join(APP_DIR, file)));
   if (missing.length > 0) throw new Error(missingCliMessage(missing, process.platform));
   if (!existsSync(join(SANDBOX_BUNDLE_DIR, "manifest.json"))) throw new Error("missing build/sandbox-context (run bundle:sandbox)");

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { chmodSync, existsSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { AgentRunDetailSchema, AgentRunSchema, ClaudeAccountListSchema, ProjectSchema, type AgentRun } from "@tesseract/protocol";
 import { loadConfig } from "../src/config";
@@ -15,13 +15,14 @@ while [[ $# -gt 0 ]]; do
 done
 printf '%s\\n' '{"type":"system","subtype":"init","session_id":"'"$session"'","model":"claude-test"}'
 printf '%s\\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"config '"\${CLAUDE_CONFIG_DIR:-inherited}"'"}]},"session_id":"'"$session"'"}'
+printf '%s\\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"token '"\${CLAUDE_CODE_OAUTH_TOKEN:-none}"'"}]},"session_id":"'"$session"'"}'
 printf '%s\\n' '{"type":"result","subtype":"success","is_error":false,"result":"ok","usage":{"input_tokens":1,"output_tokens":1},"session_id":"'"$session"'"}'
 `;
 
 let t: TestController;
 let home: string;
 
-async function finishedRun(body: Record<string, unknown>): Promise<{ run: AgentRun; configText: string }> {
+async function finishedRun(body: Record<string, unknown>): Promise<{ run: AgentRun; configText: string; tokenText: string }> {
   const { status, body: started } = await t.json("POST", "/v1/agent/runs", body);
   if (status !== 201) throw new Error(`run failed to start: ${status} ${JSON.stringify(started)}`);
   const { id } = AgentRunSchema.parse(started);
@@ -29,8 +30,11 @@ async function finishedRun(body: Record<string, unknown>): Promise<{ run: AgentR
     const parsed = AgentRunDetailSchema.parse((await t.json("GET", `/v1/agent/runs/${id}`)).body);
     return parsed.state === "running" ? null : parsed;
   }, 10_000);
-  const text = detail.events.find((event) => event.kind === "text" && event.text.startsWith("config "));
-  return { run: detail, configText: text?.kind === "text" ? text.text : "" };
+  const textOf = (prefix: string) => {
+    const event = detail.events.find((item) => item.kind === "text" && item.text.startsWith(prefix));
+    return event?.kind === "text" ? event.text : "";
+  };
+  return { run: detail, configText: textOf("config "), tokenText: textOf("token ") };
 }
 
 beforeAll(async () => {
@@ -141,5 +145,46 @@ describe("accounts", () => {
     const cleared = ProjectSchema.parse((await t.json("PUT", "/v1/projects/app/claude-account", { accountId: null })).body);
     expect(cleared.claudeAccountId).toBeNull();
     expect((await finishedRun({ prompt: "workspace" })).run.claudeAccountId).toBe("claude-work");
+  }, 30_000);
+});
+
+describe("long-lived token account", () => {
+  const TOKEN = "sk-ant-oat01-test-token";
+
+  test("claude-token gets only the token, on the primary's dir", () => {
+    const base = { PATH: "/bin", CLAUDE_CODE_OAUTH_TOKEN: "env", ANTHROPIC_API_KEY: "key" };
+    const account = { id: "claude-token", configDir: "/home/dev/.claude", globalConfig: "/home/dev/.claude.json", env: { CLAUDE_CODE_OAUTH_TOKEN: TOKEN } };
+    expect(claudeAccountEnv(account, base)).toEqual({ PATH: "/bin", CLAUDE_CODE_OAUTH_TOKEN: TOKEN });
+  });
+
+  test("set, switch to and clear the token without leaking it", async () => {
+    expect((await t.json("PUT", "/v1/claude/token", { token: "has space" })).status).toBe(400);
+    expect((await t.json("PUT", "/v1/claude/accounts/default", { accountId: "claude-token" })).status).toBe(404);
+
+    const { status, body } = await t.json("PUT", "/v1/claude/token", { token: ` ${TOKEN}\n` });
+    expect(status).toBe(200);
+    expect(JSON.stringify(body)).not.toContain(TOKEN);
+    const list = ClaudeAccountListSchema.parse(body);
+    expect(list.accounts.at(-1)).toMatchObject({ id: "claude-token", kind: "token", primary: false, present: true, loggedIn: true, configDir: join(home, ".claude") });
+    expect(list.accounts[0]!.kind).toBe("config_dir");
+    expect(statSync(join(t.config.dataDir, "claude-oauth-token")).mode & 0o777).toBe(0o600);
+
+    await t.json("PUT", "/v1/projects/app/claude-account", { accountId: null });
+    expect((await t.json("PUT", "/v1/claude/accounts/default", { accountId: "claude-token" })).status).toBe(200);
+    const viaToken = await finishedRun({ projectId: "app", prompt: "hi" });
+    expect(viaToken.run.claudeAccountId).toBe("claude-token");
+    expect(viaToken.tokenText).toBe(`token ${TOKEN}`);
+    expect(viaToken.configText).not.toContain(".claude-work");
+
+    await t.json("PUT", "/v1/projects/app/claude-account", { accountId: "claude-work" });
+    const viaWork = await finishedRun({ projectId: "app", prompt: "hi" });
+    expect(viaWork.run.claudeAccountId).toBe("claude-work");
+    expect(viaWork.tokenText).toBe("token none");
+    await t.json("PUT", "/v1/projects/app/claude-account", { accountId: null });
+
+    const cleared = ClaudeAccountListSchema.parse((await t.json("DELETE", "/v1/claude/token")).body);
+    expect(cleared.accounts.map((account) => account.id)).not.toContain("claude-token");
+    expect(cleared.defaultAccountId).toBe("claude");
+    expect(existsSync(join(t.config.dataDir, "claude-oauth-token"))).toBe(false);
   }, 30_000);
 });

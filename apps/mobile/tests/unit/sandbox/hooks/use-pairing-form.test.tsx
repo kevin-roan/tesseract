@@ -70,7 +70,7 @@ describe("usePairingForm", () => {
       paired = await result.current.submit();
     });
 
-    expect(MockClient).toHaveBeenCalledWith({ baseUrl: URL, token: TOKEN, timeoutMs: 10_000 });
+    expect(MockClient).toHaveBeenCalledWith(expect.objectContaining({ baseUrl: URL, token: TOKEN, timeoutMs: 10_000 }));
     expect(probe.health).toHaveBeenCalled();
     expect(probe.status).toHaveBeenCalled();
     expect(paired).toMatchObject({ name: sampleHealth.sandboxId, baseUrl: URL });

@@ -7,6 +7,7 @@ import { useCloudflareToken } from "../../../features/containers/hooks/use-cloud
 import { useOpenExternal } from "../../../features/containers/hooks/use-open-external";
 import { DOMAINS_LABELS } from "../../../features/containers/labels";
 import { cloudflareBadge, cloudflareSummary } from "../../../features/containers/model";
+import styles from "./CloudflareGroup.module.css";
 
 export function CloudflareGroup() {
   const L = DOMAINS_LABELS.cloudflare;
@@ -17,6 +18,7 @@ export function CloudflareGroup() {
   const zones = cf.cloudflare?.zones.map((zone) => zone.name) ?? [];
   return (
     <SettingsGroup
+      className={styles.group}
       title={L.title}
       description={L.description}
       headerSuffix={<IconButton icon="refresh" label={DOMAINS_LABELS.refresh} disabled={cf.checking} onClick={cf.refresh} />}

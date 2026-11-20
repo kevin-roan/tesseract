@@ -30,6 +30,9 @@ export default defineIpcFixtures({
   },
   window: {
     state: () => windowState,
+    openDevice: () => undefined,
+    fitDevice: () => undefined,
+    saveDeviceScreenshot: () => "/home/dev/Pictures/Tesseract.png",
   },
   tray: {
     state: () => ({ attached: false, tooltip: "Tesseract" }),
@@ -60,5 +63,7 @@ export default defineIpcFixtures({
     state: () => ({ kind: "local" }),
     link: () => ({ kind: "local" }),
     unlink: () => ({ kind: "local" }),
+    folder: () => null,
+    setFolder: (_projectId, path) => path,
   },
 });

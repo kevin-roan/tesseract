@@ -1,0 +1,33 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'com.kevinroan.tesseract'
+version = '1.0.0'
+
+def tailnetAar = file('libs/tailnet.aar')
+def tailnetLinked = tailnetAar.exists()
+
+if (!tailnetLinked) {
+  logger.warn('TesseractTailnet: android/libs/tailnet.aar is missing, so the Tesseract Network is disabled in this build. Run native/tailnet/scripts/build-android.sh, then rebuild.')
+}
+
+android {
+  namespace "com.kevinroan.tesseract.tailnet"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+  sourceSets {
+    main {
+      java.srcDirs += tailnetLinked ? 'src/linked/java' : 'src/stub/java'
+    }
+  }
+}
+
+dependencies {
+  if (tailnetLinked) {
+    implementation files('libs/tailnet.aar')
+  }
+}
