@@ -49,9 +49,9 @@ describe("EmulatorButton", () => {
     restore();
   });
 
-  it("asks for the PIN, then prepares the emulator and opens the viewer", async () => {
-    const viewer = vi.fn();
-    const restore = overrideIpcFixtures({ hostShell: { openEmulatorViewer: viewer } });
+  it("asks for the PIN, then prepares the emulator and opens its window", async () => {
+    const openDevice = vi.fn();
+    const restore = overrideIpcFixtures({ window: { openDevice } });
     const onRun = vi.fn();
     const report = renderButton({ onRun });
     fireEvent.click(screen.getByRole("button", { name: "Open on emulator" }));
@@ -59,7 +59,7 @@ describe("EmulatorButton", () => {
     fireEvent.change(within(dialog).getByLabelText(/PIN/i), { target: { value: "123456" } });
     fireEvent.submit(dialog.querySelector("form") as HTMLFormElement);
     await waitFor(() => expect(onRun).toHaveBeenCalled(), { timeout: 8000 });
-    await waitFor(() => expect(viewer).toHaveBeenCalledWith({ serial: expect.any(String), title: "streaxfit · Android emulator" }));
+    await waitFor(() => expect(openDevice).toHaveBeenCalledWith("android"));
     expect(report).not.toHaveBeenCalled();
     restore();
   }, 15000);

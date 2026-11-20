@@ -163,3 +163,7 @@ a {
   transition-duration: 0ms !important;
   caret-color: transparent;
 }
+
+html[data-window="device"] {
+  background: transparent;
+}

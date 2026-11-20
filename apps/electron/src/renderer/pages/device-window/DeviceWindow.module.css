@@ -1,0 +1,80 @@
+.window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0 var(--device-bezel) var(--device-bezel);
+  overflow: hidden;
+  border-radius: var(--to-radius-lg);
+  background: var(--to-surface);
+  box-shadow: inset 0 0 0 1px var(--to-ink-12);
+}
+
+.toolbar {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--to-space-sm);
+  height: var(--device-toolbar);
+  min-width: 0;
+}
+
+.lights {
+  display: flex;
+  flex: none;
+  gap: var(--to-space-sm);
+}
+
+.light {
+  display: grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 50%;
+  color: transparent;
+}
+
+.light svg {
+  width: 8px;
+  height: 8px;
+}
+
+.lights:hover .light {
+  color: rgb(0 0 0 / 0.6);
+}
+
+.close {
+  background: #ff5f57;
+}
+
+.minimize {
+  background: #febc2e;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+}
+
+.keys {
+  display: flex;
+  flex: none;
+  align-items: center;
+}
+
+.screen {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: var(--to-radius-md);
+  background: var(--to-background);
+  container-type: size;
+}
+
+.screen canvas {
+  width: min(100cqw, 100cqh * var(--device-aspect, 1));
+  height: auto;
+}

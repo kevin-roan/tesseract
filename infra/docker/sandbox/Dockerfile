@@ -253,12 +253,16 @@ ENV JAVA_HOME=/opt/java/openjdk \
     ANDROID_HOME=/opt/android-sdk \
     ANDROID_SDK_ROOT=/opt/android-sdk
 ENV PATH=${JAVA_HOME}/bin:${PATH}:${ANDROID_HOME}/cmdline-tools/latest/bin:${ANDROID_HOME}/platform-tools
-# No SDK off amd64 (see android-sdk): Debian's adb still links the host emulator.
+# No SDK (off amd64, see android-sdk, or WITH_ANDROID=false): Debian's adb still links the host emulator.
+# It is linked into $ANDROID_HOME/platform-tools because Expo, the React Native CLI and Flutter look for
+# adb there, not on PATH (`npm run android` failed with "spawn /opt/android-sdk/platform-tools/adb ENOENT").
 RUN --mount=type=cache,id=tesseract-apt-cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,id=tesseract-apt-lists,target=/var/lib/apt/lists,sharing=locked \
-    if [ "$(dpkg --print-architecture)" = "amd64" ]; then exit 0; fi; \
+    if [ -x "${ANDROID_HOME}/platform-tools/adb" ]; then exit 0; fi; \
     apt-get update \
  && apt-get install -y --no-install-recommends adb \
+ && install -d -o "${DEV_UID}" -g "${DEV_GID}" "${ANDROID_HOME}/platform-tools" \
+ && ln -s /usr/bin/adb "${ANDROID_HOME}/platform-tools/adb" \
  && adb version
 
 FROM android AS flutter

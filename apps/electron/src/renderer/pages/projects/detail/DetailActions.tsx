@@ -36,7 +36,7 @@ export function DetailActions({
 }: DetailActionsProps) {
   return (
     <div className={styles.actions}>
-      <ActionGroup label={DETAIL_LABELS.sandboxGroup} icon={PROJECTS_ICONS.sandbox}>
+      <ActionGroup label={DETAIL_LABELS.sandboxGroup}>
         <ActionButton variant="primary" icon={PROJECTS_ICONS.agents} label={DETAIL_LABELS.askClaude} onClick={onAsk} />
         <ActionButton icon={PROJECTS_ICONS.terminal} label={DETAIL_LABELS.claudeTerminal} onClick={onClaudeTerminal} />
         <ActionButton icon={PROJECTS_ICONS.terminal} label={DETAIL_LABELS.shell} onClick={onShell} />

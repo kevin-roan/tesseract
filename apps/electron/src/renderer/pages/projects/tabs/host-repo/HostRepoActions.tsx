@@ -7,8 +7,8 @@ import { Text } from "../../../../components/Text";
 import { TextField } from "../../../../components/TextField";
 import { Tooltip } from "../../../../components/Tooltip";
 import type { NoticeAction } from "../../../../features/projects/types";
-import { HOST_GROUP_ICON } from "./constants";
 import { HostChatDialog } from "./HostChatDialog";
+import { HostFolderDialog } from "./HostFolderDialog";
 import { useHostRepo } from "./hooks/use-host-repo";
 import { HOST_REPO_LABELS as L } from "./labels";
 import type { HostRepoButton } from "./model";
@@ -42,17 +42,6 @@ export function HostRepoActions({ projectId, projectName, report }: HostRepoActi
       onClick={() => repo.run(button.id)}
     />
   );
-  if (repo.folder === null) {
-    return (
-      <ActionGroup label={L.group} icon={HOST_GROUP_ICON} tone="warning" muted>
-        <Tooltip label={L.noCopy}>
-          <Text variant="caption" color="text-tertiary">
-            {L.notLinked}
-          </Text>
-        </Tooltip>
-      </ActionGroup>
-    );
-  }
   const terminalButton = (button: HostRepoButton) => (
     <ActionButton
       key={button.id}
@@ -64,8 +53,45 @@ export function HostRepoActions({ projectId, projectName, report }: HostRepoActi
       onClick={() => repo.run(button.id)}
     />
   );
+  const master = repo.master;
+  if (master !== null) {
+    const folder = repo.folder;
+    return (
+      <ActionGroup label={master.name} tone="warning" detail={folder?.name} detailTooltip={folder?.path}>
+        {folder === null ? (
+          <ActionButton icon="folder" label={L.chooseFolder} tooltip={L.chooseFolderTooltip(master.name)} onClick={master.openFolderDialog} />
+        ) : (
+          <>
+            {terminalButton(repo.claude)}
+            {terminalButton(repo.shell)}
+            <ActionButton icon="folder" label={L.changeFolder} tooltip={L.chooseFolderTooltip(master.name)} onClick={master.openFolderDialog} />
+          </>
+        )}
+        <HostFolderDialog
+          open={master.folderDialogOpen}
+          machine={master.name}
+          projectName={projectName}
+          folder={folder?.path ?? ""}
+          onSave={master.saveFolder}
+          onClose={master.closeFolderDialog}
+        />
+        <HostUnlockDialog open={repo.unlockOpen} machine={master.name} onUnlock={repo.unlock} onClose={repo.closeUnlock} onUnlocked={repo.onUnlocked} />
+      </ActionGroup>
+    );
+  }
+  if (repo.folder === null) {
+    return (
+      <ActionGroup label={L.group} tone="warning" muted>
+        <Tooltip label={L.noCopy}>
+          <Text variant="caption" color="text-tertiary">
+            {L.notLinked}
+          </Text>
+        </Tooltip>
+      </ActionGroup>
+    );
+  }
   return (
-    <ActionGroup label={L.group} icon={HOST_GROUP_ICON} tone="warning" detail={repo.folder.name} detailTooltip={repo.folder.path}>
+    <ActionGroup label={L.group} tone="warning" detail={repo.folder.name} detailTooltip={repo.folder.path}>
       {terminalButton(repo.claude)}
       {terminalButton(repo.shell)}
       <ActionButton

@@ -5,6 +5,10 @@
   min-height: 0;
 }
 
+.panel[hidden] {
+  display: none;
+}
+
 .notice {
   margin: 0 var(--to-space-base) var(--to-space-sm);
 }

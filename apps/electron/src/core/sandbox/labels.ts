@@ -15,6 +15,7 @@ export const SANDBOX_LABELS = {
     timeZone: "The time zone is missing",
     version: "Use letters, digits, '.', '-' and '_'",
     claudeDir: "Choose an absolute folder path",
+    signInRequired: "Sign in to your Tesseract account (Settings › Account) to use the Tesseract Network",
   },
   stack: {
     project: (value: string) =>
@@ -26,7 +27,11 @@ export const SANDBOX_LABELS = {
     bindInvalid: (value: string) =>
       `TESSERACT_BIND_ADDR=${value} is not an IPv4 address of this host; use the host's tailscale IPv4`,
     noTailscaleIp: "could not determine the host tailscale IPv4: start tailscale on the host or set TESSERACT_BIND_ADDR",
-    unknownMode: (value: string) => `unknown mode '${value}' (tailscale, host-tailscale or local)`,
+    unknownMode: (value: string) => `unknown mode '${value}' (tailscale, host-tailscale, local or tesseract-net)`,
+    loginServer:
+      "TESSERACT_LOGIN_SERVER is required in tesseract-net mode: sign in to your Tesseract account so Tesseract can fetch a sandbox key",
+    tesseractNetKey: "TS_AUTHKEY is required for the first start in tesseract-net mode: sign in to your Tesseract account (Settings › Account)",
+    fetchingKey: (hostname: string) => `Fetching a Tesseract Network key for ${hostname}`,
     tailnetDomain: "TS_TAILNET_DOMAIN is required in tailscale mode (e.g. tail1234.ts.net, see infra/compose/.env.example)",
     authKey: "TS_AUTHKEY is required for the first start in tailscale mode (see infra/compose/.env.example)",
     socketDir: (value: string) => `TESSERACT_TAILSCALE_HOST_SOCKET_DIR=${value} must be an absolute path`,

@@ -6,11 +6,10 @@ import { describeError, NotConfiguredError } from "../../../../../app/connection
 import { useApiClient, useConnectionSnapshot } from "../../../../../app/data";
 import { usePreferencesRoute } from "../../../../../app/navigation";
 import { showToast } from "../../../../../components/Toast";
-import { IpcError } from "../../../../../../shared/ipc-types";
 import { ipc } from "../../../../../lib/ipc";
 import type { NoticeAction } from "../../../../../features/projects/types";
 import { useConfirm, type ConfirmState } from "../../kit";
-import { ANDROID_ONBOARDING_STEP, HOST_SHELL_SECTION, NO_SERIAL_CODE, SCRCPY_MISSING_CODE } from "../constants";
+import { ANDROID_DEVICE_WINDOW, ANDROID_ONBOARDING_STEP, HOST_SHELL_SECTION } from "../constants";
 import { EMULATOR_LABELS } from "../labels";
 import { hostAndroid, HostRequestError, prepareEmulator, runOnEmulator, type EmulatorRun } from "../launcher";
 import { confirmSteps, hostBlocker, hostFixable, hostUnlocked, planEmulator, type ConfirmStep, type EmulatorPlan, type EmulatorStage } from "../model";
@@ -67,25 +66,17 @@ export function useEmulatorLauncher({ projectId, projectName, report, onRun }: E
 
   const say = useCallback((message: string, action?: NoticeAction) => latest.current.report(new Error(message), action), []);
 
-  const openViewer = useCallback(
-    (serial: string) => {
-      ipc.hostShell.openEmulatorViewer({ serial, title: EMULATOR_LABELS.title(latest.current.projectName) }).catch((error: unknown) => {
-        if (error instanceof IpcError && error.code === SCRCPY_MISSING_CODE) showToast(EMULATOR_LABELS.noScrcpy);
-        else if (error instanceof IpcError && error.code === NO_SERIAL_CODE) say(EMULATOR_LABELS.noSerial);
-        else say(EMULATOR_LABELS.viewerFailed(error instanceof Error ? error.message : String(error)));
-      });
-    },
-    [say],
-  );
+  const openViewer = useCallback(() => {
+    ipc.window.openDevice(ANDROID_DEVICE_WINDOW).catch((error: unknown) => say(EMULATOR_LABELS.viewerFailed(error instanceof Error ? error.message : String(error))));
+  }, [say]);
 
   const handleRun = useCallback(
-    ({ run, started, serial }: EmulatorRun) => {
+    ({ run, started }: EmulatorRun) => {
       latest.current.onRun?.(run);
       if (started) showToast(EMULATOR_LABELS.started);
-      if (serial) openViewer(serial);
-      else say(EMULATOR_LABELS.noSerial);
+      openViewer();
     },
-    [openViewer, say],
+    [openViewer],
   );
 
   const failed = useCallback(

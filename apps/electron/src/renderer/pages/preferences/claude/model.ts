@@ -69,7 +69,12 @@ export function sandboxAuthRows(status: ClaudeAuthStatus, nowMs: number): Proper
   ];
 }
 
+export function hasTokenAccount(list: ClaudeAccountList | undefined): boolean {
+  return list?.accounts.some((profile) => profile.kind === "token") ?? false;
+}
+
 export function profileLoginLabel(profile: ClaudeAccountProfile, nowMs: number): string {
+  if (profile.kind === "token") return joinMeta(SECTION_LABELS.loggedIn, SECTION_LABELS.tokenAccount);
   if (!profile.present) return SECTION_LABELS.accountAbsent;
   if (!profile.loggedIn) return SECTION_LABELS.notLoggedIn;
   return joinMeta(SECTION_LABELS.loggedIn, profile.credentialsExpiresAt ? isoExpiry(profile.credentialsExpiresAt, nowMs) : null);
@@ -79,7 +84,7 @@ export function accountChoices(list: ClaudeAccountList | undefined, nowMs: numbe
   if (!list) return [];
   return list.accounts.map((profile) => ({
     id: profile.id,
-    title: joinMeta(profile.id, profile.primary ? SECTION_LABELS.primary : null),
+    title: joinMeta(profile.id, profile.primary ? SECTION_LABELS.primary : profile.kind === "token" ? SECTION_LABELS.tokenAccount : null),
     subtitle: [
       accountLabel(profile.account?.email, profile.account?.organization),
       joinMeta(planLabel(profile.subscriptionType), profileLoginLabel(profile, nowMs)),

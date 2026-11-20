@@ -35,6 +35,14 @@ export const CONTAINERS_MESSAGES = {
   deployCancelled: "The deploy was cancelled.",
   timedOut: "timed out",
   routeConflict: (hostname: string, container: string, port: number) => `${hostname} is already routed to ${container}:${port}.`,
+  remoteOnlyDocker: (file: string) => `Only docker runs on the server, not ${file}.`,
+  remoteUnreachable: (host: string, detail: string) => `Couldn't reach ${host}: ${detail}`,
+  remoteFailed: (host: string, detail: string) => `${host} refused the docker command: ${detail}`,
+  remoteTooOld: (host: string) => `${host} runs an older Tesseract that can't manage containers remotely. Update Tesseract on the server.`,
+  remoteLost: (host: string) => `Lost the connection to ${host} while docker was running.`,
+  remoteUnlinked: "This Tesseract server's host isn't linked yet. Link it in Machines to manage its containers.",
+  packFailed: (detail: string) => `Couldn't pack the server image for the server: ${detail}`,
+  remoteNoVm: "The server manages its own Docker; set up Sysbox on the server.",
   tailnetFailed: (name: string, detail: string) => `${name} is running but couldn't join the tailnet (${detail}). Run "tailscale up --ssh" inside it.`,
 } as const;
 

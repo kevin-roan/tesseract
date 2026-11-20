@@ -67,8 +67,6 @@ export function useDetailPage({ projectId, initialTab, tabAt, syncCount, refresh
   const actions = useMemo(
     () => ({
       ask: () => navigate("agents", { new: true, projectId }),
-      claudeTerminal: () => navigate("terminals", { kind: "claude", projectId }),
-      shell: () => navigate("terminals", { kind: "shell", projectId }),
       display: () => navigate("display"),
     }),
     [navigate, projectId],

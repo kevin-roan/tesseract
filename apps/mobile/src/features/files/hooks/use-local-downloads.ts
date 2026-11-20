@@ -1,5 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 
+import { resolveTailnetUrl } from "@/features/tailnet";
+
 import { downloadFile, isDownloaded, shareFile, type LocalFileRef } from "../services/local-files";
 import { describeFileError } from "../utils/errors";
 
@@ -38,6 +40,7 @@ export function useLocalDownloads() {
     };
     const job = item
       .resolveUrl()
+      .then(resolveTailnetUrl)
       .then((url) => downloadFile(url, item.ref, update))
       .then(() => undefined)
       .finally(() => {

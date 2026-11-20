@@ -1,4 +1,5 @@
 import type { HostShellStatus } from "../../../../shared/contracts/hostShell";
+import type { HostTailnetMode, HostTailnetStatus } from "../../../../shared/contracts/tailnet";
 
 export const HOST_SHELL_LABELS = {
   title: "Host shell",
@@ -6,7 +7,7 @@ export const HOST_SHELL_LABELS = {
   server: {
     title: "Server",
     description:
-      "Lets paired phones open a terminal on this computer over Tailscale. Tesseract runs it in the background and stops it when you quit.",
+      "Lets paired phones open a terminal on this computer over Tailscale or the Tesseract Network. Tesseract runs it in the background and stops it when you quit.",
   },
   serve: {
     title: "Serve host shell",
@@ -62,4 +63,29 @@ export const HOST_SHELL_LABELS = {
     refresh: (error: string) => `Couldn't check the host shell: ${error}`,
   },
   separator: " · ",
+  tailnet: {
+    title: "Tesseract Network",
+    description:
+      "Puts the host shell and the host workspace on your Tesseract account's network, so phones reach them without Tailscale. They then listen on 127.0.0.1 only.",
+    modes: {
+      auto: { title: "Automatic", subtitle: "When you're signed in and Tailscale isn't running on this computer" },
+      on: { title: "On", subtitle: "Whenever you're signed in, also next to Tailscale" },
+      off: { title: "Off", subtitle: "Only Tailscale" },
+    } satisfies Record<HostTailnetMode, { title: string; subtitle: string }>,
+    status: {
+      off: "Off",
+      "signed-out": "Sign in under Settings › Account to use it",
+      missing: "Not bundled with this build",
+      starting: "Connecting…",
+      running: "Connected",
+      needs_login: "Needs a new key; sign in again",
+      error: "Failed",
+    } satisfies Record<HostTailnetStatus, string>,
+    statusTitle: "Status",
+    tailscaleDetected: "Tailscale is running on this computer",
+    restart: "Reconnect",
+    openAccount: "Account…",
+    modeFailed: (error: string) => `Couldn't change the setting: ${error}`,
+    restartFailed: (error: string) => `Couldn't reconnect: ${error}`,
+  },
 } as const;

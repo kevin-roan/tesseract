@@ -522,6 +522,7 @@ and `docker image inspect <image> --format '{{json .}}'` (size, `Labels["org.ope
 | id | Title | Subtitle | Extra fields when selected |
 |---|---|---|---|
 | `local` (default) | `This computer only` | `The controller listens on 127.0.0.1:{port}. Phones can't reach it; use this to try Tesseract or for development.` | none |
+| `tesseract-net` | `Tesseract Network` | `The sandbox joins your Tesseract account's network as {hostname}.tesseract.internal; the phone app connects with no VPN app. Needs a Tesseract account.` | Row `Tesseract account`: signed in → `Signed in as {name}`; signed out → subtitle `Sign in or create an account; Tesseract fetches the sandbox's key with it` plus inline EntryRows `Account server`, `Email`, `Password` and buttons `Create account` / `Sign in` (same as Settings › Account). FieldRow `Hostname` (as in `tailscale`). Validation: field `mode` = `Sign in to your Tesseract account (Settings › Account) to use the Tesseract Network` while signed out, unless the stack already joined (saved `TESSERACT_LOGIN_SERVER` and the `<prefix>-tailscale` volume exists). See ADR 0014 |
 | `tailscale` | `Tailscale (sidecar)` | `A Tailscale container joins your tailnet as {hostname}; phones connect over HTTPS. Needs an auth key.` | FieldRows `Auth key` (password, placeholder `tskey-auth-…`, required unless the volume `<prefix>-tailscale` exists, subtitle `Used once for the first login`), `Tailnet domain` (placeholder `tail1234.ts.net`, required, regex `^[a-z0-9-]+(\.[a-z0-9-]+)+$`), `Hostname` (default `tesseract-sandbox`, regex `^[a-z0-9][a-z0-9-]{0,62}$`). Link `How to create an auth key` (`tailscale_keys`) |
 | `host-tailscale` | `This computer's Tailscale` | `The ports are published on this computer's Tailscale address ({ip}).` | FieldRow `Bind address` prefilled from `tailscale ip -4` (first line). Disabled with subtitle `Tailscale isn't running on this computer` when that fails and the field is empty. Validation = `check_bind_addr` (§6.3). Recommended only on Linux: on Docker Desktop, publishing on a host Tailscale IP depends on the VM's port forwarding (open issue O5) |
 
@@ -609,8 +610,16 @@ The port must be exact; `infra/scripts/sandbox` stays the reference implementati
     (messages: `TESSERACT_BIND_ADDR=… would publish the sandbox on every host interface; use the host's tailscale IPv4` /
     `TESSERACT_BIND_ADDR=… is not an IPv4 address of this host; use the host's tailscale IPv4`);
   - `local` → `compose.local.yml`, `TESSERACT_BIND_ADDR=127.0.0.1`;
+  - `tesseract-net` → `compose.tesseract-net.yml` (no published ports); requires `TESSERACT_LOGIN_SERVER`, and
+    `TS_AUTHKEY` unless the `<prefix>-tailscale` volume exists. Before `up`, when `TS_AUTHKEY` is empty and the node
+    has not joined yet (no `TESSERACT_LOGIN_SERVER` or no volume), the app asks the account service for a `sandbox`
+    device key (`POST /v1/devices/keys`, hostname = `TESSERACT_HOSTNAME`) and writes `TS_AUTHKEY`,
+    `TESSERACT_LOGIN_SERVER` (`loginServer`) and `TESSERACT_NET_DOMAIN` (`magicDnsSuffix`) into the env file; after a
+    successful `up` it clears `TS_AUTHKEY` as in `tailscale` mode. The pairing URL is
+    `http://{hostname}.{TESSERACT_NET_DOMAIN}:7700`. Switching an existing `tailscale` stack to this mode needs its
+    `<prefix>-tailscale` volume (only that one) removed first: it holds the Tailscale node's state;
   - `TESSERACT_DIND=1` → `+ compose.dind.yml`; `TESSERACT_TAILSCALE_LOCALAPI=1` → `compose.tailscale-api-sidecar.yml`
-    (tailscale mode) or `compose.tailscale-api.yml` (other modes; requires `<dir>/tailscaled.sock`). The wizard
+    (`tailscale`/`tesseract-net` modes) or `compose.tailscale-api.yml` (other modes; requires `<dir>/tailscaled.sock`). The wizard
     does not offer LocalAPI; Settings may later.
 - Extra Claude accounts (`TESSERACT_HOST_CLAUDE_ACCOUNTS`): the wizard leaves this empty. If set by hand, write the
   override exactly like `resolve_claude_accounts()` to `<userData>/sandbox/compose.<project>.claude-accounts.yml`.

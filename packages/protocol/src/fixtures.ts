@@ -110,6 +110,7 @@ export const sampleClaudeAccountList: ClaudeAccountList = {
   accounts: [
     {
       id: "claude",
+      kind: "config_dir",
       primary: true,
       present: true,
       loggedIn: true,
@@ -121,6 +122,7 @@ export const sampleClaudeAccountList: ClaudeAccountList = {
     },
     {
       id: "claude-work",
+      kind: "config_dir",
       primary: false,
       present: true,
       loggedIn: true,

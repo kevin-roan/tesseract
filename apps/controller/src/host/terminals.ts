@@ -2,6 +2,7 @@ import { statSync } from "node:fs";
 import { hostname } from "node:os";
 import { basename, isAbsolute } from "node:path";
 import { createId, LIMITS, type CreateHostTerminal, type TerminalInfo } from "@tesseract/protocol";
+import { hostToolPath } from "./config";
 import { badRequest, errorMessage, notFound, unavailable } from "../core/errors";
 import type { Env } from "../core/exec";
 import type { Logger } from "../core/logger";
@@ -39,6 +40,20 @@ export function hostClaudeArgv(shell: string, claudeBin: string = HOST_CLAUDE.bi
   return [login, "-ilc", HOST_CLAUDE.script, HOST_CLAUDE.bin, claudeBin, HOST_CLAUDE.missing, HOST_CLAUDE.prompt];
 }
 
+/** `docker exec` into a server container (`tesseract-ct-<name>`), matching the desktop app's local container shells. */
+export const CONTAINER_SHELL = {
+  prefix: "tesseract-ct-",
+  user: "root",
+  workdir: "/root",
+  env: ["TERM=xterm-256color", "COLORTERM=truecolor", "LANG=C.UTF-8"],
+  command: ["/bin/bash", "-l"],
+} as const;
+
+export function containerShellArgv(name: string, docker = "docker"): string[] {
+  const env = CONTAINER_SHELL.env.flatMap((entry) => ["-e", entry]);
+  return [docker, "exec", "-it", "-u", CONTAINER_SHELL.user, "-w", CONTAINER_SHELL.workdir, ...env, `${CONTAINER_SHELL.prefix}${name}`, ...CONTAINER_SHELL.command];
+}
+
 export function hostShellEnv(source: Env = process.env): Env {
   const env: Env = {};
   for (const [name, value] of Object.entries(source)) if (!HOST_SECRET_ENV.test(name)) env[name] = value;
@@ -72,14 +87,21 @@ export class HostTerminals {
   create(input: CreateHostTerminal): TerminalInfo {
     if (input.projectId !== undefined) throw badRequest("Host terminals have no project");
     if (input.kind === "claude" && input.cwd === undefined) throw badRequest("A Claude Code terminal on the host needs the project's folder (cwd)");
+    if (input.container !== undefined && (input.kind !== "shell" || input.cwd !== undefined)) throw badRequest("A container terminal is a shell without a folder");
     const cwd = input.cwd === undefined ? this.cwd : requireFolder(input.cwd);
     const host = input.cwd === undefined ? `Host · ${hostname()}` : `Host · ${hostname()} · ${basename(cwd)}`;
-    const argv = input.kind === "claude" ? hostClaudeArgv(this.shell[0] ?? FALLBACK_SHELL, this.claudeBin) : this.shell;
+    const argv =
+      input.container !== undefined
+        ? containerShellArgv(input.container, this.dockerBin())
+        : input.kind === "claude"
+          ? hostClaudeArgv(this.shell[0] ?? FALLBACK_SHELL, this.claudeBin)
+          : this.shell;
+    const title = input.container !== undefined ? `Container · ${input.container}` : input.kind === "claude" ? `Claude · ${host}` : host;
     const info: TerminalInfo = {
       id: createId("terminal"),
       kind: input.kind,
       projectId: null,
-      title: input.kind === "claude" ? `Claude · ${host}` : host,
+      title,
       cwd,
       pid: null,
       cols: input.cols,
@@ -132,6 +154,10 @@ export class HostTerminals {
     this.sessions.set(info.id, session);
     this.logger.info("host terminal started", { id: info.id, kind: info.kind, pid: proc.pid });
     return { ...info };
+  }
+
+  private dockerBin(): string {
+    return Bun.which("docker", { PATH: hostToolPath(process.env) }) ?? "docker";
   }
 
   private output(session: Session, data: string): void {

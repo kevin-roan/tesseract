@@ -1,0 +1,14 @@
+// Tesseract Network policy (Headscale v0.29 policy v2, ADR 0014).
+// Every account is one Headscale user (u-<accountId>). A device may reach only devices of the same user:
+// `autogroup:self` matches nodes owned by the source node's user, and everything else is denied by default.
+// Device keys are issued without ACL tags on purpose: since Headscale 0.28 a tagged node is owned by its tags,
+// not by a user, so it would fall outside `autogroup:self` (and a shared tag would join every account's devices).
+{
+  "acls": [
+    {
+      "action": "accept",
+      "src": ["autogroup:member"],
+      "dst": ["autogroup:self:*"],
+    },
+  ],
+}

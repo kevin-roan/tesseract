@@ -308,8 +308,10 @@ Done in the host daemon: Android Studio's `~/Library/Android/sdk` (and the deskt
 `~/Library/Application Support/Tesseract/android-sdk`) in the SDK search, Homebrew's
 `/opt/homebrew/share/scrcpy/scrcpy-server` in the scrcpy search, Homebrew prefixes on the tool `PATH`,
 `TESSERACT_EMULATOR_ISOLATION` defaulting to `none` and `TESSERACT_EMULATOR_GPU` to `host` on macOS. Apple Silicon
-needs `arm64-v8a` system images. Still open (sandbox side): `*-android` run targets require `isolated: true`; on macOS
-that should become an explicit opt-in (`TESSERACT_EMULATOR_ALLOW_UNISOLATED=1`), shown as a warning in the app.
+needs `arm64-v8a` system images. Sandbox side: `*-android` runs accept the unisolated Mac emulator
+(`TESSERACT_EMULATOR_ALLOW_UNISOLATED`, default on) and start it over the link when it is off; `expo-android` runs Expo
+Go (`expo start --go --android`, `REACT_NATIVE_PACKAGER_HOSTNAME=127.0.0.1`) unless the project needs a native build,
+since arm64 sandboxes have no Android SDK ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2.3).
 
 ## 6. Types and API
 

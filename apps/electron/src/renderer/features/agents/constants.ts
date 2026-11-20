@@ -17,6 +17,7 @@ export const CONTINUES_TITLE_LIMIT = 60;
 export const SHORT_ID_LENGTH = 8;
 export const META_SEPARATOR = " · ";
 export const NO_PROJECT_KEY = "";
+export const ALL_PROJECTS_KEY = "__all__";
 export const DEFAULT_MODEL_KEY = "";
 export const BADGE_MAX = 99;
 
@@ -32,12 +33,16 @@ export const SLASH_PREFIX = "/";
 export const LIST_WIDTH = { min: 350, fraction: 0.36, max: 400 } as const;
 export const BREAKPOINTS = { compact: 1180, collapsed: 640 } as const;
 
+export const SHELL_POLL_INTERVAL_MS = 2000;
+
 export const AGENTS_QUERY_KEYS = {
   runs: ["agents", "runs"] as const,
   archived: ["agents", "runs", "archived"] as const,
   inbox: ["agents", "inbox"] as const,
   sessions: ["agents", "sessions"] as const,
   slashCommands: ["agents", "slash-commands"] as const,
+  shells: (runId: string) => ["agents", "shells", runId] as const,
+  shellLog: (runId: string, shellId: string) => ["agents", "shells", runId, shellId, "log"] as const,
   projects: ["projects"] as const,
 };
 

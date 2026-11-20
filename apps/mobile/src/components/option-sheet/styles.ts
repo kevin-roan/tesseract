@@ -2,10 +2,17 @@ import { StyleSheet } from "react-native";
 
 import { FontWeights, sansFor, MinTouchTarget, type Theme } from "@/theme";
 
+/** Share of the screen the option list may take before it scrolls, leaving room for the header and footnote. */
+const MAX_LIST_HEIGHT_RATIO = 0.6;
+
 export default function createStyles(theme: Theme) {
   const graphite = theme.look === "graphite";
 
   return StyleSheet.create({
+    scroll: {
+      flexGrow: 0,
+      maxHeight: theme.height * MAX_LIST_HEIGHT_RATIO,
+    },
     group: {
       borderRadius: theme.radius.card,
       borderCurve: "continuous",

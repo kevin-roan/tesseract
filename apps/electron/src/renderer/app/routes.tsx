@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { lazy, Suspense } from "react";
 import { Navigate, useParams, type RouteObject } from "react-router";
 import { DEFAULT_PAGE, ROUTE } from "../../shared/routes";
 import { GalleryPage } from "../gallery/GalleryPage";
@@ -7,6 +7,8 @@ import { Shell } from "../shell/Shell";
 import { useTrayStatus } from "./connection";
 import { runtime } from "./runtime";
 import { findPage } from "./registry/pages";
+
+const DeviceWindow = lazy(() => import("../pages/device-window/DeviceWindow"));
 
 function PageRoute() {
   const { pageId = DEFAULT_PAGE } = useParams();
@@ -32,6 +34,14 @@ function RootRedirect() {
 export const ROUTES: RouteObject[] = [
   { path: "/onboarding/:step?", element: <OnboardingShell /> },
   { path: "/gallery/:entry?", element: <GalleryPage /> },
+  {
+    path: "/device/:kind",
+    element: (
+      <Suspense fallback={null}>
+        <DeviceWindow />
+      </Suspense>
+    ),
+  },
   {
     path: "/",
     element: <ShellRoute />,

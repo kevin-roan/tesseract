@@ -6,6 +6,7 @@ import { useSlashCommands } from "../../../features/agents/hooks/use-slash-comma
 import { CONVERSATION_LABELS } from "../../../features/agents/labels";
 import { cx } from "../../../lib/cx";
 import { RunTimeline } from "../timeline";
+import { AgentShells } from "./AgentShells";
 import { ConversationHeader } from "./ConversationHeader";
 import { ConversationNotices } from "./ConversationNotices";
 import { FollowUpComposer } from "./FollowUpComposer";
@@ -15,7 +16,7 @@ import { useConversation } from "./use-conversation";
 import styles from "./Conversation.module.css";
 
 export function ConversationView(props: ConversationViewProps) {
-  const { runs, compact = false, renderSync, onSelectRun, className } = props;
+  const { runs, compact = false, active = true, renderSync, onSelectRun, className } = props;
   const model = useConversation(props);
   const scoped = useScopedClient() !== null;
   const { run, header, composer, stopDialog } = model;
@@ -37,6 +38,7 @@ export function ConversationView(props: ConversationViewProps) {
         sync={sync}
         onStop={header.requestStop}
         onOpenTerminal={header.openTerminal}
+        cli={scoped ? null : header.cli}
         onManage={header.manage}
       />
       <ConversationNotices notices={model.notices} />
@@ -67,6 +69,7 @@ export function ConversationView(props: ConversationViewProps) {
         onModelChange={composer.onModelChange}
         slashCommands={slashCommands}
       />
+      <AgentShells key={run?.id} runId={run?.id ?? null} running={model.running} active={active} />
       <ConfirmDialog
         open={stopDialog.open}
         heading={CONVERSATION_LABELS.cancelConfirmTitle}

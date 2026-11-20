@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { TesseractClient } from "@tesseract/client";
 
+import { resolveTailnetUrl } from "@/features/tailnet";
 import { originOf } from "@/lib/url";
 
 import { sandboxKeys } from "../api/query-keys";
@@ -36,9 +37,9 @@ export function usePageUrl(
   const pageKey = target?.key ?? (sandboxId ? sandboxKeys.page(sandboxId, page, id) : null);
   const query = useQuery({
     queryKey: pageKey ?? sandboxKeys.root,
-    queryFn: () => {
+    queryFn: async () => {
       if (!client) throw new Error("No sandbox is paired.");
-      return build(client);
+      return resolveTailnetUrl(await build(client));
     },
     enabled: enabled && client !== null,
     gcTime: 0,
@@ -57,9 +58,12 @@ export function usePageUrl(
     void queryClient.resetQueries({ queryKey: JSON.parse(resetKey) as unknown[], exact: true });
   }, [enabled, queryClient, resetKey]);
 
+  const url = enabled ? (query.data ?? null) : null;
+  const baseOrigin = target ? target.origin : active.sandbox ? originOf(active.sandbox.baseUrl) : null;
+
   return {
-    url: enabled ? (query.data ?? null) : null,
-    origin: target ? target.origin : active.sandbox ? originOf(active.sandbox.baseUrl) : null,
+    url,
+    origin: url && baseOrigin ? (originOf(url) ?? baseOrigin) : baseOrigin,
     error: query.error,
     isLoading: query.isLoading,
     refresh,

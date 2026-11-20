@@ -72,6 +72,38 @@ describe("compose commands", () => {
     expect(docker.calls.filter((call) => call.args[0] === "volume").map((call) => call.args.join(" "))).toContain("volume inspect tesseract-tailscale");
   });
 
+  it("tesseract-net fetches a sandbox key before the first start, writes it and clears it afterwards", async () => {
+    const docker = new FakeDocker().onRun((args) => (args[0] === "volume" ? { code: 1 } : undefined));
+    const context = configured(docker, "TESSERACT_MODE=tesseract-net\nTESSERACT_HOSTNAME=box\nTS_AUTHKEY=\nTESSERACT_LOGIN_SERVER=\nCUSTOM=1\n");
+    const hostnames: string[] = [];
+    const key = { authKey: "hskey-1", loginServer: "https://net.example", magicDnsSuffix: "u1.tesseract.internal", hostname: "box", tags: ["tag:tesseract-sandbox"], expiresAt: "2026-11-08T13:00:00.000Z" };
+    let envAtUp = "";
+    docker.onStream(() => {
+      envAtUp = readFileSync(context.envFile, "utf8");
+      return { code: 0 };
+    });
+    const logs: string[] = [];
+    await composeUp({ ...context, tesseractNetKey: async (hostname) => (hostnames.push(hostname), key) }, { onLog: (line) => logs.push(line) });
+    expect(hostnames).toEqual(["box"]);
+    expect(logs[0]).toMatch(/Fetching a Tesseract Network key for box/);
+    expect(envAtUp).toBe(
+      "TESSERACT_MODE=tesseract-net\nTESSERACT_HOSTNAME=box\nTS_AUTHKEY=hskey-1\nTESSERACT_LOGIN_SERVER=https://net.example\nCUSTOM=1\nTESSERACT_NET_DOMAIN=u1.tesseract.internal\n",
+    );
+    expect(docker.streams[0]?.args.join(" ")).toContain("compose.tesseract-net.yml");
+    expect(readFileSync(context.envFile, "utf8")).toContain("TS_AUTHKEY=\n");
+  });
+
+  it("tesseract-net reuses the node volume without a key and refuses a first start signed out", async () => {
+    const joined = new FakeDocker().onRun((args) => (args[0] === "volume" ? ok("[]") : undefined));
+    const context = configured(joined, "TESSERACT_MODE=tesseract-net\nTESSERACT_LOGIN_SERVER=https://net.example\n");
+    let asked = false;
+    await composeUp({ ...context, tesseractNetKey: async () => ((asked = true), Promise.reject(new Error("no"))) });
+    expect(asked).toBe(false);
+
+    const fresh = new FakeDocker().onRun((args) => (args[0] === "volume" ? { code: 1 } : undefined));
+    await expect(composeUp(configured(fresh, "TESSERACT_MODE=tesseract-net\n"))).rejects.toThrow(/TESSERACT_LOGIN_SERVER is required/);
+  });
+
   it("down passes --volumes only when asked and surfaces compose errors", async () => {
     const docker = new FakeDocker();
     const context = configured(docker, "TESSERACT_MODE=local\nTESSERACT_COMPOSE_PROJECT=tesseract-test-c\n");

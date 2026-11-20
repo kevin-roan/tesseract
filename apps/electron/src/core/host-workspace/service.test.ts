@@ -72,6 +72,18 @@ describe("HostWorkspaceService", () => {
     expect(mocks.stopWorkspace).not.toHaveBeenCalled();
   });
 
+  it("restarts the controller with a fresh pairing when the daemon env changes", async () => {
+    const service = new HostWorkspaceService({ runner: () => RUNNER, links: async () => [{ projectId: "app", hostPath: "/home/me/app" }] });
+    await service.syncAll();
+    const served = { ...PAIRING, url: "http://pc-host.tesseract.internal:7702", localUrl: "http://127.0.0.1:7702" };
+    mocks.readPairing.mockResolvedValue(served);
+    await service.restart();
+    expect(mocks.stopWorkspace).toHaveBeenCalledWith(RUNNER, PAIRING.localUrl);
+    expect(mocks.ensureWorkspaceRunning).toHaveBeenLastCalledWith(RUNNER, served.localUrl);
+    const target = await service.open({ projectId: "app", hostPath: "/home/me/app" });
+    expect(target.apiUrl).toBe(served.localUrl);
+  });
+
   it("does nothing without synced projects", async () => {
     const service = new HostWorkspaceService({ runner: () => RUNNER, links: async () => [] });
     await service.syncAll();

@@ -1,5 +1,6 @@
 import { tmpdir } from "node:os";
 import {
+  EXPO_GO_BUNDLE_ID,
   isExpoGoUrl,
   type BootSimulator,
   type HostIosStatus,
@@ -19,6 +20,7 @@ import { ensureExpoGo } from "./expo-go";
 import { IosInstalls, type InstallsOptions } from "./installs";
 import { IosLink, type IosLinkOptions } from "./link";
 import { defaultRunner, type CommandRunner, type ProcessSpawner } from "./runner";
+import { approveUrlScheme } from "./scheme-approval";
 import { IOS_SCREEN_MESSAGES, IosScreens, type IosScreenOptions } from "./screen";
 import type { ScreenGeometry } from "./simctl";
 import { IosSimulators, SIMULATOR_MESSAGES, type SimulatorOptions } from "./simulator";
@@ -79,7 +81,12 @@ export class HostIos {
         },
         openUrl: async (url, sdkVersion, progress) => {
           const device = await this.bootedOrFail();
-          if (isExpoGoUrl(url)) await ensureExpoGo({ config, runner, simctl, tmpDir, logger, fetcher: options.fetcher }, device.udid, sdkVersion, progress);
+          if (isExpoGoUrl(url)) {
+            await ensureExpoGo({ config, runner, simctl, tmpDir, logger, fetcher: options.fetcher }, device.udid, sdkVersion, progress);
+            await approveUrlScheme(config, runner, device.udid, url, EXPO_GO_BUNDLE_ID).catch((error: unknown) => {
+              logger.warn("could not pre-approve the exp:// scheme; iOS may ask before opening Expo Go", { udid: device.udid, error: error instanceof Error ? error.message : String(error) });
+            });
+          }
           progress("opening");
           await simctl.openUrl(device.udid, url);
         },

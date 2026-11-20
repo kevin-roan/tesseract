@@ -69,6 +69,11 @@ export function trimScrollback(chunks: string[], size: number, limit: number): n
   return total;
 }
 
+export function claudeResumeArgs({ resumeSessionId, forkSession }: Pick<CreateTerminal, "resumeSessionId" | "forkSession">): string[] {
+  if (!resumeSessionId) return [];
+  return ["--resume", resumeSessionId, ...(forkSession ? ["--fork-session"] : [])];
+}
+
 export class TerminalService {
   private readonly sessions = new Map<string, Session>();
 
@@ -98,8 +103,9 @@ export class TerminalService {
     if (input.kind === "claude") {
       const claude = resolveExecutable(this.config.claudeBin);
       if (!claude) throw unavailable(`Claude Code (${this.config.claudeBin}) is not installed in this sandbox`);
-      argv = projectId !== null && this.projects.isConfidential(projectId) ? [claude, "--append-system-prompt", confidentialPrompt(projectId)] : [claude];
-      env = claudeAccountEnv(this.accounts.resolve(projectId), env);
+      const confidential = projectId !== null && this.projects.isConfidential(projectId) ? ["--append-system-prompt", confidentialPrompt(projectId)] : [];
+      argv = [claude, ...confidential, ...claudeResumeArgs(input)];
+      env = claudeAccountEnv(this.accounts.resolve(projectId, input.resumeSessionId), env);
     }
 
     const info: TerminalInfo = {

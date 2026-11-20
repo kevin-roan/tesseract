@@ -17,6 +17,7 @@ import {
   SCRUBBED_ENV_NAMES,
   SCRUBBED_ENV_PREFIXES,
   SERVICE,
+  SIDECAR_MODES,
   STATE_SUBDIR,
   TAILSCALE_HOST_SOCKET_DIR,
   TAILSCALE_SOCKET,
@@ -189,6 +190,7 @@ export async function resolveStack(context: SandboxContext, command: string): Pr
 
   let bindAddr: string | null = null;
   if (mode === "tailscale") files.push(join(composeDir, COMPOSE_FILES.tailscale));
+  if (mode === "tesseract-net") files.push(join(composeDir, COMPOSE_FILES.tesseractNet));
   if (mode === "host-tailscale") {
     bindAddr = values.TESSERACT_BIND_ADDR || (await tailscaleIpv4(deps, baseEnv));
     if (!bindAddr) {
@@ -208,7 +210,7 @@ export async function resolveStack(context: SandboxContext, command: string): Pr
 
   let socketDir: string | null = null;
   if (tailscaleApi) {
-    if (mode === "tailscale") files.push(join(composeDir, COMPOSE_FILES.tailscaleApiSidecar));
+    if (SIDECAR_MODES.includes(mode)) files.push(join(composeDir, COMPOSE_FILES.tailscaleApiSidecar));
     else {
       socketDir = values.TESSERACT_TAILSCALE_HOST_SOCKET_DIR || TAILSCALE_HOST_SOCKET_DIR;
       if (!socketDir.startsWith("/")) throw new StackError(labels.socketDir(socketDir));
@@ -261,7 +263,13 @@ export async function checkUpPreconditions(stack: ResolvedStack, deps: SandboxDe
       throw new StackError(labels.authKey);
     }
   }
-  if (stack.tailscaleApi && stack.mode !== "tailscale" && stack.socketDir) {
+  if (stack.mode === "tesseract-net") {
+    if (!stack.values.TESSERACT_LOGIN_SERVER) throw new StackError(labels.loginServer);
+    if (!stack.values.TS_AUTHKEY && !(await tailscaleVolumeExists(deps, stack.env, stack.volumePrefix))) {
+      throw new StackError(labels.tesseractNetKey);
+    }
+  }
+  if (stack.tailscaleApi && !SIDECAR_MODES.includes(stack.mode) && stack.socketDir) {
     if (!existsSync(join(stack.socketDir, TAILSCALE_SOCKET))) throw new StackError(labels.noSocket(stack.socketDir));
   }
 }

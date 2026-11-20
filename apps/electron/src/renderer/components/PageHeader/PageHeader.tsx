@@ -10,6 +10,7 @@ export interface PageHeaderProps {
   title: string;
   parent?: string | null;
   actions?: ReactNode;
+  leading?: ReactNode;
   onBack?: () => void;
   backLabel?: string;
   onParentClick?: () => void;
@@ -23,6 +24,7 @@ export function PageHeader({
   title,
   parent = null,
   actions,
+  leading,
   onBack,
   backLabel = PAGE_HEADER_LABELS.back,
   onParentClick,
@@ -41,6 +43,7 @@ export function PageHeader({
       className={className}
       start={
         <div className={styles.start}>
+          {leading}
           <Presence show={Boolean(onBack)} as="span" className={styles.back}>
             <IconButton icon="chevron-left" label={backLabel} onClick={onBack} />
           </Presence>

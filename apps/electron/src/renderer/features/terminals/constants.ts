@@ -2,7 +2,7 @@ import type { TerminalKind } from "@tesseract/protocol";
 import type { IconName } from "../../theme/icons";
 import type { Tone } from "../../theme/colors";
 import type { ConnectionStatus } from "../../app/connection";
-import { LAUNCH_LABELS, PLACEHOLDER_LABELS } from "./labels";
+import { LAUNCH_LABELS, PANEL_LABELS, PLACEHOLDER_LABELS } from "./labels";
 import type { PlaceholderModel, SessionState } from "./types";
 
 export const TERMINAL_KINDS = ["shell", "claude"] as const satisfies readonly TerminalKind[];
@@ -32,6 +32,20 @@ export const SANDBOX_PLACEHOLDER: PlaceholderModel = {
   secondaryLabel: PLACEHOLDER_LABELS.claude,
   secondaryKind: "claude",
 };
+
+export const PROJECT_PANEL_PLACEHOLDER: PlaceholderModel = {
+  title: PANEL_LABELS.emptyTitle,
+  message: PANEL_LABELS.emptyMessage,
+  primaryLabel: PLACEHOLDER_LABELS.shell,
+  primaryKind: "shell",
+  secondaryLabel: PLACEHOLDER_LABELS.claude,
+  secondaryKind: "claude",
+};
+
+export const PANEL_SIZE = {
+  bottom: { default: 320, min: 140, minContent: 160 },
+  right: { default: 560, min: 280, minContent: 320 },
+} as const;
 
 export const LIST_REFRESH_MS = { visible: 10_000, hidden: 60_000 } as const;
 export const WORKSPACE_ICON: IconName = "sandbox";

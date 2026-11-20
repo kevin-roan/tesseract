@@ -7,6 +7,7 @@ import { useRunActions } from "../../../features/agents/hooks/use-run-actions";
 import { useRunsCache } from "../../../features/agents/hooks/use-runs-cache";
 import { useAgentsUi } from "../../../features/agents/store";
 import type { ConversationPaneProps } from "../../../features/agents/types";
+import { ConversationDevices } from "./ConversationDevices";
 import { ConversationSyncSlot } from "./ConversationSyncSlot";
 import { ConversationView } from "./ConversationView";
 import type { ManageAction, SyncReport } from "./model";
@@ -57,7 +58,12 @@ export function ConversationPane({ runId, compact }: ConversationPaneProps) {
       discard={discard}
       syncReport={syncReport}
       onSyncReport={setSyncReport}
-      renderSync={(context) => <ConversationSyncSlot context={context} onDiscard={onDiscard} />}
+      renderSync={(context) => (
+        <>
+          <ConversationDevices projectId={context.projectId} compact={context.compact} />
+          <ConversationSyncSlot context={context} onDiscard={onDiscard} />
+        </>
+      )}
       onSelectRun={select}
       onRunChanged={cache.upsert}
       onFollowUpStarted={onFollowUpStarted}

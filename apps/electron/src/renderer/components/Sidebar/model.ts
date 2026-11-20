@@ -82,7 +82,7 @@ export function toggleExpansion(state: ExpansionState, id: string | null): Expan
   return { ...state, toggled: { ...state.toggled, [key]: !isExpanded(state, id) } };
 }
 
-export type SidebarContainersState = "loading" | "unavailable" | "empty" | "ready";
+export type SidebarContainersState = "loading" | "unavailable" | "locked" | "empty" | "ready";
 
 export type SidebarContainerActivity = "running" | "busy" | "stopped" | "error" | "requested";
 

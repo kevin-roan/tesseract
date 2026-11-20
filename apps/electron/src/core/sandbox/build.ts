@@ -100,7 +100,16 @@ export async function writeStack(
   const token = existing?.TESSERACT_TOKEN || generateToken();
   const ids = await devIds(deps, choices.hostClaudeDir);
   const claudeOAuthToken = secrets.claudeOAuthToken ?? existing?.CLAUDE_CODE_OAUTH_TOKEN;
-  await writeEnvAtomic(context.envFile, renderEnvFile(choices, ids, { token, tsAuthKey: savedAuthKey, claudeOAuthToken }));
+  await writeEnvAtomic(
+    context.envFile,
+    renderEnvFile(choices, ids, {
+      token,
+      tsAuthKey: savedAuthKey,
+      claudeOAuthToken,
+      loginServer: existing?.TESSERACT_LOGIN_SERVER,
+      netDomain: existing?.TESSERACT_NET_DOMAIN,
+    }),
+  );
   const previous = await loadSandboxStack(context);
   const unchanged =
     previous !== null &&

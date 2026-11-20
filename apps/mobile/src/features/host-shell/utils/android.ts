@@ -102,9 +102,9 @@ export function emulatorMeta(emulator: EmulatorInfo): string | undefined {
 export const isEmulatorUnisolated = (emulator: EmulatorInfo): boolean =>
   (emulator.state === "starting" || emulator.state === "running") && !emulator.isolated;
 
-/** Why the sandbox link is disabled, or null. */
+/** Why the sandbox link is disabled, or null. A host that never isolates (macOS) links whatever emulator runs. */
 export const linkBlockedReason = (status: HostAndroidStatus | undefined): string | null =>
-  status && isEmulatorUnisolated(status.emulator) ? ANDROID_COPY.linkBlocked : null;
+  status && status.isolation !== "none" && isEmulatorUnisolated(status.emulator) ? ANDROID_COPY.linkBlocked : null;
 
 export type IsolationNotice = { title: string; message: string };
 

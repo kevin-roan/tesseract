@@ -83,6 +83,20 @@ export const AgentRunDetailSchema = AgentRunSchema.extend({
 });
 export type AgentRunDetail = z.infer<typeof AgentRunDetailSchema>;
 
+export const AgentShellSchema = z.object({
+  id: z.string(),
+  command: z.string(),
+  running: z.boolean(),
+});
+export type AgentShell = z.infer<typeof AgentShellSchema>;
+export const AgentShellListSchema = z.array(AgentShellSchema);
+
+export const AgentShellLogSchema = z.object({
+  text: z.string(),
+  truncated: z.boolean(),
+});
+export type AgentShellLog = z.infer<typeof AgentShellLogSchema>;
+
 export const StartAgentRunSchema = z.object({
   projectId: ProjectIdSchema.optional(),
   prompt: z.string().trim().min(1).max(LIMITS.maxPromptLength),

@@ -46,7 +46,7 @@ afterEach(() => {
 
 describe("nextSectionId", () => {
   it("moves through the sections and clamps at the ends", () => {
-    expect(nextSectionId("connection", "ArrowDown")).toBe("appearance");
+    expect(nextSectionId("connection", "ArrowDown")).toBe("account");
     expect(nextSectionId("connection", "ArrowUp")).toBe("connection");
     expect(nextSectionId("appearance", "End")).toBe("about");
     expect(nextSectionId("stt", "Home")).toBe("connection");
@@ -77,7 +77,7 @@ describe("PreferencesDialog", () => {
     renderRoutes(routes, "/overview?preferences=connection");
     const tab = await screen.findByRole("tab", { name: "Connection" });
     fireEvent.keyDown(tab, { key: "ArrowDown" });
-    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("?preferences=appearance"));
+    await waitFor(() => expect(screen.getByTestId("location").textContent).toBe("?preferences=account"));
   });
 
   it("saves the appearance only when it changes", async () => {

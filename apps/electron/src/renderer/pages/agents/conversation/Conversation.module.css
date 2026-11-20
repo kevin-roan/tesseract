@@ -203,6 +203,20 @@
   overflow-y: auto;
 }
 
+.shellDock {
+  margin-top: -8px;
+  padding-bottom: 16px;
+}
+
+.shellDock .running {
+  margin-top: 0;
+}
+
+.shellLog {
+  height: 240px;
+  padding: 0 8px 8px;
+}
+
 @container (max-width: 480px) {
   .runningNames {
     visibility: hidden;

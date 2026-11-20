@@ -1,10 +1,13 @@
 import { app, BrowserWindow, nativeTheme } from "electron";
 import { stepZoom } from "../../core/config";
 import type { WindowState } from "../../shared/contracts/window";
+import { isDeviceWindowKind } from "../../shared/device-window";
 import { IpcError } from "../../shared/ipc-types";
 import { eventChannel } from "../../shared/ipc";
 import { defineService, type HandlerContext } from "./_framework/define";
 import { updateSettings } from "../services/settings";
+import { IPC_LABELS } from "../labels";
+import { createDeviceWindow, fitDevice, saveDeviceScreenshot } from "../windows/device-window";
 import { createMainWindow, createOnboardingWindow, focusWindow, getWindow } from "../windows/manager";
 
 function windowOf(context: HandlerContext): BrowserWindow {
@@ -57,6 +60,12 @@ export default defineService(
     openOnboarding: async (_context, step) => {
       await createOnboardingWindow(step);
     },
+    openDevice: async (_context, kind) => {
+      if (!isDeviceWindowKind(kind)) throw new IpcError("invalid_argument", IPC_LABELS.invalidDeviceKind);
+      await createDeviceWindow(kind);
+    },
+    fitDevice: (context, size) => fitDevice(windowOf(context), size),
+    saveDeviceScreenshot: (_context, png) => saveDeviceScreenshot(png),
     setAccelGuard: (context, active) => {
       windowOf(context).webContents.setIgnoreMenuShortcuts(active === true);
     },

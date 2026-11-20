@@ -7,12 +7,13 @@ import styles from "./DevicePanel.module.css";
 
 export interface DevicePanelProps {
   kind: DeviceKind;
+  active: boolean;
 }
 
-export function DevicePanel({ kind }: DevicePanelProps) {
+export function DevicePanel({ kind, active }: DevicePanelProps) {
   const view = useDeviceView(kind);
   return (
-    <div className={styles.panel}>
+    <div className={styles.panel} hidden={!active}>
       <DeviceToolbar view={view} />
       {view.controls.error ? <Notice tone="danger" message={view.controls.error} className={styles.notice} /> : null}
       <ScreenStage

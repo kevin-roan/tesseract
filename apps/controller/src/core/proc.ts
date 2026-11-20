@@ -56,6 +56,15 @@ export function readProcCwd(pid: number): string | null {
   }
 }
 
+/** Where a process's stdout points (a file path, `pipe:[…]`, …), or null when it is gone or hidden. */
+export function readProcStdout(pid: number): string | null {
+  try {
+    return readlinkSync(`${PROC_ROOT}/${pid}/fd/1`);
+  } catch {
+    return null;
+  }
+}
+
 /** `ProcStat` plus CPU ticks (user + system), start time (ticks after boot) and resident memory (pages). */
 export type ProcSample = ProcStat & { cpuTicks: number; startTicks: number; rssPages: number };
 

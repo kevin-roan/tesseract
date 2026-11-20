@@ -6,7 +6,10 @@ export type HostShellStatus = "stopped" | "starting" | "running" | "stopping" | 
 
 export interface HostPairing {
   link: string;
+  /** Where this computer reaches the daemon. */
   url: string;
+  /** The URL in the link when it differs from `url` (the Tesseract Network name, served from loopback). */
+  publicUrl?: string;
   name: string;
   pinSet: boolean;
 }
@@ -28,10 +31,15 @@ export interface EmulatorViewerRequest {
 export const HOST_TERMINAL_KINDS = ["shell", "claude"] as const;
 export type HostTerminalKind = (typeof HOST_TERMINAL_KINDS)[number];
 
+export const HOST_TERMINAL_TARGETS = ["local", "master"] as const;
+export type HostTerminalTarget = (typeof HOST_TERMINAL_TARGETS)[number];
+
 export interface HostTerminalRequest {
   projectId: string;
   title: string;
   kind?: HostTerminalKind;
+  /** `master`: in the project's folder on the active server's master host. Default: its sync-back copy on this computer. */
+  host?: HostTerminalTarget;
 }
 
 /** A sandbox project's host copy in the host workspace controller (`tesseract-controller host workspace serve`). */
@@ -56,6 +64,9 @@ export type HostShellContract = DefineContract<{
     setAutostart(enabled: boolean): HostShellState;
     unlock(pin: string): HostShellState;
     lock(): HostShellState;
+    /** This computer's host shell, even while host work routes to the active server's master host (terminals open here). */
+    localState(): HostShellState;
+    localUnlock(pin: string): HostShellState;
     androidStatus(): HostAndroidStatus;
     startEmulator(avd: string): HostAndroidStatus;
     stopEmulator(signal?: EmulatorStopSignal): HostAndroidStatus;

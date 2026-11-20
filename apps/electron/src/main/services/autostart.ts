@@ -3,6 +3,7 @@ import { createLogger } from "../../core/log";
 import { runAutostart, SANDBOX_LABELS, type AutostartOutcome, type SandboxContext } from "../../core/sandbox";
 import { mainContext } from "../context";
 import { serviceEmitter } from "../ipc/_framework/events";
+import { accountService } from "./account";
 import { showNotification } from "./notifications";
 import { sandboxContext } from "./resources";
 import { currentSettings } from "./settings";
@@ -20,6 +21,7 @@ function context(): SandboxContext {
     env,
     configFile: mainContext().configFile,
     deps: { probeDocker: () => probeDocker({ env }) },
+    tesseractNetKey: (hostname) => accountService().deviceKey("sandbox", hostname),
   };
 }
 

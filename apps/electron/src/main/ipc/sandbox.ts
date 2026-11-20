@@ -31,6 +31,7 @@ import type { DockerReport } from "../../shared/contracts/docker";
 import type { BuildFailurePhase, BuildMode, BuildPhase, SandboxStackStatus, SetupChoices } from "../../shared/contracts/sandbox";
 import { IpcError } from "../../shared/ipc-types";
 import { mainContext } from "../context";
+import { accountService } from "../services/account";
 import { sandboxContext } from "../services/resources";
 import { saveConnection } from "./connection";
 import { defineService } from "./_framework/define";
@@ -52,6 +53,7 @@ function context(): SandboxContext {
     saveConnection: async (connection) => {
       await saveConnection(connection);
     },
+    tesseractNetKey: (hostname) => accountService().deviceKey("sandbox", hostname),
   };
 }
 
@@ -94,7 +96,13 @@ async function validationContext(choices: SetupChoices): Promise<ValidationConte
   const [report, saved] = await Promise.all([dockerReport(), readEnvValues(ctx.envFile)]);
   const host = hostResources();
   const needsVolume = choices.mode === "tailscale" && !choices.tsAuthKey.trim() && !saved?.TS_AUTHKEY;
+  // A sandbox that already joined the Tesseract Network keeps working signed out; only the first start needs a key.
+  const joined =
+    choices.mode === "tesseract-net" && !accountService().signedIn() && Boolean(saved?.TESSERACT_LOGIN_SERVER)
+      ? await tailscaleVolumeExists({ run: runCommand }, ctx.env, choices.project)
+      : false;
   return {
+    accountSignedIn: accountService().signedIn() || joined,
     maxCpus: report?.server?.ncpu || host.cpus,
     memBytes: report?.server?.memBytes || host.memBytes,
     savedAuthKey: Boolean(saved?.TS_AUTHKEY),

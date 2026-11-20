@@ -38,7 +38,7 @@ describe("useSandboxStatus", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual(sampleStatus);
-    expect(MockClient).toHaveBeenCalledWith({ baseUrl: TEST_SANDBOX.baseUrl, token: TEST_TOKEN });
+    expect(MockClient).toHaveBeenCalledWith(expect.objectContaining({ baseUrl: TEST_SANDBOX.baseUrl, token: TEST_TOKEN }));
     expect(fake.status).toHaveBeenCalledWith({ signal: expect.any(Object) });
     expect(queryClient.getQueryData(sandboxKeys.status(TEST_SANDBOX.id))).toEqual(sampleStatus);
   });

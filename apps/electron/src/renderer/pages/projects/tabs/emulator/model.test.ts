@@ -91,9 +91,14 @@ describe("plan", () => {
   it("is blocked when the host can't help", () => {
     expect(planEmulator(status({ available: false, reason: "No SDK" }), SANDBOX).blocked).toBe("No SDK");
     expect(planEmulator(status({}, { state: "unavailable" }), SANDBOX).blocked).toBe("The host can't run the Android emulator");
-    expect(planEmulator(status({ isolation: "none" }), SANDBOX).blocked).toMatch(/TESSERACT_EMULATOR_ISOLATION=none/);
     expect(planEmulator(status({}, { state: "stopping" }), SANDBOX).blocked).toBe("The emulator is stopping; try again in a moment");
     expect(planEmulator(status({ avds: [] }, { state: "stopped", avd: null }), SANDBOX).blocked).toMatch(/no Android virtual device/);
+  });
+
+  it("uses a running emulator as it is when the host does not isolate (macOS)", () => {
+    const plain = status({ isolation: "none" }, { isolated: false });
+    expect(planEmulator(plain, SANDBOX)).toMatchObject({ blocked: null, stop: false, avd: null, link: false });
+    expect(planEmulator(status({ isolation: "none" }, { state: "stopped", isolated: false }), SANDBOX)).toMatchObject({ blocked: null, stop: false, avd: expect.any(String) });
   });
 
   it("only links a running isolated emulator", () => {
@@ -119,5 +124,6 @@ describe("plan", () => {
   it("checks readiness", () => {
     expect(emulatorReady(status(), SANDBOX)).toBe(true);
     expect(emulatorReady(status({}, { isolated: false }), SANDBOX)).toBe(false);
+    expect(emulatorReady(status({ isolation: "none" }, { isolated: false }), SANDBOX)).toBe(true);
   });
 });

@@ -63,15 +63,20 @@ they export TypeScript source (`exports: { ".": "./src/index.ts" }`).
 │   ├── mobile/          @tesseract/mobile      Expo SDK 56 / RN 0.85 / expo-router (existing app)
 │   ├── controller/      @tesseract/controller  Bun + Hono daemon that runs INSIDE the sandbox
 │   ├── desktop/         Tesseract GTK4/libadwaita app (Python, dev.tesseract.Desktop): the visual reference
+│   ├── account/         @tesseract/account     Bun + Hono account service (Tesseract Network, ADR 0014, §13)
 │   └── electron/        @tesseract/electron  Tesseract desktop app (Electron 44, React 19): setup wizard,
 │                                            sandbox stack control, host Android emulator, `tesseract` CLI (§12)
 ├── packages/
 │   ├── protocol/        @tesseract/protocol    zod v4 schemas + types + route helpers (the wire contract);
 │   │                                        subpath exports ./bridge (zod-free) and ./fixtures
 │   └── client/          @tesseract/client      typed REST/WS client used by mobile (runs in RN, browser, Bun)
+├── native/
+│   └── tailnet/         Go module wrapping tsnet: gomobile library for the phone + `tesseract-tailnet` CLI (§13)
 ├── infra/
+│   ├── docker/account/  account service image
+│   ├── headscale/       Headscale + account service stack (Tesseract Network control plane, §13)
 │   ├── docker/sandbox/  Dockerfile + rootfs/ (supervisord confs, entrypoint, helpers, templates, openbox)
-│   ├── compose/         compose.yml, compose.tailscale.yml, compose.local.yml, compose.dind.yml,
+│   ├── compose/         compose.yml, compose.tailscale.yml, compose.tesseract-net.yml, compose.local.yml, compose.dind.yml,
 │   │                    compose.tailscale-api.yml, compose.tailscale-api-sidecar.yml,
 │   │                    tailscale/serve.json, .env.example
 │   ├── scripts/sandbox  operator CLI (bash): up|down|restart|logs|shell|pair|status|doctor|build|ps|config|help
@@ -185,6 +190,7 @@ controller are upgraded together (renamed deep-link scheme and in-page message n
 | `CLAUDE_CODE_OAUTH_TOKEN` / `ANTHROPIC_API_KEY` | — | not configured by the stack (Claude auth is the host's Max login only); if set manually anyway, `GET /v1/claude/auth` still reports them (`sources`, `oauthTokenFromEnv`) and children inherit them as usual |
 | `TESSERACT_SANDBOX_ID` | container hostname | identity shown in the app |
 | `TESSERACT_TAILSCALE_SOCKET` | `/run/tailscale/tailscaled.sock` | tailscaled LocalAPI socket for `GET /v1/identity`; missing socket = Tailscale identity unavailable |
+| `TESSERACT_NET_DOMAIN` | — | set by the tesseract-net compose mode only: marks a Headscale node (serve headers ignored, Taildrop unavailable, self node named `<TESSERACT_SANDBOX_ID>.<domain>` when the LocalAPI is not shared); must be a DNS domain |
 | `TESSERACT_LOG_LEVEL` | `info` | `debug|info|warn|error` |
 | `TESSERACT_CORS_ORIGINS` | `*` | comma list; auth is header/ticket based, never cookies |
 | `SHELL` | `bash` | login shell for `shell` terminals (`$SHELL -l`) |
@@ -205,6 +211,7 @@ controller are upgraded together (renamed deep-link scheme and in-page message n
 | `TESSERACT_APNS_TEAM_ID` | — | Apple developer team id (1-64 letters/digits) |
 | `TESSERACT_APNS_BUNDLE_ID` | `com.kevinroan.tesseract` | bundle id of the app; the `apns-topic` is `<bundle id>.push-type.liveactivity`. The development build (`APP_VARIANT=development`, see [getting started](../runbooks/getting-started.md)) is `com.kevinroan.tesseract.dev` |
 | `TESSERACT_ADB_TUNNEL_PORT` | `15555` | sandbox loopback port tunnelled to the host emulator's adbd over the Android link |
+| `TESSERACT_EMULATOR_ALLOW_UNISOLATED` | on | `*-android` runs may use a host emulator that is not network isolated (macOS hosts); `0`/`off` refuses it ([app-runs-and-emulator.md](app-runs-and-emulator.md) §2.3) |
 | `TESSERACT_ADB` | `adb` | adb client used for `adb connect`/`disconnect` of the tunnel |
 | `TESSERACT_FLUTTER` | `flutter` | Flutter SDK entry point of the `flutter-*` and Flutter `test` run targets; they are unavailable when it is not found |
 | `TESSERACT_APNS_ENV` | `production` | `production` (`api.push.apple.com`) or `sandbox` (`api.sandbox.push.apple.com`, development builds) |
@@ -216,9 +223,11 @@ claude, wine, java) is optional and reported as unavailable instead of crashing.
 Children (processes, build steps, terminals, agent runs, git/zip helpers) get the
 controller's environment **without** `TESSERACT_TOKEN`, `TESSERACT_VNC_PASSWORD`, and `TESSERACT_STT_API_KEY`, plus
 `TESSERACT_PROCESS_ID` / `TESSERACT_BUILD_ID` / `TESSERACT_TERMINAL_ID` / `TESSERACT_AGENT_RUN_ID` (plus `TESSERACT_ISSUE_ID` for runs of an issue).
-Agent runs also drop `CLAUDECODE`. The controller does not store or inject Claude
-credentials: children use the host's Claude Max login in `/home/dev/.claude` (the host's
-`~/.claude`, bind-mounted), the only supported authentication. Agent runs and `claude`
+Agent runs also drop `CLAUDECODE`. By default children use the host's Claude Max login in `/home/dev/.claude` (the host's
+`~/.claude`, bind-mounted). The one credential the controller stores is the optional long-lived token of the
+`claude-token` account (`PUT /v1/claude/token`, `<dataDir>/claude-oauth-token`, 0600): runs and terminals on that
+account keep the primary's dir (settings, CLAUDE.md, sessions; no `CLAUDE_CONFIG_DIR` added) and get
+`CLAUDE_CODE_OAUTH_TOKEN=<token>` in place of the env credentials below. Agent runs and `claude`
 terminals on another account (§5.2 `/v1/claude/accounts`) get `CLAUDE_CONFIG_DIR=/home/dev/.claude-<n>`
 without `CLAUDE_CODE_OAUTH_TOKEN`/`ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN` (those are the primary's and would
 override the dir's login); the account is the project's, else the default. Resuming a session first moves its
@@ -231,7 +240,9 @@ lists. Exported shell variables win over the env file; empty counts as unset.
 
 | Var | Default | Meaning |
 |---|---|---|
-| `TESSERACT_MODE` | `tailscale` | `tailscale` \| `host-tailscale` \| `local` (§9); `--mode` wins |
+| `TESSERACT_MODE` | `tailscale` | `tailscale` \| `tesseract-net` \| `host-tailscale` \| `local` (§9); `--mode` wins |
+| `TESSERACT_LOGIN_SERVER` | — | Headscale URL the sidecar logs in to (`DeviceKey.loginServer`); required in tesseract-net mode |
+| `TESSERACT_NET_DOMAIN` | `tesseract.internal` | MagicDNS base domain of the Tesseract Network; builds `TESSERACT_PUBLIC_URL` in tesseract-net mode and is passed to the sandbox |
 | `TESSERACT_DIND` | — | `1` adds `compose.dind.yml` (same as `--dind`) |
 | `TESSERACT_TAILSCALE_LOCALAPI` | — | `1` shares the tailscaled LocalAPI socket with the sandbox (same as `--tailscale-api`, §9) |
 | `TESSERACT_TAILSCALE_HOST_SOCKET_DIR` | `/var/run/tailscale` | host directory holding `tailscaled.sock` (host-tailscale/local with `--tailscale-api`); `up` refuses when the socket is missing |
@@ -240,7 +251,7 @@ lists. Exported shell variables win over the env file; empty counts as unset.
 | `TESSERACT_IMAGE` | `tesseract/sandbox:latest` | image the stack runs and `sandbox build` tags |
 | `TESSERACT_HOSTNAME` | `tesseract-sandbox` | tailnet node name, `TESSERACT_SANDBOX_ID` |
 | `TESSERACT_SKIP_LEGACY_MIGRATION` | — | `1`: skip the Docker steps of the pre-rename migration (§3; also read by the desktop app and `tesseract server install`) |
-| `TS_AUTHKEY` | — | first login of the sidecar only (`TS_AUTH_ONCE=true`) |
+| `TS_AUTHKEY` | — | first login of the sidecar only (`TS_AUTH_ONCE=true`); in tesseract-net mode a `sandbox` device key from the account service |
 | `TS_TAILNET_DOMAIN` | — | e.g. `tail1234.ts.net`; required in tailscale mode, builds `TESSERACT_PUBLIC_URL` |
 | `TS_EXTRA_ARGS` | — | extra `tailscale up` flags |
 | `TESSERACT_BIND_ADDR` | host-tailscale: `tailscale ip -4`; local: `127.0.0.1` | IPv4 the ports are published on; wildcards and non-IPv4 values are refused |
@@ -322,6 +333,11 @@ running with a PIN and an unlocked session (the same PIN prompt as the host emul
 `POST /v1/terminals` with `cwd: hostPath` and `kind: "claude"` or `"shell"` (IPC
 `hostShell.openTerminal({ projectId, title, kind })`) and open the daemon's `/ui/terminal` page in
 its own window. Claude runs the user's own `claude` CLI and login on the host, not the sandbox's.
+When the project has no host copy on this computer and the active sandbox has a linked master host, the group is
+named after that machine and offers **Claude** and **Shell** there (no Git): the user sets the project's absolute
+folder on that machine once (IPC `masterHost.folder` / `setFolder`, stored under `folders` in the `masterHosts`
+entry), the machine's own PIN unlocks it, and `hostShell.openTerminal({ …, host: "master" })` opens the terminal
+through the linked host shell.
 Commit runs `git add --all` then `git commit -m <message>`; Pull and Push run `git pull --ff-only` /
 `git push`. All run in `hostPath` from the main process
 (`GIT_TERMINAL_PROMPT=0`, 5 min timeout); they act on this computer's own repo like sync-back, so they
@@ -385,9 +401,11 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | POST | `/v1/auth/ticket` | — | `200 Ticket { ticket, expiresAt }` |
 | GET | `/v1/status` | — | `SandboxStatus` |
 | GET | `/v1/identity` | — | `Identity`: Tailscale viewer, owner, node and tailnet (§5.4); never fails because Tailscale is unreachable, it reports `available: false` and nulls |
-| GET | `/v1/claude/accounts` | — | `ClaudeAccountList { defaultAccountId, accounts: ClaudeAccountProfile[] }`: primary first, then `TESSERACT_CLAUDE_ACCOUNTS` order; login, account, plan and expiry per dir; never contains a secret |
+| GET | `/v1/claude/accounts` | — | `ClaudeAccountList { defaultAccountId, accounts: ClaudeAccountProfile[] }`: primary first, then `TESSERACT_CLAUDE_ACCOUNTS` order, then `claude-token` (`kind: "token"`, always `present`/`loggedIn`, `configDir` = the primary's) when a token is stored; the others are `kind: "config_dir"` (clients default a missing `kind` to it); login, account, plan and expiry per dir; never contains a secret |
 | GET | `/v1/claude/commands?projectId=` | — | `ClaudeCommand[]` sorted by name: slash commands Claude Code accepts in the sandbox, for the composers' `/` hints. Built-ins (`CLAUDE_BUILTIN_COMMANDS`), managed skills (`/etc/claude-code/.claude/skills/<n>/SKILL.md`), the selected account's `skills/<n>/SKILL.md` and `commands/**/*.md` (`commands/git/commit.md` → `git:commit`), then the project's `.claude/skills` and `.claude/commands`; same name: project > user > managed > builtin. Frontmatter `name`/`description` (else dir/file name and first body line); `user-invocable: false` skills and names off `CLAUDE_COMMAND_NAME_PATTERN` are skipped; symlinks leaving the root are ignored; cached 10 s. 404 unknown project |
 | PUT | `/v1/claude/accounts/default` | `SetDefaultClaudeAccount { accountId }` | `200 ClaudeAccountList`; 404 unknown, 400 not mounted. Used by runs and terminals whose project has no account of its own |
+| PUT | `/v1/claude/token` | `SetClaudeToken { token }` (`claude setup-token`, trimmed, `CLAUDE_OAUTH_TOKEN_PATTERN`) | `200 ClaudeAccountList` with the `claude-token` account; replaces a stored token; 400 malformed. Not added when `TESSERACT_CLAUDE_ACCOUNTS` already has a `token` name. Set from the desktop app's Preferences → Claude |
+| DELETE | `/v1/claude/token` | — | `200 ClaudeAccountList` without `claude-token`; a default of `claude-token` falls back to the primary; projects pinned to it fail like any removed account (503) until they pick another |
 | GET | `/v1/claude/auth` | — | `ClaudeAuthStatus` (§5.4): which credential the sandbox's Claude Code uses (`method` = first of `oauth_token`, `credentials`, `api_key`, else `none`), account from the global config's `oauthAccount`, subscription and expiry from `.credentials.json`; never contains a secret |
 | POST | `/v1/claude/import` | `ClaudeImport { credentials?, account?, files? }` (body limit 8 MiB) | `200 ClaudeImportResult { status, written, skipped }`: `credentials` replaces `claudeAiOauth` in `.credentials.json` (other keys kept); `account` merges only `CLAUDE_IMPORT_ACCOUNT_KEYS` into the global config (`projects` etc. kept); `files` must be normalized relative paths matching `CLAUDE_IMPORT_PATHS` that stay in `$CLAUDE_CONFIG_DIR` without symlinks leading out; `settings.json` must be a JSON object and loses `CLAUDE_IMPORT_DROPPED_SETTINGS` (`settings.json#<key>` in `skipped`). Files are written atomically; `settings.json`, `.credentials.json` and the global config are first copied to `<file>.tesseract-bak`. `written`/`skipped` paths are relative to `$CLAUDE_CONFIG_DIR`; the global config is `.claude.json` (inside it) or `~/.claude.json`. Refused parts go to `skipped`; only schema errors are 400 |
 | GET | `/v1/context` | — | `AgentContext { files: AgentContextFile[] }`: regular files `.agent/*.md` and `.agent/projects/<id>/*.md` (no symlinks, FIFOs or devices), content capped at 64 KiB each |
@@ -441,7 +459,7 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | DELETE | `/v1/processes/:id` | `?signal=SIGTERM\|SIGKILL` (default `SIGTERM`, 400 otherwise) | `ProcessInfo` (§6.2); `SIGKILL` kills the process group at once (also escalates a SIGTERM stop in progress), state `stopped`, log line `Process killed (SIGKILL)` |
 | GET | `/v1/processes/:id/logs` | `?tail=500` (1–2000) | `LogLine[]` |
 | GET | `/v1/terminals` | — | `TerminalInfo[]` of the current controller lifetime (newest first) |
-| POST | `/v1/terminals` | `CreateTerminal { kind: "shell"\|"claude", projectId?, cols, rows }` | `201 TerminalInfo`; 503 if `claude` or PTY support is missing. A `claude` terminal in a confidential project runs `claude --append-system-prompt <confidential prompt>` (§6.1) |
+| POST | `/v1/terminals` | `CreateTerminal { kind: "shell"\|"claude", projectId?, cols, rows, resumeSessionId?, forkSession? }` | `201 TerminalInfo`; 503 if `claude` or PTY support is missing. `resumeSessionId` → `claude --resume <id>` under the project's account, plus `--fork-session` with `forkSession` (for a session a running agent still writes to). A `claude` terminal in a confidential project runs `claude --append-system-prompt <confidential prompt>` (§6.1) |
 | DELETE | `/v1/terminals/:id` | — | `TerminalInfo` |
 | GET | `/v1/builds` | `?projectId=` | `BuildJob[]` |
 | POST | `/v1/builds` | `StartBuild { projectId, target, profile? }` (`profile` default `debug`) | `201 BuildJob`; 400 if the project lacks the target; 503 if the recipe needs `wine`/`java` and it is missing |
@@ -454,8 +472,8 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | GET | `/v1/artifacts/:id/download` | bearer **or** `?ticket=` | file stream (`Content-Disposition: attachment`, `X-Content-SHA256`); 404 if the file is gone |
 | GET | `/v1/outputs` | `?projectId=` | `BuildOutput[] { projectId, path (project-relative), fileName, sizeBytes, platform, modifiedAt }`, newest first, at most 500: deliverables (`.apk`/`.aab`/`.ipa`/`.exe`/`.msi`/`.msix`/`.appx`/`.AppImage`/`.deb`/`.rpm`/`.snap`/`.dmg`/`.pkg`/`.zip`/`.7z`/`.tar.*`) that plain builds left under a `build`/`builds`/`dist`/`release`/`releases`/`out`/`outputs`/`make`/`artifacts` folder of a project (e.g. `android/app/build/outputs/apk/…`, `release/build/…`, `out/make/…`). Found by scanning, not indexed; skips dot-folders, `node_modules`, Gradle `intermediates`/`generated`/`tmp`, `*-unpacked`, `*.app`, symlinks and electron-builder helpers (`__uninstaller*`, `elevate.exe`); depth ≤ 10, ≤ 20 000 entries per project. Unknown `projectId` → 404 |
 | GET | `/v1/projects/:id/outputs/download` | `?path=` (project-relative); bearer **or** `?ticket=` | file stream (`Content-Disposition: attachment`, single `Range` → 206); 404 unless the realpath stays inside the project and still matches the `/v1/outputs` rules |
-| GET | `/v1/taildrop/targets` | — | `TaildropTargets { available, targets: TaildropTarget[] }` from LocalAPI `file-targets`, sorted by host name; `available: false` with no targets when the LocalAPI socket is missing or fails (never an error) |
-| POST | `/v1/artifacts/:id/taildrop` | `SendArtifact { targetId }` | `Artifact` once LocalAPI `file-put` accepted the file; 503 without the LocalAPI or when the push fails, 404 for an unknown target, 403 when tailscaled refuses |
+| GET | `/v1/taildrop/targets` | — | `TaildropTargets { available, targets: TaildropTarget[] }` from LocalAPI `file-targets`, sorted by host name; `available: false` with no targets when the LocalAPI socket is missing or fails (never an error), and always on the Tesseract Network (`TESSERACT_NET_DOMAIN` set) |
+| POST | `/v1/artifacts/:id/taildrop` | `SendArtifact { targetId }` | `Artifact` once LocalAPI `file-put` accepted the file; 503 without the LocalAPI, on the Tesseract Network, or when the push fails, 404 for an unknown target, 403 when tailscaled refuses |
 | GET | `/v1/ports` | — | `ListeningPorts { tailscaleIp, ports: ListeningPort[] }`: TCP ports that visible sandbox processes listen on (not the controller or VNC port), each `{ port, pid, command, processId, projectId, url, dnsUrl }`; `url` is `http://<sandbox Tailscale IPv4>:<port>`, which reaches the port over the tailnet because the userspace sidecar forwards to `127.0.0.1`; both URLs are null without Tailscale |
 | GET | `/v1/usage?days=` | — | `UsageReport { generatedAt, from, to, days, totals, daily, models, projects }` from Claude Code transcripts: `days` 1–90 (default 30) UTC days ending today, `daily` has every day oldest first (zero-filled), `models`/`projects` most tokens first; assistant messages are deduped by message id + request id (also across resumed-session files), `<synthetic>` messages are skipped, only files modified in the range are read; token counts only, no dollar cost; never fails because the directory is missing |
 | GET | `/v1/sessions?limit=&projectId=` | — | `ClaudeSession[]` (default 20, max 200), newest `lastActiveAt` first, across every Claude account (`claudeAccountId`): title (first real prompt, ≤120 chars), preview (last assistant text, ≤160), model, usage (including subagent transcripts), `source` `agent-run`/`terminal`/`cli`, `agentRunId` (newest run with the session id), `terminalId` (running Claude terminal: `$CLAUDE_CONFIG_DIR/sessions/<pid>.json`, else the newest transcript with the terminal's cwd written since it started), `active` (run running or terminal attached); a session a later run resumed (`resumedSessionId`) under a new id is left out, so a chat lists once |
@@ -485,6 +503,8 @@ or `APPLE_KEYCHAIN_PROFILE` [`APPLE_KEYCHAIN`] (macOS notarization). E2E only: �
 | POST | `/v1/agent/runs/delete` | `DeleteAgentRuns { ids: AgentRunId[] (1–500) } \| { all: true, projectId?, archived?: boolean }` | `200 { count }` = runs deleted for good with their events (one transaction; inbox items keep their row with `agentRunId: null`); `all` covers every finished run, only archived ones with `archived: true`, only non-archived ones with `false`; running runs and unknown ids are skipped; publishes `agent.deleted` when `count > 0` |
 | GET | `/v1/agent/runs/:id` | — | `AgentRun & { events: AgentRunEvent[] }` |
 | DELETE | `/v1/agent/runs/:id` | — | `AgentRun` (cancel) |
+| GET | `/v1/agent/runs/:id/shells` | — | `AgentShell[]` `{ id, command, running }`: shells Claude started in a live run, found through the process tree by stdout pointing at `…/tasks/<id>.output`; includes ones that ended since they were first listed; `[]` once the run is over |
+| GET | `/v1/agent/runs/:id/shells/:shellId/log` | — | `AgentShellLog { text, truncated }`: the last 128 KiB of the shell's output; 404 for a shell the run has not listed |
 | GET | `/v1/projects/:id/run-targets` | — | `RunTargetInfo[]`: run targets offered for the project, unavailable ones with `reason` ([app-runs-and-emulator.md](app-runs-and-emulator.md) §1.1); 404 unknown project |
 | GET | `/v1/app-runs` | `?projectId=` | `AppRun[]` of the current controller lifetime, newest first |
 | POST | `/v1/projects/:id/app-runs` | `StartAppRun { target, port? }` | `201 AppRun`; 400 target not offered; 503 target unavailable (message = `reason`); 409 port taken or a `starting`/`ready` run of that target exists |
@@ -953,8 +973,9 @@ background and app restarts; the web build keeps it in memory only.
 | POST | `/v1/host/lock` | host token | `HostLock { session }` | `204`; ends that session |
 | POST | `/v1/auth/ticket` | session | — | `Ticket` (one-time, 60 s) |
 | GET | `/v1/host/workspace` | session | — | `HostWorkspaceAccess { url, token, name, projects: { id, path }[] }`: how to reach the host workspace controller (§3), i.e. the pairing URL and token of `host workspace pair` and the repositories linked into it; 404 before it has a token, 503 when it can't be read (e.g. no Tailscale IPv4). The phone pairs it from here after a PIN unlock (stored as an extra sandbox entry linked to the active sandbox's host, not made active) and shows a sandbox project's **This computer** section when the workspace has a project with the same id |
+| POST | `/v1/host/docker` | session | header `x-tesseract-docker` (`HOST_DOCKER_SPEC_HEADER`): JSON `HostDockerSpec { args: string[] (1–256), env?: { NAME: value } (names `^[A-Z][A-Z0-9_]{0,63}$`), timeoutMs? (≤ 1 h, default 30 min) }`; body: the command's stdin (up to `LIMITS.maxDeployBundleBytes` + 64 MiB) | `200 application/x-ndjson` of `HostDockerMessage`: `{ type: "stdout"\|"stderr", data }` per line, then one `{ type: "exit", code, timedOut }`; runs `docker <args>` on the host (PATH plus Homebrew's prefixes on macOS, current Docker context) and kills it on timeout or when the caller disconnects; 400 for a missing or invalid spec. The desktop app manages a Tesseract server's [server containers](server-containers.md#on-a-tesseract-server) through it |
 | GET | `/v1/terminals` | session | — | `TerminalInfo[]` (newest first) |
-| POST | `/v1/terminals` | session | `CreateHostTerminal` = `CreateTerminal` with no `projectId` (else 400), optional `cwd` (absolute host folder; 400 if relative, 404 if not a directory). `kind: "shell"` runs the configured login shell (`$SHELL -l`); `kind: "claude"` needs `cwd` (else 400) and runs the user's own `claude` (their PATH and `~/.claude` login, no sandbox account env) through `<$SHELL> -ilc` (`/bin/sh` when `$SHELL` is not POSIX), with `--append-system-prompt` saying it runs in the user's real repository, not a sandbox; without `claude` on that PATH the terminal prints that Claude Code isn't installed and exits 127 | `201 TerminalInfo` (`projectId: null`, `kind` as requested, `title` `Host · <hostname>`, `Host · <hostname> · <folder name>` or for claude `Claude · Host · <hostname> · <folder name>`, `cwd` the given folder or `$HOME`) |
+| POST | `/v1/terminals` | session | `CreateHostTerminal` = `CreateTerminal` with no `projectId` (else 400), optional `cwd` (absolute host folder; 400 if relative, 404 if not a directory) or `container` (a server container name, `DEPLOY_CONTAINER_PATTERN`; only with `kind: "shell"` and no `cwd`, else 400: runs `docker exec -it -u root -w /root tesseract-ct-<container> /bin/bash -l`, title `Container · <container>`). `kind: "shell"` runs the configured login shell (`$SHELL -l`); `kind: "claude"` needs `cwd` (else 400) and runs the user's own `claude` (their PATH and `~/.claude` login, no sandbox account env) through `<$SHELL> -ilc` (`/bin/sh` when `$SHELL` is not POSIX), with `--append-system-prompt` saying it runs in the user's real repository, not a sandbox; without `claude` on that PATH the terminal prints that Claude Code isn't installed and exits 127 | `201 TerminalInfo` (`projectId: null`, `kind` as requested, `title` `Host · <hostname>`, `Host · <hostname> · <folder name>` or for claude `Claude · Host · <hostname> · <folder name>`, `cwd` the given folder or `$HOME`) |
 | GET | `/v1/terminals/:id` | session, or `?ticket=` | — | `TerminalInfo`; a ticket is only checked, not used up, so `/ui/terminal` reads its terminal and then streams with the same ticket |
 | DELETE | `/v1/terminals/:id` | session | — | `TerminalInfo` (SIGHUP to the group) |
 | WS | `/v1/terminals/:id/stream?ticket=` | ticket | §5.3 terminal frames | scrollback replay, survives disconnects; an attached stream stays open after its session expires |
@@ -1121,6 +1142,9 @@ tesseract-controller issue show [<id>] [--json]   # GET /v1/issues/:id
 tesseract-controller issue create --title <t> [--project <id>] [--description <d>] [--status <s>] [--priority <p>] [--assignee me|claude] [--label <l>]... [--json]   # POST /v1/projects/:id/issues
 tesseract-controller issue update [<id>] [--title <t>] [--description <d>] [--status <s>] [--priority <p>] [--assignee me|claude|none] [--label <l>]... [--json]   # PATCH /v1/issues/:id
 tesseract-controller issue comment [<id>] <text | -> [--json]   # POST /v1/issues/:id/comments as `claude`
+tesseract-controller run targets [--project <id>] [--json]   # GET /v1/projects/:id/run-targets (project defaults to the cwd's /workspace/projects/<id>)
+tesseract-controller run <target> [--project <id>] [--port <n>] [--no-wait] [--json]   # POST /v1/projects/:id/app-runs, then poll GET /v1/app-runs/:id until it leaves `starting`; exit 1 when unavailable or it ends failed/stopped/exited
+tesseract-controller run list [--project <id>] [--json] | run stop <app_…>   # GET /v1/app-runs[?projectId=<id>], DELETE /v1/app-runs/:id
 tesseract-controller tesseract --get [--force] [--json]  # IN THE SANDBOX, also as `tesseract --get` (/usr/local/bin/tesseract, not the host CLI §7.1); in /workspace/projects/<id>/…: queue a `get` and print a git pull style summary (sync-back.md §6); exit 0 / 1 / 2 conflicts / 130 interrupted
 tesseract-controller host serve [--bind <ipv4>] [--port <n>]  # ON THE HOST: host shell daemon (§5.7)
 tesseract-controller host pin [--stdin]            # set the 6-12 digit PIN (prompted twice without echo); ends sessions, resets lockouts
@@ -1331,9 +1355,10 @@ resolved settings to compose. It reads `infra/compose/.env`, or only the file gi
 | Mode | Files | Reachability |
 |---|---|---|
 | `tailscale` (default) | `compose.yml` + `compose.tailscale.yml` | sandbox joins the tailscale sidecar's netns; `tailscale serve` → `https://<TESSERACT_HOSTNAME>.<TS_TAILNET_DOMAIN>` (443 → 7700) and TCP 5901; no host ports. Refuses to start without `TS_TAILNET_DOMAIN`, or without `TS_AUTHKEY` on first start |
+| `tesseract-net` | `compose.yml` + `compose.tesseract-net.yml` | sandbox joins the tailscale sidecar's netns; the sidecar logs in to Headscale (`TS_EXTRA_ARGS=--login-server=${TESSERACT_LOGIN_SERVER} ${TS_EXTRA_ARGS}`), no serve; `TESSERACT_PUBLIC_URL=http://<TESSERACT_HOSTNAME>.<TESSERACT_NET_DOMAIN>:7700`, VNC on 5901; only the controller port is published, on `127.0.0.1:${TESSERACT_CONTROLLER_HOST_PORT}`, for the desktop app ([ADR 0014](../adr/0014-embedded-tailnet-and-tesseract-accounts.md)). Refuses to start without `TESSERACT_LOGIN_SERVER`, or without `TS_AUTHKEY` (a `sandbox` device key) on first start |
 | `host-tailscale` | `compose.yml` + `compose.local.yml`, `TESSERACT_BIND_ADDR` = host tailnet IPv4 | ports bound only on that address |
 | `local` | `compose.yml` + `compose.local.yml`, `TESSERACT_BIND_ADDR=127.0.0.1` | loopback only, for development/e2e tests |
-| `+tailscale-api` | tailscale: add `compose.tailscale-api-sidecar.yml`; host-tailscale/local: add `compose.tailscale-api.yml` | opt-in (`--tailscale-api`, `TESSERACT_TAILSCALE_LOCALAPI=1`) for `GET /v1/identity`. Sidecar: `TS_SOCKET=/var/run/tailscale/tailscaled.sock` on volume `<prefix>-tailscale-run`, mounted read-only at `/run/tailscale` in the sandbox. Host: `TESSERACT_TAILSCALE_HOST_SOCKET_DIR` bind-mounted read-only at `/run/tailscale`. Root in the sandbox can then reconfigure that tailscaled ([security model](security-model.md#tailscale-localapi-opt-in)) |
+| `+tailscale-api` | tailscale/tesseract-net: add `compose.tailscale-api-sidecar.yml`; host-tailscale/local: add `compose.tailscale-api.yml` | opt-in (`--tailscale-api`, `TESSERACT_TAILSCALE_LOCALAPI=1`) for `GET /v1/identity`. Sidecar: `TS_SOCKET=/var/run/tailscale/tailscaled.sock` on volume `<prefix>-tailscale-run`, mounted read-only at `/run/tailscale` in the sandbox. Host: `TESSERACT_TAILSCALE_HOST_SOCKET_DIR` bind-mounted read-only at `/run/tailscale`. Root in the sandbox can then reconfigure that tailscaled ([security model](security-model.md#tailscale-localapi-opt-in)) |
 | `+host-android` | add `compose.host-android-sdk.yml` (`TESSERACT_HOST_ANDROID_SDK`) and/or `compose.host-gradle-cache.yml` (`TESSERACT_HOST_GRADLE_CACHE`) | opt-in, any mode: the host's Android SDK and Gradle dependency cache, read-only, so builds do not download NDK, CMake, platforms and dependencies again ([security model](security-model.md#host-android-sdk-and-gradle-cache-opt-in)) |
 | `+dind` | add `compose.dind.yml` | privileged `docker:dind` sidecar sharing `<prefix>-workspace`; sandbox gets `DOCKER_HOST=tcp://docker:2376` + TLS certs (opt-in, [ADR 0006](../adr/0006-optional-docker-in-docker.md)) |
 
@@ -1520,3 +1545,18 @@ migration: the key is still the sandbox URL.
 `extraResources`: `resources/bin/{tesseract,tesseract-controller}` (+ `tesseract-simcap` on macOS), `resources/sandbox/` (the build context the
 wizard and `tesseract sandbox build` use), icons and font licenses. Updates: electron-updater against the generic
 feed in `electron-builder.yml` (first check 60 s after start, then every 6 h; `TESSERACT_DISABLE_UPDATES` turns it off).
+
+## 13. Tesseract Network and accounts ([ADR 0014](../adr/0014-embedded-tailnet-and-tesseract-accounts.md))
+
+A second network next to the Tailscale modes: self-hosted Headscale as control server, a
+Tesseract account service that issues device keys, and an embedded `tsnet` node in the
+phone and desktop app, so neither needs the Tailscale app.
+
+- **Account service:** package `@tesseract/account` (`apps/account`), binary `tesseract-account`, image from `infra/docker/account/Dockerfile`, default port 7800 (`ACCOUNT_DEFAULT_PORT`). Routes `ACCOUNT_ROUTES`, schemas in `packages/protocol/src/schemas/account.ts`, route table in ADR 0014 §2.
+- **Env:** `ACCOUNT_PORT` (7800), `ACCOUNT_HOST` (0.0.0.0), `ACCOUNT_DATA_DIR` (./data; SQLite `account.sqlite`), `ACCOUNT_HEADSCALE_URL` (required), `ACCOUNT_HEADSCALE_API_KEY` (required), `ACCOUNT_LOGIN_SERVER` (required, public Headscale URL), `ACCOUNT_NET_DOMAIN` (tesseract.internal), `ACCOUNT_APPLE_AUDIENCES` (comma-separated; empty disables Apple), `ACCOUNT_APPLE_JWKS_URL` (https://appleid.apple.com/auth/keys), `ACCOUNT_DEMO_EMAIL`/`ACCOUNT_DEMO_PASSWORD` (App Review account, seeded on start), `ACCOUNT_TRUST_PROXY` (`1` = rate-limit by the last X-Forwarded-For entry).
+- **Error codes:** `invalid_request` 400/413, `unauthorized` 401, `invalid_credentials` 401, `invalid_apple_token` 401, `not_found` 404, `email_taken` 409, `rate_limited` 429 (+Retry-After), `tailnet_unavailable` 502, `internal` 500. Rate limits (per IP, in memory): sign-in and Apple sign-in 10/min, sign-up 5/min.
+- **Headscale stack:** `infra/headscale/` (compose project `tesseract-net`), `headscale/headscale:0.29.7` on 127.0.0.1:8080, STUN UDP 3478, embedded DERP at `/derp`, optional Caddy (profile `tls`) which blocks `/api/*` publicly. `.env`: `TESSERACT_LOGIN_SERVER`, `TESSERACT_NET_DOMAIN`, `HEADSCALE_VERSION`, `HEADSCALE_BIND_ADDR`, `ACCOUNT_BIND_ADDR`, `HEADSCALE_HOST`/`ACCOUNT_HOST`/`ACME_EMAIL`. Runbook: [tesseract-network.md](../runbooks/tesseract-network.md).
+- **Mapping:** one Headscale user `u-<accountId>` per account (accountId = 24 lowercase hex). Device keys are user-owned, untagged, single-use, 1 h; nodes never expire. Policy `autogroup:member -> autogroup:self:*`.
+- **Embedded node:** `native/tailnet` (Go module `tesseract/native/tailnet`, `tailscale.com` tsnet), API in ADR 0014 §3. Builds: `native/tailnet/scripts/build-android.sh` → `apps/mobile/modules/tesseract-tailnet/android/libs/tailnet.aar`, `build-ios.sh` (macOS) → `apps/mobile/modules/tesseract-tailnet/ios/Tailnet.xcframework`, `build-desktop.sh` → `apps/electron/resources/bin/<linux|mac|win>-<x64|arm64>/tesseract-tailnet[.exe]`. Outputs are not committed. `TESSERACT_TAILNET_VERBOSE=1` enables backend logs; log uploads are disabled.
+- **Phone:** Expo module `TesseractTailnet` (`apps/mobile/modules/tesseract-tailnet`), feature `apps/mobile/src/features/tailnet` (tailnet URLs, i.e. MagicDNS suffix or `100.64.0.0/10`, are rewritten to `http://127.0.0.1:<forward>` by `tailnetTransport` in the sandbox and host clients), accounts in `apps/mobile/src/features/account` (routes `/sign-in`, `/sign-up`, `/settings/account`), service URL `EXPO_PUBLIC_ACCOUNT_URL`.
+

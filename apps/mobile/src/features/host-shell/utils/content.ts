@@ -135,7 +135,7 @@ export const ANDROID_COPY = {
     "This emulator was started outside the app, so it shares the host's network. Stop it and start it here to link a sandbox.",
   isolationOffTitle: "Network isolation is off",
   isolationOff:
-    "The host runs the emulator with TESSERACT_EMULATOR_ISOLATION=none, so the guest can reach the host's loopback services, LAN and tailnet. Sandbox runs will not use it.",
+    "The host runs the emulator with TESSERACT_EMULATOR_ISOLATION=none (always on macOS), so the guest can reach the host's loopback services, LAN and tailnet. Sandbox runs still use it.",
   linkBlocked: "Linking is disabled while the emulator is not isolated; start it from the app.",
   unavailable: "The Android emulator is not available on this host.",
   linkStates: { none: "Not linked", connected: "Connected", connecting: "Connecting", failed: "Disconnected" },

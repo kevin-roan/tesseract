@@ -9,6 +9,8 @@ export default defineIpcFixtures({
     refresh: () => hostState,
     unlock: () => Object.assign(hostState, { sessionExpiresAt: Date.now() + SESSION_MS }),
     lock: () => Object.assign(hostState, { sessionExpiresAt: null }),
+    localState: () => hostState,
+    localUnlock: () => Object.assign(hostState, { sessionExpiresAt: Date.now() + SESSION_MS }),
     androidStatus: () => hostAndroid,
     stopEmulator: () => {
       hostAndroid.emulator = { ...hostAndroid.emulator, state: "stopped", serial: null };

@@ -8,6 +8,7 @@ import { migrateLegacyStack } from "../legacy/docker";
 import { migrateEnvFile } from "../legacy/env";
 import { LEGACY_LABELS } from "../legacy/labels";
 import {
+  DEFAULT_HOSTNAME,
   DEFAULT_IMAGE,
   DEFAULT_LOG_TAIL,
   DEFAULT_PROJECT,
@@ -16,10 +17,11 @@ import {
   SCRUBBED_ENV_NAMES,
   SCRUBBED_ENV_PREFIXES,
   SERVICE,
+  SIDECAR_MODES,
 } from "./constants";
-import { parseEnvFile } from "./env-file";
+import { parseEnvFile, quoteEnvValue } from "./env-file";
 import { SANDBOX_LABELS } from "./labels";
-import { checkUpPreconditions, composeArgs, readEnvValues, resolveStack, type ResolvedStack } from "./stack";
+import { checkUpPreconditions, composeArgs, readEnvValues, resolveStack, tailscaleVolumeExists, type ResolvedStack } from "./stack";
 import { sandboxDeps, type SandboxContext, type SandboxDeps } from "./types";
 import { writeEnvAtomic } from "./write";
 
@@ -115,6 +117,41 @@ export async function removeAuthKey(envFile: string): Promise<void> {
   await writeEnvAtomic(envFile, next);
 }
 
+function setEnvLines(text: string, values: Record<string, string>): string {
+  const pending = new Map(Object.entries(values));
+  const lines = text.split("\n").map((line) => {
+    const match = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)=/.exec(line);
+    const key = match?.[1];
+    if (!key || !pending.has(key)) return line;
+    const value = pending.get(key) as string;
+    pending.delete(key);
+    return `${key}=${quoteEnvValue(value)}`;
+  });
+  if (lines.at(-1) === "") lines.pop();
+  for (const [key, value] of pending) lines.push(`${key}=${quoteEnvValue(value)}`);
+  return `${lines.join("\n")}\n`;
+}
+
+/**
+ * tesseract-net: before the first start (no TS_AUTHKEY, no node state in the tailscale volume) fetch a `sandbox`
+ * device key from the Tesseract account and write it with the login server and MagicDNS domain it names.
+ */
+export async function ensureTesseractNetKey(context: SandboxContext, callbacks: ComposeCallbacks = {}): Promise<boolean> {
+  const values = await readEnvValues(context.envFile);
+  if (!values || values.TESSERACT_MODE !== "tesseract-net" || values.TS_AUTHKEY || !context.tesseractNetKey) return false;
+  const volumePrefix = values.TESSERACT_VOLUME_PREFIX || values.TESSERACT_COMPOSE_PROJECT || DEFAULT_PROJECT;
+  if (values.TESSERACT_LOGIN_SERVER && (await tailscaleVolumeExists(sandboxDeps(context), baseEnv(context), volumePrefix))) return false;
+  const hostname = values.TESSERACT_HOSTNAME || DEFAULT_HOSTNAME;
+  callbacks.onLog?.(SANDBOX_LABELS.stack.fetchingKey(hostname));
+  const key = await context.tesseractNetKey(hostname);
+  const text = await readFile(context.envFile, "utf8");
+  await writeEnvAtomic(
+    context.envFile,
+    setEnvLines(text, { TS_AUTHKEY: key.authKey, TESSERACT_LOGIN_SERVER: key.loginServer, TESSERACT_NET_DOMAIN: key.magicDnsSuffix }),
+  );
+  return true;
+}
+
 export async function composeUp(
   context: SandboxContext,
   callbacks: ComposeCallbacks & { signal?: AbortSignal } = {},
@@ -122,6 +159,7 @@ export async function composeUp(
   const deps = sandboxDeps(context);
   const backup = migrateEnvFile(context.envFile);
   if (backup) callbacks.onLog?.(LEGACY_LABELS.envMigrated(context.envFile, backup));
+  await ensureTesseractNetKey(context, callbacks);
   const stack = await resolveStack(context, "up");
   stack.warnings.forEach((line) => callbacks.onLog?.(line));
   await migrateLegacyStack(
@@ -131,7 +169,7 @@ export async function composeUp(
   );
   await checkUpPreconditions(stack, deps);
   await runCompose(context, stack, ["up", "--detach"], callbacks);
-  if (stack.mode === "tailscale") await removeAuthKey(stack.envFile);
+  if (SIDECAR_MODES.includes(stack.mode)) await removeAuthKey(stack.envFile);
   return projectStatus(deps, stack.env, stack.project, true);
 }
 

@@ -11,6 +11,10 @@
   align-items: end;
 }
 
+.hug {
+  align-self: flex-start;
+}
+
 .progress {
   display: flex;
   align-items: center;

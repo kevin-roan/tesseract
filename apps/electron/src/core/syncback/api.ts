@@ -1,5 +1,5 @@
-import { openAsBlob } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { createReadStream, openAsBlob } from "node:fs";
+import { readFile, stat } from "node:fs/promises";
 import { ApiError, NetworkError, TesseractClient, TimeoutError, type FetchLike } from "@tesseract/client";
 import {
   ProjectSchema,
@@ -39,8 +39,11 @@ export interface SyncApi {
   pendingRequests(): Promise<SyncRequest[]>;
   createRequest(projectId: string, body: CreateSyncRequest): Promise<SyncRequest>;
   projectIds(): Promise<string[]>;
-  pushProject(projectId: string, archiveFile: string, confidential: boolean): Promise<PushResult>;
+  /** `onSent(sent, total)` follows the archive upload byte by byte. */
+  pushProject(projectId: string, archiveFile: string, confidential: boolean, onSent?: UploadProgress): Promise<PushResult>;
 }
+
+export type UploadProgress = (sent: number, total: number) => void;
 
 export interface HttpSyncApiOptions {
   apiUrl: string;
@@ -61,6 +64,30 @@ async function archiveBody(file: string): Promise<Blob> {
     }
   }
   return new Blob([new Uint8Array(await readFile(file))]);
+}
+
+const UPLOAD_CHUNK_BYTES = 256 * 1024;
+
+/** The archive as a stream that reports how much of it fetch has taken so far. */
+function countingBody(file: string, total: number, onSent: UploadProgress): ReadableStream<Uint8Array> {
+  const source = createReadStream(file, { highWaterMark: UPLOAD_CHUNK_BYTES });
+  const chunks = source[Symbol.asyncIterator]() as AsyncIterator<Buffer>;
+  let sent = 0;
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      const next = await chunks.next();
+      if (next.done) {
+        controller.close();
+        return;
+      }
+      sent += next.value.length;
+      controller.enqueue(new Uint8Array(next.value.buffer, next.value.byteOffset, next.value.length));
+      onSent(sent, total);
+    },
+    cancel() {
+      source.destroy();
+    },
+  });
 }
 
 async function* single(chunk: Uint8Array): AsyncGenerator<Uint8Array> {
@@ -96,8 +123,13 @@ export class HttpSyncApi implements SyncApi {
     this.baseUrl = this.client.baseUrl;
   }
 
-  private async send(method: string, path: string, init: { body?: BodyInit; json?: unknown; contentType?: string }): Promise<Response> {
+  private async send(
+    method: string,
+    path: string,
+    init: { body?: BodyInit; json?: unknown; contentType?: string; contentLength?: number },
+  ): Promise<Response> {
     const headers: Record<string, string> = { Authorization: `Bearer ${this.options.token}`, Accept: "application/json" };
+    if (init.contentLength !== undefined) headers["Content-Length"] = String(init.contentLength);
     let body = init.body;
     if (init.json !== undefined) {
       headers["Content-Type"] = "application/json";
@@ -108,7 +140,9 @@ export class HttpSyncApi implements SyncApi {
     const fetchImpl = (this.options.fetch ?? fetch) as typeof fetch;
     let response: Response;
     try {
-      response = await fetchImpl(`${this.baseUrl}${path}`, { method, headers, body, signal: AbortSignal.timeout(SYNC_TIMEOUT_MS) });
+      // A stream body needs `duplex: "half"` in Node's fetch (Bun ignores it).
+      const stream = body instanceof ReadableStream ? { duplex: "half" } : {};
+      response = await fetchImpl(`${this.baseUrl}${path}`, { method, headers, body, signal: AbortSignal.timeout(SYNC_TIMEOUT_MS), ...stream } as RequestInit);
     } catch (error) {
       if (error instanceof Error && error.name === "TimeoutError") throw new TimeoutError(path, SYNC_TIMEOUT_MS);
       throw new NetworkError(`Request to ${path} failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
@@ -166,10 +200,16 @@ export class HttpSyncApi implements SyncApi {
     return (await this.client.listProjects()).map((project) => project.id);
   }
 
-  async pushProject(projectId: string, archiveFile: string, confidential: boolean): Promise<PushResult> {
+  async pushProject(projectId: string, archiveFile: string, confidential: boolean, onSent?: UploadProgress): Promise<PushResult> {
     const path = `${restPaths.projectSync(projectId)}${confidential ? CONFIDENTIAL_QUERY : ""}`;
-    const body = await archiveBody(archiveFile);
-    const response = await this.send("POST", path, { body, contentType: GZIP_MIME_TYPE });
+    let response: Response;
+    if (onSent) {
+      const size = (await stat(archiveFile)).size;
+      onSent(0, size);
+      response = await this.send("POST", path, { body: countingBody(archiveFile, size, onSent), contentType: GZIP_MIME_TYPE, contentLength: size });
+    } else {
+      response = await this.send("POST", path, { body: await archiveBody(archiveFile), contentType: GZIP_MIME_TYPE });
+    }
     const data: unknown = await response.json();
     const parsed = ProjectSchema.safeParse(data);
     const project = parsed.success ? parsed.data : (data as PushResult["project"]);

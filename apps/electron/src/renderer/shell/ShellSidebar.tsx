@@ -28,6 +28,7 @@ import { useMainMenu } from "./hooks/use-main-menu";
 import { useSidebarComposer } from "./hooks/use-sidebar-composer";
 import { useSidebarContainers } from "./hooks/use-sidebar-containers";
 import { useSidebarProjects } from "./hooks/use-sidebar-projects";
+import { useSidebarVisibility } from "./hooks/use-sidebar-visibility";
 import { openShellDialog } from "./hooks/use-shell-dialogs";
 import { SHELL_LABELS } from "./labels";
 import { MACHINE_LABELS } from "../features/machines";
@@ -44,6 +45,7 @@ function SidebarHeader({ collapsed }: ShellSidebarProps) {
   const navigateTo = useNavigateTo();
   const menu = useMainMenu();
   const history = useHistoryNav();
+  const visibility = useSidebarVisibility();
   const recentMenu = useActionMenu();
   const switcher = useRef<HTMLButtonElement>(null);
   const recentButton = useRef<HTMLButtonElement>(null);
@@ -68,6 +70,7 @@ function SidebarHeader({ collapsed }: ShellSidebarProps) {
             />
           </div>
         }
+        end={collapsed ? undefined : <IconButton icon="sidebar" label={SHELL_LABELS.hideSidebar} size={24} onClick={visibility.hide} />}
       />
       <div className={styles.workspaceRow}>
         <WorkspaceSwitcher
@@ -223,6 +226,7 @@ export function ShellSidebar({ collapsed }: ShellSidebarProps) {
           onStop={containers.stop}
           onCreate={createContainer}
           onSetUp={() => openPreferences("containers")}
+          onUnlock={() => navigateTo("containers")}
         />
       </SidebarSection>
     </Sidebar>

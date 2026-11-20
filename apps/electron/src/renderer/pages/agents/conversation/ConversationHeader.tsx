@@ -20,6 +20,7 @@ export interface ConversationHeaderProps {
   sync?: ReactNode;
   onStop(): void;
   onOpenTerminal(terminalId: string): void;
+  cli?: { tooltip: string; busy: boolean; open(): void } | null;
   onManage(action: ManageAction): void;
 }
 
@@ -33,6 +34,7 @@ export function ConversationHeader({
   sync,
   onStop,
   onOpenTerminal,
+  cli,
   onManage,
 }: ConversationHeaderProps) {
   const menu = useActionMenu();
@@ -64,6 +66,9 @@ export function ConversationHeader({
         ) : null}
         {terminalId ? (
           <IconButton icon="terminal" label={CONVERSATION_LABELS.openTerminal} onClick={() => onOpenTerminal(terminalId)} />
+        ) : null}
+        {cli && !terminalId ? (
+          <ActionButton label={CONVERSATION_LABELS.switchToCli} icon="terminal" variant="secondary" tooltip={cli.tooltip} disabled={cli.busy} onClick={cli.open} />
         ) : null}
         {actions.sync && sync ? <div className={styles.sync}>{sync}</div> : null}
         {actions.archive ? <IconButton icon="archive" label={MANAGE_LABELS.archive} onClick={() => onManage("archive")} /> : null}

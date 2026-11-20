@@ -168,7 +168,9 @@ export class IdentityService {
   }
 
   async identity(request: IdentityRequest): Promise<Identity> {
-    const serveViewer = request.remote && isLoopback(request.remote.address) ? this.serveViewer(request.headers) : null;
+    // No serve on the Tesseract Network: a peer's request arrives from loopback too and could carry the headers.
+    const trustServe = this.config.netDomain === null && request.remote !== null && isLoopback(request.remote.address);
+    const serveViewer = trustServe ? this.serveViewer(request.headers) : null;
     const status = await this.localStatus();
     let viewer: TailscaleUser | null = null;
     let viewerNode: TailnetNode | null = null;
@@ -178,7 +180,9 @@ export class IdentityService {
       const known = status?.users.find((user) => user.loginName === serveViewer.loginName);
       viewer = { ...serveViewer, id: known?.id ?? serveViewer.id, profilePicUrl: serveViewer.profilePicUrl ?? known?.profilePicUrl ?? null };
       source = "serve";
-    } else if (status && request.remote && !isLoopback(request.remote.address)) {
+    } else if (status && request.remote) {
+      // Loopback too: a userspace tailscaled (the tailscale/tesseract-net sidecars) proxies inbound tailnet TCP from
+      // 127.0.0.1, and whois resolves that ip:port through its proxy map. Plain local callers get a 404 there.
       const whois = await this.whois(request.remote);
       if (whois?.user) {
         viewer = whois.user;
@@ -201,9 +205,19 @@ export class IdentityService {
     };
   }
 
-  /** This sandbox's own tailnet node, or null when Tailscale is unreachable. */
+  /**
+   * This sandbox's own tailnet node from the LocalAPI. Without the LocalAPI, on the Tesseract Network
+   * (`TESSERACT_NET_DOMAIN`) it is the node the compose file named `<sandboxId>.<netDomain>`, with no known IPs;
+   * otherwise null.
+   */
   async selfNode(): Promise<TailnetNode | null> {
-    return (await this.localStatus())?.node ?? null;
+    const status = await this.localStatus();
+    const node = status?.node ?? null;
+    const suffix = status?.tailnet ?? this.config.netDomain;
+    if (node) return node.dnsName || !suffix ? node : { ...node, dnsName: `${node.hostName.toLowerCase()}.${suffix}` };
+    if (!this.config.netDomain) return null;
+    const hostName = this.config.sandboxId.toLowerCase();
+    return { hostName, dnsName: `${hostName}.${this.config.netDomain}`, os: "linux", tailscaleIps: [], online: true };
   }
 
   private serveViewer(headers: Headers): TailscaleUser | null {
@@ -231,10 +245,13 @@ export class IdentityService {
   private async whois(remote: { address: string; port: number }): Promise<Whois | null> {
     const now = Date.now();
     const ip = normalizeAddress(remote.address);
-    const cached = this.whoisCache.get(ip);
+    // A loopback address stands for whichever peer the proxied connection came from: only ip:port identifies it.
+    const cacheable = !isLoopback(ip);
+    const cached = cacheable ? this.whoisCache.get(ip) : undefined;
     if (cached && now - cached.at < this.statusTtlMs) return cached.value;
-    const body = await this.get(`/localapi/v0/whois?addr=${encodeURIComponent(whoisAddr(remote))}`);
+    const body = await this.get(`/localapi/v0/whois?addr=${encodeURIComponent(whoisAddr(remote))}&proto=tcp`);
     const value = isObject(body) ? { user: mapUserProfile(body.UserProfile), node: mapWhoisNode(body.Node) } : null;
+    if (!cacheable) return value;
     if (this.whoisCache.size >= WHOIS_CACHE_LIMIT) this.whoisCache.clear();
     this.whoisCache.set(ip, { at: now, value });
     return value;

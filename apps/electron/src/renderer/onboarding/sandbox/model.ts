@@ -1,3 +1,4 @@
+import { TESSERACT_NET_DEFAULT_DOMAIN } from "@tesseract/protocol";
 import { formatBytes } from "../shared/format";
 import { ONBOARDING_STEP_IDS, type OnboardingStepId } from "../../../shared/routes";
 import type { DockerReport } from "../../../shared/contracts/docker";
@@ -455,6 +456,7 @@ export function reachabilitySubtitle(mode: ReachabilityMode, choices: SetupChoic
   const choice = L.reachability.choices;
   if (mode === "local") return choice.local.subtitle(choices.controllerPort);
   if (mode === "tailscale") return choice.tailscale.subtitle(choices.hostname || FALLBACK_HOSTNAME);
+  if (mode === "tesseract-net") return choice["tesseract-net"].subtitle(choices.hostname || FALLBACK_HOSTNAME, TESSERACT_NET_DEFAULT_DOMAIN);
   if (!hostTailscaleAvailable(choices, tailscaleIp)) return choice["host-tailscale"].unavailable;
   return choice["host-tailscale"].subtitle(choices.bindAddr || tailscaleIp || choice["host-tailscale"].unknownIp);
 }

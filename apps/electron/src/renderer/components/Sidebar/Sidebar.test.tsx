@@ -98,6 +98,8 @@ const CONTAINER_LABELS = {
   loading: "Loading containers…",
   unavailable: "Containers need Docker.",
   setUp: "Set up containers",
+  locked: "Unlock the host to see its containers.",
+  unlock: "Unlock host",
   empty: "No containers yet.",
   create: "Create a container",
 };
@@ -143,5 +145,9 @@ describe("SidebarContainers", () => {
     rerender(<SidebarContainers state="empty" items={[]} labels={CONTAINER_LABELS} onCreate={onCreate} />);
     fireEvent.click(screen.getByRole("button", { name: "Create a container" }));
     expect(onCreate).toHaveBeenCalledOnce();
+    const onUnlock = vi.fn();
+    rerender(<SidebarContainers state="locked" items={[]} labels={CONTAINER_LABELS} onUnlock={onUnlock} />);
+    fireEvent.click(screen.getByRole("button", { name: "Unlock host" }));
+    expect(onUnlock).toHaveBeenCalledOnce();
   });
 });

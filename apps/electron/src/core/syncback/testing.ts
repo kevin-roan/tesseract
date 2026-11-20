@@ -258,7 +258,9 @@ export class FakeController implements SyncApi {
     return [PROJECT];
   }
 
-  async pushProject(projectId: string, archiveFile: string, confidential: boolean): Promise<PushResult> {
+  async pushProject(projectId: string, archiveFile: string, confidential: boolean, onSent?: (sent: number, total: number) => void): Promise<PushResult> {
+    const size = (await stat(archiveFile)).size;
+    onSent?.(size, size);
     const { members } = await readArchive(fileSource(archiveFile));
     this.pushes.push({ projectId, confidential, members });
     return { project: { path: `/workspace/projects/${projectId}` }, created: true };

@@ -25,9 +25,14 @@ export function mapFileTarget(value: unknown): TaildropTarget | null {
   return { id, hostName: mapped.hostName, dnsName: mapped.dnsName, os: mapped.os, online: mapped.online };
 }
 
-/** Pushes artifacts to the user's tailnet devices through the Tailscale LocalAPI (needs the socket opt-in). */
+/**
+ * Pushes artifacts to the user's tailnet devices through the Tailscale LocalAPI (needs the socket opt-in). Off on the
+ * Tesseract Network (`TESSERACT_NET_DOMAIN`): its devices are tagged Headscale nodes and the phone's embedded node
+ * cannot receive files, so targets are unavailable and sends fail with 503 without asking tailscaled.
+ */
 export class TaildropService {
   private readonly fetcher: TailscaleFetch;
+  private readonly tesseractNet: boolean;
   private readonly timeoutMs: number;
   private readonly sendTimeoutMs: number;
 
@@ -38,11 +43,13 @@ export class TaildropService {
     options: TaildropOptions = {},
   ) {
     this.fetcher = options.fetch ?? unixSocketFetch(config.tailscaleSocket);
+    this.tesseractNet = config.netDomain !== null;
     this.timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.sendTimeoutMs = options.sendTimeoutMs ?? DEFAULT_SEND_TIMEOUT_MS;
   }
 
   async targets(): Promise<TaildropTargets> {
+    if (this.tesseractNet) return UNAVAILABLE;
     try {
       const response = await this.fetcher("/localapi/v0/file-targets", AbortSignal.timeout(this.timeoutMs));
       if (!response.ok) {
@@ -67,6 +74,7 @@ export class TaildropService {
 
   /** Streams `path` to a tailnet device as `fileName`. */
   async sendFile(path: string, fileName: string, targetId: string): Promise<void> {
+    if (this.tesseractNet) throw unavailable("Taildrop is not available on the Tesseract Network");
     const { available, targets } = await this.targets();
     if (!available) throw unavailable("Taildrop is not available: the Tailscale LocalAPI socket is not shared with this sandbox");
     const target = targets.find((candidate) => candidate.id === targetId);

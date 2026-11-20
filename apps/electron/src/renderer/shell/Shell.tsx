@@ -10,6 +10,7 @@ import { PreferencesDialog } from "../pages/preferences/PreferencesDialog";
 import { useBackdrop } from "./hooks/use-backdrop";
 import { useCollapsed, useForcedPane } from "./hooks/use-collapsed";
 import { useShellCommands } from "./hooks/use-shell-commands";
+import { useSidebarVisibility } from "./hooks/use-sidebar-visibility";
 import { useSidebarWidth } from "./hooks/use-sidebar-width";
 import { ShellDialogs } from "./ShellDialogs";
 import { ShellPageHeader } from "./ShellPageHeader";
@@ -23,6 +24,8 @@ export function Shell() {
   const backdrop = useBackdrop();
   const collapsed = useCollapsed();
   const sidebar = useSidebarWidth();
+  const visibility = useSidebarVisibility();
+  const sidebarHidden = visibility.hidden && !collapsed;
   const forcedPane = useForcedPane();
   const { key } = useLocation();
   const [showContent, setShowContent] = useState(forcedPane !== "sidebar");
@@ -38,13 +41,15 @@ export function Shell() {
         sidebar={<ShellSidebar collapsed={collapsed} />}
         sidebarWidth={sidebar.width}
         collapsed={collapsed}
+        sidebarHidden={sidebarHidden}
         showContent={showContent}
         resizeHandle={<ResizeHandle width={sidebar.width} onResize={sidebar.onResize} onCommit={sidebar.onCommit} />}
       >
         <ShellPageHeader
           backdrop={backdrop}
-          trafficLightInset={collapsed}
+          trafficLightInset={collapsed || sidebarHidden}
           onBack={collapsed ? () => setShowContent(false) : undefined}
+          onShowSidebar={sidebarHidden ? visibility.show : undefined}
         />
         <ConnectionBanner />
         <div className={styles.page}>

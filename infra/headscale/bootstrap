@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Starts Headscale, creates the account service's Headscale API key (once), writes it to .env and starts the stack.
+#   ./bootstrap [--rotate] [--tls]
+#   --rotate  create a new API key even if .env already has one (expire the old one with `headscale apikeys expire`)
+#   --tls     also start the Caddy TLS proxy (compose profile `tls`)
+set -euo pipefail
+
+cd "$(dirname "$0")"
+rotate=false
+profile=()
+for arg in "$@"; do
+  case "$arg" in
+    --rotate) rotate=true ;;
+    --tls) profile=(--profile tls) ;;
+    *) echo "unknown option: $arg" >&2; exit 2 ;;
+  esac
+done
+
+[[ -f .env ]] || { echo ".env not found: cp .env.example .env and fill it in" >&2; exit 1; }
+compose=(docker compose "${profile[@]}")
+
+current=$(sed -n 's/^ACCOUNT_HEADSCALE_API_KEY=//p' .env | tail -n1)
+
+"${compose[@]}" up -d --wait headscale
+
+if [[ -z "$current" || "$rotate" == true ]]; then
+  key=$("${compose[@]}" exec -T headscale headscale apikeys create --expiration 3650d | tr -d '\r' | tail -n1)
+  [[ -n "$key" ]] || { echo "headscale did not print an API key" >&2; exit 1; }
+  tmp=$(mktemp)
+  grep -v '^ACCOUNT_HEADSCALE_API_KEY=' .env > "$tmp" || true
+  printf 'ACCOUNT_HEADSCALE_API_KEY=%s\n' "$key" >> "$tmp"
+  cat "$tmp" > .env
+  rm -f "$tmp"
+  chmod 600 .env
+  echo "wrote ACCOUNT_HEADSCALE_API_KEY to .env (expires in 10 years; see 'headscale apikeys list')"
+else
+  echo "ACCOUNT_HEADSCALE_API_KEY already set; pass --rotate to replace it"
+fi
+
+"${compose[@]}" up -d --build --wait
+"${compose[@]}" ps

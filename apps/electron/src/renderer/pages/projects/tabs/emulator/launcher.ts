@@ -1,4 +1,4 @@
-import type { AppRun, HostAndroidStatus, RunTargetInfo, SandboxAndroidStatus } from "@tesseract/protocol";
+import type { AppRun, HostAndroidStatus, RunTargetInfo } from "@tesseract/protocol";
 import { BOOT_TIMEOUT_MS, POLL_MS, SESSION_REQUIRED_CODE, SESSION_REQUIRED_DETAIL, STOP_TIMEOUT_MS, TARGET_TIMEOUT_MS } from "./constants";
 import { EMULATOR_LABELS } from "./labels";
 import { androidTarget, emulatorReady, liveRun, type EmulatorPlan, type EmulatorStage } from "./model";
@@ -14,7 +14,6 @@ export interface SandboxApi {
   listRunTargets(projectId: string, options?: { signal?: AbortSignal }): Promise<RunTargetInfo[]>;
   listAppRuns(filter?: { projectId?: string }, options?: { signal?: AbortSignal }): Promise<AppRun[]>;
   startAppRun(projectId: string, body: { target: RunTargetInfo["target"] }, options?: { signal?: AbortSignal }): Promise<AppRun>;
-  getAndroidStatus(options?: { signal?: AbortSignal }): Promise<SandboxAndroidStatus>;
 }
 
 export interface SandboxTarget {
@@ -25,7 +24,6 @@ export interface SandboxTarget {
 export interface EmulatorRun {
   run: AppRun;
   started: boolean;
-  serial: string | null;
 }
 
 export interface Timing {
@@ -169,6 +167,5 @@ export async function prepareEmulator({ host, client, sandbox, projectId, target
 export async function runOnEmulator(client: SandboxApi, projectId: string, target: RunTargetInfo["target"], signal?: AbortSignal): Promise<EmulatorRun> {
   const existing = liveRun(await client.listAppRuns({ projectId }, { signal }), target);
   const run = existing ?? (await client.startAppRun(projectId, { target }, { signal }));
-  const android = await client.getAndroidStatus({ signal });
-  return { run, started: existing === null, serial: android.emulator?.serial ?? null };
+  return { run, started: existing === null };
 }

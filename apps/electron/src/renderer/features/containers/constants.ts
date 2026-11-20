@@ -2,6 +2,9 @@ import type { DeployKind, DeployStatus } from "@tesseract/protocol";
 import type { RouteScheme } from "../../../shared/contracts/containers";
 import type { IconName } from "../../theme/icons";
 
+/** Prefix of every containers query, reloaded when the containers move to another machine. */
+export const CONTAINERS_SCOPE = ["ipc", "containers"] as const;
+
 export const CONTAINERS_KEYS = {
   list: ["ipc", "containers", "list"] as const,
   routes: ["ipc", "containers", "routes"] as const,
@@ -24,6 +27,7 @@ export const DEPLOYS_MUTATIONS = {
 
 export const CONTAINERS_POLL = {
   listMs: 10_000,
+  listErrorMs: 30_000,
   routesMs: 30_000,
   logsMs: 5_000,
   deploysMs: 15_000,

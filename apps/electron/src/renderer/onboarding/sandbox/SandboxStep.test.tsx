@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OnboardingState } from "../../../shared/contracts/onboarding";
 import type { BuildMode, SetupChoices } from "../../../shared/contracts/sandbox";
 import { emitFixtureEvent, overrideIpcFixtures } from "../../fixtures";
+import { SIGNED_IN, SIGNED_OUT } from "../../fixtures/account/data";
 import { BUILDING_PHASE, EXISTING_RUNNING, NO_EXISTING } from "../../fixtures/onboarding-sandbox/data";
 import { renderSandboxStep, sandboxState } from "./test-support";
 
@@ -101,6 +102,24 @@ describe("SandboxStep", () => {
     expect(await screen.findByText("Use a tailnet domain like tail1234.ts.net")).toBeTruthy();
     expect(screen.getByText("Auth key")).toBeTruthy();
     await waitFor(() => expect(button("Build").disabled).toBe(true));
+  });
+
+  it("offers the Tesseract Network with an inline sign-in, then the signed-in account", async () => {
+    const signIn = vi.fn((email: string) => ({ ...SIGNED_IN, account: { ...SIGNED_IN.account!, email } }));
+    await setup(sandboxState(), {
+      account: { state: () => SIGNED_OUT, signIn },
+      sandbox: {
+        validate: (choices) => (choices.mode === "tesseract-net" ? [{ field: "mode", message: "Sign in to your Tesseract account" }] : []),
+      },
+    });
+    fireEvent.click(await screen.findByRole("radio", { name: /Tesseract Network/ }));
+    expect(await screen.findByText("Sign in to your Tesseract account")).toBeTruthy();
+    await waitFor(() => expect(button("Build").disabled).toBe(true));
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "me@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "hunter22" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(signIn).toHaveBeenCalledWith("me@example.com", "hunter22"));
+    expect(await screen.findByText("Signed in as Dev")).toBeTruthy();
   });
 
   it("saves the choices, starts the build and cancels it", async () => {

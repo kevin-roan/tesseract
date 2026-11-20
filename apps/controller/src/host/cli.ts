@@ -27,7 +27,8 @@ export const HOST_USAGE = `  tesseract-controller host serve [--bind <ipv4>] [--
                                      set the host shell PIN (6-12 digits); ends every open session
   tesseract-controller host pair [--json]
                                      print the host shell pairing link (tesseract://host) and a QR code;
-                                     --json prints { link, url, name, pinSet }
+                                     --json prints { link, url, name, pinSet } (+ localUrl when
+                                     TESSERACT_HOST_SHELL_PUBLIC_URL overrides the URL)
   tesseract-controller host token [--rotate]
                                      print the host token, or replace it (paired phones must pair again)
   tesseract-controller host stream [--json] [--stdin]
@@ -125,8 +126,11 @@ function pair(args: string[], io: HostCliIo): number {
   const token = store.ensureToken();
   const link = buildPairingLink({ url, token, name: settings.hostId }, HOST_PAIRING_ACTION);
   const pinSet = store.read().pinHash !== null;
+  // With a public URL override (the Tesseract Network name served by the desktop's tailnet node), the URL in the
+  // link may not resolve on this computer: `localUrl` is where local clients reach the daemon.
+  const localUrl = io.env.TESSERACT_HOST_SHELL_PUBLIC_URL && settings.bind ? `http://${settings.bind}:${settings.port}` : undefined;
   if (values.json) {
-    io.output.out(JSON.stringify({ link, url, name: settings.hostId, pinSet }));
+    io.output.out(JSON.stringify({ link, url, name: settings.hostId, pinSet, ...(localUrl ? { localUrl } : {}) }));
   } else {
     io.output.out(renderANSI(link, { ecc: "L", border: 2 }));
     io.output.out(`Scan with the Tesseract app (Host shell), or open this link on the phone:\n\n  ${link}\n`);

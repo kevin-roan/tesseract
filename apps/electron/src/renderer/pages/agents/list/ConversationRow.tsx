@@ -3,8 +3,8 @@ import { motion } from "motion/react";
 import type { CSSProperties, KeyboardEvent } from "react";
 import { Text } from "../../../components/Text";
 import { Tooltip } from "../../../components/Tooltip";
-import { formatRelativeTime } from "../../../features/agents/format";
-import { rowMeta, runTitle, type ProjectNames } from "../../../features/agents/model";
+import { formatShortTime } from "../../../features/agents/format";
+import { projectName, rowDetail, runTitle, type ProjectNames } from "../../../features/agents/model";
 import type { ProjectBadge } from "../../../features/agents/tints";
 import { cx } from "../../../lib/cx";
 import { rise } from "../../../theme/motion";
@@ -28,7 +28,8 @@ export interface ConversationRowProps {
 export function ConversationRow({ run, names, badge, followUp, unread, selected, archivedView, now, onSelect }: ConversationRowProps) {
   const title = runTitle(run.prompt);
   const menu = useRowMenu(run, archivedView);
-  const style = badge.tint === null ? undefined : ({ "--row-tint": `var(--to-tint-${badge.tint})` } as CSSProperties);
+  const detail = rowDetail(run, followUp);
+  const tileStyle = badge.tint === null ? undefined : ({ "--project-tint": `var(--to-tint-${badge.tint})` } as CSSProperties);
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     menu.handlers.onKeyDown(event);
     if (event.defaultPrevented) return;
@@ -49,8 +50,7 @@ export function ConversationRow({ run, names, badge, followUp, unread, selected,
           aria-selected={selected}
           tabIndex={0}
           data-run-id={run.id}
-          className={cx(styles.row, badge.tint !== null && styles.tinted, selected && styles.selected)}
-          style={style}
+          className={cx(styles.row, selected && styles.selected, unread && styles.unread)}
           onClick={() => onSelect(run.id)}
           onKeyDown={onKeyDown}
           onContextMenu={menu.handlers.onContextMenu}
@@ -59,22 +59,29 @@ export function ConversationRow({ run, names, badge, followUp, unread, selected,
           onPointerUp={menu.handlers.onPointerUp}
           onPointerCancel={menu.handlers.onPointerCancel}
         >
-          <StateGlyph state={run.state} className={styles.rowGlyph} />
+          <span className={cx(styles.tile, badge.tint !== null && styles.tileTinted)} style={tileStyle}>
+            <ProjectLogo slug={badge.logo} />
+            {run.state === "succeeded" ? null : <StateGlyph state={run.state} className={styles.tileStatus} />}
+          </span>
           <div className={styles.rowText}>
             <div className={styles.rowTop}>
               <Text variant="label" className={styles.grow}>
                 {title}
               </Text>
+              {unread ? <span className={styles.unreadDot} aria-hidden /> : null}
               <Text variant="caption" color="text-tertiary" className={styles.time}>
-                {formatRelativeTime(run.startedAt, now)}
+                {formatShortTime(run.startedAt, now)}
               </Text>
             </div>
             <div className={styles.rowBottom}>
-              <ProjectLogo slug={badge.logo} className={styles.rowLogo} />
-              <Text variant="caption" color="text-secondary" className={styles.grow}>
-                {rowMeta(run, names, followUp)}
+              <Text variant="caption" color="text-secondary" className={styles.projectName}>
+                {projectName(run.projectId, names)}
               </Text>
-              {unread ? <span className={styles.unreadDot} aria-hidden /> : null}
+              {detail ? (
+                <Text variant="caption" color="text-tertiary" className={styles.rowDetail}>
+                  {detail}
+                </Text>
+              ) : null}
             </div>
           </div>
         </motion.div>

@@ -8,7 +8,8 @@ export const SECTION_LABELS = {
   sandboxGroup: "Sandbox",
   sandboxDescription: "Claude Code inside the sandbox uses this computer's ~/.claude folders (linked)",
   accountsGroup: "Accounts",
-  accountsDescription: "Accounts linked into the sandbox. The default is used by projects that don't pick one.",
+  accountsDescription: "Accounts linked into the sandbox, and the long-lived token. The default is used by projects that don't pick one.",
+  tokenAccount: "Long-lived token",
   primary: "primary",
   accountAbsent: "Not linked into the sandbox",
   accountsEmpty: "No accounts",
@@ -53,7 +54,25 @@ export const METHOD_LABELS: Record<ClaudeAuthMethod, string> = {
 
 export const METHOD_OAUTH_ENV = "Signed in with a long-lived token from the environment";
 
+export const TOKEN_LABELS = {
+  title: "Long-lived token",
+  description:
+    "A token from claude setup-token, saved in the sandbox as the claude-token account. It sits next to the linked ~/.claude accounts: pick it below as the default, or per project, and switch back any time.",
+  token: "Token",
+  placeholder: "sk-ant-oat01-…",
+  help: "Run claude setup-token on any machine signed in to the account you want, then paste the token here.",
+  configured: "A token is saved. Paste a new one to replace it.",
+  missing: "No token. Claude uses the linked accounts only.",
+  badge: { saved: "Saved", missing: "Not set" },
+  save: "Save",
+  clear: "Remove token",
+} as const;
+
 export const CLAUDE_TOASTS = {
   defaultChanged: (id: string) => `Default Claude account set to ${id}`,
   defaultFailed: (error: string) => `Couldn't change the default Claude account: ${error}`,
+  tokenSaved: "Claude token saved as the claude-token account",
+  tokenCleared: "Claude token removed",
+  tokenFailed: (error: string) => `Couldn't save the Claude token: ${error}`,
+  tokenClearFailed: (error: string) => `Couldn't remove the Claude token: ${error}`,
 } as const;

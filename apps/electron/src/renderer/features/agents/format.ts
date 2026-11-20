@@ -55,6 +55,22 @@ export function formatRelativeTime(iso: string | null | undefined, now: number =
   return new Date(moment * 1000).toISOString().slice(0, 10);
 }
 
+const SHORT_DATE = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" });
+const SHORT_DATE_WITH_YEAR = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+export function formatShortTime(iso: string | null | undefined, now: number = nowSeconds()): string {
+  const moment = parseIso(iso);
+  if (moment === null) return "";
+  const seconds = Math.floor(now - moment);
+  if (seconds < RELATIVE_JUST_NOW_S) return TIME_LABELS.now;
+  if (seconds < HOUR) return `${Math.max(1, Math.floor(seconds / MINUTE + 0.5))}m`;
+  if (seconds < DAY) return `${Math.floor(seconds / HOUR)}h`;
+  if (seconds < WEEK) return `${Math.floor(seconds / DAY)}d`;
+  const date = new Date(moment * 1000);
+  const sameYear = date.getFullYear() === new Date(now * 1000).getFullYear();
+  return (sameYear ? SHORT_DATE : SHORT_DATE_WITH_YEAR).format(date);
+}
+
 function formatUptime(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
   if (total < MINUTE) return `${total}s`;

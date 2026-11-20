@@ -45,6 +45,9 @@ const WHOIS = {
   UserProfile: VIEWER,
 };
 
+// A userspace tailscaled proxies inbound tailnet TCP from 127.0.0.1 and maps that ip:port back to the peer.
+const PROXIED_ADDR = "127.0.0.1:41000";
+
 let socketDir: string;
 let socket: string;
 let fake: Server<undefined>;
@@ -62,7 +65,7 @@ beforeAll(() => {
       if (url.pathname === "/localapi/v0/whois") {
         const addr = url.searchParams.get("addr") ?? "";
         whoisQueries.push(addr);
-        return addr.startsWith("100.64.0.2:") ? Response.json(WHOIS) : new Response("no match for IP:port", { status: 404 });
+        return addr.startsWith("100.64.0.2:") || addr === PROXIED_ADDR ? Response.json(WHOIS) : new Response("no match for IP:port", { status: 404 });
       }
       return new Response("not found", { status: 404 });
     },
@@ -74,12 +77,13 @@ afterAll(async () => {
   removeTempDirs();
 });
 
-const configFor = (tailscaleSocket: string) =>
+const configFor = (tailscaleSocket: string, env: Record<string, string> = {}) =>
   loadConfig({
     TESSERACT_WORKSPACE: makeTempDir("identity-ws"),
     TESSERACT_TOKEN: TEST_TOKEN,
     TESSERACT_SANDBOX_ID: "test-sandbox",
     TESSERACT_TAILSCALE_SOCKET: tailscaleSocket,
+    ...env,
   });
 
 const noHeaders = new Headers();
@@ -149,6 +153,16 @@ describe("IdentityService with a LocalAPI socket", () => {
     expect(identity.tailscale.viewer?.loginName).toBe("viewer@example.com");
   });
 
+  test("a loopback caller proxied by a userspace tailscaled is resolved by ip:port and never cached", async () => {
+    const service = new IdentityService(configFor(socket), silentLogger);
+    const proxied = await service.identity({ headers: noHeaders, remote: { address: "127.0.0.1", port: 41000 } });
+    expect(proxied.tailscale).toMatchObject({ available: true, source: "localapi", viewerNode: { hostName: "pixel" } });
+    expect(proxied.tailscale.viewer?.loginName).toBe("viewer@example.com");
+    const local = await service.identity({ headers: noHeaders, remote: { address: "127.0.0.1", port: 41001 } });
+    expect(local.tailscale).toMatchObject({ available: true, source: "none", viewer: null, viewerNode: null });
+    expect(whoisQueries.slice(-2)).toEqual(["127.0.0.1:41000", "127.0.0.1:41001"]);
+  });
+
   test("caches status between calls", async () => {
     let calls = 0;
     const service = new IdentityService(configFor(socket), silentLogger, {
@@ -205,6 +219,52 @@ describe("IdentityService without Tailscale", () => {
       viewer: { id: "you@example.com", loginName: "you@example.com", displayName: "you@example.com", profilePicUrl: null },
       owner: null,
     });
+  });
+});
+
+describe("IdentityService on the Tesseract Network (TESSERACT_NET_DOMAIN)", () => {
+  const headscaleStatus = {
+    MagicDNSSuffix: "tesseract.internal",
+    CurrentTailnet: { Name: "u-acc1", MagicDNSSuffix: "tesseract.internal" },
+    Self: { HostName: "box", DNSName: "box.tesseract.internal.", OS: "linux", UserID: 7, TailscaleIPs: ["100.64.0.9"], Online: true },
+    User: { "7": { ID: 7, LoginName: "u-acc1", DisplayName: "u-acc1" } },
+  };
+
+  test("the LocalAPI node wins; a node without a DNS name gets the tailnet suffix", async () => {
+    const service = new IdentityService(configFor(socket, { TESSERACT_NET_DOMAIN: "tesseract.internal" }), silentLogger, {
+      fetch: async () => Response.json(headscaleStatus),
+    });
+    expect(await service.selfNode()).toMatchObject({ hostName: "box", dnsName: "box.tesseract.internal", tailscaleIps: ["100.64.0.9"] });
+    const identity = await service.identity({ headers: noHeaders, remote: null });
+    expect(identity.tailscale).toMatchObject({ available: true, source: "none", tailnet: "tesseract.internal", owner: { loginName: "u-acc1" } });
+
+    const nameless = new IdentityService(configFor(socket, { TESSERACT_NET_DOMAIN: "net.example" }), silentLogger, {
+      fetch: async () => Response.json({ ...headscaleStatus, MagicDNSSuffix: "", CurrentTailnet: null, Self: { ...headscaleStatus.Self, DNSName: "" } }),
+    });
+    expect((await nameless.selfNode())?.dnsName).toBe("box.net.example");
+  });
+
+  test("without the LocalAPI the node is named from the sandbox id, and identity stays unavailable", async () => {
+    const service = new IdentityService(
+      configFor(join(socketDir, "missing.sock"), { TESSERACT_NET_DOMAIN: "Tesseract.Internal.", TESSERACT_SANDBOX_ID: "Box" }),
+      silentLogger,
+    );
+    expect(await service.selfNode()).toEqual({ hostName: "box", dnsName: "box.tesseract.internal", os: "linux", tailscaleIps: [], online: true });
+    const identity = await service.identity({ headers: noHeaders, remote: { address: "127.0.0.1", port: 1 } });
+    expect(identity.tailscale).toMatchObject({ available: false, source: "none", node: null });
+  });
+
+  test("serve headers are ignored: every peer arrives from loopback without serve", async () => {
+    const service = new IdentityService(configFor(join(socketDir, "missing.sock"), { TESSERACT_NET_DOMAIN: "tesseract.internal" }), silentLogger);
+    const headers = new Headers({ "Tailscale-User-Login": "mallory@example.com" });
+    const identity = await service.identity({ headers, remote: { address: "127.0.0.1", port: 1 } });
+    expect(identity.tailscale).toMatchObject({ available: false, source: "none", viewer: null });
+  });
+
+  test("other modes keep null without the LocalAPI, and an invalid domain is refused", async () => {
+    expect(await new IdentityService(configFor(join(socketDir, "missing.sock")), silentLogger).selfNode()).toBeNull();
+    expect(() => configFor(socket, { TESSERACT_NET_DOMAIN: "bad domain" })).toThrow("TESSERACT_NET_DOMAIN");
+    expect(configFor(socket).netDomain).toBeNull();
   });
 });
 

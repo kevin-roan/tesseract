@@ -1,4 +1,5 @@
 import type { Project } from "@tesseract/protocol";
+import { ActionGroup } from "../../../components/ActionGroup";
 import { IconButton } from "../../../components/IconButton";
 import { Text } from "../../../components/Text";
 import { PROJECTS_ICONS } from "../../../features/projects/constants";
@@ -38,9 +39,11 @@ export function DetailHeader({ project, title, chips, removing, onCopyPath, onRe
       <Text as="h1" variant="h1" selectable className={styles.title}>
         {title}
       </Text>
-      <PropertyChips chips={chips}>
-        <StorageChip projectId={project.id} report={onError} />
-      </PropertyChips>
+      <ActionGroup label={DETAIL_LABELS.propertiesGroup} className={styles.propsRow}>
+        <PropertyChips chips={chips}>
+          <StorageChip projectId={project.id} report={onError} />
+        </PropertyChips>
+      </ActionGroup>
     </>
   );
 }

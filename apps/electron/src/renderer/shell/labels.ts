@@ -12,6 +12,8 @@ export const SHELL_LABELS = {
   noProject: "No project",
   untitledRun: "Untitled conversation",
   back: "Back",
+  hideSidebar: "Hide sidebar",
+  showSidebar: "Show sidebar",
   history: {
     back: "Go back",
     forward: "Go forward",
@@ -28,6 +30,8 @@ export const SHELL_LABELS = {
     loading: "Loading containers…",
     unavailable: "Containers need Docker and sysbox on this computer.",
     setUp: "Set up containers",
+    locked: "Unlock the host to see its containers.",
+    unlock: "Unlock host",
     empty: "No containers yet.",
     create: "Create a container",
   },

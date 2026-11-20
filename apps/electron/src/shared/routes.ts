@@ -1,3 +1,5 @@
+import type { DeviceWindowKind } from "./device-window";
+
 export const PAGE_IDS = ["overview", "agents", "projects", "files", "terminals", "display", "processes", "containers", "domains", "shell", "emulator"] as const;
 export type PageId = (typeof PAGE_IDS)[number];
 export const DEFAULT_PAGE: PageId = "overview";
@@ -5,7 +7,7 @@ export const DEFAULT_PAGE: PageId = "overview";
 export const PAGE_SECTIONS = ["sandbox", "host", "app"] as const;
 export type PageSection = (typeof PAGE_SECTIONS)[number];
 
-export const PREFERENCES_SECTION_IDS = ["connection", "appearance", "claude", "host-shell", "containers", "stt", "sandbox", "android", "about"] as const;
+export const PREFERENCES_SECTION_IDS = ["connection", "account", "appearance", "claude", "host-shell", "containers", "stt", "sandbox", "android", "about"] as const;
 export type PreferencesSectionId = (typeof PREFERENCES_SECTION_IDS)[number];
 
 export const ONBOARDING_STEP_IDS = ["welcome", "docker", "claude", "sandbox", "build", "android", "pair", "finish"] as const;
@@ -16,6 +18,7 @@ export const OPTIONAL_ONBOARDING_STEPS: readonly OnboardingStepId[] = ["android"
 export const ROUTE = {
   page: (id: PageId, sub = "") => `/${id}${sub ? `/${sub.replace(/^\/+/, "")}` : ""}`,
   onboarding: (step: OnboardingStepId) => `/onboarding/${step}`,
+  device: (kind: DeviceWindowKind) => `/device/${kind}`,
   gallery: (entry?: string) => (entry ? `/gallery/${entry}` : "/gallery"),
 } as const;
 

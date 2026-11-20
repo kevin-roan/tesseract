@@ -1,6 +1,8 @@
 # Networking and Tailscale
 
-Tailscale is the only transport between the phone and the sandbox. The
+Tailscale is the only transport between the phone and the sandbox: Tailscale's
+hosted tailnet, or the Tesseract Network (Tailscale's client against a Headscale
+control plane, [ADR 0014](../adr/0014-embedded-tailnet-and-tesseract-accounts.md)). The
 default mode needs nothing on the host except Docker. Decision record:
 [ADR 0003](../adr/0003-single-sandbox-container-with-tailscale-sidecar.md).
 
@@ -9,9 +11,10 @@ default mode needs nothing on the host except Docker. Decision record:
 | Mode | Compose files | Reachability | Use when |
 |---|---|---|---|
 | `tailscale` (default) | `compose.yml` + `compose.tailscale.yml` | `https://<TESSERACT_HOSTNAME>.<tailnet>.ts.net` (443 → 7700) and `<TESSERACT_HOSTNAME>:5901`; **no host ports** | normal use |
+| `tesseract-net` | `compose.yml` + `compose.tesseract-net.yml` | `http://<TESSERACT_HOSTNAME>.<TESSERACT_NET_DOMAIN>:7700` and `:5901` on the Tesseract Network (Headscale at `TESSERACT_LOGIN_SERVER`); no HTTPS; the controller port only on `127.0.0.1:${TESSERACT_CONTROLLER_HOST_PORT}` for the desktop app | no Tailscale account: the phone joins with its embedded node ([below](#tesseract-net-mode)) |
 | `host-tailscale` | `compose.yml` + `compose.local.yml`, `TESSERACT_BIND_ADDR=<host 100.x IP>` | `http://<host tailnet IP>:7700`, `:5901` (host ports `TESSERACT_CONTROLLER_HOST_PORT`, `TESSERACT_VNC_HOST_PORT`) | the host already runs Tailscale and you prefer not to add a node |
 | `local` | `compose.yml` + `compose.local.yml`, `TESSERACT_BIND_ADDR=127.0.0.1` | `http://127.0.0.1:7700` on the host only (same host-port variables) | development, e2e tests, CI |
-| `+tailscale-api` | tailscale: + `compose.tailscale-api-sidecar.yml`; host-tailscale, local: + `compose.tailscale-api.yml` | unchanged; the sandbox can query tailscaled's LocalAPI for `GET /v1/identity` | the app should show the real Tailscale user and node ([below](#tailscale-identity-localapi)) |
+| `+tailscale-api` | tailscale, tesseract-net: + `compose.tailscale-api-sidecar.yml`; host-tailscale, local: + `compose.tailscale-api.yml` | unchanged; the sandbox can query tailscaled's LocalAPI for `GET /v1/identity` | the app should show the real Tailscale user and node ([below](#tailscale-identity-localapi)) |
 | `+dind` | any of the above + `compose.dind.yml` | unchanged; adds a Docker daemon for the sandbox | projects that need Docker ([ADR 0006](../adr/0006-optional-docker-in-docker.md)) |
 
 The operator CLI picks the files. The mode comes from `--mode <mode>` (for
@@ -25,7 +28,8 @@ runs the read-only `tailscale ip -4` on the host when `TESSERACT_BIND_ADDR` is
 empty, and refuses anything but an IPv4 address (no wildcard spelling such as
 `0.0.0.0`, `::` or `[::0]`, no `0.x.x.x`, no host names). In `tailscale` mode it
 refuses to start without `TS_TAILNET_DOMAIN`, and on the first start (no
-`<prefix>-tailscale` volume yet) without `TS_AUTHKEY`. See the
+`<prefix>-tailscale` volume yet) without `TS_AUTHKEY`; in `tesseract-net` mode
+likewise without `TESSERACT_LOGIN_SERVER`, or `TS_AUTHKEY` on the first start. See the
 [getting started](../runbooks/getting-started.md) runbook.
 
 Several stacks can run on one host when each has its own
@@ -145,6 +149,38 @@ Whether release builds should is an [open decision](../roadmap.md#open-decisions
   also reach `:7700` (plain HTTP, token still required) and any dev server
   port. The grant above restricts that.
 
+## `tesseract-net` mode
+
+The Tesseract Network ([ADR 0014](../adr/0014-embedded-tailnet-and-tesseract-accounts.md))
+is a tailnet whose control plane is the self-hosted Headscale (`infra/headscale/`), so the
+phone needs no Tailscale app or account: it runs an embedded node and signs in with a
+Tesseract account. `compose.tesseract-net.yml` is the default mode's userspace sidecar with
+these differences:
+
+- **Login server.** `TS_EXTRA_ARGS=--login-server=${TESSERACT_LOGIN_SERVER} ${TS_EXTRA_ARGS}`
+  points tailscaled at Headscale. `TS_AUTHKEY` is a `sandbox` device key from the account
+  service (`POST /v1/devices/keys` with kind `sandbox`: single-use, pre-approved, tagged
+  `tag:tesseract-sandbox`, 1 h expiry); the desktop app fetches it when you pick this mode.
+  As in `tailscale` mode it is needed only until the node state is in `<prefix>-tailscale`.
+- **No serve, no HTTPS.** Headscale cannot issue certificates, so there is no
+  `TS_SERVE_CONFIG`. The controller is plain HTTP on `:7700` and VNC on `:5901`: inbound
+  tailnet TCP reaches the namespace's loopback ports as in userspace `tailscale` mode,
+  encrypted by WireGuard. `TESSERACT_PUBLIC_URL` is
+  `http://${TESSERACT_HOSTNAME}.${TESSERACT_NET_DOMAIN:-tesseract.internal}:7700`.
+- **Phone side.** The app rewrites a controller URL whose host is under the network's
+  MagicDNS suffix (or in `100.64.0.0/10`) to a loopback forwarder of its embedded node,
+  `http://127.0.0.1:<port>`, so iOS ATS allows it without a certificate.
+- **Controller.** The sandbox gets `TESSERACT_NET_DOMAIN`. The controller then names
+  itself `<TESSERACT_SANDBOX_ID>.<TESSERACT_NET_DOMAIN>` for port, browser and app-run URLs
+  when the LocalAPI is not shared (with `--tailscale-api` it uses the node's own DNS name and
+  MagicDNS suffix), and reports Taildrop unavailable (`available: false`, sends 503): the
+  devices are tagged Headscale nodes and the embedded phone node cannot receive files.
+  `GET /v1/identity` works through the LocalAPI (`--tailscale-api`); serve headers are
+  ignored, since without serve any peer reaches `:7700` from loopback and could send them.
+
+The ACL grant suggested for the default mode is not needed: the Headscale policy only
+lets an account's devices reach that account's own devices.
+
 ## `host-tailscale` mode
 
 For hosts that already run Tailscale. `compose.local.yml` publishes
@@ -169,8 +205,9 @@ or behind an SSH tunnel (`ssh -L 7700:127.0.0.1:7700 host`). The public URL is
 
 ## What is never exposed
 
-- No port is published on a host interface in `tailscale` mode. In the other
-  modes, ports are bound only to the chosen address, never `0.0.0.0`.
+- No port is published on a host interface in `tailscale` mode, and in `tesseract-net` mode only
+  the controller port on `127.0.0.1`. In the other modes, ports are bound only to the chosen
+  address, never `0.0.0.0`.
 - Funnel is never enabled, so nothing is reachable from the internet.
 - The dind daemon's API (`tcp://docker:2376`, mutual TLS) is reachable only
   from the compose network, never published.
@@ -189,8 +226,11 @@ suffix. The controller resolves it like this:
    `127.0.0.1` inside the shared namespace. This works in `tailscale` mode without any
    socket.
 2. **LocalAPI whois.** Otherwise the controller asks tailscaled
-   (`GET /localapi/v0/whois?addr=<peer ip:port>`) over the unix socket
-   `TESSERACT_TAILSCALE_SOCKET` (default `/run/tailscale/tailscaled.sock`).
+   (`GET /localapi/v0/whois?addr=<peer ip:port>&proto=tcp`) over the unix socket
+   `TESSERACT_TAILSCALE_SOCKET` (default `/run/tailscale/tailscaled.sock`). A loopback
+   peer is asked about too: a userspace tailscaled forwards inbound tailnet TCP from
+   `127.0.0.1` and resolves that `ip:port` through its proxy map (local callers get a 404,
+   so no viewer). Loopback answers are not cached, other peers' for 30 s.
 3. **LocalAPI status** gives `node` (`Self`), `owner` (`User[Self.UserID]`) and
    `tailnet`; it is cached for 30 s. Calls time out after 1.5 s; no socket means
    `available: false` and nulls, never an error response.
@@ -199,7 +239,7 @@ The socket is only there with `--tailscale-api` (`TESSERACT_TAILSCALE_LOCALAPI=1
 
 | Mode | What is shared |
 |---|---|
-| `tailscale` | `compose.tailscale-api-sidecar.yml` sets `TS_SOCKET=/var/run/tailscale/tailscaled.sock` in the sidecar, keeps that directory on the volume `<prefix>-tailscale-run` and mounts it read-only at `/run/tailscale` in the sandbox. `docker exec <project>-tailscale-1 tailscale status` then also works without `--socket` |
+| `tailscale`, `tesseract-net` | `compose.tailscale-api-sidecar.yml` sets `TS_SOCKET=/var/run/tailscale/tailscaled.sock` in the sidecar, keeps that directory on the volume `<prefix>-tailscale-run` and mounts it read-only at `/run/tailscale` in the sandbox. `docker exec <project>-tailscale-1 tailscale status` then also works without `--socket` |
 | `host-tailscale`, `local` | `compose.tailscale-api.yml` bind-mounts the host directory `TESSERACT_TAILSCALE_HOST_SOCKET_DIR` (default `/var/run/tailscale`) read-only at `/run/tailscale`. The directory, not the socket file, so a tailscaled restart does not leave a stale socket. `sandbox up` refuses when `tailscaled.sock` is missing there |
 
 In `host-tailscale` mode, Docker's port publishing DNATs tailnet traffic that arrives on
@@ -207,8 +247,10 @@ In `host-tailscale` mode, Docker's port publishing DNATs tailnet traffic that ar
 phone's user and device. Traffic that goes through `docker-proxy` instead (for example a
 connection from the host to `127.0.0.1`, which host-tailscale does not bind) would show
 the Docker gateway and resolve no viewer; the owner and node are still reported. In
-`tailscale` mode without serve (a peer on plain `:7700`), userspace forwarding makes the
-peer look like loopback, so there is no viewer either.
+`tailscale` mode without serve (a peer on plain `:7700`) and in `tesseract-net` mode,
+userspace forwarding makes the peer look like loopback; whois of that loopback `ip:port`
+names the peer through tailscaled's proxy map. Tagged devices (every Tesseract Network
+device is tagged) come back as tailscaled's tagged-devices profile rather than a person.
 
 A mounted read-only socket still accepts requests: the `:ro` flag only protects the
 directory entry. What a client may do is decided by tailscaled from the peer's uid; see

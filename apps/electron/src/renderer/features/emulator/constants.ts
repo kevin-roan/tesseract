@@ -98,6 +98,10 @@ export const IOS_SCREEN: ScreenSpec = {
   maxPointers: 1,
 };
 
+export const DEVICE_WINDOW_HIDDEN_KEYS: readonly string[] = ["volume_down", "volume_up"];
+export const PROJECT_DEVICES_KEY = "project-devices";
+export const PROJECT_DEVICES_REFRESH_MS = 5_000;
+
 export const STREAM_SETTINGS_KEY = ["hostShell", "stream"] as const;
 export const STREAM_AUTO_SIZE = "auto";
 export const STREAM_MAX_SIZES = [720, 1080, 1280, 1600, 1920, 2560] as const;

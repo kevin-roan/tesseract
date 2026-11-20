@@ -1,0 +1,81 @@
+# Tesseract Network control plane (ADR 0014): Headscale plus the account service.
+#   cp .env.example .env   # fill in the values
+#   ./bootstrap            # starts Headscale, creates the account service's API key, starts everything
+# Both HTTP services bind to 127.0.0.1 only; put TLS in front of them (the `tls` profile runs Caddy for that,
+# see docs/runbooks/tesseract-network.md). STUN for the embedded DERP relay needs UDP 3478 open to the internet.
+name: ${TESSERACT_NET_COMPOSE_PROJECT:-tesseract-net}
+
+services:
+  headscale:
+    image: docker.io/headscale/headscale:${HEADSCALE_VERSION:-0.29.7}
+    restart: unless-stopped
+    command: serve
+    read_only: true
+    tmpfs:
+      - /var/run/headscale
+    environment:
+      HEADSCALE_SERVER_URL: ${TESSERACT_LOGIN_SERVER:?set TESSERACT_LOGIN_SERVER in .env}
+      HEADSCALE_DNS_BASE_DOMAIN: ${TESSERACT_NET_DOMAIN:-tesseract.internal}
+    volumes:
+      - ./config.yaml:/etc/headscale/config.yaml:ro
+      - ./policy.hujson:/etc/headscale/policy.hujson:ro
+      - headscale-data:/var/lib/headscale
+    ports:
+      - "${HEADSCALE_BIND_ADDR:-127.0.0.1}:8080:8080"
+      - "3478:3478/udp"
+    healthcheck:
+      test: ["CMD", "headscale", "health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  account:
+    build:
+      context: ../..
+      dockerfile: infra/docker/account/Dockerfile
+    image: ${ACCOUNT_IMAGE:-tesseract/account:latest}
+    restart: unless-stopped
+    depends_on:
+      headscale:
+        condition: service_healthy
+    environment:
+      ACCOUNT_PORT: "7800"
+      ACCOUNT_DATA_DIR: /var/lib/tesseract-account
+      ACCOUNT_HEADSCALE_URL: http://headscale:8080
+      ACCOUNT_HEADSCALE_API_KEY: ${ACCOUNT_HEADSCALE_API_KEY:-}
+      ACCOUNT_LOGIN_SERVER: ${TESSERACT_LOGIN_SERVER}
+      ACCOUNT_NET_DOMAIN: ${TESSERACT_NET_DOMAIN:-tesseract.internal}
+      ACCOUNT_APPLE_AUDIENCES: ${ACCOUNT_APPLE_AUDIENCES:-}
+      ACCOUNT_DEMO_EMAIL: ${ACCOUNT_DEMO_EMAIL:-}
+      ACCOUNT_DEMO_PASSWORD: ${ACCOUNT_DEMO_PASSWORD:-}
+      ACCOUNT_TRUST_PROXY: "1"
+    volumes:
+      - account-data:/var/lib/tesseract-account
+    ports:
+      - "${ACCOUNT_BIND_ADDR:-127.0.0.1}:7800:7800"
+
+  caddy:
+    profiles: ["tls"]
+    image: docker.io/library/caddy:2
+    restart: unless-stopped
+    depends_on:
+      - headscale
+      - account
+    environment:
+      HEADSCALE_HOST: ${HEADSCALE_HOST:-}
+      ACCOUNT_HOST: ${ACCOUNT_HOST:-}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+
+volumes:
+  headscale-data:
+  account-data:
+  caddy-data:
+  caddy-config:

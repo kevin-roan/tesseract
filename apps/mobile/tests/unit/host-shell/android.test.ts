@@ -122,6 +122,7 @@ describe("android status helpers", () => {
     expect(linkBlockedReason(sampleHostAndroidStatus)).toBeNull();
     expect(linkBlockedReason(stopped)).toBeNull();
     expect(linkBlockedReason(plain)).toBe(ANDROID_COPY.linkBlocked);
+    expect(linkBlockedReason({ ...plain, isolation: "none" })).toBeNull();
     expect(isolationNotice(sampleHostAndroidStatus)).toBeNull();
     expect(isolationNotice(plain)).toEqual({ title: ANDROID_COPY.notIsolatedTitle, message: ANDROID_COPY.notIsolated });
     expect(isolationNotice({ ...stopped, isolation: "none" })).toEqual({ title: ANDROID_COPY.isolationOffTitle, message: ANDROID_COPY.isolationOff });

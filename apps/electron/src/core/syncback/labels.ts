@@ -118,6 +118,12 @@ export const CLI_SYNC_LABELS = {
   syncing: (root: string, id: string, confidential: boolean, label: string) =>
     `Syncing ${root} to ${id}${confidential ? " (confidential)" : ""} on ${label}…`,
   syncFailed: (error: string) => `tesseract: sync failed: ${error}`,
+  progress: {
+    scan: "Scanning files…",
+    pack: (done: number, total: number, percent: number) => `Packing ${done}/${total} files (${percent}%)`,
+    upload: (sent: string, size: string, percent: number, label: string) => `Uploading ${sent} / ${size} to ${label} (${percent}%)`,
+    unpack: (size: string, label: string, seconds: number) => `Uploaded ${size}; ${label} is unpacking… ${seconds}s`,
+  },
   linkFailed: (error: string) => `tesseract: pushed, but could not record the link for sync back: ${error}`,
   pushed: (created: boolean, path: string, count: number) =>
     `${created ? "Created" : "Updated"} ${path} (${count} entries) · linked for sync back`,

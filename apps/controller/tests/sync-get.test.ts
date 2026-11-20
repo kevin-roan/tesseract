@@ -21,7 +21,7 @@ const sha256 = (value: string) => new Bun.CryptoHasher("sha256").update(value).d
 
 function git(cwd: string, ...args: string[]): string {
   const result = Bun.spawnSync(
-    ["git", "-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "init.defaultBranch=main", "-c", "commit.gpgsign=false", ...args],
+    ["git", "-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "init.defaultBranch=main", "-c", "commit.gpgsign=false", "-c", "maintenance.auto=false", "-c", "gc.auto=0", ...args],
     { cwd, stdout: "pipe", stderr: "pipe" },
   );
   if (result.exitCode !== 0) throw new Error(`git ${args.join(" ")} failed: ${result.stderr.toString()}`);

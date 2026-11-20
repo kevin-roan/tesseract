@@ -1,4 +1,5 @@
 import type { AppSettings } from "../../shared/contracts/app";
+import { HOST_TAILNET_MODES, type HostTailnetMode } from "../../shared/contracts/tailnet";
 import type { Appearance } from "../../shared/runtime";
 import {
   APPEARANCES,
@@ -27,8 +28,10 @@ export const SETTINGS_KEYS = {
   appearance: "appearance",
   zoom: "zoom",
   sidebarWidth: "sidebarWidth",
+  sidebarHidden: "sidebarHidden",
   hostShellAutostart: "host_shell_autostart",
   hostShellIos: "host_shell_ios",
+  hostTailnet: "host_tailnet",
   sandboxAutostart: "sandboxAutostart",
 } as const satisfies Record<keyof AppSettings, string>;
 
@@ -55,12 +58,15 @@ export function settingsFromConfig(data: ConfigData): AppSettings {
   const appearance = data[SETTINGS_KEYS.appearance];
   const zoom = data[SETTINGS_KEYS.zoom];
   const sandboxAutostart = data[SETTINGS_KEYS.sandboxAutostart];
+  const hostTailnet = data[SETTINGS_KEYS.hostTailnet];
   return {
     appearance: APPEARANCES.includes(appearance as Appearance) ? (appearance as Appearance) : DEFAULT_SETTINGS.appearance,
     zoom: isNumber(zoom) ? clampZoom(zoom) : DEFAULT_SETTINGS.zoom,
     sidebarWidth: clampSidebarWidth(data[SETTINGS_KEYS.sidebarWidth]),
+    sidebarHidden: data[SETTINGS_KEYS.sidebarHidden] === true,
     hostShellAutostart: data[SETTINGS_KEYS.hostShellAutostart] === true,
     hostShellIos: data[SETTINGS_KEYS.hostShellIos] === true,
+    hostTailnet: HOST_TAILNET_MODES.includes(hostTailnet as HostTailnetMode) ? (hostTailnet as HostTailnetMode) : DEFAULT_SETTINGS.hostTailnet,
     sandboxAutostart: typeof sandboxAutostart === "boolean" ? sandboxAutostart : DEFAULT_SETTINGS.sandboxAutostart,
   };
 }

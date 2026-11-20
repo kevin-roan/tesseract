@@ -36,6 +36,7 @@ export {
   composeRestart,
   composeStatus,
   composeUp,
+  ensureTesseractNetKey,
   containerLogs,
   findExisting,
   startExisting,

@@ -166,6 +166,11 @@ export class ScreenSession {
     for (const message of textMessages(text, this.spec)) this.send(message);
   }
 
+  capture(): string | null {
+    const canvas = this.canvas;
+    return canvas && this.state.status === "connected" ? canvas.toDataURL("image/png") : null;
+  }
+
   private touch(action: "down" | "move" | "up" | "cancel", pointerId: number, event: PointerLike): void {
     const point = this.point(event);
     if (point) this.send({ type: "touch", action, pointerId, ...point, pressure: action === "up" || action === "cancel" ? 0 : 1 });

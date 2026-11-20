@@ -1,5 +1,8 @@
 import { AnimatePresence, motion } from "motion/react";
 import { useMemo, useRef } from "react";
+import { useProjectTerminalPanel } from "../../../features/terminals/hooks/use-project-terminal-panel";
+import { PROJECT_TERMINALS } from "../../../features/terminals/project-scope";
+import { TerminalsScopeContext } from "../../../features/terminals/scope";
 import { EmptyState } from "../../../components/EmptyState";
 import { Notice } from "../../../components/Notice";
 import { OverlayScrollbar } from "../../../components/OverlayScrollbar";
@@ -20,6 +23,7 @@ import { DetailActions } from "./DetailActions";
 import { DetailHeader } from "./DetailHeader";
 import { DetailTabs } from "./DetailTabs";
 import { TabHost } from "./TabHost";
+import { TerminalDock } from "./TerminalDock";
 import { EmulatorButtonSlot, useSyncCount, useSyncRefresh } from "./tab-registry";
 import styles from "./ProjectDetail.module.css";
 
@@ -31,7 +35,16 @@ export interface ProjectDetailProps {
   onRemoved(): void;
 }
 
-export function ProjectDetail({ projectId, initialTab, tabAt, onBack, onRemoved }: ProjectDetailProps) {
+export function ProjectDetail(props: ProjectDetailProps) {
+  return (
+    <TerminalsScopeContext value={PROJECT_TERMINALS}>
+      <ProjectDetailView {...props} />
+    </TerminalsScopeContext>
+  );
+}
+
+function ProjectDetailView({ projectId, initialTab, tabAt, onBack, onRemoved }: ProjectDetailProps) {
+  const terminalPanel = useProjectTerminalPanel(projectId);
   const syncCount = useSyncCount(projectId);
   const refreshSync = useSyncRefresh();
   const page = useDetailPage({ projectId, initialTab, tabAt, syncCount, refreshSync, onRemoved });
@@ -66,75 +79,77 @@ export function ProjectDetail({ projectId, initialTab, tabAt, onBack, onRemoved 
           )}
         </div>
       ) : (
-        <div className={styles.frame}>
-          <div ref={scrollerRef} className={styles.scroller}>
-            <div className={styles.body}>
-              <DetailHeader
-                project={project}
-                title={page.title}
-                chips={page.chips}
-                removing={page.removal.checking}
-                onCopyPath={page.copyPath}
-                onRename={page.openRename}
-                onDelete={page.removal.start}
-                onError={detail.report}
+        <TerminalDock panel={terminalPanel}>
+          <div className={styles.frame}>
+            <div ref={scrollerRef} className={styles.scroller}>
+              <div className={styles.body}>
+                <DetailHeader
+                  project={project}
+                  title={page.title}
+                  chips={page.chips}
+                  removing={page.removal.checking}
+                  onCopyPath={page.copyPath}
+                  onRename={page.openRename}
+                  onDelete={page.removal.start}
+                  onError={detail.report}
+                />
+                <DetailActions
+                  display={page.display}
+                  displaySlot={
+                    EmulatorButtonSlot ? (
+                      <EmulatorButtonSlot
+                        projectId={project.id}
+                        projectName={page.title}
+                        framework={project.framework}
+                        runTargets={detail.state.runTargets}
+                        appRuns={detail.state.appRuns}
+                        runTargetsError={detail.state.runTargetsError}
+                        report={detail.report}
+                        onRun={detail.upsertAppRun}
+                      />
+                    ) : null
+                  }
+                  hostSlot={<HostRepoActions projectId={project.id} projectName={page.title} report={detail.report} />}
+                  accountOptions={page.accountOptions}
+                  accountValue={page.accountValue}
+                  accountBusy={page.account.busy}
+                  onAsk={page.actions.ask}
+                  onClaudeTerminal={() => terminalPanel.openKind("claude")}
+                  onShell={() => terminalPanel.openKind("shell")}
+                  onDisplay={page.runDisplay}
+                  onAccount={page.account.change}
+                />
+                <AnimatePresence initial={false}>
+                  {detail.notice ? (
+                    <motion.div key="notice" variants={reveal} initial="initial" animate="animate" exit="exit">
+                      <Notice
+                        className={styles.notice}
+                        tone="danger"
+                        message={detail.notice.message}
+                        actionLabel={detail.notice.action?.label ?? DETAIL_LABELS.dismiss}
+                        onAction={() => {
+                          const action = detail.notice?.action;
+                          detail.dismissNotice();
+                          action?.run();
+                        }}
+                      />
+                    </motion.div>
+                  ) : null}
+                </AnimatePresence>
+                <DetailTabs tabs={page.tabs} selected={page.tab} onChange={page.setTab} />
+                <TabHost tab={page.tab} project={project} state={detail.state} runs={detail.runs} host={host} />
+              </div>
+              <RenameProjectDialog open={page.renameOpen} project={project} onRenamed={detail.setProject} onClose={page.closeRename} />
+              <RemoveProjectDialog
+                prompt={page.removal.prompt}
+                open={page.removal.open}
+                onConfirm={() => void page.removal.confirm()}
+                onClose={page.removal.cancel}
               />
-              <DetailActions
-                display={page.display}
-                displaySlot={
-                  EmulatorButtonSlot ? (
-                    <EmulatorButtonSlot
-                      projectId={project.id}
-                      projectName={page.title}
-                      framework={project.framework}
-                      runTargets={detail.state.runTargets}
-                      appRuns={detail.state.appRuns}
-                      runTargetsError={detail.state.runTargetsError}
-                      report={detail.report}
-                      onRun={detail.upsertAppRun}
-                    />
-                  ) : null
-                }
-                hostSlot={<HostRepoActions projectId={project.id} projectName={page.title} report={detail.report} />}
-                accountOptions={page.accountOptions}
-                accountValue={page.accountValue}
-                accountBusy={page.account.busy}
-                onAsk={page.actions.ask}
-                onClaudeTerminal={page.actions.claudeTerminal}
-                onShell={page.actions.shell}
-                onDisplay={page.runDisplay}
-                onAccount={page.account.change}
-              />
-              <AnimatePresence initial={false}>
-                {detail.notice ? (
-                  <motion.div key="notice" variants={reveal} initial="initial" animate="animate" exit="exit">
-                    <Notice
-                      className={styles.notice}
-                      tone="danger"
-                      message={detail.notice.message}
-                      actionLabel={detail.notice.action?.label ?? DETAIL_LABELS.dismiss}
-                      onAction={() => {
-                        const action = detail.notice?.action;
-                        detail.dismissNotice();
-                        action?.run();
-                      }}
-                    />
-                  </motion.div>
-                ) : null}
-              </AnimatePresence>
-              <DetailTabs tabs={page.tabs} selected={page.tab} onChange={page.setTab} />
-              <TabHost tab={page.tab} project={project} state={detail.state} runs={detail.runs} host={host} />
             </div>
-            <RenameProjectDialog open={page.renameOpen} project={project} onRenamed={detail.setProject} onClose={page.closeRename} />
-            <RemoveProjectDialog
-              prompt={page.removal.prompt}
-              open={page.removal.open}
-              onConfirm={() => void page.removal.confirm()}
-              onClose={page.removal.cancel}
-            />
+            <OverlayScrollbar target={scrollerRef} />
           </div>
-          <OverlayScrollbar target={scrollerRef} />
-        </div>
+        </TerminalDock>
       )}
     </Crossfade>
   );

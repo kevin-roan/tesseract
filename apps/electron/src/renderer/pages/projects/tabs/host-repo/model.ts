@@ -2,6 +2,7 @@ import type { AgentRun } from "@tesseract/protocol";
 import type { ChoiceOption } from "../../../../components/ChoiceDropdown";
 import { runTitle } from "../../../../features/agents/model";
 import { HOST_TERMINAL_KINDS, type HostShellState, type HostTerminalKind } from "../../../../../shared/contracts/hostShell";
+import type { MasterHostState } from "../../../../../shared/contracts/masterHost";
 import type { HostGitAction, SyncLinkSummary } from "../../../../../shared/contracts/syncback";
 import type { IconName } from "../../../../theme/icons";
 import { HOST_GIT_ICON, HOST_REPO_ICONS } from "./constants";
@@ -102,6 +103,21 @@ export function gitTrigger(hostPath: string | null, busy: HostRepoAction | null)
     disabled: hostPath === null,
     busy: running,
   };
+}
+
+export function masterHostName(state: MasterHostState | null): string | null {
+  if (state?.kind !== "linked") return null;
+  return (state.host.name ?? new URL(state.host.url).hostname).replace(/\.local$/, "");
+}
+
+export function masterShellBlocker(state: HostShellState, machine: string): string | null {
+  if (state.status !== "external" || state.pairing === null) return state.error ?? L.masterUnavailable(machine);
+  return state.pairing.pinSet ? null : L.masterNoPin(machine);
+}
+
+export function masterTerminalButton(id: HostTerminalKind, hostPath: string, machine: string, busy: HostRepoAction | null): HostRepoButton {
+  const tooltip = id === "claude" ? L.masterClaudeTooltip : L.masterShellTooltip;
+  return { ...hostRepoButton(id, hostPath, busy), tooltip: tooltip(hostPath, machine) };
 }
 
 export const NEW_CHAT = "new";

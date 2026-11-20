@@ -1,0 +1,16 @@
+# TLS for the Tesseract Network (compose profile `tls`). Caddy obtains certificates for both hosts.
+{
+	email {$ACME_EMAIL}
+}
+
+# Headscale: the control plane (tsnet --login-server), the embedded DERP relay (/derp) and the admin API.
+{$HEADSCALE_HOST} {
+	@admin path /api/*
+	respond @admin 404
+	reverse_proxy headscale:8080
+}
+
+# Account service (EXPO_PUBLIC_ACCOUNT_URL).
+{$ACCOUNT_HOST} {
+	reverse_proxy account:7800
+}

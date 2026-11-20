@@ -4,7 +4,7 @@ import type { MasterHostState } from "../../shared/contracts/masterHost";
 import type { ConfigData } from "../config";
 import { SEALED_TOKEN_KEY, TOKEN_KEY } from "../connection/constants";
 import { unsealedToken, type TokenCipher } from "../connection/token-vault";
-import { LOOPBACK_HOSTNAMES, MASTER_HOSTS_KEY } from "./constants";
+import { LOOPBACK_HOSTNAMES, MASTER_HOST_FOLDER_MAX_LENGTH, MASTER_HOST_FOLDERS_KEY, MASTER_HOSTS_KEY } from "./constants";
 
 export interface SavedMasterHost {
   url: string;
@@ -78,6 +78,8 @@ export function rememberMasterHost(
   sealWith: TokenCipher | null,
 ): ConfigData {
   const entry: StoredEntry = { url: host.url };
+  const folders = storedEntries(data)[sandboxUrl]?.[MASTER_HOST_FOLDERS_KEY];
+  if (folders !== undefined) entry[MASTER_HOST_FOLDERS_KEY] = folders;
   if (host.name) entry.name = host.name;
   if (sealWith) entry[SEALED_TOKEN_KEY] = sealWith.seal(host.token);
   else entry[TOKEN_KEY] = host.token;
@@ -89,6 +91,33 @@ export function dropMasterHost(data: ConfigData, sandboxUrl: string): ConfigData
   if (!(sandboxUrl in entries)) return data;
   delete entries[sandboxUrl];
   return withEntries(data, entries);
+}
+
+/** The folder as an absolute POSIX or Windows path without trailing separators, or `null` when it isn't one. */
+export function parseMasterHostFolder(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (trimmed.length > MASTER_HOST_FOLDER_MAX_LENGTH || !/^(\/|[A-Za-z]:[\\/])/.test(trimmed)) return null;
+  return trimmed.replace(/(?<=[^\\/:])[\\/]+$/, "");
+}
+
+function storedFolders(entry: StoredEntry | undefined): Record<string, unknown> {
+  const folders = entry?.[MASTER_HOST_FOLDERS_KEY];
+  return typeof folders === "object" && folders !== null && !Array.isArray(folders) ? (folders as Record<string, unknown>) : {};
+}
+
+export function readMasterHostFolder(data: ConfigData, sandboxUrl: string, projectId: string): string | null {
+  const folders = storedFolders(storedEntries(data)[sandboxUrl]);
+  const folder = Object.hasOwn(folders, projectId) ? folders[projectId] : null;
+  return typeof folder === "string" && folder ? folder : null;
+}
+
+/** Remembers where a project lives on the linked master host; a no-op while no host is linked for the sandbox. */
+export function rememberMasterHostFolder(data: ConfigData, sandboxUrl: string, projectId: string, folder: string): ConfigData {
+  const entries = storedEntries(data);
+  const entry = entries[sandboxUrl];
+  if (!entry) return data;
+  return withEntries(data, { ...entries, [sandboxUrl]: { ...entry, [MASTER_HOST_FOLDERS_KEY]: { ...storedFolders(entry), [projectId]: folder } } });
 }
 
 export function masterHostState(

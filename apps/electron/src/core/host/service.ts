@@ -292,6 +292,24 @@ export class HostShellService {
     });
   }
 
+  /** Base URL and session token for host routes without a client call (`POST /v1/host/docker`); throws while locked. */
+  sessionAccess(): { url: string; token: string } {
+    const client = this.sessionClient();
+    const session = this.session;
+    if (!session) throw sessionRequiredError();
+    return { url: client.baseUrl, token: session.token };
+  }
+
+  /** The host refused the session (401/403): forget it, so the app asks for the PIN again. */
+  sessionRejected(): void {
+    this.forgetSession();
+  }
+
+  /** Runs `call` with the session client, mapping auth and network errors like the built-in calls. */
+  withSession<T>(call: (client: TesseractClient) => Promise<T>): Promise<T> {
+    return this.hostCall(call);
+  }
+
   shutdown(): Promise<void> {
     this.shuttingDown ??= this.terminate().finally(() => {
       this.shuttingDown = null;

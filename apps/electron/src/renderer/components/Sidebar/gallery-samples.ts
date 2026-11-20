@@ -104,12 +104,14 @@ export const CONTAINER_SAMPLES: readonly SidebarContainerItem[] = [
   { name: "xenocrust-erp", activity: "requested", status: "New · needs approval", attention: 1, attentionLabel: "New · needs approval", request: true },
 ];
 
-export const CONTAINER_STATE_SAMPLES: readonly SidebarContainersState[] = ["loading", "unavailable", "empty"];
+export const CONTAINER_STATE_SAMPLES: readonly SidebarContainersState[] = ["loading", "unavailable", "locked", "empty"];
 
 export const CONTAINERS_LABEL_SAMPLE = {
   loading: "Loading containers…",
   unavailable: "Containers need Docker and sysbox on this computer.",
   setUp: "Set up containers",
+  locked: "Unlock the host to see its containers.",
+  unlock: "Unlock host",
   empty: "No containers yet.",
   create: "Create a container",
 } as const;

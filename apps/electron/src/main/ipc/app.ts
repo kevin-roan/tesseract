@@ -10,11 +10,13 @@ import { cliStatus, installCli } from "../services/cli-install";
 import { markRendererIdle } from "../services/idle";
 import { showNotification } from "../services/notifications";
 import { currentSettings, updateSettings } from "../services/settings";
+import { isDeviceWindow } from "../windows/device-window";
 import { getWindow } from "../windows/manager";
 import { defineService, type HandlerContext } from "./_framework/define";
 
 function windowKind(context: HandlerContext): WindowKind {
   if (mainContext().args.snapshot) return "snapshot";
+  if (isDeviceWindow(context.window)) return "device";
   return context.window && context.window === getWindow("onboarding") ? "onboarding" : "main";
 }
 

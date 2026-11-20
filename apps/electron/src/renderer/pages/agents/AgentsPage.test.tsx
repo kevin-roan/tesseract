@@ -63,7 +63,9 @@ describe("AgentsPage", () => {
   it("lists conversations with meta and shows the empty detail", async () => {
     renderRoutes(ROUTES, "/agents");
     expect(await screen.findByText("yes write this down to artiftecutre", {}, SLOW)).toBeTruthy();
-    expect(screen.getByText("tesseract · 327k tokens · follow-up")).toBeTruthy();
+    const list = screen.getByRole("listbox", { name: "Conversations" });
+    expect(within(list).getAllByText("tesseract").length).toBeGreaterThan(0);
+    expect(within(list).getAllByText("327k tokens · follow-up").length).toBeGreaterThan(0);
     expect(screen.getByText("No conversation selected")).toBeTruthy();
   });
 

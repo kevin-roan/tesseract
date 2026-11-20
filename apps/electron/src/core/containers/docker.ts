@@ -123,13 +123,21 @@ export async function imagePresent(deps: DockerDeps): Promise<boolean> {
   return succeeds(deps, ["image", "inspect", "--format", "{{.Id}}", SERVER_IMAGE]);
 }
 
-export async function buildServerImage(deps: DockerDeps, contextDir: string, signal?: AbortSignal, onStep?: (step: string) => void): Promise<void> {
+/** `contextDir` is a folder the daemon's machine can read, or `{ tarball }`: a gzip tar of it sent as stdin (a remote daemon). */
+export async function buildServerImage(
+  deps: DockerDeps,
+  context: string | { tarball: string },
+  signal?: AbortSignal,
+  onStep?: (step: string) => void,
+): Promise<void> {
   const onLine = (line: string) => {
     deps.log(line);
     const step = /^#\d+ \[[^\]]+\] (.+)$/.exec(line)?.[1];
     if (step) onStep?.(step);
   };
-  const result = await deps.stream("docker", ["build", "--progress=plain", "-t", SERVER_IMAGE, contextDir], { signal, onStdout: onLine, onStderr: onLine });
+  const source = typeof context === "string" ? context : "-";
+  const stdinFile = typeof context === "string" ? undefined : context.tarball;
+  const result = await deps.stream("docker", ["build", "--progress=plain", "-t", SERVER_IMAGE, source], { signal, stdinFile, onStdout: onLine, onStderr: onLine });
   if (result.cancelled) throw new IpcError("cancelled", CONTAINERS_MESSAGES.cancelled);
   if (result.code !== 0) throw new IpcError("internal", CONTAINERS_MESSAGES.buildFailed, result.error ?? undefined);
 }

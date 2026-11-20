@@ -167,7 +167,10 @@ already linked keeps its id and confidential flag, otherwise `--confidential`
 pushes under a fresh `adjective-noun` pseudonym that no link or sandbox project
 uses; a folder already linked under its real name is re-linked under a fresh
 pseudonym, and the old real-named copy stays in the sandbox, unlinked, for the
-user to delete),
+user to delete; on a terminal one stderr line shows the progress, rewritten in place:
+`Scanning files…`, `Packing <n>/<total> files (<p>%)`, `Uploading <sent> / <size> to <sandbox> (<p>%)`
+(the archive is streamed with its `Content-Length`), then `Uploaded <size>; <sandbox> is unpacking… <s>s`
+until the controller answers; piped output gets none of it),
 `--pull [--dry-run] [--force]`,
 `--revert [--force]`, `--sync-status` (changes + snapshots). Exit 0 on success,
 1 on error, 2 on conflicts.

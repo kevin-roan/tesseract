@@ -30,6 +30,16 @@ export const SANDBOX_STEP_LABELS = {
         unavailable: "Tailscale isn't running on this computer",
         unknownIp: "unknown",
       },
+      "tesseract-net": {
+        title: "Tesseract Network",
+        subtitle: (hostname: string, domain: string) =>
+          `The sandbox joins your Tesseract account's network as ${hostname}.${domain}; the phone app connects with no VPN app. Needs a Tesseract account.`,
+      },
+    },
+    account: {
+      title: "Tesseract account",
+      signedOut: "Sign in or create an account; Tesseract fetches the sandbox's key with it",
+      notPersisted: "This computer has no keychain, so you stay signed in until Tesseract quits",
     },
     authKey: {
       title: "Auth key",

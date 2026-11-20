@@ -117,6 +117,8 @@ import {
   SandboxStatusSchema,
   ServerEventSchema,
   SttStatusSchema,
+  AgentShellListSchema,
+  AgentShellLogSchema,
   TerminalInfoSchema,
   TerminalListSchema,
   TerminalServerMessageSchema,
@@ -137,6 +139,8 @@ import {
   type UpdateStt,
   type Upload,
   type AgentRun,
+  type AgentShell,
+  type AgentShellLog,
   type AgentRunBatchResult,
   type AgentRunDetail,
   type AgentRunEvent,
@@ -189,6 +193,7 @@ import {
   type ClaudeAccountList,
   type ClaudeCommand,
   type ClaudeAuthStatus,
+  type SetClaudeToken,
   type SetDefaultClaudeAccount,
   type SetProjectClaudeAccount,
   type RenameProject,
@@ -447,6 +452,16 @@ export class TesseractClient {
 
   setDefaultClaudeAccount(body: SetDefaultClaudeAccount, options?: RequestOptions): Promise<ClaudeAccountList> {
     return this.request("PUT", restPaths.claudeDefaultAccount(), { read: json(ClaudeAccountListSchema), body, options });
+  }
+
+  /** Stores the long-lived token and adds the `claude-token` account. */
+  setClaudeToken(body: SetClaudeToken, options?: RequestOptions): Promise<ClaudeAccountList> {
+    return this.request("PUT", restPaths.claudeToken(), { read: json(ClaudeAccountListSchema), body, options });
+  }
+
+  /** Forgets the long-lived token; the `claude-token` account disappears. */
+  clearClaudeToken(options?: RequestOptions): Promise<ClaudeAccountList> {
+    return this.request("DELETE", restPaths.claudeToken(), { read: json(ClaudeAccountListSchema), options });
   }
 
   setProjectClaudeAccount(id: string, body: SetProjectClaudeAccount, options?: RequestOptions): Promise<Project> {
@@ -806,6 +821,14 @@ export class TesseractClient {
 
   getAgentRun(id: string, options?: RequestOptions): Promise<AgentRunDetail> {
     return this.request("GET", restPaths.agentRun(id), { read: json(AgentRunDetailSchema), options });
+  }
+
+  listAgentShells(id: string, options?: RequestOptions): Promise<AgentShell[]> {
+    return this.request("GET", restPaths.agentRunShells(id), { read: json(AgentShellListSchema), options });
+  }
+
+  agentShellLog(id: string, shellId: string, options?: RequestOptions): Promise<AgentShellLog> {
+    return this.request("GET", restPaths.agentRunShellLog(id, shellId), { read: json(AgentShellLogSchema), options });
   }
 
   cancelAgentRun(id: string, options?: RequestOptions): Promise<AgentRun> {

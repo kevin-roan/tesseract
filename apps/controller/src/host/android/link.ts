@@ -30,6 +30,8 @@ export type LinkTarget = {
   shared: () => SharedEmulator[];
   /** A shared emulator's adbd, or null when that serial is not shared now. */
   sharedAdbd: (serial: string) => Endpoint | null;
+  /** Starts the host emulator for a sandbox `start` request; resolves once it was launched (or already runs). */
+  start: () => Promise<void>;
 };
 
 export type LinkOptions = {
@@ -189,6 +191,18 @@ export class AndroidLink {
     for (const stream of this.streams) this.endStream(stream);
   }
 
+  private async startForSandbox(requestId: string, generation: number): Promise<void> {
+    let error: string | null = null;
+    try {
+      await this.target.start();
+      this.logger.info("emulator started for the sandbox");
+    } catch (failure) {
+      error = failure instanceof Error ? failure.message : String(failure);
+      this.logger.warn("emulator start for the sandbox failed", { error });
+    }
+    if (generation === this.generation) this.send({ type: "started", requestId, ok: error === null, error });
+  }
+
   private send(message: AndroidLinkHostMessage): void {
     if (this.connected && this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(message));
   }
@@ -232,8 +246,10 @@ export class AndroidLink {
       if (generation !== this.generation || typeof event.data !== "string") return;
       const parsed = parseJsonWith(AndroidLinkSandboxMessageSchema, event.data);
       if (!parsed.ok) return;
-      if (parsed.value.type === "ping") this.send({ type: "pong" });
-      else void this.openStream(config, parsed.value.streamId, parsed.value.device ?? null, generation);
+      const message = parsed.value;
+      if (message.type === "ping") this.send({ type: "pong" });
+      else if (message.type === "start") void this.startForSandbox(message.requestId, generation);
+      else void this.openStream(config, message.streamId, message.device ?? null, generation);
     });
     socket.addEventListener("error", () => {
       failure ??= "Could not reach the sandbox link";

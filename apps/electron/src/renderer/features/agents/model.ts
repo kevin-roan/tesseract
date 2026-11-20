@@ -2,6 +2,7 @@ import { AGENT_RUN_MODELS, LIMITS, type AgentRun, type AgentRunModel, type Claud
 import type { Tone } from "../../theme/colors";
 import type { IconName } from "../../theme/icons";
 import {
+  ALL_PROJECTS_KEY,
   ATTENTION_KINDS,
   BADGE_MAX,
   DEFAULT_MODEL_KEY,
@@ -189,8 +190,29 @@ export function runDuration(run: Pick<AgentRun, "startedAt" | "endedAt">, now: n
   return seconds === null ? null : formatDuration(seconds);
 }
 
-export function rowMeta(run: AgentRun, names: ProjectNames, followUp = false): string {
-  return joinMeta(projectName(run.projectId, names), formatTokens(runTotalTokens(run)), followUp ? LIST_LABELS.followUp : null);
+export function rowDetail(run: AgentRun, followUp = false): string {
+  return joinMeta(formatTokens(runTotalTokens(run)), followUp ? LIST_LABELS.followUp : null);
+}
+
+export function matchesProjectFilter(projectId: string | null | undefined, filter: string): boolean {
+  return filter === ALL_PROJECTS_KEY || (projectId ?? NO_PROJECT_KEY) === filter;
+}
+
+export interface ProjectFilterOption {
+  id: string;
+  label: string;
+  projectId: string | null;
+}
+
+export function projectFilterOptions(runs: readonly Pick<AgentRun, "projectId">[] | null | undefined, selected: string, names: ProjectNames): ProjectFilterOption[] {
+  const keys = new Set((runs ?? []).map((run) => run.projectId ?? NO_PROJECT_KEY));
+  if (selected !== ALL_PROJECTS_KEY) keys.add(selected);
+  const options = [...keys].map((key) => {
+    const projectId = key === NO_PROJECT_KEY ? null : key;
+    return { id: key, label: projectName(projectId, names), projectId };
+  });
+  options.sort((a, b) => Number(a.projectId === null) - Number(b.projectId === null) || a.label.localeCompare(b.label));
+  return options;
 }
 
 export function headerMeta(run: AgentRun, names: ProjectNames, now: number = nowSeconds()): string {

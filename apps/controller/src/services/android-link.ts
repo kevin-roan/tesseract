@@ -69,6 +69,9 @@ type Stream = {
 const ADB_TIMEOUT_MS = 15_000;
 const STREAM_BUFFER_BYTES = 4 * 1024 * 1024;
 const RECONNECT_INTERVAL_MS = 5_000;
+const ENSURE_POLL_MS = 2_000;
+// Starting a plain emulator returns once it was launched; booting is then watched through `emulator` messages.
+const START_ANSWER_TIMEOUT_MS = 60_000;
 const NORMAL_CLOSURE = 1000;
 const WS_BACKPRESSURE = -1;
 const WS_DROPPED = 0;
@@ -91,6 +94,8 @@ const tunnelKey = (device: string | null) => device ?? MAIN_TUNNEL;
  */
 export class AndroidLinkService {
   private link: Link | null = null;
+  private readonly starts = new Map<string, { resolve: () => void; reject: (error: Error) => void; timer: ReturnType<typeof setTimeout> }>();
+  private startSeq = 0;
   private readonly tunnels = new Map<string, Tunnel>();
   private readonly streams = new Map<string, Stream>();
   private queue: Promise<void> = Promise.resolve();
@@ -127,14 +132,60 @@ export class AndroidLinkService {
   unavailableReason(): string | null {
     if (!resolveExecutable(this.config.adbBin)) return "adb is not installed";
     const reason = this.mainReason();
-    return reason !== null && this.sharedTunnels().length > 0 ? null : reason;
+    if (reason === null || this.sharedTunnels().length > 0 || this.canStart()) return null;
+    return reason;
   }
 
   private mainReason(): string | null {
     if (!this.link) return "Link the host Android emulator first";
     if (this.link.emulator?.state !== "running") return "Start the emulator on the host";
-    if (!this.link.emulator.isolated) return "The host emulator is not isolated; start it from the app";
+    if (!this.link.emulator.isolated && !this.config.emulatorAllowUnisolated) return "The host emulator is not isolated; start it from the app";
     return null;
+  }
+
+  /** Whether an `*-android` run has to start the host emulator first (see `ensureEmulator`). */
+  needsEmulatorStart(): boolean {
+    return this.mainReason() !== null && this.sharedTunnels().length === 0 && this.canStart();
+  }
+
+  /** The link is up and the host can start its emulator on request (`start`), so a run need not wait for the user. */
+  private canStart(): boolean {
+    const state = this.link?.emulator?.state;
+    return this.link !== null && (state === "stopped" || state === "failed" || state === "starting");
+  }
+
+  /**
+   * Makes sure the host emulator runs and adb sees it before an `*-android` run: asks the host to start it when it
+   * is stopped, then waits for `running` and the tunnel. A shared emulator or one that already runs returns at once.
+   */
+  async ensureEmulator(timeoutMs: number = LIMITS.emulatorBootTimeoutMs): Promise<void> {
+    if (this.mainReason() === null || this.sharedTunnels().length > 0) return;
+    const link = this.link;
+    if (!link) throw new Error("Link the host Android emulator first");
+    if (link.emulator?.state !== "starting" && link.emulator?.state !== "running") await this.requestStart(link);
+    const deadline = Date.now() + timeoutMs;
+    while (Date.now() < deadline) {
+      const reason = this.mainReason();
+      if (reason === null && (await this.ensureConnected()).has(this.serial)) return;
+      if (!this.link) throw new Error("The host Android emulator link closed");
+      if (this.link.emulator?.state === "failed") throw new Error(`The host emulator failed to start${this.link.emulator.error ? `: ${this.link.emulator.error}` : ""}`);
+      await Bun.sleep(ENSURE_POLL_MS);
+    }
+    throw new Error(`The host emulator did not boot within ${Math.round(timeoutMs / 1000)} s`);
+  }
+
+  private requestStart(link: Link): Promise<void> {
+    this.startSeq += 1;
+    const requestId = `start-${this.startSeq}`;
+    return new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        this.starts.delete(requestId);
+        reject(new Error("The host did not answer the emulator start request (its host shell may be older than this sandbox)"));
+      }, START_ANSWER_TIMEOUT_MS);
+      this.starts.set(requestId, { resolve, reject, timer });
+      this.logger.info("asking the host to start its emulator", { hostId: link.hostId ?? undefined });
+      this.sendLink(link.session, { type: "start", requestId });
+    });
   }
 
   private sharedTunnels(): Tunnel[] {
@@ -233,6 +284,15 @@ export class AndroidLinkService {
         return;
       case "pong":
         return;
+      case "started": {
+        const pending = this.starts.get(message.requestId);
+        if (!pending) return;
+        this.starts.delete(message.requestId);
+        clearTimeout(pending.timer);
+        if (message.ok) pending.resolve();
+        else pending.reject(new Error(message.error ?? "The host could not start its emulator"));
+        return;
+      }
     }
   }
 
@@ -241,6 +301,11 @@ export class AndroidLinkService {
     if (!link || link.session !== session) return;
     clearInterval(link.ping);
     this.link = null;
+    for (const [id, pending] of this.starts) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error("The host Android emulator link closed"));
+      this.starts.delete(id);
+    }
     this.logger.info("android link closed", { hostId: link.hostId ?? undefined });
     this.reconcile();
   }

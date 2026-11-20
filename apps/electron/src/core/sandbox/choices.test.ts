@@ -65,6 +65,14 @@ describe("validateChoices", () => {
     expect(fields(good, { savedAuthKey: true })).toEqual([]);
   });
 
+  it("tesseract-net needs a valid hostname and a signed-in account, but no tailscale fields", () => {
+    const net = choices({ mode: "tesseract-net", tailnetDomain: "" });
+    expect(fields(net)).toEqual([]);
+    expect(fields(net, { accountSignedIn: true })).toEqual([]);
+    expect(validateChoices(net, { accountSignedIn: false })).toEqual([{ field: "mode", message: expect.stringMatching(/Sign in/) }]);
+    expect(fields(choices({ mode: "tesseract-net", hostname: "Bad_Host" }), { accountSignedIn: true })).toEqual(["hostname"]);
+  });
+
   it("refuses wildcard and invalid bind addresses", () => {
     const issues = (bindAddr: string) => validateChoices(choices({ mode: "host-tailscale", bindAddr }));
     expect(issues("100.64.0.1")).toEqual([]);
@@ -112,6 +120,24 @@ describe("env mapping", () => {
     });
     const text = serializeEnv(choicesToEnv(original, { uid: 1, gid: 1 }, { token: "t" }));
     expect(choicesFromEnv(parseEnvFile(text), choices())).toEqual(original);
+  });
+
+  it("writes tesseract-net's login server and domain from the last key, and no tailscale domain", () => {
+    const net = choices({ mode: "tesseract-net", tailnetDomain: "tail1.ts.net", tsAuthKey: "typed" });
+    const env = choicesToEnv(net, { uid: 1, gid: 1 }, { token: "t", tsAuthKey: "hskey-saved", loginServer: "https://net.example", netDomain: "u.example" });
+    expect(env).toMatchObject({
+      TESSERACT_MODE: "tesseract-net",
+      TS_AUTHKEY: "hskey-saved",
+      TS_TAILNET_DOMAIN: "",
+      TESSERACT_LOGIN_SERVER: "https://net.example",
+      TESSERACT_NET_DOMAIN: "u.example",
+      TESSERACT_BIND_ADDR: "",
+    });
+    const fresh = choicesToEnv(net, { uid: 1, gid: 1 }, { token: "t" });
+    expect(fresh).toMatchObject({ TS_AUTHKEY: "", TESSERACT_LOGIN_SERVER: "", TESSERACT_NET_DOMAIN: "tesseract.internal" });
+    expect(choicesToEnv(choices(), { uid: 1, gid: 1 }, { token: "t", loginServer: "x" }).TESSERACT_LOGIN_SERVER).toBeUndefined();
+    const text = serializeEnv(fresh);
+    expect(choicesFromEnv(parseEnvFile(text), choices()).mode).toBe("tesseract-net");
   });
 
   it("keeps a saved auth key when the form leaves it empty", () => {

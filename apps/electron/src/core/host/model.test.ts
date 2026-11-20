@@ -47,6 +47,12 @@ describe("parsePairing", () => {
     expect(parsePairing(JSON.stringify({ link: "l", url: "u", pinSet: "yes" }))).toEqual({ link: "l", url: "u", name: "", pinSet: false });
   });
 
+  it("uses localUrl on this computer and keeps the link's Tesseract Network URL as publicUrl", () => {
+    const stdout = JSON.stringify({ link: "l", url: "http://pc-host.tesseract.internal:7701", localUrl: "http://127.0.0.1:7701", name: "pc", pinSet: true });
+    expect(parsePairing(stdout)).toEqual({ link: "l", url: "http://127.0.0.1:7701", publicUrl: "http://pc-host.tesseract.internal:7701", name: "pc", pinSet: true });
+    expect(parsePairing(JSON.stringify({ link: "l", url: "u", localUrl: "u" }))).toEqual({ link: "l", url: "u", name: "", pinSet: false });
+  });
+
   it("rejects output without a pairing link", () => {
     expect(() => parsePairing("nothing here")).toThrow("The controller printed no pairing link");
     expect(() => parsePairing('{"url":"u"}')).toThrow("The controller printed no pairing link");

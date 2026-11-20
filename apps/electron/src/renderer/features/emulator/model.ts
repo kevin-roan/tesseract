@@ -1,7 +1,8 @@
-import type { AndroidLinkInfo, HostAndroidStatus, HostIosStatus, SimDevice } from "@tesseract/protocol";
+import { RUN_TARGET_VIEWERS, type AndroidLinkInfo, type AppRun, type HostAndroidStatus, type HostIosStatus, type SimDevice } from "@tesseract/protocol";
+import { LIVE_APP_RUN_STATES } from "../projects/constants";
 import { EMULATOR_TONES, SCREEN_STATUS_TONES, SIM_EMULATOR_STATES } from "./constants";
 import { EMULATOR_STATE_LABELS, IOS_UNAVAILABLE_LABELS, LINK_LABELS, OVERLAY_LABELS, SCREEN_STATUS_LABELS } from "./labels";
-import type { BadgeModel, DeviceLabels, DeviceSnapshot, OverlayModel, ScreenState } from "./types";
+import type { BadgeModel, DeviceKindId, DeviceLabels, DeviceSnapshot, OverlayModel, ScreenState } from "./types";
 
 export function androidSnapshot(status: HostAndroidStatus): DeviceSnapshot {
   const { emulator } = status;
@@ -63,6 +64,11 @@ export function canStop(snapshot: DeviceSnapshot | null): boolean {
 
 export function screenLive(snapshot: DeviceSnapshot | null): boolean {
   return snapshot?.state === "running" && snapshot.device !== null;
+}
+
+export function liveDeviceKinds(runs: readonly AppRun[] | null | undefined, running: Readonly<Record<DeviceKindId, boolean>>): DeviceKindId[] {
+  const hasRun = (id: DeviceKindId) => runs?.some((run) => RUN_TARGET_VIEWERS[run.target] === id && LIVE_APP_RUN_STATES.includes(run.state)) ?? false;
+  return (Object.keys(running) as DeviceKindId[]).filter((id) => running[id] || hasRun(id));
 }
 
 export function deviceBadge(snapshot: DeviceSnapshot | null): BadgeModel | null {

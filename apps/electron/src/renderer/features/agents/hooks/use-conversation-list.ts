@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import { bulkActions, filterRuns, followUpIds, listPlaceholder } from "../model";
+import { bulkActions, filterRuns, followUpIds, listPlaceholder, matchesProjectFilter, projectFilterOptions } from "../model";
 import { useAgentsUi } from "../store";
 import { useAgentDetails } from "./use-agent-details";
 import { useAgentProjects, useAgentRuns, useArchivedRuns } from "./use-agent-runs";
 
 export function useConversationList() {
   const filter = useAgentsUi((state) => state.filter);
+  const projectFilter = useAgentsUi((state) => state.projectFilter);
   const query = useAgentsUi((state) => state.query);
   const archivedView = filter === "archived";
   const { runs } = useAgentRuns();
@@ -15,11 +16,14 @@ export function useConversationList() {
 
   return useMemo(() => {
     const source = archivedView ? archived.runs : runs;
-    const visible = filterRuns(source, archivedView ? "all" : filter, query, names, details.attention);
-    const cards = filter === "running" || archivedView ? [] : details.cards;
-    const terminals = filter === "all" ? details.terminals : [];
+    const inProject = (item: { projectId?: string | null }) => matchesProjectFilter(item.projectId, projectFilter);
+    const visible = filterRuns(source?.filter(inProject), archivedView ? "all" : filter, query, names, details.attention);
+    const cards = filter === "running" || archivedView ? [] : details.cards.filter(inProject);
+    const terminals = filter === "all" ? details.terminals.filter(inProject) : [];
     return {
       filter,
+      projectFilter,
+      projectOptions: projectFilterOptions(source, projectFilter, names),
       archivedView,
       runs,
       archivedRuns: archived.runs,
@@ -40,7 +44,7 @@ export function useConversationList() {
         terminalCount: terminals.length,
       }),
     };
-  }, [archivedView, archived.runs, runs, filter, query, names, badges, projects, details]);
+  }, [archivedView, archived.runs, runs, filter, projectFilter, query, names, badges, projects, details]);
 }
 
 export type ConversationListModel = ReturnType<typeof useConversationList>;

@@ -26,6 +26,10 @@ extraResources:
   - from: dist-cli/${os}-${arch}
     to: bin
     filter: ["**/*"]
+  # tesseract-tailnet (native/tailnet/scripts/build-desktop.sh): host shell/workspace on the Tesseract Network
+  - from: resources/bin/${os}-${arch}
+    to: bin
+    filter: ["**/*"]
   - from: build/sandbox-context
     to: sandbox
     filter: ["**/*"]

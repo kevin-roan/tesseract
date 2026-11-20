@@ -6,6 +6,7 @@ import { PREFERENCES_TOAST_SCOPE } from "../constants";
 import { PairPhoneDialog } from "../shared/PairPhoneDialog";
 import { PreferencesPage } from "../shared/PreferencesPage";
 import { HostLog } from "./HostLog";
+import { TailnetGroup } from "./TailnetGroup";
 import { HOST_SHELL_LABELS as L } from "./labels";
 import { logText, pinButtonLabel, pinSubtitle, serveChecked, serveLocked, serveSubtitle } from "./model";
 import { useHostDialogs } from "./use-host-dialogs";
@@ -40,6 +41,7 @@ export default function HostShellPreferences() {
           onChange={host.setAutostart}
         />
       </SettingsGroup>
+      <TailnetGroup />
       <SettingsGroup title={L.security.title}>
         <ButtonRow title={L.pin.title} subtitle={pinSubtitle(pairing)} label={pinButtonLabel(pairing)} onActivate={dialogs.openPin} />
         <ButtonRow title={L.token.title} subtitle={L.token.subtitle} label={L.token.rotate} onActivate={dialogs.openRotate} />

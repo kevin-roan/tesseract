@@ -3,6 +3,7 @@ import { MotionGlobalConfig } from "motion/react";
 import { describe, expect, it } from "vitest";
 import { renderRoutes } from "../../test/render";
 import ProjectsPage from "./ProjectsPage";
+import { overrideIpcFixtures } from "../../fixtures";
 
 MotionGlobalConfig.skipAnimations = true;
 
@@ -97,11 +98,13 @@ describe("ProjectsPage", () => {
     expect(await within(dialog).findByRole("button", { name: "Claude account for this project on this computer" })).toBeTruthy();
   });
 
-  it("keeps the host group compact when the project has no copy here", async () => {
+  it("keeps the host group compact when the project has no copy here and no host machine is linked", async () => {
+    const restore = overrideIpcFixtures({ masterHost: { state: () => ({ kind: "local" }) } });
     renderRoutes(routes, "/projects/streaxfit");
     const host = await screen.findByRole("group", { name: "This computer" });
     expect(within(host).getByText("Not linked")).toBeTruthy();
     expect(within(host).queryByRole("button")).toBeNull();
+    restore();
   });
 
   it("shows the error state for a missing project", async () => {

@@ -170,6 +170,8 @@ export const AndroidLinkHostMessageSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("devices"), devices: z.array(SharedEmulatorSchema).max(LIMITS.maxSharedEmulators) }),
   z.object({ type: z.literal("refuse"), streamId: AdbStreamIdSchema, message: z.string() }),
   z.object({ type: z.literal("pong") }),
+  /** Answer to the sandbox's `start`: the emulator is running (or was already), or why it could not start. */
+  z.object({ type: z.literal("started"), requestId: z.string().min(1).max(64), ok: z.boolean(), error: z.string().nullable() }),
 ]);
 export type AndroidLinkHostMessage = z.infer<typeof AndroidLinkHostMessageSchema>;
 
@@ -178,6 +180,11 @@ export const AndroidLinkSandboxMessageSchema = z.discriminatedUnion("type", [
   /** `device`: a shared emulator's host serial; missing for the host emulator. */
   z.object({ type: z.literal("open"), streamId: AdbStreamIdSchema, device: SharedEmulatorSerialSchema.optional() }),
   z.object({ type: z.literal("ping") }),
+  /**
+   * Start the host emulator (the last used AVD, else the first) when none runs, so a sandbox run (an agent's
+   * `tesseract-controller run expo-android`) does not need the user to start it from the app. Answered by `started`.
+   */
+  z.object({ type: z.literal("start"), requestId: z.string().min(1).max(64) }),
 ]);
 export type AndroidLinkSandboxMessage = z.infer<typeof AndroidLinkSandboxMessageSchema>;
 

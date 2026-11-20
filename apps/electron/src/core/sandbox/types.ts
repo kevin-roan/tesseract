@@ -1,4 +1,5 @@
 import { statfs } from "node:fs/promises";
+import type { DeviceKey } from "@tesseract/protocol";
 import { homedir } from "node:os";
 import type { ConnectionInput, DiscoveryResult } from "../../shared/contracts/connection";
 import type { DockerReport } from "../../shared/contracts/docker";
@@ -29,6 +30,8 @@ export interface SandboxContext {
   configFile?: string;
   deps?: Partial<SandboxDeps>;
   saveConnection?(connection: ConnectionInput): Promise<void>;
+  /** tesseract-net: a `sandbox` device key for `hostname` from the signed-in Tesseract account. */
+  tesseractNetKey?(hostname: string): Promise<DeviceKey>;
 }
 
 export interface SandboxCallbacks {

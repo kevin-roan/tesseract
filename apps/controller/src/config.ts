@@ -49,6 +49,12 @@ export type Config = {
   /** The primary account (`claudeConfigDir`) first, then one per `TESSERACT_CLAUDE_ACCOUNTS` name. */
   claudeAccounts: ClaudeAccountDir[];
   tailscaleSocket: string;
+  /**
+   * `TESSERACT_NET_DOMAIN`: MagicDNS base domain of the Tesseract Network (ADR 0014), set by the `tesseract-net`
+   * compose mode only. Non-null means this sandbox is a Headscale node: no serve, no HTTPS, no Taildrop, and
+   * `<sandboxId>.<netDomain>` names it when the LocalAPI is not shared.
+   */
+  netDomain: string | null;
   sandboxId: string;
   hostname: string;
   logLevel: LogLevel;
@@ -59,6 +65,11 @@ export type Config = {
   adbBin: string;
   /** Loopback port tunnelled to the host emulator's adbd; the adb serial is `127.0.0.1:<port>`. */
   adbTunnelPort: number;
+  /**
+   * `TESSERACT_EMULATOR_ALLOW_UNISOLATED` (default on): `*-android` runs may use a host emulator that is not network
+   * isolated (always so on macOS). Off restores the old refusal; the host still refuses to link one when it isolates.
+   */
+  emulatorAllowUnisolated: boolean;
   /** Flutter SDK entry point used by the `flutter-*` and Flutter `test` run targets. */
   flutterBin: string;
   stt: SttConfig;
@@ -121,6 +132,7 @@ const HOST_PATTERN = /^[A-Za-z0-9.:[\]-]+$/;
 const STT_MODEL_PATTERN = /^[\w.:/-]{1,128}$/;
 const APNS_ID_PATTERN = /^[A-Za-z0-9]{1,64}$/;
 const BUNDLE_ID_PATTERN = /^[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)+$/;
+const DNS_DOMAIN_PATTERN = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/;
 const DEFAULT_APNS_BUNDLE_ID = "com.kevinroan.tesseract";
 
 function read(env: Env, name: string): string | undefined {
@@ -250,6 +262,13 @@ function runtime(env: Env): ProjectRuntime {
   return value as ProjectRuntime;
 }
 
+function netDomain(env: Env): string | null {
+  const value = read(env, "TESSERACT_NET_DOMAIN")?.toLowerCase().replace(/\.$/, "");
+  if (value === undefined) return null;
+  if (!DNS_DOMAIN_PATTERN.test(value)) throw new ConfigError(`TESSERACT_NET_DOMAIN is not a DNS domain (got "${value}")`);
+  return value;
+}
+
 export function loadConfig(env: Env = process.env): Config {
   const host = read(env, "TESSERACT_HOST") ?? "0.0.0.0";
   if (!HOST_PATTERN.test(host)) throw new ConfigError(`TESSERACT_HOST is not a valid bind address (got "${host}")`);
@@ -316,6 +335,7 @@ export function loadConfig(env: Env = process.env): Config {
     claudeEnvAuth: { oauthToken: read(env, "CLAUDE_CODE_OAUTH_TOKEN") !== undefined, apiKey: read(env, "ANTHROPIC_API_KEY") !== undefined },
     claudeAccounts: claudeAccountDirs(env, home, { id: CLAUDE_PRIMARY_ACCOUNT_ID, configDir: claudeConfigDir, globalConfig: claudeGlobalConfig, env: {} }),
     tailscaleSocket: absolutePath(env, "TESSERACT_TAILSCALE_SOCKET", "/run/tailscale/tailscaled.sock"),
+    netDomain: netDomain(env),
     sandboxId: read(env, "TESSERACT_SANDBOX_ID") ?? hostname,
     hostname,
     logLevel,
@@ -324,6 +344,7 @@ export function loadConfig(env: Env = process.env): Config {
     ffmpegBin: read(env, "TESSERACT_FFMPEG_BIN") ?? "ffmpeg",
     adbBin: read(env, "TESSERACT_ADB") ?? "adb",
     adbTunnelPort: parsePort(env, "TESSERACT_ADB_TUNNEL_PORT", DEFAULT_ADB_TUNNEL_PORT, false),
+    emulatorAllowUnisolated: !["0", "false", "off", "no"].includes((read(env, "TESSERACT_EMULATOR_ALLOW_UNISOLATED") ?? "").trim().toLowerCase()),
     flutterBin: read(env, "TESSERACT_FLUTTER") ?? "flutter",
     stt: sttConfig(env),
     push: pushConfig(env),

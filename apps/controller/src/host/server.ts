@@ -8,10 +8,13 @@ import {
   StopSignalQuerySchema,
   CreateHostTerminalSchema,
   errorBody,
+  HOST_DOCKER_SPEC_HEADER,
   HOST_SHELL_SERVICE,
+  HostDockerSpecSchema,
   HostLockSchema,
   HostUnlockSchema,
   isIdOfKind,
+  LIMITS,
   LinkSandboxSchema,
   parseJson,
   parseJsonWith,
@@ -43,6 +46,7 @@ import { VERSION } from "../version";
 import { HostAndroid, type HostAndroidOptions } from "./android";
 import type { ScreenClient, ScreenRequest } from "./android/screen";
 import { HostAuth, type HostAuthOptions } from "./auth";
+import { HostDocker, type HostDockerOptions } from "./docker";
 import type { HostConfig } from "./config";
 import { HostIos, type HostIosOptions } from "./ios";
 import type { IosScreenRequest } from "./ios/screen";
@@ -68,6 +72,7 @@ export type HostShellOptions = HostAuthOptions & {
   android?: HostAndroidOptions;
   ios?: HostIosOptions;
   toolchain?: Omit<HostToolchainOptions, "emulatorActive">;
+  docker?: HostDockerOptions;
   /** The host workspace controller a session may reach (tests replace it); `null` before it was set up. */
   workspace?: () => HostWorkspaceAccess | null;
 };
@@ -86,6 +91,8 @@ export type HostShell = {
 };
 
 const MAX_BODY_BYTES = 64 * 1024;
+/** `POST /v1/host/docker` streams deploy bundles (up to `LIMITS.maxDeployBundleBytes`) and image build contexts as stdin. */
+const MAX_REQUEST_BODY_BYTES = LIMITS.maxDeployBundleBytes + 64 * 1024 * 1024;
 const MAX_CLIENT_MESSAGE_BYTES = 1024 * 1024;
 const BACKPRESSURE_LIMIT_BYTES = 16 * 1024 * 1024;
 const NORMAL_CLOSURE = 1000;
@@ -122,6 +129,14 @@ function decodeId(match: RegExpExecArray | null): string | null {
   }
 }
 
+function dockerSpec(request: Request) {
+  const header = request.headers.get(HOST_DOCKER_SPEC_HEADER);
+  if (!header) throw badRequest(`Missing ${HOST_DOCKER_SPEC_HEADER} header`);
+  const result = parseJsonWith(HostDockerSpecSchema, header);
+  if (!result.ok) throw badRequest(`Invalid ${HOST_DOCKER_SPEC_HEADER} header: ${result.error.message}`);
+  return result.value;
+}
+
 function stopSignal(url: URL): StopSignal | undefined {
   const query = validate(StopSignalQuerySchema, { signal: url.searchParams.get("signal") ?? undefined });
   if (!query.ok) throw badRequest("signal must be SIGTERM or SIGKILL");
@@ -150,6 +165,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     emulatorActive: () => ACTIVE_EMULATOR_STATES.has(android.emulator.current().state),
   });
   toolchain.init();
+  const docker = new HostDocker(logger, options.docker);
   const terminals = new HostTerminals(config.shell, config.home, logger, undefined, options.stopGraceMs, options.claudeBin, () => toolchain.terminalEnv());
   const android = new HostAndroid(config.android, store, { hostId: config.hostId, version: VERSION }, logger, options.android);
   const ios = new HostIos(config.ios, store, { hostId: config.hostId, version: VERSION }, logger, options.ios);
@@ -230,7 +246,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     const installId = decodeId(IOS_INSTALL_PATH.exec(path));
     const iosPaths: string[] = [restPaths.ios(), restPaths.iosSimulator(), restPaths.iosLink(), restPaths.iosInstalls(), restPaths.iosStream()];
     const iosPath = iosPaths.includes(path) || installId !== null;
-    const known = path === restPaths.authTicket() || path === restPaths.hostWorkspace() || path === restPaths.terminals() || terminalId !== null || androidPath || iosPath;
+    const known = path === restPaths.authTicket() || path === restPaths.hostWorkspace() || path === restPaths.hostDocker() || path === restPaths.terminals() || terminalId !== null || androidPath || iosPath;
     if (!known) throw notFound(`No route for ${method} ${path}`);
     auth.requireSession(authorization);
 
@@ -244,6 +260,12 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
       }
       if (!access) throw notFound("The host workspace is not set up on this computer yet");
       return respond(access);
+    }
+    if (path === restPaths.hostDocker() && method === "POST") {
+      const spec = dockerSpec(request);
+      server.timeout(request, 0);
+      const body = docker.run(spec, request.body, request.signal);
+      return new Response(body, { status: 200, headers: { ...CORS_HEADERS, "Content-Type": "application/x-ndjson", "Cache-Control": "no-store" } });
     }
     if (path === restPaths.terminals() && method === "GET") return respond(terminals.list());
     if (path === restPaths.terminals() && method === "POST") return respond(terminals.create(await readBody(request, CreateHostTerminalSchema)), 201);
@@ -295,6 +317,7 @@ export function startHostShell(config: HostConfig, options: HostShellOptions = {
     port: config.port,
     development: false,
     idleTimeout: HTTP_IDLE_TIMEOUT_SEC,
+    maxRequestBodySize: MAX_REQUEST_BODY_BYTES,
     routes: { [routePatterns.ui.terminal]: hostTerminalPage, [routePatterns.ui.android]: androidPage, [routePatterns.ui.ios]: iosPage },
     async fetch(request, bunServer) {
       try {

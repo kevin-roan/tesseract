@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compactNumber, formatDuration, formatRelativeTime, formatTokens, joinMeta, pluralize } from "./format";
+import { compactNumber, formatDuration, formatRelativeTime, formatShortTime, formatTokens, joinMeta, pluralize } from "./format";
 
 const NOW = Date.parse("2026-09-23T12:00:00Z") / 1000;
 const ago = (seconds: number) => new Date((NOW - seconds) * 1000).toISOString();
@@ -15,6 +15,15 @@ describe("format", () => {
     expect(formatTokens(1)).toBe("1 token");
     expect(formatTokens(0)).toBe("0 tokens");
     expect(formatTokens(null)).toBeNull();
+  });
+
+  it("formats compact row times", () => {
+    expect(formatShortTime(ago(10), NOW)).toBe("now");
+    expect(formatShortTime(ago(600), NOW)).toBe("10m");
+    expect(formatShortTime(ago(7200), NOW)).toBe("2h");
+    expect(formatShortTime(ago(172_800), NOW)).toBe("2d");
+    expect(formatShortTime("2026-08-15T12:00:00Z", NOW)).toBe("Aug 15");
+    expect(formatShortTime("2025-08-15T12:00:00Z", NOW)).toBe("Aug 15, 2025");
   });
 
   it("formats relative times", () => {

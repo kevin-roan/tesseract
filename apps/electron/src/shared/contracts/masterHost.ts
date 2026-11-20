@@ -28,6 +28,9 @@ export type MasterHostContract = DefineContract<{
     /** Validates a `tesseract://host?…` link and saves it for the active sandbox. */
     link(link: string): MasterHostState;
     unlink(): MasterHostState;
+    /** Where the project lives on the linked master host, as set with `setFolder`. */
+    folder(projectId: string): string | null;
+    setFolder(projectId: string, path: string): string;
   };
   events: {
     state: MasterHostState;

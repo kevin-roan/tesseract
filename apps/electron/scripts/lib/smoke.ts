@@ -12,6 +12,7 @@ export const PACKAGED_FILES = [
   { path: "resources/app-update.yml", executable: false },
   { path: "resources/bin/tesseract", executable: true },
   { path: "resources/bin/tesseract-controller", executable: true },
+  { path: "resources/bin/tesseract-tailnet", executable: true },
   { path: "resources/sandbox/manifest.json", executable: false },
   { path: "resources/sandbox/build-weights.json", executable: false },
   { path: "resources/sandbox/infra/docker/sandbox/Dockerfile", executable: false },

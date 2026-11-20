@@ -63,7 +63,7 @@ bun run electron            # from the repository root
   always in fixture mode, because it has no preload bridge). `?scenario=<name>` picks a
   fixture state, `?scheme=light|dark` the colour scheme.
 - Useful routes: `#/<page>` (`overview`, `agents`, `projects`, `files`, `terminals`,
-  `display`), `#/<page>?preferences=<section>` (Settings: `connection`, `appearance`,
+  `display`), `#/<page>?preferences=<section>` (Settings: `connection`, `account`, `appearance`,
   `claude`, `host-shell`, `stt`, `sandbox`, `android`, `about`), `#/onboarding/<step>`
   (`welcome`, `docker`, `claude`, `sandbox`, `android`, `pair`, `finish`), `#/gallery[/<entry>]`
   (every component on its own).
@@ -80,6 +80,8 @@ bun run electron            # from the repository root
 | `config.json` (shared with the GTK app on Linux) | `~/.config/tesseract-desktop/config.json` | `~/Library/Application Support/Tesseract/config.json` | `%APPDATA%\Tesseract\config.json` |
 | App data (`userData`) | `~/.config/Tesseract` | `~/Library/Application Support/Tesseract` | `%APPDATA%\Tesseract` |
 | Sandbox env file | `<userData>/sandbox/.env` (0600) | same | same |
+| Tesseract account (server URL, session sealed with `safeStorage`) | `<userData>/account-session.json` (0600) | same | same |
+| Host Tesseract Network node (`tesseract-tailnet` state, joined server/suffix) | `<userData>/tailnet/`, `<userData>/tailnet.json` | same | same |
 | Downloads (Docker installer) | `<userData>/downloads/` | same | same |
 | Android package list cache | `<userData>/android/cache/` | same | same |
 | AppImage CLI copy, its `app.json` and sandbox context | `~/.local/share/tesseract/{bin/tesseract,app.json,sandbox/}` | — | — |
@@ -91,6 +93,13 @@ Overrides: `TESSERACT_DESKTOP_CONFIG`, `TESSERACT_USER_DATA`, `TESSERACT_STATE_D
 `TESSERACT_ANDROID_REPOSITORY_URL` / `TESSERACT_ANDROID_SYSIMG_URL` replace Google's Android
 package lists (a full `.xml` URL or a base URL; `http(s)` only), and
 `TESSERACT_DISABLE_DISCOVERY=1` stops the first-run lookup of a running sandbox through Docker.
+`TESSERACT_ACCOUNT_URL` is the Tesseract account service (ADR 0014) used until Settings › Account saves another
+server.
+
+The Tesseract Network for the host shell/workspace needs the `tesseract-tailnet` CLI. In a checkout, build it with
+`native/tailnet/scripts/build-desktop.sh linux/amd64` (or your `GOOS/GOARCH`); the app looks for
+`apps/electron/resources/bin/<os>-<arch>/tesseract-tailnet` (`linux|mac|win`, `x64|arm64`, git-ignored). Without it,
+Settings › Host shell › Tesseract Network shows "Not bundled with this build" and Tailscale keeps working.
 
 The AppImage copy of the CLI (`~/.local/share/tesseract/bin/tesseract`) gets an `app.json`
 (`{appPath, sandboxDir}`) and a copy of the bundled sandbox context in
@@ -235,9 +244,12 @@ bun run --cwd apps/electron dist -- --smoke            # Linux: build, then run 
    `imageVersion` from `ARG TESSERACT_IMAGE_VERSION`, sha256 of every file) and `build-weights.json`
    (progress weight per Dockerfile step). Untracked files are not bundled; uncommitted edits are,
    and set `dirty: true`. It fails on CRLF line endings in shell scripts.
-4. Checks that the CLI binaries and `manifest.json` exist, then runs electron-builder with
-   `electron-builder.yml`.
-5. With `--smoke`: `scripts/smoke.ts`.
+4. `native/tailnet/scripts/build-desktop.sh` (skip with `--skip-tailnet`; needs Go, CI uses `actions/setup-go`
+   with `native/tailnet/go.mod`) builds `tesseract-tailnet` for the same targets into
+   `resources/bin/<os>-<arch>/`, which electron-builder copies into `resources/bin/` next to the CLI.
+5. Checks that the CLI binaries, `tesseract-tailnet` and `manifest.json` exist (a missing one fails the dist instead of
+   shipping a package without the Tesseract Network), then runs electron-builder with `electron-builder.yml`.
+6. With `--smoke`: `scripts/smoke.ts`.
 
 Other `dist` options: `--publish never|always|onTag|onTagOrDraft` (default `never`),
 `--update-url <url>` / `TESSERACT_UPDATE_URL`, `--channel <name>` / `TESSERACT_UPDATE_CHANNEL`.
@@ -248,7 +260,8 @@ Other `dist` options: `--publish never|always|onTag|onTagOrDraft` (default `neve
 | Windows | `Tesseract-<v>-x64.exe` (NSIS, one-click, per user, no elevation) | `%LOCALAPPDATA%\Programs\Tesseract\Tesseract.exe`; `build/installer.nsh` appends `$INSTDIR\resources\bin` to the **user** `Path` and removes it on uninstall (not on update) |
 | Linux | `Tesseract-<v>-x86_64.AppImage`, `Tesseract-<v>-amd64.deb` | deb: `/opt/Tesseract/tesseract-desktop`, `/usr/bin/tesseract-desktop`, `/usr/bin/tesseract` → `resources/bin/tesseract` (only when that path is free or already ours; removed on uninstall), desktop entry `dev.tesseract.Desktop.desktop`, `tesseract://` handler. Depends on GTK 3, NSS, libsecret…; recommends `docker.io \| docker-ce` |
 
-Every package carries, under `resources/`: `app.asar`, `bin/tesseract` + `bin/tesseract-controller`,
+Every package carries, under `resources/`: `app.asar`, `bin/tesseract` + `bin/tesseract-controller` +
+`bin/tesseract-tailnet`,
 `sandbox/` (the build context above), `icons/`, `licenses/LICENSE-*` (fonts) and `app-update.yml`.
 Electron fuses: `runAsNode`, `NODE_OPTIONS` and `--inspect` are off, `onlyLoadAppFromAsar` is on.
 
@@ -365,6 +378,12 @@ by installing the new deb.
   `cli:build` for that platform's targets.
 - `CRLF line endings would break the Linux image`: a shell script in the bundle has CRLF
   (a Windows checkout with `autocrlf`). Fix the line endings in git.
+- Settings › Host shell › Tesseract Network says "Failed · Couldn't get a device key: …": the account service is
+  unreachable or the session expired; check Settings › Account. "Needs a new key": the node was removed from the
+  account; sign out and in again (that wipes `<userData>/tailnet/`).
+- A `tesseract-net` sandbox start fails with `TESSERACT_LOGIN_SERVER is required`: sign in to the account (the key is
+  fetched on the first start). A stack switched from `tailscale` keeps the old node in the `<prefix>-tailscale`
+  volume: stop the sandbox, `docker volume rm <prefix>-tailscale` (only that volume), then start it again.
 - `check:nsis` exits 2: electron-builder hasn't downloaded NSIS yet; run one
   `dist -- --platform win` first.
 - `Notarization needs APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID; missing …`:

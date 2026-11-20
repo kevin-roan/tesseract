@@ -70,6 +70,12 @@ jobs:
         with:
           node-version: 24
 
+      # dist.ts builds tesseract-tailnet (native/tailnet) for the platform's targets.
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: native/tailnet/go.mod
+          cache-dependency-path: native/tailnet/go.sum
+
       - run: bun install --frozen-lockfile
 
       # Not CSC_LINK: electron-builder 26 unlocks its own keychain with the .p12 password

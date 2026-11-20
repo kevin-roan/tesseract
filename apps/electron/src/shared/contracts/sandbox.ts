@@ -1,6 +1,6 @@
 import type { DefineContract } from "../ipc-types";
 
-export type ReachabilityMode = "local" | "tailscale" | "host-tailscale";
+export type ReachabilityMode = "local" | "tailscale" | "host-tailscale" | "tesseract-net";
 export type SandboxComponent = "android" | "flutter" | "mono" | "whisper";
 export type WhisperModel = "base" | "small" | "medium" | "large-v3-turbo";
 
